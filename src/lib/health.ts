@@ -12,6 +12,11 @@ export type HealthReport = {
   database: CheckResult;
   /** Which kind of connection string is configured (never the string itself). */
   databaseConnection: DatabaseConnectionKind | null;
+  /**
+   * The host, shown only for Supabase's shared pooler, whose host names are
+   * public and regional. It carries no password or project id.
+   */
+  databaseHost: string | null;
   /** A short error code when the database check fails, e.g. `28P01`. */
   databaseError: string | null;
   activeMarkets: number | null;
@@ -86,6 +91,7 @@ export async function checkHealth(
     supabase,
     database: database.result,
     databaseConnection: databaseUrl ? describeDatabaseUrl(databaseUrl) : null,
+    databaseHost: databaseUrl ? sharedPoolerHost(databaseUrl) : null,
     databaseError: database.error,
     activeMarkets: database.activeMarkets,
   };
@@ -135,6 +141,16 @@ async function checkDatabase(
     return { result: "ok", activeMarkets, error: null };
   } catch (error) {
     return { result: "unreachable", activeMarkets: null, error: errorCode(error) };
+  }
+}
+
+/** The host of a shared-pooler connection string, or null for anything else. */
+export function sharedPoolerHost(value: string): string | null {
+  try {
+    const { hostname } = new URL(value);
+    return hostname.endsWith(".pooler.supabase.com") ? hostname : null;
+  } catch {
+    return null;
   }
 }
 

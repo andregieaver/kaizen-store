@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { checkHealth, describeDatabaseUrl, errorCode } from "./health";
+import {
+  checkHealth,
+  describeDatabaseUrl,
+  errorCode,
+  sharedPoolerHost,
+} from "./health";
 
 const env = () => ({
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
@@ -30,6 +35,7 @@ describe("checkHealth", () => {
       supabase: "ok",
       database: "ok",
       databaseConnection: "shared_pooler_transaction",
+      databaseHost: "aws-1-eu-west-1.pooler.supabase.com",
       databaseError: null,
       activeMarkets: 4,
     });
@@ -168,5 +174,33 @@ describe("errorCode", () => {
   it("falls back to UNKNOWN for errors without a code", () => {
     expect(errorCode(new Error("boom"))).toBe("UNKNOWN");
     expect(errorCode("not an error")).toBe("UNKNOWN");
+  });
+});
+
+describe("sharedPoolerHost", () => {
+  it("shows a shared-pooler host, including a mistyped one", () => {
+    expect(
+      sharedPoolerHost(
+        "postgres://postgres.ref:pw@aws-0-eu-west-1.pooler.supabase.com:6543/postgres",
+      ),
+    ).toBe("aws-0-eu-west-1.pooler.supabase.com");
+    // A copied "…" or "..." placeholder shows up as-is, so it can be spotted.
+    expect(
+      sharedPoolerHost(
+        "postgres://postgres.ref:pw@aws-…-eu-west-1.pooler.supabase.com:6543/postgres",
+      ),
+    ).toBe("aws-%E2%80%A6-eu-west-1.pooler.supabase.com");
+    expect(
+      sharedPoolerHost(
+        "postgres://postgres.ref:pw@aws-...-eu-west-1.pooler.supabase.com:6543/postgres",
+      ),
+    ).toBe("aws-...-eu-west-1.pooler.supabase.com");
+  });
+
+  it("never shows other hosts", () => {
+    expect(
+      sharedPoolerHost("postgresql://postgres:pw@db.ref.supabase.co:5432/postgres"),
+    ).toBeNull();
+    expect(sharedPoolerHost("not a url")).toBeNull();
   });
 });
