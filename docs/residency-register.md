@@ -21,8 +21,18 @@ Status: ✅ in place · ⏳ to do · ❓ unverified
 |---|---|---|---|---|---|---|
 | Stripe | Payments, Stripe Tax | Payment and billing data | EU entity (Stripe Payments Europe, Ireland); some processing in the US | Part of Stripe's services agreement | 1 | Card data never reaches our servers. |
 | Transactional email | Order confirmations, withdrawal acknowledgements | Names, emails, order details | EU-hosted preferred (for example AWS SES in `eu-west-1`) | ⏳ | 1 | Resend keeps account data in the US even with an EU sending region. |
-| Sentry | Error tracking | Stack traces; may include personal data | EU (`de.sentry.io`) | ⏳ | 1 | Scrub request bodies and personal data before sending. |
-| PostHog | Product analytics | Pseudonymous events | EU (Frankfurt) | ⏳ | 1 | Only after consent where the country requires it. Mask checkout fields in session replay. |
-| GrowthBook | Feature flags and experiment analysis | Assignment and exposure events | ❓ self-host or cloud; region to confirm | ⏳ | 1 | Assignment runs in our server code; GrowthBook needs no personal data. |
 | Vercel AI Gateway | Model calls for search and the assistant | Shopper questions, possibly personal data | Inference pinned to the EU; request entry is not yet region-pinned | ⏳ | 2–3 | Zero data retention per request; log the resolved region on every call. |
 | Langfuse | LLM tracing and evaluation | Prompts and answers | ❓ EU region believed but not verified | ⏳ | 3 | Verify before sending traces. |
+
+## Optional, not planned
+
+Decision D13 in [`decisions.md`](decisions.md): Vercel's built-in logs, Speed
+Insights and cookieless Web Analytics cover launch. These are the add-ons to
+reach for if that stops being enough; each goes in the table above first.
+
+| Service | Purpose | Region to choose | Notes |
+|---|---|---|---|
+| Sentry | Error tracking with alerts | EU (`de.sentry.io`), fixed at sign-up | Scrub request bodies and personal data. |
+| PostHog | Funnels and product analytics | EU (Frankfurt), fixed at sign-up | Needs cookie consent in most setups (see D14). |
+| GrowthBook | Experiment analysis | Self-host or cloud; region to confirm | Assignment already runs in our own code. |
+

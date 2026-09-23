@@ -248,6 +248,13 @@ export const productVariants = commerce.table(
     /** Option values, e.g. `{"size": "M", "colour": "blue"}`. */
     options: jsonb("options").notNull().default({}),
     weightGrams: integer("weight_grams"),
+    /**
+     * Customs tariff code (HS, 6 to 10 digits) and country of origin. Every
+     * parcel from Norway to an EU country crosses a customs border and is
+     * declared with these.
+     */
+    hsCode: text("hs_code"),
+    originCountry: char("origin_country", { length: 2 }),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
@@ -255,6 +262,7 @@ export const productVariants = commerce.table(
     index("product_variants_product_idx").on(t.productId),
     check("product_variants_gtin_digits", sql`${t.gtin} ~ '^[0-9]{8,14}$'`),
     check("product_variants_weight_positive", sql`${t.weightGrams} > 0`),
+    check("product_variants_hs_code_digits", sql`${t.hsCode} ~ '^[0-9]{6,10}$'`),
   ],
 );
 

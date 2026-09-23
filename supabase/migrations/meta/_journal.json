@@ -36,6 +36,20 @@
       "when": 1790170887441,
       "tag": "20260923134127_launch_markets",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790199659424,
+      "tag": "20260923214059_customs_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790199660837,
+      "tag": "20260923214100_ship_from_norway",
+      "breakpoints": true
     }
   ]
 }

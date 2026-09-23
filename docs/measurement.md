@@ -26,9 +26,10 @@ randomised holdouts").
 - Variants are assigned **on the server**, in route handlers or server
   components, never in the routing middleware (which runs outside the EU).
 - The assignment key is the customer id when signed in, otherwise an id the
-  store already needs, such as the cart id. Whether that id counts as "strictly
-  necessary" under ePrivacy, so that no consent is needed, is open item O7.
-  Until counsel answers, only visitors who consented to analytics are enrolled.
+  store already needs, such as the cart id. The store sets no non-essential
+  cookies (decision D14). Whether reusing the cart id for experiments still
+  counts as strictly necessary is a legal question to settle before the first
+  experiment; until then, experiments run only on signed-in customers.
 - Assignment is a deterministic hash of experiment key and assignment key, so
   it needs no stored state and gives the same answer on every request.
 - Every exposure is logged as an `experiment_exposed` event the first time a
@@ -36,8 +37,9 @@ randomised holdouts").
 
 ## Events
 
-Server-side events are the source of truth for orders and money; browser events
-cover browsing behaviour, subject to consent. Names are `object_action`, in the
+Server-side events, stored in our own database, are the source of truth for
+orders and money. Browser-side traffic comes from Vercel Web Analytics, which
+sets no cookies. Names are `object_action`, in the
 past tense.
 
 | Event | Where | Key properties |

@@ -57,7 +57,7 @@ async function createProduct(
 }
 
 describe("reference data", () => {
-  it("has every EU member state and Norway, with the four launch markets active", async () => {
+  it("has every EU member state and Norway, with the three launch markets active", async () => {
     const { rows } = await db.query<{ code: string; active: boolean; eu: boolean }>(
       `select code, active, commerce.is_eu_country(code) as eu
        from commerce.markets order by code`,
@@ -65,7 +65,6 @@ describe("reference data", () => {
     expect(rows).toHaveLength(28);
     expect(rows.filter((m) => m.eu)).toHaveLength(27);
     expect(rows.filter((m) => m.active).map((m) => m.code)).toEqual([
-      "DE",
       "DK",
       "NO",
       "SE",
@@ -287,6 +286,19 @@ describe("template compliance data", () => {
     expect(variant.tax_code).toBe("txcd_30011000");
   });
 
+  it("takes a customs tariff code and country of origin per variant", async () => {
+    const { variantId } = await createProduct();
+    await db.query(
+      "update commerce.product_variants set hs_code = '61091000', origin_country = 'PT' where id = $1",
+      [variantId],
+    );
+    await expect(
+      db.query("update commerce.product_variants set hs_code = '6109.10' where id = $1", [
+        variantId,
+      ]),
+    ).rejects.toThrow(/product_variants_hs_code_digits/);
+  });
+
   it("lists launch markets where an active product's scheme is not registered", async () => {
     const { productId, handle } = await createProduct();
     await db.query(
@@ -306,16 +318,16 @@ describe("template compliance data", () => {
         )
       ).rows.map((r) => r.market_code);
 
-    expect(await missing()).toEqual(["DE", "DK", "NO", "SE"]);
+    expect(await missing()).toEqual(["DK", "NO", "SE"]);
 
     await db.query(
       `insert into commerce.producer_registrations
          (market_code, scheme, registration_number, authority, valid_from, valid_to) values
-         ('DE', 'packaging', 'DE1234567890123', 'Zentrale Stelle Verpackungsregister', current_date - 10, null),
+         ('NO', 'packaging', 'NO-123456', 'Miljødirektoratet', current_date - 10, null),
          ('SE', 'packaging', 'SE-OLD-1', 'Naturvårdsverket', current_date - 400, current_date - 1)`,
     );
-    // Germany is now covered; Sweden's registration has expired.
-    expect(await missing()).toEqual(["DK", "NO", "SE"]);
+    // Norway is now covered; Sweden's registration has expired.
+    expect(await missing()).toEqual(["DK", "SE"]);
   });
 });
 
