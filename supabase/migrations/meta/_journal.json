@@ -50,6 +50,20 @@
       "when": 1790199660837,
       "tag": "20260923214100_ship_from_norway",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790204849867,
+      "tag": "20260923230729_staff_and_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790204851134,
+      "tag": "20260923230731_settings_rules",
+      "breakpoints": true
     }
   ]
 }

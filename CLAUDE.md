@@ -68,6 +68,19 @@ of running `playwright install`.
 - Payment credentials and payment-method switches are store settings edited in
   the admin, never environment variables (decision D15).
 
+## Admin
+
+- `/admin` has its own root layout. Staff sign in with a Supabase magic link
+  (`/admin/sign-in` → email → `/auth/callback`); only emails in
+  `commerce.staff` get a link. There is no proxy: `getStaff()` verifies the
+  session on each request, `SessionKeeper` refreshes tokens in the browser, and
+  `SessionRecovery` handles an expired token.
+- Every server action re-checks the role with `requireStaff()`; owners manage
+  staff and payment keys. Changes are written to `commerce.settings_audit_log`.
+- Payment secrets are encrypted with `SETTINGS_ENCRYPTION_KEY`
+  (`src/lib/secret-box.ts`) and never sent to the browser; only a masked hint
+  is shown. Checkout reads them with `getActiveStripeSecret()`.
+
 ## Conventions
 
 - Environment variables are validated in `src/lib/env.ts` when used, not at

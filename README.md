@@ -34,3 +34,24 @@ Secret keys never go in `NEXT_PUBLIC_` variables or in the repository.
 
 Vercel builds every push; `main` is production. Functions run in `dub1`
 (Dublin), next to the Supabase database in eu-west-1.
+
+## Admin
+
+The admin lives at `/admin`. Staff sign in with a one-time link sent to their
+email; only people listed as staff get one. The first owner is added directly
+in the database:
+
+```sql
+insert into commerce.staff (email, role) values ('you@example.com', 'owner');
+```
+
+After that, owners invite everyone else from **Admin → Staff**.
+
+For sign-in links to work, Supabase must allow the redirect back to the site:
+**Authentication → URL Configuration**, set the Site URL to the production URL
+and add `<production URL>/auth/callback` (and `http://localhost:3000/auth/callback`
+for local development) to the redirect URLs.
+
+Payment keys and which payment methods are offered in each country are set in
+**Admin → Payments**. They are stored encrypted with `SETTINGS_ENCRYPTION_KEY`,
+which must be set in the server environment.

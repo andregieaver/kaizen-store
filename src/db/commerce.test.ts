@@ -461,6 +461,56 @@ describe("webhook events", () => {
   });
 });
 
+describe("staff and settings", () => {
+  it("always keeps at least one active owner", async () => {
+    const { id: owner } = await one<{ id: string }>(
+      "insert into commerce.staff (email, role) values ('owner@example.com', 'owner') returning id",
+    );
+    await expect(
+      db.query("update commerce.staff set disabled_at = now() where id = $1", [owner]),
+    ).rejects.toThrow(/at least one active owner/);
+    await expect(
+      db.query("update commerce.staff set role = 'admin' where id = $1", [owner]),
+    ).rejects.toThrow(/at least one active owner/);
+    await expect(db.query("delete from commerce.staff where id = $1", [owner])).rejects.toThrow(
+      /at least one active owner/,
+    );
+
+    // With a second owner, the first can step down.
+    await db.query(
+      "insert into commerce.staff (email, role, invited_by) values ('second@example.com', 'owner', $1)",
+      [owner],
+    );
+    await db.query("update commerce.staff set role = 'admin' where id = $1", [owner]);
+  });
+
+  it("treats staff emails case-insensitively", async () => {
+    await db.query("insert into commerce.staff (email) values ('Case@Example.com')");
+    await expect(
+      db.query("insert into commerce.staff (email) values ('case@example.com')"),
+    ).rejects.toThrow(/staff_email_idx/);
+  });
+
+  it("starts with Stripe disabled in test mode", async () => {
+    const stripe = await one<{ enabled: boolean; active_mode: string }>(
+      "select enabled, active_mode from commerce.payment_providers where provider = 'stripe'",
+    );
+    expect(stripe).toEqual({ enabled: false, active_mode: "test" });
+  });
+
+  it("keeps the settings audit log append-only", async () => {
+    await db.query(
+      "insert into commerce.settings_audit_log (action, details) values ('test.action', '{}')",
+    );
+    await expect(
+      db.query("update commerce.settings_audit_log set action = 'x'"),
+    ).rejects.toThrow(/append-only/);
+    await expect(db.query("delete from commerce.settings_audit_log")).rejects.toThrow(
+      /append-only/,
+    );
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

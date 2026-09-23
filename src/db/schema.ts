@@ -841,3 +841,112 @@ export const webhookEvents = commerce.table(
       .where(sql`${t.processedAt} is null`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Staff and store settings
+// ---------------------------------------------------------------------------
+
+export const staffRole = commerce.enum("staff_role", ["owner", "admin"]);
+
+export const paymentMode = commerce.enum("payment_mode", ["test", "live"]);
+
+/**
+ * People who can sign in to the admin. Only these emails are sent a sign-in
+ * link; `auth_user_id` is linked to the Supabase Auth user on first sign-in.
+ * Owners manage staff and payment credentials; admins manage the rest.
+ */
+export const staff = commerce.table(
+  "staff",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    authUserId: uuid("auth_user_id").unique(),
+    role: staffRole("role").notNull().default("admin"),
+    invitedBy: uuid("invited_by"),
+    createdAt: createdAt(),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("staff_email_idx").on(sql`lower(${t.email})`),
+    foreignKey({
+      name: "staff_invited_by_fk",
+      columns: [t.invitedBy],
+      foreignColumns: [t.id],
+    }),
+    index("staff_invited_by_idx").on(t.invitedBy),
+  ],
+);
+
+/** A payment provider the store can use, and which of its modes is live. */
+export const paymentProviders = commerce.table(
+  "payment_providers",
+  {
+    provider: text("provider").primaryKey(),
+    enabled: boolean("enabled").notNull().default(false),
+    activeMode: paymentMode("active_mode").notNull().default("test"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => staff.id),
+  },
+  (t) => [index("payment_providers_updated_by_idx").on(t.updatedBy)],
+);
+
+/**
+ * API credentials per provider and mode. Secrets are stored encrypted with a
+ * key that lives only in the server environment; `*_hint` keeps a masked
+ * form such as `sk_test_…4242` for display, since secrets are never shown
+ * again once saved.
+ */
+export const paymentCredentials = commerce.table(
+  "payment_credentials",
+  {
+    provider: text("provider")
+      .notNull()
+      .references(() => paymentProviders.provider),
+    mode: paymentMode("mode").notNull(),
+    publishableKey: text("publishable_key"),
+    secretKeyCiphertext: text("secret_key_ciphertext"),
+    secretKeyHint: text("secret_key_hint"),
+    webhookSecretCiphertext: text("webhook_secret_ciphertext"),
+    webhookSecretHint: text("webhook_secret_hint"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => staff.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.mode] }),
+    index("payment_credentials_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/** Whether a payment method is offered at checkout in a market. */
+export const paymentMethods = commerce.table(
+  "payment_methods",
+  {
+    marketCode: char("market_code", { length: 2 })
+      .notNull()
+      .references(() => markets.code),
+    method: text("method").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: uuid("updated_by").references(() => staff.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.marketCode, t.method] }),
+    index("payment_methods_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/** Append-only record of every settings and staff change. Never holds secrets. */
+export const settingsAuditLog = commerce.table(
+  "settings_audit_log",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    staffId: uuid("staff_id").references(() => staff.id),
+    action: text("action").notNull(),
+    details: jsonb("details").notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("settings_audit_log_created_idx").on(t.createdAt),
+    index("settings_audit_log_staff_idx").on(t.staffId),
+  ],
+);
