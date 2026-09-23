@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AddToCart } from "@/components/add-to-cart";
 import { Price } from "@/components/price";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import { getMarket, type Market } from "@/lib/markets";
@@ -13,11 +14,30 @@ import { siteUrl } from "@/lib/site";
 import {
   getAvailability,
   getProduct,
+  listProducts,
   type EconomicOperator,
   type ProductDetail,
 } from "@/server/catalog";
 
 type Props = PageProps<"/[market]/p/[handle]">;
+
+/**
+ * Prerender every product known at build time, so its text, price and safety
+ * details are plain HTML for shoppers and crawlers; only stock streams in.
+ * Products added later are rendered on first visit and then cached.
+ */
+export async function generateStaticParams({
+  params,
+}: {
+  params: { market: string };
+}) {
+  const market = getMarket(params.market);
+  const products = market ? await listProducts(market.code, market.locale) : [];
+  // Cache Components needs at least one entry; "_" simply renders a 404.
+  return products.length > 0
+    ? products.map((product) => ({ handle: product.handle }))
+    : [{ handle: "_" }];
+}
 
 async function load(params: Props["params"]) {
   const { market: slug, handle } = await params;
@@ -154,12 +174,28 @@ async function VariantsWithStock({
           const available = availability.get(variant.id) ?? 0;
           const label = optionLabel(m, variant.options);
           return (
-            <li key={variant.id} className="flex items-center justify-between gap-4 p-3">
+            <li key={variant.id} className="flex items-start justify-between gap-4 p-3">
               <div>
                 {label && <p>{label}</p>}
                 <p className="text-sm text-muted">{stockText(available)}</p>
               </div>
-              <Price price={variant.price} locale={market.locale} m={m} />
+              <div className="flex flex-col items-end gap-2">
+                <Price price={variant.price} locale={market.locale} m={m} />
+                <AddToCart
+                  market={market.slug}
+                  variantId={variant.id}
+                  disabled={available <= 0}
+                  labels={{
+                    addToCart: m.addToCart,
+                    adding: m.adding,
+                    added: m.added,
+                    capped: m.capped,
+                    unavailable: m.unavailable,
+                    tryAgain: m.tryAgain,
+                    goToCart: m.goToCart,
+                  }}
+                />
+              </div>
             </li>
           );
         })}

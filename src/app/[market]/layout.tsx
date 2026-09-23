@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+
+import { CartLink } from "@/components/cart-link";
 
 import { t } from "@/lib/i18n";
 import { MARKET_SLUGS, MARKETS, getMarket } from "@/lib/markets";
@@ -55,6 +58,7 @@ export default async function MarketLayout({
             <Link href={`/${market.slug}`} className="text-lg font-semibold">
               Kaizen Store
             </Link>
+            <div className="flex items-center gap-4">
             <nav aria-label={m.chooseMarket}>
               <ul className="flex gap-3 text-sm">
                 {MARKET_SLUGS.map((slug) => (
@@ -72,6 +76,16 @@ export default async function MarketLayout({
                 ))}
               </ul>
             </nav>
+            <Suspense
+              fallback={
+                <Link href={`/${market.slug}/cart`} className="rounded px-2 py-1 text-sm font-medium">
+                  {m.cart}
+                </Link>
+              }
+            >
+              <CartLink market={market} />
+            </Suspense>
+            </div>
           </div>
         </header>
         <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">

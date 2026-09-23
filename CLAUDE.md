@@ -60,6 +60,13 @@ of running `playwright install`.
   `catalog`); stock is read per request inside `<Suspense>`.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
+- Product pages are prerendered for every product at build time, so their
+  content is plain HTML; stock and add-to-cart stream in and need JavaScript.
+- The cart (`src/server/cart.ts`) is per market, identified by an httpOnly
+  cookie. Adding checks live stock and caps the quantity; stock is only held
+  once checkout starts. Mutations are server actions that call `refresh()`.
+- Payment credentials and payment-method switches are store settings edited in
+  the admin, never environment variables (decision D15).
 
 ## Conventions
 
