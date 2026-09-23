@@ -1,6 +1,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { MARKETS, MARKET_SLUGS } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 
 import { createTestDatabase } from "./testing";
@@ -73,6 +74,18 @@ describe("reference data", () => {
       "select currency, default_locale from commerce.markets where code = 'NO'",
     );
     expect(norway).toEqual({ currency: "NOK", default_locale: "nb-NO" });
+  });
+
+  it("routes exactly the active markets, with matching currencies", async () => {
+    const { rows } = await db.query<{ code: string; currency: string; default_locale: string }>(
+      "select code, currency, default_locale from commerce.markets where active order by code",
+    );
+    const routed = MARKET_SLUGS.map((slug) => ({
+      code: MARKETS[slug].code,
+      currency: MARKETS[slug].currency,
+      default_locale: MARKETS[slug].locale,
+    })).sort((a, b) => a.code.localeCompare(b.code));
+    expect(rows).toEqual(routed);
   });
 
   it("uses only currencies the money helpers support", async () => {

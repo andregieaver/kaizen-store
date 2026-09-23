@@ -23,7 +23,12 @@ pnpm build
 pnpm test:e2e    # Playwright against `pnpm start`; build first
 pnpm db:generate # write a migration after changing src/db/schema.ts
 pnpm db:check    # fails if migrations and schema disagree (runs in CI)
+node scripts/db-setup.mjs --seed  # migrations + demo catalogue on an empty DATABASE_URL
 ```
+
+`pnpm build` and the storefront need a database: product lists are prerendered
+from it. Locally, point `DATABASE_URL` at an empty Postgres and run
+`scripts/db-setup.mjs --seed` first; CI does the same with a Postgres service.
 
 In a sandbox with a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_PATH` instead
 of running `playwright install`.
@@ -42,6 +47,19 @@ of running `playwright install`.
   Prices are VAT-inclusive per market and only change through
   `commerce.set_price`; advertised reductions use `prior_30d_minor` from
   `commerce.current_prices`.
+
+## Storefront
+
+- Routes: `/` is a market chooser (suggests, never redirects); `/no`, `/se`,
+  `/dk` are markets, each its own root layout with its own `<html lang>`.
+  `src/lib/markets.ts` lists the routed markets; a test keeps it in step with
+  `commerce.markets`.
+- Interface text lives in `src/lib/i18n.ts`. Legal texts do not: they need
+  human review.
+- Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag
+  `catalog`); stock is read per request inside `<Suspense>`.
+- Prices are shown with `<Price>`, which adds the VAT label and shows the
+  30-day reference only for a genuine reduction.
 
 ## Conventions
 
