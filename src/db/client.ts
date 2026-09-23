@@ -10,8 +10,15 @@ import * as schema from "./schema";
 let instance: ReturnType<typeof create> | undefined;
 
 function create() {
-  // Supabase's transaction-mode pooler does not support prepared statements.
-  const client = postgres(serverEnv().DATABASE_URL, { prepare: false });
+  const client = postgres(serverEnv().DATABASE_URL, {
+    // Supabase's transaction-mode pooler does not support prepared statements.
+    prepare: false,
+    // Functions are short-lived and many run at once; the pooler does the
+    // pooling, so each instance keeps only a few connections.
+    max: 5,
+    idle_timeout: 20,
+    connect_timeout: 5,
+  });
   return drizzle(client, { schema });
 }
 

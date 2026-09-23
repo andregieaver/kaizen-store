@@ -15,4 +15,5 @@ test("health endpoint answers without caching", async ({ request }) => {
   expect(response.headers()["cache-control"]).toContain("no-store");
   const body = await response.json();
   expect(body).toHaveProperty("supabase");
+  expect(body).toHaveProperty("database");
 });
