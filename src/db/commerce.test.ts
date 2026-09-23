@@ -57,15 +57,23 @@ async function createProduct(
 }
 
 describe("reference data", () => {
-  it("has every EU member state as an inactive market", async () => {
-    const { count } = await one<{ count: number }>(
-      "select count(*)::int as count from commerce.markets where not active",
+  it("has every EU member state and Norway, with the four launch markets active", async () => {
+    const { rows } = await db.query<{ code: string; active: boolean; eu: boolean }>(
+      `select code, active, commerce.is_eu_country(code) as eu
+       from commerce.markets order by code`,
     );
-    expect(count).toBe(27);
-    const sweden = await one<{ currency: string }>(
-      "select currency from commerce.markets where code = 'SE'",
+    expect(rows).toHaveLength(28);
+    expect(rows.filter((m) => m.eu)).toHaveLength(27);
+    expect(rows.filter((m) => m.active).map((m) => m.code)).toEqual([
+      "DE",
+      "DK",
+      "NO",
+      "SE",
+    ]);
+    const norway = await one<{ currency: string; default_locale: string }>(
+      "select currency, default_locale from commerce.markets where code = 'NO'",
     );
-    expect(sweden.currency).toBe("SEK");
+    expect(norway).toEqual({ currency: "NOK", default_locale: "nb-NO" });
   });
 
   it("uses only currencies the money helpers support", async () => {
@@ -258,6 +266,56 @@ describe("product safety publishing check", () => {
         productId,
       ]),
     ).rejects.toThrow(/without a picture/);
+  });
+});
+
+describe("template compliance data", () => {
+  it("accepts every goods withdrawal exclusion and a per-variant tax code", async () => {
+    const { productId, variantId } = await createProduct();
+    await db.query(
+      "update commerce.products set withdrawal_exclusion = 'digital_content' where id = $1",
+      [productId],
+    );
+    await db.query(
+      "update commerce.product_variants set tax_code = 'txcd_30011000' where id = $1",
+      [variantId],
+    );
+    const variant = await one<{ tax_code: string }>(
+      "select tax_code from commerce.product_variants where id = $1",
+      [variantId],
+    );
+    expect(variant.tax_code).toBe("txcd_30011000");
+  });
+
+  it("lists launch markets where an active product's scheme is not registered", async () => {
+    const { productId, handle } = await createProduct();
+    await db.query(
+      "insert into commerce.product_schemes (product_id, scheme) values ($1, 'packaging')",
+      [productId],
+    );
+    await db.query("update commerce.products set status = 'active' where id = $1", [
+      productId,
+    ]);
+
+    const missing = async () =>
+      (
+        await db.query<{ market_code: string }>(
+          `select market_code from commerce.missing_registrations
+           where handle = $1 order by market_code`,
+          [handle],
+        )
+      ).rows.map((r) => r.market_code);
+
+    expect(await missing()).toEqual(["DE", "DK", "NO", "SE"]);
+
+    await db.query(
+      `insert into commerce.producer_registrations
+         (market_code, scheme, registration_number, authority, valid_from, valid_to) values
+         ('DE', 'packaging', 'DE1234567890123', 'Zentrale Stelle Verpackungsregister', current_date - 10, null),
+         ('SE', 'packaging', 'SE-OLD-1', 'Naturvårdsverket', current_date - 400, current_date - 1)`,
+    );
+    // Germany is now covered; Sweden's registration has expired.
+    expect(await missing()).toEqual(["DK", "NO", "SE"]);
   });
 });
 

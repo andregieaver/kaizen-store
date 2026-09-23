@@ -22,6 +22,20 @@
       "when": 1790169004579,
       "tag": "20260923131004_index_foreign_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790170875525,
+      "tag": "20260923134115_template_compliance",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790170887441,
+      "tag": "20260923134127_launch_markets",
+      "breakpoints": true
     }
   ]
 }

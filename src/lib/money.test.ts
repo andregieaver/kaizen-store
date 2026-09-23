@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { formatMoney, minorUnitDigits } from "./money";
 
 describe("minorUnitDigits", () => {
-  it("uses ISO 4217 minor units for EU currencies, including HUF", () => {
-    for (const currency of ["EUR", "SEK", "DKK", "PLN", "CZK", "HUF", "RON"]) {
+  it("uses ISO 4217 minor units for every market currency, including HUF", () => {
+    for (const currency of ["EUR", "SEK", "DKK", "NOK", "PLN", "CZK", "HUF", "RON"]) {
       expect(minorUnitDigits(currency)).toBe(2);
     }
   });

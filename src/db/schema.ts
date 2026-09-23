@@ -17,6 +17,7 @@ import {
   boolean,
   char,
   check,
+  date,
   foreignKey,
   index,
   integer,
@@ -48,8 +49,9 @@ export const productStatus = commerce.enum("product_status", [
 ]);
 
 /**
- * Why a product is excluded from the 14-day right of withdrawal (Consumer
- * Rights Directive Art. 16). `none` means the right applies.
+ * Why a product is excluded from the 14-day right of withdrawal: the goods and
+ * digital-content cases of the Consumer Rights Directive Art. 16, which
+ * Norway's angrerettloven § 22 mirrors. `none` means the right applies.
  */
 export const withdrawalExclusion = commerce.enum("withdrawal_exclusion", [
   "none",
@@ -58,6 +60,23 @@ export const withdrawalExclusion = commerce.enum("withdrawal_exclusion", [
   "sealed_hygiene",
   "sealed_media",
   "mixed_inseparably",
+  "price_fluctuation",
+  "alcohol_future_delivery",
+  "periodicals",
+  "digital_content",
+]);
+
+/**
+ * Extended producer responsibility schemes a product can fall under. Each one
+ * needs a registration in every market the product is sold in.
+ */
+export const producerScheme = commerce.enum("producer_scheme", [
+  "packaging",
+  "electrical_equipment",
+  "batteries",
+  "textiles",
+  "furniture",
+  "tyres",
 ]);
 
 export const cartStatus = commerce.enum("cart_status", [
@@ -221,6 +240,11 @@ export const productVariants = commerce.table(
       .references(() => products.id, { onDelete: "cascade" }),
     sku: text("sku").notNull().unique(),
     gtin: text("gtin"),
+    /**
+     * Overrides the product's Stripe Tax code for this variant, for the rare
+     * case where variants of one product are taxed differently.
+     */
+    taxCode: text("tax_code"),
     /** Option values, e.g. `{"size": "M", "colour": "blue"}`. */
     options: jsonb("options").notNull().default({}),
     weightGrams: integer("weight_grams"),
@@ -270,6 +294,49 @@ export const prices = commerce.table(
     check(
       "prices_valid_range",
       sql`${t.validTo} is null or ${t.validTo} > ${t.validFrom}`,
+    ),
+  ],
+);
+
+/** The producer responsibility schemes a product falls under. */
+export const productSchemes = commerce.table(
+  "product_schemes",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    scheme: producerScheme("scheme").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.productId, t.scheme] })],
+);
+
+/**
+ * The store's own registration under a producer responsibility scheme in a
+ * market, e.g. a German packaging (LUCID) or electrical-equipment (WEEE)
+ * number. Some markets require the number to be shown to customers.
+ */
+export const producerRegistrations = commerce.table(
+  "producer_registrations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    marketCode: char("market_code", { length: 2 })
+      .notNull()
+      .references(() => markets.code),
+    scheme: producerScheme("scheme").notNull(),
+    registrationNumber: text("registration_number").notNull(),
+    authority: text("authority").notNull(),
+    validFrom: date("valid_from").notNull(),
+    validTo: date("valid_to"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("producer_registrations_market_scheme_idx").on(
+      t.marketCode,
+      t.scheme,
+    ),
+    check(
+      "producer_registrations_valid_range",
+      sql`${t.validTo} is null or ${t.validTo} >= ${t.validFrom}`,
     ),
   ],
 );

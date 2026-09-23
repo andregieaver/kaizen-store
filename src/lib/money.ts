@@ -5,7 +5,7 @@
  */
 
 /**
- * ISO 4217 minor-unit digits for the currencies of EU markets. This is the
+ * ISO 4217 minor-unit digits for the currencies of our markets (EU and Norway). This is the
  * storage unit, matching Stripe's amounts. It deliberately does not come from
  * Intl: display data shows HUF with no decimals, but HUF amounts are still
  * counted in hundredths.
@@ -14,6 +14,7 @@ const MINOR_UNIT_DIGITS: Record<string, number> = {
   EUR: 2,
   SEK: 2,
   DKK: 2,
+  NOK: 2,
   PLN: 2,
   CZK: 2,
   HUF: 2,
