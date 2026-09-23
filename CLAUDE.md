@@ -21,10 +21,27 @@ pnpm typecheck
 pnpm test        # Vitest unit tests (src/**/*.test.ts)
 pnpm build
 pnpm test:e2e    # Playwright against `pnpm start`; build first
+pnpm db:generate # write a migration after changing src/db/schema.ts
+pnpm db:check    # fails if migrations and schema disagree (runs in CI)
 ```
 
 In a sandbox with a preinstalled Chromium, set `PLAYWRIGHT_CHROMIUM_PATH` instead
 of running `playwright install`.
+
+## Database
+
+- Commerce tables live in the private `commerce` schema (`src/db/schema.ts`),
+  which Supabase does not expose through its Data API. Server code reaches it
+  through `db()` in `src/db/client.ts` (needs `DATABASE_URL`).
+- Migrations are generated into `supabase/migrations`. Rules Drizzle cannot
+  express (functions, triggers, reference data) go in a custom migration:
+  `pnpm exec drizzle-kit generate --custom --name <name>`.
+- `src/db/commerce.test.ts` applies every migration to PGlite and tests the
+  invariants. Add a test with any new rule.
+- Money is integer minor units plus an ISO 4217 code (`src/lib/money.ts`).
+  Prices are VAT-inclusive per market and only change through
+  `commerce.set_price`; advertised reductions use `prior_30d_minor` from
+  `commerce.current_prices`.
 
 ## Conventions
 

@@ -1,0 +1,749 @@
+/**
+ * The commerce data model. Tables live in the private `commerce` schema, which
+ * Supabase does not expose through its public Data API: only server code with
+ * a direct database connection can reach them.
+ *
+ * Conventions:
+ * - Money is an integer count of minor units (cents, öre) with an ISO 4217
+ *   currency code alongside. Prices are VAT-inclusive (gross), per market.
+ * - Records with legal weight (prices, invoices, credit notes, order events)
+ *   are append-only; triggers in the functions migration enforce it.
+ * - Snapshots (addresses, titles, tax on order lines) are copied onto orders so
+ *   later catalogue edits never rewrite what a customer bought.
+ */
+import { sql } from "drizzle-orm";
+import {
+  bigint,
+  boolean,
+  char,
+  check,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgSchema,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+export const commerce = pgSchema("commerce");
+
+const createdAt = () =>
+  timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
+const money = (name: string) => bigint(name, { mode: "number" }).notNull();
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+export const productStatus = commerce.enum("product_status", [
+  "draft",
+  "active",
+  "archived",
+]);
+
+/**
+ * Why a product is excluded from the 14-day right of withdrawal (Consumer
+ * Rights Directive Art. 16). `none` means the right applies.
+ */
+export const withdrawalExclusion = commerce.enum("withdrawal_exclusion", [
+  "none",
+  "custom_made",
+  "perishable",
+  "sealed_hygiene",
+  "sealed_media",
+  "mixed_inseparably",
+]);
+
+export const cartStatus = commerce.enum("cart_status", [
+  "open",
+  "converted",
+  "abandoned",
+]);
+
+export const orderStatus = commerce.enum("order_status", [
+  "pending_payment",
+  "paid",
+  "fulfilled",
+  "cancelled",
+  "closed",
+]);
+
+export const paymentStatus = commerce.enum("payment_status", [
+  "pending",
+  "authorized",
+  "captured",
+  "failed",
+  "cancelled",
+]);
+
+export const refundStatus = commerce.enum("refund_status", [
+  "pending",
+  "succeeded",
+  "failed",
+]);
+
+export const returnStatus = commerce.enum("return_status", [
+  "requested",
+  "in_transit",
+  "received",
+  "inspected",
+  "closed",
+]);
+
+export const idempotencyStatus = commerce.enum("idempotency_status", [
+  "in_progress",
+  "completed",
+]);
+
+// ---------------------------------------------------------------------------
+// Markets
+// ---------------------------------------------------------------------------
+
+/** One row per country the store can sell to. Launch countries are `active`. */
+export const markets = commerce.table(
+  "markets",
+  {
+    code: char("code", { length: 2 }).primaryKey(),
+    name: text("name").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    defaultLocale: text("default_locale").notNull(),
+    locales: text("locales").array().notNull(),
+    active: boolean("active").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("markets_code_currency_key").on(t.code, t.currency),
+    check("markets_code_upper", sql`${t.code} = upper(${t.code})`),
+    check("markets_currency_upper", sql`${t.currency} = upper(${t.currency})`),
+    check(
+      "markets_default_locale_listed",
+      sql`${t.defaultLocale} = any(${t.locales})`,
+    ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Catalogue
+// ---------------------------------------------------------------------------
+
+/**
+ * A manufacturer, importer or EU responsible person, as named on a listing
+ * under the General Product Safety Regulation (EU) 2023/988, Art. 19.
+ */
+export const economicOperators = commerce.table("economic_operators", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  postalAddress: text("postal_address").notNull(),
+  /** An email address or web address where the operator can be contacted. */
+  electronicAddress: text("electronic_address").notNull(),
+  country: char("country", { length: 2 }).notNull(),
+  createdAt: createdAt(),
+});
+
+export const products = commerce.table(
+  "products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    handle: text("handle").notNull().unique(),
+    status: productStatus("status").notNull().default("draft"),
+    manufacturerId: uuid("manufacturer_id").references(
+      () => economicOperators.id,
+    ),
+    /** Required when the manufacturer is established outside the EU. */
+    responsiblePersonId: uuid("responsible_person_id").references(
+      () => economicOperators.id,
+    ),
+    /** Stripe Tax product tax code, e.g. `txcd_99999999`. */
+    taxCode: text("tax_code").notNull(),
+    withdrawalExclusion: withdrawalExclusion("withdrawal_exclusion")
+      .notNull()
+      .default("none"),
+    /** Category-specific attributes; the category is not fixed yet. */
+    attributes: jsonb("attributes").notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      "products_handle_format",
+      sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`,
+    ),
+  ],
+);
+
+/** Localised listing text, including GPSR safety information. */
+export const productTranslations = commerce.table(
+  "product_translations",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    /** Warnings and safety information, shown on the listing itself. */
+    safetyInformation: text("safety_information").notNull().default(""),
+  },
+  (t) => [primaryKey({ columns: [t.productId, t.locale] })],
+);
+
+export const productMedia = commerce.table(
+  "product_media",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    position: integer("position").notNull().default(0),
+    /** Alt text keyed by locale. */
+    alt: jsonb("alt").notNull().default({}),
+  },
+  (t) => [index("product_media_product_idx").on(t.productId, t.position)],
+);
+
+export const productVariants = commerce.table(
+  "product_variants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    sku: text("sku").notNull().unique(),
+    gtin: text("gtin"),
+    /** Option values, e.g. `{"size": "M", "colour": "blue"}`. */
+    options: jsonb("options").notNull().default({}),
+    weightGrams: integer("weight_grams"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("product_variants_product_idx").on(t.productId),
+    check("product_variants_gtin_digits", sql`${t.gtin} ~ '^[0-9]{8,14}$'`),
+    check("product_variants_weight_positive", sql`${t.weightGrams} > 0`),
+  ],
+);
+
+/**
+ * Price history per variant and market. Append-only: a price change closes the
+ * current row and opens a new one (see `commerce.set_price`), so the lowest
+ * price of the previous 30 days can always be computed, as the Omnibus rule
+ * requires for any advertised reduction.
+ */
+export const prices = commerce.table(
+  "prices",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    validFrom: timestamp("valid_from", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    validTo: timestamp("valid_to", { withTimezone: true }),
+  },
+  (t) => [
+    foreignKey({
+      name: "prices_market_currency_fk",
+      columns: [t.marketCode, t.currency],
+      foreignColumns: [markets.code, markets.currency],
+    }),
+    uniqueIndex("prices_one_current_idx")
+      .on(t.variantId, t.marketCode)
+      .where(sql`${t.validTo} is null`),
+    index("prices_history_idx").on(t.variantId, t.marketCode, t.validFrom),
+    check("prices_amount_non_negative", sql`${t.amountMinor} >= 0`),
+    check(
+      "prices_valid_range",
+      sql`${t.validTo} is null or ${t.validTo} > ${t.validFrom}`,
+    ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Inventory
+// ---------------------------------------------------------------------------
+
+export const inventoryLocations = commerce.table("inventory_locations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  country: char("country", { length: 2 }).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: createdAt(),
+});
+
+export const inventoryLevels = commerce.table(
+  "inventory_levels",
+  {
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id),
+    locationId: uuid("location_id")
+      .notNull()
+      .references(() => inventoryLocations.id),
+    onHand: integer("on_hand").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.variantId, t.locationId] }),
+    check("inventory_levels_on_hand_non_negative", sql`${t.onHand} >= 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Customers and carts
+// ---------------------------------------------------------------------------
+
+export const customers = commerce.table(
+  "customers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The Supabase Auth user, once the customer has an account. */
+    authUserId: uuid("auth_user_id").unique(),
+    email: text("email").notNull(),
+    locale: text("locale"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("customers_email_idx").on(sql`lower(${t.email})`)],
+);
+
+export const carts = commerce.table(
+  "carts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    locale: text("locale").notNull(),
+    customerId: uuid("customer_id").references(() => customers.id),
+    status: cartStatus("status").notNull().default("open"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    foreignKey({
+      name: "carts_market_currency_fk",
+      columns: [t.marketCode, t.currency],
+      foreignColumns: [markets.code, markets.currency],
+    }),
+  ],
+);
+
+export const cartLines = commerce.table(
+  "cart_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    cartId: uuid("cart_id")
+      .notNull()
+      .references(() => carts.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id),
+    quantity: integer("quantity").notNull(),
+  },
+  (t) => [
+    unique("cart_lines_cart_variant_key").on(t.cartId, t.variantId),
+    check("cart_lines_quantity_positive", sql`${t.quantity} > 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+export const orders = commerce.table(
+  "orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The customer-facing order number. Not an invoice number. */
+    number: text("number").notNull().unique(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    locale: text("locale").notNull(),
+    customerId: uuid("customer_id").references(() => customers.id),
+    cartId: uuid("cart_id").references(() => carts.id),
+    email: text("email").notNull(),
+    status: orderStatus("status").notNull().default("pending_payment"),
+    subtotalMinor: money("subtotal_minor"),
+    shippingMinor: money("shipping_minor").default(0),
+    discountMinor: money("discount_minor").default(0),
+    /** VAT contained in the total. Prices are VAT-inclusive. */
+    taxMinor: money("tax_minor"),
+    totalMinor: money("total_minor"),
+    billingAddress: jsonb("billing_address").notNull(),
+    shippingAddress: jsonb("shipping_address").notNull(),
+    placedAt: timestamp("placed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /** When the goods reached the customer; starts the withdrawal period. */
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "orders_market_currency_fk",
+      columns: [t.marketCode, t.currency],
+      foreignColumns: [markets.code, markets.currency],
+    }),
+    index("orders_customer_idx").on(t.customerId),
+    check(
+      "orders_amounts_non_negative",
+      sql`${t.subtotalMinor} >= 0 and ${t.shippingMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.taxMinor} >= 0`,
+    ),
+    check(
+      "orders_total_adds_up",
+      sql`${t.totalMinor} = ${t.subtotalMinor} + ${t.shippingMinor} - ${t.discountMinor}`,
+    ),
+    check("orders_tax_within_total", sql`${t.taxMinor} <= ${t.totalMinor}`),
+  ],
+);
+
+export const orderLines = commerce.table(
+  "order_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    variantId: uuid("variant_id").references(() => productVariants.id),
+    sku: text("sku").notNull(),
+    title: text("title").notNull(),
+    quantity: integer("quantity").notNull(),
+    unitPriceMinor: money("unit_price_minor"),
+    discountMinor: money("discount_minor").default(0),
+    totalMinor: money("total_minor"),
+    taxMinor: money("tax_minor"),
+    taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).notNull(),
+    taxCode: text("tax_code").notNull(),
+    withdrawalExclusion: withdrawalExclusion("withdrawal_exclusion")
+      .notNull()
+      .default("none"),
+  },
+  (t) => [
+    index("order_lines_order_idx").on(t.orderId),
+    check("order_lines_quantity_positive", sql`${t.quantity} > 0`),
+    check(
+      "order_lines_total_adds_up",
+      sql`${t.totalMinor} = ${t.unitPriceMinor} * ${t.quantity} - ${t.discountMinor}`,
+    ),
+    check(
+      "order_lines_amounts_non_negative",
+      sql`${t.unitPriceMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.taxMinor} >= 0`,
+    ),
+  ],
+);
+
+/**
+ * Stock held for a cart or an unpaid order. Available stock is on-hand minus
+ * the reservations that have neither expired nor been released.
+ */
+export const inventoryReservations = commerce.table(
+  "inventory_reservations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => productVariants.id),
+    locationId: uuid("location_id")
+      .notNull()
+      .references(() => inventoryLocations.id),
+    quantity: integer("quantity").notNull(),
+    cartId: uuid("cart_id").references(() => carts.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id").references(() => orders.id),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    releasedAt: timestamp("released_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("inventory_reservations_active_idx")
+      .on(t.variantId, t.locationId)
+      .where(sql`${t.releasedAt} is null`),
+    check("inventory_reservations_quantity_positive", sql`${t.quantity} > 0`),
+    check(
+      "inventory_reservations_owner",
+      sql`${t.cartId} is not null or ${t.orderId} is not null`,
+    ),
+  ],
+);
+
+/** Append-only history of everything that happens to an order. */
+export const orderEvents = commerce.table(
+  "order_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    type: text("type").notNull(),
+    data: jsonb("data").notNull().default({}),
+    actor: text("actor").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("order_events_order_idx").on(t.orderId, t.createdAt)],
+);
+
+// ---------------------------------------------------------------------------
+// Payments and refunds
+// ---------------------------------------------------------------------------
+
+export const payments = commerce.table(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    provider: text("provider").notNull(),
+    /** The provider's id, e.g. a Stripe Checkout Session or PaymentIntent. */
+    providerReference: text("provider_reference").notNull(),
+    amountMinor: money("amount_minor"),
+    currency: char("currency", { length: 3 }).notNull(),
+    status: paymentStatus("status").notNull().default("pending"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("payments_provider_reference_key").on(
+      t.provider,
+      t.providerReference,
+    ),
+    index("payments_order_idx").on(t.orderId),
+    check("payments_amount_positive", sql`${t.amountMinor} > 0`),
+  ],
+);
+
+export const refunds = commerce.table(
+  "refunds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    paymentId: uuid("payment_id")
+      .notNull()
+      .references(() => payments.id),
+    amountMinor: money("amount_minor"),
+    reason: text("reason").notNull(),
+    providerReference: text("provider_reference").unique(),
+    status: refundStatus("status").notNull().default("pending"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("refunds_payment_idx").on(t.paymentId),
+    check("refunds_amount_positive", sql`${t.amountMinor} > 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Withdrawals and returns
+// ---------------------------------------------------------------------------
+
+/**
+ * A use of the withdrawal button (Directive (EU) 2023/2673): the legal
+ * notice. The physical return of goods is tracked separately in `returns`.
+ */
+export const withdrawalRequests = commerce.table(
+  "withdrawal_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    channel: text("channel").notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /** The second, "confirm withdrawal" step. */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /** When the acknowledgement was sent on a durable medium. */
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    acknowledgementReference: text("acknowledgement_reference"),
+  },
+  (t) => [
+    index("withdrawal_requests_order_idx").on(t.orderId),
+    check(
+      "withdrawal_requests_ack_after_confirm",
+      sql`${t.acknowledgedAt} is null or ${t.confirmedAt} is not null`,
+    ),
+  ],
+);
+
+export const withdrawalRequestLines = commerce.table(
+  "withdrawal_request_lines",
+  {
+    withdrawalRequestId: uuid("withdrawal_request_id")
+      .notNull()
+      .references(() => withdrawalRequests.id, { onDelete: "cascade" }),
+    orderLineId: uuid("order_line_id")
+      .notNull()
+      .references(() => orderLines.id),
+    quantity: integer("quantity").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.withdrawalRequestId, t.orderLineId] }),
+    check("withdrawal_request_lines_quantity_positive", sql`${t.quantity} > 0`),
+  ],
+);
+
+export const returns = commerce.table(
+  "returns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    withdrawalRequestId: uuid("withdrawal_request_id").references(
+      () => withdrawalRequests.id,
+    ),
+    status: returnStatus("status").notNull().default("requested"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("returns_order_idx").on(t.orderId)],
+);
+
+export const returnLines = commerce.table(
+  "return_lines",
+  {
+    returnId: uuid("return_id")
+      .notNull()
+      .references(() => returns.id, { onDelete: "cascade" }),
+    orderLineId: uuid("order_line_id")
+      .notNull()
+      .references(() => orderLines.id),
+    quantity: integer("quantity").notNull(),
+    condition: text("condition"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.returnId, t.orderLineId] }),
+    check("return_lines_quantity_positive", sql`${t.quantity} > 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Invoices and credit notes
+// ---------------------------------------------------------------------------
+
+/**
+ * Counters for legally numbered documents. Postgres sequences can skip
+ * numbers, so documents take their number from `commerce.next_document_number`,
+ * which increments this row inside the issuing transaction.
+ */
+export const documentSeries = commerce.table(
+  "document_series",
+  {
+    series: text("series").primaryKey(),
+    prefix: text("prefix").notNull(),
+    nextNumber: bigint("next_number", { mode: "number" }).notNull().default(1),
+  },
+  (t) => [check("document_series_next_positive", sql`${t.nextNumber} > 0`)],
+);
+
+export const invoices = commerce.table(
+  "invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id),
+    series: text("series")
+      .notNull()
+      .references(() => documentSeries.series),
+    number: bigint("number", { mode: "number" }).notNull(),
+    documentNumber: text("document_number").notNull().unique(),
+    currency: char("currency", { length: 3 }).notNull(),
+    totalMinor: money("total_minor"),
+    taxMinor: money("tax_minor"),
+    issuedAt: timestamp("issued_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("invoices_series_number_key").on(t.series, t.number),
+    index("invoices_order_idx").on(t.orderId),
+  ],
+);
+
+export const creditNotes = commerce.table(
+  "credit_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => invoices.id),
+    refundId: uuid("refund_id").references(() => refunds.id),
+    series: text("series")
+      .notNull()
+      .references(() => documentSeries.series),
+    number: bigint("number", { mode: "number" }).notNull(),
+    documentNumber: text("document_number").notNull().unique(),
+    currency: char("currency", { length: 3 }).notNull(),
+    totalMinor: money("total_minor"),
+    taxMinor: money("tax_minor"),
+    issuedAt: timestamp("issued_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("credit_notes_series_number_key").on(t.series, t.number),
+    index("credit_notes_invoice_idx").on(t.invoiceId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Integration plumbing
+// ---------------------------------------------------------------------------
+
+/** Makes retried writes (checkout, refunds) safe to repeat. */
+export const idempotencyKeys = commerce.table(
+  "idempotency_keys",
+  {
+    scope: text("scope").notNull(),
+    key: text("key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    status: idempotencyStatus("status").notNull().default("in_progress"),
+    response: jsonb("response"),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.key] })],
+);
+
+/** Every inbound webhook, stored before processing and deduplicated. */
+export const webhookEvents = commerce.table(
+  "webhook_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    provider: text("provider").notNull(),
+    eventId: text("event_id").notNull(),
+    type: text("type").notNull(),
+    payload: jsonb("payload").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+  },
+  (t) => [
+    unique("webhook_events_provider_event_key").on(t.provider, t.eventId),
+    index("webhook_events_unprocessed_idx")
+      .on(t.receivedAt)
+      .where(sql`${t.processedAt} is null`),
+  ],
+);

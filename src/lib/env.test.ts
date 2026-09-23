@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { publicEnv } from "./env";
+import { publicEnv, serverEnv } from "./env";
 
 describe("publicEnv", () => {
   it("returns the Supabase settings when both are present", () => {
@@ -17,5 +17,18 @@ describe("publicEnv", () => {
     ).toThrow(
       /NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/,
     );
+  });
+});
+
+describe("serverEnv", () => {
+  it("accepts a Postgres connection string", () => {
+    expect(
+      serverEnv({ DATABASE_URL: "postgresql://user:pw@host:6543/postgres" })
+        .DATABASE_URL,
+    ).toContain("host:6543");
+  });
+
+  it("names a missing DATABASE_URL", () => {
+    expect(() => serverEnv({})).toThrow(/DATABASE_URL/);
   });
 });

@@ -25,3 +25,23 @@ export function publicEnv(
   }
   return parsed.data;
 }
+
+const serverSchema = z.object({
+  DATABASE_URL: z.string().startsWith("postgres"),
+});
+
+export type ServerEnv = z.infer<typeof serverSchema>;
+
+/** Reads server-only secrets. Never import this from client code. */
+export function serverEnv(
+  source: Record<string, string | undefined> = {
+    DATABASE_URL: process.env.DATABASE_URL,
+  },
+): ServerEnv {
+  const parsed = serverSchema.safeParse(source);
+  if (!parsed.success) {
+    const missing = parsed.error.issues.map((issue) => issue.path.join("."));
+    throw new Error(`Invalid or missing environment: ${missing.join(", ")}`);
+  }
+  return parsed.data;
+}
