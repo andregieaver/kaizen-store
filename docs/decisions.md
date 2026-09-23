@@ -1,48 +1,68 @@
 # Decisions
 
 The Phase 0 decision record. Each entry says what was decided, when, and what it
-changes. Open items name who has to act. Background for every item is in
-[`plan.md`](plan.md).
+changes. Background for every item is in [`plan.md`](plan.md), which was written
+before some of these decisions and assumes an EU company; where they differ,
+this file wins.
 
 ## Settled
 
 | # | Decision | Date | Consequence |
 |---|---|---|---|
-| D1 | **Establishment: Scenario A.** An EU company ships from stock in its own member state. | 2026-09-23 | VAT through the Union One-Stop Shop (OSS) once EU distance sales pass €10,000 a year; no import VAT or customs; no IOSS. The member state is still open (O1). |
-| D2 | **Launch in Norway, Sweden, Germany and Denmark.** | 2026-09-23 | These four markets are active; the other 24 (all EU) exist but are inactive. Currencies NOK, SEK, EUR, DKK; languages nb-NO, sv-SE, de-DE, da-DK. Norway is outside the EU, which has its own consequences (see below). |
+| D1 | **A Norwegian company shipping from Norway.** | 2026-09-23 | Norway is the home market. Sales to Sweden and Denmark are exports into the EU, with EU import VAT and customs on every parcel (see below). Replaces the earlier assumption of an EU company. |
+| D2 | **Launch in Norway, Sweden and Denmark.** | 2026-09-23 | These three markets are active (NOK, SEK, DKK; nb-NO, sv-SE, da-DK). The other 25 exist but are inactive; Germany was dropped from the launch list and can be switched back on in one line. |
 | D3 | **Payments: Stripe.** Checkout Sessions with the Payment Element, Stripe Tax for VAT. | 2026-09-23 | Keeps card data off our servers (PCI DSS SAQ A). Local methods are configured per market in Stripe. `products.tax_code` holds the Stripe Tax code. |
-| D4 | **Commerce core built from scratch**, not on an open-source platform. | 2026-09-23 | We own catalogue, pricing, carts, orders, returns and promotions. The plan's Medusa re-evaluation before Phase 5 is dropped unless promotions or returns prove too costly. |
-| D5 | **Changes go straight to `main`**, which deploys to production. | 2026-09-23 | Fine while the site is a placeholder. Revisit before launch: switch to pull requests with preview deployments and a Supabase branch per pull request. |
-| D6 | **Region: Ireland.** Supabase `eu-west-1`; Vercel functions pinned to `dub1`. | 2026-09-23 | Replaces the plan's Frankfurt assumption. Both are in the EU; functions sit next to the database. |
+| D4 | **Commerce core built from scratch**, not on an open-source platform. | 2026-09-23 | We own catalogue, pricing, carts, orders, returns and promotions. |
+| D5 | **Changes go straight to `main`**, which deploys to production. | 2026-09-23 | Fine while the site is a placeholder. Revisit before launch: switch to pull requests with preview deployments. |
+| D6 | **Region: Ireland.** Supabase `eu-west-1`; Vercel functions pinned to `dub1`. | 2026-09-23 | Both in the EU/EEA; functions sit next to the database. |
 | D7 | **One Next.js app**, not a monorepo. | 2026-09-23 | Split into packages when a second deployable (such as the MCP server in Phase 4) needs shared domain code. |
-| D8 | **Commerce data in a private `commerce` schema**, reached only by server code over a direct connection. | 2026-09-23 | Supabase's Data API never exposes it; row-level security is on with no policies as a backstop. Browser code never queries commerce tables. |
-| D9 | **Drizzle schema is the source of truth**; migrations are generated into `supabase/migrations` and applied to Supabase by Claude as they land. | 2026-09-23 | CI fails if schema and migrations disagree. See the note on migration versions below. |
-| D10 | **Data residency: EU vendors wherever an EU option exists at similar cost.** A US processor is acceptable only with a DPA and the EU–US Data Privacy Framework or standard contractual clauses, and only when no reasonable EU option exists. | 2026-09-23 | Default set by Claude pending your confirmation. Every vendor is listed in [`residency-register.md`](residency-register.md) before it touches production data. |
-| D11 | **Build to WCAG 2.2 AA** whatever the company's size. | 2026-09-23 | Removes the need to decide microenterprise status for the European Accessibility Act. EN 301 549 v4.1.1 (WCAG 2.2) is published but not yet cited in the Official Journal. |
-| D12 | **Kaizen Store is a multi-purpose template**, not tied to one product category. | 2026-09-23 | The data model stays category-neutral: VAT comes from a Stripe Tax code per product (with a per-variant override), every goods-relevant withdrawal exclusion is available, and producer responsibility schemes (packaging, electrical equipment, batteries, textiles, furniture, tyres) are tracked per product, with registrations per market. `commerce.missing_registrations` lists what is missing before a product can be sold in a market. |
+| D8 | **Commerce data in a private `commerce` schema**, reached only by server code over a direct connection. | 2026-09-23 | Supabase's Data API never exposes it; row-level security is on with no policies as a backstop. |
+| D9 | **Drizzle schema is the source of truth**; migrations are generated into `supabase/migrations` and applied to Supabase by Claude as they land. | 2026-09-23 | CI fails if schema and migrations disagree. |
+| D10 | **Data residency: EU/EEA vendors wherever a comparable option exists.** A US processor only with a DPA and the EU–US Data Privacy Framework or standard contractual clauses. | 2026-09-23 | Default set by Claude. Every vendor is listed in [`residency-register.md`](residency-register.md) before it touches production data. |
+| D11 | **Build to WCAG 2.2 AA.** | 2026-09-23 | Meets Norway's universal-design rules and the European Accessibility Act for Swedish and Danish customers. |
+| D12 | **Kaizen Store is a multi-purpose template**, not tied to one product category. | 2026-09-23 | VAT comes from a Stripe Tax code per product (with a per-variant override); every goods withdrawal exclusion is available; producer responsibility schemes are tracked per product with registrations per market; `commerce.missing_registrations` shows the gaps. Variants carry a customs tariff (HS) code and country of origin for export declarations. |
+| D13 | **No extra monitoring or analytics accounts until there is a need.** | 2026-09-23 | Errors: Vercel's built-in logs. Speed: Vercel Speed Insights. Traffic: Vercel Web Analytics (cookieless). Business events: our own tables in Postgres. Experiments: assignment in our own code. Sentry, PostHog and GrowthBook are optional add-ons, not prerequisites. |
+| D14 | **No non-essential cookies at launch.** | 2026-09-23 | Cart and session cookies are strictly necessary and need no consent, so the store needs no cookie banner. Adding marketing pixels or cookie-based analytics later brings back the consent requirement. Default set by Claude. |
 
-### Selling to Norway from an EU company
+### Selling from Norway to Sweden and Denmark
 
-Norway is in the EEA but outside the EU and its customs and VAT union. For an
-EU company shipping from EU stock, that means:
+Norway is in the EEA but outside the EU's customs and VAT union, so a Norwegian
+company shipping from Norway sells to Swedish and Danish customers as an
+exporter. In practice:
 
-- **VAT.** EU VAT and the One-Stop Shop do not cover Norway. Items under NOK
-  3,000 go through Norway's VOEC scheme: once sales to Norway pass NOK 50,000 a
-  year, the store registers and charges 25% Norwegian VAT at checkout. Items
-  from NOK 3,000 up are ordinary imports, with VAT and any duty due at the
-  border.
-- **Customs.** Every parcel to Norway needs an EU export declaration and a
-  Norwegian import declaration, usually handled by the carrier.
-- **Law.** Norwegian consumer law applies to Norwegian customers: 14-day
-  withdrawal under angrerettloven, and complaint periods under
-  forbrukerkjøpsloven of two years, or five for goods meant to last much longer.
-  The EU AI Act and the European Accessibility Act are not yet in force in
-  Norway, but Norway's own universal-design rules require accessible websites.
-- **To verify:** whether Stripe Tax handles VOEC registrations, and whether
-  Stripe supports Vipps MobilePay for Norway.
-
-If the company is Norwegian rather than an EU company, this reverses: Norway
-becomes the home market and EU sales become exports. See O1.
+- **Norwegian VAT (MVA).** Register once sales in Norway pass NOK 50,000 in 12
+  months, and charge Norwegian VAT on Norwegian orders.
+- **EU VAT on low-value parcels.** For orders worth up to €150, the store can
+  register for the EU's Import One-Stop Shop (IOSS) and charge Swedish or
+  Danish VAT (25% for standard goods) at checkout. Parcels then clear customs
+  without the customer paying anything on delivery. To confirm with an
+  accountant: Norway's VAT cooperation agreement with the EU is understood to let
+  Norwegian companies register for IOSS without an EU intermediary.
+- **Without IOSS**, the carrier collects VAT plus a handling fee from the
+  customer on delivery. That is legal but a known reason for refused parcels
+  and lost repeat customers.
+- **EU customs duty.** Since 1 July 2026 the EU charges a flat €3 duty per item
+  category on low-value parcels, which IOSS does not collect. Orders over €150
+  pay normal duty and import VAT. The store should show these costs at checkout
+  or ship duties-paid.
+- **Customs declarations.** Every parcel needs a Norwegian export and an EU
+  import declaration, normally filed by the carrier (Posten/Bring, PostNord)
+  from the tariff code and country of origin now stored per variant.
+- **Later option: stock in the EU.** With a warehouse in Sweden, EU sales
+  become domestic and intra-EU: no customs per parcel, but a Swedish VAT
+  registration and the EU One-Stop Shop. Worth reconsidering as EU volume grows.
+- **Consumer law.** Norwegian customers are covered by angrerettloven and
+  forbrukerkjøpsloven (complaints up to five years for goods meant to last).
+  Swedish and Danish customers are covered by EU consumer law, including the
+  withdrawal button and the 30-day prior-price rule. The store follows the
+  stricter rule wherever the two differ.
+- **Product safety.** Products sold to Swedish and Danish consumers fall under
+  the EU General Product Safety Regulation, which needs an EU-based responsible
+  person when the manufacturer is not in the EU. Norway is not in the EU for
+  this purpose unless the regulation has been taken into the EEA Agreement
+  (unverified).
+- **To verify with Stripe:** that Stripe Tax covers Norwegian VAT and IOSS, and
+  that Vipps MobilePay is available.
 
 ### Migration versions
 
@@ -56,6 +76,8 @@ timestamp in the file name:
 | `20260923131004_index_foreign_keys.sql` | `20260923131521` |
 | `20260923134115_template_compliance.sql` | `20260923134238` |
 | `20260923134127_launch_markets.sql` | `20260923134250` |
+| `20260923214059_customs_fields.sql` | `20260923214747` |
+| `20260923214100_ship_from_norway.sql` | `20260923214754` |
 
 This does not matter while migrations are applied through Supabase's API. If
 the Supabase CLI is adopted later (for example for branching), run
@@ -63,15 +85,25 @@ the Supabase CLI is adopted later (for example for branching), run
 
 ## Open
 
-| # | Item | Owner | Needed by | Notes |
-|---|---|---|---|---|
-| O1 | Which country the company is established in, and where stock ships from | You | Phase 1 | D1 assumes an EU company with EU stock. With Norway as a launch market, confirm this: a Norwegian company would change the VAT and customs design. |
-| O2 | ~~Launch countries~~ | Done | | Decided in D2. |
-| O3 | ~~Product category~~ | Done | | Replaced by D12: the template handles any category. Each store built from it still has to register for the schemes its products fall under. |
-| O4 | Accountant sign-off on the VAT route (OSS for Sweden, Germany and Denmark; VOEC for Norway) and invoicing | You + accountant | Phase 1 | Includes invoice numbering per series (`commerce.document_series`). |
-| O5 | Packaging (PPWR) registration in each launch country, plus any other schemes the first products fall under | You | Before the first sale in each market | Record each one in `commerce.producer_registrations`; `commerce.missing_registrations` shows the gaps. |
-| O6 | Product-safety (GPSR) contact details for each manufacturer, and an EU responsible person for any non-EU manufacturer | You | Before the first product is published | The database refuses to activate a product without them. |
-| O7 | DPIA scoping and a per-country cookie-consent matrix | You + counsel | Phase 1 (consent), Phase 3 (DPIA) | Includes whether server-side experiment assignment is "strictly necessary". |
-| O8 | Data processing agreements with Vercel and Supabase | You | Before production data | Account-level, not per project: if the HumanWebX team and organisation already have them, this project is covered. |
-| O9 | ~~Add `DATABASE_URL` in Vercel~~ | Done | | Shared pooler, transaction mode (`aws-1-eu-west-1.pooler.supabase.com:6543`). `/api/health` confirms the live site reads the commerce schema. |
-| O10 | Accounts for Sentry (EU region), PostHog (EU region) and GrowthBook | You | Phase 1 | Sentry and PostHog must be created in their EU regions; this cannot be changed later. |
+### Required before the first sale
+
+These come with selling online in these countries, whatever the platform:
+WooCommerce and Shopify need them too.
+
+| # | Item | Owner | Notes |
+|---|---|---|---|
+| R1 | Norwegian VAT (MVA) registration | You | Once Norwegian sales pass NOK 50,000 in 12 months. |
+| R2 | Decide how EU VAT is collected: register for IOSS, or let the carrier collect from customers on delivery | You (+ accountant) | IOSS is the better customer experience. See above. |
+| R3 | Terms of sale, withdrawal information and privacy policy in Norwegian, Swedish and Danish | Claude drafts, you review | Built into Phase 1. |
+| R4 | Packaging producer responsibility in each market | You | Check whether your volumes trigger registration in Norway, Sweden and Denmark; record numbers in `commerce.producer_registrations`. |
+| R5 | Product-safety contact details per manufacturer, and an EU responsible person where needed | You | The database will not activate a product without them. |
+
+### Not needed now
+
+| Item | When it becomes relevant |
+|---|---|
+| Sentry, PostHog, GrowthBook accounts | Optional. Add one when Vercel's built-in tools stop being enough (D13). |
+| Cookie-consent review per country | Only if non-essential cookies or pixels are added (D14). |
+| Data protection impact assessment | Before the AI assistant launches (Phase 3). |
+| Accountant review of the VAT setup | Recommended before launch, not legally required. |
+| Data processing agreements with Vercel and Supabase | Account-level; if your team and organisation already have them, this project is covered. |
