@@ -172,6 +172,8 @@ export const products = commerce.table(
       .defaultNow(),
   },
   (t) => [
+    index("products_manufacturer_idx").on(t.manufacturerId),
+    index("products_responsible_person_idx").on(t.responsiblePersonId),
     check(
       "products_handle_format",
       sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`,
@@ -259,6 +261,7 @@ export const prices = commerce.table(
       columns: [t.marketCode, t.currency],
       foreignColumns: [markets.code, markets.currency],
     }),
+    index("prices_market_currency_idx").on(t.marketCode, t.currency),
     uniqueIndex("prices_one_current_idx")
       .on(t.variantId, t.marketCode)
       .where(sql`${t.validTo} is null`),
@@ -299,6 +302,7 @@ export const inventoryLevels = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.variantId, t.locationId] }),
+    index("inventory_levels_location_idx").on(t.locationId),
     check("inventory_levels_on_hand_non_negative", sql`${t.onHand} >= 0`),
   ],
 );
@@ -341,6 +345,8 @@ export const carts = commerce.table(
       columns: [t.marketCode, t.currency],
       foreignColumns: [markets.code, markets.currency],
     }),
+    index("carts_customer_idx").on(t.customerId),
+    index("carts_market_currency_idx").on(t.marketCode, t.currency),
   ],
 );
 
@@ -358,6 +364,7 @@ export const cartLines = commerce.table(
   },
   (t) => [
     unique("cart_lines_cart_variant_key").on(t.cartId, t.variantId),
+    index("cart_lines_variant_idx").on(t.variantId),
     check("cart_lines_quantity_positive", sql`${t.quantity} > 0`),
   ],
 );
@@ -400,6 +407,8 @@ export const orders = commerce.table(
       columns: [t.marketCode, t.currency],
       foreignColumns: [markets.code, markets.currency],
     }),
+    index("orders_cart_idx").on(t.cartId),
+    index("orders_market_currency_idx").on(t.marketCode, t.currency),
     index("orders_customer_idx").on(t.customerId),
     check(
       "orders_amounts_non_negative",
@@ -436,6 +445,7 @@ export const orderLines = commerce.table(
   },
   (t) => [
     index("order_lines_order_idx").on(t.orderId),
+    index("order_lines_variant_idx").on(t.variantId),
     check("order_lines_quantity_positive", sql`${t.quantity} > 0`),
     check(
       "order_lines_total_adds_up",
@@ -473,6 +483,9 @@ export const inventoryReservations = commerce.table(
     index("inventory_reservations_active_idx")
       .on(t.variantId, t.locationId)
       .where(sql`${t.releasedAt} is null`),
+    index("inventory_reservations_cart_idx").on(t.cartId),
+    index("inventory_reservations_order_idx").on(t.orderId),
+    index("inventory_reservations_location_idx").on(t.locationId),
     check("inventory_reservations_quantity_positive", sql`${t.quantity} > 0`),
     check(
       "inventory_reservations_owner",
@@ -597,6 +610,7 @@ export const withdrawalRequestLines = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.withdrawalRequestId, t.orderLineId] }),
+    index("withdrawal_request_lines_order_line_idx").on(t.orderLineId),
     check("withdrawal_request_lines_quantity_positive", sql`${t.quantity} > 0`),
   ],
 );
@@ -614,7 +628,10 @@ export const returns = commerce.table(
     status: returnStatus("status").notNull().default("requested"),
     createdAt: createdAt(),
   },
-  (t) => [index("returns_order_idx").on(t.orderId)],
+  (t) => [
+    index("returns_order_idx").on(t.orderId),
+    index("returns_withdrawal_request_idx").on(t.withdrawalRequestId),
+  ],
 );
 
 export const returnLines = commerce.table(
@@ -631,6 +648,7 @@ export const returnLines = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.returnId, t.orderLineId] }),
+    index("return_lines_order_line_idx").on(t.orderLineId),
     check("return_lines_quantity_positive", sql`${t.quantity} > 0`),
   ],
 );
@@ -701,6 +719,7 @@ export const creditNotes = commerce.table(
   },
   (t) => [
     unique("credit_notes_series_number_key").on(t.series, t.number),
+    index("credit_notes_refund_idx").on(t.refundId),
     index("credit_notes_invoice_idx").on(t.invoiceId),
   ],
 );

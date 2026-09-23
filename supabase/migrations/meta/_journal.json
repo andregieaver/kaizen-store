@@ -15,6 +15,13 @@
       "when": 1790168088991,
       "tag": "20260923125448_commerce_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790169004579,
+      "tag": "20260923131004_index_foreign_keys",
+      "breakpoints": true
     }
   ]
 }
