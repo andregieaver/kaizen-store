@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { checkHealth } from "./health";
+import { checkHealth, describeDatabaseUrl } from "./health";
 
 const env = () => ({
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
@@ -17,6 +17,8 @@ describe("checkHealth", () => {
       fetch,
       env,
       countActiveMarkets: async () => 4,
+      databaseUrl:
+        "postgres://postgres.ref:secret@aws-1-eu-west-1.pooler.supabase.com:6543/postgres",
       region: "dub1",
       commit: "abc",
     });
@@ -27,8 +29,11 @@ describe("checkHealth", () => {
       commit: "abc",
       supabase: "ok",
       database: "ok",
+      databaseConnection: "shared_pooler_transaction",
+      databaseError: null,
       activeMarkets: 4,
     });
+    expect(JSON.stringify(report)).not.toContain("secret");
     const [url, init] = fetch.mock.calls[0];
     expect(String(url)).toBe("https://example.supabase.co/auth/v1/health");
     expect(init.headers).toEqual({ apikey: "sb_publishable_test" });
@@ -81,17 +86,20 @@ describe("checkHealth", () => {
     });
   });
 
-  it("reports the database unreachable when the query fails", async () => {
+  it("reports the database unreachable, with its error code, when the query fails", async () => {
     const report = await checkHealth({
       fetch: okFetch(),
       env,
       countActiveMarkets: async () => {
-        throw new Error("password authentication failed");
+        throw Object.assign(new Error("password authentication failed"), {
+          code: "28P01",
+        });
       },
     });
     expect(report).toMatchObject({
       status: "degraded",
       database: "unreachable",
+      databaseError: "28P01",
       activeMarkets: null,
     });
   });
@@ -105,9 +113,45 @@ describe("checkHealth", () => {
         countActiveMarkets: () => new Promise<number>(() => {}),
       });
       await vi.advanceTimersByTimeAsync(3000);
-      expect((await pending).database).toBe("unreachable");
+      const report = await pending;
+      expect(report.database).toBe("unreachable");
+      expect(report.databaseError).toBe("TIMEOUT");
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("describeDatabaseUrl", () => {
+  it("recognises each kind of Supabase connection string", () => {
+    const ref = "ybsozesfuxuitoacntfo";
+    expect(
+      describeDatabaseUrl(
+        `postgres://postgres.${ref}:pw@aws-1-eu-west-1.pooler.supabase.com:6543/postgres`,
+      ),
+    ).toBe("shared_pooler_transaction");
+    expect(
+      describeDatabaseUrl(
+        `postgres://postgres.${ref}:pw@aws-1-eu-west-1.pooler.supabase.com:5432/postgres`,
+      ),
+    ).toBe("shared_pooler_session");
+    expect(
+      describeDatabaseUrl(`postgresql://postgres:pw@db.${ref}.supabase.co:5432/postgres`),
+    ).toBe("direct");
+    expect(
+      describeDatabaseUrl(`postgresql://postgres:pw@db.${ref}.supabase.co:6543/postgres`),
+    ).toBe("dedicated_pooler");
+  });
+
+  it("spots a password placeholder that was never filled in", () => {
+    expect(
+      describeDatabaseUrl(
+        "postgres://postgres.ref:[YOUR-PASSWORD]@aws-1-eu-west-1.pooler.supabase.com:6543/postgres",
+      ),
+    ).toBe("placeholder_password");
+  });
+
+  it("flags values that are not URLs", () => {
+    expect(describeDatabaseUrl("not a url")).toBe("invalid");
   });
 });
