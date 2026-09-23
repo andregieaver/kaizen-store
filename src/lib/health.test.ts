@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { checkHealth, describeDatabaseUrl } from "./health";
+import { checkHealth, describeDatabaseUrl, errorCode } from "./health";
 
 const env = () => ({
   NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
@@ -153,5 +153,20 @@ describe("describeDatabaseUrl", () => {
 
   it("flags values that are not URLs", () => {
     expect(describeDatabaseUrl("not a url")).toBe("invalid");
+  });
+});
+
+describe("errorCode", () => {
+  it("finds the driver's code under a wrapping error", () => {
+    const driverError = Object.assign(new Error("Tenant or user not found"), {
+      code: "XX000",
+    });
+    const wrapped = new Error("Failed query: select 1", { cause: driverError });
+    expect(errorCode(wrapped)).toBe("XX000");
+  });
+
+  it("falls back to UNKNOWN for errors without a code", () => {
+    expect(errorCode(new Error("boom"))).toBe("UNKNOWN");
+    expect(errorCode("not an error")).toBe("UNKNOWN");
   });
 });

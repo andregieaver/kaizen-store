@@ -141,12 +141,16 @@ async function checkDatabase(
 /**
  * A short, non-secret code for a failed connection: a Postgres SQLSTATE
  * (`28P01` is a wrong password) or a network code (`ENETUNREACH`, `ENOTFOUND`).
+ * Drizzle wraps driver errors, so the code may sit on a `cause`.
  */
-function errorCode(error: unknown): string {
-  if (error instanceof Error) {
-    const code = (error as Error & { code?: unknown }).code;
-    if (typeof code === "string" && /^[A-Z0-9_]{1,32}$/.test(code)) return code;
-    if (error.message === "timeout") return "TIMEOUT";
+export function errorCode(error: unknown): string {
+  for (let e = error, depth = 0; e instanceof Error && depth < 5; depth++) {
+    const code = (e as Error & { code?: unknown }).code;
+    if (typeof code === "string" && /^[A-Za-z0-9_]{1,32}$/.test(code)) {
+      return code;
+    }
+    if (e.message === "timeout") return "TIMEOUT";
+    e = e.cause;
   }
   return "UNKNOWN";
 }
