@@ -73,5 +73,5 @@ the Supabase CLI is adopted later (for example for branching), run
 | O6 | Product-safety (GPSR) contact details for each manufacturer, and an EU responsible person for any non-EU manufacturer | You | Before the first product is published | The database refuses to activate a product without them. |
 | O7 | DPIA scoping and a per-country cookie-consent matrix | You + counsel | Phase 1 (consent), Phase 3 (DPIA) | Includes whether server-side experiment assignment is "strictly necessary". |
 | O8 | Data processing agreements with Vercel and Supabase | You | Before production data | Account-level, not per project: if the HumanWebX team and organisation already have them, this project is covered. |
-| O9 | Add `DATABASE_URL` in Vercel (Production and Preview) | You | Phase 1 | An environment variable, not a connector: Vercel → kaizen-store → Settings → Environment Variables. Value from Supabase → Connect → Transaction pooler. It is a secret; paste it into Vercel, not into chat. |
+| O9 | ~~Add `DATABASE_URL` in Vercel~~ | Done | | Shared pooler, transaction mode (`aws-1-eu-west-1.pooler.supabase.com:6543`). `/api/health` confirms the live site reads the commerce schema. |
 | O10 | Accounts for Sentry (EU region), PostHog (EU region) and GrowthBook | You | Phase 1 | Sentry and PostHog must be created in their EU regions; this cannot be changed later. |
