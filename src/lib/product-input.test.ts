@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isPictureAddress,
   combineOptions,
   formatPriceInput,
   parsePrice,
@@ -132,7 +133,7 @@ describe("productProblems", () => {
       context,
     );
     expect(problems).toEqual([
-      "Add at least one picture before putting the product on sale.",
+      "Add at least one picture before publishing the product.",
       "The manufacturer is outside the EU, so add a responsible person established in the EU.",
     ]);
   });
@@ -231,5 +232,22 @@ describe("productProblems", () => {
       const problems = productProblems({ ...base, files: [{ ...file, variantSku: "MUG-1" }] }, context);
       expect(problems).toContain('The file "Guide.pdf" belongs to a variant that is not digital. Choose where it goes.');
     });
+  });
+});
+
+describe("isPictureAddress", () => {
+  it("takes web addresses and paths on the store's own site, like the demo pictures", () => {
+    expect(isPictureAddress("https://example.supabase.co/storage/v1/object/public/product-media/a.webp")).toBe(true);
+    expect(isPictureAddress("http://localhost:3000/a.png")).toBe(true);
+    expect(isPictureAddress("/demo/notebook.svg")).toBe(true);
+  });
+
+  it("refuses other schemes, other sites' paths and empty values", () => {
+    expect(isPictureAddress("javascript:alert(1)")).toBe(false);
+    expect(isPictureAddress("data:image/png;base64,AAAA")).toBe(false);
+    expect(isPictureAddress("//evil.example/a.png")).toBe(false);
+    expect(isPictureAddress("/\\evil.example/a.png")).toBe(false);
+    expect(isPictureAddress("/demo/a b.svg")).toBe(false);
+    expect(isPictureAddress("")).toBe(false);
   });
 });

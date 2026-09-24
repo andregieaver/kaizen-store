@@ -200,7 +200,7 @@ describe("refusing bad products", () => {
     expect(result).toEqual({
       ok: false,
       problems: [
-        "Add at least one picture before putting the product on sale.",
+        "Add at least one picture before publishing the product.",
         "Add the manufacturer: EU product-safety rules require it on the listing.",
       ],
     });

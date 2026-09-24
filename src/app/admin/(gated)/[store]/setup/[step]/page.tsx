@@ -270,7 +270,7 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
           {products.map((product) => (
             <li key={product.handle} className="flex justify-between gap-4 px-3 py-2">
               <span>{product.title}</span>
-              <span className="text-muted">{product.status === "active" ? "On sale" : "Draft"}</span>
+              <span className="text-muted">{product.status === "active" ? "Published" : "Draft"}</span>
             </li>
           ))}
         </ul>

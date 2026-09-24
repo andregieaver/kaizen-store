@@ -178,7 +178,7 @@ export function ProductEditor(props: Props) {
               className={`${input} w-auto`}
             >
               <option value="draft">Draft (hidden)</option>
-              <option value="active">On sale</option>
+              <option value="active">Published</option>
             </select>
           </label>
           <button

@@ -711,12 +711,12 @@ function saveProblem(error: unknown, input: ProductInput): string {
   if (text.includes("product_variants_store_sku_key")) {
     return "Another product already uses one of these SKUs. SKUs must be unique in the store.";
   }
-  if (text.includes("without a picture")) return "Add at least one picture before putting the product on sale.";
+  if (text.includes("without a picture")) return "Add at least one picture before publishing the product.";
   if (text.includes("responsible person")) {
     return "The manufacturer is outside the EU, so add a responsible person established in the EU.";
   }
-  if (text.includes("without a manufacturer")) return "Add the manufacturer before putting the product on sale.";
-  if (text.includes("without an active variant")) return "Switch on at least one variant before putting the product on sale.";
+  if (text.includes("without a manufacturer")) return "Add the manufacturer before publishing the product.";
+  if (text.includes("without an active variant")) return "Switch on at least one variant before publishing the product.";
   if (text.includes("without a title")) return "Give the product a title.";
   if (text.includes("unknown product")) return "This product no longer exists.";
   if (text.includes("foreign file")) return "A file could not be found. Upload it again.";

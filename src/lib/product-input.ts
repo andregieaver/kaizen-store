@@ -13,6 +13,26 @@ import {
 } from "./subscriptions";
 
 /**
+ * A picture's address: a web address (http or https), or a path on the
+ * store's own site such as the demo pictures' `/demo/notebook.svg`.
+ */
+export function isPictureAddress(value: string): boolean {
+  if (/^\/(?![/\\])/.test(value)) return !/\s/.test(value);
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+const pictureAddress = z
+  .string()
+  .trim()
+  .max(1000)
+  .refine(isPictureAddress, "A picture has an invalid address.");
+
+/**
  * The product editor's data, shared by the browser (which builds it) and the
  * server (which checks and saves it). Prices are typed text in major units
  * ("249,00") and converted with `parsePrice` for each market's currency.
@@ -102,8 +122,8 @@ export const productInput = z.object({
   media: z
     .array(
       z.object({
-        url: z.url("A picture has an invalid address.").max(1000),
-        thumbnailUrl: z.url().max(1000).nullable(),
+        url: pictureAddress,
+        thumbnailUrl: pictureAddress.nullable(),
         alt: text(300),
       }),
     )
@@ -252,7 +272,7 @@ export type PublishContext = {
 /**
  * Everything wrong with the product, in words an owner can act on. Problems
  * that only matter for selling (pictures, safety contacts, prices) are listed
- * only when the product is to be put on sale.
+ * only when the product is to be published.
  */
 export function productProblems(input: ProductInput, context: PublishContext): string[] {
   const problems: string[] = [];
@@ -299,14 +319,14 @@ export function productProblems(input: ProductInput, context: PublishContext): s
 
   if (input.status !== "active") return problems;
 
-  if (input.media.length === 0) problems.push("Add at least one picture before putting the product on sale.");
+  if (input.media.length === 0) problems.push("Add at least one picture before publishing the product.");
   const active = input.variants.filter((v) => v.active);
   for (const variant of active.filter((v) => v.delivery === "digital")) {
     if (!input.files.some((f) => f.variantSku === null || f.variantSku === variant.sku)) {
       problems.push(`${variantLabel(variant.options)} is digital: add a file for shoppers to download.`);
     }
   }
-  if (active.length === 0) problems.push("Switch on at least one variant before putting the product on sale.");
+  if (active.length === 0) problems.push("Switch on at least one variant before publishing the product.");
   const priced = active.some((v) =>
     context.markets.some((m) => parsePrice(v.prices[m.code] ?? "", m.currency) !== null),
   );
