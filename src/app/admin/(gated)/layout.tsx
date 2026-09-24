@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { SignOutForm } from "@/components/admin/admin-trail";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { getAccount } from "@/server/auth";
 import { countPendingRequests } from "@/server/platform";
@@ -38,11 +39,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
             <Link href="/admin/account" className="text-muted underline" title="Your account">
               {account.email}
             </Link>
-            <form action={signOut}>
-              <button type="submit" className="underline">
-                Sign out
-              </button>
-            </form>
+            <SignOutForm action={signOut} />
           </div>
         </div>
       </header>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { after } from "next/server";
 
+import { AdminTrail } from "@/components/admin/admin-trail";
 import { storeBase } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { ensureTestAccount, requestIp } from "@/server/connect";
@@ -30,6 +31,7 @@ export default async function StoreAdminLayout({
 
   return (
     <>
+      <AdminTrail storeSlug={store.slug} />
       <div className="border-b border-border bg-background">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2">
           <nav aria-label={`${store.name} admin`} className="flex flex-wrap items-center gap-x-4 gap-y-1">

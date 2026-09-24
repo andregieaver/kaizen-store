@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { BackToAdmin } from "@/components/back-to-admin";
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
@@ -50,7 +51,10 @@ export default async function ChooserLayout({ children, params }: Props) {
   if (!store) notFound();
   return (
     <html lang={store.markets[0]?.lang ?? "en"} className="h-full antialiased">
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body className="flex min-h-full flex-col font-sans">
+        {children}
+        <BackToAdmin storeSlug={store.slug} />
+      </body>
     </html>
   );
 }

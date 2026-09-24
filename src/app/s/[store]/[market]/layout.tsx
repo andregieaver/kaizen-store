@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { BackToAdmin } from "@/components/back-to-admin";
 import { CartLink } from "@/components/cart-link";
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase } from "@/lib/paths";
@@ -82,14 +83,14 @@ export default async function MarketLayout({ children, params }: Props) {
           </p>
         )}
         <header className="border-b border-border">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4">
             <Link href={home} className="text-lg font-semibold">
               {store.name}
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               {store.markets.length > 1 && (
                 <nav aria-label={m.chooseMarket}>
-                  <ul className="flex gap-3 text-sm">
+                  <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
                     {store.markets.map((other) => (
                       <li key={other.slug}>
                         <Link
@@ -124,6 +125,7 @@ export default async function MarketLayout({ children, params }: Props) {
         <footer className="border-t border-border">
           <StoreFooter store={store} />
         </footer>
+        <BackToAdmin storeSlug={store.slug} />
       </body>
     </html>
   );

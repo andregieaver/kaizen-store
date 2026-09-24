@@ -125,3 +125,19 @@ test("health endpoint reaches the database without caching", async ({ request })
   expect(response.headers()["cache-control"]).toContain("no-store");
   expect(await response.json()).toMatchObject({ database: "ok", activeMarkets: 3 });
 });
+
+test("signed-in staff get a way back to the admin page they came from; shoppers do not", async ({ page, context }) => {
+  await page.goto("/s/demo/no");
+  await expect(page.getByRole("link", { name: "← Back to admin" })).toHaveCount(0);
+
+  // As after visiting the store's admin while signed in.
+  await context.addCookies([{ name: "sb-test-auth-token", value: "x", url: page.url() }]);
+  await page.evaluate(() =>
+    localStorage.setItem("kaizen-admin-return", JSON.stringify({ demo: "/admin/demo/products?status=draft" })),
+  );
+  await page.goto("/s/demo/no/p/demo-keramikkopp");
+  await expect(page.getByRole("link", { name: "← Back to admin" })).toHaveAttribute(
+    "href",
+    "/admin/demo/products?status=draft",
+  );
+});
