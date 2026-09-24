@@ -1368,10 +1368,15 @@ export const refunds = commerce.table(
     reason: text("reason").notNull(),
     providerReference: text("provider_reference"),
     status: refundStatus("status").notNull().default("pending"),
+    /** What went back into stock with it: `[{ "sku": …, "quantity": … }]` (D27). */
+    restocked: jsonb("restocked").notNull().default([]),
+    /** The staff member who refunded; null for refunds made in Stripe. */
+    createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
   (t) => [
     unique("refunds_store_id_key").on(t.storeId, t.id),
+    index("refunds_created_by_idx").on(t.createdBy),
     unique("refunds_provider_reference_key").on(t.storeId, t.providerReference),
     foreignKey({
       name: "refunds_payment_fk",
@@ -1380,6 +1385,30 @@ export const refunds = commerce.table(
     }),
     index("refunds_payment_idx").on(t.storeId, t.paymentId),
     check("refunds_amount_positive", sql`${t.amountMinor} > 0`),
+  ],
+);
+
+/**
+ * A parcel sent for an order (D27): the carrier and tracking number shoppers
+ * get by email. Sending one marks the order as sent.
+ */
+export const shipments = commerce.table(
+  "shipments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    carrier: text("carrier").notNull().default(""),
+    trackingNumber: text("tracking_number").notNull().default(""),
+    trackingUrl: text("tracking_url"),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    orderRef("shipments_order_fk", t),
+    index("shipments_order_idx").on(t.storeId, t.orderId),
+    index("shipments_created_by_idx").on(t.createdBy),
+    check("shipments_tracking_url", sql`${t.trackingUrl} ~ '^https://'`),
   ],
 );
 

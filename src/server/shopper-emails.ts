@@ -105,7 +105,11 @@ function addressText(order: OrderView): string | null {
 }
 
 /** The confirmation for a paid order: a new one, or a subscription's renewal. Once per order. */
-export async function sendOrderConfirmation(storeId: string, orderId: string): Promise<SendOutcome | null> {
+export async function sendOrderConfirmation(
+  storeId: string,
+  orderId: string,
+  { resend = false }: { resend?: boolean } = {},
+): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
   if (!order || !order.email || order.status === "pending_payment" || order.status === "cancelled") return null;
   const ctx = await context(storeId, order.marketCode, order.locale);
@@ -154,10 +158,92 @@ export async function sendOrderConfirmation(storeId: string, orderId: string): P
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
-    idempotencyKey: `order-confirmation:${orderId}`,
+    // Staff can send it again; the automatic one goes once.
+    idempotencyKey: resend ? undefined : `order-confirmation:${orderId}`,
     orderId,
     subscriptionId: subscription?.id ?? null,
   });
+}
+
+/** A short email about an order: sent, refunded or cancelled (D27). */
+async function orderNotice(
+  storeId: string,
+  orderId: string,
+  kind: string,
+  key: string,
+  build: (args: {
+    order: OrderView;
+    text: EmailText;
+    money: (minor: number) => string;
+    store: EmailStore;
+  }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[] },
+): Promise<SendOutcome | null> {
+  const order = await getOrder(storeId, orderId);
+  if (!order?.email) return null;
+  const ctx = await context(storeId, order.marketCode, order.locale);
+  if (!ctx) return null;
+  const { store, market, text } = ctx;
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const built = build({ order, text, money, store });
+  const url = await orderUrl(storeId, store, market, orderId);
+  const email = renderEmail({
+    subject: built.subject,
+    preview: built.intro,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: built.heading },
+      { type: "paragraph", text: built.intro },
+      ...(built.extra ?? []),
+      ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind,
+    to: order.email,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: key,
+    orderId,
+  });
+}
+
+export function sendShipped(
+  storeId: string,
+  orderId: string,
+  shipment: { id: string; carrier: string; trackingNumber: string; trackingUrl: string | null },
+) {
+  return orderNotice(storeId, orderId, "order.sent", `order-sent:${shipment.id}`, ({ order, text, store }) => {
+    const address = addressText(order);
+    return {
+      subject: text.shippedSubject(store.name, order.number),
+      heading: text.shippedHeading,
+      intro: text.shippedIntro(order.number),
+      extra: [
+        ...(shipment.trackingNumber ? [{ type: "paragraph" as const, text: text.tracking(shipment.carrier, shipment.trackingNumber) }] : []),
+        ...(shipment.trackingUrl ? [{ type: "button" as const, text: text.trackParcel, url: shipment.trackingUrl }] : []),
+        ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
+      ],
+    };
+  });
+}
+
+export function sendRefunded(storeId: string, orderId: string, refundId: string, amountMinor: number) {
+  return orderNotice(storeId, orderId, "order.refunded", `order-refunded:${refundId}`, ({ order, text, money, store }) => ({
+    subject: text.refundSubject(store.name, order.number),
+    heading: text.refundHeading,
+    intro: text.refundIntro(money(amountMinor), order.number),
+  }));
+}
+
+export function sendCancelled(storeId: string, orderId: string, amountMinor: number) {
+  return orderNotice(storeId, orderId, "order.cancelled", `order-cancelled:${orderId}`, ({ order, text, money, store }) => ({
+    subject: text.cancelledSubject(store.name, order.number),
+    heading: text.cancelledHeading,
+    intro: text.cancelledIntro(order.number, money(amountMinor)),
+  }));
 }
 
 export { context as emailContext, footer as emailFooter, orderUrl, orderLines as orderLinesBlock, storeById };

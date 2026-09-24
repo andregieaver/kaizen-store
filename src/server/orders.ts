@@ -42,6 +42,8 @@ export type OrderView = {
   shippingAddress: Address;
   billingAddress: Address;
   lines: {
+    id: string;
+    variantId: string | null;
     title: string;
     sku: string;
     quantity: number;
@@ -87,6 +89,8 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   shippingAddress: (row.shipping_address ?? {}) as Address,
   billingAddress: (row.billing_address ?? {}) as Address,
   lines: lines.map((line) => ({
+    id: String(line.id),
+    variantId: line.variant_id ? String(line.variant_id) : null,
     title: String(line.title),
     sku: String(line.sku),
     quantity: Number(line.quantity),
@@ -105,7 +109,7 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
       select * from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
-      select title, sku, quantity, unit_price_minor, total_minor, delivery from commerce.order_lines
+      select id, variant_id, title, sku, quantity, unit_price_minor, total_minor, delivery from commerce.order_lines
       where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by title
     `),
   ]);
@@ -258,15 +262,23 @@ export type OrderListRow = {
 /** The store's orders, newest first. Unpaid checkouts are left out unless asked for. */
 export async function listOrders(
   storeId: string,
-  { unpaid = false }: { unpaid?: boolean } = {},
+  { unpaid = false, toSend = false }: { unpaid?: boolean; toSend?: boolean } = {},
 ): Promise<OrderListRow[]> {
+  // An order cancelled after payment (and refunded) is still an order.
+  const wasPaid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
   const rows = await db().execute<Row>(sql`
     select o.id, o.number, o.status, o.email, o.shipping_address ->> 'name' as name,
            o.placed_at, o.total_minor, o.currency,
            (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items
     from commerce.orders o
     where o.store_id = ${storeId}::uuid
-      and ${unpaid ? sql`o.status in ('pending_payment', 'cancelled')` : sql`o.status not in ('pending_payment', 'cancelled')`}
+      and ${
+        toSend
+          ? sql`o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')`
+          : unpaid
+            ? sql`(o.status = 'pending_payment' or (o.status = 'cancelled' and not ${wasPaid}))`
+            : sql`(o.status not in ('pending_payment', 'cancelled') or (o.status = 'cancelled' and ${wasPaid}))`
+      }
     order by o.placed_at desc
     limit 200
   `);

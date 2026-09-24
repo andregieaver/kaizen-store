@@ -26,16 +26,21 @@ export default async function OrdersPage({ params, searchParams }: Props) {
 
 async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const { store } = await requireMember(storeSlug);
-  const unpaid = (await searchParams).show === "unpaid";
-  const orders = await listOrders(store.id, { unpaid });
+  const show = (await searchParams).show;
+  const unpaid = show === "unpaid";
+  const toSend = show === "to-send";
+  const orders = await listOrders(store.id, { unpaid, toSend });
   const locale = store.markets[0]?.locale ?? "en";
   const base = `/admin/${store.slug}/orders`;
 
   return (
     <>
       <nav aria-label="Order filters" className="flex gap-2 text-sm">
-        <Link href={base} aria-current={unpaid ? undefined : "page"} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
+        <Link href={base} aria-current={unpaid || toSend ? undefined : "page"} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
           Orders
+        </Link>
+        <Link href={`${base}?show=to-send`} aria-current={toSend ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
+          To send
         </Link>
         <Link href={`${base}?show=unpaid`} aria-current={unpaid ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
           Unfinished checkouts
@@ -46,7 +51,11 @@ async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searc
       </nav>
       {orders.length === 0 ? (
         <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">
-          {unpaid ? "No unfinished checkouts." : "No orders yet. They appear here as soon as they are paid."}
+          {unpaid
+            ? "No unfinished checkouts."
+            : toSend
+              ? "Nothing to send: every paid order with something to ship has been sent."
+              : "No orders yet. They appear here as soon as they are paid."}
         </p>
       ) : (
         <table className="w-full rounded-lg border border-border bg-background text-left text-sm">
@@ -76,7 +85,9 @@ async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searc
                     {new Date(order.placedAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" })}
                   </time>
                 </td>
-                <td className="px-4 py-2">{STATUS_LABELS[order.status]}</td>
+                <td className="px-4 py-2">
+                  {order.status === "cancelled" && !unpaid ? "Cancelled and refunded" : STATUS_LABELS[order.status]}
+                </td>
                 <td className="px-4 py-2 text-right">{formatMoney(order.totalMinor, order.currency, locale)}</td>
               </tr>
             ))}
