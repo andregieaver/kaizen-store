@@ -1,3 +1,4 @@
+import { emailEventsSetup, emailSetup } from "@/lib/email-settings";
 import { publicEnv, type PublicEnv } from "@/lib/env";
 import { supabaseKeyKind } from "@/lib/supabase-key";
 
@@ -26,6 +27,9 @@ export type HealthReport = {
    * key itself): `publishable_key` means the wrong one, which Storage refuses.
    */
   uploadKey: "ok" | "publishable_key" | "unrecognised" | "not_set";
+  /** Whether Resend is set up to send (never the key), and to report deliveries back. */
+  email: "ok" | "not_set" | "unrecognised";
+  emailEvents: "ok" | "not_set" | "unrecognised";
 };
 
 export type DatabaseConnectionKind =
@@ -77,6 +81,7 @@ export async function checkHealth(
     countActiveMarkets?: (() => Promise<number>) | null;
     databaseUrl?: string;
     uploadKey?: string;
+    emailEnv?: Record<string, string | undefined>;
     region?: string;
     commit?: string;
   } = {},
@@ -102,6 +107,8 @@ export async function checkHealth(
     databaseError: database.error,
     activeMarkets: database.activeMarkets,
     uploadKey: uploadKeyKind(deps.uploadKey ?? process.env.SUPABASE_SECRET_KEY),
+    email: emailSetup(deps.emailEnv ?? process.env),
+    emailEvents: emailEventsSetup(deps.emailEnv ?? process.env),
   };
 }
 

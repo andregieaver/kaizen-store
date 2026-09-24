@@ -6,8 +6,8 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
-import { linkOrderToCustomer } from "./customers";
-import { sendOrderConfirmation } from "./shopper-emails";
+import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
+import { sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -83,10 +83,13 @@ export async function applySession(
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
     if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
+    // The account asked for at checkout opens now, with the paid email (D32).
+    const opened = await openCheckoutAccount(storeId, orderId);
     // The order joins the customer's account, if they have one (D28).
     await linkOrderToCustomer(storeId, orderId);
     // Once per order, however many times the session is applied (D26).
     await sendOrderConfirmation(storeId, orderId);
+    if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
   } else if (failed || expired) {
     await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
     await setPaymentStatus(storeId, session.id, failed ? "failed" : "cancelled");

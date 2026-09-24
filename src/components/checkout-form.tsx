@@ -9,7 +9,9 @@ import {
   ShippingAddressElement,
   useCheckoutElements,
 } from "@stripe/react-stripe-js/checkout";
-import { useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+
+import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
 
 export type CheckoutFormLabels = {
   contact: string;
@@ -24,6 +26,13 @@ export type CheckoutFormLabels = {
   expired: string;
   backToCart: string;
   seeOrder: string;
+};
+
+/** Opening an account with the order (D32), offered to shoppers who are not signed in. */
+export type CheckoutAccountOption = {
+  store: string;
+  market: string;
+  labels: { create: string; hint: string; password: string; rule: string };
 };
 
 const FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -62,6 +71,7 @@ export function CheckoutForm({
   ships,
   labels,
   links,
+  account = null,
 }: {
   publishableKey: string;
   stripeAccount: string;
@@ -72,6 +82,7 @@ export function CheckoutForm({
   labels: CheckoutFormLabels;
   /** The cart, and the order page (for a session paid meanwhile). */
   links: { cart: string; order: string };
+  account?: CheckoutAccountOption | null;
 }) {
   // Stripe runs in the browser only; the server sends the waiting state.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -90,7 +101,7 @@ export function CheckoutForm({
       stripe={stripe}
       options={{ clientSecret, elementsOptions: { appearance: appearance(dark), loader: "auto" } }}
     >
-      <Form labels={labels} links={links} ships={ships} />
+      <Form labels={labels} links={links} ships={ships} account={account} />
     </CheckoutElementsProvider>
   );
 }
@@ -110,16 +121,23 @@ function Form({
   labels,
   links,
   ships,
+  account,
 }: {
   labels: CheckoutFormLabels;
   links: { cart: string; order: string };
   ships: boolean;
+  account: CheckoutAccountOption | null;
 }) {
   const state = useCheckoutElements();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [express, setExpress] = useState(false);
+  const [createAccount, setCreateAccount] = useState(false);
+  const password = useRef<HTMLInputElement>(null);
+  // A password saved on an earlier try, to take back if the box is unticked.
+  const saved = useRef(false);
   const problemRef = useRef<HTMLParagraphElement>(null);
+  const id = useId();
 
   if (state.type === "loading") return <Waiting label={labels.loading} />;
   if (state.type === "error") {
@@ -157,10 +175,24 @@ function Form({
     requestAnimationFrame(() => problemRef.current?.focus());
   };
 
+  /** The account asked for, saved with the order before paying; false if that failed. */
+  const saveAccount = async (): Promise<boolean> => {
+    if (!account || (!createAccount && !saved.current)) return true;
+    const result = await checkoutAccountAction(account.store, account.market, createAccount ? (password.current?.value ?? "") : null);
+    if (!result.ok) {
+      fail(result.message);
+      if (createAccount) password.current?.focus();
+      return false;
+    }
+    saved.current = createAccount;
+    return true;
+  };
+
   const pay = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
     setProblem(null);
+    if (!(await saveAccount())) return;
     // On success Stripe takes the shopper to the order page.
     const result = await checkout.confirm();
     if (result.type === "error") fail(result.error.message);
@@ -174,6 +206,10 @@ function Form({
           onReady={(event) => setExpress(Boolean(event.availablePaymentMethods))}
           onConfirm={async (event) => {
             setProblem(null);
+            if (!(await saveAccount())) {
+              event.paymentFailed();
+              return;
+            }
             const result = await checkout.confirm({ expressCheckoutConfirmEvent: event });
             if (result.type === "error") fail(result.error.message);
           }}
@@ -185,6 +221,45 @@ function Form({
           {labels.contact}
         </h2>
         <ContactDetailsElement />
+        {account && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <input
+                id={`${id}-account`}
+                type="checkbox"
+                checked={createAccount}
+                onChange={(event) => setCreateAccount(event.target.checked)}
+                aria-describedby={`${id}-account-hint`}
+                className="mt-1 size-4"
+              />
+              <div>
+                <label htmlFor={`${id}-account`}>{account.labels.create}</label>
+                <p id={`${id}-account-hint`} className="text-sm text-muted">
+                  {account.labels.hint}
+                </p>
+              </div>
+            </div>
+            {createAccount && (
+              <div className="flex flex-col gap-1">
+                <label className="flex flex-col gap-1 font-medium">
+                  {account.labels.password}
+                  <input
+                    ref={password}
+                    type="password"
+                    required
+                    minLength={12}
+                    autoComplete="new-password"
+                    aria-describedby={`${id}-account-rule`}
+                    className="min-h-11 w-full rounded-md border border-border bg-background px-3 font-normal"
+                  />
+                </label>
+                <p id={`${id}-account-rule`} className="text-sm text-muted">
+                  {account.labels.rule}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {ships && (

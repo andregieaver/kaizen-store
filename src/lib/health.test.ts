@@ -27,6 +27,7 @@ describe("checkHealth", () => {
       region: "dub1",
       commit: "abc",
       uploadKey: "sb_publishable_wrong",
+      emailEnv: { RESEND_API_KEY: "re_secret", EMAIL_FROM: "butikk@kaizenstore.cloud" },
     });
 
     expect(report).toEqual({
@@ -40,6 +41,8 @@ describe("checkHealth", () => {
       databaseError: null,
       activeMarkets: 4,
       uploadKey: "publishable_key",
+      email: "ok",
+      emailEvents: "not_set",
     });
     expect(JSON.stringify(report)).not.toContain("secret");
     const [url, init] = fetch.mock.calls[0];

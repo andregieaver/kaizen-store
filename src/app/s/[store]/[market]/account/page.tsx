@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { DeleteAccountButton, DetailsForm, PasswordForm, SignOutButton } from "@/components/account-forms";
-import { AccountSignIn } from "@/components/account-sign-in";
+import { AccountAccess } from "@/components/account-sign-in";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -26,17 +26,17 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * My account (D28): signing in, then the customer's orders, subscriptions,
  * details and password in one place.
  */
-export default function AccountPage({ params }: Props) {
+export default function AccountPage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
-        <Account params={params} />
+        <Account params={params} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Account({ params }: { params: Props["params"] }) {
+async function Account({ params, searchParams }: { params: Props["params"]; searchParams: Props["searchParams"] }) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
@@ -46,12 +46,15 @@ async function Account({ params }: { params: Props["params"] }) {
   const customer = await getCustomer(store.id);
 
   if (!customer) {
+    // `?tab=register` opens on Create account, e.g. from a link in the store's menu.
+    const register = (await searchParams).tab === "register";
     return (
       <>
-        <h1 className="text-3xl font-semibold tracking-tight">{a.signInTitle}</h1>
-        <AccountSignIn
+        <h1 className="text-3xl font-semibold tracking-tight">{a.title}</h1>
+        <AccountAccess
           store={store.slug}
           market={market.slug}
+          initialTab={register ? "register" : "sign-in"}
           labels={{
             intro: a.signInIntro,
             email: a.email,
@@ -65,6 +68,18 @@ async function Account({ params }: { params: Props["params"] }) {
             usePassword: a.usePassword,
             useCode: a.useCode,
             password: a.password,
+            tabSignIn: a.tabSignIn,
+            tabRegister: a.tabRegister,
+            registerIntro: a.registerIntro,
+            name: a.name,
+            register: a.register,
+            registering: a.registering,
+            forgotPassword: a.forgotPassword,
+            chooseNewPassword: a.chooseNewPassword,
+            resetIntro: a.resetIntro,
+            newPassword: a.newPassword,
+            passwordRule: a.passwordRule,
+            saveAndSignIn: a.saveAndSignIn,
           }}
         />
       </>

@@ -9,11 +9,18 @@ const {
   checkPassword,
   createSignInCode,
   deleteCustomer,
+  emailHistory,
+  getCheckoutAccount,
   hashPassword,
   linkOrderToCustomer,
   listCustomerOrders,
+  openCheckoutAccount,
+  registerCustomer,
+  resetPassword,
+  saveCheckoutAccount,
   setPassword,
   signInWithPassword,
+  takeCheckoutSignIn,
   verifySignInCode,
 } = await import("./customers");
 
@@ -47,6 +54,25 @@ async function guestOrder(email: string, number: string): Promise<string> {
   `);
   return String(order.id);
 }
+
+/** A guest order paid with Stripe (a captured payment), or still waiting for payment. */
+async function paidOrder(email: string, number: string, status: "paid" | "pending_payment" = "paid"): Promise<string> {
+  const [order] = await db().execute<Row>(sql`
+    insert into commerce.orders (store_id, number, market_code, currency, locale, email, status,
+      subtotal_minor, shipping_minor, tax_minor, total_minor, billing_address, shipping_address)
+    values (${storeId}::uuid, ${number}, 'NO', 'NOK', 'nb-NO', ${email}, ${status}, 10000, 0, 2000, 10000,
+      '{"name": "Kari Nordmann"}', '{"name": "Kari Nordmann", "line1": "Storgata 1", "postalCode": "0155", "city": "Oslo", "country": "NO"}')
+    returning id
+  `);
+  await db().execute(sql`
+    insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+    values (${storeId}::uuid, ${String(order.id)}::uuid, 'stripe', ${`cs_${number}`}, 10000, 'NOK',
+      ${status === "paid" ? "captured" : "pending"})
+  `);
+  return String(order.id);
+}
+
+const PASSWORD = "blå fjord seiler stille";
 
 describe("passwords", () => {
   it("hashes with scrypt and a fresh salt, and checks only the right password", async () => {
@@ -120,5 +146,106 @@ describe("deleting an account", () => {
     expect(order.customer_id).toBeNull();
     const customers = await db().execute(sql`select 1 from commerce.customers where id = ${customerId}::uuid`);
     expect(customers).toHaveLength(0);
+  });
+});
+
+describe("registering (D32)", () => {
+  it("opens an account with a password at once, but only orders placed signed in join it until the email is proven", async () => {
+    const email = `new.${run}@example.com`;
+    const outcome = await registerCustomer(storeId, { email: email.toUpperCase(), name: " Ny Kunde ", password: PASSWORD });
+    expect(outcome).toMatchObject({ ok: true });
+    const customerId = outcome.ok ? outcome.customerId : "";
+    expect(await signInWithPassword(storeId, email, PASSWORD)).toEqual({ ok: true, customerId });
+    const [row] = await db().execute<Row>(sql`select name, email, email_verified_at from commerce.customers where id = ${customerId}::uuid`);
+    expect(row).toMatchObject({ name: "Ny Kunde", email, email_verified_at: null });
+
+    // Someone who registered another person's email sees none of their later guest orders.
+    const guest = await paidOrder(email, `R1-${run}`);
+    await linkOrderToCustomer(storeId, guest);
+    expect(await listCustomerOrders(storeId, customerId)).toEqual([]);
+
+    // A code proves the email: then they join.
+    const code = await createSignInCode(storeId, email);
+    expect(await verifySignInCode(storeId, email, code!)).toBe(customerId);
+    expect((await listCustomerOrders(storeId, customerId)).map((o) => o.id)).toEqual([guest]);
+  });
+
+  it("sends an email with an account or paid orders to choose a new password instead", async () => {
+    const shopper = `guest.${run}@example.com`;
+    expect(await emailHistory(storeId, shopper)).toBeNull();
+    await paidOrder(shopper, `R2-${run}`, "pending_payment");
+    // An order never paid is no purchase.
+    expect(await emailHistory(storeId, shopper)).toBeNull();
+    await paidOrder(shopper, `R3-${run}`);
+    expect(await registerCustomer(storeId, { email: shopper, name: "", password: PASSWORD })).toEqual({ ok: false, known: "purchases" });
+
+    const member = `new.${run}@example.com`;
+    expect(await registerCustomer(storeId, { email: member, name: "", password: PASSWORD })).toEqual({ ok: false, known: "account" });
+  });
+
+  it("replaces the password with an emailed code, which opens the account with every paid order and ends other sessions", async () => {
+    const shopper = `guest.${run}@example.com`;
+    const code = await createSignInCode(storeId, shopper);
+    expect(await resetPassword(storeId, shopper, code === "000000" ? "111111" : "000000", PASSWORD)).toBeNull();
+    const customerId = await resetPassword(storeId, shopper, code!, PASSWORD);
+    expect(customerId).not.toBeNull();
+    expect(await signInWithPassword(storeId, shopper, PASSWORD)).toEqual({ ok: true, customerId });
+    // The paid order shows; the one never paid does not.
+    expect((await listCustomerOrders(storeId, customerId!)).map((o) => o.status)).toEqual(["paid"]);
+    const [sessions] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.customer_sessions where customer_id = ${customerId}::uuid
+    `);
+    expect(sessions.n).toBe(0);
+  });
+});
+
+describe("an account asked for at checkout (D32)", () => {
+  it("opens once the order is paid, with the order, name and address, and signs in once from the order page", async () => {
+    const email = `checkout.${run}@example.com`;
+    const orderId = await paidOrder(email, `K1-${run}`, "pending_payment");
+    await saveCheckoutAccount(storeId, orderId, PASSWORD);
+    // Not before payment.
+    expect(await openCheckoutAccount(storeId, orderId)).toBeNull();
+
+    await db().execute(sql`update commerce.orders set status = 'paid' where id = ${orderId}::uuid`);
+    await db().execute(sql`update commerce.payments set status = 'captured' where order_id = ${orderId}::uuid`);
+    expect(await openCheckoutAccount(storeId, orderId)).toBe("created");
+    // Once, however often the payment is seen.
+    expect(await openCheckoutAccount(storeId, orderId)).toBeNull();
+
+    const [customer] = await db().execute<Row>(sql`
+      select id, name, address->>'line1' as line1 from commerce.customers where store_id = ${storeId}::uuid and email = ${email}
+    `);
+    expect(customer).toMatchObject({ name: "Kari Nordmann", line1: "Storgata 1" });
+    expect(await signInWithPassword(storeId, email, PASSWORD)).toEqual({ ok: true, customerId: String(customer.id) });
+    expect((await listCustomerOrders(storeId, String(customer.id))).map((o) => o.id)).toEqual([orderId]);
+    const [request] = await db().execute<Row>(sql`select password_hash from commerce.checkout_accounts where order_id = ${orderId}::uuid`);
+    expect(request.password_hash).toBeNull();
+
+    expect(await getCheckoutAccount(storeId, orderId)).toEqual({ outcome: "created", email, canSignIn: true });
+    expect(await takeCheckoutSignIn(storeId, orderId)).toBe(String(customer.id));
+    expect(await takeCheckoutSignIn(storeId, orderId)).toBeNull();
+    expect((await getCheckoutAccount(storeId, orderId))?.canSignIn).toBe(false);
+  });
+
+  it("opens none for an email with earlier purchases, which is asked to choose a new password", async () => {
+    const email = `repeat.${run}@example.com`;
+    await paidOrder(email, `K2-${run}`);
+    const orderId = await paidOrder(email, `K3-${run}`);
+    await saveCheckoutAccount(storeId, orderId, PASSWORD);
+    expect(await openCheckoutAccount(storeId, orderId)).toBe("known");
+    expect(await getCheckoutAccount(storeId, orderId)).toEqual({ outcome: "known", email, canSignIn: false });
+    expect(await takeCheckoutSignIn(storeId, orderId)).toBeNull();
+    const [customers] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.customers where store_id = ${storeId}::uuid and email = ${email}
+    `);
+    expect(customers.n).toBe(0);
+  });
+
+  it("is forgotten when the shopper unticks it before paying", async () => {
+    const orderId = await paidOrder(`untick.${run}@example.com`, `K4-${run}`, "pending_payment");
+    await saveCheckoutAccount(storeId, orderId, PASSWORD);
+    await saveCheckoutAccount(storeId, orderId, null);
+    expect(await getCheckoutAccount(storeId, orderId)).toBeNull();
   });
 });

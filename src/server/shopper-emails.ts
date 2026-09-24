@@ -284,6 +284,81 @@ export async function sendSignInCode(
   return sendEmail({ storeId, kind: "account.code", to, email, fromName: store.name, replyTo: store.details.contactEmail });
 }
 
+/** The code for a new password (D32); it proves the email, as a sign-in code does. */
+export async function sendPasswordResetCode(
+  storeId: string,
+  marketCode: string,
+  locale: string,
+  to: string,
+  code: string,
+): Promise<SendOutcome | null> {
+  const ctx = await context(storeId, marketCode, locale);
+  if (!ctx) return null;
+  const { store, text } = ctx;
+  const email = renderEmail({
+    subject: text.resetSubject(store.name),
+    preview: `${code} · ${text.resetIntro}`,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: text.resetHeading },
+      { type: "paragraph", text: text.resetIntro },
+      { type: "code", text: code },
+      { type: "paragraph", text: text.codeIgnore },
+    ],
+  });
+  return sendEmail({ storeId, kind: "account.reset", to, email, fromName: store.name, replyTo: store.details.contactEmail });
+}
+
+/** Welcome to a new account opened with a password (D32), once per account. */
+export async function sendWelcome(
+  storeId: string,
+  customerId: string,
+  { marketCode, locale }: { marketCode: string; locale: string },
+): Promise<SendOutcome | null> {
+  const [customer] = await db().execute<Row>(sql`
+    select email from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid
+  `);
+  const ctx = customer && (await context(storeId, marketCode, locale));
+  if (!ctx) return null;
+  const { store, market, text } = ctx;
+  const to = String(customer.email);
+  const email = renderEmail({
+    subject: text.welcomeSubject(store.name),
+    preview: text.welcomeHeading,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: text.welcomeHeading },
+      { type: "paragraph", text: text.welcomeIntro(to) },
+      { type: "button", text: text.welcomeButton, url: `${siteUrl()}${marketPath(store.slug, market.slug, "/account")}` },
+      { type: "paragraph", text: text.welcomeIgnore },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "account.welcome",
+    to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `account-welcome:${customerId}`,
+  });
+}
+
+/** Welcome to the account opened with an order at checkout. */
+export async function sendWelcomeForOrder(storeId: string, orderId: string): Promise<SendOutcome | null> {
+  const [order] = await db().execute<Row>(sql`
+    select customer_id, market_code, locale from commerce.orders
+    where store_id = ${storeId}::uuid and id = ${orderId}::uuid and customer_id is not null
+  `);
+  if (!order) return null;
+  return sendWelcome(storeId, String(order.customer_id), {
+    marketCode: String(order.market_code),
+    locale: String(order.locale),
+  });
+}
+
 /** What renews, its shipping and total, and the link to manage it. */
 function subscriptionBlocks(
   subscription: SubscriptionView,

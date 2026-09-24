@@ -4,11 +4,14 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
+import { PasswordReset } from "@/components/account-sign-in";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { fileSize } from "@/lib/file-size";
+import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
 import { getSubscriptionForOrder } from "@/server/subscriptions";
@@ -46,9 +49,10 @@ async function OrderDetails({
   const address = order.shippingAddress;
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const [downloads, subscription] = await Promise.all([
+  const [downloads, subscription, account] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],
     order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
+    getCheckoutAccount(store.id, order.id),
   ]);
   const downloadBase = marketPath(store.slug, market.slug, "/download");
 
@@ -66,6 +70,17 @@ async function OrderDetails({
       <p>
         {m.orderNumber}: <strong>{order.number}</strong>. {order.status !== "cancelled" && m.keepNumber}
       </p>
+
+      {account?.outcome && (
+        <AccountOutcome
+          account={account}
+          store={store.slug}
+          market={market.slug}
+          m={m}
+          signIn={checkoutSignInAction.bind(null, store.slug, market.slug, order.id, sessionId)}
+          accountUrl={marketPath(store.slug, market.slug, "/account")}
+        />
+      )}
 
       <section aria-label={m.cart} className="rounded-lg border border-border p-4">
         <ul className="divide-y divide-border">
@@ -201,5 +216,70 @@ function Downloads({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** What became of the account asked for at checkout (D32). */
+function AccountOutcome({
+  account,
+  store,
+  market,
+  m,
+  signIn,
+  accountUrl,
+}: {
+  account: CheckoutAccount;
+  store: string;
+  market: string;
+  m: Messages;
+  signIn: () => Promise<void>;
+  accountUrl: string;
+}) {
+  const a = m.account;
+  if (account.outcome === "created") {
+    return (
+      <section aria-labelledby="account-heading" className="flex flex-col gap-3 rounded-lg border border-border p-4">
+        <h2 id="account-heading" className="font-medium">
+          {a.accountCreated}
+        </h2>
+        <p>{a.accountCreatedIntro(account.email)}</p>
+        {account.canSignIn ? (
+          <form action={signIn}>
+            <button type="submit" className="min-h-11 rounded-full bg-foreground px-5 font-medium text-background">
+              {a.goToAccount}
+            </button>
+          </form>
+        ) : (
+          <Link href={accountUrl} className="underline">
+            {a.goToAccount}
+          </Link>
+        )}
+      </section>
+    );
+  }
+  return (
+    <section aria-labelledby="account-heading" className="flex flex-col gap-3 rounded-lg border border-border p-4">
+      <h2 id="account-heading" className="font-medium">
+        {a.accountKnownTitle}
+      </h2>
+      <p>{a.accountKnown(account.email)}</p>
+      <PasswordReset
+        store={store}
+        market={market}
+        email={account.email}
+        labels={{
+          email: a.email,
+          sendCode: a.sendCode,
+          sending: a.sending,
+          code: a.code,
+          newCode: a.newCode,
+          resetIntro: a.resetIntro,
+          newPassword: a.newPassword,
+          passwordRule: a.passwordRule,
+          saveAndSignIn: a.saveAndSignIn,
+          signingIn: a.signingIn,
+        }}
+      />
+    </section>
   );
 }

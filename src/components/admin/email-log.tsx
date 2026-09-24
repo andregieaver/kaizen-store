@@ -5,7 +5,10 @@ import type { EmailLogRow } from "@/server/email";
 const STATUS: Record<EmailLogRow["status"], string> = {
   queued: "Sending",
   sent: "Sent",
+  delivered: "Delivered",
   failed: "Failed",
+  bounced: "Bounced (address does not take email)",
+  complained: "Marked as spam by the recipient",
   logged: "Not sent (email not set up)",
 };
 
@@ -39,7 +42,7 @@ export function EmailLog({
           </span>
           <span className="text-xs text-muted">
             <time dateTime={email.createdAt}>{when(email.createdAt)}</time> ·{" "}
-            <span className={email.status === "failed" ? "text-red-700 dark:text-red-400" : undefined}>
+            <span className={["failed", "bounced", "complained"].includes(email.status) ? "text-red-700 dark:text-red-400" : undefined}>
               {STATUS[email.status]}
             </span>
           </span>

@@ -15,8 +15,10 @@ type Row = Record<string, unknown>;
  * Customers' own accounts in a store (decision D28). Signing in needs no
  * password: the customer types their email and gets a six-digit code, which
  * also proves the address is theirs; a password can be added after that.
- * Guest checkout stays; orders and subscriptions with the same email appear
- * in the account. Each store has its own accounts and cookie.
+ * Shoppers can also register with a password, on My account or at
+ * checkout (D32). Guest checkout stays; orders and subscriptions with the
+ * same email appear in the account once the email is proven. Each store
+ * has its own accounts and cookie.
  */
 
 export const CODE_MINUTES = 10;
@@ -106,12 +108,13 @@ export async function verifySignInCode(storeId: string, email: string, code: str
   return customerId;
 }
 
-/** The customer with this email, created if new. */
+/** The customer with this email, created if new, with the email now proven theirs. */
 async function upsertCustomer(storeId: string, email: string): Promise<string> {
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.customers (store_id, email)
-    values (${storeId}::uuid, ${email})
-    on conflict (store_id, lower(email)) do update set updated_at = now()
+    insert into commerce.customers (store_id, email, email_verified_at)
+    values (${storeId}::uuid, ${email}, now())
+    on conflict (store_id, lower(email)) do update
+      set email_verified_at = coalesce(commerce.customers.email_verified_at, now()), updated_at = now()
     returning id
   `);
   return String(row.id);
@@ -131,13 +134,14 @@ async function claimOrders(storeId: string, customerId: string, email: string) {
 
 /**
  * After payment: the order (and its subscription) joins the account for its
- * email, if there is one. Accounts are only made by signing in.
+ * email, if there is one whose email is proven (D32).
  */
 export async function linkOrderToCustomer(storeId: string, orderId: string): Promise<void> {
   const [row] = await db().execute<Row>(sql`
     select c.id from commerce.orders o
     join commerce.customers c on c.store_id = o.store_id and lower(c.email) = lower(o.email)
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.email <> ''
+      and c.email_verified_at is not null
   `);
   if (row) await claimOrders(storeId, String(row.id), await emailOf(storeId, String(row.id)));
 }
@@ -147,6 +151,172 @@ async function emailOf(storeId: string, customerId: string): Promise<string> {
     select lower(email) as email from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid
   `);
   return String(row?.email ?? "");
+}
+
+// ---------------------------------------------------------------------------
+// Registering (D32)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the store already knows of an email: an account, or paid orders
+ * without one. Either way the shopper resets the password (with an
+ * emailed code) instead of registering, so the orders are only ever shown
+ * to whoever reads that inbox.
+ */
+export async function emailHistory(
+  storeId: string,
+  email: string,
+  exceptOrderId: string | null = null,
+): Promise<"account" | "purchases" | null> {
+  const address = normalEmail(email);
+  const [row] = await db().execute<Row>(sql`
+    select
+      exists (select 1 from commerce.customers where store_id = ${storeId}::uuid and lower(email) = ${address}) as account,
+      exists (
+        select 1 from commerce.orders o
+        join commerce.payments p on p.order_id = o.id and p.status = 'captured'
+        where o.store_id = ${storeId}::uuid and lower(o.email) = ${address}
+          and o.id is distinct from ${exceptOrderId}::uuid
+      ) as purchases
+  `);
+  return row?.account ? "account" : row?.purchases ? "purchases" : null;
+}
+
+export type Registration = { ok: true; customerId: string } | { ok: false; known: "account" | "purchases" };
+
+/**
+ * Opens an account with a password. The email is not proven yet, so the
+ * account starts empty: earlier orders need a reset, which proves it.
+ */
+export async function registerCustomer(
+  storeId: string,
+  input: { email: string; name: string; password: string },
+): Promise<Registration> {
+  const address = normalEmail(input.email);
+  const known = await emailHistory(storeId, address);
+  if (known) return { ok: false, known };
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.customers (store_id, email, name, password_hash)
+    values (${storeId}::uuid, ${address}, ${input.name.trim().slice(0, 200)}, ${await hashPassword(input.password)})
+    on conflict (store_id, lower(email)) do nothing
+    returning id
+  `);
+  // Registered from another tab a moment ago.
+  if (!row) return { ok: false, known: "account" };
+  return { ok: true, customerId: String(row.id) };
+}
+
+/**
+ * A new password after an emailed code: the code proves the email, so the
+ * account (made now if there was none) gets its orders, and every other
+ * session ends. Null when the code is wrong.
+ */
+export async function resetPassword(storeId: string, email: string, code: string, password: string): Promise<string | null> {
+  const customerId = await verifySignInCode(storeId, email, code);
+  if (!customerId) return null;
+  await setPassword(storeId, customerId, password);
+  await db().execute(sql`
+    delete from commerce.customer_sessions where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid
+  `);
+  return customerId;
+}
+
+/** At checkout: the password for the account to open once the order is paid, or none. */
+export async function saveCheckoutAccount(storeId: string, orderId: string, password: string | null): Promise<void> {
+  if (!password) {
+    await db().execute(sql`
+      delete from commerce.checkout_accounts
+      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and processed_at is null
+    `);
+    return;
+  }
+  await db().execute(sql`
+    insert into commerce.checkout_accounts (store_id, order_id, password_hash)
+    values (${storeId}::uuid, ${orderId}::uuid, ${await hashPassword(password)})
+    on conflict (order_id) do update set password_hash = excluded.password_hash
+    where commerce.checkout_accounts.processed_at is null
+  `);
+}
+
+/**
+ * Once the order is paid: opens the account the shopper asked for at
+ * checkout, with the email they paid with, their name and address, and
+ * this order. An email with an account or earlier purchases gets none
+ * (outcome `known`): the order page asks them to reset the password. Runs
+ * once, however often the payment is seen.
+ */
+export async function openCheckoutAccount(storeId: string, orderId: string): Promise<"created" | "known" | null> {
+  const [request] = await db().execute<Row>(sql`
+    update commerce.checkout_accounts a set processed_at = now()
+    from commerce.orders o
+    where a.store_id = ${storeId}::uuid and a.order_id = ${orderId}::uuid and a.processed_at is null
+      and o.id = a.order_id and o.status <> 'pending_payment' and o.status <> 'cancelled'
+    returning a.password_hash, lower(o.email) as email, o.billing_address, o.shipping_address
+  `);
+  if (!request) return null;
+  const email = String(request.email ?? "");
+  const known = !email || !request.password_hash ? "account" : await emailHistory(storeId, email, orderId);
+  let customerId: string | null = null;
+  if (!known) {
+    const shipping = (request.shipping_address ?? {}) as Partial<Address>;
+    const billing = (request.billing_address ?? {}) as Partial<Address>;
+    const name = shipping.name ?? billing.name ?? "";
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.customers (store_id, email, name, address, password_hash)
+      values (${storeId}::uuid, ${email}, ${name}, ${JSON.stringify(shipping.line1 ? shipping : {})}::jsonb,
+              ${String(request.password_hash)})
+      on conflict (store_id, lower(email)) do nothing
+      returning id
+    `);
+    customerId = row ? String(row.id) : null;
+  }
+  if (customerId) {
+    await db().execute(sql`
+      update commerce.orders set customer_id = ${customerId}::uuid where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+    `);
+    await db().execute(sql`
+      update commerce.subscriptions set customer_id = ${customerId}::uuid
+      where store_id = ${storeId}::uuid and first_order_id = ${orderId}::uuid and customer_id is null
+    `);
+  }
+  const outcome = customerId ? "created" : "known";
+  await db().execute(sql`
+    update commerce.checkout_accounts set password_hash = null, outcome = ${outcome}, customer_id = ${customerId}::uuid
+    where order_id = ${orderId}::uuid
+  `);
+  return outcome;
+}
+
+export type CheckoutAccount = { outcome: "created" | "known" | null; email: string; canSignIn: boolean };
+
+/** What became of the account asked for at checkout, for the order page. */
+export async function getCheckoutAccount(storeId: string, orderId: string): Promise<CheckoutAccount | null> {
+  const [row] = await db().execute<Row>(sql`
+    select a.outcome, o.email,
+      a.outcome = 'created' and a.signed_in_at is null and a.processed_at > now() - interval '1 hour' as can_sign_in
+    from commerce.checkout_accounts a join commerce.orders o on o.id = a.order_id
+    where a.store_id = ${storeId}::uuid and a.order_id = ${orderId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    outcome: (row.outcome as CheckoutAccount["outcome"]) ?? null,
+    email: String(row.email),
+    canSignIn: Boolean(row.can_sign_in),
+  };
+}
+
+/**
+ * The account just opened at checkout, for signing in once from the order
+ * page within the hour; null otherwise.
+ */
+export async function takeCheckoutSignIn(storeId: string, orderId: string): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.checkout_accounts set signed_in_at = now()
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and outcome = 'created'
+      and signed_in_at is null and processed_at > now() - interval '1 hour' and customer_id is not null
+    returning customer_id
+  `);
+  return row ? String(row.customer_id) : null;
 }
 
 // ---------------------------------------------------------------------------

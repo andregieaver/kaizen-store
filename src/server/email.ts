@@ -1,56 +1,83 @@
 import "server-only";
 
-import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import type { RenderedEmail } from "@/lib/email-layout";
+import { emailSettings, type EmailSettings } from "@/lib/email-settings";
 
 type Row = Record<string, unknown>;
 
 /**
- * Sending email (decision D26). Kaizen sends through Amazon SES in the EU,
- * with the store's name as the sender and its contact address for replies.
- * Every email is kept in `email_messages` first; without SES settings it is
- * only kept there (status `logged`), so nothing breaks before setup.
+ * Sending email (decisions D26, D32). Kaizen sends through Resend, from a
+ * domain verified there in the EU region, with the store's name as the
+ * sender and its contact address for replies. Every email is kept in
+ * `email_messages` first; without Resend settings it is only kept there
+ * (status `logged`), so nothing breaks before setup. Resend reports
+ * deliveries, bounces and complaints back to /api/resend/webhook.
  *
- * Settings (Vercel environment): SES_REGION (e.g. eu-north-1),
- * SES_ACCESS_KEY_ID, SES_SECRET_ACCESS_KEY, and EMAIL_FROM, an address on a
- * domain verified in SES (e.g. butikk@kaizenstore.cloud).
+ * Settings (Vercel environment): RESEND_API_KEY (a sending key, `re_…`),
+ * EMAIL_FROM, an address on the verified domain (e.g.
+ * butikk@kaizenstore.cloud), and RESEND_WEBHOOK_SECRET (`whsec_…`) for the
+ * delivery events.
  */
 
-export type EmailSettings = {
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-  from: string;
-};
+export { emailSettings, emailSetup, type EmailSettings } from "@/lib/email-settings";
 
-export function emailSettings(env: Record<string, string | undefined> = process.env): EmailSettings | null {
-  const region = env.SES_REGION?.trim();
-  const accessKeyId = env.SES_ACCESS_KEY_ID?.trim();
-  const secretAccessKey = env.SES_SECRET_ACCESS_KEY?.trim();
-  const from = env.EMAIL_FROM?.trim();
-  if (!region || !accessKeyId || !secretAccessKey || !from || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(from)) {
-    return null;
+const RESEND = "https://api.resend.com/emails";
+const TRIES = 3;
+
+type Delivery = { ok: true; id: string } | { ok: false; error: string };
+
+/**
+ * One email to Resend. The kept email's id is the idempotency key, so a
+ * retry (here, or a later resend of the same row) never sends it twice.
+ * Busy (429) and server errors are tried again, briefly.
+ */
+export async function deliver(
+  settings: EmailSettings,
+  id: string,
+  message: Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo">,
+  fetcher: typeof fetch = fetch,
+): Promise<Delivery> {
+  const body = JSON.stringify({
+    from: `"${senderName(message.fromName)}" <${settings.from}>`,
+    to: [message.to],
+    subject: message.email.subject,
+    html: message.email.html,
+    text: message.email.text,
+    ...(message.replyTo && { reply_to: [message.replyTo] }),
+    tags: [
+      { name: "kind", value: message.kind.replace(/[^A-Za-z0-9_-]/g, "_") },
+      { name: "store", value: message.storeId ?? "kaizen" },
+    ],
+  });
+  let error = "unknown";
+  for (let attempt = 0; attempt < TRIES; attempt++) {
+    let wait = 250 * 2 ** attempt;
+    try {
+      const response = await fetcher(RESEND, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${settings.apiKey}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": `email-${id}`,
+        },
+        body,
+        signal: AbortSignal.timeout(10_000),
+      });
+      const result = (await response.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
+      if (response.ok && result.id) return { ok: true, id: result.id };
+      error = `${response.status} ${result.name ?? ""}: ${result.message ?? response.statusText}`.slice(0, 500);
+      if (response.status !== 429 && response.status < 500) break;
+      const after = Number(response.headers.get("retry-after"));
+      if (after > 0) wait = Math.min(after * 1000, 2000);
+    } catch (thrown) {
+      error = thrown instanceof Error ? thrown.message.slice(0, 500) : "network error";
+    }
+    if (attempt < TRIES - 1) await new Promise((resolve) => setTimeout(resolve, wait));
   }
-  return { region, accessKeyId, secretAccessKey, from };
-}
-
-let client: { key: string; ses: SESv2Client } | null = null;
-
-function ses(settings: EmailSettings): SESv2Client {
-  const key = `${settings.region}:${settings.accessKeyId}`;
-  if (client?.key !== key) {
-    client = {
-      key,
-      ses: new SESv2Client({
-        region: settings.region,
-        credentials: { accessKeyId: settings.accessKeyId, secretAccessKey: settings.secretAccessKey },
-      }),
-    };
-  }
-  return client.ses;
+  return { ok: false, error };
 }
 
 /** A display name safe in an email header: no quotes, line breaks or angle brackets. */
@@ -100,35 +127,18 @@ export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
     await db().execute(sql`update commerce.email_messages set status = 'logged' where id = ${id}::uuid`);
     return "logged";
   }
-  try {
-    const result = await ses(settings).send(
-      new SendEmailCommand({
-        FromEmailAddress: `"${senderName(message.fromName)}" <${settings.from}>`,
-        Destination: { ToAddresses: [message.to] },
-        ...(message.replyTo && { ReplyToAddresses: [message.replyTo] }),
-        Content: {
-          Simple: {
-            Subject: { Data: message.email.subject, Charset: "UTF-8" },
-            Body: {
-              Html: { Data: message.email.html, Charset: "UTF-8" },
-              Text: { Data: message.email.text, Charset: "UTF-8" },
-            },
-          },
-        },
-      }),
-    );
+  const delivery = await deliver(settings, id, message);
+  if (delivery.ok) {
     await db().execute(sql`
-      update commerce.email_messages set status = 'sent', provider_reference = ${result.MessageId ?? null}, sent_at = now()
+      update commerce.email_messages set status = 'sent', provider_reference = ${delivery.id}, sent_at = now(), error = null
       where id = ${id}::uuid
     `);
     return "sent";
-  } catch (error) {
-    await db().execute(sql`
-      update commerce.email_messages set status = 'failed', error = ${error instanceof Error ? error.message.slice(0, 500) : "unknown"}
-      where id = ${id}::uuid
-    `);
-    return "failed";
   }
+  await db().execute(sql`
+    update commerce.email_messages set status = 'failed', error = ${delivery.error} where id = ${id}::uuid
+  `);
+  return "failed";
 }
 
 export type EmailLogRow = {
@@ -136,7 +146,7 @@ export type EmailLogRow = {
   kind: string;
   to: string;
   subject: string;
-  status: "queued" | "sent" | "failed" | "logged";
+  status: "queued" | "sent" | "failed" | "logged" | "delivered" | "bounced" | "complained";
   error: string | null;
   createdAt: string;
   storeName: string | null;

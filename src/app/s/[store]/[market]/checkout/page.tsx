@@ -13,6 +13,7 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
+import { getCustomer } from "@/server/customers";
 import { getOrder, type OrderView } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
 import { platformPublishableKey } from "@/server/stripe";
@@ -54,6 +55,7 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!open || !order) redirect(`${base}/cart`);
   const publishableKey = platformPublishableKey(open.mode);
+  const customer = await getCustomer(store.id);
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const restart = open.expired || open.changed || !publishableKey;
 
@@ -118,6 +120,20 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
                 backToCart: m.backToCart,
                 seeOrder: m.seeOrder,
               }}
+              account={
+                customer
+                  ? null
+                  : {
+                      store: store.slug,
+                      market: market.slug,
+                      labels: {
+                        create: m.account.checkoutAccount,
+                        hint: m.account.checkoutAccountHint,
+                        password: m.account.password,
+                        rule: m.account.passwordRule,
+                      },
+                    }
+              }
               links={{
                 cart: `${base}/cart`,
                 order: `${base}/order/${open.orderId}?session_id=${encodeURIComponent(open.sessionId)}`,

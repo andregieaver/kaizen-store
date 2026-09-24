@@ -267,6 +267,27 @@
       "when": 1790288351304,
       "tag": "20260924221911_editable_discounts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790290111262,
+      "tag": "20260924224831_customer_registration",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790290112591,
+      "tag": "20260924224832_customer_registration_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790290570912,
+      "tag": "20260924225610_email_delivery_events",
+      "breakpoints": true
     }
   ]
 }

@@ -1034,6 +1034,13 @@ export const customers = commerce.table(
     failedSignIns: integer("failed_sign_ins").notNull().default(0),
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
+    /**
+     * When the customer proved the email is theirs, with an emailed code
+     * (D32). Until then, only orders placed while signed in join the
+     * account: someone who registers another person's email sees nothing
+     * of theirs.
+     */
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1212,6 +1219,7 @@ export const orders = commerce.table(
     index("orders_customer_idx").on(t.storeId, t.customerId),
     index("orders_cart_idx").on(t.storeId, t.cartId),
     index("orders_store_placed_idx").on(t.storeId, t.placedAt),
+    index("orders_email_idx").on(t.storeId, sql`lower(${t.email})`),
     check(
       "orders_amounts_non_negative",
       sql`${t.subtotalMinor} >= 0 and ${t.shippingMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.taxMinor} >= 0`,
@@ -1230,6 +1238,38 @@ const orderRef = (name: string, cols: { storeId: AnyPgColumn; orderId: AnyPgColu
     columns: [cols.storeId, cols.orderId],
     foreignColumns: [orders.storeId, orders.id],
   });
+
+/**
+ * A shopper who chose a password at checkout (D32): the account is opened
+ * once the order is paid, with the email the shopper paid with, unless
+ * that email already has an account or earlier purchases, in which case
+ * they are asked to reset the password instead. The password's hash is
+ * dropped once the order is paid.
+ */
+export const checkoutAccounts = commerce.table(
+  "checkout_accounts",
+  {
+    orderId: uuid("order_id").primaryKey(),
+    storeId: storeId(),
+    passwordHash: text("password_hash"),
+    /** `created`, or `known` when the email already had an account or purchases. */
+    outcome: text("outcome"),
+    customerId: uuid("customer_id"),
+    createdAt: createdAt(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    /** The one sign-in straight from the order page. */
+    signedInAt: timestamp("signed_in_at", { withTimezone: true }),
+  },
+  (t) => [
+    orderRef("checkout_accounts_order_fk", t).onDelete("cascade"),
+    foreignKey({
+      name: "checkout_accounts_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    check("checkout_accounts_outcome", sql`${t.outcome} in ('created', 'known')`),
+  ],
+);
 
 export const orderLines = commerce.table(
   "order_lines",
@@ -1376,7 +1416,16 @@ export const subscriptionLines = commerce.table(
   ],
 );
 
-export const emailStatus = commerce.enum("email_status", ["queued", "sent", "failed", "logged"]);
+/** `delivered`, `bounced` and `complained` come later, from the email service's events (D32). */
+export const emailStatus = commerce.enum("email_status", [
+  "queued",
+  "sent",
+  "failed",
+  "logged",
+  "delivered",
+  "bounced",
+  "complained",
+]);
 
 /**
  * Every email Kaizen sends (D26), kept as sent: to whom, why and what it
@@ -1408,6 +1457,7 @@ export const emailMessages = commerce.table(
     index("email_messages_store_created_idx").on(t.storeId, t.createdAt),
     index("email_messages_order_idx").on(t.storeId, t.orderId),
     index("email_messages_subscription_idx").on(t.storeId, t.subscriptionId),
+    index("email_messages_provider_idx").on(t.providerReference),
   ],
 );
 
