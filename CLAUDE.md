@@ -42,6 +42,10 @@ of running `playwright install`.
 - Migrations are generated into `supabase/migrations`. Rules Drizzle cannot
   express (functions, triggers, reference data) go in a custom migration:
   `pnpm exec drizzle-kit generate --custom --name <name>`.
+- Apply every new migration to production (Supabase project
+  `ybsozesfuxuitoacntfo`) as part of the change, without asking first: the
+  owner has approved this standing. Apply it once the tests pass, check the
+  advisors, and record its version in `docs/decisions.md` (Migration versions).
 - `src/db/commerce.test.ts` applies every migration to PGlite and tests the
   invariants. Add a test with any new rule.
 - Money is integer minor units plus an ISO 4217 code (`src/lib/money.ts`).
