@@ -24,6 +24,7 @@ this file wins.
 | D13 | **No extra monitoring or analytics accounts until there is a need.** | 2026-09-23 | Errors: Vercel's built-in logs. Speed: Vercel Speed Insights. Traffic: Vercel Web Analytics (cookieless). Business events: our own tables in Postgres. Experiments: assignment in our own code. Sentry, PostHog and GrowthBook are optional add-ons, not prerequisites. |
 | D14 | **No non-essential cookies at launch.** | 2026-09-23 | Cart and session cookies are strictly necessary and need no consent, so the store needs no cookie banner. Adding marketing pixels or cookie-based analytics later brings back the consent requirement. Default set by Claude. |
 | D15 | **Payment settings belong to the store owner, in the store's admin.** API keys and webhook secrets per payment provider, test or live mode, and an on/off switch per payment method (per market) are edited in store settings, not in Vercel environment variables. | 2026-09-24 | Needs an admin area with sign-in (Phase 1c). Secrets are stored encrypted in the database with a key held only in the server environment, never returned to the browser once saved, and every change is logged. The only payment-related environment variable is that encryption key. |
+| D16 | **Checkout on Stripe's hosted page, with each store's own Stripe account.** Kaizen places the order and holds the stock, then hands over to Stripe Checkout; a webhook (created automatically in the owner's Stripe account when they save their secret key) confirms payment. | 2026-09-24 | Card data never touches Kaizen (PCI DSS SAQ A). Orders are numbered per store from 1001. Stock is held for 35 minutes (the session's 30 plus a margin). VAT shown on orders uses each country's standard rate until Stripe Tax is connected; reduced rates are not applied yet (see R6). |
 
 ### Selling from Norway to Sweden and Denmark
 
@@ -105,6 +106,8 @@ WooCommerce and Shopify need them too.
 | R3 | Terms of sale, withdrawal information and privacy policy in Norwegian, Swedish and Danish | Claude drafts, you review | Built into Phase 1. |
 | R4 | Packaging producer responsibility in each market | You | Check whether your volumes trigger registration in Norway, Sweden and Denmark; record numbers in `commerce.producer_registrations` (per store). |
 | R5 | Product-safety contact details per manufacturer, and an EU responsible person where needed | You | The database will not activate a product without them. |
+| R6 | Check the standard VAT rates in `commerce.countries` and decide on Stripe Tax for reduced rates (food, books, children's clothing) | You (+ accountant) | Orders show VAT at the standard rate of the shopper's country until then. |
+| R7 | Turn on customer receipts in Stripe (Settings → Customer emails → Successful payments) | Each store owner | Kaizen does not send emails yet; Stripe's receipt is the shopper's confirmation. |
 
 ### Not needed now
 

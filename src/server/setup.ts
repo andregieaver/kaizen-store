@@ -32,6 +32,10 @@ export type SetupProgress = {
   details: boolean;
   countries: boolean;
   payments: boolean;
+  /** Stripe switched on, so shoppers can pay. */
+  paymentsOn: boolean;
+  /** Every country the store sells to has a shipping price. */
+  shipping: boolean;
   products: boolean;
   /** Everything the store needs before it can open. */
   readyToOpen: boolean;
@@ -43,7 +47,7 @@ export type SetupProgress = {
  * the checklist stays right whichever page a change was made on.
  */
 export async function getSetupProgress(store: Store): Promise<SetupProgress> {
-  const [[counts], payments] = await Promise.all([
+  const [[counts], payments, [shippingRow]] = await Promise.all([
     db().execute<Row>(sql`
       select
         count(*) filter (where handle like ${DEMO_HANDLE} and status = 'active')::int as demo,
@@ -51,6 +55,11 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
       from commerce.products where store_id = ${store.id}::uuid
     `),
     getPaymentSettings(store),
+    db().execute<Row>(sql`
+      select count(*)::int as priced from commerce.shipping_rates r
+      join commerce.markets m on m.store_id = r.store_id and m.code = r.market_code and m.active
+      where r.store_id = ${store.id}::uuid
+    `),
   ]);
   const d = store.details;
   const details = Boolean(d.legalName && d.contactEmail && d.postalAddress && d.country);
@@ -61,6 +70,8 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
     details,
     countries,
     payments: Boolean(payments.credentials.test.secretKeyHint || payments.credentials.live.secretKeyHint),
+    paymentsOn: payments.stripe.enabled,
+    shipping: Number(shippingRow?.priced ?? 0) >= store.markets.length && store.markets.length > 0,
     products: ownProducts > 0 || demoProducts === 0,
     readyToOpen: details && countries,
     counts: { demoProducts, ownProducts },

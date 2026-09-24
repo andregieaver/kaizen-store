@@ -4,12 +4,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { CheckoutButton } from "@/components/checkout-button";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
+import { shippingCost } from "@/lib/checkout";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { formatMoney } from "@/lib/money";
 import { getCart, type CartLine } from "@/server/cart";
+import { getCheckoutInfo } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 
@@ -71,6 +74,9 @@ async function CartContents({
       line.status !== "unavailable" && line.unitPriceMinor !== null,
   );
   const blocked = cart.lines.some((line) => line.status !== "ok");
+  const checkout = await getCheckoutInfo(store.id, market.code);
+  const subtotal = cartSubtotal(payable);
+  const shipping = checkout.shipping ? shippingCost(subtotal, checkout.shipping) : null;
   const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
 
   return (
@@ -148,23 +154,51 @@ async function CartContents({
         ))}
       </ul>
 
-      <aside aria-label={m.subtotal} className="flex h-fit flex-col gap-4 rounded-lg border border-border p-4">
-        <p className="flex justify-between font-semibold">
-          <span>{m.subtotal}</span>
-          <span>{money(cartSubtotal(payable))}</span>
-        </p>
+      <aside aria-label={m.subtotal} className="flex h-fit flex-col gap-3 rounded-lg border border-border p-4">
+        <dl className="flex flex-col gap-2">
+          <div className="flex justify-between">
+            <dt>{m.subtotal}</dt>
+            <dd>{money(subtotal)}</dd>
+          </div>
+          {shipping !== null && (
+            <div className="flex justify-between">
+              <dt>{m.shipping}</dt>
+              <dd>{shipping === 0 ? m.freeShipping : money(shipping)}</dd>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-border pt-2 font-semibold">
+            <dt>{m.total}</dt>
+            <dd>{money(subtotal + (shipping ?? 0))}</dd>
+          </div>
+        </dl>
         <p className="text-sm text-muted">
-          {m.vatIncluded}. {m.shippingAtCheckout}
+          {m.vatIncluded}
+          {shipping === null && ` · ${m.shippingAtCheckout}`}
         </p>
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          className="min-h-11 rounded-full bg-foreground px-4 font-medium text-background disabled:opacity-40"
-          title={blocked ? m.noLongerAvailable : undefined}
-        >
-          {m.checkoutSoon}
-        </button>
+        {checkout.paymentsOn ? (
+          <CheckoutButton
+            store={store.slug}
+            market={market.slug}
+            disabled={blocked}
+            labels={{
+              checkout: m.checkout,
+              startingPayment: m.startingPayment,
+              problems: {
+                empty: m.problemEmpty,
+                unavailable: m.problemUnavailable,
+                stock: m.problemStock,
+                no_shipping: m.problemShipping,
+                payments_off: m.checkoutUnavailable,
+                payment_error: m.problemPayment,
+                already_paid: m.problemPaid,
+                processing: m.problemProcessing,
+              },
+            }}
+          />
+        ) : (
+          <p className="text-sm">{m.checkoutUnavailable}</p>
+        )}
+        {blocked && <p className="text-sm">{m.noLongerAvailable}</p>}
       </aside>
     </div>
   );

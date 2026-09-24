@@ -1,15 +1,20 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { methodsForMarket } from "@/lib/payment-methods";
+import { siteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { requireMember, type Membership } from "@/server/auth";
+import { storeTag } from "@/server/stores";
+import { parsePrice } from "@/lib/product-input";
 import {
   disableStaff,
+  saveShippingSettings,
   inviteStaff,
   saveStripeCredentials,
   setPaymentMethods,
@@ -32,7 +37,13 @@ async function asOwner(storeSlug: string): Promise<Membership | FormState> {
 function toState(result: SaveResult, success?: string): FormState {
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
-  return { status: "ok", messages: success ? [success] : [] };
+  const message = result.note ?? success;
+  return { status: "ok", messages: message ? [message] : [] };
+}
+
+async function origin(): Promise<string> {
+  const header = (await headers()).get("origin");
+  return header ? new URL(header).origin : siteUrl();
 }
 
 const field = (formData: FormData, name: string) =>
@@ -48,11 +59,16 @@ export async function saveStripeCredentialsAction(
   const parsedMode = mode.safeParse(formData.get("mode"));
   if (!parsedMode.success) return { status: "error", messages: ["Unknown mode."] };
   return toState(
-    await saveStripeCredentials(owner, parsedMode.data, {
-      publishableKey: field(formData, "publishableKey"),
-      secretKey: field(formData, "secretKey"),
-      webhookSecret: field(formData, "webhookSecret"),
-    }),
+    await saveStripeCredentials(
+      owner,
+      parsedMode.data,
+      {
+        publishableKey: field(formData, "publishableKey"),
+        secretKey: field(formData, "secretKey"),
+        webhookSecret: field(formData, "webhookSecret"),
+      },
+      await origin(),
+    ),
     `Saved the ${parsedMode.data} keys.`,
   );
 }
@@ -66,9 +82,10 @@ export async function setStripeProviderAction(
   if (!("store" in owner)) return owner;
   const parsedMode = mode.safeParse(formData.get("activeMode"));
   if (!parsedMode.success) return { status: "error", messages: ["Unknown mode."] };
-  return toState(
-    await setStripeProvider(owner, formData.get("enabled") === "on", parsedMode.data),
-  );
+  const result = await setStripeProvider(owner, formData.get("enabled") === "on", parsedMode.data);
+  // The storefront's "cannot buy yet" notice depends on this switch.
+  if (result.ok) updateTag(storeTag(owner.store.slug));
+  return toState(result);
 }
 
 export async function setPaymentMethodsAction(
@@ -114,6 +131,29 @@ export async function disableStaffAction(
   const id = z.uuid().safeParse(formData.get("accountId"));
   if (!id.success) return { status: "error", messages: ["Unknown staff member."] };
   return toState(await disableStaff(owner, id.data), "Access removed.");
+}
+
+export async function saveShippingAction(
+  storeSlug: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  const rates: { marketCode: string; amountMinor: number; freeOverMinor: number | null }[] = [];
+  const problems: string[] = [];
+  for (const market of member.store.markets) {
+    const amountText = String(formData.get(`amount:${market.code}`) ?? "").trim();
+    const freeText = String(formData.get(`free:${market.code}`) ?? "").trim();
+    if (!amountText) continue;
+    const amount = parsePrice(amountText, market.currency);
+    const free = freeText ? parsePrice(freeText, market.currency) : null;
+    if (amount === null) problems.push(`${market.name}: "${amountText}" is not an amount in ${market.currency}.`);
+    else if (freeText && (free === null || free <= 0)) {
+      problems.push(`${market.name}: "${freeText}" is not an amount in ${market.currency}.`);
+    } else rates.push({ marketCode: market.code, amountMinor: amount, freeOverMinor: free });
+  }
+  if (problems.length > 0) return { status: "error", messages: problems };
+  return toState(await saveShippingSettings(member, rates), "Shipping saved.");
 }
 
 export async function signOut(): Promise<void> {

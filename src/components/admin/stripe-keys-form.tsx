@@ -27,6 +27,13 @@ export function StripeKeysForm({
         From the Stripe Dashboard → Developers → API keys{mode === "test" ? ", with Test mode on" : ""}.
         Leave a field empty to keep what is saved.
       </p>
+      <p className="mb-4 text-sm">
+        {status.webhookSecretHint
+          ? "✓ Connected: Stripe tells Kaizen about payments automatically."
+          : status.secretKeyHint
+            ? "Not connected yet: save the secret key again to connect Stripe."
+            : "Saving the secret key connects Stripe to Kaizen."}
+      </p>
       <ActionForm action={saveStripeCredentialsAction.bind(null, storeSlug)} className="flex flex-col gap-3">
         <input type="hidden" name="mode" value={mode} />
         <fieldset disabled={disabled} className="flex flex-col gap-3">
@@ -60,7 +67,9 @@ export function StripeKeysForm({
               autoComplete="off"
               className={input}
             />
-            <span className="font-normal text-muted">Needed once checkout is live; it can be added later.</span>
+            <span className="font-normal text-muted">
+              Filled in automatically when you save the secret key. Only paste one if that fails.
+            </span>
           </label>
           <div>
             <SubmitButton disabled={disabled}>Save {mode} keys</SubmitButton>

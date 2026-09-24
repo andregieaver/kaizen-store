@@ -151,6 +151,11 @@ export const countries = commerce.table(
     defaultLocale: text("default_locale").notNull(),
     locales: text("locales").array().notNull(),
     inEu: boolean("in_eu").notNull(),
+    /**
+     * The standard VAT rate, e.g. 0.2500. Used to show the VAT included in
+     * an order until Stripe Tax computes it (reduced rates are not applied).
+     */
+    standardVatRate: numeric("standard_vat_rate", { precision: 5, scale: 4 }),
   },
   (t) => [
     check("countries_code_upper", sql`${t.code} = upper(${t.code})`),
@@ -304,6 +309,32 @@ export const markets = commerce.table(
     unique("markets_store_code_currency_key").on(t.storeId, t.code, t.currency),
     index("markets_code_idx").on(t.code),
     check("markets_default_locale_listed", sql`${t.defaultLocale} = any(${t.locales})`),
+  ],
+);
+
+/**
+ * A flat shipping rate per market, optionally free above an order value
+ * (both VAT-inclusive, in the market's currency).
+ */
+export const shippingRates = commerce.table(
+  "shipping_rates",
+  {
+    storeId: storeId(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    freeOverMinor: bigint("free_over_minor", { mode: "number" }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.marketCode] }),
+    foreignKey({
+      name: "shipping_rates_market_fk",
+      columns: [t.storeId, t.marketCode, t.currency],
+      foreignColumns: [markets.storeId, markets.code, markets.currency],
+    }).onDelete("cascade"),
+    check("shipping_rates_amount_non_negative", sql`${t.amountMinor} >= 0`),
+    check("shipping_rates_free_over_positive", sql`${t.freeOverMinor} is null or ${t.freeOverMinor} > 0`),
   ],
 );
 

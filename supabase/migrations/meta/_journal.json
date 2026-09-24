@@ -43,6 +43,20 @@
       "when": 1790232798802,
       "tag": "20260924065318_product_media_bucket",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790234734719,
+      "tag": "20260924072534_checkout",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790234754003,
+      "tag": "20260924072554_checkout_rules",
+      "breakpoints": true
     }
   ]
 }

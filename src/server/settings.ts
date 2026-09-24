@@ -11,6 +11,8 @@ import {
 } from "@/lib/payment-methods";
 import { decryptSecret, encryptSecret, parseKey, secretHint } from "@/lib/secret-box";
 
+import { connectWebhook } from "./stripe";
+
 import { audit, type Membership, type Role } from "./auth";
 import type { Store } from "./stores";
 
@@ -81,13 +83,14 @@ export async function getPaymentSettings(store: Store): Promise<PaymentSettings>
   };
 }
 
-export type SaveResult = { ok: true } | { ok: false; problems: string[] };
+export type SaveResult = { ok: true; note?: string } | { ok: false; problems: string[] };
 
 /** Saves Stripe credentials for one mode. Empty fields keep their saved value. */
 export async function saveStripeCredentials(
   { account, store }: Membership,
   mode: PaymentModeName,
   input: StripeCredentialInput,
+  origin: string,
 ): Promise<SaveResult> {
   const problems = validateStripeCredentials(mode, input);
   const key = encryptionKey();
@@ -95,6 +98,19 @@ export async function saveStripeCredentials(
     problems.push("Payment keys cannot be stored right now. Try again later.");
   }
   if (problems.length > 0) return { ok: false, problems };
+
+  // A new secret key connects Kaizen's webhook in the owner's Stripe
+  // account, which also proves the key works.
+  let note: string | undefined;
+  if (input.secretKey && !input.webhookSecret) {
+    const hook = await connectWebhook(input.secretKey, origin, store.id);
+    if (hook.ok) {
+      input = { ...input, webhookSecret: hook.secret };
+      note = `Saved the ${mode} keys and connected Stripe: payments will be confirmed automatically.`;
+    } else {
+      note = `Saved the ${mode} keys, but Stripe could not be connected (${hook.problem}). Check that the secret key is right and allowed to manage webhooks, or add the webhook signing secret by hand.`;
+    }
+  }
 
   const secret = input.secretKey && key ? encryptSecret(input.secretKey, key) : null;
   const webhook = input.webhookSecret && key ? encryptSecret(input.webhookSecret, key) : null;
@@ -128,7 +144,7 @@ export async function saveStripeCredentials(
       .filter(([, value]) => Boolean(value))
       .map(([field]) => field),
   });
-  return { ok: true };
+  return { ok: true, note };
 }
 
 /** Turns Stripe on or off and chooses test or live mode. */
@@ -341,4 +357,71 @@ export async function disableStaff(
   } catch {
     return { ok: false, problems: ["The store must keep at least one active owner."] };
   }
+}
+
+/** The store's webhook signing secrets (test and live), decrypted. */
+export async function getWebhookSecrets(storeId: string): Promise<string[]> {
+  const key = encryptionKey();
+  if (!key) return [];
+  const rows = await db().execute<Row>(sql`
+    select webhook_secret_ciphertext from commerce.payment_credentials
+    where store_id = ${storeId}::uuid and provider = 'stripe' and webhook_secret_ciphertext is not null
+  `);
+  return rows.map((row) => decryptSecret(String(row.webhook_secret_ciphertext), key));
+}
+
+/** A store's Stripe secret key for a mode (to look up a session from either mode). */
+export async function getStripeSecrets(storeId: string): Promise<string[]> {
+  const key = encryptionKey();
+  if (!key) return [];
+  const rows = await db().execute<Row>(sql`
+    select secret_key_ciphertext from commerce.payment_credentials
+    where store_id = ${storeId}::uuid and provider = 'stripe' and secret_key_ciphertext is not null
+  `);
+  return rows.map((row) => decryptSecret(String(row.secret_key_ciphertext), key));
+}
+
+export type ShippingSetting = {
+  marketCode: string;
+  currency: string;
+  amountMinor: number | null;
+  freeOverMinor: number | null;
+};
+
+/** Shipping per market: null amount where none is set yet. */
+export async function getShippingSettings(store: Store): Promise<ShippingSetting[]> {
+  const rows = await db().execute<Row>(sql`
+    select market_code, amount_minor, free_over_minor from commerce.shipping_rates
+    where store_id = ${store.id}::uuid
+  `);
+  const byMarket = new Map(rows.map((row) => [String(row.market_code), row]));
+  return store.markets.map((market) => {
+    const row = byMarket.get(market.code);
+    return {
+      marketCode: market.code,
+      currency: market.currency,
+      amountMinor: row ? Number(row.amount_minor) : null,
+      freeOverMinor: row?.free_over_minor == null ? null : Number(row.free_over_minor),
+    };
+  });
+}
+
+export async function saveShippingSettings(
+  { account, store }: Membership,
+  rates: { marketCode: string; amountMinor: number; freeOverMinor: number | null }[],
+): Promise<SaveResult> {
+  const markets = new Map(store.markets.map((m) => [m.code, m]));
+  for (const rate of rates) {
+    const market = markets.get(rate.marketCode);
+    if (!market) return { ok: false, problems: [`The store does not sell to ${rate.marketCode}.`] };
+    await db().execute(sql`
+      insert into commerce.shipping_rates (store_id, market_code, currency, amount_minor, free_over_minor)
+      values (${store.id}::uuid, ${market.code}, ${market.currency}, ${rate.amountMinor}, ${rate.freeOverMinor})
+      on conflict (store_id, market_code) do update set
+        currency = excluded.currency, amount_minor = excluded.amount_minor,
+        free_over_minor = excluded.free_over_minor, updated_at = now()
+    `);
+  }
+  await audit(account.id, store.id, "shipping.updated", { rates });
+  return { ok: true };
 }

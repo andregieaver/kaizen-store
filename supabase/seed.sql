@@ -34,6 +34,12 @@ BEGIN
     FROM commerce.countries
    WHERE code IN ('NO', 'SE', 'DK');
 
+  -- Flat shipping per country, free above a basket value.
+  INSERT INTO commerce.shipping_rates (store_id, market_code, currency, amount_minor, free_over_minor) VALUES
+    (v_store, 'NO', 'NOK', 9900, 99900),
+    (v_store, 'SE', 'SEK', 9900, 99900),
+    (v_store, 'DK', 'DKK', 6900, 69900);
+
   -- The manufacturer is Norwegian, so products sold into the EU also need an
   -- EU responsible person under the General Product Safety Regulation.
   INSERT INTO commerce.economic_operators (store_id, name, postal_address, electronic_address, country)

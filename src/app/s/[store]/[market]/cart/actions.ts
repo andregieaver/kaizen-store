@@ -1,10 +1,15 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
-import { changeLine } from "@/server/cart";
+import { t } from "@/lib/i18n";
+import { siteUrl } from "@/lib/site";
+import { changeLine, readCartId } from "@/server/cart";
+import { startCheckout, type CheckoutProblem } from "@/server/checkout";
 import { resolveShop } from "@/server/shop";
 
 const lineInput = z.object({
@@ -57,4 +62,33 @@ export async function updateCartLine(formData: FormData): Promise<void> {
   if (!input) return;
   await changeLine(input.shop, input.variantId, input.quantity, "set");
   refresh();
+}
+
+export type CheckoutState = { problem: CheckoutProblem | null };
+
+/**
+ * Places the order and sends the shopper to Stripe's payment page. On a
+ * problem (stock ran out, payments not set up, ...) the cart page says what.
+ */
+export async function checkoutAction(
+  storeSlug: string,
+  marketSlug: string,
+): Promise<CheckoutState> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return { problem: "empty" };
+  const cartShop = { storeId: shop.store.id, market: shop.market };
+  const cartId = await readCartId(cartShop);
+  if (!cartId) return { problem: "empty" };
+
+  const header = (await headers()).get("origin");
+  const origin = header ? new URL(header).origin : siteUrl();
+  const result = await startCheckout(
+    { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
+    cartId,
+    origin,
+    t(shop.market.lang).shipping,
+  );
+  if (result.ok) redirect(result.url);
+  refresh();
+  return { problem: result.problem };
 }

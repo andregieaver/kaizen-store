@@ -103,6 +103,17 @@ of running `playwright install`.
   Prices only change through `commerce.set_price`; variants taken out are
   switched off, never deleted. Pictures are shrunk to WebP in the browser
   (1600 px plus a 480 px thumbnail) and uploaded with `uploadImageAction`.
+- Checkout (`src/server/checkout.ts`, decision D16): `placeOrder()` turns an
+  open cart into a `pending_payment` order at current prices and holds stock
+  under row locks (`inventory_reservations`); `startCheckout()` then opens a
+  Stripe Checkout session with the store's own key. The webhook
+  (`/api/stripe/webhook/{storeId}`, verified against the store's secrets) and
+  the order page (`getShopperOrder`, which asks Stripe if the webhook is late)
+  both go through `applySession()`. Paying and cancelling are single SQL
+  functions: `commerce.complete_order_payment` and
+  `commerce.cancel_unpaid_order`.
+- Shipping is one flat rate per market (`commerce.shipping_rates`), optionally
+  free above a basket value.
 - `src/server/*.int.test.ts` are integration tests against a real database
   (`pnpm test:int`, after `scripts/db-setup.mjs --seed`); CI runs them. Pass
   inputs through the same validation the app uses.

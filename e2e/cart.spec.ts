@@ -21,6 +21,12 @@ test("add to cart, change quantity within stock, and remove", async ({ page }) =
   await expect(page.getByLabel("Antall")).toHaveValue("3");
   await expect(page.getByRole("link", { name: "Handlekurv (3)" })).toBeVisible();
   await expect(page.getByRole("complementary")).toContainText("747,00");
+  // Shipping and total are shown before checkout; the demo store takes no payments.
+  const summary = page.getByRole("complementary");
+  await expect(summary).toContainText("Frakt");
+  await expect(summary).toContainText("99,00");
+  await expect(summary).toContainText("846,00");
+  await expect(summary).toContainText("Denne butikken tar ikke imot betaling ennå.");
 
   await page.getByRole("button", { name: /Fjern/ }).click();
   await expect(page.getByText("Handlekurven er tom.")).toBeVisible();

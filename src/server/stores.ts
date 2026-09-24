@@ -16,6 +16,8 @@ export type Store = {
   status: StoreStatus;
   isTemplate: boolean;
   setupCompletedAt: string | null;
+  /** Stripe is switched on with keys for its mode, so shoppers can pay. */
+  paymentsOn: boolean;
   /** The business behind the store, shown to shoppers. */
   details: StoreDetails;
   /** Active markets, the store's own country first. */
@@ -32,7 +34,7 @@ export type StoreDetails = {
 
 export type Country = { code: string; name: string; currency: string; inEu: boolean };
 
-/** Revalidate after changing a store's name, status or markets. */
+/** Revalidate after changing a store's name, status, markets or payment switch. */
 export const storeTag = (slug: string) => `store:${slug}`;
 export const TEMPLATE_TAG = "template-store";
 
@@ -55,6 +57,12 @@ async function loadStore(slug: string): Promise<Store | null> {
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country,
+      exists (
+        select 1 from commerce.payment_providers p
+        join commerce.payment_credentials c
+          on c.store_id = p.store_id and c.provider = p.provider and c.mode = p.active_mode
+        where p.store_id = s.id and p.enabled and c.secret_key_ciphertext is not null
+      ) as payments_on,
       coalesce(
         json_agg(json_build_object(
           'code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale
@@ -78,6 +86,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     setupCompletedAt: row.setup_completed_at
       ? new Date(String(row.setup_completed_at)).toISOString()
       : null,
+    paymentsOn: Boolean(row.payments_on),
     details: {
       legalName: text(row.legal_name),
       organisationNumber: text(row.organisation_number),

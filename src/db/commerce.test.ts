@@ -149,7 +149,12 @@ describe("stores", () => {
       "select series from commerce.document_series where store_id = $1 order by series",
       [store],
     );
-    expect(series.map((s) => s.series)).toEqual(["credit_note", "invoice"]);
+    expect(series.map((s) => s.series)).toEqual(["credit_note", "invoice", "order"]);
+    const orders = await one<{ next_number: number }>(
+      "select next_number::int from commerce.document_series where store_id = $1 and series = 'order'",
+      [store],
+    );
+    expect(orders.next_number).toBe(1001);
     const stripe = await one<{ enabled: boolean; active_mode: string }>(
       "select enabled, active_mode from commerce.payment_providers where store_id = $1 and provider = 'stripe'",
       [store],
@@ -692,6 +697,10 @@ describe("new stores from the template", () => {
       "insert into commerce.payment_methods (store_id, market_code, method, enabled) values ($1, 'SE', 'swish', true)",
       [template],
     );
+    await db.query(
+      "insert into commerce.shipping_rates (store_id, market_code, currency, amount_minor, free_over_minor) values ($1, 'NO', 'NOK', 9900, 99900)",
+      [template],
+    );
 
     // An archived product stays behind.
     const archived = await createProduct({ storeId: template });
@@ -756,7 +765,12 @@ describe("new stores from the template", () => {
          (select count(*)::int from commerce.product_schemes where store_id = $1) as schemes`,
       [store],
     );
-    expect(extras).toEqual({ series: 2, stripe: true, swish: true, schemes: 1 });
+    expect(extras).toEqual({ series: 3, stripe: true, swish: true, schemes: 1 });
+    const shipping = await one<{ amount_minor: number; free_over_minor: number }>(
+      "select amount_minor::int, free_over_minor::int from commerce.shipping_rates where store_id = $1",
+      [store],
+    );
+    expect(shipping).toEqual({ amount_minor: 9900, free_over_minor: 99900 });
   });
 
   it("gives copied rows well-formed version 4 UUIDs", async () => {
@@ -809,6 +823,101 @@ describe("new stores from the template", () => {
       [requestId],
     );
     expect(after).toEqual({ status: "pending", accounts: 0 });
+  });
+});
+
+describe("paying for an order", () => {
+  /** An order for 2 of a variant with 3 on hand, 2 of them held for the order. */
+  async function orderWithHold(onHand = 3) {
+    const { variantId } = await createProduct();
+    const { id: locationId } = await one<{ id: string }>(
+      "insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Lager', 'NO') returning id",
+      [store],
+    );
+    await db.query(
+      "insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, $4)",
+      [store, variantId, locationId, onHand],
+    );
+    const { id: cartId } = await one<{ id: string }>(
+      `insert into commerce.carts (store_id, market_code, currency, locale, expires_at)
+       values ($1, 'DE', 'EUR', 'de-DE', now() + interval '1 day') returning id`,
+      [store],
+    );
+    counter += 1;
+    const { id: orderId } = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, cart_id, email,
+         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address)
+       values ($1, $2, 'DE', 'EUR', 'de-DE', $3, '', 2000, 0, 0, 319, 2000, '{}', '{}') returning id`,
+      [store, `P-${counter}`, cartId],
+    );
+    await db.query(
+      `insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor,
+         total_minor, tax_minor, tax_rate, tax_code)
+       values ($1, $2, $3, 'SKU', 'Thing', 2, 1000, 2000, 319, 0.19, 'txcd_99999999')`,
+      [store, orderId, variantId],
+    );
+    await db.query(
+      `insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, order_id, expires_at)
+       values ($1, $2, $3, 2, $4, now() + interval '30 minutes')`,
+      [store, variantId, locationId, orderId],
+    );
+    return { variantId, locationId, orderId, cartId };
+  }
+
+  const stock = async (variantId: string) =>
+    (await one<{ on_hand: number; available: number }>(
+      "select on_hand, available::int from commerce.available_stock where variant_id = $1",
+      [variantId],
+    ));
+
+  it("draws paid items from stock, releases the hold and closes the cart, once", async () => {
+    const { variantId, orderId, cartId } = await orderWithHold();
+    expect(await stock(variantId)).toEqual({ on_hand: 3, available: 1 });
+
+    const first = await one<{ done: boolean }>("select commerce.complete_order_payment($1, 'cs_1') as done", [orderId]);
+    expect(first.done).toBe(true);
+    expect(await stock(variantId)).toEqual({ on_hand: 1, available: 1 });
+
+    const again = await one<{ done: boolean }>("select commerce.complete_order_payment($1, 'cs_1') as done", [orderId]);
+    expect(again.done).toBe(false);
+    expect(await stock(variantId)).toEqual({ on_hand: 1, available: 1 });
+
+    const state = await one<{ order: string; cart: string; events: string[] }>(
+      `select (select status::text from commerce.orders where id = $1) as order,
+              (select status::text from commerce.carts where id = $2) as cart,
+              (select array_agg(type order by id) from commerce.order_events where order_id = $1) as events`,
+      [orderId, cartId],
+    );
+    expect(state).toEqual({ order: "paid", cart: "converted", events: ["order.paid"] });
+  });
+
+  it("records a shortfall when paid items are no longer in stock", async () => {
+    const { variantId, orderId } = await orderWithHold(1);
+    await db.query("select commerce.complete_order_payment($1, 'cs_2')", [orderId]);
+    expect((await stock(variantId)).on_hand).toBe(0);
+    const short = await one<{ data: { missing: number } }>(
+      "select data from commerce.order_events where order_id = $1 and type = 'stock.short'",
+      [orderId],
+    );
+    expect(short.data.missing).toBe(1);
+  });
+
+  it("gives held stock back when a checkout is abandoned, but never cancels a paid order", async () => {
+    const { variantId, orderId } = await orderWithHold();
+    const cancelled = await one<{ done: boolean }>(
+      "select commerce.cancel_unpaid_order($1, 'checkout expired') as done",
+      [orderId],
+    );
+    expect(cancelled.done).toBe(true);
+    expect(await stock(variantId)).toEqual({ on_hand: 3, available: 3 });
+
+    const paid = await orderWithHold();
+    await db.query("select commerce.complete_order_payment($1, 'cs_3')", [paid.orderId]);
+    const refused = await one<{ done: boolean }>(
+      "select commerce.cancel_unpaid_order($1, 'too late') as done",
+      [paid.orderId],
+    );
+    expect(refused.done).toBe(false);
   });
 });
 

@@ -16,7 +16,9 @@ export default async function AdminOverview({ params }: Props) {
   const steps = [
     { done: progress.details, label: "Business details", step: "details" },
     { done: progress.countries, label: "Countries you sell to", step: "countries" },
+    { done: progress.shipping, label: "Shipping prices for every country", href: "settings/shipping" },
     { done: progress.payments, label: "Stripe keys saved", step: "payments" },
+    { done: progress.paymentsOn, label: "Stripe switched on, so shoppers can pay", href: "settings/payments" },
     {
       done: progress.products,
       label: progress.counts.demoProducts > 0 ? "Replace the demo products" : "Products",
@@ -45,14 +47,17 @@ export default async function AdminOverview({ params }: Props) {
           </h2>
           <ol className="flex flex-col gap-2 text-sm">
             {steps.map((step) => (
-              <li key={step.step} className="flex items-baseline gap-2">
+              <li key={step.label} className="flex items-baseline gap-2">
                 <span aria-hidden="true">{step.done ? "✓" : "○"}</span>
                 <span className="flex-1">
                   <span className="sr-only">{step.done ? "Done: " : "To do: "}</span>
                   {step.label}
                 </span>
                 {!step.done && role === "owner" && (
-                  <Link href={`/admin/${store.slug}/setup/${step.step}`} className="underline">
+                  <Link
+                    href={`/admin/${store.slug}/${"href" in step ? step.href : `setup/${step.step}`}`}
+                    className="underline"
+                  >
                     Do it now
                   </Link>
                 )}

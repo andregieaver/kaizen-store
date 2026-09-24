@@ -37,7 +37,8 @@ export type CartLine = {
 
 export type Cart = { lines: CartLine[]; currency: string };
 
-async function readCartId(shop: Shop): Promise<string | null> {
+/** The shopper's cart id for this store and market, from the cookie. */
+export async function readCartId(shop: Shop): Promise<string | null> {
   const value = (await cookies()).get(cookieName(shop))?.value;
   return value && UUID.test(value) ? value : null;
 }

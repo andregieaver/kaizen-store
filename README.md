@@ -81,6 +81,13 @@ Preview, marked Sensitive) and redeploy. It bypasses all database rules, so it
 must never reach the browser. Without it, the product editor asks for picture
 addresses instead.
 
+To take payments, a store owner saves their Stripe keys under **Payments**.
+Saving the secret key also creates Kaizen's webhook in their Stripe account
+(pointing at `/api/stripe/webhook/{store id}`), so payments are confirmed
+without copying a signing secret. Then they set shipping prices under
+**Shipping** and switch Stripe on. Shoppers get Stripe's receipt email once the
+owner turns it on in Stripe (Settings → Customer emails).
+
 Store owners ask for a store at `/sign-up`; platform admins approve requests at
 `/admin/platform`, which creates the store as a copy of the demo template.
 

@@ -54,9 +54,12 @@ export default async function MarketLayout({ children, params }: Props) {
         >
           {m.skipToContent}
         </a>
-        <p className="bg-foreground px-4 py-2 text-center text-sm text-background">
-          {store.setupCompletedAt || store.isTemplate ? m.demoNotice : m.previewNotice}
-        </p>
+        {/* Shoppers are told when a store is a preview or cannot take payment yet. */}
+        {(!(store.setupCompletedAt || store.isTemplate) || !store.paymentsOn) && (
+          <p className="bg-foreground px-4 py-2 text-center text-sm text-background">
+            {store.setupCompletedAt || store.isTemplate ? m.demoNotice : m.previewNotice}
+          </p>
+        )}
         <header className="border-b border-border">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
             <Link href={home} className="text-lg font-semibold">
