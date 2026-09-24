@@ -12,7 +12,6 @@ import {
   getSetupProgress,
   isSetupStep,
   listStoreProducts,
-  SETUP_STEPS,
   type SetupProgress,
 } from "@/server/setup";
 import { listCountries } from "@/server/stores";
@@ -26,11 +25,7 @@ import {
 
 type Props = PageProps<"/admin/[store]/setup/[step]">;
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { step } = await params;
-  const found = SETUP_STEPS.find((s) => s.id === step);
-  return { title: found ? `Setup: ${found.title}` : "Setup" };
-}
+export const metadata: Metadata = { title: "Set up your store" };
 
 const field = "flex flex-col gap-1 text-sm font-medium";
 const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
