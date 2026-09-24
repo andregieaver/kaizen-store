@@ -42,6 +42,9 @@ export type ProductDetail = {
   handle: string;
   title: string;
   description: string;
+  /** The owner's title and description for search results; empty uses title and description. */
+  seoTitle: string;
+  seoDescription: string;
   safetyInformation: string;
   withdrawalExclusion: string;
   images: { url: string; alt: string }[];
@@ -131,13 +134,16 @@ export async function getProduct(
       coalesce(tl.title, tf.title) as title,
       coalesce(tl.description, tf.description, '') as description,
       coalesce(tl.safety_information, tf.safety_information, '') as safety_information,
+      -- Search text in the page's own language, or with the fallback text.
+      coalesce(case when tl.product_id is null then tf.seo_title else tl.seo_title end, '') as seo_title,
+      coalesce(case when tl.product_id is null then tf.seo_description else tl.seo_description end, '') as seo_description,
       mf.name as mf_name, mf.postal_address as mf_postal, mf.electronic_address as mf_electronic,
       rp.name as rp_name, rp.postal_address as rp_postal, rp.electronic_address as rp_electronic
     from commerce.products p
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
-      select title, description, safety_information
+      select title, description, safety_information, seo_title, seo_description
       from commerce.product_translations
       where product_id = p.id order by locale limit 1
     ) tf on true
@@ -181,6 +187,8 @@ export async function getProduct(
     handle: str(product.handle),
     title: str(product.title),
     description: str(product.description),
+    seoTitle: str(product.seo_title),
+    seoDescription: str(product.seo_description),
     safetyInformation: str(product.safety_information),
     withdrawalExclusion: str(product.withdrawal_exclusion),
     images: media.map((m) => ({ url: str(m.url), alt: str(m.alt) })),

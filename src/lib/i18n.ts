@@ -68,6 +68,7 @@ const messages = {
     noProducts: "Ingen produkter ennå.",
     demoNotice: "Dette er en demobutikk. Ingenting kan kjøpes ennå.",
     testNotice: "Testmodus: ingen ekte betalinger. Betal med testkortet 4242 4242 4242 4242.",
+    storeSummary: (name: string, country: string) => `${name}: nettbutikk med levering i ${country}. Priser inkludert mva.`,
     options: { colour: "Farge", ruling: "Linjer", white: "Hvit", black: "Svart", lined: "Linjert", dotted: "Prikket" },
   },
   sv: {
@@ -133,6 +134,7 @@ const messages = {
     noProducts: "Inga produkter ännu.",
     demoNotice: "Det här är en demobutik. Inget kan köpas ännu.",
     testNotice: "Testläge: inga riktiga betalningar. Betala med testkortet 4242 4242 4242 4242.",
+    storeSummary: (name: string, country: string) => `${name}: webbutik med leverans i ${country}. Priser inklusive moms.`,
     options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad" },
   },
   da: {
@@ -198,6 +200,7 @@ const messages = {
     noProducts: "Ingen produkter endnu.",
     demoNotice: "Dette er en demobutik. Intet kan købes endnu.",
     testNotice: "Testtilstand: ingen rigtige betalinger. Betal med testkortet 4242 4242 4242 4242.",
+    storeSummary: (name: string, country: string) => `${name}: webshop med levering i ${country}. Priser inkl. moms.`,
     options: { colour: "Farve", ruling: "Linjer", white: "Hvid", black: "Sort", lined: "Linjeret", dotted: "Prikket" },
   },
   en: {
@@ -263,6 +266,7 @@ const messages = {
     noProducts: "No products yet.",
     demoNotice: "This is a demo store. Nothing can be bought yet.",
     testNotice: "Test mode: no real payments. Pay with the test card 4242 4242 4242 4242.",
+    storeSummary: (name: string, country: string) => `${name}: online store delivering in ${country}. Prices include VAT.`,
     options: { colour: "Colour", ruling: "Ruling", white: "White", black: "Black", lined: "Lined", dotted: "Dotted" },
   },
 };

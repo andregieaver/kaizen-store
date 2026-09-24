@@ -6,8 +6,9 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requestAccess } from "./actions";
 
 export const metadata: Metadata = {
-  title: "Start your store · Kaizen",
+  title: "Start your store",
   description: "Kaizen is in a private beta. Ask for a store and we will set one up for you.",
+  alternates: { canonical: "/sign-up" },
 };
 
 const field = "flex flex-col gap-1 text-sm font-medium";

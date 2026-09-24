@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { PLAN_INTERVALS, percentToBps } from "@/lib/plans";
 import { parsePrice } from "@/lib/product-input";
+import { seoFromForm } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 import { requireAccount, type Account } from "@/server/auth";
 import {
@@ -20,7 +21,9 @@ import {
   type PlanInput,
 } from "@/server/billing";
 import { connectPlatformWebhooks, setSaleFeeBps } from "@/server/connect";
+import { uploadProductImage, type UploadResult } from "@/server/media";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
+import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import { platformModes } from "@/server/stripe";
 
 async function requirePlatformAdmin(): Promise<Account> {
@@ -205,4 +208,27 @@ export async function setStoreFeeAction(storeId: string, _state: FormState, form
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return { status: "ok", messages: [bps === null ? "The store pays its plan's fee." : "Fee saved."] };
+}
+
+// ---------------------------------------------------------------------------
+// Kaizen's own search and sharing (decision D21)
+// ---------------------------------------------------------------------------
+
+export async function savePlatformSeoAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const result = await savePlatformSeo(admin, seoFromForm(formData, ["en"]));
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(PLATFORM_SEO_TAG);
+  refresh();
+  return { status: "ok", messages: ["Search and sharing saved."] };
+}
+
+export async function uploadPlatformImageAction(formData: FormData): Promise<UploadResult> {
+  await requirePlatformAdmin();
+  const image = formData.get("image");
+  const thumbnail = formData.get("thumbnail");
+  if (!(image instanceof File) || !(thumbnail instanceof File)) {
+    return { ok: false, problem: "Choose a picture to upload." };
+  }
+  return uploadProductImage("platform", image, thumbnail);
 }

@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
+import { STORES_TAG } from "@/server/seo";
 import {
   archiveDemoProducts,
   completeSetup,
@@ -28,6 +29,8 @@ async function asOwner(storeSlug: string): Promise<Membership | FormState> {
 function refreshStore(member: Membership) {
   updateTag(storeTag(member.store.slug));
   updateTag(catalogTag(member.store.id));
+  // Opening the store, its name and markets show in the sitemap, robots.txt and llms.txt.
+  updateTag(STORES_TAG);
 }
 
 function nextStep(storeSlug: string, step: SetupStepId): never {

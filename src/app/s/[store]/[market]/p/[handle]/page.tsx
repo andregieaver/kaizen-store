@@ -5,13 +5,16 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AddToCart } from "@/components/add-to-cart";
+import { JsonLdScript } from "@/components/json-ld";
 import { Price } from "@/components/price";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { stockLevel } from "@/lib/pricing";
 import { marketPath } from "@/lib/paths";
+import { schemaPrice, summarize } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
+import { productJsonLd } from "@/lib/structured-data";
 import {
   getAvailability,
   getProduct,
@@ -19,6 +22,13 @@ import {
   type EconomicOperator,
   type ProductDetail,
 } from "@/server/catalog";
+import {
+  getShippingFacts,
+  listIndexedProducts,
+  storeFacts,
+  storeShareImage,
+  storeShareTags,
+} from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 
@@ -57,10 +67,38 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const loaded = await load(params);
   if (!loaded) return {};
   const { store, market, product } = loaded;
+  const path = (m: Market) => marketPath(store.slug, m.slug, `/p/${product.handle}`);
+  const title = product.seoTitle || product.title;
+  const description =
+    product.seoDescription ||
+    summarize(product.description) ||
+    t(market.lang).storeSummary(store.name, market.name);
+  // The product's page in the other markets it is sold in.
+  const indexed = (await listIndexedProducts(store.id)).find((p) => p.handle === product.handle);
+  const markets = store.markets.filter((m) => indexed?.markets.includes(m.code) ?? m.code === market.code);
+  const cheapest = product.variants[0].price;
+  const digits = minorUnitDigits(cheapest.currency);
   return {
-    title: product.title,
-    description: product.description,
-    alternates: { canonical: marketPath(store.slug, market.slug, `/p/${product.handle}`) },
+    // The owner's own search title is used as written; otherwise "Product · Store".
+    title: product.seoTitle ? { absolute: product.seoTitle } : product.title,
+    description,
+    alternates: {
+      canonical: path(market),
+      languages: Object.fromEntries(markets.map((m) => [m.locale, path(m)])),
+    },
+    ...storeShareTags(store, market, {
+      title,
+      description,
+      url: path(market),
+      images:
+        product.images.length > 0
+          ? product.images.slice(0, 4).map((image) => ({ url: image.url, alt: image.alt || product.title }))
+          : [storeShareImage(store, market.locale)],
+    }),
+    other: {
+      "product:price:amount": schemaPrice(cheapest.amountMinor, digits),
+      "product:price:currency": cheapest.currency,
+    },
   };
 }
 
@@ -213,55 +251,50 @@ async function VariantsWithStock({
           );
         })}
       </ul>
-      <ProductJsonLd
-        url={`${siteUrl()}${marketPath(store.slug, market.slug, `/p/${product.handle}`)}`}
-        product={product}
-        availability={availability}
-      />
+      <ProductJsonLd store={store} market={market} product={product} availability={availability} />
     </>
   );
 }
 
-function ProductJsonLd({
-  url,
+
+/** Stock is part of the offer, so this renders with the stock, per request. */
+async function ProductJsonLd({
+  store,
+  market,
   product,
   availability,
 }: {
-  url: string;
+  store: Store;
+  market: Market;
   product: ProductDetail;
   availability: Map<string, number>;
 }) {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.title,
-    description: product.description,
-    image: product.images.map((image) => `${siteUrl()}${image.url}`),
-    ...(product.manufacturer && {
-      manufacturer: { "@type": "Organization", name: product.manufacturer.name },
-    }),
-    offers: product.variants.map((variant) => ({
-      "@type": "Offer",
-      url,
-      sku: variant.sku,
-      ...(variant.gtin && { gtin: variant.gtin }),
-      price: (
-        variant.price.amountMinor /
-        10 ** minorUnitDigits(variant.price.currency)
-      ).toFixed(minorUnitDigits(variant.price.currency)),
-      priceCurrency: variant.price.currency,
-      availability:
-        (availability.get(variant.id) ?? 0) > 0
-          ? "https://schema.org/InStock"
-          : "https://schema.org/OutOfStock",
-    })),
-  };
+  const origin = siteUrl();
+  const m = t(market.lang);
+  const labels = m.options as Record<string, string>;
+  const shipping = await getShippingFacts(store.id, market.code);
   return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{
-        __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-      }}
+    <JsonLdScript
+      data={productJsonLd({
+        product: {
+          ...product,
+          description: product.seoDescription || product.description,
+          // Option names and values as shoppers read them ("Farge: Hvit").
+          variants: product.variants.map((variant) => ({
+            ...variant,
+            options: Object.fromEntries(
+              Object.entries(variant.options).map(([name, value]) => [labels[name] ?? name, labels[value] ?? value]),
+            ),
+          })),
+        },
+        url: `${origin}${marketPath(store.slug, market.slug, `/p/${product.handle}`)}`,
+        origin,
+        store: storeFacts(store),
+        market,
+        marketHome: `${origin}${marketPath(store.slug, market.slug)}`,
+        inStock: (variantId) => (availability.get(variantId) ?? 0) > 0,
+        shipping,
+      })}
     />
   );
 }

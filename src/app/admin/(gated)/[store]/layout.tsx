@@ -23,6 +23,7 @@ export default async function StoreAdminLayout({
     { href: `${base}/products`, label: "Products" },
     { href: `${base}/settings/shipping`, label: "Shipping" },
     { href: `${base}/settings/payments`, label: "Payments" },
+    { href: `${base}/settings/seo`, label: "Search" },
     { href: `${base}/staff`, label: "Staff" },
     { href: `${base}/billing`, label: "Plan" },
   ];
@@ -31,9 +32,9 @@ export default async function StoreAdminLayout({
     <>
       <div className="border-b border-border bg-background">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2">
-          <nav aria-label={`${store.name} admin`} className="flex items-center gap-4">
+          <nav aria-label={`${store.name} admin`} className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span className="font-medium">{store.name}</span>
-            <ul className="flex gap-1 text-sm">
+            <ul className="flex flex-wrap gap-1 text-sm">
               {nav.map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className="rounded px-2 py-1 hover:bg-surface">

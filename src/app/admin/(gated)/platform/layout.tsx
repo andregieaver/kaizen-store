@@ -12,6 +12,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
     { href: "/admin/platform/stores", label: "Stores" },
     { href: "/admin/platform/plans", label: "Plans" },
     { href: "/admin/platform/stripe", label: "Stripe" },
+    { href: "/admin/platform/seo", label: "Search" },
   ];
   return (
     <>

@@ -229,6 +229,12 @@ export const stores = commerce.table(
     contactEmail: text("contact_email"),
     postalAddress: text("postal_address"),
     country: char("country", { length: 2 }).references(() => countries.code),
+    /**
+     * Search and sharing: home page title and description per locale, share
+     * image, social profiles, search engine and AI crawler rules, the
+     * store's own llms.txt text. Shape and defaults: `StoreSeo` in lib/seo.
+     */
+    seo: jsonb("seo").notNull().default({}),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -293,6 +299,8 @@ export const platformSettings = commerce.table(
     id: boolean("id").primaryKey().default(true),
     /** Kaizen's fee on each storefront sale, in basis points (100 = 1 %). */
     saleFeeBps: integer("sale_fee_bps").notNull().default(0),
+    /** Search and sharing for Kaizen's own pages (`StoreSeo` in lib/seo, locale `en`). */
+    seo: jsonb("seo").notNull().default({}),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -577,6 +585,9 @@ export const productTranslations = commerce.table(
     description: text("description").notNull().default(""),
     /** Warnings and safety information, shown on the listing itself. */
     safetyInformation: text("safety_information").notNull().default(""),
+    /** Title and description for search results and shares; empty uses the listing's own. */
+    seoTitle: text("seo_title").notNull().default(""),
+    seoDescription: text("seo_description").notNull().default(""),
   },
   (t) => [
     primaryKey({ columns: [t.productId, t.locale] }),

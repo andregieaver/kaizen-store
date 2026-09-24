@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { minorUnitDigits } from "./money";
+import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 
 /**
  * The product editor's data, shared by the browser (which builds it) and the
@@ -77,6 +78,9 @@ export const productInput = z.object({
         title: text(200),
         description: text(10_000),
         safetyInformation: text(5_000),
+        /** For search results and shares; empty uses the title and description. */
+        seoTitle: text(TITLE_MAX).default(""),
+        seoDescription: text(DESCRIPTION_MAX).default(""),
       }),
     )
     .min(1),

@@ -2,6 +2,7 @@ import "server-only";
 
 import { isoCountries } from "@/lib/iso-countries";
 import { storeBase } from "@/lib/paths";
+import { siteUrl } from "@/lib/site";
 import type { Store } from "@/server/stores";
 import type { EditorContext } from "@/server/products";
 import { uploadsEnabled } from "@/server/media";
@@ -16,5 +17,6 @@ export function editorProps(store: Store, context: EditorContext) {
     countries: isoCountries(),
     uploads: uploadsEnabled(),
     storefrontPath: store.markets[0] ? `${storeBase(store.slug)}/${store.markets[0].slug}` : null,
+    siteOrigin: siteUrl(),
   };
 }

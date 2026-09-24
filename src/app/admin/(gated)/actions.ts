@@ -8,11 +8,14 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { seoFromForm } from "@/lib/seo";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
 import { requireMember, type Membership } from "@/server/auth";
 import { cancelPlan, choosePlan, portalUrl } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
+import { catalogTag } from "@/server/catalog";
+import { saveStoreSeo, STORES_TAG } from "@/server/seo";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
 import {
@@ -155,7 +158,26 @@ export async function saveShippingAction(
     } else rates.push({ marketCode: market.code, amountMinor: amount, freeOverMinor: free });
   }
   if (problems.length > 0) return { status: "error", messages: problems };
-  return toState(await saveShippingSettings(member, rates), "Shipping saved.");
+  const result = await saveShippingSettings(member, rates);
+  // Product pages' structured data and llms.txt show the shipping price.
+  if (result.ok) updateTag(catalogTag(member.store.id));
+  return toState(result, "Shipping saved.");
+}
+
+/** The store's search and sharing settings (D21). */
+export async function saveStoreSeoAction(
+  storeSlug: string,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  const locales = [...new Set(member.store.markets.map((market) => market.locale))];
+  const result = await saveStoreSeo(member, seoFromForm(formData, locales));
+  if (result.ok) {
+    updateTag(storeTag(member.store.slug));
+    updateTag(STORES_TAG);
+  }
+  return toState(result);
 }
 
 export async function signOut(): Promise<void> {

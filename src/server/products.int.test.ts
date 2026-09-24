@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { toMarket } from "@/lib/markets";
 import { productInput, type ProductInput } from "@/lib/product-input";
+import { parseStoreSeo } from "@/lib/seo";
 
 import {
   emptyProduct,
@@ -45,6 +46,7 @@ async function createStore(slug: string): Promise<Store> {
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
     ],
+    seo: parseStoreSeo({}),
   };
 }
 
@@ -67,7 +69,14 @@ function mug(overrides: Partial<ProductInput> = {}): ProductInput {
     ...base,
     handle: "kopp",
     translations: [
-      { locale: "nb-NO", title: "Kopp", description: "En kopp.", safetyInformation: "Varm." },
+      {
+        locale: "nb-NO",
+        title: "Kopp",
+        description: "En kopp.",
+        safetyInformation: "Varm.",
+        seoTitle: "Håndlaget kopp i steingods",
+        seoDescription: "",
+      },
       { locale: "sv-SE", title: "", description: "", safetyInformation: "" },
     ],
     media: [{ url: "https://example.com/kopp.webp", thumbnailUrl: "https://example.com/kopp-480.webp", alt: "" }],
@@ -107,8 +116,15 @@ describe("saving a product", () => {
       options: [{ name: "Farge", values: ["Hvit", "Svart"] }],
     });
     expect(saved?.translations).toEqual([
-      { locale: "nb-NO", title: "Kopp", description: "En kopp.", safetyInformation: "Varm." },
-      { locale: "sv-SE", title: "", description: "", safetyInformation: "" },
+      {
+        locale: "nb-NO",
+        title: "Kopp",
+        description: "En kopp.",
+        safetyInformation: "Varm.",
+        seoTitle: "Håndlaget kopp i steingods",
+        seoDescription: "",
+      },
+      { locale: "sv-SE", title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "" },
     ]);
     expect(saved?.variants.map((v) => [v.sku, v.prices, v.stock])).toEqual([
       [`K-HVIT-${run}`, { NO: "249,00" }, 5],

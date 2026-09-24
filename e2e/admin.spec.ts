@@ -47,7 +47,15 @@ test("a forgotten password gets the same reply for any email", async ({ page }) 
 });
 
 test("admin pages are not reachable without a session", async ({ page }) => {
-  for (const path of ["/admin/demo", "/admin/demo/settings/payments", "/admin/demo/staff", "/admin/account"]) {
+  const paths = [
+    "/admin/demo",
+    "/admin/demo/settings/payments",
+    "/admin/demo/settings/seo",
+    "/admin/demo/staff",
+    "/admin/account",
+    "/admin/platform/seo",
+  ];
+  for (const path of paths) {
     await page.goto(path);
     await expect(page).toHaveURL("/admin/sign-in");
   }

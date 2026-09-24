@@ -16,6 +16,7 @@ import {
   uploadImageAction,
   type SaveState,
 } from "@/app/admin/(gated)/[store]/products/actions";
+import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { shrinkImage } from "@/lib/image-resize";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
@@ -30,6 +31,7 @@ import {
   type ProductInput,
   type VariantInput,
 } from "@/lib/product-input";
+import { summarize } from "@/lib/seo";
 import { slugify } from "@/lib/slug";
 import type { EditorContext, Operator } from "@/server/products";
 
@@ -68,6 +70,8 @@ type Props = {
   uploads: boolean;
   /** Where the product is shown in the storefront, once saved. */
   storefrontPath: string | null;
+  /** The site's address, for the search result preview. */
+  siteOrigin: string;
 };
 
 /**
@@ -211,6 +215,7 @@ export function ProductEditor(props: Props) {
         languageNames={languageNames}
         handleTouched={handleTouched}
         onHandleTouched={() => setHandleTouched(true)}
+        productUrl={`${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle || slugify(title) || "product"}`}
       />
       <MediaSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       <VariantsSection product={product} update={update} context={context} countries={props.countries} />
@@ -247,11 +252,13 @@ function TextSection({
   languageNames,
   handleTouched,
   onHandleTouched,
+  productUrl,
 }: SectionProps & {
   context: EditorContext;
   languageNames: Record<string, string>;
   handleTouched: boolean;
   onHandleTouched: () => void;
+  productUrl: string;
 }) {
   const [locale, setLocale] = useState(context.primaryLocale);
   const tabsId = useId();
@@ -260,10 +267,16 @@ function TextSection({
     title: "",
     description: "",
     safetyInformation: "",
+    seoTitle: "",
+    seoDescription: "",
   };
   const isPrimary = locale === context.primaryLocale;
+  const primaryText = product.translations.find((t) => t.locale === context.primaryLocale);
 
-  const setField = (field: "title" | "description" | "safetyInformation", value: string) =>
+  const setField = (
+    field: "title" | "description" | "safetyInformation" | "seoTitle" | "seoDescription",
+    value: string,
+  ) =>
     update((p) => {
       const exists = p.translations.some((t) => t.locale === locale);
       const translations = exists
@@ -364,6 +377,25 @@ function TextSection({
             />
           </label>
         )}
+        <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <h3 className="text-sm font-medium">In search results and shares</h3>
+          <p className="text-sm text-muted">
+            Optional. Empty fields use the title and the start of the description.
+          </p>
+          <SearchSnippetFields
+            value={{ title: current.seoTitle, description: current.seoDescription }}
+            onChange={(next) => {
+              if (next.title !== current.seoTitle) setField("seoTitle", next.title);
+              if (next.description !== current.seoDescription) setField("seoDescription", next.description);
+            }}
+            fallback={{
+              title: current.title || primaryText?.title || "Product title",
+              description: summarize(current.description || primaryText?.description || ""),
+            }}
+            url={productUrl}
+            lang={locale}
+          />
+        </div>
       </div>
     </section>
   );

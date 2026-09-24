@@ -6,6 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db/client";
 import { toMarket, type Market } from "@/lib/markets";
 import { isStoreSlug } from "@/lib/paths";
+import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
 
 export type StoreStatus = "active" | "suspended" | "closed";
 
@@ -24,6 +25,8 @@ export type Store = {
   details: StoreDetails;
   /** Active markets, the store's own country first. */
   markets: Market[];
+  /** Search and sharing settings. */
+  seo: StoreSeo;
 };
 
 export type StoreDetails = {
@@ -60,7 +63,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await db().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -109,6 +112,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     markets: (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(
       toMarket,
     ),
+    seo: parseStoreSeo(row.seo),
   };
 }
 

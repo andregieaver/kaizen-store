@@ -5,8 +5,9 @@ import { Suspense } from "react";
 
 import { CartLink } from "@/components/cart-link";
 import { t } from "@/lib/i18n";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 
@@ -23,17 +24,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return {};
   const { store, market } = shop;
+  const title = store.seo.title[market.locale] || store.name;
+  const description =
+    store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
+  const home = marketPath(store.slug, market.slug);
   return {
     metadataBase: new URL(siteUrl()),
-    title: { default: store.name, template: `%s · ${store.name}` },
-    // A store is not for search engines until its owner opens it.
-    ...(store.setupCompletedAt || store.isTemplate ? {} : { robots: { index: false } }),
+    title: { default: title, template: `%s · ${store.name}` },
+    description,
+    // A store is not for search engines until its owner opens it, or while they hide it.
+    ...(!(store.setupCompletedAt || store.isTemplate) || store.seo.hidden ? { robots: { index: false } } : {}),
     alternates: {
-      canonical: marketPath(store.slug, market.slug),
-      languages: Object.fromEntries(
-        store.markets.map((m) => [m.locale, marketPath(store.slug, m.slug)]),
-      ),
+      canonical: home,
+      languages: {
+        ...Object.fromEntries(store.markets.map((m) => [m.locale, marketPath(store.slug, m.slug)])),
+        // With several markets the store's front door lets visitors choose.
+        "x-default": store.markets.length > 1 ? storeBase(store.slug) : home,
+      },
     },
+    ...storeShareTags(store, market, {
+      title,
+      description,
+      url: home,
+      images: [storeShareImage(store, market.locale)],
+    }),
+    verification: verificationTags(store.seo),
   };
 }
 

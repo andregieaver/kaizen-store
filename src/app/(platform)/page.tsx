@@ -1,13 +1,28 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
+import { JsonLdScript } from "@/components/json-ld";
 import { storeBase } from "@/lib/paths";
+import { siteUrl } from "@/lib/site";
+import { platformJsonLd } from "@/lib/structured-data";
+import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 import { templateStoreSlug } from "@/server/stores";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 /** The platform's front page. Sign-up opens with the invite-only beta. */
 export default async function Home() {
-  const demo = await templateStoreSlug();
+  const [demo, seo] = await Promise.all([templateStoreSlug(), getPlatformSeo()]);
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">
+      <JsonLdScript
+        data={platformJsonLd({
+          origin: siteUrl(),
+          name: seo.title.en || PLATFORM_DEFAULTS.title,
+          description: seo.description.en || PLATFORM_DEFAULTS.description,
+          seo,
+        })}
+      />
       <h1 className="text-4xl font-semibold tracking-tight">Kaizen</h1>
       <p className="text-lg">
         Online stores for Norway and the EU: prices, VAT, product safety and

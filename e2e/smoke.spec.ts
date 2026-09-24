@@ -39,12 +39,61 @@ test("a product page shows stock, safety details and structured data", async ({ 
   await expect(page.getByText("Kaizen Demo AS, Storgata 1")).toBeVisible();
   await expect(page.getByText("Ansvarlig person i EU")).toBeVisible();
 
-  const jsonLd = JSON.parse(
-    (await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}",
+  // Colours are variants of one product group, each with its own offer.
+  // (After a click the previous page stays in the DOM, hidden, so pick the product's data.)
+  const scripts = await page.locator('script[type="application/ld+json"]').allTextContents();
+  const jsonLd = JSON.parse(scripts.find((text) => text.includes("ProductGroup")) ?? "{}");
+  const [group, trail] = jsonLd["@graph"];
+  expect(group).toMatchObject({ "@type": "ProductGroup", variesBy: ["https://schema.org/color"] });
+  expect(group.hasVariant).toHaveLength(2);
+  expect(group.hasVariant[0].offers).toMatchObject({
+    priceCurrency: "NOK",
+    price: "249.00",
+    itemCondition: "https://schema.org/NewCondition",
+    shippingDetails: { shippingDestination: { addressCountry: "NO" } },
+    hasMerchantReturnPolicy: { merchantReturnDays: 14 },
+  });
+  expect(trail["@type"]).toBe("BreadcrumbList");
+
+  // Shares show the product's picture and its description.
+  await expect(page.locator('meta[property="og:image"]').first()).toHaveAttribute("content", /mug/);
+  await expect(page.locator('meta[property="og:image:alt"]').first()).toHaveAttribute("content", /.+/);
+  await expect(page.locator('link[rel="alternate"][hreflang="sv-SE"]')).toHaveAttribute(
+    "href",
+    /\/s\/demo\/se\/p\/demo-keramikkopp$/,
   );
-  expect(jsonLd["@type"]).toBe("Product");
-  expect(jsonLd.offers).toHaveLength(2);
-  expect(jsonLd.offers[0]).toMatchObject({ priceCurrency: "NOK", price: "249.00" });
+});
+
+test("search engines and AI assistants get a sitemap, crawler rules and llms.txt", async ({ request }) => {
+  const robots = await (await request.get("/robots.txt")).text();
+  expect(robots).toContain("Disallow: /admin");
+  expect(robots).toContain("Disallow: /s/demo/*/cart");
+  expect(robots).toMatch(/Sitemap: \S+\/sitemap\.xml/);
+
+  const index = await (await request.get("/sitemap.xml")).text();
+  expect(index).toContain("/s/demo/sitemap.xml");
+  const sitemap = await (await request.get("/s/demo/sitemap.xml")).text();
+  expect(sitemap).toContain("/s/demo/se/p/demo-keramikkopp</loc>");
+  expect(sitemap).toContain('hreflang="da-DK"');
+
+  const llms = await request.get("/s/demo/llms.txt");
+  expect(llms.headers()["content-type"]).toContain("text/markdown");
+  const text = await llms.text();
+  expect(text).toMatch(/^# Kaizen Demo\n\n> /);
+  expect(text).toContain("/s/demo/no/p/demo-keramikkopp): NOK 249.00");
+  expect(await (await request.get("/llms.txt")).text()).toContain("/s/demo/llms.txt");
+
+  const share = await request.get("/s/demo/og.png");
+  expect(share.headers()["content-type"]).toBe("image/png");
+});
+
+test("a market's front page describes the store to search engines", async ({ page }) => {
+  await page.goto("/s/demo/no");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Kaizen Demo/);
+  const jsonLd = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}");
+  const types = jsonLd["@graph"].map((node: { "@type": string }) => node["@type"]);
+  expect(types).toEqual(["OnlineStore", "WebSite", "CollectionPage"]);
+  expect(jsonLd["@graph"][0].hasMerchantReturnPolicy.applicableCountry).toContain("SE");
 });
 
 test("other markets use their own language and currency", async ({ page }) => {
