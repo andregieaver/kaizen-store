@@ -205,5 +205,8 @@ BEGIN
   INSERT INTO commerce.inventory_levels (store_id, variant_id, location_id, on_hand) VALUES (v_store, v_variant, v_location, 0);
 
   UPDATE commerce.products SET status = 'active' WHERE id = v_product;
+
+  -- The demo's logo and menus (D30), copied to new stores with the catalogue.
+  UPDATE commerce.stores SET navigation = '{"logo": {"url": "/demo/logo.svg", "width": 180, "height": 40}, "header": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Notatbok", "sv-SE": "Anteckningsbok", "da-DK": "Notesbog"}, "link": {"kind": "product", "handle": "demo-notatbok"}}, {"label": {"nb-NO": "Kopp", "sv-SE": "Kopp", "da-DK": "Krus"}, "link": {"kind": "product", "handle": "demo-keramikkopp"}}, {"label": {"nb-NO": "Bordlampe", "sv-SE": "Bordslampa", "da-DK": "Bordlampe"}, "link": {"kind": "product", "handle": "demo-bordlampe"}}], "footer": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Handlenett", "sv-SE": "Tygkasse", "da-DK": "Mulepose"}, "link": {"kind": "product", "handle": "demo-handlenett"}}, {"label": {"nb-NO": "Laget med Kaizen", "sv-SE": "Byggd med Kaizen", "da-DK": "Lavet med Kaizen"}, "link": {"kind": "url", "url": "https://kaizenstore.cloud"}}]}'::jsonb WHERE id = v_store;
 END;
 $$;

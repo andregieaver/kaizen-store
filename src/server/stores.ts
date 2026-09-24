@@ -6,6 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/db/client";
 import { toMarket, type Market } from "@/lib/markets";
 import { isStoreSlug } from "@/lib/paths";
+import { parseNavigation, type StoreNavigation } from "@/lib/navigation";
 import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
 
 export type StoreStatus = "active" | "suspended" | "closed";
@@ -27,6 +28,8 @@ export type Store = {
   markets: Market[];
   /** Search and sharing settings. */
   seo: StoreSeo;
+  /** Logo and menus for the storefront's header and footer (D30). */
+  navigation: StoreNavigation;
 };
 
 export type StoreDetails = {
@@ -63,7 +66,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await db().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -113,6 +116,7 @@ async function loadStore(slug: string): Promise<Store | null> {
       toMarket,
     ),
     seo: parseStoreSeo(row.seo),
+    navigation: parseNavigation(row.navigation),
   };
 }
 

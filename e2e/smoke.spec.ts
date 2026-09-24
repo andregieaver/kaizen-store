@@ -116,7 +116,7 @@ test("other markets use their own language and currency", async ({ page }) => {
   await page.goto("/s/demo/se/p/demo-bordlampe");
   await expect(page.locator("html")).toHaveAttribute("lang", "sv");
   await expect(page.getByText("inkl. moms").first()).toBeVisible();
-  await expect(page.getByText("Slutsåld")).toBeVisible();
+  await expect(page.getByText("Slutsåld").filter({ visible: true })).toBeVisible();
 
   await page.goto("/s/demo/dk");
   await expect(page.locator("html")).toHaveAttribute("lang", "da");

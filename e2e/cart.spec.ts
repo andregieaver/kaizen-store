@@ -154,7 +154,7 @@ test("a shopper subscribes from the product page and sees the terms in the cart"
   await expect(options.getByRole("radio", { name: "Engangskjøp" })).toBeChecked();
   await options.getByRole("radio", { name: /Hver måned/ }).check();
   const variants = page.getByRole("region", { name: "Varianter" });
-  await expect(variants.getByText("180,00")).toBeVisible();
+  await expect(variants.getByText("180,00").filter({ visible: true })).toBeVisible();
 
   await variants.getByRole("button", { name: "Legg i handlekurven" }).click();
   await expect(variants.getByRole("status")).toContainText("Lagt i handlekurven.");

@@ -258,6 +258,11 @@ export const stores = commerce.table(
      * store's own llms.txt text. Shape and defaults: `StoreSeo` in lib/seo.
      */
     seo: jsonb("seo").notNull().default({}),
+    /**
+     * The storefront's logo and header and footer menus (D30). Shape and
+     * checks: `StoreNavigation` in lib/navigation.
+     */
+    navigation: jsonb("navigation").notNull().default({}),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },

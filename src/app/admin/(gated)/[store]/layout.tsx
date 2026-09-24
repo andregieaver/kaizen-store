@@ -27,6 +27,7 @@ export default async function StoreAdminLayout({
     { href: `${base}/products`, label: "Products" },
     { href: `${base}/settings/shipping`, label: "Shipping" },
     { href: `${base}/settings/payments`, label: "Payments" },
+    { href: `${base}/settings/navigation`, label: "Header and footer" },
     { href: `${base}/settings/seo`, label: "Search" },
     { href: `${base}/staff`, label: "Staff" },
     { href: `${base}/billing`, label: "Plan" },

@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
-import { CartLink } from "@/components/cart-link";
+import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
-import type { Store } from "@/server/stores";
 
 import "../../../globals.css";
 
@@ -59,11 +57,11 @@ export default async function MarketLayout({ children, params }: Props) {
   if (!shop) notFound();
   const { store, market } = shop;
   const m = t(market.lang);
-  const home = marketPath(store.slug, market.slug);
 
   return (
     <html lang={market.lang} className="h-full antialiased">
-      <body className="flex min-h-full flex-col font-sans">
+      {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
+      <body className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
@@ -71,85 +69,37 @@ export default async function MarketLayout({ children, params }: Props) {
           {m.skipToContent}
         </a>
         {/* Shoppers are told when a store is a preview, cannot take payment yet, or takes test payments only. */}
-        {(!(store.setupCompletedAt || store.isTemplate) || !store.paymentsOn || store.paymentsTest) && (
-          <p className="bg-foreground px-4 py-2 text-center text-sm text-background">
-            {[
+        <StoreHeader
+          store={store}
+          market={market}
+          notice={
+            [
               !(store.setupCompletedAt || store.isTemplate) && m.previewNotice,
               !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
               store.paymentsOn && store.paymentsTest && m.testNotice,
             ]
               .filter(Boolean)
-              .join(" ")}
-          </p>
-        )}
-        <header className="border-b border-border">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4">
-            <Link href={home} className="text-lg font-semibold">
-              {store.name}
-            </Link>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              {store.markets.length > 1 && (
-                <nav aria-label={m.chooseMarket}>
-                  <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-                    {store.markets.map((other) => (
-                      <li key={other.slug}>
-                        <Link
-                          href={marketPath(store.slug, other.slug)}
-                          hrefLang={other.lang}
-                          lang={other.lang}
-                          aria-current={other.slug === market.slug ? "page" : undefined}
-                          className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-semibold"
-                        >
-                          {other.name}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-              )}
-              <Link href={`${home}/account`} className="rounded px-2 py-1 text-sm font-medium">
-                {m.account.title}
-              </Link>
-              <Suspense
-                fallback={
-                  <Link href={`${home}/cart`} className="rounded px-2 py-1 text-sm font-medium">
-                    {m.cart}
-                  </Link>
-                }
-              >
-                <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
-              </Suspense>
-            </div>
-          </div>
-        </header>
+              .join(" ") || null
+          }
+        />
         <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
           {children}
         </main>
-        <footer className="border-t border-border">
-          <StoreFooter store={store} />
-        </footer>
+        <StoreFooter store={store} market={market} />
+        {/*
+          Phone enhancements, each in its own boundary: React counts
+          everything outside boundaries towards a 12.8 kB budget, past which
+          the page's own content is sent as a block that needs JavaScript
+          to show. Keeping these out keeps product pages readable without it.
+        */}
+        <Suspense fallback={null}>
+          <StoreBottomBar store={store} market={market} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <StoreMenu store={store} market={market} />
+        </Suspense>
         <BackToAdmin storeSlug={store.slug} />
       </body>
     </html>
-  );
-}
-
-/** Who sells: required on every page of a web shop (e-commerce and consumer law). */
-function StoreFooter({ store }: { store: Store }) {
-  const d = store.details;
-  const lines = [
-    d.legalName ?? store.name,
-    d.organisationNumber && `Org. ${d.organisationNumber}`,
-    d.postalAddress?.replace(/\s*\n\s*/g, ", "),
-  ].filter(Boolean);
-  return (
-    <div className="mx-auto flex max-w-5xl flex-wrap gap-x-4 gap-y-1 px-4 py-6 text-sm text-muted">
-      <span>{lines.join(" · ")}</span>
-      {d.contactEmail && (
-        <a href={`mailto:${d.contactEmail}`} className="underline">
-          {d.contactEmail}
-        </a>
-      )}
-    </div>
   );
 }

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { toMarket } from "@/lib/markets";
+import { EMPTY_NAVIGATION } from "@/lib/navigation";
 import { productInput, type ProductInput } from "@/lib/product-input";
 import { parseStoreSeo } from "@/lib/seo";
 
@@ -47,6 +48,7 @@ async function createStore(slug: string): Promise<Store> {
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
     ],
     seo: parseStoreSeo({}),
+    navigation: EMPTY_NAVIGATION,
   };
 }
 

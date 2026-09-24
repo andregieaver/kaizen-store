@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { AddToCart } from "@/components/add-to-cart";
 import { JsonLdScript } from "@/components/json-ld";
 import { Price } from "@/components/price";
+import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
@@ -292,6 +293,32 @@ async function VariantsWithStock({
           );
         })}
       </ul>
+      <ProductBar
+        store={store.slug}
+        market={market.slug}
+        cartHref={marketPath(store.slug, market.slug, "/cart")}
+        currency={market.currency}
+        locale={market.locale}
+        variants={product.variants.map((variant) => ({
+          id: variant.id,
+          label: optionLabel(m, variant.options) || product.title,
+          amountMinor: variant.price.amountMinor,
+          available: variant.delivery === "digital" || (availability.get(variant.id) ?? 0) > 0,
+        }))}
+        labels={{
+          addToCart: m.addToCart,
+          adding: m.adding,
+          added: m.added,
+          capped: m.capped,
+          unavailable: m.unavailable,
+          planConflict: m.planConflict,
+          tryAgain: m.tryAgain,
+          goToCart: m.goToCart,
+          chooseVariant: m.chooseVariantLabel,
+          soldOut: m.soldOut,
+          goCart: m.goCart,
+        }}
+      />
       <ProductJsonLd store={store} market={market} product={product} availability={availability} />
     </PurchaseOptions>
   );

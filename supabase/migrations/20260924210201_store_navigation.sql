@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "navigation" jsonb DEFAULT '{}'::jsonb NOT NULL;

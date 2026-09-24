@@ -32,3 +32,8 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* A product page's add-to-cart bar takes the place of the phone's bottom bar (D30). */
+body:has([data-product-bar]) [data-default-bar] {
+  display: none;
+}
