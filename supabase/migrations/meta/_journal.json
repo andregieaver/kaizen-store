@@ -211,6 +211,20 @@
       "when": 1790274369504,
       "tag": "20260924182609_customer_accounts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790277231014,
+      "tag": "20260924191351_subscription_extras",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790277232406,
+      "tag": "20260924191352_subscription_extras_rules",
+      "breakpoints": true
     }
   ]
 }

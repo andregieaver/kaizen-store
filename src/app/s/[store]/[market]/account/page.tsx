@@ -5,10 +5,17 @@ import { Suspense } from "react";
 
 import { DeleteAccountButton, DetailsForm, PasswordForm, SignOutButton } from "@/components/account-forms";
 import { AccountSignIn } from "@/components/account-sign-in";
-import { t } from "@/lib/i18n";
+import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
-import { getCustomer, lastShippingAddress, listCustomerOrders, listCustomerSubscriptions } from "@/server/customers";
+import { renewalState, type PlanInterval } from "@/lib/subscriptions";
+import {
+  getCustomer,
+  type CustomerSubscription,
+  lastShippingAddress,
+  listCustomerOrders,
+  listCustomerSubscriptions,
+} from "@/server/customers";
 import { resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/account">;
@@ -127,11 +134,7 @@ async function Account({ params }: { params: Props["params"] }) {
                     {m.planEvery(s.interval, s.intervalCount)} · {formatMoney(s.totalMinor, s.currency, market.locale)} ·{" "}
                     {m.subscriptionStatus[s.status as keyof typeof m.subscriptionStatus] ?? s.status}
                   </span>
-                  {s.status !== "cancelled" && s.currentPeriodEnd && (
-                    <span className="block text-sm text-muted">
-                      {s.cancelAtPeriodEnd ? m.endsOn(date(s.currentPeriodEnd)) : m.nextRenewal(date(s.currentPeriodEnd))}
-                    </span>
-                  )}
+                  {s.status !== "cancelled" && <RenewalNote subscription={s} m={m} date={date} />}
                 </span>
                 <Link
                   href={`${base}/subscription/${s.manageToken}`}
@@ -190,4 +193,28 @@ async function Account({ params }: { params: Props["params"] }) {
       </section>
     </>
   );
+}
+
+/** The next step of a running subscription: it ends, is paused, is in its trial, or renews (D29). */
+function RenewalNote({
+  subscription,
+  m,
+  date,
+}: {
+  subscription: CustomerSubscription;
+  m: Messages;
+  date: (iso: string) => string;
+}) {
+  const state = renewalState({ ...subscription, interval: subscription.interval as PlanInterval });
+  if (!state) return null;
+  const when = date(state.date.toISOString());
+  const text =
+    state.kind === "ends"
+      ? m.endsOn(when)
+      : state.kind === "paused"
+        ? m.pausedUntil(when)
+        : state.kind === "trial"
+          ? m.trialUntil(when)
+          : m.nextRenewal(when);
+  return <span className="block text-sm text-muted">{text}</span>;
 }

@@ -167,6 +167,9 @@ describe("productProblems", () => {
       interval,
       intervalCount,
       discountPercent: 10,
+      trialDays: 0,
+      signupFee: {} as Record<string, string>,
+      minCycles: 0,
     });
 
     it("accepts options on different schedules", () => {

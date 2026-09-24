@@ -36,7 +36,14 @@ import {
   type VariantInput,
 } from "@/lib/product-input";
 import { summarize } from "@/lib/seo";
-import { MAX_DISCOUNT_PERCENT, MAX_INTERVAL_COUNT, MAX_PLANS, type PlanInterval } from "@/lib/subscriptions";
+import {
+  MAX_DISCOUNT_PERCENT,
+  MAX_INTERVAL_COUNT,
+  MAX_MIN_CYCLES,
+  MAX_PLANS,
+  MAX_TRIAL_DAYS,
+  type PlanInterval,
+} from "@/lib/subscriptions";
 import { slugify } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
@@ -228,7 +235,7 @@ export function ProductEditor(props: Props) {
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
-      <SubscriptionSection product={product} update={update} />
+      <SubscriptionSection product={product} update={update} markets={context.markets} />
       <SafetySection
         product={product}
         update={update}
@@ -1173,7 +1180,7 @@ const INTERVAL_NAMES: Record<PlanInterval, [string, string]> = {
 };
 
 /** Purchase options for subscribing (D25), like Shopify's selling plans. */
-function SubscriptionSection({ product, update }: SectionProps) {
+function SubscriptionSection({ product, update, markets }: SectionProps & { markets: EditorContext["markets"] }) {
   const setPlan = (index: number, change: Partial<ProductInput["plans"][number]>) =>
     update((p) => ({ ...p, plans: p.plans.map((plan, i) => (i === index ? { ...plan, ...change } : plan)) }));
   const count = (text: string, interval: PlanInterval) =>
@@ -1194,7 +1201,10 @@ function SubscriptionSection({ product, update }: SectionProps) {
         ).find(([interval, n]) => !taken.has(`${interval}:${n}`)) ?? (["month", 6] as const);
       return {
         ...p,
-        plans: [...p.plans, { id: null, interval: next[0], intervalCount: next[1], discountPercent: 10 }],
+        plans: [
+          ...p.plans,
+          { id: null, interval: next[0], intervalCount: next[1], discountPercent: 10, trialDays: 0, signupFee: {}, minCycles: 0 },
+        ],
       };
     });
 
@@ -1266,6 +1276,8 @@ function SubscriptionSection({ product, update }: SectionProps) {
                 <p className="min-h-9 flex-1 self-center text-sm text-muted">
                   Every {plan.intervalCount === 1 ? one : `${plan.intervalCount} ${many}`}
                   {plan.discountPercent > 0 ? `, ${plan.discountPercent}% off each time` : ", full price"}
+                  {plan.trialDays > 0 && `, ${plan.trialDays} days free`}
+                  {plan.minCycles > 0 && `, at least ${plan.minCycles} payments`}
                 </p>
                 <button
                   type="button"
@@ -1279,6 +1291,67 @@ function SubscriptionSection({ product, update }: SectionProps) {
                 >
                   Remove<span className="sr-only"> purchase option {index + 1}</span>
                 </button>
+                <details className="w-full" open={plan.trialDays > 0 || plan.minCycles > 0 || Object.values(plan.signupFee).some(Boolean)}>
+                  <summary className="cursor-pointer text-xs text-muted">Free trial, sign-up fee and commitment</summary>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <label className="flex flex-col gap-1 text-xs font-medium">
+                      <span>
+                        Free trial <span className="font-normal text-muted">(days, 0 for none)</span>
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={MAX_TRIAL_DAYS}
+                        inputMode="numeric"
+                        value={plan.trialDays}
+                        onChange={(e) =>
+                          setPlan(index, { trialDays: Math.min(MAX_TRIAL_DAYS, Math.max(0, Math.floor(Number(e.target.value) || 0))) })
+                        }
+                        className={`${input} min-h-9 w-24`}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1 text-xs font-medium">
+                      <span>
+                        Minimum payments <span className="font-normal text-muted">(the first included, 0 for none)</span>
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={MAX_MIN_CYCLES}
+                        inputMode="numeric"
+                        value={plan.minCycles}
+                        onChange={(e) =>
+                          setPlan(index, { minCycles: Math.min(MAX_MIN_CYCLES, Math.max(0, Math.floor(Number(e.target.value) || 0))) })
+                        }
+                        className={`${input} min-h-9 w-24`}
+                      />
+                    </label>
+                    <fieldset className="flex flex-col gap-1 text-xs">
+                      <legend className="mb-1 font-medium">
+                        Sign-up fee <span className="font-normal text-muted">(once, empty for none)</span>
+                      </legend>
+                      {markets.map((market) => (
+                        <label key={market.code} className="flex items-center gap-2">
+                          <span className="w-16 text-muted">{market.currency}</span>
+                          <input
+                            inputMode="decimal"
+                            value={plan.signupFee[market.code] ?? ""}
+                            onChange={(e) => setPlan(index, { signupFee: { ...plan.signupFee, [market.code]: e.target.value } })}
+                            aria-label={`Sign-up fee in ${market.name}, ${market.currency}`}
+                            placeholder="0,00"
+                            className={`${input} min-h-9 w-28`}
+                          />
+                        </label>
+                      ))}
+                    </fieldset>
+                  </div>
+                  {plan.minCycles > 0 && (
+                    <p className="mt-2 text-xs text-muted">
+                      Shoppers are told before they subscribe. A cancellation before the commitment is met takes effect
+                      when it is.
+                    </p>
+                  )}
+                </details>
               </li>
             );
           })}

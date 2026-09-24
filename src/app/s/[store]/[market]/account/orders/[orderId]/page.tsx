@@ -85,7 +85,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
             <li key={line.id} className="flex justify-between gap-4 py-2">
               <span>
                 {line.quantity} × {line.title}
-                {line.delivery === "digital" && <span className="block text-sm text-muted">{m.digitalDelivery}</span>}
+                {line.delivery === "digital" && line.variantId && <span className="block text-sm text-muted">{m.digitalDelivery}</span>}
               </span>
               <span className="whitespace-nowrap">{money(line.totalMinor)}</span>
             </li>

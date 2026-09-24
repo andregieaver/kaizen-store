@@ -744,6 +744,12 @@ export const sellingPlans = commerce.table(
     intervalCount: integer("interval_count").notNull().default(1),
     /** Whole percent off the one-time price, 0 for none. */
     discountPercent: integer("discount_percent").notNull().default(0),
+    /** Days free before the first charge for what renews (D29). */
+    trialDays: integer("trial_days").notNull().default(0),
+    /** A one-time fee when subscribing, in minor units per market: `{"NO": 4900}` (D29). */
+    signupFee: jsonb("signup_fee").notNull().default({}),
+    /** Payments the subscriber commits to, the first included; 0 for none (D29). */
+    minCycles: integer("min_cycles").notNull().default(0),
     position: integer("position").notNull().default(0),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
@@ -760,6 +766,8 @@ export const sellingPlans = commerce.table(
         or (${t.interval} = 'year' and ${t.intervalCount} between 1 and 3)`,
     ),
     check("selling_plans_discount_percent", sql`${t.discountPercent} between 0 and 90`),
+    check("selling_plans_trial_days", sql`${t.trialDays} between 0 and 90`),
+    check("selling_plans_min_cycles", sql`${t.minCycles} between 0 and 24`),
   ],
 );
 
@@ -1187,6 +1195,16 @@ export const subscriptions = commerce.table(
     providerReference: text("provider_reference"),
     providerAccount: text("provider_account"),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    /** The free trial, until the first charge for what renews (D29). */
+    trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+    /** Payments committed to, the first included (D29). */
+    minCycles: integer("min_cycles").notNull().default(0),
+    /** Charges and deliveries are paused until then (D29). */
+    pausedUntil: timestamp("paused_until", { withTimezone: true }),
+    /** When the subscription will end, if a cancellation waits for the commitment (D29). */
+    cancelAt: timestamp("cancel_at", { withTimezone: true }),
+    /** The charge date the last reminder email was for (D29). */
+    remindedFor: timestamp("reminded_for", { withTimezone: true }),
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** The secret in the shopper's link to see and cancel the subscription. */

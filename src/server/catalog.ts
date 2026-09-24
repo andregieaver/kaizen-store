@@ -42,7 +42,18 @@ export type ProductVariant = {
 };
 
 /** A purchase option for subscribing (D25). */
-export type SellingPlan = { id: string; interval: PlanInterval; intervalCount: number; discountPercent: number };
+export type SellingPlan = {
+  id: string;
+  interval: PlanInterval;
+  intervalCount: number;
+  discountPercent: number;
+  /** Days free before the first charge (D29). */
+  trialDays: number;
+  /** One-time fee in the market's currency, in minor units; 0 for none (D29). */
+  signupFeeMinor: number;
+  /** Payments committed to, the first included; 0 for none (D29). */
+  minCycles: number;
+};
 
 export type ProductDetail = {
   id: string;
@@ -190,7 +201,9 @@ export async function getProduct(
       order by cp.amount_minor, v.sku
     `),
     db().execute<Row>(sql`
-      select id, interval, interval_count, discount_percent from commerce.selling_plans
+      select id, interval, interval_count, discount_percent, trial_days, min_cycles,
+        coalesce((signup_fee ->> ${marketCode})::bigint, 0) as signup_fee
+      from commerce.selling_plans
       where product_id = ${product.id} and active
       order by position, created_at
     `),
@@ -231,6 +244,9 @@ export async function getProduct(
       interval: plan.interval as PlanInterval,
       intervalCount: num(plan.interval_count),
       discountPercent: num(plan.discount_percent),
+      trialDays: num(plan.trial_days),
+      signupFeeMinor: num(plan.signup_fee),
+      minCycles: num(plan.min_cycles),
     })),
     // Without an option to subscribe to, it can only be bought once.
     subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,

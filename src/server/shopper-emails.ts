@@ -14,7 +14,7 @@ import { siteUrl } from "@/lib/site";
 import { sendEmail, type SendOutcome } from "./email";
 import { getOrder, type OrderView } from "./orders";
 import type { Store } from "./stores";
-import { getSubscriptionForOrder } from "./subscriptions";
+import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
 
 type Row = Record<string, unknown>;
 
@@ -120,7 +120,7 @@ export async function sendOrderConfirmation(
   const renewal = subscription !== null && subscription.number !== order.number;
   const url = await orderUrl(storeId, store, market, orderId);
   const address = addressText(order);
-  const digital = order.lines.some((line) => line.delivery === "digital");
+  const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
 
   const blocks: EmailBlock[] = [
     { type: "heading", text: text.orderHeading },
@@ -270,6 +270,120 @@ export async function sendSignInCode(
     ],
   });
   return sendEmail({ storeId, kind: "account.code", to, email, fromName: store.name, replyTo: store.details.contactEmail });
+}
+
+/** What renews, its shipping and total, and the link to manage it. */
+function subscriptionBlocks(
+  subscription: SubscriptionView,
+  store: EmailStore,
+  market: Market,
+  text: EmailText,
+  money: (minor: number) => string,
+  every: string,
+): EmailBlock[] {
+  return [
+    {
+      type: "lines",
+      rows: [
+        ...subscription.lines.map((line) => ({ label: `${line.quantity} × ${line.title}`, value: money(line.totalMinor) })),
+        ...(subscription.shippingMinor > 0
+          ? [{ label: text.shipping, value: money(subscription.shippingMinor), muted: true }]
+          : []),
+        { label: `${text.total} · ${every.toLowerCase()}`, value: money(subscription.totalMinor), strong: true },
+      ],
+    },
+    {
+      type: "button",
+      text: text.manageSubscription,
+      url: `${siteUrl()}${marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
+    },
+  ];
+}
+
+/** Confirms a change the subscriber or the store made (D29). */
+export async function sendSubscriptionChanged(
+  storeId: string,
+  subscription: SubscriptionView,
+  change: SubscriptionChange | "change",
+): Promise<SendOutcome | null> {
+  if (!subscription.email) return null;
+  const ctx = await context(storeId, subscription.marketCode, subscription.locale);
+  if (!ctx) return null;
+  const { store, market, text, m } = ctx;
+  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale);
+  const date = (value: string | null) =>
+    value ? new Date(value).toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" }) : "";
+  const intro =
+    change === "cancel"
+      ? text.changes.cancel(date(subscription.endsAt))
+      : change === "pause" || change === "skip"
+        ? text.changes[change](date(subscription.nextChargeAt))
+        : text.changes[change]();
+  const ended = change === "cancel_now";
+  const email = renderEmail({
+    subject: text.changedSubject(store.name),
+    preview: intro,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: text.changedHeading },
+      { type: "paragraph", text: intro },
+      ...(ended
+        ? []
+        : subscriptionBlocks(subscription, store, market, text, money, m.planEvery(subscription.interval, subscription.intervalCount))),
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: `subscription.${change}`,
+    to: subscription.email,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    subscriptionId: subscription.id,
+  });
+}
+
+/**
+ * Tells the subscriber a charge is coming (D29): before a free trial ends,
+ * and before a renewal. Once per charge date.
+ */
+export async function sendRenewalReminder(
+  storeId: string,
+  subscription: SubscriptionView,
+  kind: "trial" | "renewal",
+  chargeAt: Date,
+): Promise<SendOutcome | null> {
+  if (!subscription.email) return null;
+  const ctx = await context(storeId, subscription.marketCode, subscription.locale);
+  if (!ctx) return null;
+  const { store, market, text, m } = ctx;
+  const money = (minor: number) => formatMoney(minor, subscription.currency, market.locale);
+  const date = chargeAt.toLocaleDateString(market.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
+  const amount = money(subscription.totalMinor);
+  const intro = kind === "trial" ? text.trialIntro(date, amount) : text.reminderIntro(date, amount);
+  const email = renderEmail({
+    subject: kind === "trial" ? text.trialSubject(store.name, date) : text.reminderSubject(store.name, date),
+    preview: intro,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: kind === "trial" ? text.trialHeading : text.reminderHeading },
+      { type: "paragraph", text: intro },
+      ...subscriptionBlocks(subscription, store, market, text, money, m.planEvery(subscription.interval, subscription.intervalCount)),
+      { type: "paragraph", text: text.reminderChange },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: `subscription.${kind}_reminder`,
+    to: subscription.email,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `subscription-reminder:${subscription.id}:${chargeAt.toISOString()}`,
+    subscriptionId: subscription.id,
+  });
 }
 
 export { context as emailContext, footer as emailFooter, orderUrl, orderLines as orderLinesBlock, storeById };

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { formatMoney } from "@/lib/money";
-import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
+import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requireMember } from "@/server/auth";
 import { listSubscriptions } from "@/server/subscriptions";
 
@@ -63,11 +63,14 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
             </td>
             <td className="px-4 py-2">{s.name || s.email || "–"}</td>
             <td className="hidden px-4 py-2 sm:table-cell">
-              {s.status === "cancelled" || !s.currentPeriodEnd
-                ? "–"
-                : s.cancelAtPeriodEnd
-                  ? `Ends ${date(s.currentPeriodEnd)}`
-                  : date(s.currentPeriodEnd)}
+              {(() => {
+                const state = s.status === "cancelled" ? null : renewalState(s);
+                if (!state) return "–";
+                const when = date(state.date.toISOString());
+                return { ends: `Ends ${when}`, paused: `Paused, then ${when}`, trial: `Trial, then ${when}`, renews: when }[
+                  state.kind
+                ];
+              })()}
             </td>
             <td className="px-4 py-2">{SUBSCRIPTION_STATUS_LABELS[s.status]}</td>
             <td className="px-4 py-2 text-right">{formatMoney(s.totalMinor, s.currency, locale)}</td>

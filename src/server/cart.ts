@@ -38,7 +38,7 @@ export type CartLine = {
   status: CartLineStatus;
   delivery: Delivery;
   /** Bought as a subscription: the purchase option, with the price already reduced (D25). */
-  plan: (PlanTerms & { id: string }) | null;
+  plan: (PlanTerms & { id: string; trialDays: number; minCycles: number; signupFeeMinor: number }) | null;
 };
 
 export type Cart = { lines: CartLine[]; currency: string };
@@ -58,7 +58,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
   const rows = await db().execute<Row>(sql`
     select
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle,
-      cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent,
+      cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
+      coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
       -- A purchase option still offered, or buying once where that is allowed.
       (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
       coalesce(tl.title, tf.title) as title,
@@ -111,6 +112,9 @@ export async function getCart(shop: Shop): Promise<Cart> {
             interval: row.interval as PlanInterval,
             intervalCount: Number(row.interval_count),
             discountPercent: Number(row.discount_percent),
+            trialDays: Number(row.trial_days),
+            minCycles: Number(row.min_cycles),
+            signupFeeMinor: Number(row.signup_fee),
           }
         : null;
       const unitPriceMinor =
@@ -280,13 +284,17 @@ export async function changeLine(
 /** Whether the cart holds a subscription that renews on another schedule than this option. */
 async function otherRhythm(tx: Tx, cartId: string, sellingPlanId: string): Promise<boolean> {
   const rows = await tx.execute<Row>(sql`
-    select sp.interval, sp.interval_count, (sp.id = ${sellingPlanId}::uuid) as chosen
+    select sp.interval, sp.interval_count, sp.trial_days, (sp.id = ${sellingPlanId}::uuid) as chosen
     from commerce.selling_plans sp
     where sp.id = ${sellingPlanId}::uuid
        or sp.id in (select selling_plan_id from commerce.cart_lines where cart_id = ${cartId}::uuid)
   `);
   const chosen = rows.find((r) => r.chosen);
   if (!chosen) return false;
-  const terms = (r: Row) => ({ interval: r.interval as PlanInterval, intervalCount: Number(r.interval_count) });
+  const terms = (r: Row) => ({
+    interval: r.interval as PlanInterval,
+    intervalCount: Number(r.interval_count),
+    trialDays: Number(r.trial_days),
+  });
   return rows.some((r) => !r.chosen && !sameRhythm(terms(r), terms(chosen)));
 }

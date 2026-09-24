@@ -228,7 +228,7 @@ export async function getProductForEdit(
       order by f.position, f.created_at
     `),
     db().execute<Row>(sql`
-      select id, interval, interval_count, discount_percent from commerce.selling_plans
+      select id, interval, interval_count, discount_percent, trial_days, signup_fee, min_cycles from commerce.selling_plans
       where store_id = ${store.id}::uuid and product_id = ${productId}::uuid and active
       order by position, created_at
     `),
@@ -315,6 +315,13 @@ export async function getProductForEdit(
       interval: p.interval as PlanInterval,
       intervalCount: Number(p.interval_count),
       discountPercent: Number(p.discount_percent),
+      trialDays: Number(p.trial_days),
+      signupFee: Object.fromEntries(
+        context.markets
+          .filter((m) => (p.signup_fee as Record<string, number>)?.[m.code])
+          .map((m) => [m.code, formatPriceInput((p.signup_fee as Record<string, number>)[m.code], m.currency)]),
+      ),
+      minCycles: Number(p.min_cycles),
     })),
     subscriptionOnly: Boolean(product.subscription_only),
     taxCode: String(product.tax_code),
@@ -386,7 +393,7 @@ export async function saveProduct(
       const locationId = await stockLocation(tx, store);
       await saveVariants(tx, store.id, saved, context, input, locationId);
       await saveFiles(tx, store.id, saved, input);
-      await savePlans(tx, store.id, saved, input);
+      await savePlans(tx, store.id, saved, input, context.markets);
       // Last, so the publishing check sees the finished listing.
       await tx.execute(sql`
         update commerce.products set status = ${input.status}, updated_at = now()
@@ -607,28 +614,41 @@ async function saveVariants(
 }
 
 /**
- * The product's download files. Files taken out are marked removed, not
- * deleted, so shoppers who bought them can still download them.
- */
-/**
  * Saves the purchase options (D25). An option left out is switched off, not
  * deleted: carts, orders and subscriptions keep pointing at it.
  */
-async function savePlans(tx: Tx, storeId: string, productId: string, input: ProductInput) {
+async function savePlans(
+  tx: Tx,
+  storeId: string,
+  productId: string,
+  input: ProductInput,
+  markets: EditorContext["markets"],
+) {
   const kept: string[] = [];
   for (const [position, plan] of input.plans.entries()) {
+    // Sign-up fees in minor units per market; empty or zero means none (D29).
+    const fees: Record<string, number> = {};
+    for (const market of markets) {
+      const amount = parsePrice(plan.signupFee[market.code] ?? "", market.currency);
+      if (amount) fees[market.code] = amount;
+    }
     const [row] = plan.id
       ? await tx.execute<Row>(sql`
           update commerce.selling_plans set
             interval = ${plan.interval}, interval_count = ${plan.intervalCount},
-            discount_percent = ${plan.discountPercent}, position = ${position}, active = true
+            discount_percent = ${plan.discountPercent}, trial_days = ${plan.trialDays},
+            signup_fee = ${JSON.stringify(fees)}::jsonb, min_cycles = ${plan.minCycles},
+            position = ${position}, active = true
           where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and id = ${plan.id}::uuid
           returning id
         `)
       : await tx.execute<Row>(sql`
-          insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent, position)
-          values (${storeId}::uuid, ${productId}::uuid, ${plan.interval}, ${plan.intervalCount},
-                  ${plan.discountPercent}, ${position})
+          insert into commerce.selling_plans (
+            store_id, product_id, interval, interval_count, discount_percent, trial_days, signup_fee, min_cycles, position
+          ) values (
+            ${storeId}::uuid, ${productId}::uuid, ${plan.interval}, ${plan.intervalCount}, ${plan.discountPercent},
+            ${plan.trialDays}, ${JSON.stringify(fees)}::jsonb, ${plan.minCycles}, ${position}
+          )
           returning id
         `);
     if (!row) throw new Error("unknown selling plan");
@@ -641,6 +661,10 @@ async function savePlans(tx: Tx, storeId: string, productId: string, input: Prod
   `);
 }
 
+/**
+ * The product's download files. Files taken out are marked removed, not
+ * deleted, so shoppers who bought them can still download them.
+ */
 async function saveFiles(tx: Tx, storeId: string, productId: string, input: ProductInput) {
   const variants = await tx.execute<Row>(sql`
     select id, sku from commerce.product_variants

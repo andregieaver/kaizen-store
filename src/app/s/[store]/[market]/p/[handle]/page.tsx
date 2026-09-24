@@ -10,7 +10,7 @@ import { Price } from "@/components/price";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
-import { minorUnitDigits } from "@/lib/money";
+import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { stockLevel } from "@/lib/pricing";
 import { marketPath } from "@/lib/paths";
 import { schemaPrice, summarize } from "@/lib/seo";
@@ -234,7 +234,14 @@ async function VariantsWithStock({
     id: plan.id,
     discountPercent: plan.discountPercent,
     label: m.planEvery(plan.interval, plan.intervalCount),
-    note: plan.discountPercent > 0 ? m.planSave(plan.discountPercent) : "",
+    note: [
+      plan.discountPercent > 0 && m.planSave(plan.discountPercent),
+      plan.trialDays > 0 && m.planTrial(plan.trialDays),
+      plan.signupFeeMinor > 0 && m.planSignupFee(formatMoney(plan.signupFeeMinor, market.currency, market.locale)),
+      plan.minCycles > 0 && m.planMinCycles(plan.minCycles),
+    ]
+      .filter(Boolean)
+      .join(" · "),
   }));
 
   return (

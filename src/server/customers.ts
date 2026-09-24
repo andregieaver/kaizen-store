@@ -343,6 +343,9 @@ export type CustomerSubscription = {
   currency: string;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  cancelAt: string | null;
+  pausedUntil: string | null;
+  trialEndsAt: string | null;
   manageToken: string;
   titles: string[];
 };
@@ -350,7 +353,7 @@ export type CustomerSubscription = {
 export async function listCustomerSubscriptions(storeId: string, customerId: string): Promise<CustomerSubscription[]> {
   const rows = await db().execute<Row>(sql`
     select s.id, s.number, s.status, s.interval, s.interval_count, s.total_minor, s.currency, s.current_period_end,
-      s.cancel_at_period_end, s.manage_token,
+      s.cancel_at_period_end, s.cancel_at, s.paused_until, s.trial_ends_at, s.manage_token,
       (select coalesce(json_agg(l.title order by l.title), '[]') from commerce.subscription_lines l where l.subscription_id = s.id) as titles
     from commerce.subscriptions s
     where s.store_id = ${storeId}::uuid and s.customer_id = ${customerId}::uuid and s.status not in ('pending', 'expired')
@@ -366,6 +369,9 @@ export async function listCustomerSubscriptions(storeId: string, customerId: str
     currency: String(row.currency),
     currentPeriodEnd: row.current_period_end ? new Date(String(row.current_period_end)).toISOString() : null,
     cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+    cancelAt: row.cancel_at ? new Date(String(row.cancel_at)).toISOString() : null,
+    pausedUntil: row.paused_until ? new Date(String(row.paused_until)).toISOString() : null,
+    trialEndsAt: row.trial_ends_at ? new Date(String(row.trial_ends_at)).toISOString() : null,
     manageToken: String(row.manage_token),
     titles: row.titles as string[],
   }));

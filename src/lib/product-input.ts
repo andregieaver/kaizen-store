@@ -2,7 +2,15 @@ import { z } from "zod";
 
 import { minorUnitDigits } from "./money";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
-import { MAX_DISCOUNT_PERCENT, MAX_INTERVAL_COUNT, MAX_PLANS, PLAN_INTERVALS, planSummary } from "./subscriptions";
+import {
+  MAX_DISCOUNT_PERCENT,
+  MAX_INTERVAL_COUNT,
+  MAX_MIN_CYCLES,
+  MAX_PLANS,
+  MAX_TRIAL_DAYS,
+  PLAN_INTERVALS,
+  planSummary,
+} from "./subscriptions";
 
 /**
  * The product editor's data, shared by the browser (which builds it) and the
@@ -165,6 +173,12 @@ export const productInput = z.object({
           .int()
           .min(0, "A discount cannot be negative.")
           .max(MAX_DISCOUNT_PERCENT, `A discount can be at most ${MAX_DISCOUNT_PERCENT}%.`),
+        /** Days free before the first charge (D29). */
+        trialDays: z.number().int().min(0).max(MAX_TRIAL_DAYS, `A free trial can be at most ${MAX_TRIAL_DAYS} days.`).default(0),
+        /** A one-time fee when subscribing, typed per market ("49,00"); empty for none. */
+        signupFee: z.record(z.string(), z.string().max(20)).default({}),
+        /** Payments committed to, the first included; 0 for none. */
+        minCycles: z.number().int().min(0).max(MAX_MIN_CYCLES, `Commit to at most ${MAX_MIN_CYCLES} payments.`).default(0),
       }),
     )
     .max(MAX_PLANS, `Use at most ${MAX_PLANS} purchase options.`)
@@ -268,6 +282,12 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   for (const plan of input.plans) {
     if (plan.intervalCount > MAX_INTERVAL_COUNT[plan.interval]) {
       problems.push(`${planSummary(plan)}: subscriptions renew at least every three years.`);
+    }
+    for (const market of context.markets) {
+      const fee = plan.signupFee[market.code] ?? "";
+      if (fee.trim() && parsePrice(fee, market.currency) === null) {
+        problems.push(`${planSummary(plan)}: "${fee}" is not a sign-up fee in ${market.currency}.`);
+      }
     }
     const rhythm = `${plan.interval}:${plan.intervalCount}`;
     if (rhythms.has(rhythm)) problems.push(`Two purchase options renew ${planSummary(plan).toLowerCase().split(",")[0]}.`);

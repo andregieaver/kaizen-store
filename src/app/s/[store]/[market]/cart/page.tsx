@@ -76,7 +76,14 @@ async function CartContents({
   );
   const blocked = cart.lines.some((line) => line.status !== "ok");
   const checkout = await getCheckoutInfo(store.id, market.code);
-  const subtotal = cartSubtotal(payable);
+  const plan = payable.find((line) => line.plan)?.plan ?? null;
+  // In a free trial, what renews costs nothing today (D29).
+  const trial = (plan?.trialDays ?? 0) > 0;
+  const today = (line: CartLine & { unitPriceMinor: number }) => (trial && line.plan ? 0 : line.unitPriceMinor * line.quantity);
+  // One sign-up fee per purchase option (D29).
+  const fees = [...new Map(payable.filter((l) => l.plan && l.plan.signupFeeMinor > 0).map((l) => [l.plan!.id, l.plan!.signupFeeMinor])).values()];
+  const feeMinor = fees.reduce((sum, fee) => sum + fee, 0);
+  const subtotal = cartSubtotal(payable.map((line) => ({ unitPriceMinor: today(line), quantity: 1 })));
   // Downloads alone need no shipping (D24); a subscription pays it per delivery (D25).
   const ships = cart.lines.some((line) => line.delivery === "physical");
   const digital = cart.lines.some((line) => line.delivery === "digital");
@@ -87,15 +94,25 @@ async function CartContents({
       recurring: line.plan !== null,
     })),
     checkout.shipping,
+    { trial },
   );
   const shipping = !ships ? 0 : checkout.shipping ? basket.first : null;
-  const plan = payable.find((line) => line.plan)?.plan ?? null;
   const renewal = plan
     ? payable.filter((line) => line.plan).reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0) +
       basket.renewal
     : null;
   const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
   const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
+  // The subscription's terms, said the same way in the summary and the consent (D29).
+  const terms = plan
+    ? [
+        m.renewsEvery(every, money(renewal ?? 0)),
+        plan.trialDays > 0 && m.trialNote(plan.trialDays),
+        plan.minCycles > 0 && m.commitmentNote(plan.minCycles),
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : null;
 
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_18rem]">
@@ -130,7 +147,18 @@ async function CartContents({
                   )}
                 </div>
                 {line.unitPriceMinor !== null && line.status !== "unavailable" && (
-                  <p className="font-medium">{money(line.unitPriceMinor * line.quantity)}</p>
+                  <p className="text-right font-medium">
+                    {trial && line.plan ? (
+                      <>
+                        {money(0)}
+                        <span className="block text-sm font-normal text-muted">
+                          {m.planTrial(line.plan.trialDays)}, {money(line.unitPriceMinor * line.quantity)}
+                        </span>
+                      </>
+                    ) : (
+                      money(line.unitPriceMinor * line.quantity)
+                    )}
+                  </p>
                 )}
               </div>
 
@@ -187,6 +215,12 @@ async function CartContents({
             <dt>{m.subtotal}</dt>
             <dd>{money(subtotal)}</dd>
           </div>
+          {feeMinor > 0 && (
+            <div className="flex justify-between">
+              <dt>{m.signupFee}</dt>
+              <dd>{money(feeMinor)}</dd>
+            </div>
+          )}
           {shipping !== null && ships && (
             <div className="flex justify-between">
               <dt>
@@ -198,14 +232,14 @@ async function CartContents({
           )}
           <div className="flex justify-between border-t border-border pt-2 font-semibold">
             <dt>{m.total}</dt>
-            <dd>{money(subtotal + (shipping ?? 0))}</dd>
+            <dd>{money(subtotal + feeMinor + (shipping ?? 0))}</dd>
           </div>
         </dl>
         <p className="text-sm text-muted">
           {m.vatIncluded}
           {shipping === null && ` · ${m.shippingAtCheckout}`}
         </p>
-        {renewal !== null && <p className="text-sm">{m.renewsEvery(every, money(renewal))}</p>}
+        {terms && <p className="text-sm">{terms}</p>}
         {checkout.paymentsOn ? (
           <CheckoutButton
             store={store.slug}
@@ -214,7 +248,16 @@ async function CartContents({
             labels={checkoutLabels(m)}
             consents={{
               digital: digital ? m.digitalConsent : undefined,
-              subscription: renewal !== null ? m.subscriptionConsent(every, money(renewal)) : undefined,
+              subscription:
+                renewal !== null && plan
+                  ? [
+                      m.subscriptionConsent(every, money(renewal)),
+                      plan.trialDays > 0 && m.trialNote(plan.trialDays),
+                      plan.minCycles > 0 && m.commitmentNote(plan.minCycles),
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  : undefined,
             }}
           />
         ) : (

@@ -152,7 +152,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                     <tr key={line.id} className="border-b border-border">
                       <td className="py-2">
                         {line.title}
-                        {line.delivery === "digital" && <span className="block text-xs text-muted">Digital download</span>}
+                        {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">Digital download</span>}
                         {line.restocked > 0 && <span className="block text-xs text-muted">{line.restocked} put back in stock</span>}
                       </td>
                       <td className="py-2 font-mono text-xs">{line.sku}</td>

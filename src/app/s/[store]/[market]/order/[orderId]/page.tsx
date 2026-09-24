@@ -44,7 +44,7 @@ async function OrderDetails({
   const m: Messages = t(market.lang);
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const address = order.shippingAddress;
-  const digital = order.lines.some((line) => line.delivery === "digital");
+  const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
   const [downloads, subscription] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],

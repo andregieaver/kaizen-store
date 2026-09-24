@@ -9,7 +9,8 @@ import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/l
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
-import { variantLabel, type Delivery } from "@/lib/product-input";
+import { t } from "@/lib/i18n";
+import { GENERAL_TAX_CODE, variantLabel, type Delivery } from "@/lib/product-input";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
@@ -32,7 +33,14 @@ export type PlacedOrder = {
   /** Something to ship: false for downloads only (D24). */
   ships: boolean;
   /** The subscription this order starts (D25): how often it renews, and its shipping each time. */
-  subscription: { id: string; interval: PlanInterval; intervalCount: number; shippingMinor: number } | null;
+  subscription: {
+    id: string;
+    interval: PlanInterval;
+    intervalCount: number;
+    /** Days free before Stripe first charges what renews (D29). */
+    trialDays: number;
+    shippingMinor: number;
+  } | null;
   shippingMinor: number;
   /** The VAT included in the total. */
   taxMinor: number;
@@ -86,7 +94,8 @@ export async function placeOrder(
     const lines = await tx.execute<Row>(sql`
       select
         cl.variant_id, cl.quantity, v.sku, v.options, v.delivery,
-        cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent,
+        cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
+        coalesce((sp.signup_fee ->> ${market.code})::bigint, 0) as signup_fee,
         (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         coalesce(tl.title, tf.title, p.handle) as title,
@@ -111,10 +120,18 @@ export async function placeOrder(
     }
     // One checkout starts at most one subscription, renewing on one schedule (D25).
     const planned = lines.filter((l) => l.selling_plan_id !== null);
-    const rhythm = planned[0] && { interval: planned[0].interval as PlanInterval, intervalCount: Number(planned[0].interval_count) };
-    if (rhythm && planned.some((l) => !sameRhythm(rhythm, { interval: l.interval as PlanInterval, intervalCount: Number(l.interval_count) }))) {
+    const termsOf = (l: Row) => ({
+      interval: l.interval as PlanInterval,
+      intervalCount: Number(l.interval_count),
+      trialDays: Number(l.trial_days),
+    });
+    const rhythm = planned[0] && termsOf(planned[0]);
+    if (rhythm && planned.some((l) => !sameRhythm(rhythm, termsOf(l)))) {
       return { ok: false, problem: "plans" };
     }
+    // In a free trial, what renews costs nothing now (D29); commitments take the longest option's.
+    const trial = Boolean(rhythm && rhythm.trialDays > 0);
+    const minCycles = Math.max(0, ...planned.map((l) => Number(l.min_cycles)));
     if (rhythm && !consent.subscription) return { ok: false, problem: "subscription_consent" };
     const physical = lines.filter((l) => l.delivery === "physical");
     const digital = physical.length < lines.length;
@@ -177,27 +194,42 @@ export async function placeOrder(
     const priced = lines.map((line) => {
       const quantity = Number(line.quantity);
       const recurring = line.selling_plan_id !== null;
-      const unit = planPrice(Number(line.amount_minor), recurring ? Number(line.discount_percent) : 0);
+      // The subscriber's price on each renewal, and what is charged now.
+      const renewUnit = planPrice(Number(line.amount_minor), recurring ? Number(line.discount_percent) : 0);
+      const unit = recurring && trial ? 0 : renewUnit;
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
       const delivery: Delivery = line.delivery === "digital" ? "digital" : "physical";
-      return { line, quantity, unit, total: unit * quantity, title, recurring, delivery };
+      return { line, quantity, unit, renewUnit, total: unit * quantity, title, recurring, delivery };
     });
-    const subtotal = priced.reduce((sum, p) => sum + p.total, 0);
+    // One sign-up fee per purchase option, charged now with the first order (D29).
+    const fees = [
+      ...new Map(
+        planned
+          .filter((l) => Number(l.signup_fee) > 0)
+          .map((l) => [String(l.selling_plan_id), { planId: String(l.selling_plan_id), amount: Number(l.signup_fee), title: String(l.title) }]),
+      ).values(),
+    ];
+    const feeTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
+    const subtotal = priced.reduce((sum, p) => sum + p.total, 0) + feeTotal;
     // Free shipping counts the whole basket, downloads included; a
     // subscription pays shipping on each delivery (D25).
     const basket = basketShipping(
-      priced.map((p) => ({ totalMinor: p.total, delivery: p.delivery, recurring: p.recurring })),
+      priced.map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
       rate
         ? {
             amountMinor: Number(rate.amount_minor),
             freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
           }
         : null,
+      { trial },
     );
     const shipping = basket.first;
-    const tax = priced.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) + vatIncluded(shipping, vatRate);
+    const tax =
+      priced.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) +
+      fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, vatRate), 0) +
+      vatIncluded(shipping, vatRate);
     const total = subtotal + shipping;
 
     const [numbered] = await tx.execute<Row>(sql`
@@ -238,20 +270,34 @@ export async function placeOrder(
       `);
     }
 
+    const feeTitle = t(market.lang).signupFee;
+    for (const fee of fees) {
+      await tx.execute(sql`
+        insert into commerce.order_lines (
+          store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
+          total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery, selling_plan_id
+        ) values (
+          ${storeId}::uuid, ${orderId}::uuid, null, 'SIGNUP-FEE', ${`${feeTitle}: ${fee.title}`}, 1, ${fee.amount}, 0,
+          ${fee.amount}, ${vatIncluded(fee.amount, vatRate)}, ${vatRate}, ${GENERAL_TAX_CODE}, 'none', 'digital',
+          ${fee.planId}::uuid
+        )
+      `);
+    }
+
     // The subscription waits for the first payment, with what each renewal holds.
     let subscription: PlacedOrder["subscription"] = null;
     if (rhythm) {
       const renewing = priced.filter((p) => p.recurring);
-      const renewalSubtotal = renewing.reduce((sum, p) => sum + p.total, 0);
+      const renewalSubtotal = renewing.reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
       const renewalTax =
-        renewing.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) + vatIncluded(basket.renewal, vatRate);
+        renewing.reduce((sum, p) => sum + vatIncluded(p.renewUnit * p.quantity, vatRate), 0) + vatIncluded(basket.renewal, vatRate);
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.subscriptions (
-          store_id, number, market_code, currency, locale, interval, interval_count,
+          store_id, number, market_code, currency, locale, interval, interval_count, min_cycles,
           subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token
         ) values (
           ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
-          ${rhythm.interval}, ${rhythm.intervalCount}, ${renewalSubtotal}, ${basket.renewal},
+          ${rhythm.interval}, ${rhythm.intervalCount}, ${minCycles}, ${renewalSubtotal}, ${basket.renewal},
           ${renewalSubtotal + basket.renewal}, ${renewalTax}, ${orderId}::uuid,
           replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
         )
@@ -266,7 +312,7 @@ export async function placeOrder(
           ) values (
             ${storeId}::uuid, ${subscriptionId}::uuid, ${String(p.line.variant_id)}::uuid,
             ${String(p.line.selling_plan_id)}::uuid, ${String(p.line.sku)}, ${p.title}, ${p.quantity},
-            ${p.unit}, ${p.total}, ${vatRate}, ${String(p.line.tax_code)}, ${p.delivery}
+            ${p.renewUnit}, ${p.renewUnit * p.quantity}, ${vatRate}, ${String(p.line.tax_code)}, ${p.delivery}
           )
         `);
       }
@@ -297,12 +343,21 @@ export async function placeOrder(
         orderId,
         number: String(numbered.number),
         currency: market.currency,
-        lines: priced.map((p) => ({
-          title: p.title,
-          unitPriceMinor: p.unit,
-          quantity: p.quantity,
-          recurring: p.recurring,
-        })),
+        lines: [
+          ...priced.map((p) => ({
+            title: p.title,
+            // What renews is charged at its full price by Stripe, after any free trial.
+            unitPriceMinor: p.recurring ? p.renewUnit : p.unit,
+            quantity: p.quantity,
+            recurring: p.recurring,
+          })),
+          ...fees.map((fee) => ({
+            title: `${feeTitle}: ${fee.title}`,
+            unitPriceMinor: fee.amount,
+            quantity: 1,
+            recurring: false,
+          })),
+        ],
         ships,
         subscription,
         shippingMinor: shipping,
@@ -330,7 +385,8 @@ export function subscriptionShipping(
 ): Stripe.Checkout.SessionCreateParams.LineItem[] {
   if (!order.subscription) return [];
   const renewing = order.subscription.shippingMinor;
-  const once = order.shippingMinor - renewing;
+  // In a free trial, the renewing line is not charged now (D29).
+  const once = order.shippingMinor - (order.subscription.trialDays > 0 ? 0 : renewing);
   const line = (amount: number, renews: boolean) => ({
     quantity: 1,
     price_data: {
@@ -481,6 +537,7 @@ export async function startCheckout(
               subscription_data: {
                 metadata: { ...metadata, subscription_id: order.subscription.id },
                 description: `Subscription ${order.number}`,
+                ...(order.subscription.trialDays > 0 && { trial_period_days: order.subscription.trialDays }),
                 ...(feeBps > 0 && { application_fee_percent: Math.round(feeBps) / 100 }),
               },
             }
@@ -602,11 +659,11 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
       is distinct from
       (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.selling_plan_id, ol.quantity)
                                  order by ol.variant_id, ol.selling_plan_id), '[]'::jsonb)
-         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id) as changed,
+         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null) as changed,
       exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol
-               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital') as digital,
+               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital' and ol.variant_id is not null) as digital,
       s.interval, s.interval_count, s.total_minor as renewal_minor
     from commerce.orders o
     join commerce.payments pay on pay.store_id = o.store_id and pay.order_id = o.id and pay.provider = 'stripe'

@@ -7,22 +7,29 @@ import {
   type SubscriptionActionState,
 } from "@/app/s/[store]/[market]/subscription/[token]/actions";
 
-/** Cancels a subscription at the end of its period, or keeps it after all. */
+/**
+ * One change to a subscription (D25, D29): cancel or keep it, pause for
+ * some deliveries, skip the next or end a pause.
+ */
 export function SubscriptionButton({
   store,
   market,
   token,
   change,
+  periods = 1,
+  primary = false,
   labels,
 }: {
   store: string;
   market: string;
   token: string;
-  change: "cancel" | "resume";
+  change: "cancel" | "resume" | "pause" | "unpause" | "skip";
+  periods?: number;
+  primary?: boolean;
   labels: { action: string; busy: string; failed: string };
 }) {
   const [state, action, pending] = useActionState(
-    async (): Promise<SubscriptionActionState> => changeMySubscription(store, market, token, change),
+    async (): Promise<SubscriptionActionState> => changeMySubscription(store, market, token, change, periods),
     { failed: false },
   );
   return (
@@ -31,16 +38,18 @@ export function SubscriptionButton({
         type="submit"
         disabled={pending}
         className={
-          change === "cancel"
-            ? "min-h-11 rounded-full border border-foreground px-5 font-medium disabled:opacity-40"
-            : "min-h-11 rounded-full bg-foreground px-5 font-medium text-background disabled:opacity-40"
+          primary
+            ? "min-h-11 rounded-full bg-foreground px-5 font-medium text-background disabled:opacity-40"
+            : "min-h-11 rounded-full border border-foreground px-5 font-medium disabled:opacity-40"
         }
       >
         {pending ? labels.busy : labels.action}
       </button>
-      <p role="status" aria-live="polite" className="text-sm">
-        {state.failed && labels.failed}
-      </p>
+      {state.failed && (
+        <p role="alert" className="text-sm">
+          {labels.failed}
+        </p>
+      )}
     </form>
   );
 }
