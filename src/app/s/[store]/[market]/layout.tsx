@@ -107,6 +107,9 @@ export default async function MarketLayout({ children, params }: Props) {
                   </ul>
                 </nav>
               )}
+              <Link href={`${home}/account`} className="rounded px-2 py-1 text-sm font-medium">
+                {m.account.title}
+              </Link>
               <Suspense
                 fallback={
                   <Link href={`${home}/cart`} className="rounded px-2 py-1 text-sm font-medium">

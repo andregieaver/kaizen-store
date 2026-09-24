@@ -54,9 +54,9 @@ describe("robots.txt", () => {
   it("repeats the rules for everyone in each named group, since crawlers follow only their own", () => {
     const seo = parseStoreSeo({ aiTraining: false });
     const text = renderRobots(storeRobotsGroups(seo, "/s/kopp"), ["https://x.test/sitemap.xml"]);
-    expect(text).toContain("User-agent: *\nDisallow: /s/kopp/*/cart\nDisallow: /s/kopp/*/checkout\nDisallow: /s/kopp/*/order/\nDisallow: /s/kopp/*/download\nDisallow: /s/kopp/*/subscription/\n");
+    expect(text).toContain("User-agent: *\nDisallow: /s/kopp/*/cart\nDisallow: /s/kopp/*/checkout\nDisallow: /s/kopp/*/order/\nDisallow: /s/kopp/*/download\nDisallow: /s/kopp/*/subscription/\nDisallow: /s/kopp/*/account\n");
     expect(text).toContain(
-      "User-agent: GPTBot\nDisallow: /s/kopp/*/cart\nDisallow: /s/kopp/*/checkout\nDisallow: /s/kopp/*/order/\nDisallow: /s/kopp/*/download\nDisallow: /s/kopp/*/subscription/\nDisallow: /s/kopp/",
+      "User-agent: GPTBot\nDisallow: /s/kopp/*/cart\nDisallow: /s/kopp/*/checkout\nDisallow: /s/kopp/*/order/\nDisallow: /s/kopp/*/download\nDisallow: /s/kopp/*/subscription/\nDisallow: /s/kopp/*/account\nDisallow: /s/kopp/",
     );
     expect(text).not.toContain("User-agent: ChatGPT-User");
     expect(text.trimEnd().endsWith("Sitemap: https://x.test/sitemap.xml")).toBe(true);

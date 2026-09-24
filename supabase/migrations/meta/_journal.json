@@ -197,6 +197,20 @@
       "when": 1790272771565,
       "tag": "20260924175931_order_management_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790274368183,
+      "tag": "20260924182608_customer_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790274369504,
+      "tag": "20260924182609_customer_accounts_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -143,7 +143,7 @@ export function RefundForm({
                 max={line.left}
                 defaultValue={0}
                 aria-label={`Units of ${line.title} to put back in stock`}
-                className={`${input} w-20`}
+                className="min-h-10 w-20 shrink-0 rounded-md border border-border bg-background px-3 text-sm"
               />
             </label>
           ))}

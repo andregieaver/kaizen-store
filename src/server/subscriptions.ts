@@ -239,13 +239,13 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
       insert into commerce.orders (
         store_id, number, market_code, currency, locale, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-        billing_address, shipping_address, digital_consent_at, subscription_id
+        billing_address, shipping_address, digital_consent_at, subscription_id, customer_id
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${sub.market_code}, ${sub.currency}, ${sub.locale},
         ${sub.email}, 'pending_payment',
         ${sub.subtotal_minor}, ${sub.shipping_minor}, 0, ${sub.tax_minor}, ${sub.total_minor},
         ${JSON.stringify(sub.billing_address ?? {})}::jsonb, ${JSON.stringify(sub.shipping_address ?? {})}::jsonb,
-        ${sub.digital_consent_at ?? null}::timestamptz, ${sub.id}::uuid
+        ${sub.digital_consent_at ?? null}::timestamptz, ${sub.id}::uuid, ${sub.customer_id ?? null}::uuid
       )
       returning id
     `);

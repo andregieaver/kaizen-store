@@ -246,4 +246,30 @@ export function sendCancelled(storeId: string, orderId: string, amountMinor: num
   }));
 }
 
+/** A six-digit sign-in code for My account (D28). */
+export async function sendSignInCode(
+  storeId: string,
+  marketCode: string,
+  locale: string,
+  to: string,
+  code: string,
+): Promise<SendOutcome | null> {
+  const ctx = await context(storeId, marketCode, locale);
+  if (!ctx) return null;
+  const { store, text } = ctx;
+  const email = renderEmail({
+    subject: text.codeSubject(store.name),
+    preview: `${code} · ${text.codeIntro}`,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: text.codeHeading },
+      { type: "paragraph", text: text.codeIntro },
+      { type: "code", text: code },
+      { type: "paragraph", text: text.codeIgnore },
+    ],
+  });
+  return sendEmail({ storeId, kind: "account.code", to, email, fromName: store.name, replyTo: store.details.contactEmail });
+}
+
 export { context as emailContext, footer as emailFooter, orderUrl, orderLines as orderLinesBlock, storeById };

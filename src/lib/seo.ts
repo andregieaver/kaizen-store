@@ -248,6 +248,7 @@ export function storePrivatePaths(base: string): Rule[] {
     { allow: false, path: `${base}/*/order/` },
     { allow: false, path: `${base}/*/download` },
     { allow: false, path: `${base}/*/subscription/` },
+    { allow: false, path: `${base}/*/account` },
   ];
 }
 

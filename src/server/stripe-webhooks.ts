@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
+import { linkOrderToCustomer } from "./customers";
 import { sendOrderConfirmation } from "./shopper-emails";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
@@ -82,6 +83,8 @@ export async function applySession(
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
     if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
+    // The order joins the customer's account, if they have one (D28).
+    await linkOrderToCustomer(storeId, orderId);
     // Once per order, however many times the session is applied (D26).
     await sendOrderConfirmation(storeId, orderId);
   } else if (failed || expired) {

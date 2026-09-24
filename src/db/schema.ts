@@ -917,13 +917,67 @@ export const customers = commerce.table(
     authUserId: uuid("auth_user_id"),
     email: text("email").notNull(),
     locale: text("locale"),
+    /** My account (D28): the customer's own details, all optional. */
+    name: text("name").notNull().default(""),
+    phone: text("phone").notNull().default(""),
+    address: jsonb("address").notNull().default({}),
+    /** scrypt hash, when the customer has chosen a password; sign-in by emailed code always works. */
+    passwordHash: text("password_hash"),
+    failedSignIns: integer("failed_sign_ins").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
     createdAt: createdAt(),
+    updatedAt: updatedAt(),
   },
   (t) => [
     unique("customers_store_id_key").on(t.storeId, t.id),
     unique("customers_store_auth_user_key").on(t.storeId, t.authUserId),
     uniqueIndex("customers_store_email_idx").on(t.storeId, sql`lower(${t.email})`),
   ],
+);
+
+/**
+ * A signed-in customer's browser (D28). The cookie holds a random token;
+ * only its SHA-256 is kept, so the table cannot be used to sign in.
+ */
+export const customerSessions = commerce.table(
+  "customer_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    customerId: uuid("customer_id").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "customer_sessions_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    index("customer_sessions_customer_idx").on(t.storeId, t.customerId),
+  ],
+);
+
+/**
+ * A sign-in code emailed to a customer (D28): six digits, kept only as a
+ * hash, valid for ten minutes and five tries.
+ */
+export const customerCodes = commerce.table(
+  "customer_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("customer_codes_email_idx").on(t.storeId, sql`lower(${t.email})`, t.createdAt)],
 );
 
 const customerRef = (
@@ -1137,11 +1191,15 @@ export const subscriptions = commerce.table(
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** The secret in the shopper's link to see and cancel the subscription. */
     manageToken: text("manage_token").notNull().unique(),
+    /** The customer's account, found by the order's email (D28). */
+    customerId: uuid("customer_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("subscriptions_store_id_key").on(t.storeId, t.id),
+    customerRef("subscriptions_customer_fk", t),
+    index("subscriptions_customer_idx").on(t.storeId, t.customerId),
     unique("subscriptions_store_reference_key").on(t.storeId, t.provider, t.providerReference),
     orderRef("subscriptions_first_order_fk", { storeId: t.storeId, orderId: t.firstOrderId }),
     index("subscriptions_first_order_idx").on(t.storeId, t.firstOrderId),
