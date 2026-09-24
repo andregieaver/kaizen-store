@@ -20,7 +20,7 @@ this file wins.
 | D9 | **Drizzle schema is the source of truth**; migrations are generated into `supabase/migrations` and applied to Supabase by Claude as they land. | 2026-09-23 | CI fails if schema and migrations disagree. |
 | D10 | **Data residency: EU/EEA vendors wherever a comparable option exists.** A US processor only with a DPA and the EU–US Data Privacy Framework or standard contractual clauses. | 2026-09-23 | Default set by Claude. Every vendor is listed in [`residency-register.md`](residency-register.md) before it touches production data. |
 | D11 | **Build to WCAG 2.2 AA.** | 2026-09-23 | Meets Norway's universal-design rules and the European Accessibility Act for Swedish and Danish customers. |
-| D12 | **Kaizen Store is a multi-purpose template**, not tied to one product category. | 2026-09-23 | VAT comes from a Stripe Tax code per product (with a per-variant override); every goods withdrawal exclusion is available; producer responsibility schemes are tracked per product with registrations per market; `commerce.missing_registrations` shows the gaps. Variants carry a customs tariff (HS) code and country of origin for export declarations. |
+| D12 | **Kaizen Store is a multi-purpose template**, not tied to one product category. | 2026-09-23 | VAT comes from a Stripe Tax code per product (with a per-variant override); every goods withdrawal exclusion is available; producer responsibility schemes are tracked per product with registrations per market; `commerce.missing_registrations` shows the gaps per store. Variants carry a customs tariff (HS) code and country of origin for export declarations. |
 | D13 | **No extra monitoring or analytics accounts until there is a need.** | 2026-09-23 | Errors: Vercel's built-in logs. Speed: Vercel Speed Insights. Traffic: Vercel Web Analytics (cookieless). Business events: our own tables in Postgres. Experiments: assignment in our own code. Sentry, PostHog and GrowthBook are optional add-ons, not prerequisites. |
 | D14 | **No non-essential cookies at launch.** | 2026-09-23 | Cart and session cookies are strictly necessary and need no consent, so the store needs no cookie banner. Adding marketing pixels or cookie-based analytics later brings back the consent requirement. Default set by Claude. |
 | D15 | **Payment settings belong to the store owner, in the store's admin.** API keys and webhook secrets per payment provider, test or live mode, and an on/off switch per payment method (per market) are edited in store settings, not in Vercel environment variables. | 2026-09-24 | Needs an admin area with sign-in (Phase 1c). Secrets are stored encrypted in the database with a key held only in the server environment, never returned to the browser once saved, and every change is logged. The only payment-related environment variable is that encryption key. |
@@ -67,22 +67,25 @@ exporter. In practice:
 
 ### Migration versions
 
-Supabase records each migration with the version it was applied at, not the
-timestamp in the file name:
+On 24 September 2026 Kaizen became multi-tenant (see [`platform.md`](platform.md)).
+The single-store migrations were replaced by a fresh baseline. In production,
+the old schema was not dropped: it was renamed to `commerce_legacy` and can be
+removed once the platform schema has proved itself. Supabase's migration
+history therefore still lists the nine single-store migrations, then:
 
 | File | Recorded as |
 |---|---|
-| `20260923125424_commerce_schema.sql` | `20260923130719` |
-| `20260923125448_commerce_rules.sql` | `20260923130802` |
-| `20260923131004_index_foreign_keys.sql` | `20260923131521` |
-| `20260923134115_template_compliance.sql` | `20260923134238` |
-| `20260923134127_launch_markets.sql` | `20260923134250` |
-| `20260923214059_customs_fields.sql` | `20260923214747` |
-| `20260923214100_ship_from_norway.sql` | `20260923214754` |
+| (no file: `ALTER SCHEMA commerce RENAME TO commerce_legacy`) | `20260924000447` retire_single_store_schema |
+| `20260923235845_platform_schema.sql` | `20260924000725` |
+| `20260923235847_platform_rules.sql` | `20260924060213` |
 
-This does not matter while migrations are applied through Supabase's API. If
-the Supabase CLI is adopted later (for example for branching), run
-`supabase migration repair` once to align the history.
+The template store was seeded from `supabase/seed.sql`, and the existing owner
+account was carried over as platform admin and owner of the template store.
+
+Supabase records each migration with the version it was applied at, not the
+timestamp in the file name. This does not matter while migrations are applied
+through Supabase's API. If the Supabase CLI is adopted later (for example for
+branching), run `supabase migration repair` once to align the history.
 
 ## Open
 
@@ -96,7 +99,7 @@ WooCommerce and Shopify need them too.
 | R1 | Norwegian VAT (MVA) registration | You | Once Norwegian sales pass NOK 50,000 in 12 months. |
 | R2 | Decide how EU VAT is collected: register for IOSS, or let the carrier collect from customers on delivery | You (+ accountant) | IOSS is the better customer experience. See above. |
 | R3 | Terms of sale, withdrawal information and privacy policy in Norwegian, Swedish and Danish | Claude drafts, you review | Built into Phase 1. |
-| R4 | Packaging producer responsibility in each market | You | Check whether your volumes trigger registration in Norway, Sweden and Denmark; record numbers in `commerce.producer_registrations`. |
+| R4 | Packaging producer responsibility in each market | You | Check whether your volumes trigger registration in Norway, Sweden and Denmark; record numbers in `commerce.producer_registrations` (per store). |
 | R5 | Product-safety contact details per manufacturer, and an EU responsible person where needed | You | The database will not activate a product without them. |
 
 ### Not needed now
