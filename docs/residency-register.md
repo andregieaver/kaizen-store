@@ -13,6 +13,7 @@ Status: ✅ in place · ⏳ to do · ❓ unverified
 |---|---|---|---|---|---|
 | Supabase | Database, auth (sign-in links) and storage (product pictures) | All commerce data, including customer personal data | EU: `eu-west-1` (Ireland) | ⏳ accept in the dashboard | Project "Kaizen Store". |
 | Vercel | Hosting and functions | Request data, logs; personal data passes through functions | Functions: `dub1` (Dublin). CDN and routing middleware: global | ⏳ accept in the dashboard | Middleware runs worldwide, so it must never read personal data. The CDN caches public pages only. |
+| Amazon SES | Emails to shoppers: order confirmations, shipping, refunds, sign-in codes, subscription reminders (D26) | Names, email addresses, order details | EU: the region set in `SES_REGION` (`eu-north-1` Stockholm recommended) | ⏳ AWS's GDPR DPA is part of the AWS service terms; confirm in the AWS account | Copies of every email are also kept in the database (`email_messages`). Until SES is configured, emails are only recorded, not sent. |
 | GitHub | Source code and CI | Code only, no customer data | US | Not needed while no personal data is stored | Never commit secrets or production data. Test data is synthetic. |
 
 ## Planned
@@ -20,7 +21,6 @@ Status: ✅ in place · ⏳ to do · ❓ unverified
 | Service | Purpose | Data | Region | DPA | Phase | Notes |
 |---|---|---|---|---|---|---|
 | Stripe | Payments (Stripe Connect: each store has its own Stripe account), Stripe Tax later | Payment and billing data | EU entity (Stripe Payments Europe, Ireland); some processing in the US | Part of Stripe's services agreement | 1 | Card data never reaches our servers. |
-| Transactional email | Order confirmations, withdrawal acknowledgements | Names, emails, order details | EU-hosted preferred (for example AWS SES in `eu-west-1`) | ⏳ | 1 | Resend keeps account data in the US even with an EU sending region. |
 | Vercel AI Gateway | Model calls for search and the assistant | Shopper questions, possibly personal data | Inference pinned to the EU; request entry is not yet region-pinned | ⏳ | 2–3 | Zero data retention per request; log the resolved region on every call. |
 | Langfuse | LLM tracing and evaluation | Prompts and answers | ❓ EU region believed but not verified | ⏳ | 3 | Verify before sending traces. |
 

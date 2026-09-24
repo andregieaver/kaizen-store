@@ -1189,6 +1189,41 @@ export const subscriptionLines = commerce.table(
   ],
 );
 
+export const emailStatus = commerce.enum("email_status", ["queued", "sent", "failed", "logged"]);
+
+/**
+ * Every email Kaizen sends (D26), kept as sent: to whom, why and what it
+ * said. `logged` means no email service was configured, so it was only
+ * recorded. The key stops one event sending the same email twice.
+ */
+export const emailMessages = commerce.table(
+  "email_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizen's own emails. */
+    storeId: uuid("store_id").references(() => stores.id),
+    kind: text("kind").notNull(),
+    idempotencyKey: text("idempotency_key"),
+    toAddress: text("to_address").notNull(),
+    subject: text("subject").notNull(),
+    html: text("html").notNull(),
+    text: text("text").notNull(),
+    status: emailStatus("status").notNull().default("queued"),
+    providerReference: text("provider_reference"),
+    error: text("error"),
+    orderId: uuid("order_id"),
+    subscriptionId: uuid("subscription_id"),
+    createdAt: createdAt(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("email_messages_idempotency_idx").on(t.idempotencyKey),
+    index("email_messages_store_created_idx").on(t.storeId, t.createdAt),
+    index("email_messages_order_idx").on(t.storeId, t.orderId),
+    index("email_messages_subscription_idx").on(t.storeId, t.subscriptionId),
+  ],
+);
+
 /**
  * A paid order's download link for one file (D24). The token is the secret
  * in the link; limits come from the product when the order is paid.

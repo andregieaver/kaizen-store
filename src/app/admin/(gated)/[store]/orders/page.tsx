@@ -40,6 +40,9 @@ async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searc
         <Link href={`${base}?show=unpaid`} aria-current={unpaid ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
           Unfinished checkouts
         </Link>
+        <Link href={`/admin/${store.slug}/emails`} className="ml-auto rounded px-2 py-1 underline">
+          Emails to customers
+        </Link>
       </nav>
       {orders.length === 0 ? (
         <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">

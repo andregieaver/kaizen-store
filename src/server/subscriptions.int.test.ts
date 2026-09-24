@@ -6,6 +6,7 @@ import { closeDb, db } from "@/db/client";
 import { toMarket } from "@/lib/markets";
 
 import { cancelUnpaidOrder, placeOrder } from "./checkout";
+import { sendOrderConfirmation } from "./shopper-emails";
 import { applySession } from "./stripe-webhooks";
 import { getSubscription, listSubscriptions, renewSubscription, syncSubscription } from "./subscriptions";
 
@@ -198,6 +199,27 @@ describe("a subscription's life", () => {
     expect((await listSubscriptions(storeId)).map((s) => s.id)).toContain(subscriptionId);
   });
 
+  it("emails the order confirmation once, with the subscription's terms (D26)", async () => {
+    // The session applied again (webhook and return page) sends nothing more.
+    await applySession(storeId, {
+      id: session,
+      object: "checkout.session",
+      mode: "subscription",
+      status: "complete",
+      payment_status: "paid",
+      subscription: reference,
+      customer_details: { email: "kari@example.com", name: "Kari Nordmann", address: { line1: "Storgata 1", postal_code: "0155", city: "Oslo", country: "NO" } },
+    } as unknown as Stripe.Checkout.Session);
+    const emails = await db().execute<Row>(sql`
+      select kind, to_address, subject, status, text from commerce.email_messages where order_id = ${orderId}::uuid
+    `);
+    expect(emails).toHaveLength(1);
+    expect(emails[0]).toMatchObject({ kind: "order.confirmation", to_address: "kari@example.com", status: "logged" });
+    expect(String(emails[0].subject)).toMatch(/^Ordrebekreftelse \d+ fra /);
+    expect(String(emails[0].text)).toContain("Abonnement: fornyes hver måned");
+    expect(String(emails[0].text)).toContain("/subscription/");
+  });
+
   it("turns each paid renewal into a paid order that draws stock, once per invoice", async () => {
     const before = await onHand("DEMO-NOTEBOOK-LINED");
     const invoice = {
@@ -210,6 +232,9 @@ describe("a subscription's life", () => {
     const renewal = await renewSubscription(storeId, invoice);
     expect(renewal).not.toBeNull();
     expect(await renewSubscription(storeId, invoice)).toBe(renewal);
+    // The renewal's receipt names it as such.
+    expect(await sendOrderConfirmation(storeId, renewal!)).toBe("logged");
+    expect(await sendOrderConfirmation(storeId, renewal!)).toBe("duplicate");
 
     const [order] = await db().execute<Row>(sql`select * from commerce.orders where id = ${renewal}::uuid`);
     expect(order).toMatchObject({

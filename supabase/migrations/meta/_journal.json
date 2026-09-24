@@ -169,6 +169,20 @@
       "when": 1790269840008,
       "tag": "20260924171040_subscriptions_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790272224198,
+      "tag": "20260924175024_emails",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790272225416,
+      "tag": "20260924175025_emails_rules",
+      "breakpoints": true
     }
   ]
 }

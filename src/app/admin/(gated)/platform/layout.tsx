@@ -13,6 +13,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
     { href: "/admin/platform/plans", label: "Plans" },
     { href: "/admin/platform/stripe", label: "Stripe" },
     { href: "/admin/platform/seo", label: "Search" },
+    { href: "/admin/platform/emails", label: "Emails" },
   ];
   return (
     <>

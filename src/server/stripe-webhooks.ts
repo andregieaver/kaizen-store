@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
+import { sendOrderConfirmation } from "./shopper-emails";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -42,7 +43,8 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
   if (!(await recordEvent(storeId, event))) return;
   try {
     if (event.type === "invoice.paid") {
-      await renewSubscription(storeId, event.data.object as Stripe.Invoice);
+      const orderId = await renewSubscription(storeId, event.data.object as Stripe.Invoice);
+      if (orderId) await sendOrderConfirmation(storeId, orderId);
     } else if (event.type.startsWith("customer.subscription.")) {
       await syncSubscription(storeId, event.data.object as Stripe.Subscription);
     } else {
@@ -80,6 +82,8 @@ export async function applySession(
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
     if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
+    // Once per order, however many times the session is applied (D26).
+    await sendOrderConfirmation(storeId, orderId);
   } else if (failed || expired) {
     await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
     await setPaymentStatus(storeId, session.id, failed ? "failed" : "cancelled");
