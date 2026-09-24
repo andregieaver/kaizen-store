@@ -18,6 +18,7 @@ const fake = vi.hoisted(() => {
   const tag = Date.now().toString(36);
   const id = (prefix: string) => `${prefix}_fake${tag}n${++next}`;
   const calls: { method: string; params: Record<string, unknown> }[] = [];
+  const refuseUpdates = { on: false };
   const record =
     (method: string, make: (params: Record<string, unknown>) => Record<string, unknown>) =>
     async (...args: unknown[]) => {
@@ -90,6 +91,10 @@ const fake = vi.hoisted(() => {
             configuration: { merchant: { capabilities: { card_payments: { status: "active" } } } },
             requirements: { entries: [] },
           })),
+          update: record("accounts.update", (p) => {
+            if (refuseUpdates.on) throw new Error("Stripe said no");
+            return { id: p.id };
+          }),
           retrieve: record("accounts.retrieve", (p) => ({
             id: p.id,
             dashboard: "none",
@@ -103,7 +108,7 @@ const fake = vi.hoisted(() => {
       createExternalAccount: record("accounts.createExternalAccount", () => ({ id: id("ba") })),
     },
   };
-  return { client, calls, sessions, tag };
+  return { client, calls, sessions, tag, refuseUpdates };
 });
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, refresh: () => {} }));
@@ -236,7 +241,18 @@ describe("plans", () => {
         },
         attestations: { terms_of_service: { account: { date: expect.any(String), ip: "127.0.0.1" } } },
       },
-      configuration: { merchant: { mcc: "5999", capabilities: { card_payments: { requested: true } } } },
+      configuration: {
+        merchant: {
+          mcc: "5999",
+          // Kaizen's payment methods (D23): cards, Klarna, Link and MobilePay.
+          capabilities: {
+            card_payments: { requested: true },
+            klarna_payments: { requested: true },
+            link_payments: { requested: true },
+            mobilepay_payments: { requested: true },
+          },
+        },
+      },
       defaults: {
         responsibilities: { fees_collector: "application", losses_collector: "application" },
         profile: { business_url: "https://accessible.stripe.com" },
@@ -274,6 +290,40 @@ describe("plans", () => {
       where store_id = ${storeId}::uuid and mode = 'test'
     `);
     expect(row).toMatchObject({ card_payments: "active", managed_by_kaizen: true, requirements: [] });
+  });
+
+  it("asks for payment methods added since an account was made, once, and again after a refusal", async () => {
+    const { ensureStorePaymentMethods } = await import("./connect");
+    await db().execute(sql`
+      update commerce.stripe_accounts set payment_methods_requested = '{card_payments}'
+      where store_id = ${storeId}::uuid and mode = 'test'
+    `);
+    fake.refuseUpdates.on = true;
+    await ensureStorePaymentMethods(storeId);
+    fake.refuseUpdates.on = false;
+    const refused = calls("accounts.update").length;
+    expect(refused).toBe(1);
+
+    await ensureStorePaymentMethods(storeId);
+    await ensureStorePaymentMethods(storeId);
+    const updates = calls("accounts.update");
+    expect(updates).toHaveLength(refused + 1);
+    expect(updates.at(-1)?.params).toMatchObject({
+      configuration: {
+        merchant: {
+          capabilities: {
+            klarna_payments: { requested: true },
+            link_payments: { requested: true },
+            mobilepay_payments: { requested: true },
+          },
+        },
+      },
+    });
+    expect(updates.at(-1)?.params).not.toHaveProperty("configuration.merchant.capabilities.card_payments");
+    const [row] = await db().execute<Row>(sql`
+      select payment_methods_requested from commerce.stripe_accounts where store_id = ${storeId}::uuid and mode = 'test'
+    `);
+    expect(row.payment_methods_requested).toEqual(["card_payments", "klarna_payments", "link_payments", "mobilepay_payments"]);
   });
 
   it("lets a store's own fee win, and falls back to the default after cancelling", async () => {

@@ -127,6 +127,13 @@
       "when": 1790255231494,
       "tag": "20260924130711_custom_checkout",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790257469319,
+      "tag": "20260924134429_payment_methods",
+      "breakpoints": true
     }
   ]
 }

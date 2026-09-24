@@ -94,7 +94,7 @@ export async function createStripeAccount(
         configuration: {
           // Customer: so Kaizen can bill the store for its plan later.
           customer: {},
-          merchant: { capabilities: { card_payments: { requested: true } } },
+          merchant: { capabilities: requestedCapabilities() },
         },
         defaults: {
           ...(currency && { currency }),
@@ -114,9 +114,10 @@ export async function createStripeAccount(
 
   const status = accountStatus(created);
   await db().execute(sql`
-    insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due, created_by)
+    insert into commerce.stripe_accounts
+      (store_id, mode, account_id, card_payments, requirements_due, payment_methods_requested, created_by)
     values (${store.id}::uuid, ${mode}, ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
-            ${account.id}::uuid)
+            ${CAPABILITY_LIST}::text[], ${account.id}::uuid)
     on conflict (store_id, mode) do nothing
   `);
   await audit(account.id, store.id, "payments.stripe_account_created", { mode, accountId: created.id });
@@ -131,6 +132,23 @@ export async function requestIp(): Promise<string> {
     return "127.0.0.1"; // Not in a request (scripts, tests).
   }
 }
+
+/**
+ * The payment methods Kaizen asks Stripe to switch on for every store's
+ * account (D23): cards (with Apple Pay and Google Pay), Klarna, Link and
+ * MobilePay. Stripe offers each where it fits the shopper's country and
+ * currency. Swish and Vipps follow once Stripe opens them to Kaizen.
+ */
+export const PAYMENT_CAPABILITIES = ["card_payments", "klarna_payments", "link_payments", "mobilepay_payments"] as const;
+
+/** The same, as a Postgres array literal for queries. */
+const CAPABILITY_LIST = `{${PAYMENT_CAPABILITIES.join(",")}}`;
+
+const requestedCapabilities = () =>
+  Object.fromEntries(PAYMENT_CAPABILITIES.map((capability) => [capability, { requested: true }])) as Record<
+    (typeof PAYMENT_CAPABILITIES)[number],
+    { requested: true }
+  >;
 
 /**
  * Stripe's test values that pass verification at once (docs.stripe.com/connect/testing):
@@ -221,7 +239,7 @@ export async function ensureTestAccount(
         },
         configuration: {
           customer: {},
-          merchant: { mcc: "5999", capabilities: { card_payments: { requested: true } } },
+          merchant: { mcc: "5999", capabilities: requestedCapabilities() },
         },
         defaults: {
           currency: String(store.currency ?? "NOK").toLowerCase(),
@@ -256,13 +274,17 @@ export async function ensureTestAccount(
   const status = accountStatus(fresh);
   await db().execute(sql`
     insert into commerce.stripe_accounts
-      (store_id, mode, account_id, card_payments, requirements_due, requirements, managed_by_kaizen, created_by)
+      (store_id, mode, account_id, card_payments, requirements_due, requirements, managed_by_kaizen,
+       payment_methods_requested, created_by)
     values (${storeId}::uuid, 'test', ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
-            ${JSON.stringify(requirementNotes(fresh))}::jsonb, true, ${actorId}::uuid)
+            ${JSON.stringify(requirementNotes(fresh))}::jsonb, true,
+            ${CAPABILITY_LIST}::text[], ${actorId}::uuid)
     on conflict (store_id, mode) do update set
       account_id = excluded.account_id, card_payments = excluded.card_payments,
       requirements_due = excluded.requirements_due, requirements = excluded.requirements,
-      managed_by_kaizen = true, updated_at = now()
+      managed_by_kaizen = true, payment_methods_requested = excluded.payment_methods_requested,
+      -- A new account has no domains registered yet.
+      payment_domains = '{}', updated_at = now()
   `);
   const replaced = saved && saved.account_id !== created.id ? String(saved.account_id) : null;
   await audit(actorId, storeId, "payments.test_account_created", { accountId: created.id, replaced });
@@ -454,4 +476,41 @@ export async function ensurePaymentDomain(
       and not ${domain} = any(payment_domains)
   `);
   return true;
+}
+
+/**
+ * Asks Stripe for any of Kaizen's payment methods that the store's accounts
+ * do not have yet (accounts made before a method was added). Runs in the
+ * background; an account Stripe refuses is asked again next time.
+ */
+export async function ensureStorePaymentMethods(storeId: string): Promise<void> {
+  const rows = await db().execute<Row>(sql`
+    select mode, account_id, payment_methods_requested from commerce.stripe_accounts
+    where store_id = ${storeId}::uuid
+      and not payment_methods_requested @> ${CAPABILITY_LIST}::text[]
+  `);
+  for (const row of rows) {
+    const mode = row.mode as PaymentModeName;
+    const stripe = platformStripe(mode);
+    if (!stripe) continue;
+    const asked = new Set(row.payment_methods_requested as string[]);
+    const missing = PAYMENT_CAPABILITIES.filter((capability) => !asked.has(capability));
+    try {
+      await stripe.v2.core.accounts.update(String(row.account_id), {
+        configuration: {
+          merchant: {
+            capabilities: Object.fromEntries(missing.map((capability) => [capability, { requested: true }])),
+          },
+        },
+      });
+    } catch {
+      continue;
+    }
+    await db().execute(sql`
+      update commerce.stripe_accounts
+         set payment_methods_requested = ${CAPABILITY_LIST}::text[], updated_at = now()
+       where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${String(row.account_id)}
+    `);
+    await audit(null, storeId, "payments.methods_requested", { mode, capabilities: missing });
+  }
 }

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
@@ -13,7 +14,7 @@ import { variantLabel } from "@/lib/product-input";
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { storeFeeBps } from "./billing";
-import { ensurePaymentDomain, ensureTestAccount, getCheckoutUi } from "./connect";
+import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { getCheckoutAccount } from "./settings";
 import { platformStripe } from "./stripe";
 
@@ -260,6 +261,12 @@ export async function startCheckout(
   }
   const connection = { ...found, accountId };
   const ui = await getCheckoutUi();
+  // Payment methods added since the account was made, for the next shopper (D23).
+  try {
+    after(() => ensureStorePaymentMethods(shop.storeId));
+  } catch {
+    // Not in a request (scripts, tests).
+  }
 
   // A shopper who went back from Stripe and checks out again: the earlier
   // session is closed first, so the same basket cannot be paid twice.

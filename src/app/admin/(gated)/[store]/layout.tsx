@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { storeBase } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
-import { ensureTestAccount, requestIp } from "@/server/connect";
+import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 
 export default async function StoreAdminLayout({
   children,
@@ -17,6 +17,8 @@ export default async function StoreAdminLayout({
     const ip = await requestIp();
     after(() => ensureTestAccount(store.id, account.id, ip));
   }
+  // Payment methods added to Kaizen since the store's accounts were made (D23).
+  after(() => ensureStorePaymentMethods(store.id));
   const base = `/admin/${store.slug}`;
   const nav = [
     { href: base, label: "Overview" },

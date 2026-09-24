@@ -1414,6 +1414,12 @@ export const stripeAccounts = commerce.table(
      * it on Kaizen's checkout page (Apple Pay, Google Pay, Link, Klarna).
      */
     paymentDomains: text("payment_domains").array().notNull().default(sql`'{}'::text[]`),
+    /**
+     * Payment method capabilities Kaizen has asked Stripe for on this account
+     * (card payments, Klarna, Link, MobilePay, D23). Stripe and the store's
+     * own settings decide what is then offered.
+     */
+    paymentMethodsRequested: text("payment_methods_requested").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
