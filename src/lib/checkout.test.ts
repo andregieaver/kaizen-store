@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { shippingCost, stripeLocale, vatIncluded } from "./checkout";
+import { lineWithdrawal, shippingCost, stripeLocale, vatIncluded } from "./checkout";
 
 describe("vatIncluded", () => {
   it("finds the VAT inside a VAT-inclusive price", () => {
@@ -24,5 +24,13 @@ describe("stripeLocale", () => {
   it("uses the shopper's language where Stripe has it", () => {
     expect(stripeLocale("nb")).toBe("nb");
     expect(stripeLocale("ga")).toBe("auto");
+  });
+});
+
+describe("lineWithdrawal", () => {
+  it("marks downloads as digital content, and never a shipped item", () => {
+    expect(lineWithdrawal("digital", "none")).toBe("digital_content");
+    expect(lineWithdrawal("physical", "digital_content")).toBe("none");
+    expect(lineWithdrawal("physical", "custom_made")).toBe("custom_made");
   });
 });

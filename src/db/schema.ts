@@ -90,6 +90,13 @@ export const withdrawalExclusion = commerce.enum("withdrawal_exclusion", [
 ]);
 
 /**
+ * How a product variant reaches the shopper: `physical`, shipped (stock,
+ * weight, shipping), or `digital`, downloaded after payment (files, no stock,
+ * no shipping). Decision D24.
+ */
+export const delivery = commerce.enum("delivery", ["physical", "digital"]);
+
+/**
  * Extended producer responsibility schemes a product can fall under. Each one
  * needs a registration in every market the product is sold in.
  */
@@ -545,6 +552,12 @@ export const products = commerce.table(
     /** Stripe Tax product tax code, e.g. `txcd_99999999`. */
     taxCode: text("tax_code").notNull(),
     withdrawalExclusion: withdrawalExclusion("withdrawal_exclusion").notNull().default("none"),
+    /** How new variants are delivered; each variant can differ (D24). */
+    delivery: delivery("delivery").notNull().default("physical"),
+    /** Digital variants: times each file can be downloaded per order (null: no limit). */
+    downloadLimit: integer("download_limit"),
+    /** Digital variants: days the download links work after payment (null: no end). */
+    downloadDays: integer("download_days"),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
     createdAt: createdAt(),
@@ -567,6 +580,8 @@ export const products = commerce.table(
     index("products_responsible_person_idx").on(t.storeId, t.responsiblePersonId),
     index("products_store_status_idx").on(t.storeId, t.status),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
+    check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
+    check("products_download_days_positive", sql`${t.downloadDays} > 0`),
   ],
 );
 
@@ -621,6 +636,39 @@ export const productMedia = commerce.table(
   ],
 );
 
+/**
+ * A file shoppers download after buying a digital variant (D24), kept in the
+ * private `digital-files` bucket. Removing a file from the product keeps the
+ * row, so earlier buyers can still download what they paid for.
+ */
+export const productFiles = commerce.table(
+  "product_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    /** Null: delivered with every digital variant of the product. */
+    variantId: uuid("variant_id"),
+    /** The file name shoppers see. */
+    name: text("name").notNull(),
+    /** Object path in the `digital-files` bucket: `{store}/{uuid}/{name}`. */
+    path: text("path").notNull(),
+    sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
+    contentType: text("content_type").notNull(),
+    position: integer("position").notNull().default(0),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("product_files_store_id_key").on(t.storeId, t.id),
+    unique("product_files_path_key").on(t.path),
+    productRef("product_files_product_fk", t),
+    index("product_files_product_idx").on(t.storeId, t.productId, t.position),
+    index("product_files_variant_idx").on(t.storeId, t.variantId),
+    check("product_files_size_positive", sql`${t.sizeBytes} > 0`),
+  ],
+);
+
 export const productVariants = commerce.table(
   "product_variants",
   {
@@ -633,6 +681,8 @@ export const productVariants = commerce.table(
     taxCode: text("tax_code"),
     /** Option values, e.g. `{"size": "M", "colour": "blue"}`. */
     options: jsonb("options").notNull().default({}),
+    /** Shipped, or downloaded after payment (D24). Digital variants have no stock. */
+    delivery: delivery("delivery").notNull().default("physical"),
     weightGrams: integer("weight_grams"),
     /** Customs tariff (HS) code and country of origin, for export declarations. */
     hsCode: text("hs_code"),
@@ -903,6 +953,12 @@ export const orders = commerce.table(
     billingAddress: jsonb("billing_address").notNull(),
     shippingAddress: jsonb("shipping_address").notNull(),
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * When the shopper asked for digital content to be delivered at once and
+     * acknowledged losing the right of withdrawal for it (CRD Art. 16(m),
+     * angrerettloven § 22 n). Null when the order has no such content.
+     */
+    digitalConsentAt: timestamp("digital_consent_at", { withTimezone: true }),
     /** When the goods reached the customer; starts the withdrawal period. */
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -953,6 +1009,8 @@ export const orderLines = commerce.table(
     taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).notNull(),
     taxCode: text("tax_code").notNull(),
     withdrawalExclusion: withdrawalExclusion("withdrawal_exclusion").notNull().default("none"),
+    /** How the line is delivered, as sold. */
+    delivery: delivery("delivery").notNull().default("physical"),
   },
   (t) => [
     unique("order_lines_store_id_key").on(t.storeId, t.id),
@@ -969,6 +1027,38 @@ export const orderLines = commerce.table(
       "order_lines_amounts_non_negative",
       sql`${t.unitPriceMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.taxMinor} >= 0`,
     ),
+  ],
+);
+
+/**
+ * A paid order's download link for one file (D24). The token is the secret
+ * in the link; limits come from the product when the order is paid.
+ */
+export const orderDownloads = commerce.table(
+  "order_downloads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    fileId: uuid("file_id").notNull(),
+    token: text("token").notNull().unique(),
+    downloads: integer("downloads").notNull().default(0),
+    maxDownloads: integer("max_downloads"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastDownloadedAt: timestamp("last_downloaded_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    orderRef("order_downloads_order_fk", t),
+    foreignKey({
+      name: "order_downloads_file_fk",
+      columns: [t.storeId, t.fileId],
+      foreignColumns: [productFiles.storeId, productFiles.id],
+    }),
+    unique("order_downloads_order_file_key").on(t.orderId, t.fileId),
+    index("order_downloads_order_idx").on(t.storeId, t.orderId),
+    index("order_downloads_file_idx").on(t.storeId, t.fileId),
+    check("order_downloads_count_non_negative", sql`${t.downloads} >= 0`),
   ],
 );
 

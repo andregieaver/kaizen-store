@@ -72,6 +72,7 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
                 market={market.slug}
                 disabled={false}
                 labels={checkoutLabels(m, m.restartCheckout)}
+                consent={open.digital ? m.digitalConsent : undefined}
               />
             )}
           </div>
@@ -83,6 +84,7 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
               stripeAccount={open.accountId}
               clientSecret={open.clientSecret}
               locale={stripeLocale(market.lang)}
+              ships={open.ships}
               labels={{
                 contact: m.contact,
                 delivery: m.delivery,
@@ -133,10 +135,12 @@ function Summary({ order, m, money }: { order: OrderView; m: Messages; money: (m
           <dt>{m.subtotal}</dt>
           <dd>{money(order.subtotalMinor)}</dd>
         </div>
-        <div className="flex justify-between">
-          <dt>{m.shipping}</dt>
-          <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
-        </div>
+        {order.ships && (
+          <div className="flex justify-between">
+            <dt>{m.shipping}</dt>
+            <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
+          </div>
+        )}
         <div className="flex justify-between text-base font-semibold">
           <dt>{m.total}</dt>
           <dd>{money(order.totalMinor)}</dd>

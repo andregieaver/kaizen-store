@@ -28,3 +28,13 @@ export function stripeLocale(lang: string): string {
 
 /** How long stock is held while the shopper pays (Stripe's minimum session life). */
 export const CHECKOUT_MINUTES = 30;
+
+/**
+ * The withdrawal exclusion an order line records (D24): a download,
+ * delivered at once with the shopper's consent, is digital content; a
+ * shipped item never is.
+ */
+export function lineWithdrawal(delivery: "physical" | "digital", productExclusion: string): string {
+  if (delivery === "digital") return "digital_content";
+  return productExclusion === "digital_content" ? "none" : productExclusion;
+}

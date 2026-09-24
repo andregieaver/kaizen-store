@@ -107,7 +107,16 @@ async function ProductList({
                   {product.status === "active" ? "On sale" : product.status === "draft" ? "Draft" : "Archived"}
                 </td>
                 <td className="hidden px-4 py-2 sm:table-cell">
-                  {product.stock === 0 ? <span className="text-muted">Out of stock</span> : product.stock}
+                  {product.digitalVariants > 0 && product.digitalVariants === product.variants ? (
+                    <span className="text-muted">Digital</span>
+                  ) : product.stock === 0 ? (
+                    <span className="text-muted">Out of stock</span>
+                  ) : (
+                    product.stock
+                  )}
+                  {product.digitalVariants > 0 && product.digitalVariants < product.variants && (
+                    <span className="block text-xs text-muted">and digital</span>
+                  )}
                 </td>
                 <td className="hidden px-4 py-2 sm:table-cell">
                   {product.price

@@ -59,6 +59,7 @@ export function CheckoutForm({
   stripeAccount,
   clientSecret,
   locale,
+  ships,
   labels,
   links,
 }: {
@@ -66,6 +67,8 @@ export function CheckoutForm({
   stripeAccount: string;
   clientSecret: string;
   locale: string;
+  /** Something to ship: ask for the delivery address (not for downloads only). */
+  ships: boolean;
   labels: CheckoutFormLabels;
   /** The cart, and the order page (for a session paid meanwhile). */
   links: { cart: string; order: string };
@@ -87,7 +90,7 @@ export function CheckoutForm({
       stripe={stripe}
       options={{ clientSecret, elementsOptions: { appearance: appearance(dark), loader: "auto" } }}
     >
-      <Form labels={labels} links={links} />
+      <Form labels={labels} links={links} ships={ships} />
     </CheckoutElementsProvider>
   );
 }
@@ -103,7 +106,15 @@ function Waiting({ label }: { label: string }) {
   );
 }
 
-function Form({ labels, links }: { labels: CheckoutFormLabels; links: { cart: string; order: string } }) {
+function Form({
+  labels,
+  links,
+  ships,
+}: {
+  labels: CheckoutFormLabels;
+  links: { cart: string; order: string };
+  ships: boolean;
+}) {
   const state = useCheckoutElements();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -176,12 +187,14 @@ function Form({ labels, links }: { labels: CheckoutFormLabels; links: { cart: st
         <ContactDetailsElement />
       </section>
 
-      <section aria-labelledby="delivery-heading" className="flex flex-col gap-3">
-        <h2 id="delivery-heading" className="text-lg font-medium">
-          {labels.delivery}
-        </h2>
-        <ShippingAddressElement />
-      </section>
+      {ships && (
+        <section aria-labelledby="delivery-heading" className="flex flex-col gap-3">
+          <h2 id="delivery-heading" className="text-lg font-medium">
+            {labels.delivery}
+          </h2>
+          <ShippingAddressElement />
+        </section>
+      )}
 
       <section aria-labelledby="payment-heading" className="flex flex-col gap-3">
         <h2 id="payment-heading" className="text-lg font-medium">

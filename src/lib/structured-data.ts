@@ -157,6 +157,8 @@ export type ProductFacts = {
     gtin: string | null;
     options: Record<string, string>;
     price: { amountMinor: number; currency: string };
+    /** Downloads have no shipping and no withdrawal (D24); shipped when left out. */
+    delivery?: "physical" | "digital";
   }[];
 };
 
@@ -190,6 +192,7 @@ export function productJsonLd({
 
   const offer = (variant: ProductFacts["variants"][number]): JsonLd => {
     const digits = minorUnitDigits(variant.price.currency);
+    const digital = variant.delivery === "digital";
     const free =
       shipping !== null && shipping.freeOverMinor !== null && variant.price.amountMinor >= shipping.freeOverMinor;
     return {
@@ -197,21 +200,22 @@ export function productJsonLd({
       url,
       price: schemaPrice(variant.price.amountMinor, digits),
       priceCurrency: variant.price.currency,
-      availability: `${SCHEMA}/${inStock(variant.id) ? "InStock" : "OutOfStock"}`,
+      availability: `${SCHEMA}/${digital || inStock(variant.id) ? "InStock" : "OutOfStock"}`,
       itemCondition: `${SCHEMA}/NewCondition`,
       seller,
-      ...(shipping && {
-        shippingDetails: {
-          "@type": "OfferShippingDetails",
-          shippingRate: {
-            "@type": "MonetaryAmount",
-            value: schemaPrice(free ? 0 : shipping.amountMinor, minorUnitDigits(shipping.currency)),
-            currency: shipping.currency,
+      ...(shipping &&
+        !digital && {
+          shippingDetails: {
+            "@type": "OfferShippingDetails",
+            shippingRate: {
+              "@type": "MonetaryAmount",
+              value: schemaPrice(free ? 0 : shipping.amountMinor, minorUnitDigits(shipping.currency)),
+              currency: shipping.currency,
+            },
+            shippingDestination: { "@type": "DefinedRegion", addressCountry: market.code },
           },
-          shippingDestination: { "@type": "DefinedRegion", addressCountry: market.code },
-        },
-      }),
-      hasMerchantReturnPolicy: returns,
+        }),
+      hasMerchantReturnPolicy: digital ? noReturns(market.code) : returns,
     };
   };
 

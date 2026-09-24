@@ -112,4 +112,14 @@ describe("productJsonLd", () => {
       hasMerchantReturnPolicy: { returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" },
     });
   });
+
+  it("offers a download as always in stock, with no shipping and no returns", () => {
+    const [node] = build(product([{ ...variant("b", {}), delivery: "digital" }]));
+    const offer = node.offers as Record<string, unknown>;
+    expect(offer).toMatchObject({
+      availability: "https://schema.org/InStock",
+      hasMerchantReturnPolicy: { returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" },
+    });
+    expect(offer.shippingDetails).toBeUndefined();
+  });
 });

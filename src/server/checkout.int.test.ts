@@ -12,6 +12,7 @@ import { toMarket } from "@/lib/markets";
 import { encryptSecret } from "@/lib/secret-box";
 
 import { placeOrder } from "./checkout";
+import { getOrderDownloads, takeDownload } from "./orders";
 import { applySession } from "./stripe-webhooks";
 
 type Row = Record<string, unknown>;
@@ -318,5 +319,100 @@ describe("the Connect webhooks", () => {
 
     const forged = signer.webhooks.generateTestHeaderString({ payload: body, secret: "whsec_other" });
     expect((await call(connectAccountsWebhook, path, body, forged)).status).toBe(400);
+  });
+});
+
+describe("downloads (D24)", () => {
+  /** The demo lamp, turned into a download with one file, two downloads and a week to use them. */
+  beforeAll(async () => {
+    await db().execute(sql`
+      update commerce.product_variants set delivery = 'digital'
+      where store_id = ${storeId}::uuid and sku = 'DEMO-LAMP'
+    `);
+    await db().execute(sql`
+      update commerce.products p set delivery = 'digital', download_limit = 2, download_days = 7
+      from commerce.product_variants v
+      where v.product_id = p.id and v.store_id = ${storeId}::uuid and v.sku = 'DEMO-LAMP'
+    `);
+    await db().execute(sql`
+      insert into commerce.product_files (store_id, product_id, name, path, size_bytes, content_type)
+      select v.store_id, v.product_id, 'Lampe.pdf', ${`${storeId}/lamp/lampe.pdf`}, 1234, 'application/pdf'
+      from commerce.product_variants v where v.store_id = ${storeId}::uuid and v.sku = 'DEMO-LAMP'
+    `);
+  });
+
+  it("needs the shopper's consent before a download is bought", async () => {
+    const result = await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-LAMP", 1]]));
+    expect(result).toEqual({ ok: false, problem: "consent" });
+  });
+
+  it("sells a download with no shipping and no stock held, and records the consent", async () => {
+    const result = await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-LAMP", 1]]), { digital: true });
+    if (!result.ok) throw new Error(result.problem);
+    expect(result.order).toMatchObject({ ships: false, shippingMinor: 0 });
+    expect(result.order.totalMinor).toBe(result.order.lines[0].unitPriceMinor);
+    const order = await orderRow(result.order.orderId);
+    expect(order.digital_consent_at).not.toBeNull();
+    const lines = await db().execute<Row>(sql`
+      select delivery, withdrawal_exclusion from commerce.order_lines where order_id = ${result.order.orderId}::uuid
+    `);
+    expect(lines).toEqual([{ delivery: "digital", withdrawal_exclusion: "digital_content" }]);
+    const holds = await db().execute(sql`
+      select 1 from commerce.inventory_reservations where order_id = ${result.order.orderId}::uuid
+    `);
+    expect(holds).toHaveLength(0);
+  });
+
+  it("ships the rest of a mixed basket and holds only its stock", async () => {
+    const result = await placeOrder(
+      { storeId, market: no },
+      await cart(no, [["DEMO-LAMP", 1], ["DEMO-TOTE", 1]]),
+      { digital: true },
+    );
+    if (!result.ok) throw new Error(result.problem);
+    expect(result.order.ships).toBe(true);
+    const holds = await db().execute<Row>(sql`
+      select v.sku from commerce.inventory_reservations r
+      join commerce.product_variants v on v.id = r.variant_id
+      where r.order_id = ${result.order.orderId}::uuid
+    `);
+    expect(holds.map((h) => h.sku)).toEqual(["DEMO-TOTE"]);
+  });
+
+  it("gives a paid order its download links, which stop at the limit", async () => {
+    const result = await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-LAMP", 1]]), { digital: true });
+    if (!result.ok) throw new Error(result.problem);
+    const orderId = result.order.orderId;
+    await db().execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency)
+      values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${`cs_dl_${run}`}, ${result.order.totalMinor}, 'NOK')
+    `);
+    expect(await getOrderDownloads(storeId, orderId)).toEqual([]);
+
+    await applySession(storeId, session(`cs_dl_${run}`, { status: "complete", payment_status: "paid" }));
+    const [download] = await getOrderDownloads(storeId, orderId);
+    expect(download).toMatchObject({ name: "Lampe.pdf", used: 0, left: 2, gone: false });
+    expect(download.token).toMatch(/^[0-9a-f]{64}$/);
+    const days = (Date.parse(download.expiresAt!) - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(6.9);
+
+    expect(await takeDownload(storeId, download.token)).toEqual({
+      path: `${storeId}/lamp/lampe.pdf`,
+      name: "Lampe.pdf",
+    });
+    // Two at once for the last download: only one gets it.
+    const race = await Promise.all([takeDownload(storeId, download.token), takeDownload(storeId, download.token)]);
+    expect(race.filter(Boolean)).toHaveLength(1);
+    expect(await getOrderDownloads(storeId, orderId)).toMatchObject([{ used: 2, left: 0, gone: true }]);
+    expect(await takeDownload("00000000-0000-4000-8000-000000000000", download.token)).toBeNull();
+  });
+
+  it("gives an unpaid order no downloads", async () => {
+    const result = await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-LAMP", 1]]), { digital: true });
+    if (!result.ok) throw new Error(result.problem);
+    const rows = await db().execute(sql`
+      select 1 from commerce.order_downloads where order_id = ${result.order.orderId}::uuid
+    `);
+    expect(rows).toHaveLength(0);
   });
 });

@@ -4,8 +4,9 @@ import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
-import { CART_TTL_DAYS, settleQuantity, type LineOutcome } from "@/lib/cart";
+import { CART_TTL_DAYS, MAX_LINE_QUANTITY, settleQuantity, type LineOutcome } from "@/lib/cart";
 import type { Market } from "@/lib/markets";
+import type { Delivery } from "@/lib/product-input";
 
 /** Where a cart belongs: one market of one store. */
 export type Shop = { storeId: string; market: Market };
@@ -31,8 +32,10 @@ export type CartLine = {
   image: { url: string; alt: string } | null;
   quantity: number;
   unitPriceMinor: number | null;
+  /** Units that can be sold; downloads never run out (D24). */
   available: number;
   status: CartLineStatus;
+  delivery: Delivery;
 };
 
 export type Cart = { lines: CartLine[]; currency: string };
@@ -51,7 +54,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
 
   const rows = await db().execute<Row>(sql`
     select
-      cl.variant_id, cl.quantity, v.options, p.handle,
+      cl.variant_id, cl.quantity, v.options, v.delivery, p.handle,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(m.alt ->> ${market.locale}, '') as image_alt,
       cp.amount_minor,
@@ -74,7 +77,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
     left join commerce.current_prices cp
       on cp.variant_id = v.id and cp.market_code = c.market_code
     left join lateral (
-      select coalesce(sum(s.available), 0)::int as available
+      select case when v.delivery = 'digital' then ${MAX_LINE_QUANTITY} else coalesce(sum(s.available), 0) end::int
+        as available
       from commerce.available_stock s
       join commerce.inventory_locations l
         on l.store_id = s.store_id and l.id = s.location_id and l.active
@@ -112,6 +116,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
         unitPriceMinor,
         available,
         status,
+        delivery: row.delivery === "digital" ? "digital" : "physical",
       };
     }),
   };
@@ -138,13 +143,13 @@ export async function getCartCount(shop: Shop): Promise<number> {
  */
 async function sellableQuantity(tx: Tx, { storeId, market }: Shop, variantId: string) {
   const [row] = await tx.execute<Row>(sql`
-    select coalesce((
+    select case when v.delivery = 'digital' then ${MAX_LINE_QUANTITY} else coalesce((
       select sum(s.available)
       from commerce.available_stock s
       join commerce.inventory_locations l
         on l.store_id = s.store_id and l.id = s.location_id and l.active
       where s.store_id = v.store_id and s.variant_id = v.id
-    ), 0)::int as available
+    ), 0) end::int as available
     from commerce.product_variants v
     join commerce.products p
       on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'

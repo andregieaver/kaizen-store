@@ -160,25 +160,29 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
             {m.description}
           </h2>
           <p>{product.description}</p>
-          {product.withdrawalExclusion !== "none" && (
-            <p className="mt-2 text-sm">{m.noWithdrawal}</p>
+          {product.variants.some((v) => v.delivery === "digital") ? (
+            <p className="mt-2 text-sm">{m.digitalWithdrawal}</p>
+          ) : (
+            product.withdrawalExclusion !== "none" && <p className="mt-2 text-sm">{m.noWithdrawal}</p>
           )}
         </section>
 
-        <section aria-labelledby="safety-heading" className="text-sm">
-          <h2 id="safety-heading" className="mb-2 font-medium">
-            {m.safety}
-          </h2>
-          {product.safetyInformation && <p className="mb-3">{product.safetyInformation}</p>}
-          <dl className="grid gap-3">
-            {product.manufacturer && (
-              <Operator label={m.manufacturer} operator={product.manufacturer} />
-            )}
-            {product.responsiblePerson && (
-              <Operator label={m.euResponsiblePerson} operator={product.responsiblePerson} />
-            )}
-          </dl>
-        </section>
+        {(product.safetyInformation || product.manufacturer || product.responsiblePerson) && (
+          <section aria-labelledby="safety-heading" className="text-sm">
+            <h2 id="safety-heading" className="mb-2 font-medium">
+              {m.safety}
+            </h2>
+            {product.safetyInformation && <p className="mb-3">{product.safetyInformation}</p>}
+            <dl className="grid gap-3">
+              {product.manufacturer && (
+                <Operator label={m.manufacturer} operator={product.manufacturer} />
+              )}
+              {product.responsiblePerson && (
+                <Operator label={m.euResponsiblePerson} operator={product.responsiblePerson} />
+              )}
+            </dl>
+          </section>
+        )}
       </div>
     </article>
   );
@@ -220,13 +224,14 @@ async function VariantsWithStock({
     <>
       <ul className="divide-y divide-border rounded-lg border border-border">
         {product.variants.map((variant) => {
-          const available = availability.get(variant.id) ?? 0;
+          const digital = variant.delivery === "digital";
+          const available = digital ? Infinity : (availability.get(variant.id) ?? 0);
           const label = optionLabel(m, variant.options);
           return (
             <li key={variant.id} className="flex items-start justify-between gap-4 p-3">
               <div>
                 {label && <p>{label}</p>}
-                <p className="text-sm text-muted">{stockText(available)}</p>
+                <p className="text-sm text-muted">{digital ? m.instantDownload : stockText(available)}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
                 <Price price={variant.price} locale={market.locale} m={m} />

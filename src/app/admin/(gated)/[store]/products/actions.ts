@@ -7,7 +7,7 @@ import { z } from "zod";
 import { productInput, type ProductInput } from "@/lib/product-input";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
-import { uploadProductImage, type UploadResult } from "@/server/media";
+import { startFileUpload, uploadProductImage, type FileUpload, type UploadResult } from "@/server/media";
 import {
   getEditorContext,
   getProductForEdit,
@@ -90,4 +90,12 @@ export async function archiveProductAction(storeSlug: string, productId: string,
   await setArchived(member.store, productId, archive);
   refreshCatalogue(member);
   redirect(`/admin/${storeSlug}/products${archive ? "" : `/${productId}`}`);
+}
+
+/** Starts an upload of a download file straight from the browser to the private bucket (D24). */
+export async function startFileUploadAction(storeSlug: string, fileName: string): Promise<FileUpload> {
+  const member = await requireMember(storeSlug);
+  const name = z.string().trim().min(1).max(200).safeParse(fileName);
+  if (!name.success) return { ok: false, problem: "The file needs a name." };
+  return startFileUpload(member.store.id, name.data);
 }

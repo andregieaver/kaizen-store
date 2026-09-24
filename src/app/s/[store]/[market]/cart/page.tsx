@@ -77,7 +77,10 @@ async function CartContents({
   const blocked = cart.lines.some((line) => line.status !== "ok");
   const checkout = await getCheckoutInfo(store.id, market.code);
   const subtotal = cartSubtotal(payable);
-  const shipping = checkout.shipping ? shippingCost(subtotal, checkout.shipping) : null;
+  // Downloads alone need no shipping (D24).
+  const ships = cart.lines.some((line) => line.delivery === "physical");
+  const digital = cart.lines.some((line) => line.delivery === "digital");
+  const shipping = !ships ? 0 : checkout.shipping ? shippingCost(subtotal, checkout.shipping) : null;
   const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
 
   return (
@@ -104,6 +107,7 @@ async function CartContents({
                   {Object.keys(line.options).length > 0 && (
                     <p className="text-sm text-muted">{optionLabel(m, line.options)}</p>
                   )}
+                  {line.delivery === "digital" && <p className="text-sm text-muted">{m.digitalDelivery}</p>}
                 </div>
                 {line.unitPriceMinor !== null && line.status !== "unavailable" && (
                   <p className="font-medium">{money(line.unitPriceMinor * line.quantity)}</p>
@@ -161,7 +165,7 @@ async function CartContents({
             <dt>{m.subtotal}</dt>
             <dd>{money(subtotal)}</dd>
           </div>
-          {shipping !== null && (
+          {shipping !== null && ships && (
             <div className="flex justify-between">
               <dt>{m.shipping}</dt>
               <dd>{shipping === 0 ? m.freeShipping : money(shipping)}</dd>
@@ -182,6 +186,7 @@ async function CartContents({
             market={market.slug}
             disabled={blocked}
             labels={checkoutLabels(m)}
+            consent={digital ? m.digitalConsent : undefined}
           />
         ) : (
           <p className="text-sm">{m.checkoutUnavailable}</p>

@@ -5,7 +5,7 @@ import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
-import { CHECKOUT_MINUTES, shippingCost, stripeLocale, vatIncluded } from "@/lib/checkout";
+import { CHECKOUT_MINUTES, lineWithdrawal, shippingCost, stripeLocale, vatIncluded } from "@/lib/checkout";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -27,6 +27,8 @@ export type PlacedOrder = {
   number: string;
   currency: string;
   lines: { title: string; unitPriceMinor: number; quantity: number }[];
+  /** Something to ship: false for downloads only (D24). */
+  ships: boolean;
   shippingMinor: number;
   /** The VAT included in the total. */
   taxMinor: number;
@@ -41,19 +43,29 @@ export type CheckoutProblem =
   | "payments_off"
   | "payment_error"
   | "already_paid"
-  | "processing";
+  | "processing"
+  | "consent";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
+
+/**
+ * What the shopper agreed to on the way to payment. Downloads start at once,
+ * so buying one needs the shopper's express consent to that and their
+ * acknowledgement that the right of withdrawal then ends (D24).
+ */
+export type CheckoutConsent = { digital?: boolean };
 
 /**
  * Turns an open cart into an order waiting for payment, at today's prices,
  * and holds its stock for the length of a Stripe Checkout session. Stock is
  * checked under row locks, so two shoppers cannot both get the last item.
- * Nothing is written unless everything succeeds.
+ * Downloads need no stock and no shipping. Nothing is written unless
+ * everything succeeds.
  */
 export async function placeOrder(
   shop: Pick<CheckoutShop, "storeId" | "market">,
   cartId: string,
+  consent: CheckoutConsent = {},
 ): Promise<PlaceResult> {
   const { storeId, market } = shop;
   return db().transaction(async (tx): Promise<PlaceResult> => {
@@ -67,7 +79,7 @@ export async function placeOrder(
 
     const lines = await tx.execute<Row>(sql`
       select
-        cl.variant_id, cl.quantity, v.sku, v.options,
+        cl.variant_id, cl.quantity, v.sku, v.options, v.delivery,
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor,
@@ -87,10 +99,13 @@ export async function placeOrder(
     if (lines.some((l) => !l.sellable || l.amount_minor === null)) {
       return { ok: false, problem: "unavailable" };
     }
+    const physical = lines.filter((l) => l.delivery === "physical");
+    const digital = physical.length < lines.length;
+    if (digital && !consent.digital) return { ok: false, problem: "consent" };
 
     // Lock the stock rows, then count what is free: on hand minus live holds.
     const variantIds = sql.join(
-      lines.map((l) => sql`${String(l.variant_id)}::uuid`),
+      [sql`null::uuid`, ...physical.map((l) => sql`${String(l.variant_id)}::uuid`)],
       sql`, `,
     );
     const levels = await tx.execute<Row>(sql`
@@ -111,7 +126,7 @@ export async function placeOrder(
     const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
 
     const allocations: { variantId: string; locationId: string; quantity: number }[] = [];
-    for (const line of lines) {
+    for (const line of physical) {
       let wanted = Number(line.quantity);
       for (const level of levels.filter((l) => l.variant_id === line.variant_id)) {
         const free = Number(level.on_hand) - (heldAt.get(`${level.variant_id}:${level.location_id}`) ?? 0);
@@ -128,7 +143,8 @@ export async function placeOrder(
       select amount_minor, free_over_minor from commerce.shipping_rates
       where store_id = ${storeId}::uuid and market_code = ${market.code}
     `);
-    if (!rate) return { ok: false, problem: "no_shipping" };
+    const ships = physical.length > 0;
+    if (ships && !rate) return { ok: false, problem: "no_shipping" };
     const [country] = await tx.execute<Row>(sql`
       select standard_vat_rate from commerce.countries where code = ${market.code}
     `);
@@ -143,10 +159,13 @@ export async function placeOrder(
       return { line, quantity, unit, total: unit * quantity, title };
     });
     const subtotal = priced.reduce((sum, p) => sum + p.total, 0);
-    const shipping = shippingCost(subtotal, {
-      amountMinor: Number(rate.amount_minor),
-      freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
-    });
+    // Free shipping counts the whole basket, downloads included.
+    const shipping = ships
+      ? shippingCost(subtotal, {
+          amountMinor: Number(rate.amount_minor),
+          freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
+        })
+      : 0;
     const tax = priced.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) + vatIncluded(shipping, vatRate);
     const total = subtotal + shipping;
 
@@ -159,25 +178,28 @@ export async function placeOrder(
       insert into commerce.orders (
         store_id, number, market_code, currency, locale, cart_id, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-        billing_address, shipping_address
+        billing_address, shipping_address, digital_consent_at
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
-        ${subtotal}, ${shipping}, 0, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb
+        ${subtotal}, ${shipping}, 0, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
+        ${digital ? sql`now()` : sql`null`}
       )
       returning id
     `);
     const orderId = String(order.id);
 
     for (const p of priced) {
+      const delivery = p.line.delivery === "digital" ? "digital" : "physical";
       await tx.execute(sql`
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
-          total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion
+          total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, 0, ${p.total}, ${vatIncluded(p.total, vatRate)},
-          ${vatRate}, ${String(p.line.tax_code)}, ${String(p.line.withdrawal_exclusion)}
+          ${vatRate}, ${String(p.line.tax_code)},
+          ${lineWithdrawal(delivery, String(p.line.withdrawal_exclusion))}, ${delivery}
         )
       `);
     }
@@ -188,9 +210,11 @@ export async function placeOrder(
                 now() + make_interval(mins => ${CHECKOUT_MINUTES + 5}))
       `);
     }
+    // The consent is kept with the order as evidence (D24).
     await tx.execute(sql`
       insert into commerce.order_events (store_id, order_id, type, data, actor)
-      values (${storeId}::uuid, ${orderId}::uuid, 'order.placed', '{}'::jsonb, 'shopper')
+      values (${storeId}::uuid, ${orderId}::uuid, 'order.placed',
+              ${JSON.stringify(digital ? { digitalConsent: true } : {})}::jsonb, 'shopper')
     `);
 
     return {
@@ -200,6 +224,7 @@ export async function placeOrder(
         number: String(numbered.number),
         currency: market.currency,
         lines: priced.map((p) => ({ title: p.title, unitPriceMinor: p.unit, quantity: p.quantity })),
+        ships,
         shippingMinor: shipping,
         taxMinor: tax,
         totalMinor: total,
@@ -246,6 +271,7 @@ export async function startCheckout(
   cartId: string,
   origin: string,
   shippingLabel: string,
+  consent: CheckoutConsent = {},
 ): Promise<CheckoutStart> {
   const found = await getCheckoutAccount(shop.storeId);
   const stripe = found && platformStripe(found.mode);
@@ -289,7 +315,7 @@ export async function startCheckout(
     await cancelUnpaidOrder(orderId, "replaced by a new checkout");
   }
 
-  const placed = await placeOrder(shop, cartId);
+  const placed = await placeOrder(shop, cartId, consent);
   if (!placed.ok) return placed;
   const { order } = placed;
 
@@ -326,18 +352,23 @@ export async function startCheckout(
           quantity: line.quantity,
           price_data: { currency, unit_amount: line.unitPriceMinor, product_data: { name: line.title } },
         })),
-        shipping_options: [
-          {
-            shipping_rate_data: {
-              type: "fixed_amount",
-              display_name: shippingLabel,
-              fixed_amount: { amount: order.shippingMinor, currency },
+        // Downloads only: no address to ask for and nothing to ship (D24).
+        ...(order.ships && {
+          shipping_options: [
+            {
+              shipping_rate_data: {
+                type: "fixed_amount",
+                display_name: shippingLabel,
+                fixed_amount: { amount: order.shippingMinor, currency },
+              },
             },
+          ],
+          shipping_address_collection: {
+            allowed_countries: [
+              shop.market.code as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry,
+            ],
           },
-        ],
-        shipping_address_collection: {
-          allowed_countries: [shop.market.code as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry],
-        },
+        }),
         // No payment_method_types: Stripe shows the methods the store has
         // turned on in its Stripe Dashboard that suit the shopper.
         ...(connection.orderInvoices && {
@@ -402,6 +433,10 @@ export type OpenCheckout = {
   expired: boolean;
   /** The cart was changed after the order was placed: the shopper starts again. */
   changed: boolean;
+  /** The order has something to ship, so the form asks for an address. */
+  ships: boolean;
+  /** The order has downloads, so starting again needs the shopper's consent. */
+  digital: boolean;
 };
 
 /**
@@ -418,7 +453,11 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
          from commerce.cart_lines cl where cl.store_id = o.store_id and cl.cart_id = o.cart_id)
       is distinct from
       (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.quantity) order by ol.variant_id), '[]'::jsonb)
-         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id) as changed
+         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id) as changed,
+      exists (select 1 from commerce.order_lines ol
+               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
+      exists (select 1 from commerce.order_lines ol
+               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital') as digital
     from commerce.orders o
     join commerce.payments pay on pay.store_id = o.store_id and pay.order_id = o.id and pay.provider = 'stripe'
     join commerce.stripe_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
@@ -436,6 +475,8 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
         mode: row.mode as PaymentModeName,
         expired: Boolean(row.expired),
         changed: Boolean(row.changed),
+        ships: Boolean(row.ships),
+        digital: Boolean(row.digital),
       }
     : null;
 }

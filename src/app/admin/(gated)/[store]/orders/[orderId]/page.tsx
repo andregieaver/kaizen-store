@@ -6,7 +6,7 @@ import { z } from "zod";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { requireMember } from "@/server/auth";
-import { getOrder, getOrderEvents, type Address } from "@/server/orders";
+import { getOrder, getOrderDownloads, getOrderEvents, type Address } from "@/server/orders";
 
 
 export const metadata: Metadata = { title: "Order" };
@@ -22,7 +22,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const { store: slug, orderId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events] = await Promise.all([getOrder(store.id, orderId), getOrderEvents(store.id, orderId)]);
+  const [order, events, downloads] = await Promise.all([
+    getOrder(store.id, orderId),
+    getOrderEvents(store.id, orderId),
+    getOrderDownloads(store.id, orderId),
+  ]);
   if (!order) notFound();
   const locale = store.markets[0]?.locale ?? order.locale;
   const money = (minor: number) => formatMoney(minor, order.currency, locale);
@@ -61,7 +65,10 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             <tbody>
               {order.lines.map((line) => (
                 <tr key={line.sku} className="border-b border-border">
-                  <td className="py-2">{line.title}</td>
+                  <td className="py-2">
+                    {line.title}
+                    {line.delivery === "digital" && <span className="block text-xs text-muted">Digital download</span>}
+                  </td>
                   <td className="py-2 font-mono text-xs">{line.sku}</td>
                   <td className="py-2 text-right">{line.quantity}</td>
                   <td className="py-2 text-right">{money(line.totalMinor)}</td>
@@ -71,7 +78,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </table>
           <dl className="mt-3 flex flex-col gap-1 text-sm">
             <div className="flex justify-between"><dt>Subtotal</dt><dd>{money(order.subtotalMinor)}</dd></div>
-            <div className="flex justify-between"><dt>Shipping</dt><dd>{money(order.shippingMinor)}</dd></div>
+            {order.ships && (
+              <div className="flex justify-between"><dt>Shipping</dt><dd>{money(order.shippingMinor)}</dd></div>
+            )}
             <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
             <div className="flex justify-between text-muted"><dt>VAT included (standard rate)</dt><dd>{money(order.taxMinor)}</dd></div>
           </dl>
@@ -86,9 +95,38 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <p className="text-muted">Not known until payment.</p>
             )}
             {order.billingAddress.phone && <p>{order.billingAddress.phone}</p>}
-            <h3 className="mt-3 mb-1 font-medium">Ship to</h3>
-            <AddressBlock address={order.shippingAddress} />
+            {order.ships && (
+              <>
+                <h3 className="mt-3 mb-1 font-medium">Ship to</h3>
+                <AddressBlock address={order.shippingAddress} />
+              </>
+            )}
           </section>
+          {order.digitalConsentAt && (
+            <section aria-labelledby="downloads" className="rounded-lg border border-border bg-background p-5 text-sm">
+              <h2 id="downloads" className="mb-2 font-medium">Downloads</h2>
+              <p className="mb-2 text-muted">
+                The customer agreed to immediate delivery and the loss of the right of withdrawal on{" "}
+                {when(order.digitalConsentAt)}.
+              </p>
+              {downloads.length === 0 ? (
+                <p className="text-muted">Download links are made when the order is paid.</p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {downloads.map((file) => (
+                    <li key={file.token}>
+                      {file.name}:{" "}
+                      <span className="text-muted">
+                        {file.used === 0 ? "not downloaded yet" : `downloaded ${file.used}×`}
+                        {file.left !== null && `, ${file.left} left`}
+                        {file.gone && " (link no longer works)"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
           <section aria-labelledby="history" className="rounded-lg border border-border bg-background p-5 text-sm">
             <h2 id="history" className="mb-2 font-medium">History</h2>
             <ol className="flex flex-col gap-1">

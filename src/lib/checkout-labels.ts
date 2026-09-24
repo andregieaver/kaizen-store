@@ -16,6 +16,7 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       payment_error: m.problemPayment,
       already_paid: m.problemPaid,
       processing: m.problemProcessing,
+      consent: m.problemConsent,
     },
   };
 }

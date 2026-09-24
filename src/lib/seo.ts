@@ -246,6 +246,7 @@ export function storePrivatePaths(base: string): Rule[] {
     { allow: false, path: `${base}/*/cart` },
     { allow: false, path: `${base}/*/checkout` },
     { allow: false, path: `${base}/*/order/` },
+    { allow: false, path: `${base}/*/download` },
   ];
 }
 

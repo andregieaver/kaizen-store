@@ -67,12 +67,14 @@ export async function updateCartLine(formData: FormData): Promise<void> {
 export type CheckoutState = { problem: CheckoutProblem | null };
 
 /**
- * Places the order and sends the shopper to Stripe's payment page. On a
- * problem (stock ran out, payments not set up, ...) the cart page says what.
+ * Places the order and sends the shopper to payment. On a problem (stock ran
+ * out, payments not set up, ...) the cart page says what. `digitalConsent`
+ * is the shopper's tick for downloads (D24).
  */
 export async function checkoutAction(
   storeSlug: string,
   marketSlug: string,
+  digitalConsent = false,
 ): Promise<CheckoutState> {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
@@ -87,6 +89,7 @@ export async function checkoutAction(
     cartId,
     origin,
     t(shop.market.lang).shipping,
+    { digital: digitalConsent === true },
   );
   if (result.ok) redirect(result.url);
   refresh();

@@ -6,6 +6,7 @@ import { connection } from "next/server";
 
 import { db } from "@/db/client";
 import { priceView, type PriceView } from "@/lib/pricing";
+import type { Delivery } from "@/lib/product-input";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -35,6 +36,8 @@ export type ProductVariant = {
   gtin: string | null;
   options: Record<string, string>;
   price: PriceView;
+  /** Shipped, or downloaded after payment (D24). */
+  delivery: Delivery;
 };
 
 export type ProductDetail = {
@@ -163,7 +166,7 @@ export async function getProduct(
       order by position
     `),
     db().execute<Row>(sql`
-      select v.id, v.sku, v.gtin, v.options, cp.amount_minor, cp.currency, cp.prior_30d_minor
+      select v.id, v.sku, v.gtin, v.options, v.delivery, cp.amount_minor, cp.currency, cp.prior_30d_minor
       from commerce.product_variants v
       join commerce.current_prices cp
         on cp.variant_id = v.id and cp.market_code = ${marketCode}
@@ -200,6 +203,7 @@ export async function getProduct(
       gtin: v.gtin ? str(v.gtin) : null,
       options: (v.options ?? {}) as Record<string, string>,
       price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor)),
+      delivery: v.delivery === "digital" ? "digital" : "physical",
     })),
   };
 }

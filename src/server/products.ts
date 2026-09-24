@@ -13,6 +13,7 @@ import {
   type ProductInput,
 } from "@/lib/product-input";
 
+import { storedFileInfo, uploadsEnabled } from "./media";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -92,8 +93,13 @@ export function emptyProduct(context: EditorContext): ProductInput {
         weightGrams: null,
         hsCode: null,
         originCountry: null,
+        delivery: "physical",
       },
     ],
+    delivery: "physical",
+    files: [],
+    downloadLimit: 5,
+    downloadDays: 30,
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
@@ -109,7 +115,10 @@ export type AdminProductRow = {
   status: "draft" | "active" | "archived";
   image: string | null;
   variants: number;
+  /** Units on hand across shipped variants. */
   stock: number;
+  /** Active variants that are downloaded, which have no stock (D24). */
+  digitalVariants: number;
   price: { min: number; max: number; currency: string } | null;
 };
 
@@ -128,6 +137,8 @@ export async function listAdminProducts(
         where m.product_id = p.id order by m.position limit 1) as image,
       (select count(*)::int from commerce.product_variants v
         where v.product_id = p.id and v.active) as variants,
+      (select count(*)::int from commerce.product_variants v
+        where v.product_id = p.id and v.active and v.delivery = 'digital') as digital_variants,
       (select coalesce(sum(l.on_hand), 0)::int
          from commerce.inventory_levels l
          join commerce.product_variants v on v.id = l.variant_id
@@ -156,6 +167,7 @@ export async function listAdminProducts(
     image: row.image ? String(row.image) : null,
     variants: Number(row.variants),
     stock: Number(row.stock),
+    digitalVariants: Number(row.digital_variants),
     price:
       row.min_amount === null
         ? null
@@ -170,12 +182,13 @@ export async function getProductForEdit(
   productId: string,
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
-    select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id
+    select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
+           delivery, download_limit, download_days
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
 
-  const [translations, media, schemes, variants, prices] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -188,7 +201,7 @@ export async function getProductForEdit(
       select scheme from commerce.product_schemes where product_id = ${productId}::uuid
     `),
     db().execute<Row>(sql`
-      select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country,
+      select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country, v.delivery,
              coalesce((
                select l.on_hand from commerce.inventory_levels l
                join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
@@ -203,6 +216,13 @@ export async function getProductForEdit(
       from commerce.current_prices c
       join commerce.product_variants v on v.id = c.variant_id
       where v.product_id = ${productId}::uuid
+    `),
+    db().execute<Row>(sql`
+      select f.id, f.name, f.path, f.size_bytes, f.content_type, v.sku as variant_sku
+      from commerce.product_files f
+      left join commerce.product_variants v on v.store_id = f.store_id and v.id = f.variant_id
+      where f.store_id = ${store.id}::uuid and f.product_id = ${productId}::uuid and f.removed_at is null
+      order by f.position, f.created_at
     `),
   ]);
 
@@ -224,6 +244,7 @@ export async function getProductForEdit(
   }
 
   const choice = (id: unknown): OperatorChoice => (id ? { id: String(id) } : null);
+  const sold = product.delivery === "digital" || variants.some((v) => v.delivery === "digital");
 
   return {
     archived: product.status === "archived",
@@ -266,7 +287,21 @@ export async function getProductForEdit(
       weightGrams: v.weight_grams === null ? null : Number(v.weight_grams),
       hsCode: v.hs_code ? String(v.hs_code) : null,
       originCountry: v.origin_country ? String(v.origin_country) : null,
+      delivery: v.delivery === "digital" ? ("digital" as const) : ("physical" as const),
     })),
+    delivery: product.delivery === "digital" ? "digital" : "physical",
+    files: files.map((f) => ({
+      id: String(f.id),
+      name: String(f.name),
+      path: String(f.path),
+      sizeBytes: Number(f.size_bytes),
+      contentType: String(f.content_type),
+      variantSku: f.variant_sku ? String(f.variant_sku) : null,
+    })),
+    // Limits mean something only once a variant is digital; until then the
+    // editor offers the usual ones (products made before D24 have none).
+    downloadLimit: product.download_limit !== null ? Number(product.download_limit) : sold ? null : 5,
+    downloadDays: product.download_days !== null ? Number(product.download_days) : sold ? null : 30,
     taxCode: String(product.tax_code),
     withdrawalExclusion: String(product.withdrawal_exclusion),
     schemes: schemes.map((s) => String(s.scheme)),
@@ -309,6 +344,14 @@ export async function saveProduct(
       break;
     }
   }
+  // New download files must really be in storage, at the size the browser said.
+  if (uploadsEnabled()) {
+    for (const file of input.files.filter((f) => f.id === null)) {
+      const stored = await storedFileInfo(file.path);
+      if (!stored) problems.push(`The file "${file.name}" did not finish uploading. Add it again.`);
+      else Object.assign(file, { sizeBytes: stored.size, contentType: stored.type });
+    }
+  }
   if (problems.length > 0) return { ok: false, problems };
 
   try {
@@ -327,6 +370,7 @@ export async function saveProduct(
       }
       const locationId = await stockLocation(tx, store);
       await saveVariants(tx, store.id, saved, context, input, locationId);
+      await saveFiles(tx, store.id, saved, input);
       // Last, so the publishing check sees the finished listing.
       await tx.execute(sql`
         update commerce.products set status = ${input.status}, updated_at = now()
@@ -372,6 +416,7 @@ async function upsertProduct(
         handle = ${input.handle}, status = 'draft',
         manufacturer_id = ${manufacturerId}::uuid, responsible_person_id = ${responsibleId}::uuid,
         tax_code = ${input.taxCode}, withdrawal_exclusion = ${input.withdrawalExclusion},
+        delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
         updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
@@ -381,10 +426,11 @@ async function upsertProduct(
   }
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
-      store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion
+      store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
+      delivery, download_limit, download_days
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
-      ${input.taxCode}, ${input.withdrawalExclusion}
+      ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays}
     )
     returning id
   `);
@@ -479,10 +525,13 @@ async function saveVariants(
   const kept = new Set<string>();
 
   for (const variant of input.variants) {
+    // Digital variants are not shipped: no weight or customs details.
+    const physical = variant.delivery === "physical";
     const fields = sql`
       sku = ${variant.sku}, gtin = ${variant.gtin}, options = ${JSON.stringify(variant.options)}::jsonb,
-      active = ${variant.active}, weight_grams = ${variant.weightGrams},
-      hs_code = ${variant.hsCode}, origin_country = ${variant.originCountry}
+      active = ${variant.active}, delivery = ${variant.delivery},
+      weight_grams = ${physical ? variant.weightGrams : null},
+      hs_code = ${physical ? variant.hsCode : null}, origin_country = ${physical ? variant.originCountry : null}
     `;
     let id: string;
     if (variant.id && existingIds.has(variant.id)) {
@@ -491,11 +540,12 @@ async function saveVariants(
     } else {
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.product_variants (
-          store_id, product_id, sku, gtin, options, active, weight_grams, hs_code, origin_country
+          store_id, product_id, sku, gtin, options, active, delivery, weight_grams, hs_code, origin_country
         ) values (
           ${storeId}::uuid, ${productId}::uuid, ${variant.sku}, ${variant.gtin},
-          ${JSON.stringify(variant.options)}::jsonb, ${variant.active}, ${variant.weightGrams},
-          ${variant.hsCode}, ${variant.originCountry}
+          ${JSON.stringify(variant.options)}::jsonb, ${variant.active}, ${variant.delivery},
+          ${physical ? variant.weightGrams : null}, ${physical ? variant.hsCode : null},
+          ${physical ? variant.originCountry : null}
         )
         returning id
       `);
@@ -520,11 +570,14 @@ async function saveVariants(
       }
     }
 
-    await tx.execute(sql`
-      insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-      values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
-      on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
-    `);
+    // Downloads never run out: digital variants keep no stock.
+    if (physical) {
+      await tx.execute(sql`
+        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+        values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
+        on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
+      `);
+    }
   }
 
   // Variants taken out of the editor are switched off, not deleted: orders
@@ -534,6 +587,42 @@ async function saveVariants(
       await tx.execute(sql`update commerce.product_variants set active = false where id = ${id}::uuid`);
     }
   }
+}
+
+/**
+ * The product's download files. Files taken out are marked removed, not
+ * deleted, so shoppers who bought them can still download them.
+ */
+async function saveFiles(tx: Tx, storeId: string, productId: string, input: ProductInput) {
+  const variants = await tx.execute<Row>(sql`
+    select id, sku from commerce.product_variants
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid
+  `);
+  const variantBySku = new Map(variants.map((v) => [String(v.sku), String(v.id)]));
+  const kept: string[] = [];
+  for (const [position, file] of input.files.entries()) {
+    // Only files uploaded to this store's own folder.
+    if (!file.path.startsWith(`${storeId}/`) || file.path.includes("..")) throw new Error("foreign file");
+    const variantId = file.variantSku === null ? null : (variantBySku.get(file.variantSku) ?? null);
+    const [row] = await tx.execute<Row>(sql`
+      insert into commerce.product_files
+        (store_id, product_id, variant_id, name, path, size_bytes, content_type, position)
+      values (${storeId}::uuid, ${productId}::uuid, ${variantId}::uuid, ${file.name}, ${file.path},
+              ${file.sizeBytes}, ${file.contentType}, ${position})
+      on conflict (path) do update set
+        variant_id = excluded.variant_id, name = excluded.name, position = excluded.position, removed_at = null
+      where commerce.product_files.store_id = ${storeId}::uuid
+        and commerce.product_files.product_id = ${productId}::uuid
+      returning id
+    `);
+    if (!row) throw new Error("foreign file");
+    kept.push(String(row.id));
+  }
+  await tx.execute(sql`
+    update commerce.product_files set removed_at = now()
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and removed_at is null
+      ${kept.length > 0 ? sql`and id not in (${sql.join(kept.map((id) => sql`${id}::uuid`), sql`, `)})` : sql``}
+  `);
 }
 
 function saveProblem(error: unknown, input: ProductInput): string {
@@ -558,6 +647,7 @@ function saveProblem(error: unknown, input: ProductInput): string {
   if (text.includes("without an active variant")) return "Switch on at least one variant before putting the product on sale.";
   if (text.includes("without a title")) return "Give the product a title.";
   if (text.includes("unknown product")) return "This product no longer exists.";
+  if (text.includes("foreign file")) return "A file could not be found. Upload it again.";
   return "The product could not be saved. Nothing was changed; try again.";
 }
 

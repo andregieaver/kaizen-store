@@ -35,6 +35,12 @@ export const PRODUCER_SCHEMES = [
   { id: "tyres", label: "Tyres" },
 ] as const;
 
+/** Shipped, or downloaded after payment (D24). */
+export const DELIVERIES = ["physical", "digital"] as const;
+export type Delivery = (typeof DELIVERIES)[number];
+
+export const MAX_FILES = 20;
+
 export const MAX_OPTIONS = 3;
 export const MAX_VARIANTS = 100;
 export const MAX_MEDIA = 12;
@@ -120,10 +126,32 @@ export const productInput = z.object({
         originCountry: optionalText(2).refine((v) => v === null || /^[A-Z]{2}$/.test(v), {
           message: "Choose a country of origin.",
         }),
+        delivery: z.enum(DELIVERIES).default("physical"),
       }),
     )
     .min(1, "A product needs at least one variant.")
     .max(MAX_VARIANTS, `Use at most ${MAX_VARIANTS} variants.`),
+  /** How new variants are delivered; each variant can differ. */
+  delivery: z.enum(DELIVERIES).default("physical"),
+  /** Files for digital variants: already uploaded to the store's folder. */
+  files: z
+    .array(
+      z.object({
+        id: z.uuid().nullable(),
+        name: text(200).min(1, "Give each file a name."),
+        path: z.string().max(500),
+        sizeBytes: z.number().int().positive(),
+        contentType: z.string().max(200),
+        /** The digital variant it belongs to, by SKU; null for every digital variant. */
+        variantSku: z.string().nullable(),
+      }),
+    )
+    .max(MAX_FILES, `Use at most ${MAX_FILES} files.`)
+    .default([]),
+  /** Times each file can be downloaded per order; null for no limit. */
+  downloadLimit: z.number().int().min(1, "Allow at least one download.").max(1000).nullable().default(5),
+  /** Days the download links work after payment; null for no end. */
+  downloadDays: z.number().int().min(1, "Keep links working at least one day.").max(3650).nullable().default(30),
   taxCode: z.string().trim().regex(/^txcd_[0-9]{8}$/, "A Stripe tax code looks like txcd_99999999."),
   withdrawalExclusion: z.enum(WITHDRAWAL_EXCLUSIONS.map((w) => w.id) as [string, ...string[]]),
   schemes: z.array(z.enum(PRODUCER_SCHEMES.map((s) => s.id) as [string, ...string[]])),
@@ -210,10 +238,22 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     }
   }
 
+  const digitalSkus = new Set(input.variants.filter((v) => v.delivery === "digital").map((v) => v.sku));
+  for (const file of input.files) {
+    if (file.variantSku !== null && !digitalSkus.has(file.variantSku)) {
+      problems.push(`The file "${file.name}" belongs to a variant that is not digital. Choose where it goes.`);
+    }
+  }
+
   if (input.status !== "active") return problems;
 
   if (input.media.length === 0) problems.push("Add at least one picture before putting the product on sale.");
   const active = input.variants.filter((v) => v.active);
+  for (const variant of active.filter((v) => v.delivery === "digital")) {
+    if (!input.files.some((f) => f.variantSku === null || f.variantSku === variant.sku)) {
+      problems.push(`${variantLabel(variant.options)} is digital: add a file for shoppers to download.`);
+    }
+  }
   if (active.length === 0) problems.push("Switch on at least one variant before putting the product on sale.");
   const priced = active.some((v) =>
     context.markets.some((m) => parsePrice(v.prices[m.code] ?? "", m.currency) !== null),
@@ -222,6 +262,8 @@ export function productProblems(input: ProductInput, context: PublishContext): s
 
   const country = (choice: OperatorChoice): string | null =>
     choice === null ? null : "id" in choice ? (context.operatorCountries[choice.id] ?? null) : choice.new.country;
+  // Product-safety contacts are for physical goods; downloads need none.
+  if (!active.some((v) => v.delivery === "physical")) return problems;
   const makerCountry = country(input.manufacturer);
   if (!makerCountry) {
     problems.push("Add the manufacturer: EU product-safety rules require it on the listing.");

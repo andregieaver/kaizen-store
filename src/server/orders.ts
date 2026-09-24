@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 
+import type { Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { getStripeSecrets } from "./settings";
@@ -40,7 +41,32 @@ export type OrderView = {
   totalMinor: number;
   shippingAddress: Address;
   billingAddress: Address;
-  lines: { title: string; sku: string; quantity: number; unitPriceMinor: number; totalMinor: number }[];
+  lines: {
+    title: string;
+    sku: string;
+    quantity: number;
+    unitPriceMinor: number;
+    totalMinor: number;
+    delivery: Delivery;
+  }[];
+  /** Something to ship (false when the order is downloads only). */
+  ships: boolean;
+  /** When the shopper agreed that downloads start at once (D24). */
+  digitalConsentAt: string | null;
+};
+
+/** A file the shopper can download from a paid order (D24). */
+export type OrderDownload = {
+  token: string;
+  name: string;
+  sizeBytes: number;
+  /** Times downloaded so far. */
+  used: number;
+  /** Downloads left, or null for no limit. */
+  left: number | null;
+  expiresAt: string | null;
+  /** The limit is reached or the link has expired. */
+  gone: boolean;
 };
 
 const toOrder = (row: Row, lines: Row[]): OrderView => ({
@@ -64,7 +90,10 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     quantity: Number(line.quantity),
     unitPriceMinor: Number(line.unit_price_minor),
     totalMinor: Number(line.total_minor),
+    delivery: line.delivery === "digital" ? "digital" : "physical",
   })),
+  ships: lines.some((line) => line.delivery !== "digital"),
+  digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
 });
 
 export async function getOrder(storeId: string, orderId: string): Promise<OrderView | null> {
@@ -73,11 +102,65 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
       select * from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
-      select title, sku, quantity, unit_price_minor, total_minor from commerce.order_lines
+      select title, sku, quantity, unit_price_minor, total_minor, delivery from commerce.order_lines
       where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by title
     `),
   ]);
   return order ? toOrder(order, lines) : null;
+}
+
+/** The paid order's download links, in the files' order. */
+export async function getOrderDownloads(storeId: string, orderId: string): Promise<OrderDownload[]> {
+  const rows = await db().execute<Row>(sql`
+    select d.token, d.downloads, d.max_downloads, d.expires_at, f.name, f.size_bytes,
+      (d.max_downloads is not null and d.downloads >= d.max_downloads)
+        or (d.expires_at is not null and d.expires_at <= now()) as gone
+    from commerce.order_downloads d
+    join commerce.product_files f on f.store_id = d.store_id and f.id = d.file_id
+    where d.store_id = ${storeId}::uuid and d.order_id = ${orderId}::uuid
+    order by f.product_id, f.position, f.name
+  `);
+  return rows.map((row) => ({
+    token: String(row.token),
+    name: String(row.name),
+    sizeBytes: Number(row.size_bytes),
+    used: Number(row.downloads),
+    left: row.max_downloads === null ? null : Math.max(0, Number(row.max_downloads) - Number(row.downloads)),
+    expiresAt: row.expires_at ? new Date(String(row.expires_at)).toISOString() : null,
+    gone: Boolean(row.gone),
+  }));
+}
+
+/**
+ * Counts one download and returns the file to send, if the link still works:
+ * the order is paid, the limit is not reached and the link has not expired.
+ * One statement, so two clicks at once cannot both use the last download.
+ */
+export async function takeDownload(
+  storeId: string,
+  token: string,
+): Promise<{ path: string; name: string } | null> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.order_downloads d
+       set downloads = d.downloads + 1, last_downloaded_at = now()
+      from commerce.product_files f, commerce.orders o
+     where d.store_id = ${storeId}::uuid and d.token = ${token}
+       and f.store_id = d.store_id and f.id = d.file_id
+       and o.store_id = d.store_id and o.id = d.order_id
+       and o.status in ('paid', 'fulfilled', 'closed')
+       and (d.max_downloads is null or d.downloads < d.max_downloads)
+       and (d.expires_at is null or d.expires_at > now())
+    returning f.path, f.name
+  `);
+  return row ? { path: String(row.path), name: String(row.name) } : null;
+}
+
+/** Gives back a download that could not be sent (storage was unreachable). */
+export async function returnDownload(storeId: string, token: string): Promise<void> {
+  await db().execute(sql`
+    update commerce.order_downloads set downloads = greatest(downloads - 1, 0)
+    where store_id = ${storeId}::uuid and token = ${token}
+  `);
 }
 
 /**

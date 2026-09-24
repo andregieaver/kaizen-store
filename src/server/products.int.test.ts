@@ -237,3 +237,85 @@ describe("refusing bad products", () => {
     expect(await getProductForEdit(other, theirContext, mine.id)).toBeNull();
   });
 });
+
+describe("digital products (D24)", () => {
+  const ebook = (overrides: Partial<ProductInput> = {}) => {
+    const base = mug();
+    return productInput.parse({
+      ...base,
+      handle: `e-bok-${run}`,
+      options: [],
+      delivery: "digital",
+      variants: [{ ...base.variants[0], options: {}, sku: `EBOK-${run}`, stock: 0, delivery: "digital", weightGrams: 300 }],
+      files: [
+        {
+          id: null,
+          name: "Boken.pdf",
+          path: `${store.id}/f1/boken.pdf`,
+          sizeBytes: 2048,
+          contentType: "application/pdf",
+          variantSku: null,
+        },
+      ],
+      downloadLimit: 3,
+      downloadDays: null,
+      manufacturer: null,
+      responsiblePerson: null,
+      ...overrides,
+    });
+  };
+
+  it("puts a download on sale without a manufacturer, stock or weight", async () => {
+    const result = await saveProduct(store, context, null, ebook());
+    expect(result).toMatchObject({ ok: true });
+    if (!result.ok) return;
+    const saved = await getProductForEdit(store, context, result.productId);
+    expect(saved).toMatchObject({
+      status: "active",
+      delivery: "digital",
+      downloadLimit: 3,
+      downloadDays: null,
+      variants: [{ delivery: "digital", weightGrams: null }],
+      files: [{ name: "Boken.pdf", sizeBytes: 2048, variantSku: null }],
+    });
+    const levels = await db().execute(sql`
+      select 1 from commerce.inventory_levels l
+      join commerce.product_variants v on v.id = l.variant_id
+      where v.sku = ${`EBOK-${run}`}
+    `);
+    expect(levels).toHaveLength(0);
+    const [row] = (await listAdminProducts(store)).filter((p) => p.id === result.productId);
+    expect(row).toMatchObject({ variants: 1, digitalVariants: 1 });
+  });
+
+  it("keeps a removed file for earlier buyers, and refuses another store's files", async () => {
+    const [product] = (await listAdminProducts(store)).filter((p) => p.handle === `e-bok-${run}`);
+    const current = await getProductForEdit(store, context, product.id);
+    const replaced = await saveProduct(store, context, product.id, {
+      ...current!,
+      files: [{ ...current!.files[0], id: null, name: "Boken v2.pdf", path: `${store.id}/f2/boken.pdf` }],
+    });
+    expect(replaced).toMatchObject({ ok: true });
+    const files = await db().execute<Row>(sql`
+      select name, removed_at is not null as removed from commerce.product_files
+      where product_id = ${product.id}::uuid order by created_at
+    `);
+    expect(files.map((f) => [f.name, f.removed])).toEqual([
+      ["Boken.pdf", true],
+      ["Boken v2.pdf", false],
+    ]);
+
+    const foreign = await saveProduct(store, context, product.id, {
+      ...current!,
+      files: [{ ...current!.files[0], id: null, path: `${other.id}/f1/stolen.pdf` }],
+    });
+    expect(foreign.ok).toBe(false);
+  });
+
+  it("needs a file before a download goes on sale", async () => {
+    const result = await saveProduct(store, context, null, ebook({ handle: `tom-${run}`, files: [], variants: [
+      { ...ebook().variants[0], sku: `TOM-${run}` },
+    ] }));
+    expect(result).toEqual({ ok: false, problems: ["Default is digital: add a file for shoppers to download."] });
+  });
+});

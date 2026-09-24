@@ -141,6 +141,20 @@
       "when": 1790258343357,
       "tag": "20260924135903_payment_methods_shown",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790267405962,
+      "tag": "20260924163005_digital_products",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790267434791,
+      "tag": "20260924163034_digital_products_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -11,24 +11,37 @@ export type CheckoutLabels = {
   problems: Record<CheckoutProblem, string>;
 };
 
-/** Sends the shopper to payment; stays put and explains if that is not possible. */
+/**
+ * Sends the shopper to payment; stays put and explains if that is not
+ * possible. With `consent`, the shopper first agrees that downloads start at
+ * once and end the right of withdrawal (D24).
+ */
 export function CheckoutButton({
   store,
   market,
   disabled,
   labels,
+  consent,
 }: {
   store: string;
   market: string;
   disabled: boolean;
   labels: CheckoutLabels;
+  consent?: string;
 }) {
   const [state, action, pending] = useActionState(
-    async (): Promise<CheckoutState> => checkoutAction(store, market),
+    async (_: CheckoutState, form: FormData): Promise<CheckoutState> =>
+      checkoutAction(store, market, form.get("digitalConsent") === "on"),
     { problem: null },
   );
   return (
-    <form action={action} className="flex flex-col gap-2">
+    <form action={action} className="flex flex-col gap-3">
+      {consent && (
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="digitalConsent" required className="mt-0.5 size-4 shrink-0" />
+          {consent}
+        </label>
+      )}
       <button
         type="submit"
         disabled={disabled || pending}

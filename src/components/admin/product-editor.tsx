@@ -13,26 +13,31 @@ import {
 
 import {
   saveProductAction,
+  startFileUploadAction,
   uploadImageAction,
   type SaveState,
 } from "@/app/admin/(gated)/[store]/products/actions";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
+import { fileSize } from "@/lib/file-size";
 import { shrinkImage } from "@/lib/image-resize";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
   combineOptions,
   GENERAL_TAX_CODE,
+  MAX_FILES,
   MAX_MEDIA,
   MAX_OPTIONS,
   PRODUCER_SCHEMES,
   WITHDRAWAL_EXCLUSIONS,
   variantLabel,
+  type Delivery,
   type OperatorChoice,
   type ProductInput,
   type VariantInput,
 } from "@/lib/product-input";
 import { summarize } from "@/lib/seo";
 import { slugify } from "@/lib/slug";
+import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
@@ -219,6 +224,9 @@ export function ProductEditor(props: Props) {
       />
       <MediaSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       <VariantsSection product={product} update={update} context={context} countries={props.countries} />
+      {product.variants.some((v) => v.delivery === "digital") && (
+        <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
+      )}
       <SafetySection
         product={product}
         update={update}
@@ -561,7 +569,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
   );
 }
 
-const emptyVariant = (options: Record<string, string>): VariantInput => ({
+const emptyVariant = (options: Record<string, string>, delivery: Delivery): VariantInput => ({
   id: null,
   options,
   sku: "",
@@ -572,10 +580,15 @@ const emptyVariant = (options: Record<string, string>): VariantInput => ({
   weightGrams: null,
   hsCode: null,
   originCountry: null,
+  delivery,
 });
 
 /** Variants for a new set of options, keeping what was typed for combinations that remain. */
-function variantsFor(options: ProductInput["options"], previous: VariantInput[]): VariantInput[] {
+function variantsFor(
+  options: ProductInput["options"],
+  previous: VariantInput[],
+  delivery: Delivery,
+): VariantInput[] {
   const clean = options
     .map((o) => ({ name: o.name.trim(), values: [...new Set(o.values.map((v) => v.trim()).filter(Boolean))] }))
     .filter((o) => o.name && o.values.length > 0);
@@ -589,7 +602,7 @@ function variantsFor(options: ProductInput["options"], previous: VariantInput[])
     if (kept) return { ...kept, options: combo };
     // A new combination starts with the first variant's prices, so a new
     // colour does not need every price typed again.
-    return { ...emptyVariant(combo), prices: template ? { ...template.prices } : {} };
+    return { ...emptyVariant(combo, delivery), prices: template ? { ...template.prices } : {} };
   });
 }
 
@@ -601,20 +614,87 @@ function VariantsSection({
 }: SectionProps & { context: EditorContext; countries: CountryOption[] }) {
   const [optionsOn, setOptionsOn] = useState(product.options.length > 0);
   const [drafts, setDrafts] = useState(() => product.options.map((o) => o.values.join(", ")));
+  const [mixed, setMixed] = useState(() => new Set(product.variants.map((v) => v.delivery)).size > 1);
+  const allDigital = product.variants.every((v) => v.delivery === "digital");
 
   const setOptions = (options: ProductInput["options"]) =>
-    update((p) => ({ ...p, options, variants: variantsFor(options, p.variants) }));
+    update((p) => ({ ...p, options, variants: variantsFor(options, p.variants, p.delivery) }));
 
   const setVariant = (index: number, change: Partial<VariantInput>) =>
-    update((p) => ({ ...p, variants: p.variants.map((v, i) => (i === index ? { ...v, ...change } : v)) }));
+    update((p) => {
+      const before = p.variants[index];
+      const variants = p.variants.map((v, i) => (i === index ? { ...v, ...change } : v));
+      // Files follow their variant when its SKU changes, and go back to
+      // every digital variant when it stops being digital.
+      const files = p.files.map((f) => {
+        if (f.variantSku === null || f.variantSku !== before.sku) return f;
+        if (change.delivery === "physical") return { ...f, variantSku: null };
+        return change.sku !== undefined ? { ...f, variantSku: change.sku } : f;
+      });
+      return { ...p, variants, files };
+    });
+
+  const setDelivery = (delivery: Delivery) =>
+    update((p) => ({
+      ...p,
+      delivery,
+      variants: p.variants.map((v) => ({ ...v, delivery })),
+      files: p.files.map((f) => ({ ...f, variantSku: null })),
+    }));
 
   const parseValues = (text: string) => text.split(",").map((v) => v.trim()).filter(Boolean);
 
   return (
     <section aria-labelledby="variants-heading" className={card}>
       <h2 id="variants-heading" className="mb-4 font-medium">
-        Price and stock
+        {allDigital ? "Price" : "Price and stock"}
       </h2>
+
+      <fieldset className="mb-4 flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-medium">How is it delivered?</legend>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["physical", "Physical", "Shipped to the customer"],
+              ["digital", "Digital", "Downloaded after payment"],
+            ] as const
+          ).map(([value, name, note]) => (
+            <label
+              key={value}
+              className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-border p-3 has-checked:border-foreground sm:flex-none"
+            >
+              <input
+                type="radio"
+                name="delivery"
+                checked={!mixed && product.delivery === value}
+                onChange={() => {
+                  setMixed(false);
+                  setDelivery(value);
+                }}
+                className="mt-0.5 size-4"
+              />
+              <span>
+                <span className="block font-medium">{name}</span>
+                <span className="text-muted">{note}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {product.variants.length > 1 && (
+          <label className="mt-1 flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mixed}
+              onChange={(e) => {
+                setMixed(e.target.checked);
+                if (!e.target.checked) setDelivery(product.delivery);
+              }}
+              className="size-4"
+            />
+            Variants are delivered differently (for example a hardcover and an e-book)
+          </label>
+        )}
+      </fieldset>
 
       <label className="mb-4 flex items-center gap-2 text-sm">
         <input
@@ -699,7 +779,9 @@ function VariantsSection({
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] text-left text-sm">
-          <caption className="sr-only">Variants with SKU, stock and price per country</caption>
+          <caption className="sr-only">
+            Variants with SKU, {allDigital ? "" : "stock and "}price per country
+          </caption>
           <thead>
             <tr className="border-b border-border">
               <th scope="col" className="py-2 pr-3 font-medium">
@@ -708,10 +790,19 @@ function VariantsSection({
               <th scope="col" className="py-2 pr-3 font-medium">
                 SKU
               </th>
-              <th scope="col" className="py-2 pr-3 font-medium">
-                Stock
-                {context.locationName && <span className="block font-normal text-muted">{context.locationName}</span>}
-              </th>
+              {mixed && (
+                <th scope="col" className="py-2 pr-3 font-medium">
+                  Delivery
+                </th>
+              )}
+              {!allDigital && (
+                <th scope="col" className="py-2 pr-3 font-medium">
+                  Stock
+                  {context.locationName && (
+                    <span className="block font-normal text-muted">{context.locationName}</span>
+                  )}
+                </th>
+              )}
               {context.markets.map((market) => (
                 <th key={market.code} scope="col" className="py-2 pr-3 font-medium">
                   {market.name}
@@ -733,6 +824,8 @@ function VariantsSection({
                   name={name}
                   markets={context.markets}
                   countries={countries}
+                  showDelivery={mixed}
+                  showStock={!allDigital}
                   onChange={(change) => setVariant(index, change)}
                 />
               );
@@ -741,6 +834,11 @@ function VariantsSection({
         </table>
       </div>
       <p className="mt-3 text-sm text-muted">
+        {allDigital
+          ? "Digital products have no stock: they never sell out. "
+          : product.variants.some((v) => v.delivery === "digital")
+            ? "Digital variants have no stock. "
+            : ""}
         Prices include VAT. Leave a country empty to not sell the product there. Changing a price
         keeps its history, so reductions are always shown against the lowest price of the last 30 days.
       </p>
@@ -753,15 +851,21 @@ function VariantRow({
   name,
   markets,
   countries,
+  showDelivery,
+  showStock,
   onChange,
 }: {
   variant: VariantInput;
   name: string;
   markets: EditorContext["markets"];
   countries: CountryOption[];
+  showDelivery: boolean;
+  showStock: boolean;
   onChange: (change: Partial<VariantInput>) => void;
 }) {
   const cell = "min-h-9 w-full rounded-md border border-border bg-background px-2 text-sm";
+  const digital = variant.delivery === "digital";
+  const columns = 3 + Number(showDelivery) + Number(showStock) + markets.length;
   return (
     <>
       <tr className="border-b border-border align-top">
@@ -777,17 +881,36 @@ function VariantRow({
             className={`${cell} font-mono`}
           />
         </td>
-        <td className="py-2 pr-3">
-          <input
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={variant.stock}
-            onChange={(e) => onChange({ stock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
-            aria-label={`Stock for ${name}`}
-            className={`${cell} w-24`}
-          />
-        </td>
+        {showDelivery && (
+          <td className="py-2 pr-3">
+            <select
+              value={variant.delivery}
+              onChange={(e) => onChange({ delivery: e.target.value as Delivery })}
+              aria-label={`Delivery for ${name}`}
+              className={`${cell} w-32`}
+            >
+              <option value="physical">Physical</option>
+              <option value="digital">Digital</option>
+            </select>
+          </td>
+        )}
+        {showStock && (
+          <td className="py-2 pr-3">
+            {digital ? (
+              <span className="inline-flex min-h-9 items-center text-muted">Not needed</span>
+            ) : (
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={variant.stock}
+                onChange={(e) => onChange({ stock: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                aria-label={`Stock for ${name}`}
+                className={`${cell} w-24`}
+              />
+            )}
+          </td>
+        )}
         {markets.map((market) => (
           <td key={market.code} className="py-2 pr-3">
             <input
@@ -811,10 +934,10 @@ function VariantRow({
         </td>
       </tr>
       <tr className="border-b border-border">
-        <td colSpan={4 + markets.length} className="pb-3">
+        <td colSpan={columns} className="pb-3">
           <details>
             <summary className="cursor-pointer text-xs text-muted">
-              Barcode, weight and customs for {name}
+              {digital ? `Barcode for ${name}` : `Barcode, weight and customs for ${name}`}
             </summary>
             <div className="mt-2 grid gap-3 sm:grid-cols-4">
               <label className="flex flex-col gap-1 text-xs font-medium">
@@ -826,45 +949,218 @@ function VariantRow({
                   className={cell}
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs font-medium">
-                Weight in grams
-                <input
-                  type="number"
-                  min={1}
-                  value={variant.weightGrams ?? ""}
-                  onChange={(e) => onChange({ weightGrams: e.target.value ? Math.floor(Number(e.target.value)) : null })}
-                  className={cell}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-medium">
-                Customs tariff (HS) code
-                <input
-                  inputMode="numeric"
-                  value={variant.hsCode ?? ""}
-                  onChange={(e) => onChange({ hsCode: e.target.value || null })}
-                  className={cell}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs font-medium">
-                Country of origin
-                <select
-                  value={variant.originCountry ?? ""}
-                  onChange={(e) => onChange({ originCountry: e.target.value || null })}
-                  className={cell}
-                >
-                  <option value="">Not set</option>
-                  {countries.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {!digital && (
+                <>
+                  <label className="flex flex-col gap-1 text-xs font-medium">
+                    Weight in grams
+                    <input
+                      type="number"
+                      min={1}
+                      value={variant.weightGrams ?? ""}
+                      onChange={(e) => onChange({ weightGrams: e.target.value ? Math.floor(Number(e.target.value)) : null })}
+                      className={cell}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-medium">
+                    Customs tariff (HS) code
+                    <input
+                      inputMode="numeric"
+                      value={variant.hsCode ?? ""}
+                      onChange={(e) => onChange({ hsCode: e.target.value || null })}
+                      className={cell}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1 text-xs font-medium">
+                    Country of origin
+                    <select
+                      value={variant.originCountry ?? ""}
+                      onChange={(e) => onChange({ originCountry: e.target.value || null })}
+                      className={cell}
+                    >
+                      <option value="">Not set</option>
+                      {countries.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
             </div>
           </details>
         </td>
       </tr>
     </>
+  );
+}
+
+function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & { storeSlug: string; uploads: boolean }) {
+  const [busy, setBusy] = useState<string[]>([]);
+  const [problem, setProblem] = useState<string | null>(null);
+  const digital = product.variants.filter((v) => v.delivery === "digital");
+  const several = digital.length > 1;
+
+  const addFiles = async (files: FileList | null) => {
+    if (!files) return;
+    setProblem(null);
+    const room = MAX_FILES - product.files.length;
+    const chosen = Array.from(files);
+    if (chosen.length > room) setProblem(`A product can have at most ${MAX_FILES} files.`);
+    await Promise.all(
+      chosen.slice(0, room).map(async (file) => {
+        setBusy((b) => [...b, file.name]);
+        try {
+          const started = await startFileUploadAction(storeSlug, file.name);
+          if (!started.ok) return setProblem(started.problem);
+          const contentType = file.type || "application/octet-stream";
+          const { error } = await createClient()
+            .storage.from(started.bucket)
+            .uploadToSignedUrl(started.path, started.token, file, { contentType });
+          if (error) return setProblem(`${file.name} could not be uploaded. It may be too large.`);
+          update((p) => ({
+            ...p,
+            files: [
+              ...p.files,
+              { id: null, name: file.name, path: started.path, sizeBytes: file.size, contentType, variantSku: null },
+            ],
+          }));
+        } catch {
+          setProblem(`${file.name} could not be uploaded. Try again.`);
+        } finally {
+          setBusy((b) => {
+            const i = b.indexOf(file.name);
+            return b.filter((_, j) => j !== i);
+          });
+        }
+      }),
+    );
+  };
+
+  const setFile = (index: number, change: Partial<ProductInput["files"][number]>) =>
+    update((p) => ({ ...p, files: p.files.map((f, i) => (i === index ? { ...f, ...change } : f)) }));
+
+  const limit = (field: "downloadLimit" | "downloadDays", text: string) =>
+    update((p) => ({ ...p, [field]: text === "" ? null : Math.max(1, Math.floor(Number(text) || 1)) }));
+
+  return (
+    <section aria-labelledby="digital-heading" className={card}>
+      <h2 id="digital-heading" className="mb-1 font-medium">
+        Files to download
+      </h2>
+      <p className="mb-4 text-sm text-muted">
+        Shoppers get download links on their order page as soon as they have paid. The files stay private: links are personal and work only within the limits below.
+      </p>
+
+      {product.files.length > 0 && (
+        <ul className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border">
+          {product.files.map((file, index) => (
+            <li key={file.path} className="grid gap-3 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-xs font-medium">
+                  <span>
+                    Name shoppers see <span className={hint}>({fileSize(file.sizeBytes)})</span>
+                  </span>
+                  <input
+                    value={file.name}
+                    onChange={(e) => setFile(index, { name: e.target.value })}
+                    required
+                    maxLength={200}
+                    className={`${input} min-h-9`}
+                  />
+                </label>
+                {several && (
+                  <label className="flex flex-col gap-1 text-xs font-medium">
+                    Delivered with
+                    <select
+                      value={file.variantSku ?? ""}
+                      onChange={(e) => setFile(index, { variantSku: e.target.value || null })}
+                      className={`${input} min-h-9`}
+                    >
+                      <option value="">Every digital variant</option>
+                      {digital.map((v) => (
+                        <option key={v.sku || variantLabel(v.options)} value={v.sku} disabled={!v.sku}>
+                          {variantLabel(v.options)}
+                          {v.sku ? "" : " (add a SKU first)"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => update((p) => ({ ...p, files: p.files.filter((_, i) => i !== index) }))}
+                className="min-h-9 justify-self-start text-sm underline"
+              >
+                Remove<span className="sr-only"> {file.name}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {uploads ? (
+        product.files.length < MAX_FILES && (
+          <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-dashed border-foreground px-4 text-sm font-medium focus-within:outline-2">
+            {busy.length > 0 ? `Uploading ${busy.length} …` : "Add files"}
+            <input
+              type="file"
+              multiple
+              className="sr-only"
+              disabled={busy.length > 0}
+              onChange={(e) => {
+                void addFiles(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )
+      ) : (
+        <p className="text-sm text-muted">File uploads are not set up on this server, so files cannot be added.</p>
+      )}
+      {problem && (
+        <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-400">
+          {problem}
+        </p>
+      )}
+      {product.files.length > 0 && (
+        <p className="mt-2 text-xs text-muted">
+          Removing a file stops new downloads of it; customers who already bought it keep their links.
+        </p>
+      )}
+
+      <div className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
+        <label className={label}>
+          <span>
+            Downloads per file <span className={hint}>(empty for no limit)</span>
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={1000}
+            inputMode="numeric"
+            value={product.downloadLimit ?? ""}
+            onChange={(e) => limit("downloadLimit", e.target.value)}
+            className={`${input} max-w-32`}
+          />
+        </label>
+        <label className={label}>
+          <span>
+            Links work for this many days <span className={hint}>(empty for always)</span>
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={3650}
+            inputMode="numeric"
+            value={product.downloadDays ?? ""}
+            onChange={(e) => limit("downloadDays", e.target.value)}
+            className={`${input} max-w-32`}
+          />
+        </label>
+      </div>
+    </section>
   );
 }
 
@@ -880,8 +1176,9 @@ function SafetySection({
         Product safety
       </h2>
       <p className="mb-4 text-sm text-muted">
-        EU rules require the manufacturer&apos;s name and contact details on the listing, and a
-        responsible person in the EU when the manufacturer is outside it.
+        {product.variants.every((v) => v.delivery === "digital")
+          ? "Not needed for digital products: EU product-safety rules cover physical goods."
+          : "EU rules require the manufacturer\u2019s name and contact details on the listing, and a responsible person in the EU when the manufacturer is outside it."}
       </p>
       <div className="grid gap-5 md:grid-cols-2">
         <OperatorPicker
@@ -1046,7 +1343,11 @@ function LegalSection({ product, update }: SectionProps) {
               </option>
             ))}
           </select>
-          <span className={hint}>Most products have no exclusion. Only choose one that clearly applies.</span>
+          <span className={hint}>
+            Most products have no exclusion. Only choose one that clearly applies.
+            {product.variants.some((v) => v.delivery === "digital") &&
+              " Downloads are handled for you: shoppers agree at checkout that the right ends once the download is available."}
+          </span>
         </label>
 
         <fieldset className="text-sm">

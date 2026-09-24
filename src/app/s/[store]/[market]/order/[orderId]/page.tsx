@@ -8,7 +8,8 @@ import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
-import { getShopperOrder } from "@/server/orders";
+import { fileSize } from "@/lib/file-size";
+import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/order/[orderId]">;
@@ -42,6 +43,10 @@ async function OrderDetails({
   const m: Messages = t(market.lang);
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const address = order.shippingAddress;
+  const digital = order.lines.some((line) => line.delivery === "digital");
+  const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
+  const downloads = digital && paid ? await getOrderDownloads(store.id, order.id) : [];
+  const downloadBase = marketPath(store.slug, market.slug, "/download");
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -70,10 +75,12 @@ async function OrderDetails({
           ))}
         </ul>
         <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
-          <div className="flex justify-between">
-            <dt>{m.shipping}</dt>
-            <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
-          </div>
+          {order.ships && (
+            <div className="flex justify-between">
+              <dt>{m.shipping}</dt>
+              <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
+            </div>
+          )}
           <div className="flex justify-between font-semibold">
             <dt>{m.total}</dt>
             <dd>{money(order.totalMinor)}</dd>
@@ -85,7 +92,20 @@ async function OrderDetails({
         </dl>
       </section>
 
-      {address.line1 && (
+      {digital && order.status !== "cancelled" && (
+        <section aria-labelledby="downloads-heading" className="rounded-lg border border-border p-4">
+          <h2 id="downloads-heading" className="mb-2 font-medium">
+            {m.downloads}
+          </h2>
+          {paid ? (
+            <Downloads downloads={downloads} base={downloadBase} m={m} locale={market.locale} />
+          ) : (
+            <p className="text-sm text-muted">{m.downloadsAfterPayment}</p>
+          )}
+        </section>
+      )}
+
+      {order.ships && address.line1 && (
         <section>
           <h2 className="mb-1 font-medium">{m.deliverTo}</h2>
           <address className="not-italic">
@@ -104,5 +124,51 @@ async function OrderDetails({
         {m.continueShopping}
       </Link>
     </div>
+  );
+}
+
+/** Each file with its link; a plain link, so nothing fetches it ahead of a click. */
+function Downloads({
+  downloads,
+  base,
+  m,
+  locale,
+}: {
+  downloads: OrderDownload[];
+  base: string;
+  m: Messages;
+  locale: string;
+}) {
+  const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "long" });
+  return (
+    <ul className="divide-y divide-border">
+      {downloads.map((file) => (
+        <li key={file.token} className="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div>
+            <p className="font-medium">{file.name}</p>
+            <p className="text-sm text-muted">
+              {[
+                fileSize(file.sizeBytes),
+                !file.gone && file.left !== null && m.downloadsLeft(file.left),
+                !file.gone && file.expiresAt && m.downloadUntil(date(file.expiresAt)),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
+          {file.gone ? (
+            <p className="max-w-sm text-sm">{m.downloadGone}</p>
+          ) : (
+            <a
+              href={`${base}/${file.token}`}
+              className="inline-flex min-h-11 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background"
+            >
+              {m.download}
+              <span className="sr-only">: {file.name}</span>
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

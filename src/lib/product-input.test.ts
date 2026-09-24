@@ -160,4 +160,48 @@ describe("productProblems", () => {
     expect(problems).toContain("Give the product a title.");
     expect(problems).toContain("Two variants have the same SKU.");
   });
+
+  describe("digital products", () => {
+    const file = {
+      id: null,
+      name: "Guide.pdf",
+      path: "store/1/guide.pdf",
+      sizeBytes: 1000,
+      contentType: "application/pdf",
+      variantSku: null,
+    };
+    const ebook = { ...base.variants[0], sku: "EBOOK", delivery: "digital" as const };
+
+    it("defaults to shipped, with five downloads over 30 days", () => {
+      expect(base.delivery).toBe("physical");
+      expect(base.variants[0].delivery).toBe("physical");
+      expect(base.files).toEqual([]);
+      expect([base.downloadLimit, base.downloadDays]).toEqual([5, 30]);
+    });
+
+    it("needs a file for each digital variant on sale, and no manufacturer", () => {
+      const digital: ProductInput = { ...base, delivery: "digital", variants: [ebook], manufacturer: null };
+      expect(productProblems(digital, context)).toEqual([
+        "Default is digital: add a file for shoppers to download.",
+      ]);
+      expect(productProblems({ ...digital, files: [file] }, context)).toEqual([]);
+    });
+
+    it("keeps product-safety rules when some variants are shipped", () => {
+      const mixed: ProductInput = {
+        ...base,
+        manufacturer: null,
+        variants: [base.variants[0], ebook],
+        files: [{ ...file, variantSku: "EBOOK" }],
+      };
+      expect(productProblems(mixed, context)).toEqual([
+        "Add the manufacturer: EU product-safety rules require it on the listing.",
+      ]);
+    });
+
+    it("refuses a file for a variant that is not digital", () => {
+      const problems = productProblems({ ...base, files: [{ ...file, variantSku: "MUG-1" }] }, context);
+      expect(problems).toContain('The file "Guide.pdf" belongs to a variant that is not digital. Choose where it goes.');
+    });
+  });
 });
