@@ -536,7 +536,9 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
       // Test accounts made before MobilePay lack the org number it asks for.
       await stripe.v2.core.accounts
         .update(accountId, { identity: { business_details: testBusinessDetails } })
-        .catch(() => null);
+        .catch((error: unknown) =>
+          audit(null, storeId, "payments.test_details_refused", { mode, problem: stripeProblem(error) }),
+        );
       const shown = await showPaymentMethods(stripe, accountId);
       if (shown.length > 0) {
         await db().execute(sql`update commerce.stripe_accounts set payment_methods_shown = true where ${where}`);
