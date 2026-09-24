@@ -5,64 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1790168064066,
-      "tag": "20260923125424_commerce_schema",
+      "when": 1790207925670,
+      "tag": "20260923235845_platform_schema",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1790168088991,
-      "tag": "20260923125448_commerce_rules",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1790169004579,
-      "tag": "20260923131004_index_foreign_keys",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1790170875525,
-      "tag": "20260923134115_template_compliance",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1790170887441,
-      "tag": "20260923134127_launch_markets",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1790199659424,
-      "tag": "20260923214059_customs_fields",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1790199660837,
-      "tag": "20260923214100_ship_from_norway",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1790204849867,
-      "tag": "20260923230729_staff_and_settings",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1790204851134,
-      "tag": "20260923230731_settings_rules",
+      "when": 1790207927077,
+      "tag": "20260923235847_platform_rules",
       "breakpoints": true
     }
   ]

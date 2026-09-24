@@ -1,11 +1,14 @@
-import type { MarketSlug } from "./markets";
-
 /**
- * Interface text for each market. Legal texts (terms, withdrawal information)
- * are not here: they need human review and will live in their own files.
+ * Interface text by language. A market uses its locale's language, and any
+ * language without its own text falls back to English. Legal texts (terms,
+ * withdrawal information) are not here: they need human review and will live
+ * in their own files.
  */
 const messages = {
-  no: {
+  nb: {
+    skipToContent: "Hopp til innhold",
+    notFound: "Siden finnes ikke.",
+    toHome: "Til forsiden",
     cart: "Handlekurv",
     cartCount: (n: number) => `Handlekurv (${n})`,
     addToCart: "Legg i handlekurven",
@@ -25,7 +28,6 @@ const messages = {
     onlyAvailable: (n: number) => `Kun ${n} tilgjengelig. Juster antallet.`,
     noLongerAvailable: "Ikke lenger tilgjengelig. Fjern varen for å fortsette.",
     continueShopping: "Fortsett å handle",
-    storeTagline: "Demobutikk under bygging",
     products: "Produkter",
     vatIncluded: "inkl. mva.",
     priorPrice: "Laveste pris siste 30 dager",
@@ -46,7 +48,10 @@ const messages = {
     demoNotice: "Dette er en demobutikk. Ingenting kan kjøpes ennå.",
     options: { colour: "Farge", ruling: "Linjer", white: "Hvit", black: "Svart", lined: "Linjert", dotted: "Prikket" },
   },
-  se: {
+  sv: {
+    skipToContent: "Hoppa till innehåll",
+    notFound: "Sidan finns inte.",
+    toHome: "Till startsidan",
     cart: "Varukorg",
     cartCount: (n: number) => `Varukorg (${n})`,
     addToCart: "Lägg i varukorgen",
@@ -66,7 +71,6 @@ const messages = {
     onlyAvailable: (n: number) => `Endast ${n} tillgängliga. Justera antalet.`,
     noLongerAvailable: "Inte längre tillgänglig. Ta bort varan för att fortsätta.",
     continueShopping: "Fortsätt handla",
-    storeTagline: "Demobutik under uppbyggnad",
     products: "Produkter",
     vatIncluded: "inkl. moms",
     priorPrice: "Lägsta pris senaste 30 dagarna",
@@ -87,7 +91,10 @@ const messages = {
     demoNotice: "Det här är en demobutik. Inget kan köpas ännu.",
     options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad" },
   },
-  dk: {
+  da: {
+    skipToContent: "Spring til indhold",
+    notFound: "Siden findes ikke.",
+    toHome: "Til forsiden",
     cart: "Kurv",
     cartCount: (n: number) => `Kurv (${n})`,
     addToCart: "Læg i kurven",
@@ -107,7 +114,6 @@ const messages = {
     onlyAvailable: (n: number) => `Kun ${n} tilgængelige. Juster antallet.`,
     noLongerAvailable: "Ikke længere tilgængelig. Fjern varen for at fortsætte.",
     continueShopping: "Fortsæt med at handle",
-    storeTagline: "Demobutik under opbygning",
     products: "Produkter",
     vatIncluded: "inkl. moms",
     priorPrice: "Laveste pris de seneste 30 dage",
@@ -128,12 +134,58 @@ const messages = {
     demoNotice: "Dette er en demobutik. Intet kan købes endnu.",
     options: { colour: "Farve", ruling: "Linjer", white: "Hvid", black: "Sort", lined: "Linjeret", dotted: "Prikket" },
   },
-} satisfies Record<MarketSlug, unknown>;
+  en: {
+    skipToContent: "Skip to content",
+    notFound: "This page does not exist.",
+    toHome: "Go to the home page",
+    cart: "Cart",
+    cartCount: (n: number) => `Cart (${n})`,
+    addToCart: "Add to cart",
+    adding: "Adding …",
+    added: "Added to cart.",
+    capped: "Your cart now holds all the stock we have.",
+    unavailable: "This item is not available.",
+    tryAgain: "Something went wrong. Please try again.",
+    goToCart: "Go to cart",
+    emptyCart: "Your cart is empty.",
+    quantity: "Quantity",
+    update: "Update",
+    remove: "Remove",
+    subtotal: "Subtotal",
+    shippingAtCheckout: "Shipping and delivery times are shown at checkout.",
+    checkoutSoon: "Checkout (coming soon)",
+    onlyAvailable: (n: number) => `Only ${n} available. Adjust the quantity.`,
+    noLongerAvailable: "No longer available. Remove it to continue.",
+    continueShopping: "Continue shopping",
+    products: "Products",
+    vatIncluded: "incl. VAT",
+    priorPrice: "Lowest price in the last 30 days",
+    fromPrice: "From",
+    inStock: "In stock",
+    lowStock: (n: number) => `Only ${n} left`,
+    outOfStock: "Sold out",
+    checkingStock: "Checking stock …",
+    variants: "Variants",
+    description: "Description",
+    safety: "Safety and manufacturer",
+    manufacturer: "Manufacturer",
+    euResponsiblePerson: "Responsible person in the EU",
+    noWithdrawal: "This item is excluded from the right of withdrawal.",
+    backToProducts: "Back to products",
+    chooseMarket: "Choose country",
+    noProducts: "No products yet.",
+    demoNotice: "This is a demo store. Nothing can be bought yet.",
+    options: { colour: "Colour", ruling: "Ruling", white: "White", black: "Black", lined: "Lined", dotted: "Dotted" },
+  },
+};
 
-export type Messages = (typeof messages)["no"];
+export type Messages = (typeof messages)["en"];
 
-export function t(slug: MarketSlug): Messages {
-  return messages[slug];
+type Language = keyof typeof messages;
+
+/** Text for a language subtag such as `nb`, falling back to English. */
+export function t(lang: string): Messages {
+  return lang in messages ? messages[lang as Language] : messages.en;
 }
 
 /** Human label for a variant option such as `{ colour: "white" }`. */

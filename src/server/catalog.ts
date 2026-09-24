@@ -7,8 +7,12 @@ import { connection } from "next/server";
 import { db } from "@/db/client";
 import { priceView, type PriceView } from "@/lib/pricing";
 
-/** Cache tags. Revalidate `catalog` after any product or price change. */
+/**
+ * Cache tags. Revalidate a store's catalogue tag after any product or price
+ * change in it; `catalog` covers every store.
+ */
 export const CATALOG_TAG = "catalog";
+export const catalogTag = (storeId: string) => `catalog:${storeId}`;
 
 export type ProductSummary = {
   handle: string;
@@ -56,12 +60,13 @@ const str = (value: unknown): string => (value === null ? "" : String(value));
 
 /** Active products with a price in the market, cheapest variant first. */
 export async function listProducts(
+  storeId: string,
   marketCode: string,
   locale: string,
 ): Promise<ProductSummary[]> {
   "use cache";
   cacheLife("hours");
-  cacheTag(CATALOG_TAG);
+  cacheTag(CATALOG_TAG, catalogTag(storeId));
 
   const rows = await db().execute<Row>(sql`
     select
@@ -94,7 +99,7 @@ export async function listProducts(
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
     ) pr on pr.min_amount is not null
-    where p.status = 'active'
+    where p.store_id = ${storeId}::uuid and p.status = 'active'
     order by p.created_at, p.handle
   `);
 
@@ -111,13 +116,14 @@ export async function listProducts(
 
 /** One active product with its variants priced in the market, or null. */
 export async function getProduct(
+  storeId: string,
   marketCode: string,
   locale: string,
   handle: string,
 ): Promise<ProductDetail | null> {
   "use cache";
   cacheLife("hours");
-  cacheTag(CATALOG_TAG);
+  cacheTag(CATALOG_TAG, catalogTag(storeId));
 
   const [product] = await db().execute<Row>(sql`
     select
@@ -135,9 +141,11 @@ export async function getProduct(
       from commerce.product_translations
       where product_id = p.id order by locale limit 1
     ) tf on true
-    left join commerce.economic_operators mf on mf.id = p.manufacturer_id
-    left join commerce.economic_operators rp on rp.id = p.responsible_person_id
-    where p.handle = ${handle} and p.status = 'active'
+    left join commerce.economic_operators mf
+      on mf.store_id = p.store_id and mf.id = p.manufacturer_id
+    left join commerce.economic_operators rp
+      on rp.store_id = p.store_id and rp.id = p.responsible_person_id
+    where p.store_id = ${storeId}::uuid and p.handle = ${handle} and p.status = 'active'
   `);
   if (!product) return null;
 
@@ -193,6 +201,7 @@ export async function getProduct(
  * reservations. Never cached: stock is read on every request.
  */
 export async function getAvailability(
+  storeId: string,
   variantIds: string[],
 ): Promise<Map<string, number>> {
   await connection();
@@ -200,8 +209,9 @@ export async function getAvailability(
   const rows = await db().execute<Row>(sql`
     select s.variant_id, sum(s.available)::int as available
     from commerce.available_stock s
-    join commerce.inventory_locations l on l.id = s.location_id and l.active
-    where s.variant_id in (${sql.join(
+    join commerce.inventory_locations l
+      on l.store_id = s.store_id and l.id = s.location_id and l.active
+    where s.store_id = ${storeId}::uuid and s.variant_id in (${sql.join(
       variantIds.map((id) => sql`${id}::uuid`),
       sql`, `,
     )})

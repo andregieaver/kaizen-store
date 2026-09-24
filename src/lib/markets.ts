@@ -1,28 +1,43 @@
 /**
- * The markets the storefront routes to. The database (`commerce.markets`) holds
- * each market's currency and whether it is active; this list decides which URL
- * prefixes exist. A test keeps the two in step.
+ * A market is a country a store sells to (`commerce.markets`). Its URL slug is
+ * the lower-case country code: `/no`, `/se`, `/dk`.
  */
-export const MARKETS = {
-  no: { code: "NO", locale: "nb-NO", lang: "nb", currency: "NOK", name: "Norge" },
-  se: { code: "SE", locale: "sv-SE", lang: "sv", currency: "SEK", name: "Sverige" },
-  dk: { code: "DK", locale: "da-DK", lang: "da", currency: "DKK", name: "Danmark" },
-} as const;
+export type Market = {
+  slug: string;
+  code: string;
+  currency: string;
+  /** The market's default locale, e.g. `nb-NO`. */
+  locale: string;
+  /** The language subtag for `<html lang>`, e.g. `nb`. */
+  lang: string;
+  /** The country's name in the market's own language, e.g. "Norge". */
+  name: string;
+};
 
-export type MarketSlug = keyof typeof MARKETS;
-export type Market = (typeof MARKETS)[MarketSlug] & { slug: MarketSlug };
+export type MarketRow = { code: string; currency: string; defaultLocale: string };
 
-export const MARKET_SLUGS = Object.keys(MARKETS) as MarketSlug[];
-
-export function getMarket(slug: string): Market | null {
-  return slug in MARKETS
-    ? { ...MARKETS[slug as MarketSlug], slug: slug as MarketSlug }
-    : null;
+export function toMarket(row: MarketRow): Market {
+  const code = row.code.toUpperCase();
+  const locale = row.defaultLocale;
+  return {
+    slug: code.toLowerCase(),
+    code,
+    currency: row.currency.toUpperCase(),
+    locale,
+    lang: new Intl.Locale(locale).language,
+    name: new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code,
+  };
 }
 
-/** The market to suggest for a visitor's country, if we sell there. */
-export function marketForCountry(country: string | null): Market | null {
+export function findMarket(markets: readonly Market[], slug: string): Market | null {
+  return markets.find((market) => market.slug === slug) ?? null;
+}
+
+/** The market to suggest for a visitor's country, if the store sells there. */
+export function marketForCountry(
+  markets: readonly Market[],
+  country: string | null,
+): Market | null {
   if (!country) return null;
-  const slug = MARKET_SLUGS.find((s) => MARKETS[s].code === country.toUpperCase());
-  return slug ? getMarket(slug) : null;
+  return markets.find((market) => market.code === country.toUpperCase()) ?? null;
 }

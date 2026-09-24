@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 
-import { addToCart, type AddToCartState } from "@/app/[market]/cart/actions";
+import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 
 export type AddToCartLabels = {
   addToCart: string;
@@ -18,12 +18,16 @@ export type AddToCartLabels = {
 const initial: AddToCartState = { outcome: "idle", quantity: 0 };
 
 export function AddToCart({
+  store,
   market,
+  cartHref,
   variantId,
   disabled,
   labels,
 }: {
+  store: string;
   market: string;
+  cartHref: string;
   variantId: string;
   disabled: boolean;
   labels: AddToCartLabels;
@@ -42,6 +46,7 @@ export function AddToCart({
 
   return (
     <form action={action} className="flex flex-col items-end gap-1">
+      <input type="hidden" name="store" value={store} />
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />
       <input type="hidden" name="quantity" value="1" />
@@ -55,7 +60,7 @@ export function AddToCart({
       <p role="status" aria-live="polite" className="text-sm">
         {message}{" "}
         {(state.outcome === "added" || state.outcome === "capped") && (
-          <Link href={`/${market}/cart`} className="underline">
+          <Link href={cartHref} className="underline">
             {labels.goToCart}
           </Link>
         )}

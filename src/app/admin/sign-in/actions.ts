@@ -6,13 +6,14 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
-import { isActiveStaffEmail } from "@/server/auth";
+import { canSignIn } from "@/server/auth";
 
 const SENT =
   "If that email has access, a sign-in link is on its way. Open it in this browser; it works once and expires within the hour.";
 
 /**
- * Sends a magic link, but only to active staff. The reply is the same either
+ * Sends a magic link, but only to accounts with access to a store or the
+ * platform. The reply is the same either
  * way, so the form cannot be used to find out who has access.
  */
 export async function requestSignInLink(
@@ -23,7 +24,7 @@ export async function requestSignInLink(
   if (!email.success) {
     return { status: "error", messages: ["Enter a valid email address."] };
   }
-  if (!(await isActiveStaffEmail(email.data))) {
+  if (!(await canSignIn(email.data))) {
     return { status: "ok", messages: [SENT] };
   }
 

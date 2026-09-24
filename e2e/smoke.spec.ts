@@ -1,16 +1,24 @@
 import { expect, test } from "@playwright/test";
 
-test("the chooser offers every market without redirecting", async ({ page }) => {
+test("the platform home page links to the demo store", async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.status()).toBe(200);
-  await expect(page).toHaveURL("/");
+  await page.getByRole("link", { name: "See the demo store" }).click();
+  await expect(page).toHaveURL("/s/demo");
+});
+
+test("a store's chooser offers every market without redirecting", async ({ page }) => {
+  const response = await page.goto("/s/demo");
+  expect(response?.status()).toBe(200);
+  await expect(page).toHaveURL("/s/demo");
+  await expect(page.getByRole("heading", { level: 1, name: "Kaizen Demo" })).toBeVisible();
   for (const name of ["Norge", "Sverige", "Danmark"]) {
     await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
   }
 });
 
 test("a market lists products with VAT-inclusive prices", async ({ page }) => {
-  await page.goto("/no");
+  await page.goto("/s/demo/no");
   await expect(page.locator("html")).toHaveAttribute("lang", "nb");
   await expect(page.getByRole("heading", { level: 1, name: "Produkter" })).toBeVisible();
   const mug = page.getByRole("listitem").filter({ hasText: "Demo: Keramikkopp" });
@@ -21,10 +29,10 @@ test("a market lists products with VAT-inclusive prices", async ({ page }) => {
 });
 
 test("a product page shows stock, safety details and structured data", async ({ page }) => {
-  await page.goto("/no");
+  await page.goto("/s/demo/no");
   await page.getByRole("link", { name: "Demo: Keramikkopp" }).click();
-  await expect(page).toHaveURL("/no/p/demo-keramikkopp");
-  await expect(page).toHaveTitle("Demo: Keramikkopp · Kaizen Store");
+  await expect(page).toHaveURL("/s/demo/no/p/demo-keramikkopp");
+  await expect(page).toHaveTitle("Demo: Keramikkopp · Kaizen Demo");
 
   await expect(page.getByText("Kun 3 igjen")).toBeVisible();
   await expect(page.getByText("På lager")).toBeVisible();
@@ -40,21 +48,23 @@ test("a product page shows stock, safety details and structured data", async ({ 
 });
 
 test("other markets use their own language and currency", async ({ page }) => {
-  await page.goto("/se/p/demo-bordlampe");
+  await page.goto("/s/demo/se/p/demo-bordlampe");
   await expect(page.locator("html")).toHaveAttribute("lang", "sv");
   await expect(page.getByText("inkl. moms").first()).toBeVisible();
   await expect(page.getByText("Slutsåld")).toBeVisible();
 
-  await page.goto("/dk");
+  await page.goto("/s/demo/dk");
   await expect(page.locator("html")).toHaveAttribute("lang", "da");
   await expect(
     page.getByRole("listitem").filter({ hasText: "Demo: Keramikkrus" }),
   ).toContainText("179,00");
 });
 
-test("unknown markets and products are not found", async ({ page }) => {
-  expect((await page.goto("/de"))?.status()).toBe(404);
-  await page.goto("/no/p/does-not-exist");
+test("unknown stores, markets and products are not found", async ({ page }) => {
+  expect((await page.goto("/s/no-such-store"))?.status()).toBe(404);
+  expect((await page.goto("/s/no-such-store/no"))?.status()).toBe(404);
+  expect((await page.goto("/s/demo/de"))?.status()).toBe(404);
+  await page.goto("/s/demo/no/p/does-not-exist");
   await expect(page.getByText("Siden finnes ikke.")).toBeVisible();
   await expect(page.locator('head meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
 });

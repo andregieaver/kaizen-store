@@ -7,8 +7,8 @@ export type PaymentMethodInfo = {
   /** Stripe's payment method type. */
   id: string;
   name: string;
-  /** Market codes where Stripe can offer it to shoppers. */
-  markets: readonly string[];
+  /** Market codes where Stripe can offer it to shoppers, or every market. */
+  markets: readonly string[] | "all";
   note?: string;
 };
 
@@ -16,18 +16,25 @@ export const PAYMENT_METHODS: readonly PaymentMethodInfo[] = [
   {
     id: "card",
     name: "Cards",
-    markets: ["NO", "SE", "DK"],
+    markets: "all",
     note: "Includes Apple Pay and Google Pay once they are enabled in the Stripe Dashboard.",
   },
-  { id: "link", name: "Link", markets: ["NO", "SE", "DK"] },
-  { id: "klarna", name: "Klarna", markets: ["NO", "SE", "DK"] },
-  { id: "mobilepay", name: "MobilePay", markets: ["DK"] },
+  { id: "link", name: "Link", markets: "all" },
+  {
+    id: "klarna",
+    name: "Klarna",
+    markets: "all",
+    note: "Klarna decides which of its options each country gets.",
+  },
+  { id: "mobilepay", name: "MobilePay", markets: ["DK", "FI"] },
   { id: "swish", name: "Swish", markets: ["SE"] },
-  { id: "paypal", name: "PayPal", markets: ["NO", "SE", "DK"] },
+  { id: "paypal", name: "PayPal", markets: "all" },
 ];
 
 export function methodsForMarket(marketCode: string): PaymentMethodInfo[] {
-  return PAYMENT_METHODS.filter((method) => method.markets.includes(marketCode));
+  return PAYMENT_METHODS.filter(
+    (method) => method.markets === "all" || method.markets.includes(marketCode),
+  );
 }
 
 export function isKnownMethod(marketCode: string, methodId: string): boolean {

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("the admin sends visitors without a session to sign in", async ({ page }) => {
   await page.goto("/admin");
   await expect(page).toHaveURL("/admin/sign-in");
-  await expect(page.getByRole("heading", { name: "Kaizen Store admin" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in to Kaizen" })).toBeVisible();
   await expect(page.locator('head meta[name="robots"]').first()).toHaveAttribute(
     "content",
     /noindex/,
@@ -20,7 +20,7 @@ test("the sign-in form does not reveal who has access", async ({ page }) => {
 });
 
 test("admin pages are not reachable without a session", async ({ page }) => {
-  for (const path of ["/admin/settings/payments", "/admin/staff"]) {
+  for (const path of ["/admin/demo", "/admin/demo/settings/payments", "/admin/demo/staff"]) {
     await page.goto(path);
     await expect(page).toHaveURL("/admin/sign-in");
   }

@@ -50,19 +50,26 @@ of running `playwright install`.
 
 ## Storefront
 
-- Routes: `/` is a market chooser (suggests, never redirects); `/no`, `/se`,
-  `/dk` are markets, each its own root layout with its own `<html lang>`.
-  `src/lib/markets.ts` lists the routed markets; a test keeps it in step with
-  `commerce.markets`.
-- Interface text lives in `src/lib/i18n.ts`. Legal texts do not: they need
+- Kaizen is multi-tenant (`docs/platform.md`). `/` is the platform's home
+  page; each store lives at `/s/{store}`, a country chooser that suggests but
+  never redirects (unless the store has one market), and `/s/{store}/{market}`
+  (`no`, `se`, `dk`, …), each market its own root layout with its own
+  `<html lang>`. Build links with `marketPath()` / `storeBase()` from
+  `src/lib/paths.ts`, never by hand: stores move to subdomains later.
+- Stores and their markets come from the database (`getStore()`, cached per
+  store; `resolveShop()` for URL params). Every catalogue, cart and settings
+  query takes a store id; never query a store-owned table without it.
+- Interface text lives in `src/lib/i18n.ts`, by language, with English as the
+  fallback. Legal texts do not: they need
   human review.
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag
-  `catalog`); stock is read per request inside `<Suspense>`.
+  `catalog` and `catalog:{storeId}`); stock is read per request inside
+  `<Suspense>`.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
-- Product pages are prerendered for every product at build time, so their
+- The template store's product pages are prerendered at build time, so their
   content is plain HTML; stock and add-to-cart stream in and need JavaScript.
-- The cart (`src/server/cart.ts`) is per market, identified by an httpOnly
+- The cart (`src/server/cart.ts`) is per store and market, identified by an httpOnly
   cookie. Adding checks live stock and caps the quantity; stock is only held
   once checkout starts. Mutations are server actions that call `refresh()`.
 - Payment credentials and payment-method switches are store settings edited in
@@ -70,13 +77,17 @@ of running `playwright install`.
 
 ## Admin
 
-- `/admin` has its own root layout. Staff sign in with a Supabase magic link
-  (`/admin/sign-in` → email → `/auth/callback`); only emails in
-  `commerce.staff` get a link. There is no proxy: `getStaff()` verifies the
-  session on each request, `SessionKeeper` refreshes tokens in the browser, and
-  `SessionRecovery` handles an expired token.
-- Every server action re-checks the role with `requireStaff()`; owners manage
-  staff and payment keys. Changes are written to `commerce.settings_audit_log`.
+- `/admin` has its own root layout. People sign in with a Supabase magic link
+  (`/admin/sign-in` → email → `/auth/callback`); only accounts
+  (`commerce.accounts`) that belong to a store or run the platform get a link.
+  There is no proxy: `getAccount()` verifies the session on each request,
+  `SessionKeeper` refreshes tokens in the browser, and `SessionRecovery`
+  handles an expired token.
+- `/admin` lists the account's stores; `/admin/{store}/…` is one store. Pages
+  and server actions call `requireMember(storeSlug)`, which 404s for stores the
+  account is not a member of. Actions take the store slug as a bound first
+  argument. Owners manage staff and payment keys. Changes are written to
+  `commerce.audit_log` with the store id.
 - Payment secrets are encrypted with `SETTINGS_ENCRYPTION_KEY`
   (`src/lib/secret-box.ts`) and never sent to the browser; only a masked hint
   is shown. Checkout reads them with `getActiveStripeSecret()`.

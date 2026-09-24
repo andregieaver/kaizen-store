@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("add to cart, change quantity within stock, and remove", async ({ page }) => {
-  await page.goto("/no/p/demo-keramikkopp");
+  await page.goto("/s/demo/no/p/demo-keramikkopp");
 
   const black = page.getByRole("listitem").filter({ hasText: "Farge: Svart" });
   await black.getByRole("button", { name: "Legg i handlekurven" }).click();
@@ -9,7 +9,7 @@ test("add to cart, change quantity within stock, and remove", async ({ page }) =
   await expect(page.getByRole("link", { name: "Handlekurv (1)" })).toBeVisible();
 
   await black.getByRole("link", { name: "Gå til handlekurven" }).click();
-  await expect(page).toHaveURL("/no/cart");
+  await expect(page).toHaveURL("/s/demo/no/cart");
   await expect(page.getByRole("heading", { level: 1, name: "Handlekurv" })).toBeVisible();
   // The product page stays mounted but hidden (for back navigation), so look
   // only at what is visible.
@@ -27,19 +27,19 @@ test("add to cart, change quantity within stock, and remove", async ({ page }) =
 });
 
 test("out-of-stock variants cannot be added", async ({ page }) => {
-  await page.goto("/se/p/demo-bordlampe");
+  await page.goto("/s/demo/se/p/demo-bordlampe");
   await expect(page.getByRole("button", { name: "Lägg i varukorgen" })).toBeDisabled();
 });
 
 test("each market has its own cart", async ({ page }) => {
-  await page.goto("/dk/p/demo-handlenett");
+  await page.goto("/s/demo/dk/p/demo-handlenett");
   await page.getByRole("button", { name: "Læg i kurven" }).click();
   await expect(page.getByRole("link", { name: "Kurv (1)" })).toBeVisible();
 
-  await page.goto("/se");
+  await page.goto("/s/demo/se");
   await expect(page.getByRole("link", { name: "Varukorg", exact: true })).toBeVisible();
 
-  await page.goto("/dk/cart");
+  await page.goto("/s/demo/dk/cart");
   await expect(page.getByRole("complementary")).toContainText("149,00");
   await expect(page.getByRole("complementary")).toContainText("inkl. moms");
 });
@@ -48,7 +48,7 @@ test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
   test("product details are plain HTML", async ({ page }) => {
-    await page.goto("/no/p/demo-notatbok");
+    await page.goto("/s/demo/no/p/demo-notatbok");
     await expect(page.getByRole("heading", { level: 1, name: "Demo: Notatbok A5" })).toBeVisible();
     await expect(page.getByText("129,00").first()).toBeVisible();
     await expect(page.getByText("Kaizen Demo AS, Storgata 1")).toBeVisible();

@@ -1,58 +1,39 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { MARKET_SLUGS, MARKETS } from "@/lib/markets";
-import { getStaff } from "@/server/auth";
-import { getPaymentSettings } from "@/server/settings";
+import { listStores, requireAccount } from "@/server/auth";
 
-export default async function AdminOverview() {
-  const staff = await getStaff();
-  if (!staff) return null;
-  const payments = await getPaymentSettings();
-  const mode = payments.stripe.activeMode;
+export const metadata: Metadata = { title: "Your stores" };
 
-  const steps = [
-    {
-      done: payments.encryptionKeyConfigured,
-      label: "The server has an encryption key for payment secrets",
-      help: "Set SETTINGS_ENCRYPTION_KEY in Vercel (see the Payments page).",
-    },
-    {
-      done: Boolean(payments.credentials.test.secretKeyHint && payments.credentials.test.publishableKey),
-      label: "Stripe test keys are saved",
-    },
-    {
-      done: MARKET_SLUGS.every((slug) => payments.methods[MARKETS[slug].code].size > 0),
-      label: "Every market has at least one payment method switched on",
-    },
-    {
-      done: payments.stripe.enabled,
-      label: `Stripe is enabled (${mode} mode)`,
-    },
-  ];
+/** The stores the account works in. With just one, go straight to it. */
+export default async function StoresPage() {
+  const account = await requireAccount();
+  const stores = await listStores(account);
+  if (stores.length === 1) redirect(`/admin/${stores[0].slug}`);
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Overview</h1>
-      <section aria-labelledby="setup-heading" className="rounded-lg border border-border bg-background p-5">
-        <h2 id="setup-heading" className="mb-3 font-medium">
-          Payment setup
-        </h2>
-        <ol className="flex flex-col gap-2 text-sm">
-          {steps.map((step) => (
-            <li key={step.label} className="flex gap-2">
-              <span aria-hidden="true">{step.done ? "✓" : "○"}</span>
-              <span>
-                <span className="sr-only">{step.done ? "Done: " : "To do: "}</span>
-                {step.label}
-                {!step.done && step.help && <span className="block text-muted">{step.help}</span>}
-              </span>
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+      <h1 className="mb-6 text-2xl font-semibold">Your stores</h1>
+      {stores.length === 0 ? (
+        <p className="text-sm text-muted">You do not have access to any store yet.</p>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {stores.map((store) => (
+            <li key={store.slug}>
+              <Link
+                href={`/admin/${store.slug}`}
+                className="block rounded-lg border border-border bg-background p-4 hover:border-foreground"
+              >
+                <span className="font-medium">{store.name}</span>
+                <span className="block text-sm text-muted">
+                  {store.slug} · {store.role}
+                </span>
+              </Link>
             </li>
           ))}
-        </ol>
-        <Link href="/admin/settings/payments" className="mt-4 inline-block text-sm underline">
-          Go to payment settings
-        </Link>
-      </section>
-    </div>
+        </ul>
+      )}
+    </main>
   );
 }

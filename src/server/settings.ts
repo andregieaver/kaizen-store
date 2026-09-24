@@ -3,7 +3,6 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { MARKET_SLUGS, MARKETS } from "@/lib/markets";
 import {
   isKnownMethod,
   validateStripeCredentials,
@@ -12,7 +11,8 @@ import {
 } from "@/lib/payment-methods";
 import { decryptSecret, encryptSecret, parseKey, secretHint } from "@/lib/secret-box";
 
-import { audit, type Staff } from "./auth";
+import { audit, type Membership, type Role } from "./auth";
+import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -37,17 +37,20 @@ export type PaymentSettings = {
   encryptionKeyConfigured: boolean;
 };
 
-export async function getPaymentSettings(): Promise<PaymentSettings> {
+export async function getPaymentSettings(store: Store): Promise<PaymentSettings> {
   const [[provider], credentials, methods] = await Promise.all([
     db().execute<Row>(sql`
-      select enabled, active_mode from commerce.payment_providers where provider = 'stripe'
+      select enabled, active_mode from commerce.payment_providers
+      where store_id = ${store.id}::uuid and provider = 'stripe'
     `),
     db().execute<Row>(sql`
       select mode, publishable_key, secret_key_hint, webhook_secret_hint, updated_at
-      from commerce.payment_credentials where provider = 'stripe'
+      from commerce.payment_credentials
+      where store_id = ${store.id}::uuid and provider = 'stripe'
     `),
     db().execute<Row>(sql`
-      select market_code, method from commerce.payment_methods where enabled
+      select market_code, method from commerce.payment_methods
+      where store_id = ${store.id}::uuid and enabled
     `),
   ]);
 
@@ -63,7 +66,7 @@ export async function getPaymentSettings(): Promise<PaymentSettings> {
   };
 
   const enabled: Record<string, Set<string>> = Object.fromEntries(
-    MARKET_SLUGS.map((slug) => [MARKETS[slug].code, new Set<string>()]),
+    store.markets.map((market) => [market.code, new Set<string>()]),
   );
   for (const row of methods) enabled[String(row.market_code)]?.add(String(row.method));
 
@@ -82,14 +85,14 @@ export type SaveResult = { ok: true } | { ok: false; problems: string[] };
 
 /** Saves Stripe credentials for one mode. Empty fields keep their saved value. */
 export async function saveStripeCredentials(
-  staff: Staff,
+  { account, store }: Membership,
   mode: PaymentModeName,
   input: StripeCredentialInput,
 ): Promise<SaveResult> {
   const problems = validateStripeCredentials(mode, input);
   const key = encryptionKey();
   if ((input.secretKey || input.webhookSecret) && !key) {
-    problems.push("The server has no SETTINGS_ENCRYPTION_KEY, so secrets cannot be stored.");
+    problems.push("Payment keys cannot be stored right now. Try again later.");
   }
   if (problems.length > 0) return { ok: false, problems };
 
@@ -98,17 +101,17 @@ export async function saveStripeCredentials(
 
   await db().execute(sql`
     insert into commerce.payment_credentials as c (
-      provider, mode, publishable_key,
+      store_id, provider, mode, publishable_key,
       secret_key_ciphertext, secret_key_hint,
       webhook_secret_ciphertext, webhook_secret_hint,
       updated_at, updated_by
     ) values (
-      'stripe', ${mode}, ${input.publishableKey || null},
+      ${store.id}::uuid, 'stripe', ${mode}, ${input.publishableKey || null},
       ${secret}, ${input.secretKey ? secretHint(input.secretKey) : null},
       ${webhook}, ${input.webhookSecret ? secretHint(input.webhookSecret) : null},
-      now(), ${staff.id}::uuid
+      now(), ${account.id}::uuid
     )
-    on conflict (provider, mode) do update set
+    on conflict (store_id, provider, mode) do update set
       publishable_key = coalesce(excluded.publishable_key, c.publishable_key),
       secret_key_ciphertext = coalesce(excluded.secret_key_ciphertext, c.secret_key_ciphertext),
       secret_key_hint = coalesce(excluded.secret_key_hint, c.secret_key_hint),
@@ -118,7 +121,7 @@ export async function saveStripeCredentials(
       updated_by = excluded.updated_by
   `);
 
-  await audit(staff.id, "payments.credentials_saved", {
+  await audit(account.id, store.id, "payments.credentials_saved", {
     provider: "stripe",
     mode,
     changed: Object.entries(input)
@@ -130,12 +133,12 @@ export async function saveStripeCredentials(
 
 /** Turns Stripe on or off and chooses test or live mode. */
 export async function setStripeProvider(
-  staff: Staff,
+  { account, store }: Membership,
   enabled: boolean,
   activeMode: PaymentModeName,
 ): Promise<SaveResult> {
   if (enabled) {
-    const settings = await getPaymentSettings();
+    const settings = await getPaymentSettings(store);
     const credentials = settings.credentials[activeMode];
     if (!credentials.publishableKey || !credentials.secretKeyHint) {
       return {
@@ -147,10 +150,10 @@ export async function setStripeProvider(
   await db().execute(sql`
     update commerce.payment_providers
        set enabled = ${enabled}, active_mode = ${activeMode},
-           updated_at = now(), updated_by = ${staff.id}::uuid
-     where provider = 'stripe'
+           updated_at = now(), updated_by = ${account.id}::uuid
+     where store_id = ${store.id}::uuid and provider = 'stripe'
   `);
-  await audit(staff.id, "payments.provider_updated", {
+  await audit(account.id, store.id, "payments.provider_updated", {
     provider: "stripe",
     enabled,
     activeMode,
@@ -158,13 +161,17 @@ export async function setStripeProvider(
   return { ok: true };
 }
 
-/** Sets which payment methods are offered in each market. */
+/** Sets which payment methods are offered in each of the store's markets. */
 export async function setPaymentMethods(
-  staff: Staff,
+  { account, store }: Membership,
   enabledByMarket: Record<string, string[]>,
 ): Promise<SaveResult> {
+  const storeMarkets = new Set(store.markets.map((market) => market.code));
   const rows: { market: string; method: string }[] = [];
   for (const [market, methods] of Object.entries(enabledByMarket)) {
+    if (!storeMarkets.has(market)) {
+      return { ok: false, problems: [`The store does not sell to ${market}.`] };
+    }
     for (const method of methods) {
       if (!isKnownMethod(market, method)) {
         return { ok: false, problems: [`${method} is not available in ${market}.`] };
@@ -173,31 +180,33 @@ export async function setPaymentMethods(
     }
   }
   const markets = Object.keys(enabledByMarket);
+  if (markets.length === 0) return { ok: true };
 
   await db().transaction(async (tx) => {
     await tx.execute(sql`
       update commerce.payment_methods
-         set enabled = false, updated_at = now(), updated_by = ${staff.id}::uuid
-       where enabled and market_code in (${sql.join(markets.map((m) => sql`${m}`), sql`, `)})
+         set enabled = false, updated_at = now(), updated_by = ${account.id}::uuid
+       where store_id = ${store.id}::uuid and enabled
+         and market_code in (${sql.join(markets.map((m) => sql`${m}`), sql`, `)})
     `);
     for (const { market, method } of rows) {
       await tx.execute(sql`
-        insert into commerce.payment_methods (market_code, method, enabled, updated_at, updated_by)
-        values (${market}, ${method}, true, now(), ${staff.id}::uuid)
-        on conflict (market_code, method) do update set
+        insert into commerce.payment_methods (store_id, market_code, method, enabled, updated_at, updated_by)
+        values (${store.id}::uuid, ${market}, ${method}, true, now(), ${account.id}::uuid)
+        on conflict (store_id, market_code, method) do update set
           enabled = true, updated_at = now(), updated_by = excluded.updated_by
       `);
     }
   });
-  await audit(staff.id, "payments.methods_updated", { enabled: enabledByMarket });
+  await audit(account.id, store.id, "payments.methods_updated", { enabled: enabledByMarket });
   return { ok: true };
 }
 
 /**
- * The decrypted Stripe secret key for the active mode, for server-side use at
- * checkout. Null if Stripe is disabled or not configured.
+ * The decrypted Stripe secret key for the store's active mode, for
+ * server-side use at checkout. Null if Stripe is disabled or not configured.
  */
-export async function getActiveStripeSecret(): Promise<{
+export async function getActiveStripeSecret(storeId: string): Promise<{
   mode: PaymentModeName;
   secretKey: string;
   publishableKey: string;
@@ -208,8 +217,8 @@ export async function getActiveStripeSecret(): Promise<{
     select p.active_mode, c.publishable_key, c.secret_key_ciphertext
     from commerce.payment_providers p
     join commerce.payment_credentials c
-      on c.provider = p.provider and c.mode = p.active_mode
-    where p.provider = 'stripe' and p.enabled
+      on c.store_id = p.store_id and c.provider = p.provider and c.mode = p.active_mode
+    where p.store_id = ${storeId}::uuid and p.provider = 'stripe' and p.enabled
   `);
   if (!row?.secret_key_ciphertext || !row.publishable_key) return null;
   return {
@@ -227,11 +236,12 @@ export type AuditEntry = {
   createdAt: string;
 };
 
-export async function recentAudit(limit = 20): Promise<AuditEntry[]> {
+export async function recentAudit(storeId: string, limit = 20): Promise<AuditEntry[]> {
   const rows = await db().execute<Row>(sql`
-    select a.id, a.action, s.email, a.details, a.created_at
-    from commerce.settings_audit_log a
-    left join commerce.staff s on s.id = a.staff_id
+    select a.id, a.action, acc.email, a.details, a.created_at
+    from commerce.audit_log a
+    left join commerce.accounts acc on acc.id = a.account_id
+    where a.store_id = ${storeId}::uuid
     order by a.id desc
     limit ${limit}
   `);
@@ -249,64 +259,84 @@ export async function recentAudit(limit = 20): Promise<AuditEntry[]> {
 // ---------------------------------------------------------------------------
 
 export type StaffMember = {
-  id: string;
+  accountId: string;
   email: string;
-  role: "owner" | "admin";
+  role: Role;
   signedInBefore: boolean;
   disabled: boolean;
 };
 
-export async function listStaff(): Promise<StaffMember[]> {
+export async function listStaff(storeId: string): Promise<StaffMember[]> {
   const rows = await db().execute<Row>(sql`
-    select id, email, role, auth_user_id is not null as linked, disabled_at is not null as disabled
-    from commerce.staff order by disabled_at nulls first, role, lower(email)
+    select a.id, a.email, m.role, a.auth_user_id is not null as linked,
+           (m.disabled_at is not null or a.disabled_at is not null) as disabled
+    from commerce.store_members m
+    join commerce.accounts a on a.id = m.account_id
+    where m.store_id = ${storeId}::uuid
+    order by disabled, m.role, lower(a.email)
   `);
   return rows.map((row) => ({
-    id: String(row.id),
+    accountId: String(row.id),
     email: String(row.email),
-    role: row.role as "owner" | "admin",
+    role: row.role as Role,
     signedInBefore: Boolean(row.linked),
     disabled: Boolean(row.disabled),
   }));
 }
 
+/** Gives someone access to the store, creating their account if needed. */
 export async function inviteStaff(
-  owner: Staff,
+  { account, store }: Membership,
   email: string,
-  role: "owner" | "admin",
+  role: Role,
 ): Promise<SaveResult> {
-  const [existing] = await db().execute<Row>(sql`
-    select id, disabled_at from commerce.staff where lower(email) = lower(${email})
-  `);
-  if (existing && !existing.disabled_at) {
-    return { ok: false, problems: [`${email} already has access.`] };
-  }
-  if (existing) {
-    await db().execute(sql`
-      update commerce.staff set disabled_at = null, role = ${role}
-      where id = ${String(existing.id)}::uuid
+  const result = await db().transaction(async (tx) => {
+    const [invitee] = await tx.execute<Row>(sql`
+      insert into commerce.accounts (email) values (${email})
+      on conflict ((lower(email))) do update set email = commerce.accounts.email
+      returning id, disabled_at
     `);
-  } else {
-    await db().execute(sql`
-      insert into commerce.staff (email, role, invited_by)
-      values (${email}, ${role}, ${owner.id}::uuid)
+    if (invitee.disabled_at) return "disabled" as const;
+
+    const [existing] = await tx.execute<Row>(sql`
+      select disabled_at from commerce.store_members
+      where store_id = ${store.id}::uuid and account_id = ${String(invitee.id)}::uuid
     `);
+    if (existing && !existing.disabled_at) return "member" as const;
+
+    await tx.execute(sql`
+      insert into commerce.store_members (store_id, account_id, role, invited_by)
+      values (${store.id}::uuid, ${String(invitee.id)}::uuid, ${role}, ${account.id}::uuid)
+      on conflict (store_id, account_id) do update set
+        role = excluded.role, disabled_at = null, invited_by = excluded.invited_by
+    `);
+    return "invited" as const;
+  });
+
+  if (result === "member") return { ok: false, problems: [`${email} already has access.`] };
+  if (result === "disabled") {
+    return { ok: false, problems: [`${email} cannot be invited. Contact support.`] };
   }
-  await audit(owner.id, "staff.invited", { email, role });
+  await audit(account.id, store.id, "staff.invited", { email, role });
   return { ok: true };
 }
 
-export async function disableStaff(owner: Staff, staffId: string): Promise<SaveResult> {
-  if (staffId === owner.id) {
+export async function disableStaff(
+  { account, store }: Membership,
+  accountId: string,
+): Promise<SaveResult> {
+  if (accountId === account.id) {
     return { ok: false, problems: ["You cannot remove your own access."] };
   }
   try {
     const [row] = await db().execute<Row>(sql`
-      update commerce.staff set disabled_at = now()
-      where id = ${staffId}::uuid and disabled_at is null
-      returning email
+      update commerce.store_members m set disabled_at = now()
+      from commerce.accounts a
+      where m.store_id = ${store.id}::uuid and m.account_id = ${accountId}::uuid
+        and m.disabled_at is null and a.id = m.account_id
+      returning a.email
     `);
-    if (row) await audit(owner.id, "staff.disabled", { email: String(row.email) });
+    if (row) await audit(account.id, store.id, "staff.disabled", { email: String(row.email) });
     return { ok: true };
   } catch {
     return { ok: false, problems: ["The store must keep at least one active owner."] };

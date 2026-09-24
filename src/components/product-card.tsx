@@ -8,10 +8,12 @@ import type { ProductSummary } from "@/server/catalog";
 
 export function ProductCard({
   product,
+  href,
   market,
   m,
 }: {
   product: ProductSummary;
+  href: string;
   market: Market;
   m: Messages;
 }) {
@@ -29,7 +31,7 @@ export function ProductCard({
       )}
       <h2 className="font-medium">
         <Link
-          href={`/${market.slug}/p/${product.handle}`}
+          href={href}
           className="after:absolute after:inset-0 focus-visible:outline-2"
         >
           {product.title}

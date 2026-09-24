@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Admin · Kaizen Store", template: "%s · Admin · Kaizen Store" },
+  title: { default: "Kaizen admin", template: "%s · Kaizen admin" },
   robots: { index: false, follow: false },
 };
 

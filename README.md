@@ -37,15 +37,21 @@ Vercel builds every push; `main` is production. Functions run in `dub1`
 
 ## Admin
 
-The admin lives at `/admin`. Staff sign in with a one-time link sent to their
-email; only people listed as staff get one. The first owner is added directly
-in the database:
+The admin lives at `/admin`. People sign in with a one-time link sent to their
+email; only accounts that belong to a store (or run the platform) get one. The
+first platform admin, who owns the demo template store, is added directly in
+the database:
 
 ```sql
-insert into commerce.staff (email, role) values ('you@example.com', 'owner');
+with a as (
+  insert into commerce.accounts (email, platform_admin)
+  values ('you@example.com', true) returning id
+)
+insert into commerce.store_members (store_id, account_id, role)
+select s.id, a.id, 'owner' from commerce.stores s, a where s.is_template;
 ```
 
-After that, owners invite everyone else from **Admin → Staff**.
+After that, owners invite everyone else from **Admin → Staff** in their store.
 
 For sign-in links to work, Supabase must allow the redirect back to the site:
 **Authentication → URL Configuration**, set the Site URL to the production URL

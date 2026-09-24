@@ -1,15 +1,21 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { MARKETS, MARKET_SLUGS } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
+import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 
 import { createTestDatabase } from "./testing";
 
 let db: PGlite;
+/** The store most tests work in: sells to Germany, Norway, Sweden, Denmark. */
+let store: string;
+/** A second store, for tenant-isolation tests. */
+let other: string;
 
 beforeAll(async () => {
   db = await createTestDatabase();
+  store = await createStore("test-store", ["DE", "NO", "SE", "DK"]);
+  other = await createStore("other-store", ["DE"]);
 });
 
 afterAll(async () => {
@@ -24,73 +30,101 @@ async function one<T>(sql: string, params: unknown[] = []): Promise<T> {
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-let handleCounter = 0;
+/** A store with active markets copied from the country reference data. */
+async function createStore(slug: string, markets: string[]): Promise<string> {
+  const { id } = await one<{ id: string }>(
+    "insert into commerce.stores (slug, name) values ($1, $1) returning id",
+    [slug],
+  );
+  await db.query(
+    `insert into commerce.markets (store_id, code, currency, default_locale, locales, active)
+     select $1, code, currency, default_locale, locales, true
+     from commerce.countries where code = any($2)`,
+    [id, markets],
+  );
+  return id;
+}
+
+let counter = 0;
 
 /** A draft product with one active variant, one picture and an English title. */
 async function createProduct(
-  options: { manufacturerCountry?: string } = {},
-): Promise<{ productId: string; variantId: string; handle: string }> {
-  handleCounter += 1;
-  const handle = `test-product-${handleCounter}`;
+  options: { storeId?: string; manufacturerCountry?: string } = {},
+): Promise<{ productId: string; variantId: string; handle: string; storeId: string }> {
+  counter += 1;
+  const storeId = options.storeId ?? store;
+  const handle = `test-product-${counter}`;
   const { id: manufacturerId } = await one<{ id: string }>(
-    `insert into commerce.economic_operators (name, postal_address, electronic_address, country)
-     values ('Maker', 'Street 1, 10115 Berlin', 'safety@maker.example', $1) returning id`,
-    [options.manufacturerCountry ?? "DE"],
+    `insert into commerce.economic_operators (store_id, name, postal_address, electronic_address, country)
+     values ($1, 'Maker', 'Street 1, 10115 Berlin', 'safety@maker.example', $2) returning id`,
+    [storeId, options.manufacturerCountry ?? "DE"],
   );
   const { id: productId } = await one<{ id: string }>(
-    `insert into commerce.products (handle, manufacturer_id, tax_code)
-     values ($1, $2, 'txcd_99999999') returning id`,
-    [handle, manufacturerId],
+    `insert into commerce.products (store_id, handle, manufacturer_id, tax_code)
+     values ($1, $2, $3, 'txcd_99999999') returning id`,
+    [storeId, handle, manufacturerId],
   );
   await db.query(
-    `insert into commerce.product_translations (product_id, locale, title) values ($1, 'en-IE', 'Test product')`,
-    [productId],
+    `insert into commerce.product_translations (store_id, product_id, locale, title)
+     values ($1, $2, 'en-IE', 'Test product')`,
+    [storeId, productId],
   );
   await db.query(
-    `insert into commerce.product_media (product_id, url) values ($1, 'https://example.com/a.jpg')`,
-    [productId],
+    `insert into commerce.product_media (store_id, product_id, url)
+     values ($1, $2, 'https://example.com/a.jpg')`,
+    [storeId, productId],
   );
   const { id: variantId } = await one<{ id: string }>(
-    `insert into commerce.product_variants (product_id, sku) values ($1, $2) returning id`,
-    [productId, `SKU-${handleCounter}`],
+    `insert into commerce.product_variants (store_id, product_id, sku)
+     values ($1, $2, $3) returning id`,
+    [storeId, productId, `SKU-${counter}`],
   );
-  return { productId, variantId, handle };
+  return { productId, variantId, handle, storeId };
+}
+
+/** An order in the main store, in euros. */
+async function createOrder(number: string): Promise<string> {
+  const { id } = await one<{ id: string }>(
+    `insert into commerce.orders (store_id, number, market_code, currency, locale, email,
+       subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
+       billing_address, shipping_address)
+     values ($1, $2, 'DE', 'EUR', 'de-DE', 'a@example.com',
+       1000, 490, 0, 238, 1490, '{}', '{}') returning id`,
+    [store, number],
+  );
+  return id;
+}
+
+async function createAccount(email: string): Promise<string> {
+  const { id } = await one<{ id: string }>(
+    "insert into commerce.accounts (email) values ($1) returning id",
+    [email],
+  );
+  return id;
 }
 
 describe("reference data", () => {
-  it("has every EU member state and Norway, with the three launch markets active", async () => {
-    const { rows } = await db.query<{ code: string; active: boolean; eu: boolean }>(
-      `select code, active, commerce.is_eu_country(code) as eu
-       from commerce.markets order by code`,
+  it("has every EU member state and Norway", async () => {
+    const { rows } = await db.query<{ code: string; eu: boolean }>(
+      "select code, commerce.is_eu_country(code) as eu from commerce.countries order by code",
     );
     expect(rows).toHaveLength(28);
-    expect(rows.filter((m) => m.eu)).toHaveLength(27);
-    expect(rows.filter((m) => m.active).map((m) => m.code)).toEqual([
-      "DK",
-      "NO",
-      "SE",
-    ]);
+    expect(rows.filter((c) => c.eu)).toHaveLength(27);
+    expect(rows.find((c) => c.code === "NO")).toEqual({ code: "NO", eu: false });
     const norway = await one<{ currency: string; default_locale: string }>(
-      "select currency, default_locale from commerce.markets where code = 'NO'",
+      "select currency, default_locale from commerce.countries where code = 'NO'",
     );
     expect(norway).toEqual({ currency: "NOK", default_locale: "nb-NO" });
   });
 
-  it("routes exactly the active markets, with matching currencies", async () => {
-    const { rows } = await db.query<{ code: string; currency: string; default_locale: string }>(
-      "select code, currency, default_locale from commerce.markets where active order by code",
-    );
-    const routed = MARKET_SLUGS.map((slug) => ({
-      code: MARKETS[slug].code,
-      currency: MARKETS[slug].currency,
-      default_locale: MARKETS[slug].locale,
-    })).sort((a, b) => a.code.localeCompare(b.code));
-    expect(rows).toEqual(routed);
+  it("treats an unknown country as outside the EU", async () => {
+    const { eu } = await one<{ eu: boolean }>("select commerce.is_eu_country('CN') as eu");
+    expect(eu).toBe(false);
   });
 
   it("uses only currencies the money helpers support", async () => {
     const { rows } = await db.query<{ currency: string }>(
-      "select distinct currency from commerce.markets",
+      "select distinct currency from commerce.countries",
     );
     for (const { currency } of rows) {
       expect(() => minorUnitDigits(currency)).not.toThrow();
@@ -101,31 +135,133 @@ describe("reference data", () => {
     const { variantId } = await createProduct();
     await expect(
       db.query(
-        `insert into commerce.prices (variant_id, market_code, currency, amount_minor)
-         values ($1, 'DE', 'SEK', 1000)`,
-        [variantId],
+        `insert into commerce.prices (store_id, variant_id, market_code, currency, amount_minor)
+         values ($1, $2, 'DE', 'SEK', 1000)`,
+        [store, variantId],
       ),
-    ).rejects.toThrow(/prices_market_currency_fk/);
+    ).rejects.toThrow(/prices_market_fk/);
+  });
+});
+
+describe("stores", () => {
+  it("start with invoice series and Stripe disabled in test mode", async () => {
+    const { rows: series } = await db.query<{ series: string }>(
+      "select series from commerce.document_series where store_id = $1 order by series",
+      [store],
+    );
+    expect(series.map((s) => s.series)).toEqual(["credit_note", "invoice"]);
+    const stripe = await one<{ enabled: boolean; active_mode: string }>(
+      "select enabled, active_mode from commerce.payment_providers where store_id = $1 and provider = 'stripe'",
+      [store],
+    );
+    expect(stripe).toEqual({ enabled: false, active_mode: "test" });
+  });
+
+  it("need a subdomain-safe slug that is not reserved", async () => {
+    for (const slug of ["A-Store", "-store", "store-", "st", "my_store", "a".repeat(41)]) {
+      await expect(
+        db.query("insert into commerce.stores (slug, name) values ($1, 'x')", [slug]),
+      ).rejects.toThrow(/stores_slug_format/);
+    }
+    for (const slug of RESERVED_STORE_SLUGS) {
+      await expect(
+        db.query("insert into commerce.stores (slug, name) values ($1, 'x')", [slug]),
+      ).rejects.toThrow(/stores_slug_not_reserved|stores_slug_format/);
+    }
+  });
+
+  it("have at most one template", async () => {
+    await db.query("insert into commerce.stores (slug, name, is_template) values ('tpl-1', 'x', true)");
+    await expect(
+      db.query("insert into commerce.stores (slug, name, is_template) values ('tpl-2', 'x', true)"),
+    ).rejects.toThrow(/stores_one_template_idx/);
+  });
+
+  it("only sell to countries in the reference data", async () => {
+    await expect(
+      db.query(
+        `insert into commerce.markets (store_id, code, currency, default_locale, locales)
+         values ($1, 'XX', 'EUR', 'en', array['en'])`,
+        [store],
+      ),
+    ).rejects.toThrow(/markets_code_countries_code_fk/);
+  });
+});
+
+describe("tenant isolation", () => {
+  it("refuses a variant that belongs to another store's product", async () => {
+    const { productId } = await createProduct();
+    await expect(
+      db.query(
+        "insert into commerce.product_variants (store_id, product_id, sku) values ($1, $2, 'X-1')",
+        [other, productId],
+      ),
+    ).rejects.toThrow(/product_variants_product_fk/);
+  });
+
+  it("refuses a product whose manufacturer belongs to another store", async () => {
+    const { id: foreignMaker } = await one<{ id: string }>(
+      `insert into commerce.economic_operators (store_id, name, postal_address, electronic_address, country)
+       values ($1, 'Other maker', 'Street 2', 'x@example.com', 'DE') returning id`,
+      [other],
+    );
+    await expect(
+      db.query(
+        `insert into commerce.products (store_id, handle, manufacturer_id, tax_code)
+         values ($1, 'borrowed-maker', $2, 'txcd_99999999')`,
+        [store, foreignMaker],
+      ),
+    ).rejects.toThrow(/products_manufacturer_fk/);
+  });
+
+  it("refuses a cart line for another store's variant", async () => {
+    const { variantId } = await createProduct({ storeId: other });
+    const { id: cartId } = await one<{ id: string }>(
+      `insert into commerce.carts (store_id, market_code, currency, locale, expires_at)
+       values ($1, 'DE', 'EUR', 'de-DE', now() + interval '1 day') returning id`,
+      [store],
+    );
+    await expect(
+      db.query(
+        "insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity) values ($1, $2, $3, 1)",
+        [store, cartId, variantId],
+      ),
+    ).rejects.toThrow(/cart_lines_variant_fk/);
+  });
+
+  it("refuses a price in a market the store does not sell to", async () => {
+    const { variantId } = await createProduct({ storeId: other });
+    await expect(
+      db.query("select commerce.set_price($1, 'NO', 1000)", [variantId]),
+    ).rejects.toThrow(/does not sell to market NO/);
+  });
+
+  it("lets two stores use the same handle, SKU and order number", async () => {
+    await db.query(
+      "insert into commerce.products (store_id, handle, tax_code) values ($1, 'shared-handle', 't'), ($2, 'shared-handle', 't')",
+      [store, other],
+    );
+    const { rows } = await db.query(
+      "select 1 from commerce.products where handle = 'shared-handle'",
+    );
+    expect(rows).toHaveLength(2);
   });
 });
 
 describe("price history", () => {
   it("keeps one current price and closes the previous one", async () => {
     const { variantId } = await createProduct();
-    await db.query("select commerce.set_price($1, 'DE', 1999, $2)", [
-      variantId,
-      daysAgo(10),
-    ]);
+    await db.query("select commerce.set_price($1, 'DE', 1999, $2)", [variantId, daysAgo(10)]);
     await db.query("select commerce.set_price($1, 'DE', 1799)", [variantId]);
 
-    const { rows } = await db.query<{ amount_minor: number; open: boolean }>(
-      `select amount_minor::int, valid_to is null as open from commerce.prices
+    const { rows } = await db.query<{ amount_minor: number; open: boolean; store_id: string }>(
+      `select amount_minor::int, valid_to is null as open, store_id from commerce.prices
        where variant_id = $1 order by valid_from`,
       [variantId],
     );
     expect(rows).toEqual([
-      { amount_minor: 1999, open: false },
-      { amount_minor: 1799, open: true },
+      { amount_minor: 1999, open: false, store_id: store },
+      { amount_minor: 1799, open: true, store_id: store },
     ]);
   });
 
@@ -135,10 +271,9 @@ describe("price history", () => {
       "select commerce.set_price($1, 'DE', 500, $2) as id",
       [variantId, daysAgo(1)],
     );
-    const again = await one<{ id: number }>(
-      "select commerce.set_price($1, 'DE', 500) as id",
-      [variantId],
-    );
+    const again = await one<{ id: number }>("select commerce.set_price($1, 'DE', 500) as id", [
+      variantId,
+    ]);
     expect(again.id).toBe(first.id);
   });
 
@@ -146,10 +281,7 @@ describe("price history", () => {
     const { variantId } = await createProduct();
     await db.query("select commerce.set_price($1, 'DE', 500)", [variantId]);
     await expect(
-      db.query("select commerce.set_price($1, 'DE', 400, $2)", [
-        variantId,
-        daysAgo(1),
-      ]),
+      db.query("select commerce.set_price($1, 'DE', 400, $2)", [variantId, daysAgo(1)]),
     ).rejects.toThrow(/must start after the current one/);
   });
 
@@ -158,9 +290,9 @@ describe("price history", () => {
     await db.query("select commerce.set_price($1, 'DE', 500)", [variantId]);
     await expect(
       db.query(
-        `insert into commerce.prices (variant_id, market_code, currency, amount_minor)
-         values ($1, 'DE', 'EUR', 450)`,
-        [variantId],
+        `insert into commerce.prices (store_id, variant_id, market_code, currency, amount_minor)
+         values ($1, $2, 'DE', 'EUR', 450)`,
+        [store, variantId],
       ),
     ).rejects.toThrow(/prices_one_current_idx/);
   });
@@ -169,10 +301,7 @@ describe("price history", () => {
     const { variantId } = await createProduct();
     await db.query("select commerce.set_price($1, 'DE', 500)", [variantId]);
     await expect(
-      db.query(
-        "update commerce.prices set amount_minor = 1 where variant_id = $1",
-        [variantId],
-      ),
+      db.query("update commerce.prices set amount_minor = 1 where variant_id = $1", [variantId]),
     ).rejects.toThrow(/can only be closed/);
     await expect(
       db.query(
@@ -224,12 +353,12 @@ describe("price history", () => {
 });
 
 describe("product safety publishing check", () => {
+  const activate = (productId: string) =>
+    db.query("update commerce.products set status = 'active' where id = $1", [productId]);
+
   it("activates a product with a complete listing", async () => {
     const { productId } = await createProduct();
-    await db.query(
-      "update commerce.products set status = 'active' where id = $1",
-      [productId],
-    );
+    await activate(productId);
     const { status } = await one<{ status: string }>(
       "select status from commerce.products where id = $1",
       [productId],
@@ -239,28 +368,20 @@ describe("product safety publishing check", () => {
 
   it("refuses to activate a product without a manufacturer", async () => {
     const { productId } = await createProduct();
-    await db.query(
-      "update commerce.products set manufacturer_id = null where id = $1",
-      [productId],
-    );
-    await expect(
-      db.query("update commerce.products set status = 'active' where id = $1", [
-        productId,
-      ]),
-    ).rejects.toThrow(/without a manufacturer/);
+    await db.query("update commerce.products set manufacturer_id = null where id = $1", [
+      productId,
+    ]);
+    await expect(activate(productId)).rejects.toThrow(/without a manufacturer/);
   });
 
   it("requires an EU responsible person for a non-EU manufacturer", async () => {
     const { productId } = await createProduct({ manufacturerCountry: "CN" });
-    await expect(
-      db.query("update commerce.products set status = 'active' where id = $1", [
-        productId,
-      ]),
-    ).rejects.toThrow(/needs an EU responsible person/);
+    await expect(activate(productId)).rejects.toThrow(/needs an EU responsible person/);
 
     const { id: responsibleId } = await one<{ id: string }>(
-      `insert into commerce.economic_operators (name, postal_address, electronic_address, country)
-       values ('EU Rep', 'Rue 2, 1000 Brussels', 'rep@example.eu', 'BE') returning id`,
+      `insert into commerce.economic_operators (store_id, name, postal_address, electronic_address, country)
+       values ($1, 'EU Rep', 'Rue 2, 1000 Brussels', 'rep@example.eu', 'BE') returning id`,
+      [store],
     );
     await db.query(
       "update commerce.products set status = 'active', responsible_person_id = $2 where id = $1",
@@ -268,16 +389,15 @@ describe("product safety publishing check", () => {
     );
   });
 
+  it("treats a Norwegian manufacturer as non-EU", async () => {
+    const { productId } = await createProduct({ manufacturerCountry: "NO" });
+    await expect(activate(productId)).rejects.toThrow(/needs an EU responsible person/);
+  });
+
   it("refuses to activate a product without a picture", async () => {
     const { productId } = await createProduct();
-    await db.query("delete from commerce.product_media where product_id = $1", [
-      productId,
-    ]);
-    await expect(
-      db.query("update commerce.products set status = 'active' where id = $1", [
-        productId,
-      ]),
-    ).rejects.toThrow(/without a picture/);
+    await db.query("delete from commerce.product_media where product_id = $1", [productId]);
+    await expect(activate(productId)).rejects.toThrow(/without a picture/);
   });
 });
 
@@ -312,35 +432,36 @@ describe("template compliance data", () => {
     ).rejects.toThrow(/product_variants_hs_code_digits/);
   });
 
-  it("lists launch markets where an active product's scheme is not registered", async () => {
+  it("lists the store's markets where an active product's scheme is not registered", async () => {
     const { productId, handle } = await createProduct();
     await db.query(
-      "insert into commerce.product_schemes (product_id, scheme) values ($1, 'packaging')",
-      [productId],
+      "insert into commerce.product_schemes (store_id, product_id, scheme) values ($1, $2, 'packaging')",
+      [store, productId],
     );
-    await db.query("update commerce.products set status = 'active' where id = $1", [
-      productId,
-    ]);
+    await db.query("update commerce.products set status = 'active' where id = $1", [productId]);
 
     const missing = async () =>
       (
         await db.query<{ market_code: string }>(
           `select market_code from commerce.missing_registrations
-           where handle = $1 order by market_code`,
-          [handle],
+           where store_id = $1 and handle = $2 order by market_code`,
+          [store, handle],
         )
       ).rows.map((r) => r.market_code);
 
-    expect(await missing()).toEqual(["DK", "NO", "SE"]);
+    expect(await missing()).toEqual(["DE", "DK", "NO", "SE"]);
 
     await db.query(
       `insert into commerce.producer_registrations
-         (market_code, scheme, registration_number, authority, valid_from, valid_to) values
-         ('NO', 'packaging', 'NO-123456', 'Miljødirektoratet', current_date - 10, null),
-         ('SE', 'packaging', 'SE-OLD-1', 'Naturvårdsverket', current_date - 400, current_date - 1)`,
+         (store_id, market_code, scheme, registration_number, authority, valid_from, valid_to) values
+         ($1, 'NO', 'packaging', 'NO-123456', 'Miljødirektoratet', current_date - 10, null),
+         ($1, 'SE', 'packaging', 'SE-OLD-1', 'Naturvårdsverket', current_date - 400, current_date - 1),
+         ($2, 'DE', 'packaging', 'DE-OTHER', 'ZSVR', current_date - 10, null)`,
+      [store, other],
     );
-    // Norway is now covered; Sweden's registration has expired.
-    expect(await missing()).toEqual(["DK", "SE"]);
+    // Norway is now covered; Sweden's registration has expired; another
+    // store's German registration does not count for this one.
+    expect(await missing()).toEqual(["DE", "DK", "SE"]);
   });
 });
 
@@ -348,28 +469,30 @@ describe("stock", () => {
   it("subtracts only live reservations from on-hand stock", async () => {
     const { variantId } = await createProduct();
     const { id: locationId } = await one<{ id: string }>(
-      "insert into commerce.inventory_locations (name, country) values ('Main', 'DE') returning id",
+      "insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Main', 'DE') returning id",
+      [store],
     );
     const { id: cartId } = await one<{ id: string }>(
-      `insert into commerce.carts (market_code, currency, locale, expires_at)
-       values ('DE', 'EUR', 'de-DE', now() + interval '1 day') returning id`,
+      `insert into commerce.carts (store_id, market_code, currency, locale, expires_at)
+       values ($1, 'DE', 'EUR', 'de-DE', now() + interval '1 day') returning id`,
+      [store],
     );
     await db.query(
-      "insert into commerce.inventory_levels (variant_id, location_id, on_hand) values ($1, $2, 10)",
-      [variantId, locationId],
+      "insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 10)",
+      [store, variantId, locationId],
     );
     await db.query(
-      `insert into commerce.inventory_reservations (variant_id, location_id, quantity, cart_id, expires_at, released_at) values
-         ($1, $2, 3, $3, now() + interval '15 minutes', null),
-         ($1, $2, 2, $3, now() - interval '1 minute', null),
-         ($1, $2, 1, $3, now() + interval '15 minutes', now())`,
-      [variantId, locationId, cartId],
+      `insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, cart_id, expires_at, released_at) values
+         ($1, $2, $3, 3, $4, now() + interval '15 minutes', null),
+         ($1, $2, $3, 2, $4, now() - interval '1 minute', null),
+         ($1, $2, $3, 1, $4, now() + interval '15 minutes', now())`,
+      [store, variantId, locationId, cartId],
     );
-    const stock = await one<{ available: number }>(
-      "select available::int from commerce.available_stock where variant_id = $1",
+    const stock = await one<{ available: number; store_id: string }>(
+      "select available::int, store_id from commerce.available_stock where variant_id = $1",
       [variantId],
     );
-    expect(stock.available).toBe(7);
+    expect(stock).toEqual({ available: 7, store_id: store });
   });
 });
 
@@ -377,137 +500,164 @@ describe("orders", () => {
   it("rejects totals that do not add up", async () => {
     await expect(
       db.query(
-        `insert into commerce.orders (number, market_code, currency, locale, email,
+        `insert into commerce.orders (store_id, number, market_code, currency, locale, email,
            subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
            billing_address, shipping_address)
-         values ('K-BAD', 'DE', 'EUR', 'de-DE', 'a@example.com',
+         values ($1, 'K-BAD', 'DE', 'EUR', 'de-DE', 'a@example.com',
            1000, 490, 0, 160, 1000, '{}', '{}')`,
+        [store],
       ),
     ).rejects.toThrow(/orders_total_adds_up/);
   });
 
   it("keeps order events and invoices append-only", async () => {
-    const { id: orderId } = await one<{ id: string }>(
-      `insert into commerce.orders (number, market_code, currency, locale, email,
-         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-         billing_address, shipping_address)
-       values ('K-1', 'DE', 'EUR', 'de-DE', 'a@example.com',
-         1000, 490, 0, 238, 1490, '{}', '{}') returning id`,
-    );
+    const orderId = await createOrder("K-1");
     await db.query(
-      "insert into commerce.order_events (order_id, type, actor) values ($1, 'order.placed', 'system')",
-      [orderId],
+      "insert into commerce.order_events (store_id, order_id, type, actor) values ($1, $2, 'order.placed', 'system')",
+      [store, orderId],
     );
     await expect(
-      db.query("update commerce.order_events set type = 'x' where order_id = $1", [
-        orderId,
-      ]),
+      db.query("update commerce.order_events set type = 'x' where order_id = $1", [orderId]),
     ).rejects.toThrow(/append-only/);
     await expect(
       db.query("delete from commerce.order_events where order_id = $1", [orderId]),
     ).rejects.toThrow(/append-only/);
 
     await db.query(
-      `insert into commerce.invoices (order_id, series, number, document_number, currency, total_minor, tax_minor)
-       values ($1, 'invoice', 9001, 'INV-9001', 'EUR', 1490, 238)`,
-      [orderId],
+      `insert into commerce.invoices (store_id, order_id, series, number, document_number, currency, total_minor, tax_minor)
+       values ($1, $2, 'invoice', 9001, 'INV-9001', 'EUR', 1490, 238)`,
+      [store, orderId],
     );
     await expect(
-      db.query("update commerce.invoices set total_minor = 1 where order_id = $1", [
-        orderId,
-      ]),
+      db.query("update commerce.invoices set total_minor = 1 where order_id = $1", [orderId]),
     ).rejects.toThrow(/append-only/);
+  });
+
+  it("refuses an invoice against another store's order", async () => {
+    const orderId = await createOrder("K-2");
+    await expect(
+      db.query(
+        `insert into commerce.invoices (store_id, order_id, series, number, document_number, currency, total_minor, tax_minor)
+         values ($1, $2, 'invoice', 1, 'INV-1', 'EUR', 1490, 238)`,
+        [other, orderId],
+      ),
+    ).rejects.toThrow(/invoices_order_fk/);
   });
 });
 
 describe("document numbers", () => {
-  it("issues consecutive numbers and reuses one from a rolled-back transaction", async () => {
-    const next = async () =>
-      (
-        await one<{ n: number }>(
-          "select commerce.next_document_number('credit_note')::int as n",
-        )
-      ).n;
+  const next = async (storeId: string) =>
+    (
+      await one<{ n: number }>(
+        "select commerce.next_document_number($1, 'credit_note')::int as n",
+        [storeId],
+      )
+    ).n;
 
-    const first = await next();
-    expect(await next()).toBe(first + 1);
+  it("issues consecutive numbers and reuses one from a rolled-back transaction", async () => {
+    const first = await next(store);
+    expect(await next(store)).toBe(first + 1);
 
     await db
       .transaction(async (tx) => {
-        await tx.query("select commerce.next_document_number('credit_note')");
+        await tx.query("select commerce.next_document_number($1, 'credit_note')", [store]);
         throw new Error("abandon");
       })
       .catch(() => undefined);
 
-    expect(await next()).toBe(first + 2);
+    expect(await next(store)).toBe(first + 2);
+  });
+
+  it("numbers each store's documents separately", async () => {
+    const mine = await next(store);
+    const theirs = await next(other);
+    expect(await next(store)).toBe(mine + 1);
+    expect(await next(other)).toBe(theirs + 1);
   });
 
   it("refuses an unknown series", async () => {
     await expect(
-      db.query("select commerce.next_document_number('nope')"),
+      db.query("select commerce.next_document_number($1, 'nope')", [store]),
     ).rejects.toThrow(/unknown document series/);
   });
 });
 
 describe("webhook events", () => {
-  it("stores each provider event once", async () => {
-    const insert = () =>
+  it("stores each provider event once per store", async () => {
+    const insert = (storeId: string) =>
       db.query(
-        `insert into commerce.webhook_events (provider, event_id, type, payload)
-         values ('stripe', 'evt_1', 'checkout.session.completed', '{}')`,
+        `insert into commerce.webhook_events (store_id, provider, event_id, type, payload)
+         values ($1, 'stripe', 'evt_1', 'checkout.session.completed', '{}')`,
+        [storeId],
       );
-    await insert();
-    await expect(insert()).rejects.toThrow(/webhook_events_provider_event_key/);
+    await insert(store);
+    await expect(insert(store)).rejects.toThrow(/webhook_events_provider_event_key/);
+    await insert(other);
   });
 });
 
-describe("staff and settings", () => {
-  it("always keeps at least one active owner", async () => {
-    const { id: owner } = await one<{ id: string }>(
-      "insert into commerce.staff (email, role) values ('owner@example.com', 'owner') returning id",
+describe("accounts and members", () => {
+  it("always keeps at least one active owner per store", async () => {
+    const shop = await createStore("owner-test", ["NO"]);
+    const owner = await createAccount("owner@example.com");
+    await db.query(
+      "insert into commerce.store_members (store_id, account_id, role) values ($1, $2, 'owner')",
+      [shop, owner],
     );
+    const member = "store_id = $1 and account_id = $2";
     await expect(
-      db.query("update commerce.staff set disabled_at = now() where id = $1", [owner]),
+      db.query(`update commerce.store_members set disabled_at = now() where ${member}`, [shop, owner]),
     ).rejects.toThrow(/at least one active owner/);
     await expect(
-      db.query("update commerce.staff set role = 'admin' where id = $1", [owner]),
+      db.query(`update commerce.store_members set role = 'admin' where ${member}`, [shop, owner]),
     ).rejects.toThrow(/at least one active owner/);
-    await expect(db.query("delete from commerce.staff where id = $1", [owner])).rejects.toThrow(
-      /at least one active owner/,
-    );
-
-    // With a second owner, the first can step down.
-    await db.query(
-      "insert into commerce.staff (email, role, invited_by) values ('second@example.com', 'owner', $1)",
-      [owner],
-    );
-    await db.query("update commerce.staff set role = 'admin' where id = $1", [owner]);
-  });
-
-  it("treats staff emails case-insensitively", async () => {
-    await db.query("insert into commerce.staff (email) values ('Case@Example.com')");
     await expect(
-      db.query("insert into commerce.staff (email) values ('case@example.com')"),
-    ).rejects.toThrow(/staff_email_idx/);
-  });
+      db.query(`delete from commerce.store_members where ${member}`, [shop, owner]),
+    ).rejects.toThrow(/at least one active owner/);
 
-  it("starts with Stripe disabled in test mode", async () => {
-    const stripe = await one<{ enabled: boolean; active_mode: string }>(
-      "select enabled, active_mode from commerce.payment_providers where provider = 'stripe'",
-    );
-    expect(stripe).toEqual({ enabled: false, active_mode: "test" });
-  });
-
-  it("keeps the settings audit log append-only", async () => {
+    // An owner of another store does not count.
     await db.query(
-      "insert into commerce.settings_audit_log (action, details) values ('test.action', '{}')",
+      "insert into commerce.store_members (store_id, account_id, role) values ($1, $2, 'owner')",
+      [other, owner],
     );
     await expect(
-      db.query("update commerce.settings_audit_log set action = 'x'"),
-    ).rejects.toThrow(/append-only/);
-    await expect(db.query("delete from commerce.settings_audit_log")).rejects.toThrow(
+      db.query(`update commerce.store_members set role = 'admin' where ${member}`, [shop, owner]),
+    ).rejects.toThrow(/at least one active owner/);
+
+    // With a second owner in the same store, the first can step down.
+    const second = await createAccount("second@example.com");
+    await db.query(
+      "insert into commerce.store_members (store_id, account_id, role, invited_by) values ($1, $2, 'owner', $3)",
+      [shop, second, owner],
+    );
+    await db.query(`update commerce.store_members set role = 'admin' where ${member}`, [shop, owner]);
+  });
+
+  it("treats account emails case-insensitively", async () => {
+    await createAccount("Case@Example.com");
+    await expect(createAccount("case@example.com")).rejects.toThrow(/accounts_email_idx/);
+  });
+
+  it("allows one pending access request per email", async () => {
+    const request = () =>
+      db.query(
+        "insert into commerce.access_requests (email, name, store_name) values ('New@Example.com', 'N', 'S')",
+      );
+    await request();
+    await expect(request()).rejects.toThrow(/access_requests_pending_email_idx/);
+    await db.query("update commerce.access_requests set status = 'declined'");
+    await request();
+  });
+
+  it("keeps the audit log append-only", async () => {
+    await db.query(
+      "insert into commerce.audit_log (store_id, action, details) values ($1, 'test.action', '{}')",
+      [store],
+    );
+    await expect(db.query("update commerce.audit_log set action = 'x'")).rejects.toThrow(
       /append-only/,
     );
+    await expect(db.query("delete from commerce.audit_log")).rejects.toThrow(/append-only/);
   });
 });
 

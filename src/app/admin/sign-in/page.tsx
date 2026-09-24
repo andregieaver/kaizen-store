@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { getStaff } from "@/server/auth";
+import { getAccount } from "@/server/auth";
 
 import { requestSignInLink } from "./actions";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Sign in" };
 export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">) {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
-      <h1 className="text-2xl font-semibold">Kaizen Store admin</h1>
+      <h1 className="text-2xl font-semibold">Sign in to Kaizen</h1>
       <Suspense fallback={null}>
         <Notice searchParams={searchParams} />
       </Suspense>
@@ -30,7 +30,8 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
         <SubmitButton>Send sign-in link</SubmitButton>
       </ActionForm>
       <p className="text-sm text-muted">
-        Only invited staff can sign in. Ask a store owner for access.
+        Kaizen is in a private beta: only invited accounts can sign in. To work in an existing
+        store, ask its owner to invite you.
       </p>
     </main>
   );
@@ -38,11 +39,11 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
 
 async function Notice({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
   const { error } = await searchParams;
-  const staff = await getStaff();
-  if (staff) {
+  const account = await getAccount();
+  if (account) {
     return (
       <p className="text-sm">
-        You are signed in as {staff.email}.{" "}
+        You are signed in as {account.email}.{" "}
         <Link href="/admin" className="underline">
           Go to the admin
         </Link>
@@ -50,7 +51,7 @@ async function Notice({ searchParams }: { searchParams: PageProps<"/admin/sign-i
     );
   }
   if (error === "no-access") {
-    return <p role="alert" className="text-sm">That account does not have access to this store&apos;s admin.</p>;
+    return <p role="alert" className="text-sm">That account does not have access yet.</p>;
   }
   if (error === "link") {
     return <p role="alert" className="text-sm">That sign-in link has expired or was already used. Request a new one.</p>;
