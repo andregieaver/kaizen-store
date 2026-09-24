@@ -9,7 +9,7 @@ import { accountStatus, type AccountStatus, type PaymentModeName } from "@/lib/s
 
 import { audit, type Account, type Membership } from "./auth";
 import type { SaveResult } from "./settings";
-import { createConnectWebhooks, platformStripe, type WebhookKind } from "./stripe";
+import { createPlatformWebhooks, platformStripe, type WebhookKind } from "./stripe";
 
 type Row = Record<string, unknown>;
 
@@ -62,7 +62,7 @@ function stripeProblem(error: unknown): string {
  * already has one.
  */
 export async function createStripeAccount(
-  { account, store }: Membership,
+  { account, store }: Pick<Membership, "account" | "store">,
   mode: PaymentModeName,
   storeUrl: string,
 ): Promise<SaveResult> {
@@ -199,7 +199,7 @@ export async function getPlatformWebhookSecret(mode: PaymentModeName, kind: Webh
   return row ? decryptSecret(String(row.secret_ciphertext), key) : null;
 }
 
-/** Creates Kaizen's Connect webhooks in its Stripe account and saves their secrets. */
+/** Creates Kaizen's webhooks in its Stripe account and saves their secrets. */
 export async function connectPlatformWebhooks(
   account: Account,
   mode: PaymentModeName,
@@ -207,7 +207,7 @@ export async function connectPlatformWebhooks(
 ): Promise<SaveResult> {
   const key = encryptionKey();
   if (!key) return { ok: false, problems: ["SETTINGS_ENCRYPTION_KEY is not set on the server."] };
-  const created = await createConnectWebhooks(mode, origin);
+  const created = await createPlatformWebhooks(mode, origin);
   if (!created.ok) return { ok: false, problems: [created.problem] };
   for (const hook of created.webhooks) {
     await db().execute(sql`

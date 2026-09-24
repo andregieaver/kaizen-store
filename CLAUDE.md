@@ -139,6 +139,16 @@ of running `playwright install`.
   account webhook (`/api/stripe/connect/{mode}/accounts`) keeps the status
   current. Never pass `payment_method_types`: stores choose methods in their
   own Stripe Dashboard.
+- Plans and billing (`src/server/billing.ts`, decision D18): `plans` and
+  `plan_prices` (never edited in place: a new amount is a new row) are
+  copied to Stripe by `syncPlans(mode)`, which records Stripe ids in
+  `stripe_sync`. `assignPlan()` creates a `send_invoice` subscription on
+  Kaizen's account with the store's connected account as `customer_account`;
+  `applySubscription()` (from actions and `/api/stripe/billing/{mode}`) keeps
+  `store_billing` current. Checkout takes `storeFeeBps()`: the store's own
+  fee, else its plan's while on it, else `platform_settings.sale_fee_bps`.
+  The platform admin lives under `/admin/platform` (requests, stores, plans,
+  Stripe); owners see `/admin/{store}/billing`.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

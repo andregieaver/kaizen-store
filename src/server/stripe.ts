@@ -65,21 +65,32 @@ export const ACCOUNT_EVENTS = [
   "v2.core.account[configuration.merchant].capability_status_updated",
 ];
 
-export type WebhookKind = "snapshot" | "thin";
+/** Kaizen's own subscriptions to stores (Stripe Billing on Kaizen's account). */
+export const BILLING_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] = [
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+];
+
+export type WebhookKind = "snapshot" | "thin" | "billing";
+
+export const WEBHOOK_KINDS: readonly WebhookKind[] = ["snapshot", "thin", "billing"];
 
 /** Where Stripe sends the platform's events, per mode and kind. */
 export function connectWebhookUrl(origin: string, mode: PaymentModeName, kind: WebhookKind): string {
+  if (kind === "billing") return `${origin}/api/stripe/billing/${mode}`;
   return `${origin}/api/stripe/connect/${mode}${kind === "thin" ? "/accounts" : ""}`;
 }
 
 export type CreatedWebhook = { kind: WebhookKind; endpointId: string; url: string; secret: string };
 
 /**
- * Creates Kaizen's two Connect webhooks in its own Stripe account, replacing
+ * Creates Kaizen's three webhooks in its own Stripe account, replacing
  * earlier ones at the same addresses, and returns their signing secrets:
- * payment events (snapshot) and account events (thin, Accounts v2).
+ * payment events from stores' accounts (snapshot), account events (thin,
+ * Accounts v2), and Kaizen's own subscription events (billing).
  */
-export async function createConnectWebhooks(
+export async function createPlatformWebhooks(
   mode: PaymentModeName,
   origin: string,
 ): Promise<{ ok: true; webhooks: CreatedWebhook[] } | { ok: false; problem: string }> {
@@ -87,9 +98,12 @@ export async function createConnectWebhooks(
   if (!stripe) return { ok: false, problem: `No ${mode} secret key is configured.` };
   const snapshotUrl = connectWebhookUrl(origin, mode, "snapshot");
   const thinUrl = connectWebhookUrl(origin, mode, "thin");
+  const billingUrl = connectWebhookUrl(origin, mode, "billing");
   try {
     for await (const endpoint of stripe.webhookEndpoints.list({ limit: 100 })) {
-      if (endpoint.url === snapshotUrl) await stripe.webhookEndpoints.del(endpoint.id);
+      if (endpoint.url === snapshotUrl || endpoint.url === billingUrl) {
+        await stripe.webhookEndpoints.del(endpoint.id);
+      }
     }
     for await (const destination of stripe.v2.core.eventDestinations.list({ include: ["webhook_endpoint.url"] })) {
       if (destination.webhook_endpoint?.url === thinUrl) await stripe.v2.core.eventDestinations.del(destination.id);
@@ -101,6 +115,11 @@ export async function createConnectWebhooks(
       enabled_events: WEBHOOK_EVENTS,
       description: "Kaizen: payments in stores' accounts",
     });
+    const billing = await stripe.webhookEndpoints.create({
+      url: billingUrl,
+      enabled_events: BILLING_EVENTS,
+      description: "Kaizen: stores' plans",
+    });
     const thin = await stripe.v2.core.eventDestinations.create({
       name: "Kaizen: stores' Stripe accounts",
       type: "webhook_endpoint",
@@ -111,7 +130,7 @@ export async function createConnectWebhooks(
       include: ["webhook_endpoint.signing_secret"],
     });
     const thinSecret = thin.webhook_endpoint?.signing_secret;
-    if (!snapshot.secret || !thinSecret) {
+    if (!snapshot.secret || !billing.secret || !thinSecret) {
       return { ok: false, problem: "Stripe did not return a signing secret." };
     }
     return {
@@ -119,6 +138,7 @@ export async function createConnectWebhooks(
       webhooks: [
         { kind: "snapshot", endpointId: snapshot.id, url: snapshotUrl, secret: snapshot.secret },
         { kind: "thin", endpointId: thin.id, url: thinUrl, secret: thinSecret },
+        { kind: "billing", endpointId: billing.id, url: billingUrl, secret: billing.secret },
       ],
     };
   } catch (error) {

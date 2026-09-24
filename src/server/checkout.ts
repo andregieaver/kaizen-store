@@ -12,7 +12,7 @@ import { variantLabel } from "@/lib/product-input";
 
 import { saleFee } from "@/lib/stripe-account";
 
-import { getSaleFeeBps } from "./connect";
+import { storeFeeBps } from "./billing";
 import { getCheckoutAccount } from "./settings";
 import { platformStripe } from "./stripe";
 
@@ -274,7 +274,7 @@ export async function startCheckout(
   const [store] = await db().execute<Row>(sql`
     select legal_name, organisation_number from commerce.stores where id = ${shop.storeId}::uuid
   `);
-  const fee = saleFee(order.totalMinor, await getSaleFeeBps());
+  const fee = saleFee(order.totalMinor, await storeFeeBps(shop.storeId));
   const base = `${origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
   const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId };

@@ -16,7 +16,14 @@ export default async function PaymentSettingsPage({
   const { account, store, role } = await requireMember((await params).store);
   const [settings, audit] = await Promise.all([getPaymentSettings(store), recentAudit(store.id)]);
   const isOwner = role === "owner";
-  const { modes, accounts, stripe } = settings;
+  const { accounts, stripe } = settings;
+  // Store owners set up one Stripe account: live once Kaizen is live. Only
+  // Kaizen's own admins also see test mode, to try things out.
+  const modes = account.platformAdmin
+    ? settings.modes
+    : settings.modes.includes("live")
+      ? (["live"] as const)
+      : settings.modes;
   const readyModes = modes.filter((mode) => accountStage(accounts[mode] ?? null) === "ready");
 
   return (
@@ -37,7 +44,7 @@ export default async function PaymentSettingsPage({
             <p>
               Add Kaizen&apos;s Stripe keys in Vercel (<code>STRIPE_SECRET_KEY_TEST</code> and{" "}
               <code>STRIPE_PUBLISHABLE_KEY_TEST</code>, and the <code>_LIVE</code> pair when going
-              live), redeploy, then connect the webhooks under Access requests → Stripe.
+              live), redeploy, then connect the webhooks under Platform → Stripe.
             </p>
           ) : (
             <p>Kaizen is switching payments on shortly. Your other settings already work.</p>

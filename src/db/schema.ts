@@ -304,8 +304,9 @@ export const platformSettings = commerce.table(
 );
 
 /**
- * Kaizen's Connect webhooks in its own Stripe account, per mode: `snapshot`
- * for payment events from stores' accounts, `thin` for account (v2) events.
+ * Kaizen's webhooks in its own Stripe account, per mode: `snapshot` for
+ * payment events from stores' accounts, `thin` for account (v2) events,
+ * `billing` for Kaizen's own subscriptions to stores.
  * The signing secret is encrypted like store payment secrets.
  */
 export const platformWebhooks = commerce.table(
@@ -322,8 +323,123 @@ export const platformWebhooks = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.provider, t.mode, t.kind] }),
-    check("platform_webhooks_kind", sql`${t.kind} in ('snapshot', 'thin')`),
+    check("platform_webhooks_kind", sql`${t.kind} in ('snapshot', 'thin', 'billing')`),
     index("platform_webhooks_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
+ * A plan Kaizen sells to stores (decision D18): a monthly or yearly price and
+ * Kaizen's fee on each of the store's sales. Plans are archived, never
+ * deleted, so stores on an old plan keep it.
+ */
+export const plans = commerce.table(
+  "plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** Kaizen's fee on each storefront sale, in basis points (100 = 1 %). */
+    saleFeeBps: integer("sale_fee_bps").notNull().default(0),
+    /** Order on the plans page, lowest tier first. */
+    position: integer("position").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("plans_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
+    check("plans_name_present", sql`length(trim(${t.name})) > 0`),
+    index("plans_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
+ * A plan's price in one currency and billing interval, excluding VAT. Prices
+ * never change: a new amount is a new row, and the old one is switched off
+ * (stores already on it keep it until moved).
+ */
+export const planPrices = commerce.table(
+  "plan_prices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id),
+    currency: char("currency", { length: 3 }).notNull(),
+    interval: text("interval").notNull(),
+    amountMinor: money("amount_minor"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("plan_prices_interval", sql`${t.interval} in ('month', 'year')`),
+    check("plan_prices_amount", sql`${t.amountMinor} >= 0`),
+    uniqueIndex("plan_prices_one_active")
+      .on(t.planId, t.currency, t.interval)
+      .where(sql`${t.active}`),
+    index("plan_prices_plan_idx").on(t.planId),
+  ],
+);
+
+/**
+ * What Kaizen has created in its own Stripe account, per mode: a Stripe
+ * Product per plan, a Price per plan price, the VAT rate and the customer
+ * portal settings. `error` keeps the last failure so it can be shown.
+ */
+export const stripeSync = commerce.table(
+  "stripe_sync",
+  {
+    mode: paymentMode("mode").notNull(),
+    kind: text("kind").notNull(),
+    localId: text("local_id").notNull(),
+    stripeId: text("stripe_id"),
+    /** Switched off in Stripe (a price that is no longer offered). */
+    archived: boolean("archived").notNull().default(false),
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+    error: text("error"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.mode, t.kind, t.localId] }),
+    check("stripe_sync_kind", sql`${t.kind} in ('product', 'price', 'tax_rate', 'portal')`),
+    index("stripe_sync_stripe_id_idx").on(t.mode, t.stripeId),
+  ],
+);
+
+/**
+ * A store's plan with Kaizen: its Stripe subscription (on Kaizen's account,
+ * with the store's own Stripe account as the customer) as last reported by
+ * Stripe, and an optional fee that overrides the plan's.
+ */
+export const storeBilling = commerce.table(
+  "store_billing",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    planId: uuid("plan_id").references(() => plans.id),
+    priceId: uuid("price_id").references(() => planPrices.id),
+    mode: paymentMode("mode"),
+    subscriptionId: text("subscription_id"),
+    /** Stripe's subscription status: trialing, active, past_due, canceled, … */
+    status: text("status"),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    saleFeeBpsOverride: integer("sale_fee_bps_override"),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("store_billing_subscription_key").on(t.mode, t.subscriptionId),
+    check(
+      "store_billing_fee_range",
+      sql`${t.saleFeeBpsOverride} is null or ${t.saleFeeBpsOverride} between 0 and 2000`,
+    ),
+    index("store_billing_plan_idx").on(t.planId),
+    index("store_billing_price_idx").on(t.priceId),
+    index("store_billing_updated_by_idx").on(t.updatedBy),
   ],
 );
 

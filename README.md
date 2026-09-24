@@ -105,11 +105,16 @@ admin. To switch payments on for the platform:
    `STRIPE_PUBLISHABLE_KEY_TEST`, later `STRIPE_SECRET_KEY_LIVE` and
    `STRIPE_PUBLISHABLE_KEY_LIVE`. A restricted key (`rk_…`) works if it may
    manage Connect accounts, account sessions, Checkout Sessions, webhook
-   endpoints and event destinations. Redeploy.
-3. On `/admin/platform` → **Stripe**, press **Connect webhooks** for the mode.
-   Kaizen creates its two webhooks in Stripe and keeps their secrets encrypted
-   (`SETTINGS_ENCRYPTION_KEY` must be set).
-4. Optionally set Kaizen's fee per sale on the same page (0 % by default).
+   endpoints, event destinations, products, prices, tax rates, subscriptions
+   and the billing portal. Redeploy.
+3. On **Platform → Stripe** (`/admin/platform/stripe`), press **Connect
+   webhooks** for the mode. Kaizen creates its three webhooks in Stripe and
+   keeps their secrets encrypted (`SETTINGS_ENCRYPTION_KEY` must be set).
+4. Optionally set the default fee per sale on the same page (0 % by default).
+5. Create plans under **Platform → Plans** (they are copied to Stripe), then
+   start each store's plan under **Platform → Stores**. In Stripe, turn on
+   emailing invoices to customers (Settings → Billing → Invoices) and add
+   Kaizen's organisation number and VAT number to the invoice template.
 
 Each owner then opens **Payments**, presses **Set up Stripe**, answers
 Stripe's questions, sets shipping prices under **Shipping**, and switches

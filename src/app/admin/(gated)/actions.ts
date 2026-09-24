@@ -11,6 +11,7 @@ import { siteUrl } from "@/lib/site";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
 import { requireMember, type Membership } from "@/server/auth";
+import { portalUrl } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
@@ -163,4 +164,13 @@ export async function signOut(): Promise<void> {
   } finally {
     redirect("/admin/sign-in");
   }
+}
+
+/** Sends an owner to Stripe's billing page for Kaizen's invoices to their store. */
+export async function openBillingPortalAction(storeSlug: string): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  const result = await portalUrl(owner.store.id, `${await origin()}/admin/${owner.store.slug}/billing`);
+  if (!result.ok) return { status: "error", messages: [result.problem] };
+  redirect(result.url);
 }

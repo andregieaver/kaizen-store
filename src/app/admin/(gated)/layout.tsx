@@ -32,7 +32,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 text-sm">
             {account.platformAdmin && (
               <Link href="/admin/platform" className="underline">
-                Access requests{pending > 0 ? ` (${pending})` : ""}
+                Platform{pending > 0 ? ` (${pending} waiting)` : ""}
               </Link>
             )}
             <Link href="/admin/account" className="text-muted underline" title="Your account">
