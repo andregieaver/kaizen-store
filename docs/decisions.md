@@ -93,6 +93,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20260924083240_connect_rules.sql` | `20260924085032` |
 | `20260924091504_plans.sql` | `20260924091925` |
 | `20260924091505_plans_rules.sql` | `20260924091929` |
+| `20260924102825_reserve_stores_slug.sql` | `20260924103331` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.
