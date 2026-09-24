@@ -78,6 +78,8 @@ history therefore still lists the nine single-store migrations, then:
 | (no file: `ALTER SCHEMA commerce RENAME TO commerce_legacy`) | `20260924000447` retire_single_store_schema |
 | `20260923235845_platform_schema.sql` | `20260924000725` |
 | `20260923235847_platform_rules.sql` | `20260924060213` |
+| `20260924061541_store_setup.sql` | `20260924063848` |
+| `20260924061542_clone_store.sql` | `20260924064416` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.
