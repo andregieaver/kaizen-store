@@ -54,7 +54,8 @@ export async function setStripeProvider(
   activeMode: PaymentModeName,
   orderInvoices: boolean,
 ): Promise<SaveResult> {
-  if (enabled) {
+  // Test payments need no Stripe account of the store's own (decision D20).
+  if (enabled && activeMode === "live") {
     const accounts = await getStripeAccounts(store.id);
     if (accountStage(accounts[activeMode] ?? null) !== "ready") {
       return {
@@ -78,24 +79,33 @@ export async function setStripeProvider(
   return { ok: true };
 }
 
-export type CheckoutAccount = { mode: PaymentModeName; accountId: string; orderInvoices: boolean };
+export type CheckoutAccount = {
+  mode: PaymentModeName;
+  /** The store's own Stripe account; null in test mode until Kaizen has set it up. */
+  accountId: string | null;
+  orderInvoices: boolean;
+};
 
 /**
- * The store's Stripe account to take a payment on: payments are switched on
- * and the account for the active mode can take card payments. Null otherwise.
+ * The store's Stripe account to take a payment on, if payments are switched
+ * on. Live payments need the store's own account, verified by Stripe. In test
+ * mode payments are on even before the test account is ready (accountId
+ * null): Kaizen sets that account up itself, with no details from the owner
+ * (decision D20).
  */
 export async function getCheckoutAccount(storeId: string): Promise<CheckoutAccount | null> {
   const [row] = await db().execute<Row>(sql`
     select p.active_mode, p.order_invoices, a.account_id
     from commerce.payment_providers p
-    join commerce.stripe_accounts a on a.store_id = p.store_id and a.mode = p.active_mode
+    left join commerce.stripe_accounts a
+      on a.store_id = p.store_id and a.mode = p.active_mode and a.card_payments = 'active'
     where p.store_id = ${storeId}::uuid and p.provider = 'stripe' and p.enabled
-      and a.card_payments = 'active'
+      and (p.active_mode = 'test' or a.account_id is not null)
   `);
   return row
     ? {
         mode: row.active_mode as PaymentModeName,
-        accountId: String(row.account_id),
+        accountId: row.account_id ? String(row.account_id) : null,
         orderInvoices: Boolean(row.order_invoices),
       }
     : null;

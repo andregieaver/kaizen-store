@@ -8,7 +8,7 @@ import { db } from "@/db/client";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { getStripeSecrets } from "./settings";
-import { platformStripe, stripeFor } from "./stripe";
+import { platformModes, platformStripe, stripeFor } from "./stripe";
 import { applySession } from "./stripe-webhooks";
 
 type Row = Record<string, unknown>;
@@ -131,17 +131,22 @@ export async function getCheckoutInfo(storeId: string, marketCode: string) {
     select
       exists (
         select 1 from commerce.payment_providers p
-        join commerce.stripe_accounts a on a.store_id = p.store_id and a.mode = p.active_mode
         where p.store_id = ${storeId}::uuid and p.provider = 'stripe' and p.enabled
-          and a.card_payments = 'active'
+          and (p.active_mode = 'test' or exists (
+            select 1 from commerce.stripe_accounts a
+            where a.store_id = p.store_id and a.mode = p.active_mode and a.card_payments = 'active'
+          ))
       ) as payments_on,
+      (select active_mode from commerce.payment_providers
+        where store_id = ${storeId}::uuid and provider = 'stripe') as active_mode,
       (select amount_minor from commerce.shipping_rates
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as amount_minor,
       (select free_over_minor from commerce.shipping_rates
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as free_over_minor
   `);
   return {
-    paymentsOn: Boolean(row?.payments_on),
+    // Test payments also need Kaizen's own test keys to be set.
+    paymentsOn: Boolean(row?.payments_on) && (row?.active_mode !== "test" || platformModes().includes("test")),
     shipping:
       row?.amount_minor == null
         ? null

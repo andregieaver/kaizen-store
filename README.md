@@ -116,9 +116,10 @@ admin. To switch payments on for the platform:
    emailing invoices to customers (Settings → Billing → Invoices) and add
    Kaizen's organisation number and VAT number to the invoice template.
 
-Each owner then opens **Payments**, presses **Set up Stripe**, answers
-Stripe's questions, sets shipping prices under **Shipping**, and switches
-checkout on. Payment methods, receipts and payouts are managed in the store's
+Stores take test payments from the start with nothing to set up: Kaizen
+creates each store's test Stripe account itself (decision D20). For real
+payments, once Kaizen has live keys, each owner opens **Payments**, presses
+**Set up Stripe**, answers Stripe's questions, and switches checkout to live. Payment methods, receipts and payouts are managed in the store's
 own Stripe Dashboard.
 
 Store owners ask for a store at `/sign-up`; platform admins approve requests at

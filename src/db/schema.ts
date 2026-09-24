@@ -1320,7 +1320,8 @@ export const paymentProviders = commerce.table(
   {
     storeId: storeId().references(() => stores.id),
     provider: text("provider").notNull(),
-    enabled: boolean("enabled").notNull().default(false),
+    /** On from the start: new stores take test payments with no setup (D20). */
+    enabled: boolean("enabled").notNull().default(true),
     activeMode: paymentMode("active_mode").notNull().default("test"),
     /** Stripe emails an invoice PDF with each order (Stripe Invoicing fees apply). */
     orderInvoices: boolean("order_invoices").notNull().default(false),

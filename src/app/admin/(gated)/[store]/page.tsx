@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { storeBase } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { getSetupProgress } from "@/server/setup";
+import { platformModes } from "@/server/stripe";
 
 type Props = PageProps<"/admin/[store]">;
 
@@ -17,8 +18,11 @@ export default async function AdminOverview({ params }: Props) {
     { done: progress.details, label: "Business details", step: "details" },
     { done: progress.countries, label: "Countries you sell to", step: "countries" },
     { done: progress.shipping, label: "Shipping prices for every country", href: "settings/shipping" },
-    { done: progress.payments, label: "Stripe account ready", step: "payments" },
-    { done: progress.paymentsOn, label: "Stripe switched on, so shoppers can pay", href: "settings/payments" },
+    { done: progress.paymentsOn, label: "Checkout switched on, so shoppers can pay", href: "settings/payments" },
+    // Real payments only once Kaizen itself is live; test payments need no setup.
+    ...(platformModes().includes("live")
+      ? [{ done: progress.payments, label: "Stripe set up for real payments", href: "settings/payments" }]
+      : []),
     { done: progress.plan, label: "Choose a plan", href: "billing" },
     {
       done: progress.products,

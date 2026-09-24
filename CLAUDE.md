@@ -138,7 +138,10 @@ of running `playwright install`.
   (`StripeAccountPanel`, loaded only on the pages that show it); the thin
   account webhook (`/api/stripe/connect/{mode}/accounts`) keeps the status
   current. Never pass `payment_method_types`: stores choose methods in their
-  own Stripe Dashboard.
+  own Stripe Dashboard. In test mode the owner does nothing: `ensureTestAccount()`
+  creates the store's test account with Stripe's test values (decision D20),
+  in the background from the store admin layout, on the Payments page, or at
+  checkout.
 - Plans and billing (`src/server/billing.ts`, decision D18): `plans` and
   `plan_prices` (never edited in place: a new amount is a new row) are
   copied to Stripe by `syncPlans(mode)`, which records Stripe ids in

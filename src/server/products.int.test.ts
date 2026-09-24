@@ -39,6 +39,7 @@ async function createStore(slug: string): Promise<Store> {
     isTemplate: false,
     setupCompletedAt: null,
     paymentsOn: false,
+    paymentsTest: false,
     details: { legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: "NO" },
     markets: [
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),

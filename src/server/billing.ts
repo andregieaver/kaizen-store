@@ -739,12 +739,16 @@ export async function portalUrl(
   const billing = await getStoreBilling(storeId);
   const mode = billing?.mode ?? billingMode();
   const stripe = mode && platformStripe(mode);
-  const account = mode ? (await getStripeAccounts(storeId))[mode] : undefined;
-  if (!mode || !stripe || !account) return { ok: false, problem: "Your store has no plan with Kaizen yet." };
+  if (!mode || !stripe || !billing?.subscriptionId) return { ok: false, problem: "Your store has no plan with Kaizen yet." };
   try {
+    // The Stripe account the plan is billed to (a store's test account can
+    // have been replaced since the plan started).
+    const subscription = await stripe.subscriptions.retrieve(billing.subscriptionId);
+    const customerAccount = subscription.customer_account ?? (await getStripeAccounts(storeId))[mode]?.accountId;
+    if (!customerAccount) return { ok: false, problem: "Your store has no plan with Kaizen yet." };
     const configuration = await portalConfiguration(stripe, mode);
     const session = await stripe.billingPortal.sessions.create({
-      customer_account: account.accountId,
+      customer_account: customerAccount,
       return_url: returnUrl,
       configuration,
     });

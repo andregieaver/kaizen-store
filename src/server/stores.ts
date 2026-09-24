@@ -18,6 +18,8 @@ export type Store = {
   setupCompletedAt: string | null;
   /** Stripe is switched on with keys for its mode, so shoppers can pay. */
   paymentsOn: boolean;
+  /** Payments are in test mode: shoppers pay with Stripe's test cards, no real money. */
+  paymentsTest: boolean;
   /** The business behind the store, shown to shoppers. */
   details: StoreDetails;
   /** Active markets, the store's own country first. */
@@ -37,6 +39,8 @@ export type Country = { code: string; name: string; currency: string; inEu: bool
 /** Revalidate after changing a store's name, status, markets or payment switch. */
 export const storeTag = (slug: string) => `store:${slug}`;
 export const TEMPLATE_TAG = "template-store";
+
+import { platformModes } from "./stripe";
 
 type Row = Record<string, unknown>;
 
@@ -59,9 +63,16 @@ async function loadStore(slug: string): Promise<Store | null> {
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country,
       exists (
         select 1 from commerce.payment_providers p
-        join commerce.stripe_accounts a on a.store_id = p.store_id and a.mode = p.active_mode
-        where p.store_id = s.id and p.enabled and a.card_payments = 'active'
+        where p.store_id = s.id and p.enabled
+          and (p.active_mode = 'test' or exists (
+            select 1 from commerce.stripe_accounts a
+            where a.store_id = p.store_id and a.mode = p.active_mode and a.card_payments = 'active'
+          ))
       ) as payments_on,
+      exists (
+        select 1 from commerce.payment_providers p
+        where p.store_id = s.id and p.enabled and p.active_mode = 'test'
+      ) as payments_test,
       coalesce(
         json_agg(json_build_object(
           'code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale
@@ -85,7 +96,9 @@ async function loadStore(slug: string): Promise<Store | null> {
     setupCompletedAt: row.setup_completed_at
       ? new Date(String(row.setup_completed_at)).toISOString()
       : null,
-    paymentsOn: Boolean(row.payments_on),
+    // Test payments also need Kaizen's own test keys to be set.
+    paymentsOn: Boolean(row.payments_on) && (!row.payments_test || platformModes().includes("test")),
+    paymentsTest: Boolean(row.payments_test),
     details: {
       legalName: text(row.legal_name),
       organisationNumber: text(row.organisation_number),

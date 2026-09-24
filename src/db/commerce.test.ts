@@ -144,7 +144,7 @@ describe("reference data", () => {
 });
 
 describe("stores", () => {
-  it("start with invoice series and Stripe disabled in test mode", async () => {
+  it("start with invoice series and test payments on (no setup needed)", async () => {
     const { rows: series } = await db.query<{ series: string }>(
       "select series from commerce.document_series where store_id = $1 order by series",
       [store],
@@ -159,7 +159,7 @@ describe("stores", () => {
       "select enabled, active_mode from commerce.payment_providers where store_id = $1 and provider = 'stripe'",
       [store],
     );
-    expect(stripe).toEqual({ enabled: false, active_mode: "test" });
+    expect(stripe).toEqual({ enabled: true, active_mode: "test" });
   });
 
   it("need a subdomain-safe slug that is not reserved", async () => {
@@ -760,7 +760,7 @@ describe("new stores from the template", () => {
     const extras = await one<{ series: number; stripe: boolean; swish: boolean; schemes: number }>(
       `select
          (select count(*)::int from commerce.document_series where store_id = $1) as series,
-         exists (select 1 from commerce.payment_providers where store_id = $1 and provider = 'stripe' and not enabled) as stripe,
+         exists (select 1 from commerce.payment_providers where store_id = $1 and provider = 'stripe' and enabled and active_mode = 'test') as stripe,
          exists (select 1 from commerce.payment_methods where store_id = $1 and method = 'swish' and enabled) as swish,
          (select count(*)::int from commerce.product_schemes where store_id = $1) as schemes`,
       [store],

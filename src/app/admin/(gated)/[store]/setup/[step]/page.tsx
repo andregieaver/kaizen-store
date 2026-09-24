@@ -74,9 +74,8 @@ export default async function SetupStepPage({ params }: Props) {
           title="Payments"
           intro={
             <>
-              Shoppers pay your business directly, through your store&apos;s own Stripe account.
-              Stripe asks a few questions about your business and where to pay out; you can
-              answer them now or later.
+              You can test your whole checkout right away. Real payments need your own Stripe
+              account, which you set up when you are ready to open.
             </>
           }
         >
@@ -219,30 +218,33 @@ async function CountriesStep({ member }: { member: Membership }) {
 async function PaymentsStep({ member }: { member: Membership }) {
   const { store, role } = member;
   const settings = await getPaymentSettings(store);
-  // During setup, the first mode Kaizen offers: test while Kaizen is in test.
-  const mode = settings.modes.includes("live") ? "live" : settings.modes[0];
   return (
     <div className="flex flex-col gap-4">
-      {mode ? (
-        <StripeAccountPanel
-          storeSlug={store.slug}
-          mode={mode}
-          account={settings.accounts[mode]}
-          isOwner={role === "owner"}
-          title="Your Stripe account"
-        />
+      {settings.modes.includes("test") ? (
+        <p role="status" className="rounded-md border border-border p-3 text-sm">
+          Test payments are on, with nothing to set up: Kaizen creates a test Stripe account for your
+          store. Try your checkout with the card 4242 4242 4242 4242.
+        </p>
       ) : (
         <p role="status" className="rounded-md border border-border p-3 text-sm">
-          Payments are not available on Kaizen yet. Skip this step; you can set them up later from
-          payment settings.
+          Payments are not available on Kaizen yet. You can continue; your store is ready for them.
         </p>
       )}
+      {settings.modes.includes("live") && (
+        <StripeAccountPanel
+          storeSlug={store.slug}
+          mode="live"
+          account={settings.accounts.live}
+          isOwner={role === "owner"}
+          title="Real payments (when you are ready)"
+        />
+      )}
       <p className="text-sm text-muted">
-        Switching checkout on, invoices and payment methods are in{" "}
+        Invoices and payment methods are in{" "}
         <Link href={`/admin/${store.slug}/settings/payments`} className="underline">
           payment settings
         </Link>
-        . You can finish Stripe&apos;s questions later too.
+        .
       </p>
       <div>
         <Link
@@ -303,7 +305,7 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
   const items = [
     { done: progress.details, label: "Business details", href: "details", required: true },
     { done: progress.countries, label: "At least one country", href: "countries", required: true },
-    { done: progress.payments, label: "Stripe account ready", href: "payments", required: false },
+    { done: progress.paymentsOn, label: "Checkout switched on", href: "payments", required: false },
     {
       done: progress.products,
       label: progress.counts.demoProducts > 0 ? "Demo products replaced" : "Products",

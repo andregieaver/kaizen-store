@@ -83,13 +83,24 @@ const fake = vi.hoisted(() => {
     v2: {
       core: {
         accounts: {
-          create: record("accounts.create", () => ({
+          // Like Stripe with its test values: verified at once.
+          create: record("accounts.create", (p) => ({
             id: id("acct"),
-            configuration: { merchant: { capabilities: { card_payments: { status: "pending" } } } },
+            dashboard: p.dashboard,
+            configuration: { merchant: { capabilities: { card_payments: { status: "active" } } } },
+            requirements: { entries: [] },
+          })),
+          retrieve: record("accounts.retrieve", (p) => ({
+            id: p.id,
+            dashboard: "none",
+            configuration: { merchant: { capabilities: { card_payments: { status: "active" } } } },
             requirements: { entries: [] },
           })),
         },
       },
+    },
+    accounts: {
+      createExternalAccount: record("accounts.createExternalAccount", () => ({ id: id("ba") })),
     },
   };
   return { client, calls, sessions, tag };
@@ -211,7 +222,29 @@ describe("plans", () => {
     const result = await billing.assignPlan(admin, slug, price?.id as string, 14, "https://kaizen.test");
     expect(result).toEqual({ ok: true });
 
+    // In test mode Kaizen sets up the store's test account itself, with
+    // Stripe's test values: nothing is asked of the owner.
     expect(calls("accounts.create")).toHaveLength(1);
+    expect(calls("accounts.create")[0].params).toMatchObject({
+      dashboard: "none",
+      identity: {
+        country: "no",
+        entity_type: "individual",
+        individual: {
+          date_of_birth: { day: 1, month: 1, year: 1901 },
+          address: { line1: "address_full_match" },
+        },
+        attestations: { terms_of_service: { account: { date: expect.any(String), ip: "127.0.0.1" } } },
+      },
+      configuration: { merchant: { mcc: "5999", capabilities: { card_payments: { requested: true } } } },
+      defaults: {
+        responsibilities: { fees_collector: "application", losses_collector: "application" },
+        profile: { business_url: "https://accessible.stripe.com" },
+      },
+    });
+    expect(calls("accounts.createExternalAccount")[0].params).toMatchObject({
+      external_account: { object: "bank_account", country: "NO", account_number: "NO9386011117947" },
+    });
     const created = calls("subscriptions.create")[0].params;
     expect(created).toMatchObject({
       customer_account: expect.stringMatching(/^acct_/),

@@ -75,7 +75,8 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
   return {
     details,
     countries,
-    payments: Object.values(payments.accounts).some((a) => a.cardPayments === "active"),
+    // Test payments need no setup (D20): this is the store's real, live account.
+    payments: payments.accounts.live?.cardPayments === "active",
     paymentsOn: payments.stripe.enabled,
     shipping: Number(shippingRow?.priced ?? 0) >= store.markets.length && store.markets.length > 0,
     products: ownProducts > 0 || demoProducts === 0,

@@ -66,6 +66,11 @@ export async function createStripeAccount(
   mode: PaymentModeName,
   storeUrl: string,
 ): Promise<SaveResult> {
+  // Test accounts are set up by Kaizen with Stripe's test values (D20).
+  if (mode === "test") {
+    const test = await ensureTestAccount(store.id, account.id);
+    return test.ok ? { ok: true } : { ok: false, problems: [test.problem] };
+  }
   const stripe = platformStripe(mode);
   if (!stripe) return { ok: false, problems: [`Payments in ${mode} mode are not available yet.`] };
   if ((await getStripeAccounts(store.id))[mode]) return { ok: true };
@@ -115,6 +120,142 @@ export async function createStripeAccount(
   `);
   await audit(account.id, store.id, "payments.stripe_account_created", { mode, accountId: created.id });
   return { ok: true };
+}
+
+/**
+ * Stripe's test values that pass verification at once (docs.stripe.com/connect/testing):
+ * a matching date of birth and address, a verified website, a Norwegian test
+ * bank account whose payouts succeed.
+ */
+const TEST_IDENTITY = {
+  dateOfBirth: { day: 1, month: 1, year: 1901 },
+  address: { line1: "address_full_match", city: "Oslo", postal_code: "0150", country: "no" },
+  website: "https://accessible.stripe.com",
+  iban: "NO9386011117947",
+} as const;
+
+/**
+ * The store's test Stripe account, set up by Kaizen with no questions to the
+ * owner (decision D20): Kaizen fills in Stripe's test values and accepts the
+ * service agreement, so test purchases land in the store's own test account
+ * straight away. Stripe's real checks come only with the live account.
+ * An older test account that waits for the owner's details is replaced.
+ */
+export async function ensureTestAccount(
+  storeId: string,
+  actorId: string | null = null,
+  ip = "127.0.0.1",
+): Promise<{ ok: true; accountId: string; ready: boolean } | { ok: false; problem: string }> {
+  const stripe = platformStripe("test");
+  if (!stripe) return { ok: false, problem: "Test payments are not available yet." };
+
+  const saved = (await getStripeAccounts(storeId)).test;
+  if (saved?.cardPayments === "active") return { ok: true, accountId: saved.accountId, ready: true };
+  if (saved) {
+    try {
+      const existing = await stripe.v2.core.accounts.retrieve(saved.accountId, { include: INCLUDE });
+      if (existing.dashboard === "none") {
+        // Ours, and Stripe is still checking the test details (seconds).
+        const status = await saveStatus(storeId, "test", existing);
+        return { ok: true, accountId: saved.accountId, ready: status.cardPayments === "active" };
+      }
+    } catch (error) {
+      return { ok: false, problem: stripeProblem(error) };
+    }
+  }
+
+  const [store] = await db().execute<Row>(sql`
+    select s.id, s.slug, s.name, s.country, coalesce(s.contact_email, (
+      select a.email from commerce.store_members m join commerce.accounts a on a.id = m.account_id
+      where m.store_id = s.id and m.role = 'owner' and m.disabled_at is null order by m.created_at limit 1
+    )) as email,
+    (select m.currency from commerce.markets m where m.store_id = s.id and m.active
+      order by (m.code = s.country) desc nulls last, m.created_at limit 1) as currency
+    from commerce.stores s where s.id = ${storeId}::uuid
+  `);
+  if (!store) return { ok: false, problem: "Unknown store." };
+  const email = store.email ? String(store.email) : "test@kaizenstore.cloud";
+
+  let created: Stripe.V2.Core.Account;
+  try {
+    created = await stripe.v2.core.accounts.create(
+      {
+        display_name: `${String(store.name)} (test)`,
+        contact_email: email,
+        // Kaizen collects the (test) details, so there is no Stripe login.
+        dashboard: "none",
+        identity: {
+          country: "no",
+          entity_type: "individual",
+          individual: {
+            given_name: "Kaizen",
+            surname: "Test",
+            email,
+            phone: "+4722222222",
+            date_of_birth: TEST_IDENTITY.dateOfBirth,
+            address: TEST_IDENTITY.address,
+          },
+          attestations: {
+            terms_of_service: {
+              account: { date: new Date().toISOString(), ip, user_agent: "Kaizen test setup" },
+            },
+          },
+        },
+        configuration: {
+          customer: {},
+          merchant: { mcc: "5999", capabilities: { card_payments: { requested: true } } },
+        },
+        defaults: {
+          currency: String(store.currency ?? "NOK").toLowerCase(),
+          responsibilities: { fees_collector: "application", losses_collector: "application" },
+          profile: {
+            business_url: TEST_IDENTITY.website,
+            product_description: `Test store for ${String(store.name)} on Kaizen`,
+          },
+        },
+        metadata: { store_id: storeId, store_slug: String(store.slug), kaizen_test_account: "true" },
+        include: INCLUDE,
+      },
+      { idempotencyKey: `kaizen-test-account-${storeId}` },
+    );
+    await stripe.accounts.createExternalAccount(
+      created.id,
+      {
+        external_account: {
+          object: "bank_account",
+          country: "NO",
+          currency: "nok",
+          account_number: TEST_IDENTITY.iban,
+        },
+      },
+      { idempotencyKey: `kaizen-test-bank-${storeId}` },
+    );
+  } catch (error) {
+    return { ok: false, problem: stripeProblem(error) };
+  }
+
+  const fresh = await stripe.v2.core.accounts.retrieve(created.id, { include: INCLUDE }).catch(() => created);
+  const status = accountStatus(fresh);
+  await db().execute(sql`
+    insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due, created_by)
+    values (${storeId}::uuid, 'test', ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
+            ${actorId}::uuid)
+    on conflict (store_id, mode) do update set
+      account_id = excluded.account_id, card_payments = excluded.card_payments,
+      requirements_due = excluded.requirements_due, updated_at = now()
+  `);
+  await audit(actorId, storeId, "payments.test_account_created", { accountId: created.id, replaced: saved?.accountId ?? null });
+  return { ok: true, accountId: created.id, ready: status.cardPayments === "active" };
+}
+
+async function saveStatus(storeId: string, mode: PaymentModeName, account: Stripe.V2.Core.Account) {
+  const status = accountStatus(account);
+  await db().execute(sql`
+    update commerce.stripe_accounts
+       set card_payments = ${status.cardPayments}, requirements_due = ${status.requirementsDue}, updated_at = now()
+     where store_id = ${storeId}::uuid and mode = ${mode}
+  `);
+  return status;
 }
 
 /**

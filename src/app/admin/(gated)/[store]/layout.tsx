@@ -1,13 +1,22 @@
+import { headers } from "next/headers";
 import Link from "next/link";
+import { after } from "next/server";
 
 import { storeBase } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
+import { ensureTestAccount } from "@/server/connect";
 
 export default async function StoreAdminLayout({
   children,
   params,
 }: LayoutProps<"/admin/[store]">) {
-  const { store, role } = await requireMember((await params).store);
+  const { account, store, role } = await requireMember((await params).store);
+  // In test mode, Kaizen sets up the store's test Stripe account itself, after
+  // the page is sent, so test purchases work without any setup (D20).
+  if (store.paymentsTest) {
+    const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+    after(() => ensureTestAccount(store.id, account.id, ip));
+  }
   const base = `/admin/${store.slug}`;
   const nav = [
     { href: base, label: "Overview" },

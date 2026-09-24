@@ -4,6 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { accountStage } from "@/lib/stripe-account";
 import { requireMember } from "@/server/auth";
+import { ensureTestAccount } from "@/server/connect";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
 
 import { setStripeProviderAction } from "../../../actions";
@@ -17,27 +18,30 @@ export default async function PaymentSettingsPage({
   const [settings, audit] = await Promise.all([getPaymentSettings(store), recentAudit(store.id)]);
   const isOwner = role === "owner";
   const { accounts, stripe } = settings;
-  // Store owners set up one Stripe account: live once Kaizen is live. Only
-  // Kaizen's own admins also see test mode, to try things out.
-  const modes = account.platformAdmin
-    ? settings.modes
-    : settings.modes.includes("live")
-      ? (["live"] as const)
-      : settings.modes;
-  const readyModes = modes.filter((mode) => accountStage(accounts[mode] ?? null) === "ready");
+  const modes = settings.modes;
+  // Test payments need nothing from the owner: Kaizen sets up the store's
+  // test Stripe account itself (D20). Only live needs the owner's Stripe setup.
+  const readyModes = modes.filter(
+    (mode) => mode === "test" || accountStage(accounts[mode] ?? null) === "ready",
+  );
+  // Not ready yet: set it up now, so any problem from Stripe is shown here.
+  const testSetup =
+    modes.includes("test") && accounts.test?.cardPayments !== "active"
+      ? await ensureTestAccount(store.id, account.id)
+      : null;
+  const testReady = accounts.test?.cardPayments === "active" || (testSetup?.ok === true && testSetup.ready);
 
   return (
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold">Payments</h1>
         <p className="text-sm text-muted">
-          Payments run through your store&apos;s own Stripe account: shoppers pay your business
-          directly and Stripe pays out to your bank.{" "}
-          {isOwner ? "" : "Only an owner can set up Stripe or switch payments on and off."}
+          Shoppers pay your business directly through your store&apos;s own Stripe account.{" "}
+          {isOwner ? "" : "Only an owner can switch payments on and off."}
         </p>
       </div>
 
-      {modes.length === 0 ? (
+      {modes.length === 0 && (
         <section role="status" className="rounded-lg border border-border bg-background p-5 text-sm">
           <h2 className="mb-2 font-medium">Payments are not available yet</h2>
           {account.platformAdmin ? (
@@ -50,16 +54,36 @@ export default async function PaymentSettingsPage({
             <p>Kaizen is switching payments on shortly. Your other settings already work.</p>
           )}
         </section>
-      ) : (
-        modes.map((mode) => (
-          <StripeAccountPanel
-            key={mode}
-            storeSlug={store.slug}
-            mode={mode}
-            account={accounts[mode]}
-            isOwner={isOwner}
-          />
-        ))
+      )}
+
+      {modes.includes("test") && (
+        <section aria-labelledby="test-heading" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-5 text-sm">
+          <h2 id="test-heading" className="font-medium">
+            Test payments
+          </h2>
+          <p>
+            {testReady
+              ? "Ready. Nothing to set up: Kaizen created a test Stripe account for your store."
+              : testSetup && !testSetup.ok
+                ? `Kaizen could not create your test Stripe account yet: ${testSetup.problem}`
+                : "Kaizen is creating a test Stripe account for your store. It is ready in a few seconds, with nothing for you to fill in."}
+          </p>
+          <p className="text-muted">
+            Try your checkout with the card 4242 4242 4242 4242, any future date and any CVC. Test
+            orders show under Orders; no real money moves. Your storefront says it is in test mode
+            while it is.
+          </p>
+        </section>
+      )}
+
+      {modes.includes("live") && (
+        <StripeAccountPanel
+          storeSlug={store.slug}
+          mode="live"
+          account={accounts.live}
+          isOwner={isOwner}
+          title="Real payments"
+        />
       )}
 
       {modes.length > 0 && (
@@ -70,7 +94,7 @@ export default async function PaymentSettingsPage({
           <p className="mb-4 text-sm text-muted">
             Currently {stripe.enabled ? "on" : "off"}
             {stripe.enabled ? `, in ${stripe.activeMode} mode` : ""}.{" "}
-            {readyModes.length === 0 && "Finish setting up Stripe above to switch it on."}
+            {!modes.includes("live") && "Real payments open when Kaizen goes live."}
           </p>
           <ActionForm action={setStripeProviderAction.bind(null, store.slug)} className="flex flex-col gap-4">
             <fieldset disabled={!isOwner || readyModes.length === 0} className="flex flex-col gap-4">
@@ -83,8 +107,14 @@ export default async function PaymentSettingsPage({
                   <legend className="mb-1 font-medium">Mode</legend>
                   {modes.map((mode) => (
                     <label key={mode} className="flex items-center gap-2">
-                      <input type="radio" name="activeMode" value={mode} defaultChecked={stripe.activeMode === mode} />
-                      {mode === "test" ? "Test (no real money)" : "Live"}
+                      <input
+                        type="radio"
+                        name="activeMode"
+                        value={mode}
+                        defaultChecked={stripe.activeMode === mode}
+                        disabled={!readyModes.includes(mode)}
+                      />
+                      {mode === "test" ? "Test (no real money)" : readyModes.includes("live") ? "Live" : "Live (set up Stripe above first)"}
                     </label>
                   ))}
                 </fieldset>
