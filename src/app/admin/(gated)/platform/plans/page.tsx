@@ -29,17 +29,23 @@ export default async function PlansPage() {
             until you move them.
           </p>
         </div>
-        {modes.length > 0 && (
-          <ActionForm action={syncPlansAction} successMessage="Plans are up to date in Stripe.">
-            <SubmitButton variant="secondary">Sync all to Stripe</SubmitButton>
-          </ActionForm>
-        )}
+        <ActionForm action={syncPlansAction} successMessage="Plans are up to date in Stripe." className="flex flex-col items-end gap-1">
+          <SubmitButton disabled={modes.length === 0}>Sync to Stripe</SubmitButton>
+          <p className="text-sm text-muted">
+            {modes.length === 0
+              ? "Needs Kaizen's Stripe keys"
+              : modes
+                  .map((mode) => `${plans.filter((plan) => plan.sync[mode]?.synced).length} of ${plans.length} plans in Stripe (${mode})`)
+                  .join(" · ")}
+          </p>
+        </ActionForm>
       </div>
 
       {modes.length === 0 && (
         <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
-          Kaizen&apos;s Stripe keys are not set, so plans are saved here only. They are copied to
-          Stripe once the keys are in place (Platform → Stripe).
+          Kaizen&apos;s Stripe keys are not set, so plans are saved here only. Once the keys are in
+          place (Platform → Stripe), press Sync to Stripe: each plan becomes a Stripe product with
+          a monthly and a yearly price in every currency.
         </p>
       )}
 

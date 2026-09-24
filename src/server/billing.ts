@@ -268,6 +268,7 @@ export async function syncPlans(mode: PaymentModeName): Promise<SaveResult> {
         const created = await stripe.prices.create(
           {
             product: productId,
+            nickname: `${plan.name} · ${price.currency} · ${price.interval === "month" ? "monthly" : "yearly"}`,
             currency: price.currency.toLowerCase(),
             unit_amount: price.amountMinor,
             recurring: { interval: price.interval },

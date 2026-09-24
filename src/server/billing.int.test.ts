@@ -140,7 +140,13 @@ describe("plans", () => {
     expect(plan?.sync.test).toEqual({ synced: true, error: null });
     expect(calls("prices.create").map((c) => c.params)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ currency: "nok", unit_amount: 29_900, recurring: { interval: "month" }, tax_behavior: "exclusive" }),
+        expect.objectContaining({
+          nickname: `Basic ${run} · NOK · monthly`,
+          currency: "nok",
+          unit_amount: 29_900,
+          recurring: { interval: "month" },
+          tax_behavior: "exclusive",
+        }),
       ]),
     );
     const [vat] = await db().execute<Row>(sql`
