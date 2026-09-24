@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { describeDiscount, discountStatus } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
 import { requireMember } from "@/server/auth";
 import { listDiscounts } from "@/server/discounts";
+
+import { deleteDiscountAction } from "./actions";
 
 export const metadata: Metadata = { title: "Discounts" };
 
@@ -49,6 +52,9 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
                 <th scope="col" className="px-4 py-2 font-medium">Gives</th>
                 <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Used</th>
                 <th scope="col" className="px-4 py-2 font-medium">Status</th>
+                <th scope="col" className="px-4 py-2 font-medium">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -77,6 +83,19 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
                     ))}
                   </td>
                   <td className="px-4 py-2">{STATUS[discountStatus(d, d.used)]}</td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link href={`${base}/${d.id}`} className="flex min-h-10 items-center rounded-md px-3 hover:bg-surface">
+                        Edit<span className="sr-only"> {d.code}</span>
+                      </Link>
+                      <DeleteDiscountButton
+                        action={deleteDiscountAction.bind(null, store.slug, d.id)}
+                        code={d.code}
+                        used={d.used}
+                        compact
+                      />
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

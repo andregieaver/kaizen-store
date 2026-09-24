@@ -12,6 +12,8 @@ test("on a computer, the header's menu links and hides while scrolling down", as
   await expect(page.getByRole("link", { name: "Kaizen Demo" }).first()).toBeVisible();
   await menu.getByRole("link", { name: "Notatbok" }).click();
   await expect(page).toHaveURL("/s/demo/no/p/demo-notatbok");
+  // Scroll the product page, not the moment before it arrives.
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Notatbok");
 
   await page.mouse.wheel(0, 400);
   await expect.poll(() => headerTop(page)).toBeLessThan(0);
@@ -25,8 +27,11 @@ test.describe("on a phone", () => {
   test("the menu slides out, and closes with Escape or a chosen link", async ({ page }) => {
     await page.goto("/s/demo/no");
     const dialog = page.getByRole("dialog", { name: "Meny" });
-    await page.getByRole("button", { name: "Åpne menyen" }).first().click();
-    await expect(dialog.getByRole("link", { name: "Bordlampe" })).toBeInViewport();
+    // A tap before the page has come alive does nothing, so tap again as a shopper would.
+    await expect(async () => {
+      await page.getByRole("button", { name: "Åpne menyen" }).first().click();
+      await expect(dialog.getByRole("link", { name: "Bordlampe" })).toBeInViewport({ timeout: 1000 });
+    }).toPass();
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
@@ -48,7 +53,9 @@ test.describe("on a phone", () => {
     await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();
 
     const barTop = () => bar.evaluate((el) => Math.round(el.getBoundingClientRect().top));
+    // One step at a time: the browser merges scrolls within a frame into one.
     await page.evaluate(() => window.scrollTo(0, 500));
+    await expect.poll(() => headerTop(page)).toBeLessThan(0);
     await page.evaluate(() => window.scrollTo(0, 300));
     await expect.poll(barTop).toBeGreaterThanOrEqual(844);
     await page.evaluate(() => window.scrollTo(0, 600));

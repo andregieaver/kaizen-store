@@ -237,6 +237,8 @@ export type PlatformDiscount = {
   maxRedemptions: number | null;
   active: boolean;
   createdAt: string;
+  /** Changes with what the code gives; a new version is a new coupon in Stripe. */
+  updatedAt: string;
 };
 
 export const platformDiscountInput = z

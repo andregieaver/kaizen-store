@@ -31,9 +31,11 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
         </p>
       </div>
       <DiscountForm store={store} discount={discount} />
-      {discount.used === 0 && (
-        <DeleteDiscountButton action={deleteDiscountAction.bind(null, store.slug, discount.id)} code={discount.code} />
-      )}
+      <DeleteDiscountButton
+        action={deleteDiscountAction.bind(null, store.slug, discount.id)}
+        code={discount.code}
+        used={discount.used}
+      />
     </div>
   );
 }

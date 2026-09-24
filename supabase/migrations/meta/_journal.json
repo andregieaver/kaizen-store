@@ -253,6 +253,20 @@
       "when": 1790285777725,
       "tag": "20260924213617_discount_codes_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790288349967,
+      "tag": "20260924221909_editable_discounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790288351304,
+      "tag": "20260924221911_editable_discounts_rules",
+      "breakpoints": true
     }
   ]
 }

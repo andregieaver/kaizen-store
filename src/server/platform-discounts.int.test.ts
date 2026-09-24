@@ -13,7 +13,7 @@ const fake = vi.hoisted(() => {
   const calls: { method: string; params: Record<string, unknown> }[] = [];
   let n = 0;
   const subscription = {
-    id: "sub_plan",
+    id: `sub_plan_${Date.now().toString(36)}`,
     status: "active",
     metadata: {} as Record<string, string>,
     cancel_at_period_end: false,
@@ -25,6 +25,10 @@ const fake = vi.hoisted(() => {
       create: async (params: Record<string, unknown>) => {
         calls.push({ method: "coupons.create", params });
         return { id: `coupon_${++n}` };
+      },
+      del: async (id: string) => {
+        calls.push({ method: "coupons.del", params: { id } });
+        return { id, deleted: true };
       },
     },
     promotionCodes: {
@@ -58,7 +62,8 @@ vi.mock("./stripe", () => ({
 }));
 
 const { applySubscription, applyPlanDiscount, getStoreBilling, removeWaitingDiscount } = await import("./billing");
-const { createPlatformDiscount, findPlatformDiscount, setPlatformDiscountActive } = await import("./platform-discounts");
+const { createPlatformDiscount, deletePlatformDiscount, findPlatformDiscount, setPlatformDiscountActive, updatePlatformDiscount } =
+  await import("./platform-discounts");
 
 const run = Date.now().toString(36).toUpperCase();
 let admin: Account;
@@ -157,5 +162,34 @@ describe("Kaizen's codes for plans (D31)", () => {
       ok: false,
       problem: "That discount code is no longer valid.",
     });
+  });
+
+  it("can be changed: a new coupon replaces the old in Stripe, and a mere switch touches only the promotion code", async () => {
+    const [row] = await db().execute<Row>(sql`select id from commerce.platform_discount_codes where code = ${`KRONER${run}`}`);
+    const id = String(row.id);
+    const before = fake.calls.length;
+    expect(
+      await updatePlatformDiscount(admin, id, { code: `KRONER${run}`, kind: "fixed", amounts: { NOK: "150" }, duration: "once" }, ["NOK", "SEK"], true),
+    ).toMatchObject({ ok: true });
+    const made = fake.calls.slice(before).map((c) => c.method);
+    expect(made).toEqual(["promotionCodes.update", "coupons.del", "coupons.create", "promotionCodes.create"]);
+    expect(fake.calls.slice(before).find((c) => c.method === "coupons.create")!.params).toMatchObject({ amount_off: 15000 });
+
+    const again = fake.calls.length;
+    expect(
+      await updatePlatformDiscount(admin, id, { code: `KRONER${run}`, kind: "fixed", amounts: { NOK: "150" }, duration: "once" }, ["NOK", "SEK"], false),
+    ).toMatchObject({ ok: true });
+    expect(fake.calls.slice(again)).toEqual([{ method: "promotionCodes.update", params: expect.objectContaining({ active: false }) }]);
+  });
+
+  it("can be deleted, in Stripe too, and stores lose a code still waiting for a plan", async () => {
+    const [row] = await db().execute<Row>(sql`select id from commerce.platform_discount_codes where code = ${`KRONER${run}`}`);
+    const id = String(row.id);
+    await db().execute(sql`update commerce.store_billing set platform_discount_id = ${id}::uuid, discount_applied_at = null where store_id = ${storeId}::uuid`);
+    expect(await deletePlatformDiscount(admin, id)).toEqual({ ok: true, note: undefined });
+    expect(fake.calls.at(-1)).toMatchObject({ method: "coupons.del" });
+    expect((await getStoreBilling(storeId))?.discount).toBeNull();
+    const [sync] = await db().execute<Row>(sql`select count(*)::int as n from commerce.stripe_sync where local_id = ${id}`);
+    expect(sync.n).toBe(0);
   });
 });

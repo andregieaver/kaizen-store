@@ -43,7 +43,7 @@ export function DiscountEditor({
   initial: DiscountDraft;
   markets: Market[];
   products: { id: string; title: string }[];
-  /** Orders that have used the code: its text and kind are then fixed. */
+  /** Orders that have used the code; they keep what they got whatever changes. */
   used: number;
   save: Save;
   back: string;
@@ -53,7 +53,6 @@ export function DiscountEditor({
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, startSaving] = useTransition();
   const set = <K extends keyof DiscountDraft>(key: K, value: DiscountDraft[K]) => setD((current) => ({ ...current, [key]: value }));
-  const locked = used > 0;
 
   const submit = () =>
     startSaving(async () => {
@@ -108,7 +107,6 @@ export function DiscountEditor({
           <input
             value={d.code}
             onChange={(event) => set("code", event.target.value.toUpperCase())}
-            disabled={locked}
             required
             maxLength={40}
             autoCapitalize="characters"
@@ -117,12 +115,12 @@ export function DiscountEditor({
             aria-describedby="code-hint"
           />
           <span id="code-hint" className={hint}>
-            {locked
-              ? `Used by ${used} ${used === 1 ? "order" : "orders"}, so the code and its kind stay as they are.`
-              : "3–40 letters, digits, - or _. Shoppers can type it in any case."}
+            3–40 letters, digits, - or _. Shoppers can type it in any case.
+            {used > 0 &&
+              ` Used by ${used} ${used === 1 ? "order" : "orders"}: they keep what they got, whatever you change here.`}
           </span>
         </label>
-        <fieldset className="flex flex-col gap-2" disabled={locked}>
+        <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">What it gives</legend>
           {(
             [

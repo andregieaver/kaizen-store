@@ -473,6 +473,8 @@ export const platformDiscountCodes = commerce.table(
     maxRedemptions: integer("max_redemptions"),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
+    /** Changes when what the code gives changes, and with it the coupon in Stripe. */
+    updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
   },
   (t) => [
@@ -511,7 +513,9 @@ export const storeBilling = commerce.table(
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
     saleFeeBpsOverride: integer("sale_fee_bps_override"),
     /** Kaizen's discount code on the plan, while Stripe still applies it (D31). */
-    platformDiscountId: uuid("platform_discount_id").references(() => platformDiscountCodes.id),
+    platformDiscountId: uuid("platform_discount_id").references(() => platformDiscountCodes.id, {
+      onDelete: "set null",
+    }),
     discountAppliedAt: timestamp("discount_applied_at", { withTimezone: true }),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),

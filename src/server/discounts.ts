@@ -109,8 +109,8 @@ function osloTime(value: string | null): string | null {
 
 /**
  * Creates or changes a code. Amounts are typed per market in its currency;
- * a fixed amount needs at least one market. A code that has been used
- * keeps its text and kind, so orders still say what they got.
+ * a fixed amount needs at least one market. Orders already placed keep
+ * what they got: a change only applies to orders from now on.
  */
 export async function saveDiscount(
   { account, store }: Membership,
@@ -148,13 +148,7 @@ export async function saveDiscount(
     `);
     if (Number(row.n) !== new Set(d.productIds).size) problems.push("A chosen product no longer exists.");
   }
-  if (id) {
-    const current = await getDiscount(store.id, id);
-    if (!current) return { ok: false, problems: ["The code no longer exists."] };
-    if (current.used > 0 && (current.code !== d.code || current.kind !== d.kind)) {
-      problems.push("This code has been used, so its text and kind stay as they are. Make a new code instead.");
-    }
-  }
+  if (id && !(await getDiscount(store.id, id))) return { ok: false, problems: ["The code no longer exists."] };
   if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
 
   const values = {
@@ -199,16 +193,15 @@ export async function saveDiscount(
   }
 }
 
-/** Deletes a code no order has used; one that has been used can only be switched off. */
+/**
+ * Deletes a code. Orders that used it keep what they got and still show
+ * the code's text; shoppers can no longer use it.
+ */
 export async function deleteDiscount({ account, store }: Membership, id: string): Promise<SaveResult> {
   const current = await getDiscount(store.id, id);
   if (!current) return { ok: true };
-  const [ever] = await db().execute<Row>(sql`
-    select 1 from commerce.orders where store_id = ${store.id}::uuid and discount_code_id = ${id}::uuid limit 1
-  `);
-  if (ever) return { ok: false, problems: ["Orders have used this code, so it can only be switched off."] };
   await db().execute(sql`delete from commerce.discount_codes where store_id = ${store.id}::uuid and id = ${id}::uuid`);
-  await audit(account.id, store.id, "discount.deleted", { code: current.code });
+  await audit(account.id, store.id, "discount.deleted", { code: current.code, used: current.used });
   return { ok: true };
 }
 

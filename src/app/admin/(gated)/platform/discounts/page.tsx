@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 
+import Link from "next/link";
+
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { platformDiscountSummary } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
 import { planCurrencies } from "@/server/billing";
 import { listPlatformDiscounts } from "@/server/platform-discounts";
 import { platformModes } from "@/server/stripe";
 
-import { createPlatformDiscountAction, setPlatformDiscountActiveAction } from "../actions";
+import { createPlatformDiscountAction, deletePlatformDiscountAction, setPlatformDiscountActiveAction } from "../actions";
+import { deleteQuestion, PlatformDiscountFields } from "./discount-fields";
 
 export const metadata: Metadata = { title: "Discounts" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
-const label = "flex flex-col gap-1 text-sm font-medium";
 const money = (minor: number, currency: string) => formatMoney(minor, currency, "nb-NO");
 
 /**
@@ -30,7 +32,7 @@ export default async function PlatformDiscountsPage() {
         <p className="max-w-2xl text-sm text-muted">
           Codes store owners use on their plan: a percentage or an amount off, once, for some months or for good.
           Kaizen puts each in Stripe{modes.length > 0 ? ` (${modes.join(" and ")} mode)` : ""}, which applies it to the
-          plan&apos;s invoices. What a code gives cannot change once made; switch it off and make another.
+          plan&apos;s invoices. A code can be changed or deleted at any time; plans that already have it keep what they got.
         </p>
       </div>
 
@@ -66,10 +68,24 @@ export default async function PlatformDiscountsPage() {
                       .join(" · ") || "None"}
                   </td>
                   <td className="px-4 py-2">{d.stores}</td>
-                  <td className="px-4 py-2 text-right">
-                    <ActionForm action={setPlatformDiscountActiveAction.bind(null, d.id, !d.active)}>
-                      <SubmitButton variant="secondary">{d.active ? "Switch off" : "Switch on"}</SubmitButton>
-                    </ActionForm>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center justify-end gap-1">
+                      <ActionForm action={setPlatformDiscountActiveAction.bind(null, d.id, !d.active)}>
+                        <SubmitButton variant="secondary">{d.active ? "Switch off" : "Switch on"}</SubmitButton>
+                      </ActionForm>
+                      <Link
+                        href={`/admin/platform/discounts/${d.id}`}
+                        className="flex min-h-10 items-center rounded-md px-3 hover:bg-surface"
+                      >
+                        Edit<span className="sr-only"> {d.code}</span>
+                      </Link>
+                      <DeleteDiscountButton
+                        action={deletePlatformDiscountAction.bind(null, d.id)}
+                        code={d.code}
+                        compact
+                        question={deleteQuestion(d.code, d.stores)}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -83,55 +99,7 @@ export default async function PlatformDiscountsPage() {
           New code
         </h2>
         <ActionForm action={createPlatformDiscountAction} className="flex flex-col gap-4" replaceOnSuccess>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className={label}>
-              Code
-              <input name="code" required maxLength={40} autoCapitalize="characters" className={`${control} font-mono uppercase`} />
-              <span className="text-xs font-normal text-muted">3–40 letters A–Z, digits, - or _.</span>
-            </label>
-            <label className={label}>
-              Gives
-              <select name="kind" defaultValue="percent" className={control}>
-                <option value="percent">A percentage off</option>
-                <option value="fixed">An amount off</option>
-              </select>
-            </label>
-            <label className={label}>
-              Percent off (for a percentage)
-              <input name="percent" type="number" min={1} max={100} defaultValue={20} className={control} />
-            </label>
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-1 text-sm font-medium">Amount off (for an amount), excluding VAT</legend>
-              <div className="flex flex-wrap gap-2">
-                {currencies.map((currency) => (
-                  <label key={currency} className="flex flex-col gap-1 text-xs">
-                    {currency}
-                    <input name={`amount_${currency}`} inputMode="decimal" className={`${control} w-28`} />
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <label className={label}>
-              How long
-              <select name="duration" defaultValue="repeating" className={control}>
-                <option value="once">The first payment</option>
-                <option value="repeating">Some months</option>
-                <option value="forever">Every payment</option>
-              </select>
-            </label>
-            <label className={label}>
-              Months (for some months)
-              <input name="durationMonths" type="number" min={1} max={36} defaultValue={3} className={control} />
-            </label>
-            <label className={label}>
-              Expires (optional)
-              <input name="expiresAt" type="date" className={control} />
-            </label>
-            <label className={label}>
-              Uses in all (optional)
-              <input name="maxRedemptions" type="number" min={1} placeholder="No limit" className={control} />
-            </label>
-          </div>
+          <PlatformDiscountFields discount={null} currencies={currencies} />
           <SubmitButton>Make code</SubmitButton>
         </ActionForm>
       </section>

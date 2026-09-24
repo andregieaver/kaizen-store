@@ -229,14 +229,17 @@ describe("placing an order with a code", () => {
     expect(line.unit_price_minor).toBe("10449");
   });
 
-  it("only lets unused codes be deleted", async () => {
+  it("can be changed and deleted after use, while orders keep what they got", async () => {
     const [used] = await db().execute<Row>(sql`select id from commerce.discount_codes where store_id = ${storeId}::uuid and code = 'SOMMER'`);
-    expect(await deleteDiscount(member, String(used.id))).toEqual({
-      ok: false,
-      problems: ["Orders have used this code, so it can only be switched off."],
-    });
-    const unused = await code({ code: "UBRUKT", kind: "percent", percent: 5 });
-    expect(await deleteDiscount(member, unused)).toEqual({ ok: true });
+    const id = String(used.id);
+    expect(await saveDiscount(member, id, { code: "SOMMER2", kind: "fixed", amounts: { NO: "10" } })).toMatchObject({ ok: true });
+    expect(await deleteDiscount(member, id)).toEqual({ ok: true });
+    const orders = await db().execute<Row>(sql`
+      select discount_code_id, discount_code, discount_minor from commerce.orders
+      where store_id = ${storeId}::uuid and discount_code = 'SOMMER'
+    `);
+    expect(orders.length).toBeGreaterThan(0);
+    expect(orders[0]).toEqual({ discount_code_id: null, discount_code: "SOMMER", discount_minor: "7960" });
   });
 });
 
