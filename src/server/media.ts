@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
 import { publicEnv } from "@/lib/env";
+import { supabaseKeyKind } from "@/lib/supabase-key";
 
 const BUCKET = "product-media";
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -16,6 +17,24 @@ const TYPES = new Set(["image/webp", "image/jpeg", "image/png", "image/avif"]);
  */
 export function uploadsEnabled(): boolean {
   return Boolean(process.env.SUPABASE_SECRET_KEY);
+}
+
+/**
+ * The secret key, or why uploads cannot work. Storage treats the
+ * publishable key as an anonymous visitor and refuses every upload, so
+ * that mistake is named rather than reported as a failed upload.
+ */
+function secretKey(): { key: string } | { problem: string } {
+  const key = process.env.SUPABASE_SECRET_KEY?.trim();
+  if (!key) return { problem: "Uploads are not set up on this server." };
+  if (supabaseKeyKind(key) === "publishable") {
+    console.error("[media] SUPABASE_SECRET_KEY holds the publishable key; Storage refuses its uploads.");
+    return {
+      problem:
+        "Uploads are set up with Supabase's publishable key. The platform needs the secret key (sb_secret_…) in SUPABASE_SECRET_KEY.",
+    };
+  }
+  return { key };
 }
 
 export type UploadResult =
@@ -31,8 +50,8 @@ export async function uploadProductImage(
   image: File,
   thumbnail: File,
 ): Promise<UploadResult> {
-  const secret = process.env.SUPABASE_SECRET_KEY;
-  if (!secret) return { ok: false, problem: "Picture uploads are not set up on this server." };
+  const secret = secretKey();
+  if ("problem" in secret) return { ok: false, problem: secret.problem };
   for (const file of [image, thumbnail]) {
     if (!TYPES.has(file.type)) return { ok: false, problem: "Use a JPEG, PNG, WebP or AVIF picture." };
     if (file.size === 0 || file.size > MAX_BYTES) {
@@ -41,7 +60,7 @@ export async function uploadProductImage(
   }
 
   const env = publicEnv();
-  const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, secret, {
+  const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, secret.key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   const name = randomUUID();
@@ -61,6 +80,7 @@ export async function uploadProductImage(
     storage.upload(paths.thumbnail, thumbnail, options(thumbnail)),
   ]);
   if (big.error || small.error) {
+    console.error("[media] picture upload failed:", (big.error ?? small.error)?.message);
     return { ok: false, problem: "The picture could not be uploaded. Try again." };
   }
   return {
@@ -77,9 +97,9 @@ export async function uploadProductImage(
 const FILES_BUCKET = "digital-files";
 
 function storageAdmin() {
-  const secret = process.env.SUPABASE_SECRET_KEY;
-  if (!secret) return null;
-  return createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret, {
+  const secret = secretKey();
+  if ("problem" in secret) return null;
+  return createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   }).storage.from(FILES_BUCKET);
 }
@@ -105,11 +125,17 @@ export type FileUpload =
  * upload for one new path in the store's folder.
  */
 export async function startFileUpload(storeId: string, fileName: string): Promise<FileUpload> {
+  const secret = secretKey();
   const storage = storageAdmin();
-  if (!storage) return { ok: false, problem: "File uploads are not set up on this server." };
+  if ("problem" in secret || !storage) {
+    return { ok: false, problem: "problem" in secret ? secret.problem : "Uploads are not set up on this server." };
+  }
   const path = `${storeId}/${randomUUID()}/${safeFileName(fileName)}`;
   const { data, error } = await storage.createSignedUploadUrl(path);
-  if (error || !data) return { ok: false, problem: "The upload could not be started. Try again." };
+  if (error || !data) {
+    console.error("[media] file upload could not start:", error?.message);
+    return { ok: false, problem: "The upload could not be started. Try again." };
+  }
   return { ok: true, path, token: data.token, bucket: FILES_BUCKET };
 }
 

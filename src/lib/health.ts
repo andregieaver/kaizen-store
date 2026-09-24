@@ -1,4 +1,5 @@
 import { publicEnv, type PublicEnv } from "@/lib/env";
+import { supabaseKeyKind } from "@/lib/supabase-key";
 
 type CheckResult = "ok" | "unreachable" | "not_configured";
 
@@ -20,6 +21,11 @@ export type HealthReport = {
   /** A short error code when the database check fails, e.g. `28P01`. */
   databaseError: string | null;
   activeMarkets: number | null;
+  /**
+   * Whether picture and file uploads have Supabase's secret key (never the
+   * key itself): `publishable_key` means the wrong one, which Storage refuses.
+   */
+  uploadKey: "ok" | "publishable_key" | "unrecognised" | "not_set";
 };
 
 export type DatabaseConnectionKind =
@@ -70,6 +76,7 @@ export async function checkHealth(
     env?: () => PublicEnv;
     countActiveMarkets?: (() => Promise<number>) | null;
     databaseUrl?: string;
+    uploadKey?: string;
     region?: string;
     commit?: string;
   } = {},
@@ -94,7 +101,14 @@ export async function checkHealth(
     databaseHost: databaseUrl ? sharedPoolerHost(databaseUrl) : null,
     databaseError: database.error,
     activeMarkets: database.activeMarkets,
+    uploadKey: uploadKeyKind(deps.uploadKey ?? process.env.SUPABASE_SECRET_KEY),
   };
+}
+
+function uploadKeyKind(key: string | undefined): HealthReport["uploadKey"] {
+  if (!key?.trim()) return "not_set";
+  const kind = supabaseKeyKind(key);
+  return kind === "secret" ? "ok" : kind === "publishable" ? "publishable_key" : "unrecognised";
 }
 
 async function checkSupabase(

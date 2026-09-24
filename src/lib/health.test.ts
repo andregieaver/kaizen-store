@@ -26,6 +26,7 @@ describe("checkHealth", () => {
         "postgres://postgres.ref:secret@aws-1-eu-west-1.pooler.supabase.com:6543/postgres",
       region: "dub1",
       commit: "abc",
+      uploadKey: "sb_publishable_wrong",
     });
 
     expect(report).toEqual({
@@ -38,6 +39,7 @@ describe("checkHealth", () => {
       databaseHost: "aws-1-eu-west-1.pooler.supabase.com",
       databaseError: null,
       activeMarkets: 4,
+      uploadKey: "publishable_key",
     });
     expect(JSON.stringify(report)).not.toContain("secret");
     const [url, init] = fetch.mock.calls[0];
