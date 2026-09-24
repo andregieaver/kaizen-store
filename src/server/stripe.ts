@@ -57,6 +57,11 @@ export const WEBHOOK_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] =
   "checkout.session.async_payment_succeeded",
   "checkout.session.async_payment_failed",
   "checkout.session.expired",
+  // Subscriptions (D25): renewals and changes made in Stripe.
+  "invoice.paid",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
 ];
 
 /** Account (v2) events: a store's Stripe account needs something, or changed. */

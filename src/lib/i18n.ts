@@ -97,6 +97,43 @@ const messages = {
     downloadGone:
       "Denne nedlastingen er ikke lenger tilgjengelig: grensen er nådd, eller lenken er utløpt. Kontakt butikken hvis du trenger filen igjen.",
     downloadFailed: "Filen kunne ikke hentes akkurat nå. Prøv igjen om litt.",
+    planEvery: (interval: string, n: number) =>
+      interval === "week"
+        ? n === 1 ? "Hver uke" : `Hver ${n}. uke`
+        : interval === "month"
+          ? n === 1 ? "Hver måned" : `Hver ${n}. måned`
+          : n === 1 ? "Hvert år" : `Hvert ${n}. år`,
+    oneTimePurchase: "Engangskjøp",
+    subscription: "Abonnement",
+    purchaseOptions: "Kjøpsalternativ",
+    planSave: (percent: number) => `Spar ${percent} %`,
+    perDelivery: "per levering",
+    renewsEvery: (every: string, amount: string) =>
+      `Fornyes ${every.toLowerCase()} for ${amount} til du sier opp. Du kan si opp når som helst.`,
+    subscriptionConsent: (every: string, amount: string) =>
+      `Jeg godtar et abonnement som fornyes ${every.toLowerCase()} for ${amount} til jeg sier det opp, og vet at jeg kan si opp når som helst.`,
+    planConflict: "Handlekurven har allerede et abonnement med en annen frekvens. Kjøp det først, eller velg samme frekvens.",
+    problemPlans: "Abonnementene i handlekurven fornyes ulikt. Behold én frekvens og prøv igjen.",
+    problemSubscriptionConsent: "Kryss av for at du godtar abonnementet for å gå videre.",
+    manageSubscription: "Se eller si opp abonnementet",
+    subscriptionStatus: {
+      pending: "Venter på betaling",
+      active: "Aktivt",
+      past_due: "Siste betaling feilet. Stripe prøver igjen.",
+      paused: "Satt på pause",
+      cancelled: "Avsluttet",
+      expired: "Ble ikke startet",
+    },
+    nextRenewal: (date: string) => `Neste fornyelse: ${date}`,
+    endsOn: (date: string) => `Abonnementet avsluttes ${date}. Du blir ikke belastet mer.`,
+    perRenewal: "Per fornyelse",
+    cancelSubscription: "Si opp abonnementet",
+    cancelling: "Sier opp …",
+    resumeSubscription: "Fortsett abonnementet",
+    cancelHelp: "Du kan si opp når som helst. Abonnementet varer ut perioden du har betalt for.",
+    subscriptionChangeFailed: "Endringen kunne ikke lagres. Prøv igjen om litt.",
+    savingChange: "Lagrer …",
+    subscriptionOrders: "Bestillinger i abonnementet",
     storeSummary: (name: string, country: string) => `${name}: nettbutikk med levering i ${country}. Priser inkludert mva.`,
     options: { colour: "Farge", ruling: "Linjer", white: "Hvit", black: "Svart", lined: "Linjert", dotted: "Prikket" },
   },
@@ -192,6 +229,45 @@ const messages = {
     downloadGone:
       "Den här nedladdningen är inte längre tillgänglig: gränsen är nådd eller länken har gått ut. Kontakta butiken om du behöver filen igen.",
     downloadFailed: "Filen kunde inte hämtas just nu. Försök igen om en stund.",
+    planEvery: (interval: string, n: number) => {
+      const nth = `${n}:${n % 10 <= 2 && n % 10 > 0 && (n % 100 < 11 || n % 100 > 12) ? "a" : "e"}`;
+      return interval === "week"
+        ? n === 1 ? "Varje vecka" : `Var ${nth} vecka`
+        : interval === "month"
+          ? n === 1 ? "Varje månad" : `Var ${nth} månad`
+          : n === 1 ? "Varje år" : `Vart ${nth} år`;
+    },
+    oneTimePurchase: "Engångsköp",
+    subscription: "Prenumeration",
+    purchaseOptions: "Köpalternativ",
+    planSave: (percent: number) => `Spara ${percent} %`,
+    perDelivery: "per leverans",
+    renewsEvery: (every: string, amount: string) =>
+      `Förnyas ${every.toLowerCase()} för ${amount} tills du säger upp den. Du kan säga upp när som helst.`,
+    subscriptionConsent: (every: string, amount: string) =>
+      `Jag godkänner en prenumeration som förnyas ${every.toLowerCase()} för ${amount} tills jag säger upp den, och vet att jag kan säga upp när som helst.`,
+    planConflict: "Varukorgen har redan en prenumeration med en annan frekvens. Köp den först, eller välj samma frekvens.",
+    problemPlans: "Prenumerationerna i varukorgen förnyas olika. Behåll en frekvens och försök igen.",
+    problemSubscriptionConsent: "Kryssa i att du godkänner prenumerationen för att gå vidare.",
+    manageSubscription: "Se eller säg upp prenumerationen",
+    subscriptionStatus: {
+      pending: "Väntar på betalning",
+      active: "Aktiv",
+      past_due: "Senaste betalningen misslyckades. Stripe försöker igen.",
+      paused: "Pausad",
+      cancelled: "Avslutad",
+      expired: "Startades aldrig",
+    },
+    nextRenewal: (date: string) => `Nästa förnyelse: ${date}`,
+    endsOn: (date: string) => `Prenumerationen avslutas ${date}. Du debiteras inte mer.`,
+    perRenewal: "Per förnyelse",
+    cancelSubscription: "Säg upp prenumerationen",
+    cancelling: "Säger upp …",
+    resumeSubscription: "Fortsätt prenumerationen",
+    cancelHelp: "Du kan säga upp när som helst. Prenumerationen gäller perioden du har betalat för.",
+    subscriptionChangeFailed: "Ändringen kunde inte sparas. Försök igen om en stund.",
+    savingChange: "Sparar …",
+    subscriptionOrders: "Beställningar i prenumerationen",
     storeSummary: (name: string, country: string) => `${name}: webbutik med leverans i ${country}. Priser inklusive moms.`,
     options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad" },
   },
@@ -287,6 +363,43 @@ const messages = {
     downloadGone:
       "Denne download er ikke længere tilgængelig: grænsen er nået, eller linket er udløbet. Kontakt butikken, hvis du har brug for filen igen.",
     downloadFailed: "Filen kunne ikke hentes lige nu. Prøv igen om lidt.",
+    planEvery: (interval: string, n: number) =>
+      interval === "week"
+        ? n === 1 ? "Hver uge" : `Hver ${n}. uge`
+        : interval === "month"
+          ? n === 1 ? "Hver måned" : `Hver ${n}. måned`
+          : n === 1 ? "Hvert år" : `Hvert ${n}. år`,
+    oneTimePurchase: "Engangskøb",
+    subscription: "Abonnement",
+    purchaseOptions: "Købsmulighed",
+    planSave: (percent: number) => `Spar ${percent} %`,
+    perDelivery: "pr. levering",
+    renewsEvery: (every: string, amount: string) =>
+      `Fornyes ${every.toLowerCase()} for ${amount}, indtil du opsiger det. Du kan opsige når som helst.`,
+    subscriptionConsent: (every: string, amount: string) =>
+      `Jeg accepterer et abonnement, der fornyes ${every.toLowerCase()} for ${amount}, indtil jeg opsiger det, og ved, at jeg kan opsige når som helst.`,
+    planConflict: "Kurven har allerede et abonnement med en anden frekvens. Køb det først, eller vælg samme frekvens.",
+    problemPlans: "Abonnementerne i kurven fornyes forskelligt. Behold én frekvens, og prøv igen.",
+    problemSubscriptionConsent: "Sæt kryds ved, at du accepterer abonnementet, for at gå videre.",
+    manageSubscription: "Se eller opsig abonnementet",
+    subscriptionStatus: {
+      pending: "Afventer betaling",
+      active: "Aktivt",
+      past_due: "Seneste betaling mislykkedes. Stripe prøver igen.",
+      paused: "Sat på pause",
+      cancelled: "Afsluttet",
+      expired: "Blev ikke startet",
+    },
+    nextRenewal: (date: string) => `Næste fornyelse: ${date}`,
+    endsOn: (date: string) => `Abonnementet slutter ${date}. Du bliver ikke opkrævet mere.`,
+    perRenewal: "Pr. fornyelse",
+    cancelSubscription: "Opsig abonnementet",
+    cancelling: "Opsiger …",
+    resumeSubscription: "Fortsæt abonnementet",
+    cancelHelp: "Du kan opsige når som helst. Abonnementet løber perioden ud, som du har betalt for.",
+    subscriptionChangeFailed: "Ændringen kunne ikke gemmes. Prøv igen om lidt.",
+    savingChange: "Gemmer …",
+    subscriptionOrders: "Ordrer i abonnementet",
     storeSummary: (name: string, country: string) => `${name}: webshop med levering i ${country}. Priser inkl. moms.`,
     options: { colour: "Farve", ruling: "Linjer", white: "Hvid", black: "Sort", lined: "Linjeret", dotted: "Prikket" },
   },
@@ -382,6 +495,43 @@ const messages = {
     downloadGone:
       "This download is no longer available: the limit is reached or the link has expired. Contact the store if you need the file again.",
     downloadFailed: "The file could not be fetched just now. Please try again shortly.",
+    planEvery: (interval: string, n: number) =>
+      interval === "week"
+        ? n === 1 ? "Every week" : `Every ${n} weeks`
+        : interval === "month"
+          ? n === 1 ? "Every month" : `Every ${n} months`
+          : n === 1 ? "Every year" : `Every ${n} years`,
+    oneTimePurchase: "One-time purchase",
+    subscription: "Subscription",
+    purchaseOptions: "Purchase option",
+    planSave: (percent: number) => `Save ${percent}%`,
+    perDelivery: "per delivery",
+    renewsEvery: (every: string, amount: string) =>
+      `Renews ${every.toLowerCase()} at ${amount} until you cancel. You can cancel any time.`,
+    subscriptionConsent: (every: string, amount: string) =>
+      `I agree to a subscription that renews ${every.toLowerCase()} at ${amount} until I cancel it, and know I can cancel any time.`,
+    planConflict: "Your cart already has a subscription on a different schedule. Buy that first, or choose the same schedule.",
+    problemPlans: "The subscriptions in your cart renew on different schedules. Keep one schedule and try again.",
+    problemSubscriptionConsent: "Tick the box to agree to the subscription before you continue.",
+    manageSubscription: "See or cancel the subscription",
+    subscriptionStatus: {
+      pending: "Waiting for payment",
+      active: "Active",
+      past_due: "The last payment failed. Stripe will try again.",
+      paused: "Paused",
+      cancelled: "Cancelled",
+      expired: "Never started",
+    },
+    nextRenewal: (date: string) => `Next renewal: ${date}`,
+    endsOn: (date: string) => `The subscription ends on ${date}. You will not be charged again.`,
+    perRenewal: "Each renewal",
+    cancelSubscription: "Cancel the subscription",
+    cancelling: "Cancelling …",
+    resumeSubscription: "Keep the subscription",
+    cancelHelp: "You can cancel any time. The subscription lasts until the end of the period you have paid for.",
+    subscriptionChangeFailed: "The change could not be saved. Please try again shortly.",
+    savingChange: "Saving …",
+    subscriptionOrders: "Orders in this subscription",
     storeSummary: (name: string, country: string) => `${name}: online store delivering in ${country}. Prices include VAT.`,
     options: { colour: "Colour", ruling: "Ruling", white: "White", black: "Black", lined: "Lined", dotted: "Dotted" },
   },

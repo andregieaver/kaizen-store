@@ -96,6 +96,22 @@ export const withdrawalExclusion = commerce.enum("withdrawal_exclusion", [
  */
 export const delivery = commerce.enum("delivery", ["physical", "digital"]);
 
+/** How often a subscription renews: every `interval_count` weeks, months or years (D25). */
+export const planInterval = commerce.enum("plan_interval", ["week", "month", "year"]);
+
+/**
+ * A subscription's state, following Stripe's: `pending` until the first
+ * payment, `expired` when that checkout was never paid.
+ */
+export const subscriptionStatus = commerce.enum("subscription_status", [
+  "pending",
+  "active",
+  "past_due",
+  "paused",
+  "cancelled",
+  "expired",
+]);
+
 /**
  * Extended producer responsibility schemes a product can fall under. Each one
  * needs a registration in every market the product is sold in.
@@ -558,6 +574,8 @@ export const products = commerce.table(
     downloadLimit: integer("download_limit"),
     /** Digital variants: days the download links work after payment (null: no end). */
     downloadDays: integer("download_days"),
+    /** Sold only through its purchase options (selling plans), never once (D25). */
+    subscriptionOnly: boolean("subscription_only").notNull().default(false),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
     createdAt: createdAt(),
@@ -709,6 +727,47 @@ const variantRef = (
     name,
     columns: [cols.storeId, cols.variantId],
     foreignColumns: [productVariants.storeId, productVariants.id],
+  });
+
+/**
+ * A purchase option for subscribing to a product (D25), as Shopify's selling
+ * plans and WooCommerce's subscription options: how often it renews and the
+ * subscriber's discount. Options in use are switched off, never deleted.
+ */
+export const sellingPlans = commerce.table(
+  "selling_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    interval: planInterval("interval").notNull(),
+    intervalCount: integer("interval_count").notNull().default(1),
+    /** Whole percent off the one-time price, 0 for none. */
+    discountPercent: integer("discount_percent").notNull().default(0),
+    position: integer("position").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("selling_plans_store_id_key").on(t.storeId, t.id),
+    productRef("selling_plans_product_fk", t),
+    index("selling_plans_product_idx").on(t.storeId, t.productId, t.position),
+    // Stripe renews at most every three years.
+    check(
+      "selling_plans_interval_count",
+      sql`(${t.interval} = 'week' and ${t.intervalCount} between 1 and 52)
+        or (${t.interval} = 'month' and ${t.intervalCount} between 1 and 12)
+        or (${t.interval} = 'year' and ${t.intervalCount} between 1 and 3)`,
+    ),
+    check("selling_plans_discount_percent", sql`${t.discountPercent} between 0 and 90`),
+  ],
+);
+
+const sellingPlanRef = (name: string, cols: { storeId: AnyPgColumn; sellingPlanId: AnyPgColumn }) =>
+  foreignKey({
+    name,
+    columns: [cols.storeId, cols.sellingPlanId],
+    foreignColumns: [sellingPlans.storeId, sellingPlans.id],
   });
 
 const marketRef = (
@@ -915,9 +974,13 @@ export const cartLines = commerce.table(
     cartId: uuid("cart_id").notNull(),
     variantId: uuid("variant_id").notNull(),
     quantity: integer("quantity").notNull(),
+    /** Bought as a subscription with this purchase option; null for once (D25). */
+    sellingPlanId: uuid("selling_plan_id"),
   },
   (t) => [
-    unique("cart_lines_cart_variant_key").on(t.cartId, t.variantId),
+    unique("cart_lines_cart_variant_plan_key").on(t.cartId, t.variantId, t.sellingPlanId).nullsNotDistinct(),
+    sellingPlanRef("cart_lines_selling_plan_fk", t),
+    index("cart_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
     cartRef("cart_lines_cart_fk", t).onDelete("cascade"),
     variantRef("cart_lines_variant_fk", t),
     index("cart_lines_store_cart_idx").on(t.storeId, t.cartId),
@@ -961,10 +1024,13 @@ export const orders = commerce.table(
     digitalConsentAt: timestamp("digital_consent_at", { withTimezone: true }),
     /** When the goods reached the customer; starts the withdrawal period. */
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** The subscription this order started or renewed (D25). */
+    subscriptionId: uuid("subscription_id"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("orders_store_id_key").on(t.storeId, t.id),
+    index("orders_subscription_idx").on(t.storeId, t.subscriptionId),
     unique("orders_store_number_key").on(t.storeId, t.number),
     marketRef("orders_market_fk", t),
     customerRef("orders_customer_fk", t),
@@ -1011,9 +1077,15 @@ export const orderLines = commerce.table(
     withdrawalExclusion: withdrawalExclusion("withdrawal_exclusion").notNull().default("none"),
     /** How the line is delivered, as sold. */
     delivery: delivery("delivery").notNull().default("physical"),
+    /** A subscription line: the purchase option and how often it renews, as sold (D25). */
+    sellingPlanId: uuid("selling_plan_id"),
+    planInterval: planInterval("plan_interval"),
+    planIntervalCount: integer("plan_interval_count"),
   },
   (t) => [
     unique("order_lines_store_id_key").on(t.storeId, t.id),
+    sellingPlanRef("order_lines_selling_plan_fk", t),
+    index("order_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
     orderRef("order_lines_order_fk", t),
     variantRef("order_lines_variant_fk", t),
     index("order_lines_order_idx").on(t.storeId, t.orderId),
@@ -1027,6 +1099,93 @@ export const orderLines = commerce.table(
       "order_lines_amounts_non_negative",
       sql`${t.unitPriceMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.taxMinor} >= 0`,
     ),
+  ],
+);
+
+/**
+ * A shopper's subscription (D25): what is sent or made available each time
+ * it renews, at the price agreed when it started. Stripe Billing on the
+ * store's own account charges it; each paid renewal becomes an order.
+ */
+export const subscriptions = commerce.table(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    /** Shown to shoppers and staff: the first order's number. */
+    number: text("number").notNull(),
+    status: subscriptionStatus("status").notNull().default("pending"),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    locale: text("locale").notNull(),
+    email: text("email").notNull().default(""),
+    shippingAddress: jsonb("shipping_address").notNull().default({}),
+    interval: planInterval("interval").notNull(),
+    intervalCount: integer("interval_count").notNull(),
+    /** Each renewal: the items, shipping, total and the VAT in it. */
+    subtotalMinor: money("subtotal_minor"),
+    shippingMinor: money("shipping_minor").default(0),
+    totalMinor: money("total_minor"),
+    taxMinor: money("tax_minor"),
+    firstOrderId: uuid("first_order_id").notNull(),
+    /** The Stripe subscription, on the store's account. */
+    provider: text("provider").notNull().default("stripe"),
+    providerReference: text("provider_reference"),
+    providerAccount: text("provider_account"),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /** The secret in the shopper's link to see and cancel the subscription. */
+    manageToken: text("manage_token").notNull().unique(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("subscriptions_store_id_key").on(t.storeId, t.id),
+    unique("subscriptions_store_reference_key").on(t.storeId, t.provider, t.providerReference),
+    orderRef("subscriptions_first_order_fk", { storeId: t.storeId, orderId: t.firstOrderId }),
+    index("subscriptions_first_order_idx").on(t.storeId, t.firstOrderId),
+    index("subscriptions_store_status_idx").on(t.storeId, t.status),
+    check("subscriptions_interval_count_positive", sql`${t.intervalCount} > 0`),
+    check("subscriptions_total_adds_up", sql`${t.totalMinor} = ${t.subtotalMinor} + ${t.shippingMinor}`),
+    check(
+      "subscriptions_amounts_non_negative",
+      sql`${t.subtotalMinor} >= 0 and ${t.shippingMinor} >= 0 and ${t.taxMinor} >= 0`,
+    ),
+  ],
+);
+
+/** What each renewal of a subscription contains, as agreed at the start. */
+export const subscriptionLines = commerce.table(
+  "subscription_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    subscriptionId: uuid("subscription_id").notNull(),
+    variantId: uuid("variant_id"),
+    sellingPlanId: uuid("selling_plan_id"),
+    sku: text("sku").notNull(),
+    title: text("title").notNull(),
+    quantity: integer("quantity").notNull(),
+    unitPriceMinor: money("unit_price_minor"),
+    totalMinor: money("total_minor"),
+    taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).notNull(),
+    taxCode: text("tax_code").notNull(),
+    delivery: delivery("delivery").notNull().default("physical"),
+  },
+  (t) => [
+    foreignKey({
+      name: "subscription_lines_subscription_fk",
+      columns: [t.storeId, t.subscriptionId],
+      foreignColumns: [subscriptions.storeId, subscriptions.id],
+    }).onDelete("cascade"),
+    variantRef("subscription_lines_variant_fk", t),
+    sellingPlanRef("subscription_lines_selling_plan_fk", t),
+    index("subscription_lines_subscription_idx").on(t.storeId, t.subscriptionId),
+    index("subscription_lines_variant_idx").on(t.storeId, t.variantId),
+    index("subscription_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
+    check("subscription_lines_quantity_positive", sql`${t.quantity} > 0`),
+    check("subscription_lines_total_adds_up", sql`${t.totalMinor} = ${t.unitPriceMinor} * ${t.quantity}`),
   ],
 );
 

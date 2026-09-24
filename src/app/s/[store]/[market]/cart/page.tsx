@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 import { CheckoutButton } from "@/components/checkout-button";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
-import { shippingCost } from "@/lib/checkout";
+import { basketShipping } from "@/lib/subscriptions";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -77,17 +77,31 @@ async function CartContents({
   const blocked = cart.lines.some((line) => line.status !== "ok");
   const checkout = await getCheckoutInfo(store.id, market.code);
   const subtotal = cartSubtotal(payable);
-  // Downloads alone need no shipping (D24).
+  // Downloads alone need no shipping (D24); a subscription pays it per delivery (D25).
   const ships = cart.lines.some((line) => line.delivery === "physical");
   const digital = cart.lines.some((line) => line.delivery === "digital");
-  const shipping = !ships ? 0 : checkout.shipping ? shippingCost(subtotal, checkout.shipping) : null;
+  const basket = basketShipping(
+    payable.map((line) => ({
+      totalMinor: line.unitPriceMinor * line.quantity,
+      delivery: line.delivery,
+      recurring: line.plan !== null,
+    })),
+    checkout.shipping,
+  );
+  const shipping = !ships ? 0 : checkout.shipping ? basket.first : null;
+  const plan = payable.find((line) => line.plan)?.plan ?? null;
+  const renewal = plan
+    ? payable.filter((line) => line.plan).reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0) +
+      basket.renewal
+    : null;
+  const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
   const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
 
   return (
     <div className="grid gap-8 md:grid-cols-[1fr_18rem]">
       <ul className="divide-y divide-border border-y border-border">
         {cart.lines.map((line) => (
-          <li key={line.variantId} className="flex gap-4 py-4">
+          <li key={`${line.variantId}:${line.plan?.id ?? ""}`} className="flex gap-4 py-4">
             {line.image && (
               <Image
                 src={line.image.url}
@@ -108,6 +122,12 @@ async function CartContents({
                     <p className="text-sm text-muted">{optionLabel(m, line.options)}</p>
                   )}
                   {line.delivery === "digital" && <p className="text-sm text-muted">{m.digitalDelivery}</p>}
+                  {line.plan && (
+                    <p className="text-sm text-muted">
+                      {m.subscription}: {m.planEvery(line.plan.interval, line.plan.intervalCount).toLowerCase()}
+                      {line.plan.discountPercent > 0 && ` · ${m.planSave(line.plan.discountPercent)}`}
+                    </p>
+                  )}
                 </div>
                 {line.unitPriceMinor !== null && line.status !== "unavailable" && (
                   <p className="font-medium">{money(line.unitPriceMinor * line.quantity)}</p>
@@ -127,6 +147,7 @@ async function CartContents({
                     <input type="hidden" name="store" value={store.slug} />
                   <input type="hidden" name="market" value={market.slug} />
                     <input type="hidden" name="variantId" value={line.variantId} />
+                    {line.plan && <input type="hidden" name="sellingPlanId" value={line.plan.id} />}
                     <label className="flex flex-col text-sm">
                       {m.quantity}
                       <input
@@ -147,6 +168,7 @@ async function CartContents({
                   <input type="hidden" name="store" value={store.slug} />
                   <input type="hidden" name="market" value={market.slug} />
                   <input type="hidden" name="variantId" value={line.variantId} />
+                  {line.plan && <input type="hidden" name="sellingPlanId" value={line.plan.id} />}
                   <input type="hidden" name="quantity" value="0" />
                   <button type="submit" className="min-h-11 px-3 text-sm underline">
                     {m.remove}
@@ -167,7 +189,10 @@ async function CartContents({
           </div>
           {shipping !== null && ships && (
             <div className="flex justify-between">
-              <dt>{m.shipping}</dt>
+              <dt>
+                {m.shipping}
+                {basket.renewal > 0 && <span className="text-sm text-muted"> {m.perDelivery}</span>}
+              </dt>
               <dd>{shipping === 0 ? m.freeShipping : money(shipping)}</dd>
             </div>
           )}
@@ -180,13 +205,17 @@ async function CartContents({
           {m.vatIncluded}
           {shipping === null && ` · ${m.shippingAtCheckout}`}
         </p>
+        {renewal !== null && <p className="text-sm">{m.renewsEvery(every, money(renewal))}</p>}
         {checkout.paymentsOn ? (
           <CheckoutButton
             store={store.slug}
             market={market.slug}
             disabled={blocked}
             labels={checkoutLabels(m)}
-            consent={digital ? m.digitalConsent : undefined}
+            consents={{
+              digital: digital ? m.digitalConsent : undefined,
+              subscription: renewal !== null ? m.subscriptionConsent(every, money(renewal)) : undefined,
+            }}
           />
         ) : (
           <p className="text-sm">{m.checkoutUnavailable}</p>

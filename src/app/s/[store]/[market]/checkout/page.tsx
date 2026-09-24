@@ -72,7 +72,15 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
                 market={market.slug}
                 disabled={false}
                 labels={checkoutLabels(m, m.restartCheckout)}
-                consent={open.digital ? m.digitalConsent : undefined}
+                consents={{
+                  digital: open.digital ? m.digitalConsent : undefined,
+                  subscription: open.subscription
+                    ? m.subscriptionConsent(
+                        m.planEvery(open.subscription.interval, open.subscription.intervalCount),
+                        money(open.subscription.totalMinor),
+                      )
+                    : undefined,
+                }}
               />
             )}
           </div>

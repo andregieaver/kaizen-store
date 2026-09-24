@@ -53,6 +53,8 @@ export type OrderView = {
   ships: boolean;
   /** When the shopper agreed that downloads start at once (D24). */
   digitalConsentAt: string | null;
+  /** The subscription this order started or renewed (D25). */
+  subscriptionId: string | null;
 };
 
 /** A file the shopper can download from a paid order (D24). */
@@ -94,6 +96,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   })),
   ships: lines.some((line) => line.delivery !== "digital"),
   digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
+  subscriptionId: row.subscription_id ? String(row.subscription_id) : null,
 });
 
 export async function getOrder(storeId: string, orderId: string): Promise<OrderView | null> {

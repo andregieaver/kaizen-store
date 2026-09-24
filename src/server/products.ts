@@ -12,6 +12,7 @@ import {
   type OperatorChoice,
   type ProductInput,
 } from "@/lib/product-input";
+import type { PlanInterval } from "@/lib/subscriptions";
 
 import { storedFileInfo, uploadsEnabled } from "./media";
 import type { Store } from "./stores";
@@ -100,6 +101,8 @@ export function emptyProduct(context: EditorContext): ProductInput {
     files: [],
     downloadLimit: 5,
     downloadDays: 30,
+    plans: [],
+    subscriptionOnly: false,
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
@@ -183,12 +186,12 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days
+           delivery, download_limit, download_days, subscription_only
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
 
-  const [translations, media, schemes, variants, prices, files] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files, plans] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -223,6 +226,11 @@ export async function getProductForEdit(
       left join commerce.product_variants v on v.store_id = f.store_id and v.id = f.variant_id
       where f.store_id = ${store.id}::uuid and f.product_id = ${productId}::uuid and f.removed_at is null
       order by f.position, f.created_at
+    `),
+    db().execute<Row>(sql`
+      select id, interval, interval_count, discount_percent from commerce.selling_plans
+      where store_id = ${store.id}::uuid and product_id = ${productId}::uuid and active
+      order by position, created_at
     `),
   ]);
 
@@ -302,6 +310,13 @@ export async function getProductForEdit(
     // editor offers the usual ones (products made before D24 have none).
     downloadLimit: product.download_limit !== null ? Number(product.download_limit) : sold ? null : 5,
     downloadDays: product.download_days !== null ? Number(product.download_days) : sold ? null : 30,
+    plans: plans.map((p) => ({
+      id: String(p.id),
+      interval: p.interval as PlanInterval,
+      intervalCount: Number(p.interval_count),
+      discountPercent: Number(p.discount_percent),
+    })),
+    subscriptionOnly: Boolean(product.subscription_only),
     taxCode: String(product.tax_code),
     withdrawalExclusion: String(product.withdrawal_exclusion),
     schemes: schemes.map((s) => String(s.scheme)),
@@ -371,6 +386,7 @@ export async function saveProduct(
       const locationId = await stockLocation(tx, store);
       await saveVariants(tx, store.id, saved, context, input, locationId);
       await saveFiles(tx, store.id, saved, input);
+      await savePlans(tx, store.id, saved, input);
       // Last, so the publishing check sees the finished listing.
       await tx.execute(sql`
         update commerce.products set status = ${input.status}, updated_at = now()
@@ -417,7 +433,7 @@ async function upsertProduct(
         manufacturer_id = ${manufacturerId}::uuid, responsible_person_id = ${responsibleId}::uuid,
         tax_code = ${input.taxCode}, withdrawal_exclusion = ${input.withdrawalExclusion},
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
-        updated_at = now()
+        subscription_only = ${input.subscriptionOnly}, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -427,10 +443,11 @@ async function upsertProduct(
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
-      delivery, download_limit, download_days
+      delivery, download_limit, download_days, subscription_only
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
-      ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays}
+      ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
+      ${input.subscriptionOnly}
     )
     returning id
   `);
@@ -593,6 +610,37 @@ async function saveVariants(
  * The product's download files. Files taken out are marked removed, not
  * deleted, so shoppers who bought them can still download them.
  */
+/**
+ * Saves the purchase options (D25). An option left out is switched off, not
+ * deleted: carts, orders and subscriptions keep pointing at it.
+ */
+async function savePlans(tx: Tx, storeId: string, productId: string, input: ProductInput) {
+  const kept: string[] = [];
+  for (const [position, plan] of input.plans.entries()) {
+    const [row] = plan.id
+      ? await tx.execute<Row>(sql`
+          update commerce.selling_plans set
+            interval = ${plan.interval}, interval_count = ${plan.intervalCount},
+            discount_percent = ${plan.discountPercent}, position = ${position}, active = true
+          where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and id = ${plan.id}::uuid
+          returning id
+        `)
+      : await tx.execute<Row>(sql`
+          insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent, position)
+          values (${storeId}::uuid, ${productId}::uuid, ${plan.interval}, ${plan.intervalCount},
+                  ${plan.discountPercent}, ${position})
+          returning id
+        `);
+    if (!row) throw new Error("unknown selling plan");
+    kept.push(String(row.id));
+  }
+  await tx.execute(sql`
+    update commerce.selling_plans set active = false
+    where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and active
+      ${kept.length > 0 ? sql`and id not in (${sql.join(kept.map((id) => sql`${id}::uuid`), sql`, `)})` : sql``}
+  `);
+}
+
 async function saveFiles(tx: Tx, storeId: string, productId: string, input: ProductInput) {
   const variants = await tx.execute<Row>(sql`
     select id, sku from commerce.product_variants

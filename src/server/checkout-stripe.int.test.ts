@@ -163,6 +163,64 @@ describe("starting checkout", () => {
     }
   });
 
+  it("starts a subscription on the store's account, with shipping that renews and Kaizen's fee as a share", async () => {
+    await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 150`);
+    await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
+    try {
+      const [plan] = await db().execute<Row>(sql`
+        insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent)
+        select store_id, id, 'week', 2, 10 from commerce.products
+        where store_id = ${storeId}::uuid and handle = 'demo-notatbok'
+        returning id
+      `);
+      const cartId = await cartWith("DEMO-MUG-WHITE", 1);
+      await db().execute(sql`
+        insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity, selling_plan_id)
+        select ${storeId}::uuid, ${cartId}::uuid, id, 1, ${String(plan.id)}::uuid
+        from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-NOTEBOOK-LINED'
+      `);
+      const result = await startCheckout(shop(), cartId, "https://shop.test", "Frakt", { subscription: true });
+      expect(result.ok).toBe(true);
+      const { params } = fake.created[fake.created.length - 1];
+      const [sub] = await db().execute<Row>(sql`
+        select s.id from commerce.subscriptions s join commerce.orders o on o.id = s.first_order_id
+        where o.cart_id = ${cartId}::uuid
+      `);
+      // Stripe takes no shipping options or order invoice in this mode:
+      // shipping is a line that renews, and subscriptions get invoices anyway.
+      expect(params).not.toHaveProperty("shipping_options");
+      expect(params).not.toHaveProperty("invoice_creation");
+      expect(params).not.toHaveProperty("payment_intent_data");
+      expect(params).toMatchObject({
+        mode: "subscription",
+        shipping_address_collection: { allowed_countries: ["NO"] },
+        subscription_data: {
+          application_fee_percent: 1.5,
+          metadata: { subscription_id: String(sub.id) },
+        },
+        line_items: [
+          { quantity: 1, price_data: { unit_amount: 24900, product_data: { name: "Demo: Keramikkopp (white)" } } },
+          {
+            quantity: 1,
+            price_data: {
+              unit_amount: 11610,
+              product_data: { name: "Demo: Notatbok A5 (lined)" },
+              recurring: { interval: "week", interval_count: 2 },
+            },
+          },
+          {
+            quantity: 1,
+            price_data: { unit_amount: 9900, product_data: { name: "Frakt" }, recurring: { interval: "week", interval_count: 2 } },
+          },
+        ],
+      });
+      expect((params.line_items as { price_data: object }[])[0].price_data).not.toHaveProperty("recurring");
+    } finally {
+      await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 0`);
+      await db().execute(sql`update commerce.payment_providers set order_invoices = false where store_id = ${storeId}::uuid`);
+    }
+  });
+
   it("closes the earlier session when the shopper checks out again", async () => {
     const cartId = await cartWith("DEMO-TOTE", 1);
     await startCheckout(shop(), cartId, "https://shop.test", "Frakt");

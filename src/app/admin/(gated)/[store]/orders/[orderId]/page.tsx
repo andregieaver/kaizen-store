@@ -16,6 +16,11 @@ const EVENT_LABELS: Record<string, string> = {
   "order.paid": "Paid",
   "order.cancelled": "Checkout not completed",
   "stock.short": "Not enough stock for everything paid for",
+  "payment.started": "Payment opened",
+  "subscription.renewed": "Subscription renewed",
+  "subscription.cancel": "Subscription set to end with the period",
+  "subscription.resume": "Subscription kept after all",
+  "subscription.cancel_now": "Subscription cancelled",
 };
 
 export default async function OrderPage({ params }: PageProps<"/admin/[store]/orders/[orderId]">) {
@@ -42,6 +47,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         <h1 className="text-2xl font-semibold">Order #{order.number}</h1>
         <p className="text-sm text-muted">
           {STATUS_LABELS[order.status]} · placed {when(order.placedAt)} · {order.marketCode}
+          {order.subscriptionId && (
+            <>
+              {" · "}
+              <Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">
+                part of a subscription
+              </Link>
+            </>
+          )}
         </p>
       </div>
       {events.some((e) => e.type === "stock.short") && (

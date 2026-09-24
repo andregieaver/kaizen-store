@@ -5,12 +5,16 @@ import { useActionState } from "react";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 
+import { useChosenPlan } from "./purchase-options";
+
 export type AddToCartLabels = {
   addToCart: string;
   adding: string;
   added: string;
   capped: string;
   unavailable: string;
+  /** The cart already has a subscription on another schedule. */
+  planConflict: string;
   tryAgain: string;
   goToCart: string;
 };
@@ -33,6 +37,7 @@ export function AddToCart({
   labels: AddToCartLabels;
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
+  const plan = useChosenPlan();
   const message =
     state.outcome === "added"
       ? labels.added
@@ -40,7 +45,9 @@ export function AddToCart({
         ? labels.capped
         : state.outcome === "unavailable"
           ? labels.unavailable
-          : state.outcome === "error"
+          : state.outcome === "plan_conflict"
+            ? labels.planConflict
+            : state.outcome === "error"
             ? labels.tryAgain
             : null;
 
@@ -50,6 +57,7 @@ export function AddToCart({
       <input type="hidden" name="market" value={market} />
       <input type="hidden" name="variantId" value={variantId} />
       <input type="hidden" name="quantity" value="1" />
+      {plan && <input type="hidden" name="sellingPlanId" value={plan.id} />}
       <button
         type="submit"
         disabled={disabled || pending}

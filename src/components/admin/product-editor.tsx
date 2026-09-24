@@ -36,6 +36,7 @@ import {
   type VariantInput,
 } from "@/lib/product-input";
 import { summarize } from "@/lib/seo";
+import { MAX_DISCOUNT_PERCENT, MAX_INTERVAL_COUNT, MAX_PLANS, type PlanInterval } from "@/lib/subscriptions";
 import { slugify } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
@@ -227,6 +228,7 @@ export function ProductEditor(props: Props) {
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
+      <SubscriptionSection product={product} update={update} />
       <SafetySection
         product={product}
         update={update}
@@ -1160,6 +1162,157 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
           />
         </label>
       </div>
+    </section>
+  );
+}
+
+const INTERVAL_NAMES: Record<PlanInterval, [string, string]> = {
+  week: ["week", "weeks"],
+  month: ["month", "months"],
+  year: ["year", "years"],
+};
+
+/** Purchase options for subscribing (D25), like Shopify's selling plans. */
+function SubscriptionSection({ product, update }: SectionProps) {
+  const setPlan = (index: number, change: Partial<ProductInput["plans"][number]>) =>
+    update((p) => ({ ...p, plans: p.plans.map((plan, i) => (i === index ? { ...plan, ...change } : plan)) }));
+  const count = (text: string, interval: PlanInterval) =>
+    Math.min(MAX_INTERVAL_COUNT[interval], Math.max(1, Math.floor(Number(text) || 1)));
+  const addPlan = () =>
+    update((p) => {
+      // Suggest the next usual rhythm that is not taken yet.
+      const taken = new Set(p.plans.map((plan) => `${plan.interval}:${plan.intervalCount}`));
+      const next =
+        (
+          [
+            ["month", 1],
+            ["month", 2],
+            ["week", 2],
+            ["month", 3],
+            ["year", 1],
+          ] as const
+        ).find(([interval, n]) => !taken.has(`${interval}:${n}`)) ?? (["month", 6] as const);
+      return {
+        ...p,
+        plans: [...p.plans, { id: null, interval: next[0], intervalCount: next[1], discountPercent: 10 }],
+      };
+    });
+
+  return (
+    <section aria-labelledby="subscription-heading" className={card}>
+      <h2 id="subscription-heading" className="mb-1 font-medium">
+        Subscriptions
+      </h2>
+      <p className="mb-4 text-sm text-muted">
+        Let shoppers subscribe and get the product regularly. Stripe charges each renewal
+        automatically, and shoppers can cancel any time from their order page.
+      </p>
+
+      {product.plans.length > 0 && (
+        <ul className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border">
+          {product.plans.map((plan, index) => {
+            const [one, many] = INTERVAL_NAMES[plan.interval];
+            return (
+              <li key={plan.id ?? `new-${index}`} className="flex flex-wrap items-end gap-3 p-3">
+                <fieldset>
+                  <legend className="mb-1 text-xs font-medium">Renews every</legend>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={MAX_INTERVAL_COUNT[plan.interval]}
+                      inputMode="numeric"
+                      value={plan.intervalCount}
+                      onChange={(e) => setPlan(index, { intervalCount: count(e.target.value, plan.interval) })}
+                      aria-label={`Purchase option ${index + 1}: how many`}
+                      className={`${input} min-h-9 w-20`}
+                    />
+                    <select
+                      value={plan.interval}
+                      onChange={(e) => {
+                        const interval = e.target.value as PlanInterval;
+                        setPlan(index, { interval, intervalCount: Math.min(plan.intervalCount, MAX_INTERVAL_COUNT[interval]) });
+                      }}
+                      aria-label={`Purchase option ${index + 1}: weeks, months or years`}
+                      className={`${input} min-h-9 w-36`}
+                    >
+                      {(Object.keys(INTERVAL_NAMES) as PlanInterval[]).map((interval) => (
+                        <option key={interval} value={interval}>
+                          {plan.intervalCount === 1 ? INTERVAL_NAMES[interval][0] : INTERVAL_NAMES[interval][1]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </fieldset>
+                <label className="flex flex-col gap-1 text-xs font-medium">
+                  Subscriber discount
+                  <span className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={MAX_DISCOUNT_PERCENT}
+                      inputMode="numeric"
+                      value={plan.discountPercent}
+                      onChange={(e) =>
+                        setPlan(index, {
+                          discountPercent: Math.min(MAX_DISCOUNT_PERCENT, Math.max(0, Math.floor(Number(e.target.value) || 0))),
+                        })
+                      }
+                      className={`${input} min-h-9 w-20`}
+                    />
+                    <span className="text-sm font-normal">%</span>
+                  </span>
+                </label>
+                <p className="min-h-9 flex-1 self-center text-sm text-muted">
+                  Every {plan.intervalCount === 1 ? one : `${plan.intervalCount} ${many}`}
+                  {plan.discountPercent > 0 ? `, ${plan.discountPercent}% off each time` : ", full price"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    update((p) => {
+                      const plans = p.plans.filter((_, i) => i !== index);
+                      return { ...p, plans, subscriptionOnly: plans.length > 0 && p.subscriptionOnly };
+                    })
+                  }
+                  className="min-h-9 text-sm underline"
+                >
+                  Remove<span className="sr-only"> purchase option {index + 1}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="flex flex-wrap items-center gap-4">
+        {product.plans.length < MAX_PLANS && (
+          <button
+            type="button"
+            onClick={addPlan}
+            className="min-h-10 rounded-md border border-dashed border-foreground px-4 text-sm font-medium"
+          >
+            {product.plans.length === 0 ? "Offer a subscription" : "Add another purchase option"}
+          </button>
+        )}
+        {product.plans.length > 0 && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={product.subscriptionOnly}
+              onChange={(e) => update((p) => ({ ...p, subscriptionOnly: e.target.checked }))}
+              className="size-4"
+            />
+            Only sell as a subscription (no one-time purchase)
+          </label>
+        )}
+      </div>
+      {product.plans.length > 0 && (
+        <p className="mt-3 text-xs text-muted">
+          Subscribers keep the price they signed up at. Changing or removing an option affects
+          new subscribers only.
+        </p>
+      )}
     </section>
   );
 }

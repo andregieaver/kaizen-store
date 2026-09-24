@@ -155,6 +155,20 @@
       "when": 1790267434791,
       "tag": "20260924163034_digital_products_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790269838810,
+      "tag": "20260924171038_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790269840008,
+      "tag": "20260924171040_subscriptions_rules",
+      "breakpoints": true
     }
   ]
 }

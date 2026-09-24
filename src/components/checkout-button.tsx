@@ -11,36 +11,46 @@ export type CheckoutLabels = {
   problems: Record<CheckoutProblem, string>;
 };
 
+/** What the shopper must agree to first: downloads (D24) or a subscription (D25). */
+export type CheckoutConsents = { digital?: string; subscription?: string };
+
 /**
  * Sends the shopper to payment; stays put and explains if that is not
- * possible. With `consent`, the shopper first agrees that downloads start at
- * once and end the right of withdrawal (D24).
+ * possible. With `consents`, the shopper first ticks each one: that
+ * downloads start at once and end the right of withdrawal, and the terms of
+ * a subscription.
  */
 export function CheckoutButton({
   store,
   market,
   disabled,
   labels,
-  consent,
+  consents = {},
 }: {
   store: string;
   market: string;
   disabled: boolean;
   labels: CheckoutLabels;
-  consent?: string;
+  consents?: CheckoutConsents;
 }) {
   const [state, action, pending] = useActionState(
     async (_: CheckoutState, form: FormData): Promise<CheckoutState> =>
-      checkoutAction(store, market, form.get("digitalConsent") === "on"),
+      checkoutAction(store, market, {
+        digital: form.get("digitalConsent") === "on",
+        subscription: form.get("subscriptionConsent") === "on",
+      }),
     { problem: null },
   );
   return (
     <form action={action} className="flex flex-col gap-3">
-      {consent && (
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="digitalConsent" required className="mt-0.5 size-4 shrink-0" />
-          {consent}
-        </label>
+      {(["subscription", "digital"] as const).map(
+        (kind) =>
+          consents[kind] && (
+            <label key={kind} className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name={`${kind}Consent`} required className="mt-0.5 size-4 shrink-0" />
+              {consents[kind]}
+            </label>
+          ),
       )}
       <button
         type="submit"

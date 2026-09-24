@@ -319,3 +319,31 @@ describe("digital products (D24)", () => {
     expect(result).toEqual({ ok: false, problems: ["Default is digital: add a file for shoppers to download."] });
   });
 });
+
+describe("purchase options (D25)", () => {
+  it("saves options, and switches off the ones taken away instead of deleting them", async () => {
+    const plans = [
+      { id: null, interval: "month" as const, intervalCount: 1, discountPercent: 10 },
+      { id: null, interval: "week" as const, intervalCount: 2, discountPercent: 0 },
+    ];
+    const result = await saveProduct(
+      store,
+      context,
+      null,
+      mug({ handle: `abonnement-${run}`, status: "draft", plans, subscriptionOnly: true, variants: [
+        { ...mug().variants[0], sku: `ABO-${run}` },
+      ] }),
+    );
+    if (!result.ok) throw new Error(result.problems.join(" "));
+    const saved = await getProductForEdit(store, context, result.productId);
+    expect(saved).toMatchObject({ subscriptionOnly: true, plans: [{ interval: "month", discountPercent: 10 }, { interval: "week" }] });
+
+    const kept = saved!.plans[1];
+    expect(await saveProduct(store, context, result.productId, { ...saved!, plans: [kept] })).toMatchObject({ ok: true });
+    expect((await getProductForEdit(store, context, result.productId))?.plans).toEqual([kept]);
+    const [off] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.selling_plans where product_id = ${result.productId}::uuid and not active
+    `);
+    expect(off.n).toBe(1);
+  });
+});

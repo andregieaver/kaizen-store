@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { AddToCart } from "@/components/add-to-cart";
 import { JsonLdScript } from "@/components/json-ld";
 import { Price } from "@/components/price";
+import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
@@ -15,6 +16,7 @@ import { marketPath } from "@/lib/paths";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 import { productJsonLd } from "@/lib/structured-data";
+import { planPrice } from "@/lib/subscriptions";
 import {
   getAvailability,
   getProduct,
@@ -139,10 +141,10 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
       <div className="flex flex-col gap-6">
         <h1 className="text-3xl font-semibold tracking-tight">{product.title}</h1>
         <Price
-          price={product.variants[0].price}
+          price={headlinePrice(product)}
           locale={market.locale}
           m={m}
-          from={new Set(product.variants.map((v) => v.price.amountMinor)).size > 1}
+          from={product.subscriptionOnly || new Set(product.variants.map((v) => v.price.amountMinor)).size > 1}
           large
         />
 
@@ -188,6 +190,14 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
   );
 }
 
+/** The price beside the title: the cheapest, or the best subscriber's price when only subscriptions are sold. */
+function headlinePrice(product: ProductDetail) {
+  const cheapest = product.variants[0].price;
+  if (!product.subscriptionOnly) return cheapest;
+  const best = Math.max(...product.plans.map((plan) => plan.discountPercent));
+  return { ...cheapest, amountMinor: planPrice(cheapest.amountMinor, best), referenceMinor: null };
+}
+
 function Operator({ label, operator }: { label: string; operator: EconomicOperator }) {
   return (
     <div>
@@ -220,8 +230,19 @@ async function VariantsWithStock({
     return level === "out" ? m.outOfStock : level === "low" ? m.lowStock(available) : m.inStock;
   };
 
+  const plans = product.plans.map((plan) => ({
+    id: plan.id,
+    discountPercent: plan.discountPercent,
+    label: m.planEvery(plan.interval, plan.intervalCount),
+    note: plan.discountPercent > 0 ? m.planSave(plan.discountPercent) : "",
+  }));
+
   return (
-    <>
+    <PurchaseOptions
+      plans={plans}
+      subscriptionOnly={product.subscriptionOnly}
+      labels={{ legend: m.purchaseOptions, oneTime: m.oneTimePurchase }}
+    >
       <ul className="divide-y divide-border rounded-lg border border-border">
         {product.variants.map((variant) => {
           const digital = variant.delivery === "digital";
@@ -234,7 +255,14 @@ async function VariantsWithStock({
                 <p className="text-sm text-muted">{digital ? m.instantDownload : stockText(available)}</p>
               </div>
               <div className="flex flex-col items-end gap-2">
-                <Price price={variant.price} locale={market.locale} m={m} />
+                <PlanPrice
+                  amountMinor={variant.price.amountMinor}
+                  currency={variant.price.currency}
+                  locale={market.locale}
+                  vatIncluded={m.vatIncluded}
+                >
+                  <Price price={variant.price} locale={market.locale} m={m} />
+                </PlanPrice>
                 <AddToCart
                   store={store.slug}
                   market={market.slug}
@@ -247,6 +275,7 @@ async function VariantsWithStock({
                     added: m.added,
                     capped: m.capped,
                     unavailable: m.unavailable,
+                    planConflict: m.planConflict,
                     tryAgain: m.tryAgain,
                     goToCart: m.goToCart,
                   }}
@@ -257,7 +286,7 @@ async function VariantsWithStock({
         })}
       </ul>
       <ProductJsonLd store={store} market={market} product={product} availability={availability} />
-    </>
+    </PurchaseOptions>
   );
 }
 
@@ -287,6 +316,10 @@ async function ProductJsonLd({
           // Option names and values as shoppers read them ("Farge: Hvit").
           variants: product.variants.map((variant) => ({
             ...variant,
+            // Sold only by subscription: the subscriber's price is the price.
+            price: product.subscriptionOnly
+              ? { ...variant.price, amountMinor: headlinePrice({ ...product, variants: [variant] }).amountMinor }
+              : variant.price,
             options: Object.fromEntries(
               Object.entries(variant.options).map(([name, value]) => [labels[name] ?? name, labels[value] ?? value]),
             ),

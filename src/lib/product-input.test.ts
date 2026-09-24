@@ -161,6 +161,31 @@ describe("productProblems", () => {
     expect(problems).toContain("Two variants have the same SKU.");
   });
 
+  describe("purchase options", () => {
+    const plan = (interval: "week" | "month" | "year", intervalCount: number) => ({
+      id: null,
+      interval,
+      intervalCount,
+      discountPercent: 10,
+    });
+
+    it("accepts options on different schedules", () => {
+      expect(productProblems({ ...base, plans: [plan("month", 1), plan("week", 2)] }, context)).toEqual([]);
+    });
+
+    it("refuses two options on one schedule, too long a schedule, and subscription-only without options", () => {
+      const problems = productProblems(
+        { ...base, plans: [plan("month", 1), plan("month", 1), plan("year", 4)] },
+        context,
+      );
+      expect(problems).toContain("Two purchase options renew every month.");
+      expect(problems).toContain("Every 4 years, 10% off: subscriptions renew at least every three years.");
+      expect(productProblems({ ...base, subscriptionOnly: true }, context)).toEqual([
+        "Add a purchase option, or let shoppers also buy the product once.",
+      ]);
+    });
+  });
+
   describe("digital products", () => {
     const file = {
       id: null,

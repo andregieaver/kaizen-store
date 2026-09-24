@@ -7,6 +7,7 @@ import { connection } from "next/server";
 import { db } from "@/db/client";
 import { priceView, type PriceView } from "@/lib/pricing";
 import type { Delivery } from "@/lib/product-input";
+import { planPrice, type PlanInterval } from "@/lib/subscriptions";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -40,6 +41,9 @@ export type ProductVariant = {
   delivery: Delivery;
 };
 
+/** A purchase option for subscribing (D25). */
+export type SellingPlan = { id: string; interval: PlanInterval; intervalCount: number; discountPercent: number };
+
 export type ProductDetail = {
   id: string;
   handle: string;
@@ -54,6 +58,10 @@ export type ProductDetail = {
   manufacturer: EconomicOperator | null;
   responsiblePerson: EconomicOperator | null;
   variants: ProductVariant[];
+  /** Purchase options for subscribing, in the owner's order. */
+  plans: SellingPlan[];
+  /** Sold only through its purchase options. */
+  subscriptionOnly: boolean;
 };
 
 type Row = Record<string, unknown>;
@@ -83,7 +91,10 @@ export async function listProducts(
       pr.min_amount,
       pr.max_amount,
       pr.currency,
-      pr.prior_30d
+      pr.prior_30d,
+      case when p.subscription_only then (
+        select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
+      ) end as subscriber_discount
     from commerce.products p
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
@@ -109,15 +120,20 @@ export async function listProducts(
     order by p.created_at, p.handle
   `);
 
-  return rows.map((row) => ({
-    handle: str(row.handle),
-    title: str(row.title),
-    image: row.image_url
-      ? { url: str(row.image_url), alt: str(row.image_alt) }
-      : null,
-    price: priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d)),
-    priceVaries: num(row.min_amount) !== num(row.max_amount),
-  }));
+  return rows.map((row) => {
+    // Sold only by subscription: the best subscriber's price, as "from".
+    const discount = numOrNull(row.subscriber_discount);
+    return {
+      handle: str(row.handle),
+      title: str(row.title),
+      image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
+      price:
+        discount === null
+          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d))
+          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null),
+      priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
+    };
+  });
 }
 
 /** One active product with its variants priced in the market, or null. */
@@ -133,7 +149,7 @@ export async function getProduct(
 
   const [product] = await db().execute<Row>(sql`
     select
-      p.id, p.handle, p.withdrawal_exclusion,
+      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only,
       coalesce(tl.title, tf.title) as title,
       coalesce(tl.description, tf.description, '') as description,
       coalesce(tl.safety_information, tf.safety_information, '') as safety_information,
@@ -158,7 +174,7 @@ export async function getProduct(
   `);
   if (!product) return null;
 
-  const [media, variants] = await Promise.all([
+  const [media, variants, plans] = await Promise.all([
     db().execute<Row>(sql`
       select url, coalesce(alt ->> ${locale}, '') as alt
       from commerce.product_media
@@ -172,6 +188,11 @@ export async function getProduct(
         on cp.variant_id = v.id and cp.market_code = ${marketCode}
       where v.product_id = ${product.id} and v.active
       order by cp.amount_minor, v.sku
+    `),
+    db().execute<Row>(sql`
+      select id, interval, interval_count, discount_percent from commerce.selling_plans
+      where product_id = ${product.id} and active
+      order by position, created_at
     `),
   ]);
   if (variants.length === 0) return null;
@@ -205,6 +226,14 @@ export async function getProduct(
       price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor)),
       delivery: v.delivery === "digital" ? "digital" : "physical",
     })),
+    plans: plans.map((plan) => ({
+      id: str(plan.id),
+      interval: plan.interval as PlanInterval,
+      intervalCount: num(plan.interval_count),
+      discountPercent: num(plan.discount_percent),
+    })),
+    // Without an option to subscribe to, it can only be bought once.
+    subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,
   };
 }
 

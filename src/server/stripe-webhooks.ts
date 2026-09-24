@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
+import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
 type Row = Record<string, unknown>;
 
@@ -31,12 +32,22 @@ async function markProcessed(storeId: string, eventId: string, error?: string) {
   `);
 }
 
-/** Applies a verified Stripe event to the store's orders. */
+/** Applies a verified Stripe event to the store's orders and subscriptions. */
 export async function handleStripeEvent(storeId: string, event: Stripe.Event): Promise<void> {
-  if (!event.type.startsWith("checkout.session.")) return;
+  const handled =
+    event.type.startsWith("checkout.session.") ||
+    event.type === "invoice.paid" ||
+    event.type.startsWith("customer.subscription.");
+  if (!handled) return;
   if (!(await recordEvent(storeId, event))) return;
   try {
-    await applySession(storeId, event.data.object as Stripe.Checkout.Session, event.type);
+    if (event.type === "invoice.paid") {
+      await renewSubscription(storeId, event.data.object as Stripe.Invoice);
+    } else if (event.type.startsWith("customer.subscription.")) {
+      await syncSubscription(storeId, event.data.object as Stripe.Subscription);
+    } else {
+      await applySession(storeId, event.data.object as Stripe.Checkout.Session, event.type);
+    }
     await markProcessed(storeId, event.id);
   } catch (error) {
     await markProcessed(storeId, event.id, error instanceof Error ? error.message : String(error));
@@ -68,6 +79,7 @@ export async function applySession(
   if (session.status === "complete" && session.payment_status !== "unpaid" && !failed) {
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
+    if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
   } else if (failed || expired) {
     await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
     await setPaymentStatus(storeId, session.id, failed ? "failed" : "cancelled");

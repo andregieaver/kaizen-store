@@ -114,3 +114,61 @@ test("a download needs no stock or shipping", async ({ page }) => {
   await page.getByRole("button", { name: /Fjern/ }).click();
   await expect(page.getByText("Handlekurven er tom.")).toBeVisible();
 });
+
+test("a shopper subscribes from the product page and sees the terms in the cart", async ({ page }) => {
+  // A product with two purchase options in the demo store, as the editor saves one (D25).
+  const handle = `e2e-kaffe-${Date.now().toString(36)}`;
+  const db = testDb();
+  try {
+    await db.begin(async (tx) => {
+      const [store] = await tx`select id from commerce.stores where slug = 'demo'`;
+      const [maker] = await tx`select id from commerce.economic_operators where store_id = ${store.id} and country = 'SE'`;
+      const [product] = await tx`
+        insert into commerce.products (store_id, handle, tax_code, manufacturer_id)
+        values (${store.id}, ${handle}, 'txcd_99999999', ${maker.id}) returning id`;
+      await tx`
+        insert into commerce.product_translations (store_id, product_id, locale, title, description, safety_information)
+        values (${store.id}, ${product.id}, 'nb-NO', 'Demo: Kaffe', 'Ferskbrent.', '')`;
+      await tx`
+        insert into commerce.product_media (store_id, product_id, url, position)
+        values (${store.id}, ${product.id}, '/demo/mug.svg', 0)`;
+      const [variant] = await tx`
+        insert into commerce.product_variants (store_id, product_id, sku, options)
+        values (${store.id}, ${product.id}, ${handle.toUpperCase()}, '{}') returning id`;
+      await tx`select commerce.set_price(${variant.id}, 'NO', 20000)`;
+      const [location] = await tx`select id from commerce.inventory_locations where store_id = ${store.id} limit 1`;
+      await tx`
+        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+        values (${store.id}, ${variant.id}, ${location.id}, 50)`;
+      await tx`
+        insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent, position)
+        values (${store.id}, ${product.id}, 'month', 1, 10, 0), (${store.id}, ${product.id}, 'week', 2, 0, 1)`;
+      await tx`update commerce.products set status = 'active' where id = ${product.id}`;
+    });
+  } finally {
+    await db.end();
+  }
+
+  await page.goto(`/s/demo/no/p/${handle}`);
+  const options = page.getByRole("group", { name: "Kjøpsalternativ" });
+  await expect(options.getByRole("radio", { name: "Engangskjøp" })).toBeChecked();
+  await options.getByRole("radio", { name: /Hver måned/ }).check();
+  const variants = page.getByRole("region", { name: "Varianter" });
+  await expect(variants.getByText("180,00")).toBeVisible();
+
+  await variants.getByRole("button", { name: "Legg i handlekurven" }).click();
+  await expect(variants.getByRole("status")).toContainText("Lagt i handlekurven.");
+
+  // One checkout makes one subscription, on one schedule.
+  await options.getByRole("radio", { name: /Hver 2\. uke/ }).check();
+  await variants.getByRole("button", { name: "Legg i handlekurven" }).click();
+  await expect(variants.getByRole("status")).toContainText("annen frekvens");
+
+  await page.goto("/s/demo/no/cart");
+  await expect(page.getByText("Abonnement: hver måned · Spar 10 %")).toBeVisible();
+  const summary = page.getByRole("complementary");
+  await expect(summary).toContainText("per levering");
+  await expect(summary).toContainText("Fornyes hver måned for 279,00");
+  await page.getByRole("button", { name: /Fjern/ }).click();
+  await expect(page.getByText("Handlekurven er tom.")).toBeVisible();
+});

@@ -78,7 +78,7 @@ describe("placing an order", () => {
     if (!result.ok) throw new Error(result.problem);
     const { order } = result;
     expect(order.number).toBe("1001");
-    expect(order.lines).toEqual([{ title: "Demo: Keramikkopp (white)", unitPriceMinor: 24900, quantity: 2 }]);
+    expect(order.lines).toEqual([{ title: "Demo: Keramikkopp (white)", unitPriceMinor: 24900, quantity: 2, recurring: false }]);
     expect(order.shippingMinor).toBe(9900);
     expect(order.totalMinor).toBe(59700);
 

@@ -5,17 +5,19 @@ import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
-import { CHECKOUT_MINUTES, lineWithdrawal, shippingCost, stripeLocale, vatIncluded } from "@/lib/checkout";
+import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
-import { variantLabel } from "@/lib/product-input";
+import { variantLabel, type Delivery } from "@/lib/product-input";
+import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { storeFeeBps } from "./billing";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { getCheckoutAccount } from "./settings";
+import { ensureSubscriptionEvents } from "./subscriptions";
 import { platformStripe } from "./stripe";
 
 type Row = Record<string, unknown>;
@@ -26,9 +28,11 @@ export type PlacedOrder = {
   orderId: string;
   number: string;
   currency: string;
-  lines: { title: string; unitPriceMinor: number; quantity: number }[];
+  lines: { title: string; unitPriceMinor: number; quantity: number; recurring: boolean }[];
   /** Something to ship: false for downloads only (D24). */
   ships: boolean;
+  /** The subscription this order starts (D25): how often it renews, and its shipping each time. */
+  subscription: { id: string; interval: PlanInterval; intervalCount: number; shippingMinor: number } | null;
   shippingMinor: number;
   /** The VAT included in the total. */
   taxMinor: number;
@@ -44,7 +48,9 @@ export type CheckoutProblem =
   | "payment_error"
   | "already_paid"
   | "processing"
-  | "consent";
+  | "consent"
+  | "subscription_consent"
+  | "plans";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -53,7 +59,7 @@ export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; proble
  * so buying one needs the shopper's express consent to that and their
  * acknowledgement that the right of withdrawal then ends (D24).
  */
-export type CheckoutConsent = { digital?: boolean };
+export type CheckoutConsent = { digital?: boolean; subscription?: boolean };
 
 /**
  * Turns an open cart into an order waiting for payment, at today's prices,
@@ -80,6 +86,8 @@ export async function placeOrder(
     const lines = await tx.execute<Row>(sql`
       select
         cl.variant_id, cl.quantity, v.sku, v.options, v.delivery,
+        cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent,
+        (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor,
@@ -92,13 +100,22 @@ export async function placeOrder(
         select title from commerce.product_translations where product_id = p.id order by locale limit 1
       ) tf on true
       left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
+      left join commerce.selling_plans sp
+        on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
       where cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid
-      order by p.handle, v.sku
+      order by p.handle, v.sku, cl.selling_plan_id nulls first
     `);
     if (lines.length === 0) return { ok: false, problem: "empty" };
-    if (lines.some((l) => !l.sellable || l.amount_minor === null)) {
+    if (lines.some((l) => !l.sellable || !l.plan_ok || l.amount_minor === null)) {
       return { ok: false, problem: "unavailable" };
     }
+    // One checkout starts at most one subscription, renewing on one schedule (D25).
+    const planned = lines.filter((l) => l.selling_plan_id !== null);
+    const rhythm = planned[0] && { interval: planned[0].interval as PlanInterval, intervalCount: Number(planned[0].interval_count) };
+    if (rhythm && planned.some((l) => !sameRhythm(rhythm, { interval: l.interval as PlanInterval, intervalCount: Number(l.interval_count) }))) {
+      return { ok: false, problem: "plans" };
+    }
+    if (rhythm && !consent.subscription) return { ok: false, problem: "subscription_consent" };
     const physical = lines.filter((l) => l.delivery === "physical");
     const digital = physical.length < lines.length;
     if (digital && !consent.digital) return { ok: false, problem: "consent" };
@@ -126,8 +143,15 @@ export async function placeOrder(
     const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
 
     const allocations: { variantId: string; locationId: string; quantity: number }[] = [];
+    // The same variant can be bought once and subscribed to: count it together.
+    const wantedByVariant = new Map<string, number>();
     for (const line of physical) {
-      let wanted = Number(line.quantity);
+      const id = String(line.variant_id);
+      wantedByVariant.set(id, (wantedByVariant.get(id) ?? 0) + Number(line.quantity));
+    }
+    for (const [variantId, quantity] of wantedByVariant) {
+      const line = { variant_id: variantId };
+      let wanted = quantity;
       for (const level of levels.filter((l) => l.variant_id === line.variant_id)) {
         const free = Number(level.on_hand) - (heldAt.get(`${level.variant_id}:${level.location_id}`) ?? 0);
         const take = Math.min(Math.max(free, 0), wanted);
@@ -152,20 +176,27 @@ export async function placeOrder(
 
     const priced = lines.map((line) => {
       const quantity = Number(line.quantity);
-      const unit = Number(line.amount_minor);
+      const recurring = line.selling_plan_id !== null;
+      const unit = planPrice(Number(line.amount_minor), recurring ? Number(line.discount_percent) : 0);
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
-      return { line, quantity, unit, total: unit * quantity, title };
+      const delivery: Delivery = line.delivery === "digital" ? "digital" : "physical";
+      return { line, quantity, unit, total: unit * quantity, title, recurring, delivery };
     });
     const subtotal = priced.reduce((sum, p) => sum + p.total, 0);
-    // Free shipping counts the whole basket, downloads included.
-    const shipping = ships
-      ? shippingCost(subtotal, {
-          amountMinor: Number(rate.amount_minor),
-          freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
-        })
-      : 0;
+    // Free shipping counts the whole basket, downloads included; a
+    // subscription pays shipping on each delivery (D25).
+    const basket = basketShipping(
+      priced.map((p) => ({ totalMinor: p.total, delivery: p.delivery, recurring: p.recurring })),
+      rate
+        ? {
+            amountMinor: Number(rate.amount_minor),
+            freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
+          }
+        : null,
+    );
+    const shipping = basket.first;
     const tax = priced.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) + vatIncluded(shipping, vatRate);
     const total = subtotal + shipping;
 
@@ -190,18 +221,60 @@ export async function placeOrder(
     const orderId = String(order.id);
 
     for (const p of priced) {
-      const delivery = p.line.delivery === "digital" ? "digital" : "physical";
       await tx.execute(sql`
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
-          total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery
+          total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
+          selling_plan_id, plan_interval, plan_interval_count
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, 0, ${p.total}, ${vatIncluded(p.total, vatRate)},
           ${vatRate}, ${String(p.line.tax_code)},
-          ${lineWithdrawal(delivery, String(p.line.withdrawal_exclusion))}, ${delivery}
+          ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
+          ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
+          ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
+          ${p.recurring ? Number(p.line.interval_count) : null}
         )
       `);
+    }
+
+    // The subscription waits for the first payment, with what each renewal holds.
+    let subscription: PlacedOrder["subscription"] = null;
+    if (rhythm) {
+      const renewing = priced.filter((p) => p.recurring);
+      const renewalSubtotal = renewing.reduce((sum, p) => sum + p.total, 0);
+      const renewalTax =
+        renewing.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) + vatIncluded(basket.renewal, vatRate);
+      const [row] = await tx.execute<Row>(sql`
+        insert into commerce.subscriptions (
+          store_id, number, market_code, currency, locale, interval, interval_count,
+          subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token
+        ) values (
+          ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
+          ${rhythm.interval}, ${rhythm.intervalCount}, ${renewalSubtotal}, ${basket.renewal},
+          ${renewalSubtotal + basket.renewal}, ${renewalTax}, ${orderId}::uuid,
+          replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
+        )
+        returning id
+      `);
+      const subscriptionId = String(row.id);
+      for (const p of renewing) {
+        await tx.execute(sql`
+          insert into commerce.subscription_lines (
+            store_id, subscription_id, variant_id, selling_plan_id, sku, title, quantity,
+            unit_price_minor, total_minor, tax_rate, tax_code, delivery
+          ) values (
+            ${storeId}::uuid, ${subscriptionId}::uuid, ${String(p.line.variant_id)}::uuid,
+            ${String(p.line.selling_plan_id)}::uuid, ${String(p.line.sku)}, ${p.title}, ${p.quantity},
+            ${p.unit}, ${p.total}, ${vatRate}, ${String(p.line.tax_code)}, ${p.delivery}
+          )
+        `);
+      }
+      await tx.execute(sql`
+        update commerce.orders set subscription_id = ${subscriptionId}::uuid
+        where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+      `);
+      subscription = { id: subscriptionId, ...rhythm, shippingMinor: basket.renewal };
     }
     for (const a of allocations) {
       await tx.execute(sql`
@@ -214,7 +287,8 @@ export async function placeOrder(
     await tx.execute(sql`
       insert into commerce.order_events (store_id, order_id, type, data, actor)
       values (${storeId}::uuid, ${orderId}::uuid, 'order.placed',
-              ${JSON.stringify(digital ? { digitalConsent: true } : {})}::jsonb, 'shopper')
+              ${JSON.stringify({ ...(digital && { digitalConsent: true }), ...(rhythm && { subscriptionConsent: true }) })}::jsonb,
+              'shopper')
     `);
 
     return {
@@ -223,8 +297,14 @@ export async function placeOrder(
         orderId,
         number: String(numbered.number),
         currency: market.currency,
-        lines: priced.map((p) => ({ title: p.title, unitPriceMinor: p.unit, quantity: p.quantity })),
+        lines: priced.map((p) => ({
+          title: p.title,
+          unitPriceMinor: p.unit,
+          quantity: p.quantity,
+          recurring: p.recurring,
+        })),
         ships,
+        subscription,
         shippingMinor: shipping,
         taxMinor: tax,
         totalMinor: total,
@@ -233,10 +313,45 @@ export async function placeOrder(
   });
 }
 
+/** How often a subscription's lines renew, as Stripe takes it. */
+function recurring(plan: { interval: PlanInterval; intervalCount: number }) {
+  return { interval: plan.interval, interval_count: plan.intervalCount };
+}
+
+/**
+ * Shipping as lines of a subscription checkout, which takes no shipping
+ * options: what renews with each delivery, and what the first delivery
+ * costs on top (items bought once when the subscription itself ships nothing).
+ */
+export function subscriptionShipping(
+  order: Pick<PlacedOrder, "subscription" | "shippingMinor">,
+  currency: string,
+  label: string,
+): Stripe.Checkout.SessionCreateParams.LineItem[] {
+  if (!order.subscription) return [];
+  const renewing = order.subscription.shippingMinor;
+  const once = order.shippingMinor - renewing;
+  const line = (amount: number, renews: boolean) => ({
+    quantity: 1,
+    price_data: {
+      currency,
+      unit_amount: amount,
+      product_data: { name: label },
+      ...(renews && order.subscription && { recurring: recurring(order.subscription) }),
+    },
+  });
+  return [...(renewing > 0 ? [line(renewing, true)] : []), ...(once > 0 ? [line(once, false)] : [])];
+}
+
 /** Cancels an unpaid order and releases its stock. */
 export async function cancelUnpaidOrder(orderId: string, reason: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
     select commerce.cancel_unpaid_order(${orderId}::uuid, ${reason}) as cancelled
+  `);
+  // A subscription that never got its first payment never started (D25).
+  await db().execute(sql`
+    update commerce.subscriptions set status = 'expired', updated_at = now()
+    where first_order_id = ${orderId}::uuid and status = 'pending'
   `);
   return Boolean(row?.cancelled);
 }
@@ -318,11 +433,14 @@ export async function startCheckout(
   const placed = await placeOrder(shop, cartId, consent);
   if (!placed.ok) return placed;
   const { order } = placed;
+  // Renewals arrive as webhook events that older platform webhooks were not sent (D25).
+  if (order.subscription) await ensureSubscriptionEvents(connection.mode);
 
   const [store] = await db().execute<Row>(sql`
     select legal_name, organisation_number from commerce.stores where id = ${shop.storeId}::uuid
   `);
-  const fee = saleFee(order.totalMinor, await storeFeeBps(shop.storeId));
+  const feeBps = await storeFeeBps(shop.storeId);
+  const fee = saleFee(order.totalMinor, feeBps);
   const base = `${origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
   const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId };
@@ -339,39 +457,66 @@ export async function startCheckout(
   try {
     session = await stripe.checkout.sessions.create(
       {
-        mode: "payment",
         client_reference_id: order.orderId,
         metadata,
         integration_identifier: INTEGRATION_IDENTIFIER,
-        payment_intent_data: {
-          metadata,
-          description: `Order ${order.number}`,
-          ...(fee !== null && { application_fee_amount: fee }),
-        },
-        line_items: order.lines.map((line) => ({
-          quantity: line.quantity,
-          price_data: { currency, unit_amount: line.unitPriceMinor, product_data: { name: line.title } },
-        })),
-        // Downloads only: no address to ask for and nothing to ship (D24).
-        ...(order.ships && {
-          shipping_options: [
-            {
-              shipping_rate_data: {
-                type: "fixed_amount",
-                display_name: shippingLabel,
-                fixed_amount: { amount: order.shippingMinor, currency },
-              },
+        line_items: [
+          ...order.lines.map((line) => ({
+            quantity: line.quantity,
+            price_data: {
+              currency,
+              unit_amount: line.unitPriceMinor,
+              product_data: { name: line.title },
+              ...(line.recurring && order.subscription && { recurring: recurring(order.subscription) }),
             },
-          ],
+          })),
+          ...subscriptionShipping(order, currency, shippingLabel),
+        ],
+        ...(order.subscription
+          ? // A subscription (D25): Stripe Billing on the store's account charges
+            // each renewal. Shipping can only be a line here: the part that
+            // renews, and any extra for items bought once.
+            {
+              mode: "subscription" as const,
+              subscription_data: {
+                metadata: { ...metadata, subscription_id: order.subscription.id },
+                description: `Subscription ${order.number}`,
+                ...(feeBps > 0 && { application_fee_percent: Math.round(feeBps) / 100 }),
+              },
+            }
+          : {
+              mode: "payment" as const,
+              payment_intent_data: {
+                metadata,
+                description: `Order ${order.number}`,
+                ...(fee !== null && { application_fee_amount: fee }),
+              },
+            }),
+        ...(order.ships && {
           shipping_address_collection: {
             allowed_countries: [
               shop.market.code as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry,
             ],
           },
         }),
+        // Downloads only: no address to ask for and nothing to ship (D24).
+        ...(order.ships &&
+          !order.subscription && {
+            shipping_options: [
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  display_name: shippingLabel,
+                  fixed_amount: { amount: order.shippingMinor, currency },
+                },
+              },
+            ],
+          }),
         // No payment_method_types: Stripe shows the methods the store has
         // turned on in its Stripe Dashboard that suit the shopper.
-        ...(connection.orderInvoices && {
+        // Subscriptions always get Stripe invoices; this is for single payments.
+        ...(connection.orderInvoices &&
+          !order.subscription && {
           invoice_creation: {
             enabled: true,
             invoice_data: {
@@ -437,6 +582,8 @@ export type OpenCheckout = {
   ships: boolean;
   /** The order has downloads, so starting again needs the shopper's consent. */
   digital: boolean;
+  /** The order starts a subscription: its schedule and what each renewal costs (D25). */
+  subscription: { interval: PlanInterval; intervalCount: number; totalMinor: number } | null;
 };
 
 /**
@@ -449,18 +596,22 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
   const [row] = await db().execute<Row>(sql`
     select o.id, pay.provider_reference, pay.provider_account, pay.client_secret, a.mode,
       o.placed_at < now() - make_interval(mins => ${CHECKOUT_MINUTES}) as expired,
-      (select coalesce(jsonb_agg(jsonb_build_array(cl.variant_id, cl.quantity) order by cl.variant_id), '[]'::jsonb)
+      (select coalesce(jsonb_agg(jsonb_build_array(cl.variant_id, cl.selling_plan_id, cl.quantity)
+                                 order by cl.variant_id, cl.selling_plan_id), '[]'::jsonb)
          from commerce.cart_lines cl where cl.store_id = o.store_id and cl.cart_id = o.cart_id)
       is distinct from
-      (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.quantity) order by ol.variant_id), '[]'::jsonb)
+      (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.selling_plan_id, ol.quantity)
+                                 order by ol.variant_id, ol.selling_plan_id), '[]'::jsonb)
          from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id) as changed,
       exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol
-               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital') as digital
+               where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital') as digital,
+      s.interval, s.interval_count, s.total_minor as renewal_minor
     from commerce.orders o
     join commerce.payments pay on pay.store_id = o.store_id and pay.order_id = o.id and pay.provider = 'stripe'
     join commerce.stripe_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
+    left join commerce.subscriptions s on s.store_id = o.store_id and s.id = o.subscription_id
     where o.store_id = ${storeId}::uuid and o.cart_id = ${cartId}::uuid and o.status = 'pending_payment'
       and pay.client_secret is not null
     order by o.placed_at desc
@@ -477,6 +628,13 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
         changed: Boolean(row.changed),
         ships: Boolean(row.ships),
         digital: Boolean(row.digital),
+        subscription: row.interval
+          ? {
+              interval: row.interval as PlanInterval,
+              intervalCount: Number(row.interval_count),
+              totalMinor: Number(row.renewal_minor),
+            }
+          : null,
       }
     : null;
 }

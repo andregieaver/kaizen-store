@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { minorUnitDigits } from "./money";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
+import { MAX_DISCOUNT_PERCENT, MAX_INTERVAL_COUNT, MAX_PLANS, PLAN_INTERVALS, planSummary } from "./subscriptions";
 
 /**
  * The product editor's data, shared by the browser (which builds it) and the
@@ -152,6 +153,24 @@ export const productInput = z.object({
   downloadLimit: z.number().int().min(1, "Allow at least one download.").max(1000).nullable().default(5),
   /** Days the download links work after payment; null for no end. */
   downloadDays: z.number().int().min(1, "Keep links working at least one day.").max(3650).nullable().default(30),
+  /** Purchase options for subscribing (D25). */
+  plans: z
+    .array(
+      z.object({
+        id: z.uuid().nullable(),
+        interval: z.enum(PLAN_INTERVALS),
+        intervalCount: z.number().int().min(1, "Renew at least every 1 week, month or year."),
+        discountPercent: z
+          .number()
+          .int()
+          .min(0, "A discount cannot be negative.")
+          .max(MAX_DISCOUNT_PERCENT, `A discount can be at most ${MAX_DISCOUNT_PERCENT}%.`),
+      }),
+    )
+    .max(MAX_PLANS, `Use at most ${MAX_PLANS} purchase options.`)
+    .default([]),
+  /** Sold only through its purchase options. */
+  subscriptionOnly: z.boolean().default(false),
   taxCode: z.string().trim().regex(/^txcd_[0-9]{8}$/, "A Stripe tax code looks like txcd_99999999."),
   withdrawalExclusion: z.enum(WITHDRAWAL_EXCLUSIONS.map((w) => w.id) as [string, ...string[]]),
   schemes: z.array(z.enum(PRODUCER_SCHEMES.map((s) => s.id) as [string, ...string[]])),
@@ -243,6 +262,19 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     if (file.variantSku !== null && !digitalSkus.has(file.variantSku)) {
       problems.push(`The file "${file.name}" belongs to a variant that is not digital. Choose where it goes.`);
     }
+  }
+
+  const rhythms = new Set<string>();
+  for (const plan of input.plans) {
+    if (plan.intervalCount > MAX_INTERVAL_COUNT[plan.interval]) {
+      problems.push(`${planSummary(plan)}: subscriptions renew at least every three years.`);
+    }
+    const rhythm = `${plan.interval}:${plan.intervalCount}`;
+    if (rhythms.has(rhythm)) problems.push(`Two purchase options renew ${planSummary(plan).toLowerCase().split(",")[0]}.`);
+    rhythms.add(rhythm);
+  }
+  if (input.subscriptionOnly && input.plans.length === 0) {
+    problems.push("Add a purchase option, or let shoppers also buy the product once.");
   }
 
   if (input.status !== "active") return problems;

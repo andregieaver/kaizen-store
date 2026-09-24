@@ -11,6 +11,7 @@ import { marketPath } from "@/lib/paths";
 import { fileSize } from "@/lib/file-size";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
+import { getSubscriptionForOrder } from "@/server/subscriptions";
 
 type Props = PageProps<"/s/[store]/[market]/order/[orderId]">;
 
@@ -45,7 +46,10 @@ async function OrderDetails({
   const address = order.shippingAddress;
   const digital = order.lines.some((line) => line.delivery === "digital");
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const downloads = digital && paid ? await getOrderDownloads(store.id, order.id) : [];
+  const [downloads, subscription] = await Promise.all([
+    digital && paid ? getOrderDownloads(store.id, order.id) : [],
+    order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
+  ]);
   const downloadBase = marketPath(store.slug, market.slug, "/download");
 
   return (
@@ -91,6 +95,24 @@ async function OrderDetails({
           </div>
         </dl>
       </section>
+
+      {subscription && subscription.status !== "pending" && subscription.status !== "expired" && (
+        <section aria-labelledby="subscription-heading" className="rounded-lg border border-border p-4">
+          <h2 id="subscription-heading" className="mb-1 font-medium">
+            {m.subscription}
+          </h2>
+          <p>
+            {m.planEvery(subscription.interval, subscription.intervalCount)} ·{" "}
+            {m.subscriptionStatus[subscription.status]}
+          </p>
+          <Link
+            href={marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}
+            className="mt-2 inline-block underline"
+          >
+            {m.manageSubscription}
+          </Link>
+        </section>
+      )}
 
       {digital && order.status !== "cancelled" && (
         <section aria-labelledby="downloads-heading" className="rounded-lg border border-border p-4">
