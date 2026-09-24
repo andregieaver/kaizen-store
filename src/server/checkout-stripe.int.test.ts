@@ -30,7 +30,7 @@ const fake = vi.hoisted(() => {
           sessions.set(id, { status: "open", payment_status: "unpaid" });
           created.push({ params, options });
           return params.ui_mode === "elements"
-            ? { id, url: null, client_secret: `${id}_secret_test` }
+            ? { id, url: null, client_secret: `${id}_secret_test`, payment_method_types: ["card", "mobilepay"] }
             : { id, url: `https://checkout.stripe.test/${id}`, client_secret: null };
         },
         retrieve: async (id: string, _params: unknown, options: { stripeAccount?: string }) => {
@@ -226,6 +226,12 @@ describe("Kaizen's checkout page", () => {
     for (const key of ["success_url", "cancel_url", "locale", "payment_method_types"]) {
       expect(params).not.toHaveProperty(key);
     }
+
+    // What Stripe offered is kept with the order, for support questions.
+    const [event] = await db().execute<Row>(sql`
+      select data from commerce.order_events where order_id = ${String(order.id)}::uuid and type = 'payment.started'
+    `);
+    expect(event.data).toEqual({ ui: "custom", methods: ["card", "mobilepay"] });
 
     // Wallets, Link and Klarna need the domain registered on the store's own account.
     expect(fake.domains).toEqual([{ domain: "shop.test", account: accountId }]);

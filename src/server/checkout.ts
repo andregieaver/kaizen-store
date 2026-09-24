@@ -373,6 +373,12 @@ export async function startCheckout(
     return { ok: false, problem: "payment_error" };
   }
 
+  // Which payment methods Stripe offers this shopper, for support questions.
+  await db().execute(sql`
+    insert into commerce.order_events (store_id, order_id, type, data, actor)
+    values (${shop.storeId}::uuid, ${order.orderId}::uuid, 'payment.started',
+            ${JSON.stringify({ ui, methods: session.payment_method_types ?? [] })}::jsonb, 'system')
+  `);
   await db().execute(sql`
     insert into commerce.payments (
       store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status
