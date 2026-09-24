@@ -248,9 +248,9 @@ export async function startCheckout(
   if (!found || !stripe) return { ok: false, problem: "payments_off" };
   let accountId = found.accountId;
   if (!accountId) {
-    // Test mode, and the store's test account is not ready yet: Kaizen sets
-    // it up now with Stripe's test values (usually done in the background
-    // when the owner opens the admin).
+    // Test mode, and the store's test account was not ready when last
+    // seen: ask Stripe again, as it checks Kaizen's test values within a
+    // minute or two (the account is made when the owner opens the admin).
     const test = await ensureTestAccount(shop.storeId);
     if (!test.ok || !test.ready) return { ok: false, problem: "payments_off" };
     accountId = test.accountId;

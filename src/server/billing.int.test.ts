@@ -260,6 +260,22 @@ describe("plans", () => {
     expect(await billing.storeFeeBps(storeId)).toBe(150);
   });
 
+  it("brings Kaizen's own test account up to date instead of making another", async () => {
+    const { ensureTestAccount } = await import("./connect");
+    await db().execute(sql`
+      update commerce.stripe_accounts set card_payments = 'pending' where store_id = ${storeId}::uuid and mode = 'test'
+    `);
+    // As at checkout: no owner at hand, so only Stripe's latest state is read.
+    const result = await ensureTestAccount(storeId);
+    expect(result).toMatchObject({ ok: true, ready: true });
+    expect(calls("accounts.create")).toHaveLength(1);
+    const [row] = await db().execute<Row>(sql`
+      select card_payments, managed_by_kaizen, requirements from commerce.stripe_accounts
+      where store_id = ${storeId}::uuid and mode = 'test'
+    `);
+    expect(row).toMatchObject({ card_payments: "active", managed_by_kaizen: true, requirements: [] });
+  });
+
   it("lets a store's own fee win, and falls back to the default after cancelling", async () => {
     await billing.setStoreFee(admin, storeId, 50);
     expect(await billing.storeFeeBps(storeId)).toBe(50);

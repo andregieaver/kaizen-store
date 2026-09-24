@@ -1379,6 +1379,13 @@ export const stripeAccounts = commerce.table(
     cardPayments: text("card_payments").notNull().default("inactive"),
     /** Stripe needs more information now (currently or past due). */
     requirementsDue: boolean("requirements_due").notNull().default(true),
+    /** Created and filled in by Kaizen with Stripe's test values (test mode, D20). */
+    managedByKaizen: boolean("managed_by_kaizen").notNull().default(false),
+    /**
+     * What Stripe still wants, as last reported: field descriptions, who must
+     * act, deadlines and error codes. No personal data.
+     */
+    requirements: jsonb("requirements").notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),

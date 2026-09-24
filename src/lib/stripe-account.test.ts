@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { accountStage, accountStatus, platformKey, saleFee } from "./stripe-account";
+import { accountStage, accountStatus, platformKey, requirementNotes, saleFee } from "./stripe-account";
 
 describe("platformKey", () => {
   it("accepts keys for the right mode, including restricted keys", () => {
@@ -42,6 +42,44 @@ describe("accountStatus", () => {
 
   it("treats missing parts as not ready", () => {
     expect(accountStatus({})).toEqual({ cardPayments: "inactive", requirementsDue: false });
+  });
+});
+
+describe("requirementNotes", () => {
+  it("lists why card payments are off, then what Stripe still wants", () => {
+    expect(
+      requirementNotes({
+        configuration: {
+          merchant: {
+            capabilities: {
+              card_payments: {
+                status: "pending",
+                status_details: [{ code: "requirements_pending_verification", resolution: "no_resolution" }],
+              },
+            },
+          },
+        },
+        requirements: {
+          entries: [
+            {
+              description: "identity.individual.address",
+              awaiting_action_from: "stripe",
+              minimum_deadline: { status: "currently_due" },
+              errors: [{ code: "verification_failed_address_match" }],
+            },
+          ],
+        },
+      }),
+    ).toEqual([
+      { item: "card_payments", from: "no_resolution", status: "requirements_pending_verification", errors: [] },
+      {
+        item: "identity.individual.address",
+        from: "stripe",
+        status: "currently_due",
+        errors: ["verification_failed_address_match"],
+      },
+    ]);
+    expect(requirementNotes({})).toEqual([]);
   });
 });
 

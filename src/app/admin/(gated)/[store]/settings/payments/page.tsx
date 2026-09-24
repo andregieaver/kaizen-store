@@ -4,7 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { accountStage } from "@/lib/stripe-account";
 import { requireMember } from "@/server/auth";
-import { ensureTestAccount } from "@/server/connect";
+import { ensureTestAccount, requestIp } from "@/server/connect";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
 
 import { setStripeProviderAction } from "../../../actions";
@@ -27,7 +27,7 @@ export default async function PaymentSettingsPage({
   // Not ready yet: set it up now, so any problem from Stripe is shown here.
   const testSetup =
     modes.includes("test") && accounts.test?.cardPayments !== "active"
-      ? await ensureTestAccount(store.id, account.id)
+      ? await ensureTestAccount(store.id, account.id, await requestIp())
       : null;
   const testReady = accounts.test?.cardPayments === "active" || (testSetup?.ok === true && testSetup.ready);
 

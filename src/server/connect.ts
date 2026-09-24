@@ -1,11 +1,12 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { headers } from "next/headers";
 import Stripe from "stripe";
 
 import { db } from "@/db/client";
 import { decryptSecret, encryptSecret, parseKey } from "@/lib/secret-box";
-import { accountStatus, type AccountStatus, type PaymentModeName } from "@/lib/stripe-account";
+import { accountStatus, requirementNotes, type AccountStatus, type PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Account, type Membership } from "./auth";
 import type { SaveResult } from "./settings";
@@ -68,7 +69,7 @@ export async function createStripeAccount(
 ): Promise<SaveResult> {
   // Test accounts are set up by Kaizen with Stripe's test values (D20).
   if (mode === "test") {
-    const test = await ensureTestAccount(store.id, account.id);
+    const test = await ensureTestAccount(store.id, account.id, await requestIp());
     return test.ok ? { ok: true } : { ok: false, problems: [test.problem] };
   }
   const stripe = platformStripe(mode);
@@ -122,6 +123,15 @@ export async function createStripeAccount(
   return { ok: true };
 }
 
+/** Where the person making this request is, as the host reports it. */
+export async function requestIp(): Promise<string> {
+  try {
+    return (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+  } catch {
+    return "127.0.0.1"; // Not in a request (scripts, tests).
+  }
+}
+
 /**
  * Stripe's test values that pass verification at once (docs.stripe.com/connect/testing):
  * a matching date of birth and address, a verified website, a Norwegian test
@@ -140,29 +150,34 @@ const TEST_IDENTITY = {
  * service agreement, so test purchases land in the store's own test account
  * straight away. Stripe's real checks come only with the live account.
  * An older test account that waits for the owner's details is replaced.
+ *
+ * `ip` is where the owner is (the service agreement needs one); without it
+ * (checkout) an account Kaizen made is only brought up to date, not created.
  */
 export async function ensureTestAccount(
   storeId: string,
   actorId: string | null = null,
-  ip = "127.0.0.1",
+  ip: string | null = null,
 ): Promise<{ ok: true; accountId: string; ready: boolean } | { ok: false; problem: string }> {
   const stripe = platformStripe("test");
   if (!stripe) return { ok: false, problem: "Test payments are not available yet." };
 
-  const saved = (await getStripeAccounts(storeId)).test;
-  if (saved?.cardPayments === "active") return { ok: true, accountId: saved.accountId, ready: true };
-  if (saved) {
+  const [saved] = await db().execute<Row>(sql`
+    select account_id, card_payments, managed_by_kaizen from commerce.stripe_accounts
+    where store_id = ${storeId}::uuid and mode = 'test'
+  `);
+  if (saved?.card_payments === "active") return { ok: true, accountId: String(saved.account_id), ready: true };
+  if (saved?.managed_by_kaizen) {
+    // Ours: Stripe checks the test details within a minute or two.
     try {
-      const existing = await stripe.v2.core.accounts.retrieve(saved.accountId, { include: INCLUDE });
-      if (existing.dashboard === "none") {
-        // Ours, and Stripe is still checking the test details (seconds).
-        const status = await saveStatus(storeId, "test", existing);
-        return { ok: true, accountId: saved.accountId, ready: status.cardPayments === "active" };
-      }
+      const existing = await stripe.v2.core.accounts.retrieve(String(saved.account_id), { include: INCLUDE });
+      const status = await saveStatus(storeId, "test", existing);
+      return { ok: true, accountId: existing.id, ready: status.cardPayments === "active" };
     } catch (error) {
       return { ok: false, problem: stripeProblem(error) };
     }
   }
+  if (!ip) return { ok: false, problem: "The store's test account is not set up yet." };
 
   const [store] = await db().execute<Row>(sql`
     select s.id, s.slug, s.name, s.country, coalesce(s.contact_email, (
@@ -175,6 +190,9 @@ export async function ensureTestAccount(
   `);
   if (!store) return { ok: false, problem: "Unknown store." };
   const email = store.email ? String(store.email) : "test@kaizenstore.cloud";
+  // Admin pages opened together ask at the same time: the same minute and
+  // place give the same request, which Stripe answers with one account.
+  const minute = Math.floor(Date.now() / 60_000) * 60_000;
 
   let created: Stripe.V2.Core.Account;
   try {
@@ -197,7 +215,7 @@ export async function ensureTestAccount(
           },
           attestations: {
             terms_of_service: {
-              account: { date: new Date().toISOString(), ip, user_agent: "Kaizen test setup" },
+              account: { date: new Date(minute).toISOString(), ip, user_agent: "Kaizen test setup" },
             },
           },
         },
@@ -216,7 +234,7 @@ export async function ensureTestAccount(
         metadata: { store_id: storeId, store_slug: String(store.slug), kaizen_test_account: "true" },
         include: INCLUDE,
       },
-      { idempotencyKey: `kaizen-test-account-${storeId}` },
+      { idempotencyKey: `kaizen-test-account-${storeId}-${minute}-${ip}` },
     );
     await stripe.accounts.createExternalAccount(
       created.id,
@@ -228,7 +246,7 @@ export async function ensureTestAccount(
           account_number: TEST_IDENTITY.iban,
         },
       },
-      { idempotencyKey: `kaizen-test-bank-${storeId}` },
+      { idempotencyKey: `kaizen-test-bank-${created.id}` },
     );
   } catch (error) {
     return { ok: false, problem: stripeProblem(error) };
@@ -237,14 +255,17 @@ export async function ensureTestAccount(
   const fresh = await stripe.v2.core.accounts.retrieve(created.id, { include: INCLUDE }).catch(() => created);
   const status = accountStatus(fresh);
   await db().execute(sql`
-    insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due, created_by)
+    insert into commerce.stripe_accounts
+      (store_id, mode, account_id, card_payments, requirements_due, requirements, managed_by_kaizen, created_by)
     values (${storeId}::uuid, 'test', ${created.id}, ${status.cardPayments}, ${status.requirementsDue},
-            ${actorId}::uuid)
+            ${JSON.stringify(requirementNotes(fresh))}::jsonb, true, ${actorId}::uuid)
     on conflict (store_id, mode) do update set
       account_id = excluded.account_id, card_payments = excluded.card_payments,
-      requirements_due = excluded.requirements_due, updated_at = now()
+      requirements_due = excluded.requirements_due, requirements = excluded.requirements,
+      managed_by_kaizen = true, updated_at = now()
   `);
-  await audit(actorId, storeId, "payments.test_account_created", { accountId: created.id, replaced: saved?.accountId ?? null });
+  const replaced = saved && saved.account_id !== created.id ? String(saved.account_id) : null;
+  await audit(actorId, storeId, "payments.test_account_created", { accountId: created.id, replaced });
   return { ok: true, accountId: created.id, ready: status.cardPayments === "active" };
 }
 
@@ -252,8 +273,9 @@ async function saveStatus(storeId: string, mode: PaymentModeName, account: Strip
   const status = accountStatus(account);
   await db().execute(sql`
     update commerce.stripe_accounts
-       set card_payments = ${status.cardPayments}, requirements_due = ${status.requirementsDue}, updated_at = now()
-     where store_id = ${storeId}::uuid and mode = ${mode}
+       set card_payments = ${status.cardPayments}, requirements_due = ${status.requirementsDue},
+           requirements = ${JSON.stringify(requirementNotes(account))}::jsonb, updated_at = now()
+     where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${account.id}
   `);
   return status;
 }
@@ -271,15 +293,10 @@ export async function refreshStripeAccount(
   if (!stripe || !saved) return null;
   let status: AccountStatus;
   try {
-    status = accountStatus(await stripe.v2.core.accounts.retrieve(saved.accountId, { include: INCLUDE }));
+    status = await saveStatus(storeId, mode, await stripe.v2.core.accounts.retrieve(saved.accountId, { include: INCLUDE }));
   } catch {
     return null;
   }
-  await db().execute(sql`
-    update commerce.stripe_accounts
-       set card_payments = ${status.cardPayments}, requirements_due = ${status.requirementsDue}, updated_at = now()
-     where store_id = ${storeId}::uuid and mode = ${mode}
-  `);
   return { ...saved, ...status };
 }
 

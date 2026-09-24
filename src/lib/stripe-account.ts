@@ -35,12 +35,54 @@ export type AccountStatus = {
 
 type AccountLike = {
   configuration?: {
-    merchant?: { capabilities?: { card_payments?: { status?: string } } } | null;
+    merchant?: {
+      capabilities?: {
+        card_payments?: { status?: string; status_details?: { code?: string; resolution?: string }[] };
+      };
+    } | null;
   } | null;
   requirements?: {
-    entries?: { awaiting_action_from?: string; minimum_deadline?: { status?: string } }[];
+    entries?: {
+      awaiting_action_from?: string;
+      description?: string;
+      minimum_deadline?: { status?: string };
+      errors?: { code?: string }[];
+    }[];
   } | null;
 };
+
+/**
+ * What Stripe still wants or is doing, kept so a stuck account can be
+ * explained: field names, who must act, deadlines and error codes, and why
+ * card payments are not on. No personal data.
+ */
+export type RequirementNote = {
+  /** A requirement's field (e.g. `identity.individual.address`), or `card_payments` for its status. */
+  item: string;
+  /** Who must act: user or stripe; for card_payments, Stripe's resolution. */
+  from: string;
+  /** currently_due, past_due or eventually_due; for card_payments, Stripe's reason code. */
+  status: string;
+  errors: string[];
+};
+
+export function requirementNotes(account: AccountLike): RequirementNote[] {
+  const details = (account.configuration?.merchant?.capabilities?.card_payments?.status_details ?? []).map(
+    (detail) => ({
+      item: "card_payments",
+      from: detail.resolution ?? "unknown",
+      status: detail.code ?? "unknown",
+      errors: [],
+    }),
+  );
+  const entries = (account.requirements?.entries ?? []).map((entry) => ({
+    item: entry.description ?? "unknown",
+    from: entry.awaiting_action_from ?? "unknown",
+    status: entry.minimum_deadline?.status ?? "unknown",
+    errors: (entry.errors ?? []).map((error) => error.code ?? "unknown"),
+  }));
+  return [...details, ...entries];
+}
 
 /**
  * Reads the status from an Accounts v2 object retrieved with
