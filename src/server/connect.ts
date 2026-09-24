@@ -540,9 +540,9 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
           audit(null, storeId, "payments.test_details_refused", { mode, problem: stripeProblem(error) }),
         );
       const shown = await showPaymentMethods(stripe, accountId);
-      if (shown.length > 0) {
+      if (shown.methods.length > 0) {
         await db().execute(sql`update commerce.stripe_accounts set payment_methods_shown = true where ${where}`);
-        await audit(null, storeId, "payments.methods_shown", { mode, methods: shown });
+        await audit(null, storeId, "payments.methods_shown", { mode, methods: shown.methods, held: shown.held });
       }
     }
 
@@ -552,19 +552,35 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
   }
 }
 
-/** Turns Kaizen's payment methods on in the account's default display settings; returns those it could. */
-async function showPaymentMethods(stripe: Stripe, stripeAccount: string): Promise<string[]> {
+/**
+ * Turns Kaizen's payment methods on in the account's default display
+ * settings. Returns those it could, and those still not shown with why
+ * (e.g. blocked in the platform's defaults, or the capability not active).
+ */
+async function showPaymentMethods(
+  stripe: Stripe,
+  stripeAccount: string,
+): Promise<{ methods: string[]; held: Record<string, string> }> {
   const configs = await stripe.paymentMethodConfigurations.list({ limit: 20 }, { stripeAccount }).catch(() => null);
   const config = configs?.data.find((c) => c.is_default) ?? configs?.data[0];
-  if (!config) return [];
+  if (!config) return { methods: [], held: {} };
   const on = { display_preference: { preference: "on" as const } };
+  const heldBack = (updated: Stripe.PaymentMethodConfiguration) =>
+    Object.fromEntries(
+      SHOWN_METHODS.flatMap((method) => {
+        const state = (updated as unknown as Record<string, { available?: boolean; display_preference?: { value?: string; overridable?: boolean | null } } | undefined>)[method];
+        if (!state || state.available) return [];
+        const shown = state.display_preference;
+        return [[method, shown?.value === "on" ? "capability not active" : shown?.overridable === false ? "blocked by platform default" : "off"]];
+      }),
+    );
   try {
-    await stripe.paymentMethodConfigurations.update(
+    const updated = await stripe.paymentMethodConfigurations.update(
       config.id,
       Object.fromEntries(SHOWN_METHODS.map((method) => [method, on])),
       { stripeAccount },
     );
-    return [...SHOWN_METHODS];
+    return { methods: [...SHOWN_METHODS], held: heldBack(updated) };
   } catch {
     // One method may not be offered to this account: turn on the others one by one.
     const shown: string[] = [];
@@ -577,6 +593,6 @@ async function showPaymentMethods(stripe: Stripe, stripeAccount: string): Promis
         );
       if (ok) shown.push(method);
     }
-    return shown;
+    return { methods: shown, held: {} };
   }
 }
