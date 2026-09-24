@@ -80,6 +80,8 @@ history therefore still lists the nine single-store migrations, then:
 | `20260923235847_platform_rules.sql` | `20260924060213` |
 | `20260924061541_store_setup.sql` | `20260924063848` |
 | `20260924061542_clone_store.sql` | `20260924064416` |
+| `20260924065317_product_media_thumbnails.sql` | `20260924071204` |
+| `20260924065318_product_media_bucket.sql` | `20260924071211` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.
