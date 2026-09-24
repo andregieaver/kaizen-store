@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
-import { RefreshWhile } from "@/components/refresh-while";
+import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -46,6 +46,8 @@ async function OrderDetails({
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <RefreshWhile waiting={order.status === "pending_payment"} />
+      {/* The paid order has emptied the cart; show the header without it. */}
+      {order.status !== "pending_payment" && <RefreshOnce id={`order:${order.id}:${order.status}`} />}
       <div role="status" aria-live="polite">
         <h1 className="text-3xl font-semibold tracking-tight">
           {order.status === "cancelled" ? m.orderCancelled : m.thanks}
