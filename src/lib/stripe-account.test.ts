@@ -99,3 +99,27 @@ describe("saleFee", () => {
     expect(saleFee(59_700, 0)).toBeNull();
   });
 });
+
+describe("requirementNotes for other payment methods", () => {
+  it("lists every capability that is not on yet, with Stripe's reason or its status", () => {
+    expect(
+      requirementNotes({
+        configuration: {
+          merchant: {
+            capabilities: {
+              card_payments: { status: "active" },
+              mobilepay_payments: { status: "pending", status_details: [] },
+              klarna_payments: {
+                status: "restricted",
+                status_details: [{ code: "requirements_past_due", resolution: "provide_info" }],
+              },
+            } as never,
+          },
+        },
+      }),
+    ).toEqual([
+      { item: "mobilepay_payments", from: "stripe", status: "pending", errors: [] },
+      { item: "klarna_payments", from: "provide_info", status: "requirements_past_due", errors: [] },
+    ]);
+  });
+});

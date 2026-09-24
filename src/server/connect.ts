@@ -527,6 +527,10 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
       }
     }
 
+    // Read the account back, so what Stripe still wants for the new methods is on record.
+    const account = await stripe.v2.core.accounts.retrieve(accountId, { include: INCLUDE }).catch(() => null);
+    if (account) await saveStatus(storeId, mode, account);
+
     if (row.managed_by_kaizen && !row.payment_methods_shown) {
       const shown = await showPaymentMethods(stripe, accountId);
       if (shown.length > 0) {

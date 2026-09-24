@@ -33,12 +33,12 @@ export type AccountStatus = {
   requirementsDue: boolean;
 };
 
+type CapabilityLike = { status?: string; status_details?: { code?: string; resolution?: string }[] };
+
 type AccountLike = {
   configuration?: {
     merchant?: {
-      capabilities?: {
-        card_payments?: { status?: string; status_details?: { code?: string; resolution?: string }[] };
-      };
+      capabilities?: { card_payments?: CapabilityLike };
     } | null;
   } | null;
   requirements?: {
@@ -57,23 +57,31 @@ type AccountLike = {
  * card payments are not on. No personal data.
  */
 export type RequirementNote = {
-  /** A requirement's field (e.g. `identity.individual.address`), or `card_payments` for its status. */
+  /** A requirement's field (e.g. `identity.individual.address`), or a capability (e.g. `mobilepay_payments`) that is not on. */
   item: string;
-  /** Who must act: user or stripe; for card_payments, Stripe's resolution. */
+  /** Who must act: user or stripe; for a capability, Stripe's resolution. */
   from: string;
-  /** currently_due, past_due or eventually_due; for card_payments, Stripe's reason code. */
+  /** currently_due, past_due or eventually_due; for a capability, Stripe's reason code or its status. */
   status: string;
   errors: string[];
 };
 
 export function requirementNotes(account: AccountLike): RequirementNote[] {
-  const details = (account.configuration?.merchant?.capabilities?.card_payments?.status_details ?? []).map(
-    (detail) => ({
-      item: "card_payments",
-      from: detail.resolution ?? "unknown",
-      status: detail.code ?? "unknown",
-      errors: [],
-    }),
+  // Every payment capability that is not on yet (card payments, MobilePay, …), and why.
+  const capabilities = (account.configuration?.merchant?.capabilities ?? {}) as Record<string, CapabilityLike | undefined>;
+  const details = Object.entries(capabilities).flatMap(
+    ([capability, value]) => {
+      if (!value || value.status === "active") return [];
+      const reasons = value.status_details ?? [];
+      return reasons.length > 0
+        ? reasons.map((detail) => ({
+            item: capability,
+            from: detail.resolution ?? "unknown",
+            status: detail.code ?? value.status ?? "unknown",
+            errors: [],
+          }))
+        : [{ item: capability, from: "stripe", status: value.status ?? "unknown", errors: [] }];
+    },
   );
   const entries = (account.requirements?.entries ?? []).map((entry) => ({
     item: entry.description ?? "unknown",
