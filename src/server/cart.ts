@@ -27,6 +27,7 @@ export type CartLineStatus = "ok" | "insufficient" | "unavailable";
 
 export type CartLine = {
   variantId: string;
+  productId: string;
   handle: string;
   title: string;
   options: Record<string, string>;
@@ -57,7 +58,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
 
   const rows = await db().execute<Row>(sql`
     select
-      cl.variant_id, cl.quantity, v.options, v.delivery, p.handle,
+      cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
       -- A purchase option still offered, or buying once where that is allowed.
@@ -127,6 +128,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
             : "ok";
       return {
         variantId: String(row.variant_id),
+        productId: String(row.product_id),
         handle: String(row.handle),
         title: String(row.title ?? ""),
         options: (row.options ?? {}) as Record<string, string>,

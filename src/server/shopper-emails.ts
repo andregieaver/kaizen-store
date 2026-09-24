@@ -89,9 +89,21 @@ function orderLines(order: OrderView, text: EmailText, money: (minor: number) =>
   return {
     type: "lines",
     rows: [
-      ...order.lines.map((line) => ({ label: `${line.quantity} × ${line.title}`, value: money(line.totalMinor) })),
+      ...order.lines.map((line) => ({
+        label: `${line.quantity} × ${line.title}`,
+        value: money(line.unitPriceMinor * line.quantity),
+      })),
       { label: text.subtotal, value: money(order.subtotalMinor), muted: true },
       ...(order.ships ? [{ label: text.shipping, value: money(order.shippingMinor), muted: true }] : []),
+      ...(order.discountMinor > 0
+        ? [
+            {
+              label: order.discountCode ? `${text.discount} (${order.discountCode})` : text.discount,
+              value: `−${money(order.discountMinor)}`,
+              muted: true,
+            },
+          ]
+        : []),
       { label: text.total, value: money(order.totalMinor), strong: true },
       { label: text.vat, value: money(order.taxMinor), muted: true },
     ],

@@ -9,6 +9,8 @@ import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import { changeLine, readCartId } from "@/server/cart";
+import { getCustomer } from "@/server/customers";
+import { setCartCode } from "@/server/discounts";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveShop } from "@/server/shop";
 
@@ -93,8 +95,39 @@ export async function checkoutAction(
     origin,
     t(shop.market.lang).shipping,
     { digital: consent.digital === true, subscription: consent.subscription === true },
+    // A signed-in customer's order is theirs from the start, and codes for one use each know them (D31).
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null },
   );
   if (result.ok) redirect(result.url);
   refresh();
   return { problem: result.problem };
+}
+
+export type CodeState = { tried: string | null };
+
+/**
+ * Puts a discount code on the cart (D31). Whether it applies is shown by
+ * the cart page, which checks it against the basket every time, as checkout
+ * will.
+ */
+export async function applyCodeAction(
+  storeSlug: string,
+  marketSlug: string,
+  _state: CodeState,
+  form: FormData,
+): Promise<CodeState> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  const code = String(form.get("code") ?? "").slice(0, 60);
+  if (!shop || !code.trim()) return { tried: null };
+  await setCartCode({ storeId: shop.store.id, market: shop.market }, code);
+  refresh();
+  return { tried: code };
+}
+
+/** Takes the discount code off the cart. */
+export async function removeCodeAction(storeSlug: string, marketSlug: string): Promise<void> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return;
+  await setCartCode({ storeId: shop.store.id, market: shop.market }, null);
+  refresh();
 }

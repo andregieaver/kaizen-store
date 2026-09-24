@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatMoney } from "@/lib/money";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { requireMember } from "@/server/auth";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan } from "@/server/billing";
 
-import { choosePlanAction, openBillingPortalAction, ownerCancelPlanAction } from "../../actions";
+import {
+  applyPlanDiscountAction,
+  choosePlanAction,
+  openBillingPortalAction,
+  ownerCancelPlanAction,
+  removePlanDiscountAction,
+} from "../../actions";
 
 export const metadata: Metadata = { title: "Plan" };
 
@@ -66,6 +73,15 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         </dl>
         {mode === "test" && <p className="mt-3 text-muted">Kaizen is in test mode: no real money is charged.</p>}
       </section>
+
+      {mode && (isOwner || billing?.discount) && (
+        <PlanDiscount
+          discount={billing?.discount ?? null}
+          apply={applyPlanDiscountAction.bind(null, store.slug)}
+          remove={removePlanDiscountAction.bind(null, store.slug)}
+          canEdit={isOwner}
+        />
+      )}
 
       {offered.length > 0 && mode && (
         <section aria-labelledby="plans-heading" className="flex flex-col gap-4">

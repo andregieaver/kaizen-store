@@ -157,7 +157,7 @@ function Summary({
             <span>
               {line.quantity} × {line.title}
             </span>
-            <span className="whitespace-nowrap">{money(line.totalMinor)}</span>
+            <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
           </li>
         ))}
       </ul>
@@ -170,6 +170,15 @@ function Summary({
           <div className="flex justify-between">
             <dt>{m.shipping}</dt>
             <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
+          </div>
+        )}
+        {order.discountMinor > 0 && (
+          <div className="flex justify-between">
+            <dt>
+              {m.discount}
+              {order.discountCode && <span className="text-sm text-muted"> ({order.discountCode})</span>}
+            </dt>
+            <dd>−{money(order.discountMinor)}</dd>
           </div>
         )}
         <div className="flex justify-between text-base font-semibold">

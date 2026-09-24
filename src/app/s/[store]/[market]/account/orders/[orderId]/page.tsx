@@ -87,7 +87,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                 {line.quantity} × {line.title}
                 {line.delivery === "digital" && line.variantId && <span className="block text-sm text-muted">{m.digitalDelivery}</span>}
               </span>
-              <span className="whitespace-nowrap">{money(line.totalMinor)}</span>
+              <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
             </li>
           ))}
         </ul>
@@ -96,6 +96,15 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
             <div className="flex justify-between">
               <dt>{m.shipping}</dt>
               <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
+            </div>
+          )}
+          {order.discountMinor > 0 && (
+            <div className="flex justify-between">
+              <dt>
+                {m.discount}
+                {order.discountCode && <span className="text-sm text-muted"> ({order.discountCode})</span>}
+              </dt>
+              <dd>−{money(order.discountMinor)}</dd>
             </div>
           )}
           <div className="flex justify-between font-semibold">

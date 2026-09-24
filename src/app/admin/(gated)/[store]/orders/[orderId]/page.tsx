@@ -157,7 +157,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       </td>
                       <td className="py-2 font-mono text-xs">{line.sku}</td>
                       <td className="py-2 text-right">{line.quantity}</td>
-                      <td className="py-2 text-right">{money(line.totalMinor)}</td>
+                      <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -166,6 +166,22 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             <dl className="mt-3 flex flex-col gap-1 text-sm">
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{money(order.subtotalMinor)}</dd></div>
               {order.ships && <div className="flex justify-between"><dt>Shipping</dt><dd>{money(order.shippingMinor)}</dd></div>}
+              {order.discountMinor > 0 && (
+                <div className="flex justify-between">
+                  <dt>
+                    Discount
+                    {order.discountCode && (
+                      <>
+                        {" "}
+                        <Link href={`/admin/${store.slug}/discounts`} className="font-mono text-xs underline">
+                          {order.discountCode}
+                        </Link>
+                      </>
+                    )}
+                  </dt>
+                  <dd>−{money(order.discountMinor)}</dd>
+                </div>
+              )}
               <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
               <div className="flex justify-between text-muted"><dt>VAT included (standard rate)</dt><dd>{money(order.taxMinor)}</dd></div>
               {order.refundedMinor > 0 && (

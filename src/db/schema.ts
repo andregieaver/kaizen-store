@@ -445,8 +445,48 @@ export const stripeSync = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.mode, t.kind, t.localId] }),
-    check("stripe_sync_kind", sql`${t.kind} in ('product', 'price', 'tax_rate', 'portal')`),
+    check(
+      "stripe_sync_kind",
+      sql`${t.kind} in ('product', 'price', 'tax_rate', 'portal', 'coupon', 'promotion_code')`,
+    ),
     index("stripe_sync_stripe_id_idx").on(t.mode, t.stripeId),
+  ],
+);
+
+/**
+ * Kaizen's discount codes for stores' plans (D31), kept in Stripe as a
+ * coupon and a promotion code in each mode. What a code gives cannot change
+ * once made (Stripe's coupons cannot); it can be switched off.
+ */
+export const platformDiscountCodes = commerce.table(
+  "platform_discount_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    code: text("code").notNull().unique(),
+    kind: text("kind").notNull(),
+    percent: integer("percent").notNull().default(0),
+    /** Amount off per plan currency, lower-case, in minor units: `{"nok": 10000}`. */
+    amounts: jsonb("amounts").notNull().default({}),
+    duration: text("duration").notNull(),
+    durationMonths: integer("duration_months"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    maxRedemptions: integer("max_redemptions"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("platform_discount_codes_kind", sql`${t.kind} in ('percent', 'fixed')`),
+    check(
+      "platform_discount_codes_percent",
+      sql`(${t.kind} = 'percent' and ${t.percent} between 1 and 100) or (${t.kind} = 'fixed' and ${t.percent} = 0)`,
+    ),
+    check("platform_discount_codes_duration", sql`${t.duration} in ('once', 'repeating', 'forever')`),
+    check(
+      "platform_discount_codes_months",
+      sql`(${t.duration} = 'repeating') = (${t.durationMonths} is not null)`,
+    ),
+    index("platform_discount_codes_created_by_idx").on(t.createdBy),
   ],
 );
 
@@ -470,6 +510,9 @@ export const storeBilling = commerce.table(
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
     saleFeeBpsOverride: integer("sale_fee_bps_override"),
+    /** Kaizen's discount code on the plan, while Stripe still applies it (D31). */
+    platformDiscountId: uuid("platform_discount_id").references(() => platformDiscountCodes.id),
+    discountAppliedAt: timestamp("discount_applied_at", { withTimezone: true }),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -481,6 +524,7 @@ export const storeBilling = commerce.table(
     ),
     index("store_billing_plan_idx").on(t.planId),
     index("store_billing_price_idx").on(t.priceId),
+    index("store_billing_platform_discount_idx").on(t.platformDiscountId),
     index("store_billing_updated_by_idx").on(t.updatedBy),
   ],
 );
@@ -783,6 +827,53 @@ const sellingPlanRef = (name: string, cols: { storeId: AnyPgColumn; sellingPlanI
     foreignColumns: [sellingPlans.storeId, sellingPlans.id],
   });
 
+/**
+ * A store's discount code (D31): a percentage, a fixed amount per market or
+ * free shipping, for everything or some products, with optional dates,
+ * minimum order and limits. Codes that have been used are switched off,
+ * never deleted, so orders keep what they got.
+ */
+export const discountCodes = commerce.table(
+  "discount_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    /** In capitals; shoppers may type it in any case. */
+    code: text("code").notNull(),
+    kind: text("kind").notNull(),
+    percent: integer("percent").notNull().default(0),
+    /** Amount off per market, in minor units, for `fixed`: `{"NO": 5000}`. */
+    amounts: jsonb("amounts").notNull().default({}),
+    /** Least order per market, in minor units; a missing market has none. */
+    minSubtotals: jsonb("min_subtotals").notNull().default({}),
+    /** Product ids it applies to; null for every product. */
+    productIds: jsonb("product_ids"),
+    /** A percentage that also lowers every renewal of a subscription. */
+    recurring: boolean("recurring").notNull().default(false),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    usageLimit: integer("usage_limit"),
+    oncePerCustomer: boolean("once_per_customer").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("discount_codes_store_id_key").on(t.storeId, t.id),
+    unique("discount_codes_store_code_key").on(t.storeId, t.code),
+    check("discount_codes_kind", sql`${t.kind} in ('percent', 'fixed', 'free_shipping')`),
+    check(
+      "discount_codes_percent",
+      sql`(${t.kind} = 'percent' and ${t.percent} between 1 and 100) or (${t.kind} <> 'percent' and ${t.percent} = 0)`,
+    ),
+    check("discount_codes_recurring", sql`not ${t.recurring} or ${t.kind} = 'percent'`),
+    check("discount_codes_usage_limit", sql`${t.usageLimit} is null or ${t.usageLimit} > 0`),
+    check("discount_codes_dates", sql`${t.startsAt} is null or ${t.endsAt} is null or ${t.startsAt} < ${t.endsAt}`),
+  ],
+);
+
 const marketRef = (
   name: string,
   cols: { storeId: AnyPgColumn; marketCode: AnyPgColumn; currency: AnyPgColumn },
@@ -1012,6 +1103,8 @@ export const carts = commerce.table(
     currency: char("currency", { length: 3 }).notNull(),
     locale: text("locale").notNull(),
     customerId: uuid("customer_id"),
+    /** The discount code the shopper entered (D31), checked again at checkout. */
+    discountCode: text("discount_code"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1093,10 +1186,19 @@ export const orders = commerce.table(
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     /** The subscription this order started or renewed (D25). */
     subscriptionId: uuid("subscription_id"),
+    /** The discount code used, and its text as the shopper saw it (D31). */
+    discountCodeId: uuid("discount_code_id"),
+    discountCode: text("discount_code"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("orders_store_id_key").on(t.storeId, t.id),
+    index("orders_discount_code_idx").on(t.storeId, t.discountCodeId),
+    foreignKey({
+      name: "orders_discount_code_fk",
+      columns: [t.storeId, t.discountCodeId],
+      foreignColumns: [discountCodes.storeId, discountCodes.id],
+    }),
     index("orders_subscription_idx").on(t.storeId, t.subscriptionId),
     unique("orders_store_number_key").on(t.storeId, t.number),
     marketRef("orders_market_fk", t),

@@ -3,11 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { billingMode, getStoreBilling, listPlans } from "@/server/billing";
 import { getStore } from "@/server/stores";
 
-import { assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
+import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 
 export const metadata: Metadata = { title: "Store plan" };
 
@@ -159,6 +160,15 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             </SubmitButton>
           </ActionForm>
         </section>
+      )}
+
+      {mode && (
+        <PlanDiscount
+          discount={billing.discount}
+          apply={applyStoreDiscountAction.bind(null, store.slug)}
+          remove={null}
+          canEdit
+        />
       )}
 
       <section aria-labelledby="fee-heading" className="rounded-lg border border-border bg-background p-5">

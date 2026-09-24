@@ -4,12 +4,14 @@ import { sql } from "drizzle-orm";
 import Stripe from "stripe";
 
 import { db } from "@/db/client";
+import type { PlatformDiscount } from "@/lib/discounts";
 import { effectiveFeeBps, type PlanInterval } from "@/lib/plans";
 import { storeBase } from "@/lib/paths";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Account } from "./auth";
 import { createStripeAccount, getSaleFeeBps, getStripeAccounts } from "./connect";
+import { findPlatformDiscount } from "./platform-discounts";
 import type { SaveResult } from "./settings";
 import { platformModes, platformStripe } from "./stripe";
 import { getStore } from "./stores";
@@ -355,6 +357,13 @@ export type StoreBilling = {
   /** Kaizen's fee on the store's sales right now. */
   feeBps: number;
   ownerEmail: string | null;
+  /**
+   * Kaizen's discount code on the plan (D31): applied (Stripe gives it on
+   * the invoices), or waiting for the plan to be chosen.
+   */
+  discount: (Pick<PlatformDiscount, "id" | "code" | "kind" | "percent" | "amounts" | "duration" | "durationMonths"> & {
+    appliedAt: string | null;
+  }) | null;
 };
 
 const billingQuery = (where: ReturnType<typeof sql>) => sql`
@@ -362,7 +371,10 @@ const billingQuery = (where: ReturnType<typeof sql>) => sql`
          b.plan_id, p.name as plan_name, p.sale_fee_bps as plan_fee_bps, b.price_id,
          pp.currency, pp.interval, pp.amount_minor, b.mode, b.subscription_id, b.status,
          b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancel_at_period_end,
-         b.sale_fee_bps_override,
+         b.sale_fee_bps_override, b.discount_applied_at,
+         case when d.id is null then null else jsonb_build_object(
+           'id', d.id, 'code', d.code, 'kind', d.kind, 'percent', d.percent, 'amounts', d.amounts,
+           'duration', d.duration, 'durationMonths', d.duration_months) end as discount,
          (select a.email from commerce.store_members m join commerce.accounts a on a.id = m.account_id
            where m.store_id = s.id and m.role = 'owner' and m.disabled_at is null
            order by m.created_at limit 1) as owner_email
@@ -370,6 +382,7 @@ const billingQuery = (where: ReturnType<typeof sql>) => sql`
   left join commerce.store_billing b on b.store_id = s.id
   left join commerce.plans p on p.id = b.plan_id
   left join commerce.plan_prices pp on pp.id = b.price_id
+  left join commerce.platform_discount_codes d on d.id = b.platform_discount_id
   where ${where}
   order by s.is_template desc, lower(s.name)
 `;
@@ -401,6 +414,12 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
     saleFeeBpsOverride: override,
     feeBps: effectiveFeeBps({ overrideBps: override, planFeeBps: planFee, status, defaultBps }),
     ownerEmail: row.owner_email ? String(row.owner_email) : null,
+    discount: row.discount
+      ? {
+          ...(row.discount as Omit<NonNullable<StoreBilling["discount"]>, "appliedAt">),
+          appliedAt: row.discount_applied_at ? new Date(String(row.discount_applied_at)).toISOString() : null,
+        }
+      : null,
   };
 }
 
@@ -452,17 +471,32 @@ export async function applySubscription(
       `)
     : [];
   const periodEnd = item?.current_period_end ? new Date(item.current_period_end * 1000).toISOString() : null;
+  // Kaizen's code on the plan (D31): set when a code was applied, and gone
+  // once Stripe no longer gives the discount. A code still waiting for a
+  // plan to be chosen is left alone.
+  const discountId = subscription.metadata?.kaizen_discount_id || null;
+  const hasDiscounts = Array.isArray(subscription.discounts) ? subscription.discounts.length > 0 : null;
+  const applies = discountId !== null && hasDiscounts !== false;
 
   await db().execute(sql`
     insert into commerce.store_billing as b (
       store_id, plan_id, price_id, mode, subscription_id, status, current_period_end, cancel_at_period_end,
-      updated_by
+      updated_by, platform_discount_id, discount_applied_at
     ) values (
       ${storeId}::uuid, ${price ? String(price.plan_id) : null}, ${price ? String(price.id) : null}, ${mode},
       ${subscription.id}, ${subscription.status}, ${periodEnd}, ${subscription.cancel_at_period_end},
-      ${actor?.id ?? null}
+      ${actor?.id ?? null}, ${applies ? discountId : null}::uuid, ${applies ? sql`now()` : null}
     )
     on conflict (store_id) do update set
+      platform_discount_id = case
+        when ${applies} then ${discountId}::uuid
+        when ${hasDiscounts}::boolean = false and b.discount_applied_at is not null then null
+        else b.platform_discount_id end,
+      discount_applied_at = case
+        when ${applies} then coalesce(
+          case when b.platform_discount_id = ${discountId}::uuid then b.discount_applied_at end, now())
+        when ${hasDiscounts}::boolean = false and b.discount_applied_at is not null then null
+        else b.discount_applied_at end,
       plan_id = coalesce(excluded.plan_id, b.plan_id),
       price_id = coalesce(excluded.price_id, b.price_id),
       mode = excluded.mode,
@@ -551,6 +585,71 @@ async function vatRatesFor(p: Prepared): Promise<string[]> {
   return (p.store.details.country ?? "NO") === "NO" ? [await norwegianVatRate(p.stripe, p.mode)] : [];
 }
 
+/**
+ * The code an owner saved before choosing a plan (D31), checked again for
+ * the price chosen. None is fine; one that no longer works stops the
+ * choice, so the owner is not charged more than they expected.
+ */
+async function waitingDiscount(
+  p: Prepared,
+): Promise<{ ok: true; promotionCode: string | null; metadata: Record<string, string> } | { ok: false; problem: string }> {
+  const billing = await getStoreBilling(p.store.id);
+  if (!billing?.discount || billing.discount.appliedAt) return { ok: true, promotionCode: null, metadata: {} };
+  const [price] = await db().execute<Row>(sql`select currency from commerce.plan_prices where id = ${p.price.id}::uuid`);
+  const found = await findPlatformDiscount(billing.discount.code, p.mode, price ? String(price.currency) : null);
+  if (!found.ok) return { ok: false, problem: `${found.problem} Remove the code to choose the plan without it.` };
+  return { ok: true, promotionCode: found.promotionCode, metadata: { kaizen_discount_id: found.discount.id } };
+}
+
+/**
+ * Puts one of Kaizen's codes on a store's plan (D31): at once on a running
+ * plan, where Stripe gives it on the next invoices; otherwise saved for when
+ * the plan is chosen. Owners use it on their Plan page, platform admins on
+ * the store's page.
+ */
+export async function applyPlanDiscount(actor: Account, storeId: string, text: string): Promise<SaveResult> {
+  const mode = billingMode();
+  const stripe = mode && platformStripe(mode);
+  if (!mode || !stripe) return { ok: false, problems: ["Discount codes cannot be used right now."] };
+  const { billing, live } = await currentSubscription(storeId);
+  const running = live && billing?.mode === mode && billing.subscriptionId ? billing.subscriptionId : null;
+  const found = await findPlatformDiscount(text, mode, running ? (billing?.price?.currency ?? null) : null);
+  if (!found.ok) return { ok: false, problems: [found.problem] };
+
+  if (running) {
+    let subscription: Stripe.Subscription;
+    try {
+      const current = await stripe.subscriptions.retrieve(running);
+      subscription = await stripe.subscriptions.update(running, {
+        discounts: [{ promotion_code: found.promotionCode }],
+        metadata: { ...current.metadata, kaizen_discount_id: found.discount.id },
+      });
+    } catch (error) {
+      return { ok: false, problems: [stripeProblem(error)] };
+    }
+    await applySubscription(subscription, mode, actor);
+  } else {
+    await db().execute(sql`
+      insert into commerce.store_billing as b (store_id, platform_discount_id, discount_applied_at, updated_by)
+      values (${storeId}::uuid, ${found.discount.id}::uuid, null, ${actor.id}::uuid)
+      on conflict (store_id) do update set
+        platform_discount_id = excluded.platform_discount_id, discount_applied_at = null,
+        updated_at = now(), updated_by = excluded.updated_by
+    `);
+  }
+  await audit(actor.id, storeId, "billing.discount_applied", { code: found.discount.code, running: Boolean(running) });
+  return { ok: true, note: running ? "Applied. It shows on your next invoice." : "Saved. It applies when you choose a plan." };
+}
+
+/** Takes off a code saved for a plan not chosen yet (one on a running plan stays, as Stripe gives it). */
+export async function removeWaitingDiscount(actor: Account, storeId: string): Promise<SaveResult> {
+  await db().execute(sql`
+    update commerce.store_billing set platform_discount_id = null, updated_at = now(), updated_by = ${actor.id}::uuid
+    where store_id = ${storeId}::uuid and discount_applied_at is null
+  `);
+  return { ok: true };
+}
+
 /** Moves a store's running subscription to another price, with prorated charges or credits. */
 async function changeSubscription(actor: Account, p: Prepared, subscriptionId: string): Promise<SaveResult> {
   let subscription: Stripe.Subscription;
@@ -598,6 +697,8 @@ export async function assignPlan(
 
   const running = await runningSubscription(p.store.id, p.mode);
   if (running) return changeSubscription(actor, p, running);
+  const waiting = await waitingDiscount(p);
+  if (!waiting.ok) return { ok: false, problems: [waiting.problem] };
 
   let subscription: Stripe.Subscription;
   try {
@@ -606,12 +707,13 @@ export async function assignPlan(
       {
         customer_account: p.accountId,
         items: [{ price: p.stripePrice }],
+        ...(waiting.promotionCode && { discounts: [{ promotion_code: waiting.promotionCode }] }),
         collection_method: "send_invoice",
         days_until_due: 14,
         ...(trialDays > 0 && { trial_period_days: trialDays }),
         ...(vatRates.length > 0 && { default_tax_rates: vatRates }),
         description: `Kaizen ${p.price.planName}: ${p.store.name}`,
-        metadata: p.metadata,
+        metadata: { ...p.metadata, ...waiting.metadata },
       },
       // A double click must not start two subscriptions.
       { idempotencyKey: `kaizen-subscribe-${p.store.id}-${priceId}-${Math.floor(Date.now() / 60_000)}` },
@@ -647,6 +749,8 @@ export async function choosePlan(
 
   const running = await runningSubscription(p.store.id, p.mode);
   if (running) return changeSubscription(owner, p, running);
+  const waiting = await waitingDiscount(p);
+  if (!waiting.ok) return { ok: false, problems: [waiting.problem] };
 
   const back = `${origin}/admin/${p.store.slug}/billing`;
   try {
@@ -655,7 +759,11 @@ export async function choosePlan(
       mode: "subscription",
       customer_account: p.accountId,
       line_items: [{ price: p.stripePrice, quantity: 1, ...(vatRates.length > 0 && { tax_rates: vatRates }) }],
-      subscription_data: { description: `Kaizen ${p.price.planName}: ${p.store.name}`, metadata: p.metadata },
+      ...(waiting.promotionCode && { discounts: [{ promotion_code: waiting.promotionCode }] }),
+      subscription_data: {
+        description: `Kaizen ${p.price.planName}: ${p.store.name}`,
+        metadata: { ...p.metadata, ...waiting.metadata },
+      },
       metadata: p.metadata,
       locale: "auto",
       success_url: `${back}?checkout={CHECKOUT_SESSION_ID}`,

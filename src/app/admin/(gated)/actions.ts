@@ -12,7 +12,7 @@ import { seoFromForm } from "@/lib/seo";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
 import { requireMember, type Membership } from "@/server/auth";
-import { cancelPlan, choosePlan, portalUrl } from "@/server/billing";
+import { applyPlanDiscount, cancelPlan, choosePlan, portalUrl, removeWaitingDiscount } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
 import { catalogTag } from "@/server/catalog";
 import { saveStoreSeo, STORES_TAG } from "@/server/seo";
@@ -223,4 +223,20 @@ export async function ownerCancelPlanAction(storeSlug: string, _state: FormState
     status: "ok",
     messages: [when.data === "undo" ? "Your plan continues." : "Your plan ends when the current period does."],
   };
+}
+
+/** Puts one of Kaizen's discount codes on the store's plan, or saves it for when a plan is chosen (D31). */
+export async function applyPlanDiscountAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  const code = String(formData.get("code") ?? "").slice(0, 60);
+  if (!code.trim()) return { status: "error", messages: ["Type the discount code."] };
+  return toState(await applyPlanDiscount(owner.account, owner.store.id, code));
+}
+
+/** Takes off a code saved for a plan not chosen yet. */
+export async function removePlanDiscountAction(storeSlug: string): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  return toState(await removeWaitingDiscount(owner.account, owner.store.id), "Code removed.");
 }

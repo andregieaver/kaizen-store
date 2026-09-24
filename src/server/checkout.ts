@@ -11,12 +11,14 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { t } from "@/lib/i18n";
 import { GENERAL_TAX_CODE, variantLabel, type Delivery } from "@/lib/product-input";
+import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { storeFeeBps } from "./billing";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
+import { findUsableDiscount } from "./discounts";
 import { getCheckoutAccount } from "./settings";
 import { ensureSubscriptionEvents } from "./subscriptions";
 import { platformStripe } from "./stripe";
@@ -41,10 +43,14 @@ export type PlacedOrder = {
     trialDays: number;
     shippingMinor: number;
   } | null;
+  /** Shipping before any discount code, and what the code takes off it (D31). */
   shippingMinor: number;
+  shippingDiscountMinor: number;
   /** The VAT included in the total. */
   taxMinor: number;
   totalMinor: number;
+  /** The discount code, and what Stripe takes off as a one-time coupon. */
+  discount: { code: string; couponMinor: number } | null;
 };
 
 export type CheckoutProblem =
@@ -58,6 +64,7 @@ export type CheckoutProblem =
   | "processing"
   | "consent"
   | "subscription_consent"
+  | "discount"
   | "plans";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
@@ -80,11 +87,12 @@ export async function placeOrder(
   shop: Pick<CheckoutShop, "storeId" | "market">,
   cartId: string,
   consent: CheckoutConsent = {},
+  { customerId = null }: { customerId?: string | null } = {},
 ): Promise<PlaceResult> {
   const { storeId, market } = shop;
   return db().transaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
-      select id from commerce.carts
+      select id, discount_code from commerce.carts
       where store_id = ${storeId}::uuid and id = ${cartId}::uuid and market_code = ${market.code}
         and status = 'open' and expires_at > now()
       for update
@@ -93,7 +101,7 @@ export async function placeOrder(
 
     const lines = await tx.execute<Row>(sql`
       select
-        cl.variant_id, cl.quantity, v.sku, v.options, v.delivery,
+        cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id,
         cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
         coalesce((sp.signup_fee ->> ${market.code})::bigint, 0) as signup_fee,
         (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
@@ -201,7 +209,7 @@ export async function placeOrder(
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
       const delivery: Delivery = line.delivery === "digital" ? "digital" : "physical";
-      return { line, quantity, unit, renewUnit, total: unit * quantity, title, recurring, delivery };
+      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery };
     });
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
@@ -212,25 +220,72 @@ export async function placeOrder(
       ).values(),
     ];
     const feeTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
-    const subtotal = priced.reduce((sum, p) => sum + p.total, 0) + feeTotal;
+    // Before any discount code: what the items and fees come to.
+    const subtotal = priced.reduce((sum, p) => sum + p.unit * p.quantity, 0) + feeTotal;
+    const shippingRate = rate
+      ? {
+          amountMinor: Number(rate.amount_minor),
+          freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
+        }
+      : null;
     // Free shipping counts the whole basket, downloads included; a
     // subscription pays shipping on each delivery (D25).
-    const basket = basketShipping(
-      priced.map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
-      rate
-        ? {
-            amountMinor: Number(rate.amount_minor),
-            freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
-          }
-        : null,
-      { trial },
-    );
+    const shippingFor = () =>
+      basketShipping(
+        priced.map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
+        shippingRate,
+        { trial },
+      );
+    let basket = shippingFor();
+
+    // The cart's discount code (D31), checked again here under a lock, so
+    // two checkouts cannot both take a code's last use.
+    let discount: { id: string; code: string } | null = null;
+    let shippingDiscount = 0;
+    const lowered = new Set<number>();
+    if (cart.discount_code) {
+      const found = await findUsableDiscount(tx, storeId, String(cart.discount_code), {
+        market,
+        customerId,
+        lock: true,
+      });
+      const result = found.ok
+        ? applyDiscount(found.discount, {
+            marketCode: market.code,
+            lines: priced.map((p, i) => ({
+              key: String(i),
+              productId: String(p.line.product_id),
+              unitMinor: p.renewUnit,
+              quantity: p.quantity,
+              todayMinor: p.total,
+              recurring: p.recurring,
+            })),
+            shippingMinor: basket.first,
+          })
+        : null;
+      if (!found.ok || !result?.ok) return { ok: false, problem: "discount" };
+      const { applied } = result;
+      priced.forEach((p, i) => {
+        // A recurring percentage lowers the subscriber's price for good.
+        const renewal = applied.renewalUnits[String(i)];
+        if (renewal !== undefined) {
+          p.renewUnit = renewal;
+          lowered.add(i);
+        }
+        p.discount = applied.lines[String(i)] ?? 0;
+        p.total = p.unit * p.quantity - p.discount;
+      });
+      if (lowered.size > 0) basket = shippingFor();
+      shippingDiscount = applied.shippingMinor;
+      discount = { id: found.discount.id, code: found.discount.code };
+    }
     const shipping = basket.first;
+    const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
     const tax =
       priced.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) +
       fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, vatRate), 0) +
-      vatIncluded(shipping, vatRate);
-    const total = subtotal + shipping;
+      vatIncluded(shipping - shippingDiscount, vatRate);
+    const total = subtotal + shipping - discountTotal;
 
     const [numbered] = await tx.execute<Row>(sql`
       select s.prefix || commerce.next_document_number(${storeId}::uuid, 'order')::text as number
@@ -241,12 +296,12 @@ export async function placeOrder(
       insert into commerce.orders (
         store_id, number, market_code, currency, locale, cart_id, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-        billing_address, shipping_address, digital_consent_at
+        billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
-        ${subtotal}, ${shipping}, 0, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
-        ${digital ? sql`now()` : sql`null`}
+        ${subtotal}, ${shipping}, ${discountTotal}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
+        ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null}
       )
       returning id
     `);
@@ -260,7 +315,7 @@ export async function placeOrder(
           selling_plan_id, plan_interval, plan_interval_count
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
-          ${p.title}, ${p.quantity}, ${p.unit}, 0, ${p.total}, ${vatIncluded(p.total, vatRate)},
+          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.total}, ${vatIncluded(p.total, vatRate)},
           ${vatRate}, ${String(p.line.tax_code)},
           ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
           ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
@@ -361,8 +416,18 @@ export async function placeOrder(
         ships,
         subscription,
         shippingMinor: shipping,
+        shippingDiscountMinor: shippingDiscount,
         taxMinor: tax,
         totalMinor: total,
+        // Stripe takes it as a one-time coupon: everything off today that is
+        // not already in a lowered subscriber's price. In a subscription,
+        // shipping is a line, so free shipping is in the coupon too.
+        discount: discount && {
+          code: discount.code,
+          couponMinor:
+            priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount), 0) +
+            (rhythm ? shippingDiscount : 0),
+        },
       },
     };
   });
@@ -443,6 +508,7 @@ export async function startCheckout(
   origin: string,
   shippingLabel: string,
   consent: CheckoutConsent = {},
+  { customerId = null }: { customerId?: string | null } = {},
 ): Promise<CheckoutStart> {
   const found = await getCheckoutAccount(shop.storeId);
   const stripe = found && platformStripe(found.mode);
@@ -486,7 +552,7 @@ export async function startCheckout(
     await cancelUnpaidOrder(orderId, "replaced by a new checkout");
   }
 
-  const placed = await placeOrder(shop, cartId, consent);
+  const placed = await placeOrder(shop, cartId, consent, { customerId });
   if (!placed.ok) return placed;
   const { order } = placed;
   // Renewals arrive as webhook events that older platform webhooks were not sent (D25).
@@ -511,10 +577,26 @@ export async function startCheckout(
 
   let session: Stripe.Checkout.Session;
   try {
+    // A discount code (D31) reaches Stripe as a coupon for this checkout alone.
+    const coupon =
+      order.discount && order.discount.couponMinor > 0
+        ? await stripe.coupons.create(
+            {
+              amount_off: order.discount.couponMinor,
+              currency,
+              duration: "once",
+              max_redemptions: 1,
+              name: order.discount.code.slice(0, 40),
+              metadata,
+            },
+            { stripeAccount: connection.accountId, idempotencyKey: `coupon-${order.orderId}` },
+          )
+        : null;
     session = await stripe.checkout.sessions.create(
       {
         client_reference_id: order.orderId,
         metadata,
+        ...(coupon && { discounts: [{ coupon: coupon.id }] }),
         integration_identifier: INTEGRATION_IDENTIFIER,
         line_items: [
           ...order.lines.map((line) => ({
@@ -564,7 +646,7 @@ export async function startCheckout(
                 shipping_rate_data: {
                   type: "fixed_amount",
                   display_name: shippingLabel,
-                  fixed_amount: { amount: order.shippingMinor, currency },
+                  fixed_amount: { amount: order.shippingMinor - order.shippingDiscountMinor, currency },
                 },
               },
             ],
@@ -659,7 +741,10 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
       is distinct from
       (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.selling_plan_id, ol.quantity)
                                  order by ol.variant_id, ol.selling_plan_id), '[]'::jsonb)
-         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null) as changed,
+         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null)
+      -- A code put on or taken off the cart changes the price too (D31).
+      or (select c.discount_code from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+         is distinct from o.discount_code as changed,
       exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol

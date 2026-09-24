@@ -12,6 +12,7 @@ import { seoFromForm } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 import { requireAccount, type Account } from "@/server/auth";
 import {
+  applyPlanDiscount,
   assignPlan,
   cancelPlan,
   planCurrencies,
@@ -24,7 +25,9 @@ import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/
 import { uploadProductImage, type UploadResult } from "@/server/media";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
+import { createPlatformDiscount, setPlatformDiscountActive } from "@/server/platform-discounts";
 import { platformModes } from "@/server/stripe";
+import { getStore } from "@/server/stores";
 
 async function requirePlatformAdmin(): Promise<Account> {
   const account = await requireAccount();
@@ -241,4 +244,54 @@ export async function uploadPlatformImageAction(formData: FormData): Promise<Upl
     return { ok: false, problem: "Choose a picture to upload." };
   }
   return uploadProductImage("platform", image, thumbnail);
+}
+
+/** Makes one of Kaizen's discount codes for plans, and puts it in Stripe (D31). */
+export async function createPlatformDiscountAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const currencies = await planCurrencies();
+  const text = (name: string) => {
+    const value = String(formData.get(name) ?? "").trim();
+    return value === "" ? null : value;
+  };
+  const result = await createPlatformDiscount(
+    admin,
+    {
+      code: String(formData.get("code") ?? ""),
+      kind: formData.get("kind"),
+      percent: text("percent") ?? undefined,
+      amounts: Object.fromEntries(currencies.map((currency) => [currency, text(`amount_${currency}`) ?? ""])),
+      duration: formData.get("duration"),
+      durationMonths: text("durationMonths"),
+      expiresAt: text("expiresAt"),
+      maxRedemptions: text("maxRedemptions"),
+    },
+    currencies,
+  );
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [result.note ?? "Code made and put in Stripe."] };
+}
+
+/** Switches one of Kaizen's codes on or off. */
+export async function setPlatformDiscountActiveAction(id: string, active: boolean): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  if (!z.uuid().safeParse(id).success) return { status: "error", messages: ["Unknown code."] };
+  const result = await setPlatformDiscountActive(admin, id, active);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [result.note ?? (active ? "Switched on." : "Switched off.")] };
+}
+
+/** Puts a discount code on a store's plan, for a platform admin (D31). */
+export async function applyStoreDiscountAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const store = await getStore(storeSlug);
+  if (!store) return { status: "error", messages: ["Unknown store."] };
+  const code = String(formData.get("code") ?? "").slice(0, 60);
+  if (!code.trim()) return { status: "error", messages: ["Type the discount code."] };
+  const result = await applyPlanDiscount(admin, store.id, code);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [result.note ?? "Applied."] };
 }

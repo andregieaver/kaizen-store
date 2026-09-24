@@ -37,6 +37,9 @@ export type OrderView = {
   placedAt: string;
   subtotalMinor: number;
   shippingMinor: number;
+  /** What a discount code took off, and the code (D31). */
+  discountMinor: number;
+  discountCode: string | null;
   taxMinor: number;
   totalMinor: number;
   shippingAddress: Address;
@@ -84,6 +87,8 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   placedAt: new Date(String(row.placed_at)).toISOString(),
   subtotalMinor: Number(row.subtotal_minor),
   shippingMinor: Number(row.shipping_minor),
+  discountMinor: Number(row.discount_minor ?? 0),
+  discountCode: row.discount_code ? String(row.discount_code) : null,
   taxMinor: Number(row.tax_minor),
   totalMinor: Number(row.total_minor),
   shippingAddress: (row.shipping_address ?? {}) as Address,

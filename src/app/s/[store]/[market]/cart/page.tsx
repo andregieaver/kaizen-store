@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { CheckoutButton } from "@/components/checkout-button";
+import { DiscountCodeForm } from "@/components/discount-code-form";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
 import { basketShipping } from "@/lib/subscriptions";
 import { checkoutLabels } from "@/lib/checkout-labels";
@@ -13,6 +14,7 @@ import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { formatMoney } from "@/lib/money";
 import { getCart, type CartLine } from "@/server/cart";
+import { previewCartDiscount } from "@/server/discounts";
 import { getCheckoutInfo } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
@@ -97,10 +99,42 @@ async function CartContents({
     { trial },
   );
   const shipping = !ships ? 0 : checkout.shipping ? basket.first : null;
-  const renewal = plan
-    ? payable.filter((line) => line.plan).reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0) +
-      basket.renewal
-    : null;
+  // The discount code, checked against this basket as checkout will (D31).
+  const code = await previewCartDiscount(
+    { storeId: store.id, market },
+    {
+      lines: payable.map((line, i) => ({
+        key: String(i),
+        productId: line.productId,
+        unitMinor: line.unitPriceMinor,
+        quantity: line.quantity,
+        todayMinor: today(line),
+        recurring: line.plan !== null,
+      })),
+      shippingMinor: shipping ?? 0,
+    },
+  );
+  const applied = code?.ok ? code.applied : null;
+  const discountMinor = applied?.totalMinor ?? 0;
+  // A recurring percentage lowers what each renewal costs, and so its shipping.
+  const renewUnit = (line: (typeof payable)[number], i: number) => applied?.renewalUnits[String(i)] ?? line.unitPriceMinor;
+  const renewing = payable
+    .map((line, i) => ({ line, i }))
+    .filter(({ line }) => line.plan)
+    .reduce((sum, { line, i }) => sum + renewUnit(line, i) * line.quantity, 0);
+  const renewalShipping =
+    applied && Object.keys(applied.renewalUnits).length > 0
+      ? basketShipping(
+          payable.map((line, i) => ({
+            totalMinor: renewUnit(line, i) * line.quantity,
+            delivery: line.delivery,
+            recurring: line.plan !== null,
+          })),
+          checkout.shipping,
+          { trial },
+        ).renewal
+      : basket.renewal;
+  const renewal = plan ? renewing + renewalShipping : null;
   const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
   const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
   // The subscription's terms, said the same way in the summary and the consent (D29).
@@ -230,9 +264,17 @@ async function CartContents({
               <dd>{shipping === 0 ? m.freeShipping : money(shipping)}</dd>
             </div>
           )}
+          {discountMinor > 0 && code && (
+            <div className="flex justify-between">
+              <dt>
+                {m.discount} <span className="text-sm text-muted">({code.code})</span>
+              </dt>
+              <dd>−{money(discountMinor)}</dd>
+            </div>
+          )}
           <div className="flex justify-between border-t border-border pt-2 font-semibold">
             <dt>{m.total}</dt>
-            <dd>{money(subtotal + feeMinor + (shipping ?? 0))}</dd>
+            <dd>{money(subtotal + feeMinor + (shipping ?? 0) - discountMinor)}</dd>
           </div>
         </dl>
         <p className="text-sm text-muted">
@@ -240,6 +282,20 @@ async function CartContents({
           {shipping === null && ` · ${m.shippingAtCheckout}`}
         </p>
         {terms && <p className="text-sm">{terms}</p>}
+        {applied && Object.keys(applied.renewalUnits).length > 0 && <p className="text-sm">{m.discountRenews}</p>}
+        <DiscountCodeForm
+          store={store.slug}
+          market={market.slug}
+          code={code?.code ?? null}
+          problem={
+            code && !code.ok
+              ? code.problem === "minimum" && code.minimumMinor
+                ? `${m.minimumFor} ${money(code.minimumMinor)}.`
+                : m.codeProblems[code.problem]
+              : null
+          }
+          labels={{ code: m.discountCode, apply: m.applyCode, remove: m.removeCode, applying: m.savingChange }}
+        />
         {checkout.paymentsOn ? (
           <CheckoutButton
             store={store.slug}
