@@ -160,7 +160,11 @@ const TEST_IDENTITY = {
   address: { line1: "address_full_match", city: "Oslo", postal_code: "0150", country: "no" },
   website: "https://accessible.stripe.com",
   iban: "NO9386011117947",
+  /** A business ID that matches at once; MobilePay asks for a Norwegian org number. */
+  orgnr: "222222222",
 } as const;
+
+const testBusinessDetails = { id_numbers: [{ type: "no_orgnr" as const, value: TEST_IDENTITY.orgnr }] };
 
 /**
  * The store's test Stripe account, set up by Kaizen with no questions to the
@@ -223,6 +227,7 @@ export async function ensureTestAccount(
         identity: {
           country: "no",
           entity_type: "individual",
+          business_details: testBusinessDetails,
           individual: {
             given_name: "Kaizen",
             surname: "Test",
@@ -527,17 +532,21 @@ export async function ensureStorePaymentMethods(storeId: string): Promise<void> 
       }
     }
 
-    // Read the account back, so what Stripe still wants for the new methods is on record.
-    const account = await stripe.v2.core.accounts.retrieve(accountId, { include: INCLUDE }).catch(() => null);
-    if (account) await saveStatus(storeId, mode, account);
-
     if (row.managed_by_kaizen && !row.payment_methods_shown) {
+      // Test accounts made before MobilePay lack the org number it asks for.
+      await stripe.v2.core.accounts
+        .update(accountId, { identity: { business_details: testBusinessDetails } })
+        .catch(() => null);
       const shown = await showPaymentMethods(stripe, accountId);
       if (shown.length > 0) {
         await db().execute(sql`update commerce.stripe_accounts set payment_methods_shown = true where ${where}`);
         await audit(null, storeId, "payments.methods_shown", { mode, methods: shown });
       }
     }
+
+    // Read the account back, so what Stripe still wants for the new methods is on record.
+    const account = await stripe.v2.core.accounts.retrieve(accountId, { include: INCLUDE }).catch(() => null);
+    if (account) await saveStatus(storeId, mode, account);
   }
 }
 

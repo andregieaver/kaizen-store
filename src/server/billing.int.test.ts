@@ -239,6 +239,8 @@ describe("plans", () => {
       identity: {
         country: "no",
         entity_type: "individual",
+        // MobilePay asks for an org number: Stripe's test value that matches at once.
+        business_details: { id_numbers: [{ type: "no_orgnr", value: "222222222" }] },
         individual: {
           date_of_birth: { day: 1, month: 1, year: 1901 },
           address: { line1: "address_full_match" },
@@ -302,16 +304,17 @@ describe("plans", () => {
       update commerce.stripe_accounts set payment_methods_requested = '{card_payments}'
       where store_id = ${storeId}::uuid and mode = 'test'
     `);
+    // Requests for capabilities, apart from other account updates.
+    const capabilityRequests = () => calls("accounts.update").filter((c) => "configuration" in c.params);
     fake.refuseUpdates.on = true;
     await ensureStorePaymentMethods(storeId);
     fake.refuseUpdates.on = false;
-    const refused = calls("accounts.update").length;
-    expect(refused).toBe(1);
+    expect(capabilityRequests()).toHaveLength(1);
 
     await ensureStorePaymentMethods(storeId);
     await ensureStorePaymentMethods(storeId);
-    const updates = calls("accounts.update");
-    expect(updates).toHaveLength(refused + 1);
+    const updates = capabilityRequests();
+    expect(updates).toHaveLength(2);
     expect(updates.at(-1)?.params).toMatchObject({
       configuration: {
         merchant: {
@@ -329,7 +332,9 @@ describe("plans", () => {
     `);
     expect(row.payment_methods_requested).toEqual(["card_payments", "klarna_payments", "link_payments", "mobilepay_payments"]);
 
-    // Kaizen's own test account also shows them to shoppers, set once.
+    // Kaizen's own test account also gets the test org number MobilePay asks for …
+    expect(calls("accounts.update").some((c) => JSON.stringify(c.params).includes('"no_orgnr"'))).toBe(true);
+    // … and shows the methods to shoppers, set once.
     const shown = calls("pmc.update");
     expect(shown).toHaveLength(1);
     expect(shown[0].params).toMatchObject({
