@@ -28,6 +28,22 @@ test("a market lists products with VAT-inclusive prices", async ({ page }) => {
   await expect(mug).toContainText("Laveste pris siste 30 dager: 299,00");
 });
 
+test("a product's pictures swipe, with thumbnails that follow and choose", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("/s/demo/no/p/demo-notatbok");
+  const gallery = page.getByRole("region", { name: "Bilder" });
+  const current = gallery.locator('[aria-current="true"]');
+  await expect(current).toHaveAccessibleName("Vis bilde 1");
+  await expect(gallery.getByRole("button", { name: "Forrige bilde" })).toBeDisabled();
+
+  await gallery.getByRole("button", { name: "Neste bilde" }).click();
+  await expect(current).toHaveAccessibleName("Vis bilde 2");
+  await gallery.getByRole("button", { name: "Vis bilde 3" }).click();
+  await expect(current).toHaveAccessibleName("Vis bilde 3");
+  await expect(gallery.getByRole("button", { name: "Neste bilde" })).toBeDisabled();
+  await expect(gallery.getByRole("img", { name: "Baksiden av notatboken" })).toBeInViewport();
+});
+
 test("a product page shows stock, safety details and structured data", async ({ page }) => {
   await page.goto("/s/demo/no");
   await page.getByRole("link", { name: "Demo: Keramikkopp" }).click();

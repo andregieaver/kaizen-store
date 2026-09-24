@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -7,6 +6,7 @@ import { Suspense } from "react";
 import { AddToCart } from "@/components/add-to-cart";
 import { JsonLdScript } from "@/components/json-ld";
 import { Price } from "@/components/price";
+import { ProductGallery } from "@/components/product-gallery";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -117,25 +117,25 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
   if (!loaded) notFound();
   const { store, market, product } = loaded;
   const m = t(market.lang);
-  const [image] = product.images;
 
   return (
     <article className="grid gap-8 md:grid-cols-2">
-      <div>
+      {/* min-w-0: a long thumbnail strip scrolls inside the column instead of widening it. */}
+      <div className="min-w-0">
         <Link href={marketPath(store.slug, market.slug)} className="text-sm underline">
           {m.backToProducts}
         </Link>
-        {image && (
-          <Image
-            src={image.url}
-            alt={image.alt}
-            width={600}
-            height={600}
-            priority
-            unoptimized
-            className="mt-4 aspect-square w-full rounded-lg bg-surface object-cover"
-          />
-        )}
+        <ProductGallery
+          images={product.images}
+          title={product.title}
+          labels={{
+            label: m.galleryLabel,
+            previous: m.galleryPrevious,
+            next: m.galleryNext,
+            show: product.images.map((_, i) => m.galleryShow(i + 1)),
+            slide: product.images.map((_, i) => m.gallerySlide(i + 1, product.images.length)),
+          }}
+        />
       </div>
 
       <div className="flex flex-col gap-6">

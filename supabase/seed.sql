@@ -147,7 +147,11 @@ BEGIN
 
   INSERT INTO commerce.product_media (store_id, product_id, url, position, alt) VALUES
     (v_store, v_product, '/demo/notebook.svg', 0,
-     '{"nb-NO": "Blå notatbok", "sv-SE": "Blå anteckningsbok", "da-DK": "Blå notesbog"}');
+     '{"nb-NO": "Blå notatbok", "sv-SE": "Blå anteckningsbok", "da-DK": "Blå notesbog"}'),
+    (v_store, v_product, '/demo/notebook-open.svg', 1,
+     '{"nb-NO": "Notatboken slått opp, med linjerte sider", "sv-SE": "Anteckningsboken uppslagen, med linjerade sidor", "da-DK": "Notesbogen slået op, med linjerede sider"}'),
+    (v_store, v_product, '/demo/notebook-back.svg', 2,
+     '{"nb-NO": "Baksiden av notatboken", "sv-SE": "Baksidan av anteckningsboken", "da-DK": "Bagsiden af notesbogen"}');
 
   INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES (v_store, v_product, 'packaging');
 

@@ -65,7 +65,8 @@ export type ProductDetail = {
   seoDescription: string;
   safetyInformation: string;
   withdrawalExclusion: string;
-  images: { url: string; alt: string }[];
+  /** In the owner's order; `thumbnailUrl` is the 480 px copy, or the picture itself. */
+  images: { url: string; thumbnailUrl: string; alt: string }[];
   manufacturer: EconomicOperator | null;
   responsiblePerson: EconomicOperator | null;
   variants: ProductVariant[];
@@ -187,7 +188,7 @@ export async function getProduct(
 
   const [media, variants, plans] = await Promise.all([
     db().execute<Row>(sql`
-      select url, coalesce(alt ->> ${locale}, '') as alt
+      select url, thumbnail_url, coalesce(alt ->> ${locale}, '') as alt
       from commerce.product_media
       where product_id = ${product.id}
       order by position
@@ -228,7 +229,7 @@ export async function getProduct(
     seoDescription: str(product.seo_description),
     safetyInformation: str(product.safety_information),
     withdrawalExclusion: str(product.withdrawal_exclusion),
-    images: media.map((m) => ({ url: str(m.url), alt: str(m.alt) })),
+    images: media.map((m) => ({ url: str(m.url), thumbnailUrl: str(m.thumbnail_url ?? m.url), alt: str(m.alt) })),
     manufacturer: operator("mf"),
     responsiblePerson: operator("rp"),
     variants: variants.map((v) => ({
