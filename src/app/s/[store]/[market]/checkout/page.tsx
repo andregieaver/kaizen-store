@@ -59,7 +59,19 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
 
   return (
     <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:items-start">
-      <Summary order={order} m={m} money={money} />
+      <Summary
+        order={order}
+        m={m}
+        money={money}
+        renewal={
+          open.subscription
+            ? m.renewsEvery(
+                m.planEvery(open.subscription.interval, open.subscription.intervalCount),
+                money(open.subscription.totalMinor),
+              )
+            : null
+        }
+      />
       <div className="flex flex-col gap-6 md:order-first">
         {restart ? (
           <div className="flex flex-col gap-4 rounded-lg border border-border p-4">
@@ -122,7 +134,18 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
 }
 
 /** The order as placed: what the shopper pays for, from Kaizen's own figures. */
-function Summary({ order, m, money }: { order: OrderView; m: Messages; money: (minor: number) => string }) {
+function Summary({
+  order,
+  m,
+  money,
+  renewal,
+}: {
+  order: OrderView;
+  m: Messages;
+  money: (minor: number) => string;
+  /** A subscription's terms, repeated where the shopper pays (D25). */
+  renewal: string | null;
+}) {
   return (
     <section aria-labelledby="summary-heading" className="rounded-lg border border-border p-4 md:sticky md:top-4">
       <h2 id="summary-heading" className="mb-3 font-medium">
@@ -158,6 +181,7 @@ function Summary({ order, m, money }: { order: OrderView; m: Messages; money: (m
           <dd>{money(order.taxMinor)}</dd>
         </div>
       </dl>
+      {renewal && <p className="mt-3 border-t border-border pt-3 text-sm">{renewal}</p>}
     </section>
   );
 }
