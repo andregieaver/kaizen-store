@@ -85,7 +85,7 @@ describe("a store's search settings", () => {
     const llms = await seo.storeLlms(slug);
     expect(llms).toMatch(/^# Kopp\n\n> Håndlagde kopper\.\n\nVi dreier alt selv\.\n/);
     expect(llms).toContain("## Products (Norge, NOK)");
-    expect((await seo.sitemapIndex())).toContain(`/s/${slug}/sitemap.xml`);
+    expect((await seo.sitemapIndex())).toContain(`/s/${slug}/store-sitemap.xml`);
   });
 
   it("leaves a hidden store out of sitemaps and llms.txt", async () => {

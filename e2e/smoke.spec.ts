@@ -71,8 +71,8 @@ test("search engines and AI assistants get a sitemap, crawler rules and llms.txt
   expect(robots).toMatch(/Sitemap: \S+\/sitemap\.xml/);
 
   const index = await (await request.get("/sitemap.xml")).text();
-  expect(index).toContain("/s/demo/sitemap.xml");
-  const sitemap = await (await request.get("/s/demo/sitemap.xml")).text();
+  expect(index).toContain("/s/demo/store-sitemap.xml");
+  const sitemap = await (await request.get("/s/demo/store-sitemap.xml")).text();
   expect(sitemap).toContain("/s/demo/se/p/demo-keramikkopp</loc>");
   expect(sitemap).toContain('hreflang="da-DK"');
 

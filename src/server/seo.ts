@@ -292,6 +292,12 @@ export function verificationTags(seo: StoreSeo): Metadata["verification"] {
 // robots.txt, sitemaps and llms.txt
 // ---------------------------------------------------------------------------
 
+/**
+ * Where a store's sitemap is. Not `sitemap.xml`: Next.js reserves that name
+ * for its own sitemap files, which break under a store's dynamic path.
+ */
+export const storeSitemapPath = (slug: string) => `${storeBase(slug)}/store-sitemap.xml`;
+
 /** Kaizen's own pages that are not for crawlers. */
 const PLATFORM_PRIVATE = ["/admin", "/api/", "/auth/"];
 
@@ -308,7 +314,7 @@ export async function siteRobots(): Promise<string> {
 /** The robots.txt a store would have on its own address (and a preview of its part of the site's). */
 export function storeRobots(store: Pick<Store, "slug" | "seo">): string {
   return renderRobots(storeRobotsGroups(store.seo, storeBase(store.slug)), [
-    `${siteUrl()}${storeBase(store.slug)}/sitemap.xml`,
+    `${siteUrl()}${storeSitemapPath(store.slug)}`,
   ]);
 }
 
@@ -323,7 +329,7 @@ export async function sitemapIndex(): Promise<string> {
     `<sitemap><loc>${origin}/sitemap-kaizen.xml</loc></sitemap>`,
     ...stores.map(
       (store) =>
-        `<sitemap><loc>${xml(`${origin}${storeBase(store.slug)}/sitemap.xml`)}</loc><lastmod>${store.updatedAt}</lastmod></sitemap>`,
+        `<sitemap><loc>${xml(`${origin}${storeSitemapPath(store.slug)}`)}</loc><lastmod>${store.updatedAt}</lastmod></sitemap>`,
     ),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</sitemapindex>\n`;
@@ -475,7 +481,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
         heading: "Optional",
         links: [
           ...store.markets.slice(1).map((mk) => ({ title: `${store.name} in ${mk.name}`, url: home(mk.code), note: `prices in ${mk.currency}` })),
-          { title: "Sitemap", url: `${origin}${storeBase(store.slug)}/sitemap.xml` },
+          { title: "Sitemap", url: `${origin}${storeSitemapPath(store.slug)}` },
         ],
       },
     ],

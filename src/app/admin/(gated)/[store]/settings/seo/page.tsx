@@ -9,7 +9,7 @@ import { AI_ASSISTANT_BOTS, AI_TRAINING_BOTS, LLMS_MAX, RULES_MAX } from "@/lib/
 import { siteUrl } from "@/lib/site";
 import { requireMember } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
-import { altTextGaps } from "@/server/seo";
+import { altTextGaps, storeSitemapPath } from "@/server/seo";
 
 import { saveStoreSeoAction } from "../../../actions";
 import { uploadImageAction } from "../../products/actions";
@@ -58,7 +58,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
         </p>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <li>
-            <a href={`${base}/sitemap.xml`} className="underline">
+            <a href={storeSitemapPath(store.slug)} className="underline">
               Sitemap
             </a>
           </li>
@@ -254,7 +254,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             In Search Console, add the address {origin}
             {base}/ as a URL-prefix property and paste the code or the whole tag here. Then submit the
             sitemap: {origin}
-            {base}/sitemap.xml.
+            {storeSitemapPath(store.slug)}.
           </p>
         </section>
 
