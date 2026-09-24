@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full scroll-pt-20 antialiased">
       <body className="min-h-full bg-surface font-sans">{children}</body>
     </html>
   );

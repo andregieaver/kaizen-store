@@ -42,6 +42,8 @@ jobs:
         run: pnpm db:check
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
+      - name: Integration tests against the database
+        run: pnpm test:int
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e

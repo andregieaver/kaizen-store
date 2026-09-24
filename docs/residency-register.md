@@ -11,7 +11,7 @@ Status: ✅ in place · ⏳ to do · ❓ unverified
 
 | Service | Purpose | Data | Region | DPA | Notes |
 |---|---|---|---|---|---|
-| Supabase | Database, later auth and storage | All commerce data, including customer personal data | EU: `eu-west-1` (Ireland) | ⏳ accept in the dashboard | Project "Kaizen Store". |
+| Supabase | Database, auth (sign-in links) and storage (product pictures) | All commerce data, including customer personal data | EU: `eu-west-1` (Ireland) | ⏳ accept in the dashboard | Project "Kaizen Store". |
 | Vercel | Hosting and functions | Request data, logs; personal data passes through functions | Functions: `dub1` (Dublin). CDN and routing middleware: global | ⏳ accept in the dashboard | Middleware runs worldwide, so it must never read personal data. The CDN caches public pages only. |
 | GitHub | Source code and CI | Code only, no customer data | US | Not needed while no personal data is stored | Never commit secrets or production data. Test data is synthetic. |
 

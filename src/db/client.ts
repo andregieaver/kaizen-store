@@ -27,3 +27,9 @@ export function db() {
   instance ??= create();
   return instance;
 }
+
+/** Closes the connection (for scripts and tests; servers never need it). */
+export async function closeDb(): Promise<void> {
+  await instance?.$client.end();
+  instance = undefined;
+}

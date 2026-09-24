@@ -272,8 +272,11 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
           ))}
         </ul>
       )}
-      <p className="text-sm text-muted">
-        Adding and editing your own products is the next part of the admin we are building.
+      <p className="text-sm">
+        <Link href={`/admin/${store.slug}/products/new`} className="underline">
+          Add your own product
+        </Link>{" "}
+        now, or later from Products in the menu.
       </p>
       <div className="flex flex-wrap gap-3">
         <Link

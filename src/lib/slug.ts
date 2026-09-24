@@ -3,21 +3,29 @@ import { isStoreSlug } from "./paths";
 const LETTERS: Record<string, string> = { æ: "ae", ø: "o", å: "a", ß: "ss", œ: "oe", þ: "th", ð: "d" };
 
 /**
- * A store address suggested from its name: "Kari's Kopper & Kanner" becomes
- * "karis-kopper-kanner". Returns "" when nothing usable is left.
+ * Lowercase ASCII words joined by hyphens: "Blåbær Økologisk" becomes
+ * "blabaer-okologisk". Cut to `maxLength` without a trailing hyphen.
  */
-export function suggestSlug(name: string): string {
-  const ascii = name
+export function slugify(text: string, maxLength = 80): string {
+  const ascii = text
     .toLowerCase()
     .replace(/[æøåßœþð]/g, (c) => LETTERS[c] ?? c)
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/['’]/g, "");
-  const slug = ascii
+  return ascii
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 40)
+    .slice(0, maxLength)
     .replace(/-+$/g, "");
+}
+
+/**
+ * A store address suggested from its name: "Kari's Kopper & Kanner" becomes
+ * "karis-kopper-kanner". Returns "" when nothing usable is left.
+ */
+export function suggestSlug(name: string): string {
+  const slug = slugify(name, 40);
   return slug.length >= 3 ? slug : "";
 }
 

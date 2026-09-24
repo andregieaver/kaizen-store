@@ -7,6 +7,8 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.ts"],
+    // Integration tests need a database: `pnpm test:int`.
+    exclude: ["src/**/*.int.test.ts", "node_modules/**"],
     testTimeout: 20_000,
     hookTimeout: 60_000,
   },

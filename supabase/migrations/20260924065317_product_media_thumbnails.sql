@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."product_media" ADD COLUMN "thumbnail_url" text;

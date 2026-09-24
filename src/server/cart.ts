@@ -52,7 +52,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
     select
       cl.variant_id, cl.quantity, v.options, p.handle,
       coalesce(tl.title, tf.title) as title,
-      m.url as image_url, coalesce(m.alt ->> ${market.locale}, '') as image_alt,
+      coalesce(m.thumbnail_url, m.url) as image_url, coalesce(m.alt ->> ${market.locale}, '') as image_alt,
       cp.amount_minor,
       (p.status = 'active' and v.active) as sellable,
       avail.available
@@ -67,7 +67,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       where product_id = p.id order by locale limit 1
     ) tf on true
     left join lateral (
-      select url, alt from commerce.product_media
+      select url, thumbnail_url, alt from commerce.product_media
       where product_id = p.id order by position limit 1
     ) m on true
     left join commerce.current_prices cp

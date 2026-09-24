@@ -29,6 +29,20 @@
       "when": 1790230542715,
       "tag": "20260924061542_clone_store",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790232797813,
+      "tag": "20260924065317_product_media_thumbnails",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790232798802,
+      "tag": "20260924065318_product_media_bucket",
+      "breakpoints": true
     }
   ]
 }

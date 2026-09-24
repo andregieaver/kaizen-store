@@ -404,6 +404,8 @@ export const productMedia = commerce.table(
     storeId: storeId(),
     productId: uuid("product_id").notNull(),
     url: text("url").notNull(),
+    /** A small copy (about 480 px) for product lists and the cart. */
+    thumbnailUrl: text("thumbnail_url"),
     position: integer("position").notNull().default(0),
     /** Alt text keyed by locale. */
     alt: jsonb("alt").notNull().default({}),

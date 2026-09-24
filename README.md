@@ -73,6 +73,14 @@ organisation and sends a few emails an hour. Before inviting real store
 owners, add your own SMTP provider under **Authentication → Emails → SMTP
 Settings** (choose one that sends from the EU).
 
+Product pictures are uploaded to the public `product-media` bucket in Supabase
+Storage (created by a migration). Uploads need the project's secret key in the
+server environment: in Supabase, **Project Settings → API Keys**, create a
+secret key; in Vercel, add it as `SUPABASE_SECRET_KEY` (Production and
+Preview, marked Sensitive) and redeploy. It bypasses all database rules, so it
+must never reach the browser. Without it, the product editor asks for picture
+addresses instead.
+
 Store owners ask for a store at `/sign-up`; platform admins approve requests at
 `/admin/platform`, which creates the store as a copy of the demo template.
 

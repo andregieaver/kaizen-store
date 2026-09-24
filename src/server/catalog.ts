@@ -72,7 +72,7 @@ export async function listProducts(
     select
       p.handle,
       coalesce(tl.title, tf.title) as title,
-      m.url as image_url,
+      coalesce(m.thumbnail_url, m.url) as image_url,
       coalesce(m.alt ->> ${locale}, '') as image_alt,
       pr.min_amount,
       pr.max_amount,
@@ -86,7 +86,7 @@ export async function listProducts(
       where product_id = p.id order by locale limit 1
     ) tf on true
     left join lateral (
-      select url, alt from commerce.product_media
+      select url, thumbnail_url, alt from commerce.product_media
       where product_id = p.id order by position limit 1
     ) m on true
     join lateral (

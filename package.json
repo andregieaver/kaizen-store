@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
-    "db:check": "drizzle-kit check && drizzle-kit generate && git diff --exit-code -- supabase && test -z \"$(git ls-files --others --exclude-standard -- supabase)\""
+    "db:check": "drizzle-kit check && drizzle-kit generate && git diff --exit-code -- supabase && test -z \"$(git ls-files --others --exclude-standard -- supabase)\"",
+    "test:int": "vitest run --config vitest.integration.config.mts"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",

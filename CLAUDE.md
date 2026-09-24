@@ -19,6 +19,7 @@ pnpm dev         # local dev server
 pnpm lint
 pnpm typecheck
 pnpm test        # Vitest unit tests (src/**/*.test.ts)
+pnpm test:int    # integration tests against DATABASE_URL (src/**/*.int.test.ts)
 pnpm build
 pnpm test:e2e    # Playwright against `pnpm start`; build first
 pnpm db:generate # write a migration after changing src/db/schema.ts
@@ -94,6 +95,17 @@ of running `playwright install`.
   one transaction) and emails a sign-in link. Owners of a store that is not
   open yet land in the setup wizard, `/admin/{store}/setup/{step}`; progress is
   derived from data in `src/server/setup.ts`, never stored separately.
+- Products (`/admin/{store}/products`): `ProductEditor` is one client
+  component holding the whole product; Save sends it as JSON to
+  `saveProductAction`, which validates it with `productInput`
+  (`src/lib/product-input.ts`, shared with the browser) and `saveProduct()`
+  (`src/server/products.ts`), which writes everything in one transaction.
+  Prices only change through `commerce.set_price`; variants taken out are
+  switched off, never deleted. Pictures are shrunk to WebP in the browser
+  (1600 px plus a 480 px thumbnail) and uploaded with `uploadImageAction`.
+- `src/server/*.int.test.ts` are integration tests against a real database
+  (`pnpm test:int`, after `scripts/db-setup.mjs --seed`); CI runs them. Pass
+  inputs through the same validation the app uses.
 - Forms use `ActionForm`, which keeps what was typed when validation fails.
   Server actions that change a store call `updateTag()` for its store and
   catalogue tags.
