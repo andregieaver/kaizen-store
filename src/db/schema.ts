@@ -1420,6 +1420,8 @@ export const stripeAccounts = commerce.table(
      * own settings decide what is then offered.
      */
     paymentMethodsRequested: text("payment_methods_requested").array().notNull().default(sql`'{}'::text[]`),
+    /** Kaizen has switched its payment methods on in this (Kaizen-made test) account's display settings. */
+    paymentMethodsShown: boolean("payment_methods_shown").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),

@@ -104,6 +104,10 @@ const fake = vi.hoisted(() => {
         },
       },
     },
+    paymentMethodConfigurations: {
+      list: record("pmc.list", () => ({ data: [{ id: "pmc_child", is_default: true }] })),
+      update: record("pmc.update", (p) => ({ id: p.id })),
+    },
     accounts: {
       createExternalAccount: record("accounts.createExternalAccount", () => ({ id: id("ba") })),
     },
@@ -324,6 +328,17 @@ describe("plans", () => {
       select payment_methods_requested from commerce.stripe_accounts where store_id = ${storeId}::uuid and mode = 'test'
     `);
     expect(row.payment_methods_requested).toEqual(["card_payments", "klarna_payments", "link_payments", "mobilepay_payments"]);
+
+    // Kaizen's own test account also shows them to shoppers, set once.
+    const shown = calls("pmc.update");
+    expect(shown).toHaveLength(1);
+    expect(shown[0].params).toMatchObject({
+      id: "pmc_child",
+      mobilepay: { display_preference: { preference: "on" } },
+      klarna: { display_preference: { preference: "on" } },
+      apple_pay: { display_preference: { preference: "on" } },
+      google_pay: { display_preference: { preference: "on" } },
+    });
   });
 
   it("lets a store's own fee win, and falls back to the default after cancelling", async () => {

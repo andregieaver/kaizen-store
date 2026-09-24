@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."stripe_accounts" ADD COLUMN "payment_methods_shown" boolean DEFAULT false NOT NULL;

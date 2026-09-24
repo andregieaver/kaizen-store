@@ -283,8 +283,8 @@ export async function ensureTestAccount(
       account_id = excluded.account_id, card_payments = excluded.card_payments,
       requirements_due = excluded.requirements_due, requirements = excluded.requirements,
       managed_by_kaizen = true, payment_methods_requested = excluded.payment_methods_requested,
-      -- A new account has no domains registered yet.
-      payment_domains = '{}', updated_at = now()
+      -- A new account has no domains registered and no display settings changed yet.
+      payment_domains = '{}', payment_methods_shown = false, updated_at = now()
   `);
   const replaced = saved && saved.account_id !== created.id ? String(saved.account_id) : null;
   await audit(actorId, storeId, "payments.test_account_created", { accountId: created.id, replaced });
@@ -478,39 +478,90 @@ export async function ensurePaymentDomain(
   return true;
 }
 
+/** Shown to shoppers on Kaizen-made test accounts; owners of live accounts choose in their own Stripe Dashboard. */
+const SHOWN_METHODS = ["card", "apple_pay", "google_pay", "klarna", "link", "mobilepay"] as const;
+
 /**
  * Asks Stripe for any of Kaizen's payment methods that the store's accounts
- * do not have yet (accounts made before a method was added). Runs in the
- * background; an account Stripe refuses is asked again next time.
+ * do not have yet (accounts made before a method was added), and on the
+ * test accounts Kaizen made, switches them on in the account's display
+ * settings (which otherwise follow the platform's defaults). Runs in the
+ * background; what Stripe refuses is tried again next time.
  */
 export async function ensureStorePaymentMethods(storeId: string): Promise<void> {
   const rows = await db().execute<Row>(sql`
-    select mode, account_id, payment_methods_requested from commerce.stripe_accounts
+    select mode, account_id, payment_methods_requested, managed_by_kaizen, payment_methods_shown
+    from commerce.stripe_accounts
     where store_id = ${storeId}::uuid
-      and not payment_methods_requested @> ${CAPABILITY_LIST}::text[]
+      and (not payment_methods_requested @> ${CAPABILITY_LIST}::text[]
+           or (managed_by_kaizen and not payment_methods_shown))
   `);
   for (const row of rows) {
     const mode = row.mode as PaymentModeName;
+    const accountId = String(row.account_id);
     const stripe = platformStripe(mode);
     if (!stripe) continue;
+    const where = sql`store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${accountId}`;
+
     const asked = new Set(row.payment_methods_requested as string[]);
     const missing = PAYMENT_CAPABILITIES.filter((capability) => !asked.has(capability));
-    try {
-      await stripe.v2.core.accounts.update(String(row.account_id), {
-        configuration: {
-          merchant: {
-            capabilities: Object.fromEntries(missing.map((capability) => [capability, { requested: true }])),
+    if (missing.length > 0) {
+      const done = await stripe.v2.core.accounts
+        .update(accountId, {
+          configuration: {
+            merchant: {
+              capabilities: Object.fromEntries(missing.map((capability) => [capability, { requested: true }])),
+            },
           },
-        },
-      });
-    } catch {
-      continue;
+        })
+        .then(
+          () => true,
+          () => false,
+        );
+      if (done) {
+        await db().execute(sql`
+          update commerce.stripe_accounts set payment_methods_requested = ${CAPABILITY_LIST}::text[], updated_at = now()
+          where ${where}
+        `);
+        await audit(null, storeId, "payments.methods_requested", { mode, capabilities: missing });
+      }
     }
-    await db().execute(sql`
-      update commerce.stripe_accounts
-         set payment_methods_requested = ${CAPABILITY_LIST}::text[], updated_at = now()
-       where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${String(row.account_id)}
-    `);
-    await audit(null, storeId, "payments.methods_requested", { mode, capabilities: missing });
+
+    if (row.managed_by_kaizen && !row.payment_methods_shown) {
+      const shown = await showPaymentMethods(stripe, accountId);
+      if (shown.length > 0) {
+        await db().execute(sql`update commerce.stripe_accounts set payment_methods_shown = true where ${where}`);
+        await audit(null, storeId, "payments.methods_shown", { mode, methods: shown });
+      }
+    }
+  }
+}
+
+/** Turns Kaizen's payment methods on in the account's default display settings; returns those it could. */
+async function showPaymentMethods(stripe: Stripe, stripeAccount: string): Promise<string[]> {
+  const configs = await stripe.paymentMethodConfigurations.list({ limit: 20 }, { stripeAccount }).catch(() => null);
+  const config = configs?.data.find((c) => c.is_default) ?? configs?.data[0];
+  if (!config) return [];
+  const on = { display_preference: { preference: "on" as const } };
+  try {
+    await stripe.paymentMethodConfigurations.update(
+      config.id,
+      Object.fromEntries(SHOWN_METHODS.map((method) => [method, on])),
+      { stripeAccount },
+    );
+    return [...SHOWN_METHODS];
+  } catch {
+    // One method may not be offered to this account: turn on the others one by one.
+    const shown: string[] = [];
+    for (const method of SHOWN_METHODS) {
+      const ok = await stripe.paymentMethodConfigurations
+        .update(config.id, { [method]: on }, { stripeAccount })
+        .then(
+          () => true,
+          () => false,
+        );
+      if (ok) shown.push(method);
+    }
+    return shown;
   }
 }
