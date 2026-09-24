@@ -111,15 +111,23 @@ export async function requireMember(storeSlug: string): Promise<Membership> {
  * works in at least one store or runs the platform.
  */
 export async function canSignIn(email: string): Promise<boolean> {
+  return (await signInAccount(email)) !== null;
+}
+
+/**
+ * The same check as canSignIn, also saying whether the account has signed in
+ * before (and so has a Supabase Auth user that a password can be reset for).
+ */
+export async function signInAccount(email: string): Promise<{ linked: boolean } | null> {
   const [row] = await db().execute<Row>(sql`
-    select 1 as ok from commerce.accounts a
+    select a.auth_user_id is not null as linked from commerce.accounts a
     where lower(a.email) = lower(${email}) and a.disabled_at is null
       and (a.platform_admin or exists (
         select 1 from commerce.store_members m
         where m.account_id = a.id and m.disabled_at is null
       ))
   `);
-  return Boolean(row);
+  return row ? { linked: Boolean(row.linked) } : null;
 }
 
 /**

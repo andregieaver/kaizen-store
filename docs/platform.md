@@ -13,7 +13,7 @@ otherwise.
 | P2 | **Stores live on subdomains** of a platform domain (`{store}.{platform domain}`), with custom domains later. Until the platform domain is set up, stores are reachable at `/s/{store}` on the current URL. | 2026-09-24 |
 | P3 | **Invite-only beta.** Anyone can request access; the platform operator approves. | 2026-09-24 |
 | P4 | **The original store is the demo template.** Its catalogue is what every new store starts with, copied inside the database in one transaction. | 2026-09-24 |
-| P5 | **Accounts are platform-wide; roles are per store.** One sign-in (Supabase magic link) per person; `store_members` gives them `owner` or `admin` in each store. | 2026-09-24 |
+| P5 | **Accounts are platform-wide; roles are per store.** One sign-in (Supabase Auth: password or magic link) per person; `store_members` gives them `owner` or `admin` in each store. | 2026-09-24 |
 | P6 | **Routing by host happens in Vercel's routing layer, and only reads the host name.** Host-based rewrites from `{store}.{domain}` to `/s/{store}` are configuration, not code, so they add no function call to a page view and never touch cookies or personal data. They are added once the platform domain exists; until then `storeBase()` in `src/lib/paths.ts` returns `/s/{store}`. | 2026-09-24 |
 
 ## How it fits together

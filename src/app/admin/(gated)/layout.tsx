@@ -35,7 +35,9 @@ async function Gate({ children }: { children: React.ReactNode }) {
                 Access requests{pending > 0 ? ` (${pending})` : ""}
               </Link>
             )}
-            <span className="text-muted">{account.email}</span>
+            <Link href="/admin/account" className="text-muted underline" title="Your account">
+              {account.email}
+            </Link>
             <form action={signOut}>
               <button type="submit" className="underline">
                 Sign out

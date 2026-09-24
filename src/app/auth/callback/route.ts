@@ -1,11 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { safeNext } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { admit } from "@/server/sign-in";
 
 /**
  * Where a PKCE sign-in link lands (the link must be opened in the browser
  * that asked for it). Links sent with a token hash land on /auth/confirm.
+ * `next` is where to go afterwards, e.g. Your account after a password reset.
  */
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -19,6 +21,6 @@ export async function GET(request: NextRequest) {
   if (error || !data.user) return to("/admin/sign-in?error=link");
 
   return (await admit(supabase, data.user)) === "admitted"
-    ? to("/admin")
+    ? to(safeNext(url.searchParams.get("next")))
     : to("/admin/sign-in?error=no-access");
 }

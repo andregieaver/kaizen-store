@@ -78,9 +78,14 @@ of running `playwright install`.
 
 ## Admin
 
-- `/admin` has its own root layout. People sign in with a Supabase magic link
-  (`/admin/sign-in` → email → `/auth/callback`); only accounts
-  (`commerce.accounts`) that belong to a store or run the platform get a link.
+- `/admin` has its own root layout. People sign in with email and password, or
+  with a Supabase magic link (`/admin/sign-in` → email → `/auth/callback` or
+  `/auth/confirm`); only accounts (`commerce.accounts`) that belong to a store
+  or run the platform are admitted (`admit()` in `src/server/sign-in.ts`), and
+  every reply is the same whether or not the email has access. A password is
+  set or changed at `/admin/account`; `/admin/forgot-password` emails a link
+  that signs in and lands there (`next`, checked by `safeNext()`). Password
+  rules are in `src/lib/password.ts`.
   There is no proxy: `getAccount()` verifies the session on each request,
   `SessionKeeper` refreshes tokens in the browser, and `SessionRecovery`
   handles an expired token.

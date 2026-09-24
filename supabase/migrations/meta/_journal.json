@@ -57,6 +57,13 @@
       "when": 1790234754003,
       "tag": "20260924072554_checkout_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790236226461,
+      "tag": "20260924075026_reserve_account_slugs",
+      "breakpoints": true
     }
   ]
 }

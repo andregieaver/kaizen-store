@@ -53,10 +53,13 @@ select s.id, a.id, 'owner' from commerce.stores s, a where s.is_template;
 
 After that, owners invite everyone else from **Admin → Staff** in their store.
 
-For sign-in links to work, Supabase must allow the redirect back to the site:
-**Authentication → URL Configuration**, set the Site URL to the production URL
-and add `<production URL>/auth/callback` (and `http://localhost:3000/auth/callback`
-for local development) to the redirect URLs.
+Staff sign in with their email and a password, or with an emailed sign-in
+link. For the links to work (sign-in, password reset), Supabase must allow the
+redirect back to the site: **Authentication → URL Configuration**, set the Site
+URL to the production URL and add `<production URL>/**` (and
+`http://localhost:3000/**` for local development) to the redirect URLs. The
+wildcard is needed because a password reset returns to
+`/auth/callback?next=/admin/account`.
 
 So that links work in any browser (needed for invited store owners, who open
 the link on their own device), point the emails at `/auth/confirm` with a token
@@ -67,6 +70,16 @@ hash. In **Authentication → Emails**, edit both the **Magic Link** and the
 ```html
 <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Sign in to Kaizen</a>
 ```
+
+and in the **Reset Password** template:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/admin/account">Choose a new password</a>
+```
+
+Under **Authentication → Providers → Email**, keep the minimum password length
+at 12 or less (Kaizen asks for 12) and, on a paid plan, turn on leaked password
+protection.
 
 Supabase's built-in email service only delivers to members of your Supabase
 organisation and sends a few emails an hour. Before inviting real store

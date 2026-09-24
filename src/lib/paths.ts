@@ -22,10 +22,12 @@ export function isStoreSlug(value: string): boolean {
 
 /** Kept in step with the `stores_slug_not_reserved` check. */
 export const RESERVED_STORE_SLUGS: readonly string[] = [
+  "account",
   "admin",
   "api",
   "app",
   "auth",
+  "forgot-password",
   "help",
   "mail",
   "platform",

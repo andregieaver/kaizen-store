@@ -3,9 +3,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { PasswordField } from "@/components/admin/password-field";
 import { getAccount } from "@/server/auth";
 
-import { requestSignInLink } from "./actions";
+import { signIn } from "./actions";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -16,18 +17,37 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
       <Suspense fallback={null}>
         <Notice searchParams={searchParams} />
       </Suspense>
-      <ActionForm action={requestSignInLink} className="flex flex-col gap-3">
+      <ActionForm action={signIn} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
           Email
           <input
             type="email"
             name="email"
             required
-            autoComplete="email"
+            autoComplete="username"
             className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
           />
         </label>
-        <SubmitButton>Send sign-in link</SubmitButton>
+        <PasswordField
+          label="Password"
+          autoComplete="current-password"
+          aside={
+            <Link href="/admin/forgot-password" className="underline">
+              Forgot password?
+            </Link>
+          }
+        />
+        <SubmitButton name="method" value="password">
+          Sign in
+        </SubmitButton>
+        <div className="flex items-center gap-3 text-sm text-muted" aria-hidden>
+          <span className="h-px flex-1 bg-border" />
+          or
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <SubmitButton name="method" value="link" variant="secondary" skipValidation>
+          Email me a sign-in link instead
+        </SubmitButton>
       </ActionForm>
       <p className="text-sm text-muted">
         Kaizen is in a private beta: only invited accounts can sign in.{" "}
@@ -57,7 +77,7 @@ async function Notice({ searchParams }: { searchParams: PageProps<"/admin/sign-i
     return <p role="alert" className="text-sm">That account does not have access yet.</p>;
   }
   if (error === "link") {
-    return <p role="alert" className="text-sm">That sign-in link has expired or was already used. Request a new one.</p>;
+    return <p role="alert" className="text-sm">That link has expired or was already used. Request a new one.</p>;
   }
   return null;
 }
