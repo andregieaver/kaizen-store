@@ -301,12 +301,18 @@ export const platformSettings = commerce.table(
     saleFeeBps: integer("sale_fee_bps").notNull().default(0),
     /** Search and sharing for Kaizen's own pages (`StoreSeo` in lib/seo, locale `en`). */
     seo: jsonb("seo").notNull().default({}),
+    /**
+     * Where shoppers pay: `custom`, Kaizen's own checkout page with Stripe's
+     * payment form, or `hosted`, Stripe's checkout page (the fallback).
+     */
+    checkoutUi: text("checkout_ui").notNull().default("custom"),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
   (t) => [
     check("platform_settings_single_row", sql`${t.id}`),
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
+    check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),
   ],
 );
@@ -1047,6 +1053,12 @@ export const payments = commerce.table(
     providerReference: text("provider_reference").notNull(),
     /** The store's connected Stripe account the payment was taken on (Connect). */
     providerAccount: text("provider_account"),
+    /**
+     * For Kaizen's own checkout page: the Checkout Session's client secret,
+     * which the shopper's browser needs to show Stripe's payment form. Only
+     * this shopper's page is given it; it cannot move money on its own.
+     */
+    clientSecret: text("client_secret"),
     amountMinor: money("amount_minor"),
     currency: char("currency", { length: 3 }).notNull(),
     status: paymentStatus("status").notNull().default("pending"),
@@ -1397,6 +1409,11 @@ export const stripeAccounts = commerce.table(
      * act, deadlines and error codes. No personal data.
      */
     requirements: jsonb("requirements").notNull().default([]),
+    /**
+     * Web domains registered on this account for payment methods that need
+     * it on Kaizen's checkout page (Apple Pay, Google Pay, Link, Klarna).
+     */
+    paymentDomains: text("payment_domains").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     createdBy: uuid("created_by").references(() => accounts.id),

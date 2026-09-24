@@ -11,15 +11,27 @@ const fake = vi.hoisted(() => {
   const sessions = new Map<string, { status: string; payment_status: string }>();
   const created: { params: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const expired: string[] = [];
+  const domains: { domain: string; account?: string }[] = [];
+  const domainFailures = { create: false, list: false };
   let next = 0;
   const client = {
+    paymentMethodDomains: {
+      create: async (params: { domain_name: string }, options: { stripeAccount?: string }) => {
+        if (domainFailures.create) throw new Error("already registered");
+        domains.push({ domain: params.domain_name, account: options?.stripeAccount });
+        return { id: `pmd_${domains.length}`, domain_name: params.domain_name, enabled: true };
+      },
+      list: async () => ({ data: domainFailures.list ? [] : [{ id: "pmd_listed" }] }),
+    },
     checkout: {
       sessions: {
         create: async (params: Record<string, unknown>, options: Record<string, unknown>) => {
           const id = `cs_fake_${++next}`;
           sessions.set(id, { status: "open", payment_status: "unpaid" });
           created.push({ params, options });
-          return { id, url: `https://checkout.stripe.test/${id}` };
+          return params.ui_mode === "elements"
+            ? { id, url: null, client_secret: `${id}_secret_test` }
+            : { id, url: `https://checkout.stripe.test/${id}`, client_secret: null };
         },
         retrieve: async (id: string, _params: unknown, options: { stripeAccount?: string }) => {
           if (!options?.stripeAccount) throw new Error("no connected account");
@@ -34,12 +46,12 @@ const fake = vi.hoisted(() => {
       },
     },
   };
-  return { client, created, expired, sessions };
+  return { client, created, expired, sessions, domains, domainFailures };
 });
 
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client }));
 
-const { startCheckout } = await import("./checkout");
+const { getOpenCheckout, startCheckout } = await import("./checkout");
 
 const run = Date.now().toString(36);
 const no = toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" });
@@ -67,9 +79,12 @@ beforeAll(async () => {
   await db().execute(sql`
     update commerce.payment_providers set enabled = true, active_mode = 'test' where store_id = ${storeId}::uuid
   `);
+  // Stripe's own page first; Kaizen's page (the default) is tested below.
+  await db().execute(sql`update commerce.platform_settings set checkout_ui = 'hosted'`);
 });
 
 afterAll(async () => {
+  await db().execute(sql`update commerce.platform_settings set checkout_ui = 'custom'`);
   await closeDb();
 });
 
@@ -187,5 +202,79 @@ describe("starting checkout", () => {
     const result = await startCheckout(shop(), await cartWith("DEMO-TOTE", 1), "https://shop.test", "Frakt");
     expect(result).toEqual({ ok: false, problem: "payments_off" });
     await db().execute(sql`update commerce.stripe_accounts set card_payments = 'active' where store_id = ${storeId}::uuid`);
+  });
+});
+
+describe("Kaizen's checkout page", () => {
+  beforeAll(async () => {
+    await db().execute(sql`update commerce.platform_settings set checkout_ui = 'custom'`);
+  });
+
+  it("opens a session for Stripe's form on Kaizen's page and sends the shopper there", async () => {
+    const cartId = await cartWith("DEMO-MUG-WHITE", 1);
+    const result = await startCheckout(shop(), cartId, "https://shop.test", "Frakt");
+    expect(result).toEqual({ ok: true, url: `https://shop.test/s/${slug}/no/checkout` });
+
+    const { params, options } = fake.created[fake.created.length - 1];
+    const [order] = await db().execute<Row>(sql`select id from commerce.orders where cart_id = ${cartId}::uuid`);
+    expect(options).toMatchObject({ stripeAccount: accountId });
+    expect(params).toMatchObject({
+      ui_mode: "elements",
+      return_url: `https://shop.test/s/${slug}/no/order/${order.id}?session_id={CHECKOUT_SESSION_ID}`,
+      shipping_address_collection: { allowed_countries: ["NO"] },
+    });
+    for (const key of ["success_url", "cancel_url", "locale", "payment_method_types"]) {
+      expect(params).not.toHaveProperty(key);
+    }
+
+    // Wallets, Link and Klarna need the domain registered on the store's own account.
+    expect(fake.domains).toEqual([{ domain: "shop.test", account: accountId }]);
+
+    const open = await getOpenCheckout(storeId, cartId);
+    expect(open).toMatchObject({
+      orderId: order.id,
+      accountId,
+      mode: "test",
+      clientSecret: expect.stringMatching(/_secret_test$/),
+      expired: false,
+      changed: false,
+    });
+  });
+
+  it("registers the domain once per account, and not for local addresses", async () => {
+    await startCheckout(shop(), await cartWith("DEMO-TOTE", 1), "https://shop.test", "Frakt");
+    await startCheckout(shop(), await cartWith("DEMO-TOTE", 1), "http://localhost:3000", "Frakt");
+    expect(fake.domains).toHaveLength(1);
+  });
+
+  it("still takes payment when Stripe will not register the domain", async () => {
+    fake.domainFailures.create = true;
+    fake.domainFailures.list = true;
+    try {
+      const result = await startCheckout(shop(), await cartWith("DEMO-TOTE", 1), "https://other.test", "Frakt");
+      expect(result).toMatchObject({ ok: true });
+      const [row] = await db().execute<Row>(sql`
+        select payment_domains from commerce.stripe_accounts where store_id = ${storeId}::uuid and mode = 'test'
+      `);
+      expect(row.payment_domains).toEqual(["shop.test"]);
+    } finally {
+      fake.domainFailures.create = false;
+      fake.domainFailures.list = false;
+    }
+  });
+
+  it("notices when the cart changes after the order was placed", async () => {
+    const cartId = await cartWith("DEMO-TOTE", 1);
+    await startCheckout(shop(), cartId, "https://shop.test", "Frakt");
+    await db().execute(sql`update commerce.cart_lines set quantity = 2 where cart_id = ${cartId}::uuid`);
+    expect(await getOpenCheckout(storeId, cartId)).toMatchObject({ changed: true });
+
+    // Checking out again replaces the order; the new one matches the cart.
+    await startCheckout(shop(), cartId, "https://shop.test", "Frakt");
+    expect(await getOpenCheckout(storeId, cartId)).toMatchObject({ changed: false });
+  });
+
+  it("has nothing to show for a cart without an order waiting for payment", async () => {
+    expect(await getOpenCheckout(storeId, await cartWith("DEMO-TOTE", 1))).toBeNull();
   });
 });

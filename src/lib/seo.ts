@@ -240,10 +240,11 @@ export function renderRobots(groups: RobotsGroups, sitemaps: string[]): string {
   ].join("\n\n") + "\n";
 }
 
-/** Where a store's shopper-only pages are: carts and order pages are not for crawlers. */
+/** Where a store's shopper-only pages are: carts, checkout and order pages are not for crawlers. */
 export function storePrivatePaths(base: string): Rule[] {
   return [
     { allow: false, path: `${base}/*/cart` },
+    { allow: false, path: `${base}/*/checkout` },
     { allow: false, path: `${base}/*/order/` },
   ];
 }

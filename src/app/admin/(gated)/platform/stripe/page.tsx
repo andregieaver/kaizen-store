@@ -2,17 +2,21 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PAYMENT_MODES } from "@/lib/stripe-account";
-import { getSaleFeeBps, listPlatformWebhooks } from "@/server/connect";
+import { getCheckoutUi, getSaleFeeBps, listPlatformWebhooks } from "@/server/connect";
 import { platformModes, WEBHOOK_KINDS } from "@/server/stripe";
 
-import { connectWebhooksAction, saveSaleFeeAction } from "../actions";
+import { connectWebhooksAction, saveCheckoutUiAction, saveSaleFeeAction } from "../actions";
 
 export const metadata: Metadata = { title: "Stripe" };
 
 const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
 
 export default async function PlatformStripePage() {
-  const [webhooks, saleFeeBps] = await Promise.all([listPlatformWebhooks(), getSaleFeeBps()]);
+  const [webhooks, saleFeeBps, checkoutUi] = await Promise.all([
+    listPlatformWebhooks(),
+    getSaleFeeBps(),
+    getCheckoutUi(),
+  ]);
   const modes = platformModes();
   return (
     <>
@@ -53,6 +57,35 @@ export default async function PlatformStripePage() {
           );
         })}
       </ul>
+      <ActionForm
+        action={saveCheckoutUiAction}
+        successMessage="Saved. New checkouts use it from now on."
+        className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4"
+      >
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <legend className="mb-1 font-medium">Where shoppers pay</legend>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="ui" value="custom" defaultChecked={checkoutUi === "custom"} className="mt-0.5 size-4" />
+            <span>
+              Kaizen&apos;s checkout page
+              <span className="block text-muted">
+                On the store&apos;s own site, with Stripe&apos;s payment form: the payment methods each
+                store has turned on in Stripe, plus Apple Pay and Google Pay where the shopper has them.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="ui" value="hosted" defaultChecked={checkoutUi === "hosted"} className="mt-0.5 size-4" />
+            <span>
+              Stripe&apos;s checkout page
+              <span className="block text-muted">The fallback: shoppers are sent to a page on stripe.com.</span>
+            </span>
+          </label>
+        </fieldset>
+        <div>
+          <SubmitButton>Save</SubmitButton>
+        </div>
+      </ActionForm>
       <ActionForm action={saveSaleFeeAction} className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
           Default fee on each sale (%)

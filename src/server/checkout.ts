@@ -10,10 +10,10 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { variantLabel } from "@/lib/product-input";
 
-import { saleFee } from "@/lib/stripe-account";
+import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { storeFeeBps } from "./billing";
-import { ensureTestAccount } from "./connect";
+import { ensurePaymentDomain, ensureTestAccount, getCheckoutUi } from "./connect";
 import { getCheckoutAccount } from "./settings";
 import { platformStripe } from "./stripe";
 
@@ -232,10 +232,13 @@ const INTEGRATION_IDENTIFIER = "kaizen-storefront-qhwmzrtd";
 const VAT_LABELS: Record<string, string> = { nb: "Herav mva", sv: "Varav moms", da: "Heraf moms" };
 
 /**
- * From cart to Stripe: closes any earlier unpaid checkout for the same cart,
- * places the order, and opens a Stripe Checkout session for it on the
+ * From cart to payment: closes any earlier unpaid checkout for the same
+ * cart, places the order, and opens a Stripe Checkout session for it on the
  * store's own Stripe account (a direct charge: the store is the seller, and
- * Kaizen's fee, if any, is taken as an application fee).
+ * Kaizen's fee, if any, is taken as an application fee). The shopper then
+ * pays on Kaizen's checkout page with Stripe's form (D22), or on Stripe's
+ * own page when the platform is switched to that fallback. The returned
+ * address is where to send the shopper.
  */
 export async function startCheckout(
   shop: CheckoutShop,
@@ -256,6 +259,7 @@ export async function startCheckout(
     accountId = test.accountId;
   }
   const connection = { ...found, accountId };
+  const ui = await getCheckoutUi();
 
   // A shopper who went back from Stripe and checks out again: the earlier
   // session is closed first, so the same basket cannot be paid twice.
@@ -292,6 +296,11 @@ export async function startCheckout(
   const seller = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]
     .filter(Boolean)
     .join(" · ");
+  const returnUrl = `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`;
+  // Wallets, Link and Klarna show in Stripe's form only on registered domains.
+  if (ui === "custom" && origin.startsWith("https://")) {
+    await ensurePaymentDomain(shop.storeId, connection.mode, connection.accountId, new URL(origin).hostname);
+  }
 
   let session: Stripe.Checkout.Session;
   try {
@@ -340,9 +349,14 @@ export async function startCheckout(
             },
           },
         }),
-        locale: stripeLocale(shop.market.lang) as Stripe.Checkout.SessionCreateParams.Locale,
-        success_url: `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${base}/cart`,
+        ...(ui === "custom"
+          ? // Stripe's form on Kaizen's page; its language is set in the browser.
+            { ui_mode: "elements" as const, return_url: returnUrl }
+          : {
+              locale: stripeLocale(shop.market.lang) as Stripe.Checkout.SessionCreateParams.Locale,
+              success_url: returnUrl,
+              cancel_url: `${base}/cart`,
+            }),
         expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_MINUTES * 60 + 60,
       },
       { stripeAccount: connection.accountId, idempotencyKey: `checkout-${order.orderId}` },
@@ -354,14 +368,63 @@ export async function startCheckout(
 
   await db().execute(sql`
     insert into commerce.payments (
-      store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status
+      store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status
     ) values (
       ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${connection.accountId},
-      ${order.totalMinor}, ${order.currency}, 'pending'
+      ${ui === "custom" ? session.client_secret : null}, ${order.totalMinor}, ${order.currency}, 'pending'
     )
   `);
+  if (ui === "custom") return session.client_secret ? { ok: true, url: `${base}/checkout` } : { ok: false, problem: "payment_error" };
   if (!session.url) return { ok: false, problem: "payment_error" };
   return { ok: true, url: session.url };
+}
+
+export type OpenCheckout = {
+  orderId: string;
+  sessionId: string;
+  clientSecret: string;
+  accountId: string;
+  mode: PaymentModeName;
+  /** Stripe has closed the session: the shopper starts again. */
+  expired: boolean;
+  /** The cart was changed after the order was placed: the shopper starts again. */
+  changed: boolean;
+};
+
+/**
+ * The cart's order waiting for payment on Kaizen's checkout page, with what
+ * the page needs to show Stripe's form. Null when there is none: the
+ * shopper goes back to the cart. Only the cart's own browser (its cookie)
+ * gets here, so no one else sees the order or its client secret.
+ */
+export async function getOpenCheckout(storeId: string, cartId: string): Promise<OpenCheckout | null> {
+  const [row] = await db().execute<Row>(sql`
+    select o.id, pay.provider_reference, pay.provider_account, pay.client_secret, a.mode,
+      o.placed_at < now() - make_interval(mins => ${CHECKOUT_MINUTES}) as expired,
+      (select coalesce(jsonb_agg(jsonb_build_array(cl.variant_id, cl.quantity) order by cl.variant_id), '[]'::jsonb)
+         from commerce.cart_lines cl where cl.store_id = o.store_id and cl.cart_id = o.cart_id)
+      is distinct from
+      (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.quantity) order by ol.variant_id), '[]'::jsonb)
+         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id) as changed
+    from commerce.orders o
+    join commerce.payments pay on pay.store_id = o.store_id and pay.order_id = o.id and pay.provider = 'stripe'
+    join commerce.stripe_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
+    where o.store_id = ${storeId}::uuid and o.cart_id = ${cartId}::uuid and o.status = 'pending_payment'
+      and pay.client_secret is not null
+    order by o.placed_at desc
+    limit 1
+  `);
+  return row
+    ? {
+        orderId: String(row.id),
+        sessionId: String(row.provider_reference),
+        clientSecret: String(row.client_secret),
+        accountId: String(row.provider_account),
+        mode: row.mode as PaymentModeName,
+        expired: Boolean(row.expired),
+        changed: Boolean(row.changed),
+      }
+    : null;
 }
 
 /**

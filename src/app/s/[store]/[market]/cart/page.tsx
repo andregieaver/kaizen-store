@@ -7,6 +7,7 @@ import { Suspense } from "react";
 import { CheckoutButton } from "@/components/checkout-button";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
 import { shippingCost } from "@/lib/checkout";
+import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
@@ -180,20 +181,7 @@ async function CartContents({
             store={store.slug}
             market={market.slug}
             disabled={blocked}
-            labels={{
-              checkout: m.checkout,
-              startingPayment: m.startingPayment,
-              problems: {
-                empty: m.problemEmpty,
-                unavailable: m.problemUnavailable,
-                stock: m.problemStock,
-                no_shipping: m.problemShipping,
-                payments_off: m.checkoutUnavailable,
-                payment_error: m.problemPayment,
-                already_paid: m.problemPaid,
-                processing: m.problemProcessing,
-              },
-            }}
+            labels={checkoutLabels(m)}
           />
         ) : (
           <p className="text-sm">{m.checkoutUnavailable}</p>

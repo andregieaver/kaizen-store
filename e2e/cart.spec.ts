@@ -60,3 +60,8 @@ test.describe("without JavaScript", () => {
     await expect(page.getByText("Kaizen Demo AS, Storgata 1")).toBeVisible();
   });
 });
+
+test("the checkout page sends shoppers without an order waiting for payment back to the cart", async ({ page }) => {
+  await page.goto("/s/demo/no/checkout");
+  await expect(page).toHaveURL("/s/demo/no/cart");
+});

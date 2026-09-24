@@ -20,7 +20,7 @@ import {
   syncPlans,
   type PlanInput,
 } from "@/server/billing";
-import { connectPlatformWebhooks, setSaleFeeBps } from "@/server/connect";
+import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
 import { uploadProductImage, type UploadResult } from "@/server/media";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
@@ -95,6 +95,16 @@ export async function saveSaleFeeAction(_state: FormState, formData: FormData): 
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return { status: "ok", messages: ["Fee saved. It applies to checkouts from now on."] };
+}
+
+/** Kaizen's own checkout page, or Stripe's page as a fallback (D22). */
+export async function saveCheckoutUiAction(_state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const ui = formData.get("ui");
+  if (ui !== "custom" && ui !== "hosted") return { status: "error", messages: ["Choose where shoppers pay."] };
+  await setCheckoutUi(admin, ui);
+  refresh();
+  return { status: "ok", messages: [] };
 }
 
 // ---------------------------------------------------------------------------

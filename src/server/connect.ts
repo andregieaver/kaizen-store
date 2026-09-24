@@ -398,3 +398,60 @@ export async function setSaleFeeBps(account: Account, bps: number): Promise<Save
   await audit(account.id, null, "platform.sale_fee_updated", { bps });
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Kaizen's checkout page (decision D22)
+// ---------------------------------------------------------------------------
+
+export type CheckoutUi = "custom" | "hosted";
+
+/** Where shoppers pay: Kaizen's own checkout page, or Stripe's page as a fallback. */
+export async function getCheckoutUi(): Promise<CheckoutUi> {
+  const [row] = await db().execute<Row>(sql`select checkout_ui from commerce.platform_settings`);
+  return row?.checkout_ui === "hosted" ? "hosted" : "custom";
+}
+
+export async function setCheckoutUi(account: Account, ui: CheckoutUi): Promise<SaveResult> {
+  await db().execute(sql`
+    update commerce.platform_settings set checkout_ui = ${ui}, updated_at = now(), updated_by = ${account.id}::uuid
+  `);
+  await audit(account.id, null, "platform.checkout_ui_updated", { ui });
+  return { ok: true };
+}
+
+/**
+ * Registers the site's domain on the store's Stripe account, once, so Apple
+ * Pay, Google Pay, Link and Klarna can show in Stripe's form on Kaizen's
+ * checkout page (Stripe needs this per account for direct charges). A
+ * failure only hides those methods; the checkout goes on.
+ */
+export async function ensurePaymentDomain(
+  storeId: string,
+  mode: PaymentModeName,
+  accountId: string,
+  domain: string,
+): Promise<boolean> {
+  const stripe = platformStripe(mode);
+  if (!stripe || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return false;
+  const [row] = await db().execute<Row>(sql`
+    select ${domain} = any(payment_domains) as done from commerce.stripe_accounts
+    where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${accountId}
+  `);
+  if (!row) return false;
+  if (row.done) return true;
+  try {
+    await stripe.paymentMethodDomains.create({ domain_name: domain }, { stripeAccount: accountId });
+  } catch {
+    // Already registered (Stripe refuses a second time), or Stripe is away.
+    const found = await stripe.paymentMethodDomains
+      .list({ domain_name: domain, limit: 1 }, { stripeAccount: accountId })
+      .catch(() => null);
+    if (!found?.data.length) return false;
+  }
+  await db().execute(sql`
+    update commerce.stripe_accounts set payment_domains = array_append(payment_domains, ${domain})
+    where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${accountId}
+      and not ${domain} = any(payment_domains)
+  `);
+  return true;
+}
