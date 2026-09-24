@@ -88,6 +88,15 @@ of running `playwright install`.
   account is not a member of. Actions take the store slug as a bound first
   argument. Owners manage staff and payment keys. Changes are written to
   `commerce.audit_log` with the store id.
+- Sign-up and setup (`docs/platform.md`): `/sign-up` stores an access request;
+  platform admins approve at `/admin/platform`, which calls
+  `commerce.approve_access_request()` (account + `clone_store()` + decision in
+  one transaction) and emails a sign-in link. Owners of a store that is not
+  open yet land in the setup wizard, `/admin/{store}/setup/{step}`; progress is
+  derived from data in `src/server/setup.ts`, never stored separately.
+- Forms use `ActionForm`, which keeps what was typed when validation fails.
+  Server actions that change a store call `updateTag()` for its store and
+  catalogue tags.
 - Payment secrets are encrypted with `SETTINGS_ENCRYPTION_KEY`
   (`src/lib/secret-box.ts`) and never sent to the browser; only a masked hint
   is shown. Checkout reads them with `getActiveStripeSecret()`.

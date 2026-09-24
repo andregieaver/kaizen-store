@@ -661,6 +661,157 @@ describe("accounts and members", () => {
   });
 });
 
+describe("new stores from the template", () => {
+  let template: string;
+  let admin: string;
+
+  beforeAll(async () => {
+    template = await createStore("clone-template", ["NO", "SE"]);
+    await db.query("update commerce.stores set is_template = false where is_template");
+    await db.query("update commerce.stores set is_template = true where id = $1", [template]);
+    admin = await createAccount("platform-admin@example.com");
+
+    const { productId, variantId } = await createProduct({ storeId: template });
+    await db.query("select commerce.set_price($1, 'NO', 29900, $2)", [variantId, daysAgo(40)]);
+    await db.query("select commerce.set_price($1, 'NO', 24900, $2)", [variantId, daysAgo(1)]);
+    await db.query("select commerce.set_price($1, 'SE', 24900)", [variantId]);
+    const { id: location } = await one<{ id: string }>(
+      "insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Oslo', 'NO') returning id",
+      [template],
+    );
+    await db.query(
+      "insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 7)",
+      [template, variantId, location],
+    );
+    await db.query(
+      "insert into commerce.product_schemes (store_id, product_id, scheme) values ($1, $2, 'packaging')",
+      [template, productId],
+    );
+    await db.query("update commerce.products set status = 'active' where id = $1", [productId]);
+    await db.query(
+      "insert into commerce.payment_methods (store_id, market_code, method, enabled) values ($1, 'SE', 'swish', true)",
+      [template],
+    );
+
+    // An archived product stays behind.
+    const archived = await createProduct({ storeId: template });
+    await db.query("update commerce.products set status = 'archived' where id = $1", [archived.productId]);
+  });
+
+  async function request(email: string): Promise<string> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.access_requests (email, name, store_name) values ($1, 'Kari', 'Karis Kopper') returning id",
+      [email],
+    );
+    return id;
+  }
+
+  const approve = (requestId: string, slug: string) =>
+    one<{ store_id: string }>(
+      "select commerce.approve_access_request($1, $2, 'Karis Kopper', $3) as store_id",
+      [requestId, slug, admin],
+    );
+
+  it("copies the template's markets, catalogue, prices and stock into a store the requester owns", async () => {
+    const { store_id: store } = await approve(await request("kari@example.com"), "karis-kopper");
+
+    const owner = await one<{ email: string; role: string }>(
+      `select a.email, m.role from commerce.store_members m join commerce.accounts a on a.id = m.account_id
+       where m.store_id = $1`,
+      [store],
+    );
+    expect(owner).toEqual({ email: "kari@example.com", role: "owner" });
+
+    const markets = await db.query<{ code: string }>(
+      "select code from commerce.markets where store_id = $1 and active order by code",
+      [store],
+    );
+    expect(markets.rows.map((m) => m.code)).toEqual(["NO", "SE"]);
+
+    const products = await db.query<{ status: string; id: string }>(
+      "select id, status from commerce.products where store_id = $1",
+      [store],
+    );
+    expect(products.rows.map((p) => p.status)).toEqual(["active"]);
+
+    const price = await one<{ amount_minor: number; prior_30d_minor: number | null }>(
+      `select amount_minor::int, prior_30d_minor from commerce.current_prices
+       where store_id = $1 and market_code = 'NO'`,
+      [store],
+    );
+    // The new store never sold at the old price, so it shows no reduction.
+    expect(price).toEqual({ amount_minor: 24900, prior_30d_minor: null });
+
+    const stock = await one<{ available: number }>(
+      "select available::int from commerce.available_stock where store_id = $1",
+      [store],
+    );
+    expect(stock.available).toBe(7);
+
+    const extras = await one<{ series: number; stripe: boolean; swish: boolean; schemes: number }>(
+      `select
+         (select count(*)::int from commerce.document_series where store_id = $1) as series,
+         exists (select 1 from commerce.payment_providers where store_id = $1 and provider = 'stripe' and not enabled) as stripe,
+         exists (select 1 from commerce.payment_methods where store_id = $1 and method = 'swish' and enabled) as swish,
+         (select count(*)::int from commerce.product_schemes where store_id = $1) as schemes`,
+      [store],
+    );
+    expect(extras).toEqual({ series: 2, stripe: true, swish: true, schemes: 1 });
+  });
+
+  it("gives copied rows well-formed version 4 UUIDs", async () => {
+    const { rows } = await db.query<{ id: string }>(
+      `select commerce.clone_id(gen_random_uuid(), gen_random_uuid())::text as id
+       from generate_series(1, 50)`,
+    );
+    for (const { id } of rows) {
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    }
+    const nullId = await one<{ id: string | null }>(
+      "select commerce.clone_id(gen_random_uuid(), null) as id",
+    );
+    expect(nullId.id).toBeNull();
+  });
+
+  it("gives copied rows new ids and leaves the template untouched", async () => {
+    const { store_id: store } = await approve(await request("ola@example.com"), "olas-kopper");
+    const shared = await one<{ n: number }>(
+      `select count(*)::int as n from commerce.product_variants a
+       join commerce.product_variants b on a.id = b.id
+       where a.store_id = $1 and b.store_id = $2`,
+      [store, template],
+    );
+    expect(shared.n).toBe(0);
+    const templateProducts = await one<{ n: number }>(
+      "select count(*)::int as n from commerce.products where store_id = $1",
+      [template],
+    );
+    expect(templateProducts.n).toBe(2);
+  });
+
+  it("records the decision and refuses to approve twice", async () => {
+    const requestId = await request("per@example.com");
+    const { store_id: store } = await approve(requestId, "pers-butikk");
+    const decided = await one<{ status: string; store_id: string; decided_by: string }>(
+      "select status, store_id, decided_by from commerce.access_requests where id = $1",
+      [requestId],
+    );
+    expect(decided).toEqual({ status: "approved", store_id: store, decided_by: admin });
+    await expect(approve(requestId, "pers-butikk-2")).rejects.toThrow(/already approved/);
+  });
+
+  it("changes nothing when the address is taken", async () => {
+    const requestId = await request("liv@example.com");
+    await expect(approve(requestId, "karis-kopper")).rejects.toThrow(/stores_slug_unique/);
+    const after = await one<{ status: string; accounts: number }>(
+      `select status, (select count(*)::int from commerce.accounts where email = 'liv@example.com') as accounts
+       from commerce.access_requests where id = $1`,
+      [requestId],
+    );
+    expect(after).toEqual({ status: "pending", accounts: 0 });
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

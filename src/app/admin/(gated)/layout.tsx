@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { getAccount } from "@/server/auth";
+import { countPendingRequests } from "@/server/platform";
 
 import { signOut } from "./actions";
 
@@ -18,6 +19,7 @@ export default function GatedLayout({ children }: LayoutProps<"/admin">) {
 async function Gate({ children }: { children: React.ReactNode }) {
   const account = await getAccount();
   if (!account) return <SessionRecovery />;
+  const pending = account.platformAdmin ? await countPendingRequests() : 0;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -28,6 +30,11 @@ async function Gate({ children }: { children: React.ReactNode }) {
             Kaizen
           </Link>
           <div className="flex items-center gap-3 text-sm">
+            {account.platformAdmin && (
+              <Link href="/admin/platform" className="underline">
+                Access requests{pending > 0 ? ` (${pending})` : ""}
+              </Link>
+            )}
             <span className="text-muted">{account.email}</span>
             <form action={signOut}>
               <button type="submit" className="underline">

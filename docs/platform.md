@@ -31,6 +31,35 @@ otherwise.
 - Admin: `/admin` lists the account's stores; `/admin/{store}/…` is one store,
   gated by `requireMember()` in `src/server/auth.ts`.
 
+## From sign-up to an open store
+
+1. **Request.** Anyone can ask for a store at `/sign-up` (name, email, store
+   name). It is stored in `commerce.access_requests`; repeat requests from the
+   same email are merged, and the page never says which emails have asked.
+2. **Approval.** Platform admins see waiting requests at `/admin/platform`,
+   adjust the store name and address, and approve or decline.
+   `commerce.approve_access_request()` creates the account (or reuses one),
+   copies the template with `commerce.clone_store()` and records the decision,
+   in one transaction: if anything fails, nothing changes.
+3. **Invitation.** The new owner is emailed a sign-in link. It lands on
+   `/auth/confirm` and works in any browser (see README for the email
+   template this needs).
+4. **Setup wizard.** An owner whose store is not open yet is taken to
+   `/admin/{store}/setup`: business details, countries, Stripe test keys,
+   demo products, then "Open my store". Every step can be skipped; progress is
+   read from the store's data (`getSetupProgress()`), so the overview's
+   checklist stays right however a setting was changed.
+5. **Preview until open.** Before the owner opens it, the storefront works but
+   says it is a preview and asks search engines not to index it.
+
+What `clone_store()` copies: markets, payment-method switches, product-safety
+contacts, stock locations and the catalogue (not archived products). Current
+prices are copied as new prices, so the new store shows no reductions it
+never made. It never copies orders, customers, carts, business details or
+producer registrations. Copied rows get ids derived from the new store and
+the original id (`commerce.clone_id()`), so references line up without a
+lookup table.
+
 ## Tenant isolation
 
 - Server code reaches store data only through functions that take a `storeId`.

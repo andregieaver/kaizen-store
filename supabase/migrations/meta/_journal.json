@@ -15,6 +15,20 @@
       "when": 1790207927077,
       "tag": "20260923235847_platform_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790230541605,
+      "tag": "20260924061541_store_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790230542715,
+      "tag": "20260924061542_clone_store",
+      "breakpoints": true
     }
   ]
 }

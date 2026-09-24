@@ -18,8 +18,14 @@ BEGIN
     RETURN;
   END IF;
 
-  INSERT INTO commerce.stores (slug, name, is_template, setup_completed_at)
-  VALUES ('demo', 'Kaizen Demo', true, now())
+  INSERT INTO commerce.stores (
+    slug, name, is_template, setup_completed_at,
+    legal_name, contact_email, postal_address, country
+  )
+  VALUES (
+    'demo', 'Kaizen Demo', true, now(),
+    'Kaizen Demo AS', 'hei@example.no', E'Storgata 1\n0155 Oslo', 'NO'
+  )
   RETURNING id INTO v_store;
 
   -- Norway, Sweden and Denmark, with each country's currency and language.

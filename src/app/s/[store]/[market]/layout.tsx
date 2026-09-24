@@ -8,6 +8,7 @@ import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { prerenderedShops, resolveShop } from "@/server/shop";
+import type { Store } from "@/server/stores";
 
 import "../../../globals.css";
 
@@ -25,6 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     metadataBase: new URL(siteUrl()),
     title: { default: store.name, template: `%s · ${store.name}` },
+    // A store is not for search engines until its owner opens it.
+    ...(store.setupCompletedAt || store.isTemplate ? {} : { robots: { index: false } }),
     alternates: {
       canonical: marketPath(store.slug, market.slug),
       languages: Object.fromEntries(
@@ -52,7 +55,7 @@ export default async function MarketLayout({ children, params }: Props) {
           {m.skipToContent}
         </a>
         <p className="bg-foreground px-4 py-2 text-center text-sm text-background">
-          {m.demoNotice}
+          {store.setupCompletedAt || store.isTemplate ? m.demoNotice : m.previewNotice}
         </p>
         <header className="border-b border-border">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
@@ -95,9 +98,29 @@ export default async function MarketLayout({ children, params }: Props) {
           {children}
         </main>
         <footer className="border-t border-border">
-          <p className="mx-auto max-w-5xl px-4 py-6 text-sm text-muted">{store.name}</p>
+          <StoreFooter store={store} />
         </footer>
       </body>
     </html>
+  );
+}
+
+/** Who sells: required on every page of a web shop (e-commerce and consumer law). */
+function StoreFooter({ store }: { store: Store }) {
+  const d = store.details;
+  const lines = [
+    d.legalName ?? store.name,
+    d.organisationNumber && `Org. ${d.organisationNumber}`,
+    d.postalAddress?.replace(/\s*\n\s*/g, ", "),
+  ].filter(Boolean);
+  return (
+    <div className="mx-auto flex max-w-5xl flex-wrap gap-x-4 gap-y-1 px-4 py-6 text-sm text-muted">
+      <span>{lines.join(" · ")}</span>
+      {d.contactEmail && (
+        <a href={`mailto:${d.contactEmail}`} className="underline">
+          {d.contactEmail}
+        </a>
+      )}
+    </div>
   );
 }

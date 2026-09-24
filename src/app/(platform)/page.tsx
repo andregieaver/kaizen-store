@@ -16,11 +16,14 @@ export default async function Home() {
       </p>
       <p className="text-muted">Kaizen is in a private beta.</p>
       <div className="flex flex-wrap gap-3">
+        <Link
+          href="/sign-up"
+          className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background"
+        >
+          Start your store
+        </Link>
         {demo && (
-          <Link
-            href={storeBase(demo)}
-            className="rounded-full bg-foreground px-5 py-2.5 font-medium text-background"
-          >
+          <Link href={storeBase(demo)} className="rounded-full border border-border px-5 py-2.5 font-medium">
             See the demo store
           </Link>
         )}

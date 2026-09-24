@@ -6,6 +6,7 @@
  */
 const messages = {
   nb: {
+    previewNotice: "Forhåndsvisning: Denne butikken er ikke åpnet ennå.",
     skipToContent: "Hopp til innhold",
     notFound: "Siden finnes ikke.",
     toHome: "Til forsiden",
@@ -49,6 +50,7 @@ const messages = {
     options: { colour: "Farge", ruling: "Linjer", white: "Hvit", black: "Svart", lined: "Linjert", dotted: "Prikket" },
   },
   sv: {
+    previewNotice: "Förhandsvisning: Den här butiken har inte öppnat ännu.",
     skipToContent: "Hoppa till innehåll",
     notFound: "Sidan finns inte.",
     toHome: "Till startsidan",
@@ -92,6 +94,7 @@ const messages = {
     options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad" },
   },
   da: {
+    previewNotice: "Forhåndsvisning: Denne butik er ikke åbnet endnu.",
     skipToContent: "Spring til indhold",
     notFound: "Siden findes ikke.",
     toHome: "Til forsiden",
@@ -135,6 +138,7 @@ const messages = {
     options: { colour: "Farve", ruling: "Linjer", white: "Hvid", black: "Sort", lined: "Linjeret", dotted: "Prikket" },
   },
   en: {
+    previewNotice: "Preview: this store is not open yet.",
     skipToContent: "Skip to content",
     notFound: "This page does not exist.",
     toHome: "Go to the home page",

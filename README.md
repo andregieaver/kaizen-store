@@ -58,6 +58,24 @@ For sign-in links to work, Supabase must allow the redirect back to the site:
 and add `<production URL>/auth/callback` (and `http://localhost:3000/auth/callback`
 for local development) to the redirect URLs.
 
+So that links work in any browser (needed for invited store owners, who open
+the link on their own device), point the emails at `/auth/confirm` with a token
+hash. In **Authentication → Emails**, edit both the **Magic Link** and the
+**Confirm signup** templates and use this link instead of
+`{{ .ConfirmationURL }}`:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Sign in to Kaizen</a>
+```
+
+Supabase's built-in email service only delivers to members of your Supabase
+organisation and sends a few emails an hour. Before inviting real store
+owners, add your own SMTP provider under **Authentication → Emails → SMTP
+Settings** (choose one that sends from the EU).
+
+Store owners ask for a store at `/sign-up`; platform admins approve requests at
+`/admin/platform`, which creates the store as a copy of the demo template.
+
 Payment keys and which payment methods are offered in each country are set in
 **Admin → Payments**. They are stored encrypted with `SETTINGS_ENCRYPTION_KEY`,
 which must be set in the server environment.

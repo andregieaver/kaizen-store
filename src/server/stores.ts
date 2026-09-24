@@ -15,15 +15,31 @@ export type Store = {
   name: string;
   status: StoreStatus;
   isTemplate: boolean;
-  /** Active markets, in the order the store lists them. */
+  setupCompletedAt: string | null;
+  /** The business behind the store, shown to shoppers. */
+  details: StoreDetails;
+  /** Active markets, the store's own country first. */
   markets: Market[];
 };
+
+export type StoreDetails = {
+  legalName: string | null;
+  organisationNumber: string | null;
+  contactEmail: string | null;
+  postalAddress: string | null;
+  country: string | null;
+};
+
+export type Country = { code: string; name: string; currency: string; inEu: boolean };
 
 /** Revalidate after changing a store's name, status or markets. */
 export const storeTag = (slug: string) => `store:${slug}`;
 export const TEMPLATE_TAG = "template-store";
 
 type Row = Record<string, unknown>;
+
+const text = (value: unknown): string | null =>
+  value === null || value === undefined ? null : String(value);
 
 /** A store and its active markets, by slug, or null. */
 export async function getStore(slug: string): Promise<Store | null> {
@@ -37,11 +53,13 @@ async function loadStore(slug: string): Promise<Store | null> {
 
   const [row] = await db().execute<Row>(sql`
     select
-      s.id, s.slug, s.name, s.status, s.is_template,
+      s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country,
       coalesce(
         json_agg(json_build_object(
           'code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale
-        ) order by m.created_at, m.code) filter (where m.code is not null),
+        ) order by (m.code = s.country) desc nulls last, m.created_at, m.code)
+          filter (where m.code is not null),
         '[]'
       ) as markets
     from commerce.stores s
@@ -57,6 +75,16 @@ async function loadStore(slug: string): Promise<Store | null> {
     name: String(row.name),
     status: row.status as StoreStatus,
     isTemplate: Boolean(row.is_template),
+    setupCompletedAt: row.setup_completed_at
+      ? new Date(String(row.setup_completed_at)).toISOString()
+      : null,
+    details: {
+      legalName: text(row.legal_name),
+      organisationNumber: text(row.organisation_number),
+      contactEmail: text(row.contact_email),
+      postalAddress: text(row.postal_address),
+      country: text(row.country),
+    },
     markets: (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(
       toMarket,
     ),
@@ -78,4 +106,19 @@ export async function templateStoreSlug(): Promise<string | null> {
     select slug from commerce.stores where is_template
   `);
   return row ? String(row.slug) : null;
+}
+
+/** Every country the platform can sell to, by English name. */
+export async function listCountries(): Promise<Country[]> {
+  "use cache";
+  cacheLife("days");
+  const rows = await db().execute<Row>(sql`
+    select code, name, currency, in_eu from commerce.countries order by name
+  `);
+  return rows.map((row) => ({
+    code: String(row.code),
+    name: String(row.name),
+    currency: String(row.currency),
+    inEu: Boolean(row.in_eu),
+  }));
 }

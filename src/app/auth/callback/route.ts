@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
-import { audit, linkAccount } from "@/server/auth";
+import { admit } from "@/server/sign-in";
 
 /**
- * Where the magic link lands. Exchanges the one-time code for a session, then
- * admits the user only if their email belongs to an active account.
+ * Where a PKCE sign-in link lands (the link must be opened in the browser
+ * that asked for it). Links sent with a token hash land on /auth/confirm.
  */
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -16,13 +16,9 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error || !data.user?.email) return to("/admin/sign-in?error=link");
+  if (error || !data.user) return to("/admin/sign-in?error=link");
 
-  const account = await linkAccount(data.user.id, data.user.email);
-  if (!account) {
-    await supabase.auth.signOut();
-    return to("/admin/sign-in?error=no-access");
-  }
-  await audit(account.id, null, "account.signed_in");
-  return to("/admin");
+  return (await admit(supabase, data.user)) === "admitted"
+    ? to("/admin")
+    : to("/admin/sign-in?error=no-access");
 }

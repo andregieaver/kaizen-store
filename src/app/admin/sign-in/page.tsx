@@ -30,8 +30,11 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
         <SubmitButton>Send sign-in link</SubmitButton>
       </ActionForm>
       <p className="text-sm text-muted">
-        Kaizen is in a private beta: only invited accounts can sign in. To work in an existing
-        store, ask its owner to invite you.
+        Kaizen is in a private beta: only invited accounts can sign in.{" "}
+        <Link href="/sign-up" className="underline">
+          Ask for a store
+        </Link>
+        , or ask a store&apos;s owner to invite you.
       </p>
     </main>
   );

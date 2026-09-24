@@ -1,50 +1,66 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { storeBase } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
-import { getPaymentSettings } from "@/server/settings";
+import { getSetupProgress } from "@/server/setup";
 
-export default async function AdminOverview({ params }: PageProps<"/admin/[store]">) {
-  const { store } = await requireMember((await params).store);
-  const payments = await getPaymentSettings(store);
-  const mode = payments.stripe.activeMode;
+type Props = PageProps<"/admin/[store]">;
 
+export default async function AdminOverview({ params }: Props) {
+  const { store, role } = await requireMember((await params).store);
+  // A new owner's first stop is the setup wizard.
+  if (!store.setupCompletedAt && role === "owner") redirect(`/admin/${store.slug}/setup`);
+
+  const progress = await getSetupProgress(store);
   const steps = [
+    { done: progress.details, label: "Business details", step: "details" },
+    { done: progress.countries, label: "Countries you sell to", step: "countries" },
+    { done: progress.payments, label: "Stripe keys saved", step: "payments" },
     {
-      done: Boolean(payments.credentials.test.secretKeyHint && payments.credentials.test.publishableKey),
-      label: "Stripe test keys are saved",
-    },
-    {
-      done: store.markets.every((market) => (payments.methods[market.code]?.size ?? 0) > 0),
-      label: "Every country has at least one payment method switched on",
-    },
-    {
-      done: payments.stripe.enabled,
-      label: `Stripe is enabled (${mode} mode)`,
+      done: progress.products,
+      label: progress.counts.demoProducts > 0 ? "Replace the demo products" : "Products",
+      step: "products",
     },
   ];
+  const remaining = steps.filter((s) => !s.done).length;
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Overview</h1>
-      <section aria-labelledby="setup-heading" className="rounded-lg border border-border bg-background p-5">
-        <h2 id="setup-heading" className="mb-3 font-medium">
-          Payment setup
-        </h2>
-        <ol className="flex flex-col gap-2 text-sm">
-          {steps.map((step) => (
-            <li key={step.label} className="flex gap-2">
-              <span aria-hidden="true">{step.done ? "✓" : "○"}</span>
-              <span>
-                <span className="sr-only">{step.done ? "Done: " : "To do: "}</span>
-                {step.label}
-              </span>
-            </li>
-          ))}
-        </ol>
-        <Link href={`/admin/${store.slug}/settings/payments`} className="mt-4 inline-block text-sm underline">
-          Go to payment settings
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Overview</h1>
+        <Link href={storeBase(store.slug)} className="text-sm underline">
+          View your store
         </Link>
-      </section>
+      </div>
+      {!store.setupCompletedAt && (
+        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+          This store is not open yet. An owner can finish the setup.
+        </p>
+      )}
+      {remaining > 0 && (
+        <section aria-labelledby="checklist-heading" className="rounded-lg border border-border bg-background p-5">
+          <h2 id="checklist-heading" className="mb-3 font-medium">
+            Finish setting up ({steps.length - remaining} of {steps.length} done)
+          </h2>
+          <ol className="flex flex-col gap-2 text-sm">
+            {steps.map((step) => (
+              <li key={step.step} className="flex items-baseline gap-2">
+                <span aria-hidden="true">{step.done ? "✓" : "○"}</span>
+                <span className="flex-1">
+                  <span className="sr-only">{step.done ? "Done: " : "To do: "}</span>
+                  {step.label}
+                </span>
+                {!step.done && role === "owner" && (
+                  <Link href={`/admin/${store.slug}/setup/${step.step}`} className="underline">
+                    Do it now
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
     </div>
   );
 }

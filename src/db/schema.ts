@@ -189,6 +189,8 @@ export const accessRequests = commerce.table(
     status: accessRequestStatus("status").notNull().default("pending"),
     decidedBy: uuid("decided_by").references(() => accounts.id),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** The store created when the request was approved. */
+    storeId: uuid("store_id").references((): AnyPgColumn => stores.id),
     createdAt: createdAt(),
   },
   (t) => [
@@ -196,6 +198,8 @@ export const accessRequests = commerce.table(
       .on(sql`lower(${t.email})`)
       .where(sql`${t.status} = 'pending'`),
     index("access_requests_decided_by_idx").on(t.decidedBy),
+    index("access_requests_store_idx").on(t.storeId),
+    index("access_requests_status_idx").on(t.status, t.createdAt),
   ],
 );
 
@@ -211,6 +215,15 @@ export const stores = commerce.table(
     isTemplate: boolean("is_template").notNull().default(false),
     /** When the owner finished the setup wizard. */
     setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
+    /**
+     * The business behind the store, as shown to shoppers in the footer,
+     * terms and order confirmations. Filled in by the setup wizard.
+     */
+    legalName: text("legal_name"),
+    organisationNumber: text("organisation_number"),
+    contactEmail: text("contact_email"),
+    postalAddress: text("postal_address"),
+    country: char("country", { length: 2 }).references(() => countries.code),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -222,10 +235,11 @@ export const stores = commerce.table(
     // Names the platform needs for its own routes and subdomains.
     check(
       "stores_slug_not_reserved",
-      sql`${t.slug} not in ('admin', 'api', 'app', 'auth', 'help', 'mail', 'sign-in', 'sign-up', 'status', 'support', 'www')`,
+      sql`${t.slug} not in ('admin', 'api', 'app', 'auth', 'help', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'support', 'www')`,
     ),
     uniqueIndex("stores_one_template_idx").on(t.isTemplate).where(sql`${t.isTemplate}`),
     index("stores_created_by_idx").on(t.createdBy),
+    index("stores_country_idx").on(t.country),
   ],
 );
 
