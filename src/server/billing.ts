@@ -486,26 +486,35 @@ async function currentSubscription(storeId: string) {
   return { billing, live: Boolean(live) };
 }
 
+type Prepared = {
+  mode: PaymentModeName;
+  stripe: Stripe;
+  store: NonNullable<Awaited<ReturnType<typeof getStore>>>;
+  price: { id: string; planId: string; planName: string };
+  stripePrice: string;
+  accountId: string;
+  metadata: Record<string, string>;
+};
+
 /**
- * Puts a store on a plan price: starts a subscription (Kaizen emails an
- * invoice each period, due in 14 days) or moves the existing one, with
- * prorated charges. The store's Stripe account is created if it has none.
+ * Everything a plan needs in Stripe before a store can be put on it: the
+ * price synced, and the store's own Stripe account (created if missing) as
+ * the customer.
  */
-export async function assignPlan(
+async function prepare(
   actor: Account,
   storeSlug: string,
   priceId: string,
-  trialDays: number,
   origin: string,
-): Promise<SaveResult> {
+): Promise<{ ok: true; prepared: Prepared } | { ok: false; problems: string[] }> {
   const mode = billingMode();
   const stripe = mode && platformStripe(mode);
-  if (!mode || !stripe) return { ok: false, problems: ["Kaizen's Stripe keys are not set."] };
+  if (!mode || !stripe) return { ok: false, problems: ["Plans cannot be chosen right now."] };
   const store = await getStore(storeSlug);
   if (!store) return { ok: false, problems: ["Unknown store."] };
 
   const [price] = await db().execute<Row>(sql`
-    select pp.id, pp.plan_id, pp.currency, p.name as plan_name from commerce.plan_prices pp
+    select pp.id, pp.plan_id, p.name as plan_name from commerce.plan_prices pp
     join commerce.plans p on p.id = pp.plan_id
     where pp.id = ${priceId}::uuid and pp.active and p.active
   `);
@@ -516,59 +525,168 @@ export async function assignPlan(
     await syncPlans(mode);
     stripePrice = await syncedId(mode, "price", priceId);
   }
-  if (!stripePrice) return { ok: false, problems: ["The plan is not in Stripe yet. Sync plans and try again."] };
+  if (!stripePrice) return { ok: false, problems: ["The plan is not in Stripe yet. Try again shortly."] };
 
   const created = await createStripeAccount({ account: actor, store }, mode, `${origin}${storeBase(store.slug)}`);
   if (!created.ok) return created;
   const account = (await getStripeAccounts(store.id))[mode];
   if (!account) return { ok: false, problems: ["The store's Stripe account could not be created."] };
 
-  const metadata = {
-    kaizen_store_id: store.id,
-    kaizen_plan_id: String(price.plan_id),
-    kaizen_price_id: priceId,
+  return {
+    ok: true,
+    prepared: {
+      mode,
+      stripe,
+      store,
+      price: { id: priceId, planId: String(price.plan_id), planName: String(price.plan_name) },
+      stripePrice,
+      accountId: account.accountId,
+      metadata: { kaizen_store_id: store.id, kaizen_plan_id: String(price.plan_id), kaizen_price_id: priceId },
+    },
   };
-  const { billing, live } = await currentSubscription(store.id);
+}
+
+/** Norwegian stores pay 25 % MVA on their plan; others are invoiced without VAT. */
+async function vatRatesFor(p: Prepared): Promise<string[]> {
+  return (p.store.details.country ?? "NO") === "NO" ? [await norwegianVatRate(p.stripe, p.mode)] : [];
+}
+
+/** Moves a store's running subscription to another price, with prorated charges or credits. */
+async function changeSubscription(actor: Account, p: Prepared, subscriptionId: string): Promise<SaveResult> {
   let subscription: Stripe.Subscription;
   try {
-    if (live && billing?.mode === mode && billing.subscriptionId) {
-      const current = await stripe.subscriptions.retrieve(billing.subscriptionId);
-      subscription = await stripe.subscriptions.update(billing.subscriptionId, {
-        items: [{ id: current.items.data[0]?.id, price: stripePrice }],
-        proration_behavior: "create_prorations",
-        cancel_at_period_end: false,
-        metadata,
-      });
-    } else {
-      const inNorway = (store.details.country ?? "NO") === "NO";
-      const vatRate = inNorway ? await norwegianVatRate(stripe, mode) : null;
-      subscription = await stripe.subscriptions.create(
-        {
-          customer_account: account.accountId,
-          items: [{ price: stripePrice }],
-          collection_method: "send_invoice",
-          days_until_due: 14,
-          ...(trialDays > 0 && { trial_period_days: trialDays }),
-          ...(vatRate && { default_tax_rates: [vatRate] }),
-          description: `Kaizen ${String(price.plan_name)}: ${store.name}`,
-          metadata,
-        },
-        // A double click must not start two subscriptions.
-        { idempotencyKey: `kaizen-subscribe-${store.id}-${priceId}-${Math.floor(Date.now() / 60_000)}` },
-      );
-    }
+    const current = await p.stripe.subscriptions.retrieve(subscriptionId);
+    subscription = await p.stripe.subscriptions.update(subscriptionId, {
+      items: [{ id: current.items.data[0]?.id, price: p.stripePrice }],
+      proration_behavior: "create_prorations",
+      cancel_at_period_end: false,
+      metadata: p.metadata,
+    });
+  } catch (error) {
+    return { ok: false, problems: [stripeProblem(error)] };
+  }
+  await applySubscription(subscription, p.mode, actor);
+  await audit(actor.id, p.store.id, "billing.plan_changed", {
+    priceId: p.price.id,
+    planId: p.price.planId,
+    subscriptionId: subscription.id,
+  });
+  return { ok: true };
+}
+
+/** The store's running subscription in the mode Kaizen bills in, if any. */
+async function runningSubscription(storeId: string, mode: PaymentModeName): Promise<string | null> {
+  const { billing, live } = await currentSubscription(storeId);
+  return live && billing?.mode === mode && billing.subscriptionId ? billing.subscriptionId : null;
+}
+
+/**
+ * For platform admins: puts a store on a plan price. A new subscription is
+ * invoiced (Stripe emails an invoice each period, due in 14 days); a running
+ * one is moved, with prorated charges.
+ */
+export async function assignPlan(
+  actor: Account,
+  storeSlug: string,
+  priceId: string,
+  trialDays: number,
+  origin: string,
+): Promise<SaveResult> {
+  const prepared = await prepare(actor, storeSlug, priceId, origin);
+  if (!prepared.ok) return prepared;
+  const p = prepared.prepared;
+
+  const running = await runningSubscription(p.store.id, p.mode);
+  if (running) return changeSubscription(actor, p, running);
+
+  let subscription: Stripe.Subscription;
+  try {
+    const vatRates = await vatRatesFor(p);
+    subscription = await p.stripe.subscriptions.create(
+      {
+        customer_account: p.accountId,
+        items: [{ price: p.stripePrice }],
+        collection_method: "send_invoice",
+        days_until_due: 14,
+        ...(trialDays > 0 && { trial_period_days: trialDays }),
+        ...(vatRates.length > 0 && { default_tax_rates: vatRates }),
+        description: `Kaizen ${p.price.planName}: ${p.store.name}`,
+        metadata: p.metadata,
+      },
+      // A double click must not start two subscriptions.
+      { idempotencyKey: `kaizen-subscribe-${p.store.id}-${priceId}-${Math.floor(Date.now() / 60_000)}` },
+    );
   } catch (error) {
     return { ok: false, problems: [stripeProblem(error)] };
   }
 
-  await applySubscription(subscription, mode, actor);
-  await audit(actor.id, store.id, live ? "billing.plan_changed" : "billing.plan_started", {
+  await applySubscription(subscription, p.mode, actor);
+  await audit(actor.id, p.store.id, "billing.plan_started", {
     priceId,
-    planId: String(price.plan_id),
+    planId: p.price.planId,
     subscriptionId: subscription.id,
     trialDays,
   });
   return { ok: true };
+}
+
+/**
+ * For store owners: chooses a plan price. Without a plan, the owner is sent
+ * to Stripe Checkout to pay by card (the subscription starts there); with
+ * one, it is moved to the new price at once, with prorated charges.
+ */
+export async function choosePlan(
+  owner: Account,
+  storeSlug: string,
+  priceId: string,
+  origin: string,
+): Promise<{ ok: true; checkoutUrl?: string } | { ok: false; problems: string[] }> {
+  const prepared = await prepare(owner, storeSlug, priceId, origin);
+  if (!prepared.ok) return prepared;
+  const p = prepared.prepared;
+
+  const running = await runningSubscription(p.store.id, p.mode);
+  if (running) return changeSubscription(owner, p, running);
+
+  const back = `${origin}/admin/${p.store.slug}/billing`;
+  try {
+    const vatRates = await vatRatesFor(p);
+    const session = await p.stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer_account: p.accountId,
+      line_items: [{ price: p.stripePrice, quantity: 1, ...(vatRates.length > 0 && { tax_rates: vatRates }) }],
+      subscription_data: { description: `Kaizen ${p.price.planName}: ${p.store.name}`, metadata: p.metadata },
+      metadata: p.metadata,
+      locale: "auto",
+      success_url: `${back}?checkout={CHECKOUT_SESSION_ID}`,
+      cancel_url: back,
+    });
+    if (!session.url) return { ok: false, problems: ["Stripe did not return a payment page."] };
+    await audit(owner.id, p.store.id, "billing.checkout_started", { priceId, planId: p.price.planId });
+    return { ok: true, checkoutUrl: session.url };
+  } catch (error) {
+    return { ok: false, problems: [stripeProblem(error)] };
+  }
+}
+
+/**
+ * When an owner returns from Stripe Checkout: records the new subscription
+ * straight away, so the page shows the plan without waiting for the webhook.
+ * Only a session for this store counts.
+ */
+export async function completePlanCheckout(storeId: string, sessionId: string): Promise<boolean> {
+  const mode = billingMode();
+  const stripe = mode && platformStripe(mode);
+  if (!mode || !stripe || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return false;
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["subscription"] });
+    if (session.metadata?.kaizen_store_id !== storeId || typeof session.subscription !== "object" || !session.subscription) {
+      return false;
+    }
+    return applySubscription(session.subscription, mode);
+  } catch {
+    return false; // The webhook will follow.
+  }
 }
 
 /** Ends a store's plan now, or at the end of the period it has paid for; or undoes that. */

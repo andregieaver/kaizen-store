@@ -14,7 +14,9 @@ type Row = Record<string, unknown>;
 /** A stand-in for Kaizen's own Stripe account that records what it is asked. */
 const fake = vi.hoisted(() => {
   let next = 0;
-  const id = (prefix: string) => `${prefix}_fake${++next}`;
+  // Unique per run, so the tests can run again on the same database.
+  const tag = Date.now().toString(36);
+  const id = (prefix: string) => `${prefix}_fake${tag}n${++next}`;
   const calls: { method: string; params: Record<string, unknown> }[] = [];
   const record =
     (method: string, make: (params: Record<string, unknown>) => Record<string, unknown>) =>
@@ -42,6 +44,8 @@ const fake = vi.hoisted(() => {
       ],
     },
   });
+  /** What the fake Checkout session hands back on return. */
+  const sessions = { storeId: "", stripePrice: "" };
   const client = {
     products: {
       create: record("products.create", () => ({ id: id("prod") })),
@@ -55,6 +59,20 @@ const fake = vi.hoisted(() => {
     billingPortal: {
       configurations: { create: record("portal.configurations.create", () => ({ id: id("bpc") })) },
       sessions: { create: record("portal.sessions.create", () => ({ url: "https://billing.stripe.test/session" })) },
+    },
+    checkout: {
+      sessions: {
+        create: record("checkout.sessions.create", () => ({ id: "cs_plan_1", url: "https://checkout.stripe.test/plan" })),
+        retrieve: record("checkout.sessions.retrieve", (p) => ({
+          id: p.id,
+          metadata: { kaizen_store_id: sessions.storeId },
+          subscription: subscription({
+            id: `sub_checkout${tag}`,
+            items: [{ price: sessions.stripePrice }],
+            metadata: { kaizen_store_id: sessions.storeId },
+          }),
+        })),
+      },
     },
     subscriptions: {
       create: record("subscriptions.create", (p) => subscription(p)),
@@ -74,7 +92,7 @@ const fake = vi.hoisted(() => {
       },
     },
   };
-  return { client, calls };
+  return { client, calls, sessions, tag };
 });
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, refresh: () => {} }));
@@ -299,6 +317,96 @@ describe("the billing webhook", () => {
     expect(await billing.getStoreBilling(storeId)).toMatchObject({
       subscriptionId: `sub_hook_${run}`,
       status: "past_due",
+    });
+  });
+});
+
+describe("owners choosing their own plan", () => {
+  let ownerStore: string;
+  const ownerSlug = `owner-${run}`;
+  let owner: Account;
+
+  beforeAll(async () => {
+    const [request] = await db().execute<Row>(sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${ownerSlug}@example.com`}, 'Owner', 'Owner test') returning id
+    `);
+    const [store] = await db().execute<Row>(sql`
+      select commerce.approve_access_request(${String(request.id)}::uuid, ${ownerSlug}, 'Owner test', null) as id
+    `);
+    ownerStore = String(store.id);
+    const [account] = await db().execute<Row>(sql`
+      select a.id, a.email from commerce.accounts a where lower(a.email) = ${`${ownerSlug}@example.com`}
+    `);
+    owner = { id: String(account.id), email: String(account.email), name: "Owner", platformAdmin: false };
+  });
+
+  const activePrice = async (interval: "month" | "year") => {
+    const plan = (await billing.listPlans()).find((p) => p.active && p.prices.some((x) => x.active && x.interval === interval));
+    return plan?.prices.find((x) => x.active && x.interval === interval && x.currency === "NOK");
+  };
+
+  it("sends a store without a plan to Stripe Checkout, paid by card, with VAT for Norway", async () => {
+    const price = await activePrice("month");
+    const result = await billing.choosePlan(owner, ownerSlug, price?.id as string, "https://kaizen.test");
+    expect(result).toEqual({ ok: true, checkoutUrl: "https://checkout.stripe.test/plan" });
+    const params = calls("checkout.sessions.create").at(-1)?.params;
+    expect(params).toMatchObject({
+      mode: "subscription",
+      customer_account: expect.stringMatching(/^acct_/),
+      line_items: [{ quantity: 1, tax_rates: [expect.stringMatching(/^txr_/)] }],
+      subscription_data: { metadata: { kaizen_store_id: ownerStore, kaizen_price_id: price?.id } },
+      success_url: `https://kaizen.test/admin/${ownerSlug}/billing?checkout={CHECKOUT_SESSION_ID}`,
+    });
+    // Nothing is recorded until the owner has paid.
+    expect((await billing.getStoreBilling(ownerStore))?.status).toBeNull();
+  });
+
+  it("records the plan when the owner returns from Checkout, and only for their own store", async () => {
+    const price = await activePrice("month");
+    const [synced] = await db().execute<Row>(sql`
+      select stripe_id from commerce.stripe_sync where mode = 'test' and kind = 'price' and local_id = ${price?.id as string}
+    `);
+    fake.sessions.stripePrice = String(synced.stripe_id);
+
+    fake.sessions.storeId = storeId; // A session for another store: ignored.
+    expect(await billing.completePlanCheckout(ownerStore, "cs_plan_1")).toBe(false);
+
+    fake.sessions.storeId = ownerStore;
+    expect(await billing.completePlanCheckout(ownerStore, "cs_plan_1")).toBe(true);
+    expect(await billing.getStoreBilling(ownerStore)).toMatchObject({
+      subscriptionId: `sub_checkout${fake.tag}`,
+      status: "active",
+      priceId: price?.id,
+    });
+  });
+
+  it("changes a running plan at once instead of opening Checkout again", async () => {
+    // Offer the store's plan yearly too, then switch to that.
+    const planId = (await billing.getStoreBilling(ownerStore))?.planId;
+    const plan = (await billing.listPlans()).find((p) => p.id === planId);
+    const monthly = plan?.prices.find((p) => p.active && p.interval === "month");
+    await billing.savePlan(admin, planId as string, {
+      name: plan?.name as string,
+      description: plan?.description ?? "",
+      saleFeeBps: plan?.saleFeeBps ?? 0,
+      position: plan?.position ?? 0,
+      active: true,
+      prices: [
+        { currency: "NOK", interval: "month", amountMinor: monthly?.amountMinor as number },
+        { currency: "NOK", interval: "year", amountMinor: 349_000 },
+      ],
+    });
+    const yearly = (await billing.listPlans())
+      .find((p) => p.id === planId)
+      ?.prices.find((p) => p.active && p.interval === "year");
+    const checkouts = calls("checkout.sessions.create").length;
+    const result = await billing.choosePlan(owner, ownerSlug, yearly?.id as string, "https://kaizen.test");
+    expect(result).toEqual({ ok: true });
+    expect(calls("checkout.sessions.create")).toHaveLength(checkouts);
+    expect(calls("subscriptions.update").at(-1)?.params).toMatchObject({
+      id: `sub_checkout${fake.tag}`,
+      proration_behavior: "create_prorations",
     });
   });
 });

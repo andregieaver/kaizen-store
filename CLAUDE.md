@@ -148,7 +148,10 @@ of running `playwright install`.
   `store_billing` current. Checkout takes `storeFeeBps()`: the store's own
   fee, else its plan's while on it, else `platform_settings.sale_fee_bps`.
   The platform admin lives under `/admin/platform` (requests, stores, plans,
-  Stripe); owners see `/admin/{store}/billing`.
+  Stripe). Owners choose and change plans at `/admin/{store}/billing`
+  (`choosePlan()`: Stripe Checkout for the first plan, an instant prorated
+  change after; `completePlanCheckout()` records it on return), and create
+  more stores at `/admin/stores` (`createStoreForOwner()`, decision D19).
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

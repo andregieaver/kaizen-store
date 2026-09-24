@@ -37,6 +37,8 @@ export type SetupProgress = {
   /** Every country the store sells to has a shipping price. */
   shipping: boolean;
   products: boolean;
+  /** The store is on a plan with Kaizen. */
+  plan: boolean;
   /** Everything the store needs before it can open. */
   readyToOpen: boolean;
   counts: { demoProducts: number; ownProducts: number };
@@ -47,7 +49,7 @@ export type SetupProgress = {
  * the checklist stays right whichever page a change was made on.
  */
 export async function getSetupProgress(store: Store): Promise<SetupProgress> {
-  const [[counts], payments, [shippingRow]] = await Promise.all([
+  const [[counts], payments, [shippingRow], [planRow]] = await Promise.all([
     db().execute<Row>(sql`
       select
         count(*) filter (where handle like ${DEMO_HANDLE} and status = 'active')::int as demo,
@@ -59,6 +61,10 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
       select count(*)::int as priced from commerce.shipping_rates r
       join commerce.markets m on m.store_id = r.store_id and m.code = r.market_code and m.active
       where r.store_id = ${store.id}::uuid
+    `),
+    db().execute<Row>(sql`
+      select 1 as on_plan from commerce.store_billing
+      where store_id = ${store.id}::uuid and status in ('trialing', 'active', 'past_due')
     `),
   ]);
   const d = store.details;
@@ -73,6 +79,7 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
     paymentsOn: payments.stripe.enabled,
     shipping: Number(shippingRow?.priced ?? 0) >= store.markets.length && store.markets.length > 0,
     products: ownProducts > 0 || demoProducts === 0,
+    plan: Boolean(planRow),
     readyToOpen: details && countries,
     counts: { demoProducts, ownProducts },
   };

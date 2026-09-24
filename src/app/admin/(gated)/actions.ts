@@ -11,7 +11,7 @@ import { siteUrl } from "@/lib/site";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
 import { requireMember, type Membership } from "@/server/auth";
-import { portalUrl } from "@/server/billing";
+import { cancelPlan, choosePlan, portalUrl } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
@@ -173,4 +173,32 @@ export async function openBillingPortalAction(storeSlug: string): Promise<FormSt
   const result = await portalUrl(owner.store.id, `${await origin()}/admin/${owner.store.slug}/billing`);
   if (!result.ok) return { status: "error", messages: [result.problem] };
   redirect(result.url);
+}
+
+/** An owner chooses a plan: first time through Stripe Checkout, later as an instant change. */
+export async function choosePlanAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  const priceId = z.uuid().safeParse(formData.get("priceId"));
+  if (!priceId.success) return { status: "error", messages: ["Choose a plan."] };
+  const result = await choosePlan(owner.account, owner.store.slug, priceId.data, await origin());
+  if (!result.ok) return { status: "error", messages: result.problems };
+  if (result.checkoutUrl) redirect(result.checkoutUrl);
+  refresh();
+  return { status: "ok", messages: ["Plan changed. The difference is settled on your next invoice."] };
+}
+
+/** An owner cancels their plan at the end of the period, or keeps it after all. */
+export async function ownerCancelPlanAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  const when = z.enum(["period_end", "undo"]).safeParse(formData.get("when"));
+  if (!when.success) return { status: "error", messages: ["Unknown request."] };
+  const result = await cancelPlan(owner.account, owner.store.id, when.data);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return {
+    status: "ok",
+    messages: [when.data === "undo" ? "Your plan continues." : "Your plan ends when the current period does."],
+  };
 }

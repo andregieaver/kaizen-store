@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."stores" DROP CONSTRAINT "stores_slug_not_reserved";--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_slug_not_reserved" CHECK ("commerce"."stores"."slug" not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'www'));

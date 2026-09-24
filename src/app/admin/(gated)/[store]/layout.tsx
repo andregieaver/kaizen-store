@@ -40,6 +40,9 @@ export default async function StoreAdminLayout({
             <Link href={storeBase(store.slug)} className="underline">
               View store
             </Link>
+            <Link href="/admin/stores" className="underline">
+              All stores
+            </Link>
           </div>
         </div>
       </div>

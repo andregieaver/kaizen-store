@@ -155,3 +155,49 @@ export async function declineAccessRequest(admin: Account, requestId: string): P
   `);
   if (row) await audit(admin.id, null, "platform.access_declined", { email: String(row.email) });
 }
+
+/** How many stores one person may own; platform admins have no limit. */
+export const MAX_STORES_PER_OWNER = 10;
+
+export type CreateStoreResult = { ok: true; slug: string } | { ok: false; problems: string[] };
+
+/**
+ * An owner creates another store: a copy of the demo template, with them as
+ * owner, like an approved request. Only people who already own a store (or
+ * run the platform) can, so the beta stays invite-only.
+ */
+export async function createStoreForOwner(account: Account, name: string, slug: string): Promise<CreateStoreResult> {
+  const problems: string[] = [];
+  if (!name.trim()) problems.push("Enter a store name.");
+  const problem = slugProblem(slug);
+  if (problem) problems.push(`Store address: ${problem}`);
+  if (problems.length > 0) return { ok: false, problems };
+
+  const [owned] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.store_members m
+    join commerce.stores s on s.id = m.store_id
+    where m.account_id = ${account.id}::uuid and m.role = 'owner' and m.disabled_at is null
+      and s.status <> 'closed' and not s.is_template
+  `);
+  const count = Number(owned?.n ?? 0);
+  if (!account.platformAdmin && count === 0) {
+    return { ok: false, problems: ["Only store owners can create more stores. Ask for a store at /sign-up."] };
+  }
+  if (!account.platformAdmin && count >= MAX_STORES_PER_OWNER) {
+    return { ok: false, problems: [`You can own up to ${MAX_STORES_PER_OWNER} stores. Contact Kaizen for more.`] };
+  }
+  if (await isSlugTaken(slug)) return { ok: false, problems: [`The address ${slug} is taken. Choose another.`] };
+
+  try {
+    await db().execute(sql`
+      select commerce.clone_store(
+        (select id from commerce.stores where is_template), ${slug}, ${name.trim()}, ${account.id}::uuid
+      )
+    `);
+  } catch (error) {
+    return { ok: false, problems: [approvalProblem(error, slug)] };
+  }
+  const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug}`);
+  await audit(account.id, store ? String(store.id) : null, "store.created_by_owner", { slug, name: name.trim() });
+  return { ok: true, slug };
+}

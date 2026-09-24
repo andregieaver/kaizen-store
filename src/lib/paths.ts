@@ -35,6 +35,7 @@ export const RESERVED_STORE_SLUGS: readonly string[] = [
   "sign-in",
   "sign-up",
   "status",
+  "stores",
   "support",
   "www",
 ];
