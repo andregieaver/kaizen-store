@@ -17,7 +17,7 @@ export default async function AdminOverview({ params }: Props) {
     { done: progress.details, label: "Business details", step: "details" },
     { done: progress.countries, label: "Countries you sell to", step: "countries" },
     { done: progress.shipping, label: "Shipping prices for every country", href: "settings/shipping" },
-    { done: progress.payments, label: "Stripe keys saved", step: "payments" },
+    { done: progress.payments, label: "Stripe account ready", step: "payments" },
     { done: progress.paymentsOn, label: "Stripe switched on, so shoppers can pay", href: "settings/payments" },
     {
       done: progress.products,

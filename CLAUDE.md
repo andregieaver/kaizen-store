@@ -111,10 +111,13 @@ of running `playwright install`.
 - Checkout (`src/server/checkout.ts`, decision D16): `placeOrder()` turns an
   open cart into a `pending_payment` order at current prices and holds stock
   under row locks (`inventory_reservations`); `startCheckout()` then opens a
-  Stripe Checkout session with the store's own key. The webhook
-  (`/api/stripe/webhook/{storeId}`, verified against the store's secrets) and
-  the order page (`getShopperOrder`, which asks Stripe if the webhook is late)
-  both go through `applySession()`. Paying and cancelling are single SQL
+  Stripe Checkout session as a direct charge on the store's connected account
+  (`{ stripeAccount }`, decision D17), with Kaizen's fee as
+  `application_fee_amount`. The Connect webhook
+  (`/api/stripe/connect/{mode}`, which finds the store from `event.account`)
+  and the order page (`getShopperOrder`, which asks Stripe if the webhook is
+  late) both go through `applySession()`. `/api/stripe/webhook/{storeId}` only
+  serves payments started with stores' own keys before Connect. Paying and cancelling are single SQL
   functions: `commerce.complete_order_payment` and
   `commerce.cancel_unpaid_order`.
 - Shipping is one flat rate per market (`commerce.shipping_rates`), optionally
@@ -125,9 +128,20 @@ of running `playwright install`.
 - Forms use `ActionForm`, which keeps what was typed when validation fails.
   Server actions that change a store call `updateTag()` for its store and
   catalogue tags.
-- Payment secrets are encrypted with `SETTINGS_ENCRYPTION_KEY`
-  (`src/lib/secret-box.ts`) and never sent to the browser; only a masked hint
-  is shown. Checkout reads them with `getActiveStripeSecret()`.
+- Stripe Connect (`src/server/connect.ts`, `src/server/stripe.ts`): Kaizen's
+  platform keys come from `STRIPE_SECRET_KEY_{TEST,LIVE}` and
+  `STRIPE_PUBLISHABLE_KEY_{TEST,LIVE}` (`platformStripe(mode)`). Each store
+  gets an Accounts v2 account (full Dashboard, Stripe-owned fees and losses,
+  merchant + customer configurations) in `commerce.stripe_accounts`, whose
+  copied status (`card_payments`, `requirements_due`) decides whether checkout
+  is on. Owners onboard with Stripe's embedded components
+  (`StripeAccountPanel`, loaded only on the pages that show it); the thin
+  account webhook (`/api/stripe/connect/{mode}/accounts`) keeps the status
+  current. Never pass `payment_method_types`: stores choose methods in their
+  own Stripe Dashboard.
+- Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
+  encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
+  sent to the browser.
 
 ## Conventions
 

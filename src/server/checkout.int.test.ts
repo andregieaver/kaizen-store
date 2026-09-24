@@ -4,6 +4,8 @@ import { sql } from "drizzle-orm";
 import Stripe from "stripe";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { POST as connectAccountsWebhook } from "@/app/api/stripe/connect/[mode]/accounts/route";
+import { POST as connectWebhook } from "@/app/api/stripe/connect/[mode]/route";
 import { POST as webhook } from "@/app/api/stripe/webhook/[storeId]/route";
 import { closeDb, db } from "@/db/client";
 import { toMarket } from "@/lib/markets";
@@ -230,5 +232,91 @@ describe("the Stripe webhook", () => {
     const forged = signer.webhooks.generateTestHeaderString({ payload: body, secret: "whsec_someone_else" });
     expect((await call(body, forged)).status).toBe(400);
     expect((await call(body, "")).status).toBe(400);
+  });
+});
+
+describe("the Connect webhooks", () => {
+  const secret = `whsec_connect_${run}`;
+  const thinSecret = `whsec_thin_${run}`;
+  const accountId = `acct_hook${run}`;
+  const signer = new Stripe("sk_test_signing_only");
+
+  beforeAll(async () => {
+    const key = randomBytes(32);
+    process.env.SETTINGS_ENCRYPTION_KEY = key.toString("base64");
+    process.env.STRIPE_SECRET_KEY_TEST = "sk_test_kaizen_platform";
+    for (const [kind, value] of [["snapshot", secret], ["thin", thinSecret]]) {
+      await db().execute(sql`
+        insert into commerce.platform_webhooks (provider, mode, kind, endpoint_id, url, secret_ciphertext)
+        values ('stripe', 'test', ${kind}, ${`we_${kind}`}, 'https://kaizen.test/hook', ${encryptSecret(value, key)})
+        on conflict (provider, mode, kind) do update set secret_ciphertext = excluded.secret_ciphertext
+      `);
+    }
+    await db().execute(sql`
+      insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due)
+      values (${storeId}::uuid, 'test', ${accountId}, 'active', false)
+    `);
+  });
+
+  type ModeRoute = (request: Request, context: { params: Promise<{ mode: string }> }) => Promise<Response>;
+  const call = (route: ModeRoute, path: string, body: string, signature: string) =>
+    route(
+      new Request(`http://localhost${path}`, { method: "POST", headers: { "stripe-signature": signature }, body }),
+      { params: Promise.resolve({ mode: "test" }) },
+    );
+
+  const event = (sessionId: string, account: string) =>
+    JSON.stringify({
+      id: `evt_${sessionId}`,
+      object: "event",
+      account,
+      type: "checkout.session.completed",
+      data: { object: { id: sessionId, object: "checkout.session", status: "complete", payment_status: "paid" } },
+    });
+
+  it("applies a payment event to the store whose Stripe account it came from", async () => {
+    const id = await pendingOrder(`cs_connect_${run}`);
+    const body = event(`cs_connect_${run}`, accountId);
+    const response = await call(
+      connectWebhook,
+      "/api/stripe/connect/test",
+      body,
+      signer.webhooks.generateTestHeaderString({ payload: body, secret }),
+    );
+    expect(response.status).toBe(200);
+    expect((await orderRow(id)).status).toBe("paid");
+  });
+
+  it("ignores events from accounts that are not Kaizen stores, and refuses bad signatures", async () => {
+    const body = event("cs_elsewhere", "acct_someoneelse");
+    const signed = signer.webhooks.generateTestHeaderString({ payload: body, secret });
+    expect(await (await call(connectWebhook, "/api/stripe/connect/test", body, signed)).json()).toMatchObject({
+      ignored: "not a Kaizen store",
+    });
+    const forged = signer.webhooks.generateTestHeaderString({ payload: body, secret: "whsec_other" });
+    expect((await call(connectWebhook, "/api/stripe/connect/test", body, forged)).status).toBe(400);
+    expect(
+      (await connectWebhook(new Request("http://localhost/x", { method: "POST", body }), {
+        params: Promise.resolve({ mode: "sandbox" }),
+      })).status,
+    ).toBe(404);
+  });
+
+  it("checks account events are signed, and ignores accounts that are not Kaizen stores", async () => {
+    const body = JSON.stringify({
+      id: "evt_thin_1",
+      object: "v2.core.event",
+      type: "v2.core.account[requirements].updated",
+      created: new Date().toISOString(),
+      related_object: { id: "acct_someoneelse", type: "v2.core.account", url: "/v2/core/accounts/acct_someoneelse" },
+    });
+    const path = "/api/stripe/connect/test/accounts";
+    const signed = signer.webhooks.generateTestHeaderString({ payload: body, secret: thinSecret });
+    const response = await call(connectAccountsWebhook, path, body, signed);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ignored: "not a Kaizen store" });
+
+    const forged = signer.webhooks.generateTestHeaderString({ payload: body, secret: "whsec_other" });
+    expect((await call(connectAccountsWebhook, path, body, forged)).status).toBe(400);
   });
 });

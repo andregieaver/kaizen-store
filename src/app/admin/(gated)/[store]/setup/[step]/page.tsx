@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SetupFrame } from "@/components/admin/setup-frame";
-import { StripeKeysForm } from "@/components/admin/stripe-keys-form";
+import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { storeBase } from "@/lib/paths";
 import { requireMember, type Membership } from "@/server/auth";
 import { getPaymentSettings } from "@/server/settings";
@@ -74,12 +74,9 @@ export default async function SetupStepPage({ params }: Props) {
           title="Payments"
           intro={
             <>
-              Payments go through Stripe, straight to your own Stripe account. Start with test keys:
-              they take no real money, so you can try the whole checkout safely.{" "}
-              <a href="https://dashboard.stripe.com/register" className="underline" target="_blank" rel="noreferrer">
-                Create a Stripe account
-              </a>{" "}
-              if you do not have one.
+              Shoppers pay your business directly, through your store&apos;s own Stripe account.
+              Stripe asks a few questions about your business and where to pay out; you can
+              answer them now or later.
             </>
           }
         >
@@ -220,28 +217,32 @@ async function CountriesStep({ member }: { member: Membership }) {
 }
 
 async function PaymentsStep({ member }: { member: Membership }) {
-  const { store } = member;
+  const { store, role } = member;
   const settings = await getPaymentSettings(store);
+  // During setup, the first mode Kaizen offers: test while Kaizen is in test.
+  const mode = settings.modes.includes("live") ? "live" : settings.modes[0];
   return (
     <div className="flex flex-col gap-4">
-      {!settings.encryptionKeyConfigured && (
+      {mode ? (
+        <StripeAccountPanel
+          storeSlug={store.slug}
+          mode={mode}
+          account={settings.accounts[mode]}
+          isOwner={role === "owner"}
+          title="Your Stripe account"
+        />
+      ) : (
         <p role="status" className="rounded-md border border-border p-3 text-sm">
-          Payment keys cannot be saved right now. Skip this step; you can add them later from
+          Payments are not available on Kaizen yet. Skip this step; you can set them up later from
           payment settings.
         </p>
       )}
-      <StripeKeysForm
-        storeSlug={store.slug}
-        mode="test"
-        status={settings.credentials.test}
-        disabled={!settings.encryptionKeyConfigured}
-      />
       <p className="text-sm text-muted">
-        Live keys, which payment methods each country offers, and switching Stripe on are in{" "}
+        Switching checkout on, invoices and payment methods are in{" "}
         <Link href={`/admin/${store.slug}/settings/payments`} className="underline">
           payment settings
         </Link>
-        . Checkout is not open yet on Kaizen; your keys will be ready when it is.
+        . You can finish Stripe&apos;s questions later too.
       </p>
       <div>
         <Link
@@ -302,7 +303,7 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
   const items = [
     { done: progress.details, label: "Business details", href: "details", required: true },
     { done: progress.countries, label: "At least one country", href: "countries", required: true },
-    { done: progress.payments, label: "Stripe keys", href: "payments", required: false },
+    { done: progress.payments, label: "Stripe account ready", href: "payments", required: false },
     {
       done: progress.products,
       label: progress.counts.demoProducts > 0 ? "Demo products replaced" : "Products",

@@ -1,15 +1,12 @@
-import { randomBytes } from "node:crypto";
-
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { toMarket } from "@/lib/markets";
-import { encryptSecret } from "@/lib/secret-box";
 
 type Row = Record<string, unknown>;
 
-/** A stand-in for Stripe that records what Kaizen asks of it. */
+/** A stand-in for Kaizen's platform Stripe client that records what it is asked. */
 const fake = vi.hoisted(() => {
   const sessions = new Map<string, { status: string; payment_status: string }>();
   const created: { params: Record<string, unknown>; options: Record<string, unknown> }[] = [];
@@ -24,8 +21,12 @@ const fake = vi.hoisted(() => {
           created.push({ params, options });
           return { id, url: `https://checkout.stripe.test/${id}` };
         },
-        retrieve: async (id: string) => ({ id, ...sessions.get(id) }),
-        expire: async (id: string) => {
+        retrieve: async (id: string, _params: unknown, options: { stripeAccount?: string }) => {
+          if (!options?.stripeAccount) throw new Error("no connected account");
+          return { id, ...sessions.get(id) };
+        },
+        expire: async (id: string, _params: unknown, options: { stripeAccount?: string }) => {
+          if (!options?.stripeAccount) throw new Error("no connected account");
           expired.push(id);
           sessions.set(id, { status: "expired", payment_status: "unpaid" });
           return { id };
@@ -36,7 +37,7 @@ const fake = vi.hoisted(() => {
   return { client, created, expired, sessions };
 });
 
-vi.mock("./stripe", () => ({ stripeFor: () => fake.client }));
+vi.mock("./stripe", () => ({ platformStripe: () => fake.client }));
 
 const { startCheckout } = await import("./checkout");
 
@@ -45,9 +46,9 @@ const no = toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" });
 let storeId: string;
 const slug = `stripe-${run}`;
 
+const accountId = `acct_${run}`;
+
 beforeAll(async () => {
-  const key = randomBytes(32);
-  process.env.SETTINGS_ENCRYPTION_KEY = key.toString("base64");
   const [request] = await db().execute<Row>(sql`
     insert into commerce.access_requests (email, name, store_name)
     values (${`${slug}@example.com`}, 'Test', 'Test') returning id
@@ -57,15 +58,14 @@ beforeAll(async () => {
   `);
   storeId = String(store.id);
   await db().execute(sql`
-    insert into commerce.payment_credentials (store_id, provider, mode, publishable_key, secret_key_ciphertext, secret_key_hint)
-    values (${storeId}::uuid, 'stripe', 'test', 'pk_test_x', ${encryptSecret("sk_test_x", key)}, 'sk_test_…x')
+    update commerce.stores set legal_name = 'Test AS', organisation_number = '999999999' where id = ${storeId}::uuid
   `);
   await db().execute(sql`
-    update commerce.payment_providers set enabled = true where store_id = ${storeId}::uuid
+    insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due)
+    values (${storeId}::uuid, 'test', ${accountId}, 'active', false)
   `);
   await db().execute(sql`
-    insert into commerce.payment_methods (store_id, market_code, method, enabled)
-    values (${storeId}::uuid, 'NO', 'card', true), (${storeId}::uuid, 'NO', 'klarna', true)
+    update commerce.payment_providers set enabled = true, active_mode = 'test' where store_id = ${storeId}::uuid
   `);
 });
 
@@ -98,12 +98,16 @@ describe("starting checkout", () => {
     const [order] = await db().execute<Row>(sql`
       select id, status from commerce.orders where cart_id = ${cartId}::uuid
     `);
-    expect(options).toEqual({ idempotencyKey: `checkout-${order.id}` });
+    // A direct charge on the store's own account, with no Kaizen fee by default.
+    expect(options).toEqual({ stripeAccount: accountId, idempotencyKey: `checkout-${order.id}` });
+    expect(params).not.toHaveProperty("payment_method_types");
+    expect(params).not.toHaveProperty("invoice_creation");
+    expect(params.payment_intent_data).not.toHaveProperty("application_fee_amount");
     expect(params).toMatchObject({
       mode: "payment",
       client_reference_id: order.id,
       locale: "nb",
-      payment_method_types: ["card", "klarna"],
+      integration_identifier: expect.stringMatching(/^kaizen-storefront-[a-z]{8}$/),
       shipping_address_collection: { allowed_countries: ["NO"] },
       line_items: [
         { quantity: 2, price_data: { currency: "nok", unit_amount: 24900, product_data: { name: "Demo: Keramikkopp (white)" } } },
@@ -116,9 +120,32 @@ describe("starting checkout", () => {
     });
 
     const [payment] = await db().execute<Row>(sql`
-      select provider_reference, amount_minor::int as amount from commerce.payments where order_id = ${String(order.id)}::uuid
+      select provider_reference, provider_account, amount_minor::int as amount
+      from commerce.payments where order_id = ${String(order.id)}::uuid
     `);
-    expect(payment).toEqual({ provider_reference: "cs_fake_1", amount: 59700 });
+    expect(payment).toEqual({ provider_reference: "cs_fake_1", provider_account: accountId, amount: 59700 });
+  });
+
+  it("takes Kaizen's fee and sends an invoice when the store wants one", async () => {
+    await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 150`);
+    await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
+    try {
+      await startCheckout(shop(), await cartWith("DEMO-MUG-WHITE", 2), "https://shop.test", "Frakt");
+      const { params } = fake.created[fake.created.length - 1];
+      expect(params).toMatchObject({
+        payment_intent_data: { application_fee_amount: 896 },
+        invoice_creation: {
+          enabled: true,
+          invoice_data: {
+            footer: "Test AS · Org.nr. 999999999",
+            custom_fields: [{ name: "Herav mva", value: expect.stringMatching(/119,40/) }],
+          },
+        },
+      });
+    } finally {
+      await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 0`);
+      await db().execute(sql`update commerce.payment_providers set order_invoices = false where store_id = ${storeId}::uuid`);
+    }
   });
 
   it("closes the earlier session when the shopper checks out again", async () => {
@@ -153,5 +180,12 @@ describe("starting checkout", () => {
     const result = await startCheckout(shop(), await cartWith("DEMO-TOTE", 1), "https://shop.test", "Frakt");
     expect(result).toEqual({ ok: false, problem: "payments_off" });
     await db().execute(sql`update commerce.payment_providers set enabled = true where store_id = ${storeId}::uuid`);
+  });
+
+  it("will not take payment before Stripe has approved the store's account", async () => {
+    await db().execute(sql`update commerce.stripe_accounts set card_payments = 'pending' where store_id = ${storeId}::uuid`);
+    const result = await startCheckout(shop(), await cartWith("DEMO-TOTE", 1), "https://shop.test", "Frakt");
+    expect(result).toEqual({ ok: false, problem: "payments_off" });
+    await db().execute(sql`update commerce.stripe_accounts set card_payments = 'active' where store_id = ${storeId}::uuid`);
   });
 });

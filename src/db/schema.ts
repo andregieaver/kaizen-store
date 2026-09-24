@@ -286,6 +286,47 @@ export const auditLog = commerce.table(
   ],
 );
 
+/** Kaizen's own settings: a single row. */
+export const platformSettings = commerce.table(
+  "platform_settings",
+  {
+    id: boolean("id").primaryKey().default(true),
+    /** Kaizen's fee on each storefront sale, in basis points (100 = 1 %). */
+    saleFeeBps: integer("sale_fee_bps").notNull().default(0),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("platform_settings_single_row", sql`${t.id}`),
+    check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
+    index("platform_settings_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
+ * Kaizen's Connect webhooks in its own Stripe account, per mode: `snapshot`
+ * for payment events from stores' accounts, `thin` for account (v2) events.
+ * The signing secret is encrypted like store payment secrets.
+ */
+export const platformWebhooks = commerce.table(
+  "platform_webhooks",
+  {
+    provider: text("provider").notNull(),
+    mode: paymentMode("mode").notNull(),
+    kind: text("kind").notNull(),
+    endpointId: text("endpoint_id").notNull(),
+    url: text("url").notNull(),
+    secretCiphertext: text("secret_ciphertext").notNull(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.mode, t.kind] }),
+    check("platform_webhooks_kind", sql`${t.kind} in ('snapshot', 'thin')`),
+    index("platform_webhooks_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Markets
 // ---------------------------------------------------------------------------
@@ -877,6 +918,8 @@ export const payments = commerce.table(
     provider: text("provider").notNull(),
     /** The provider's id, e.g. a Stripe Checkout Session or PaymentIntent. */
     providerReference: text("provider_reference").notNull(),
+    /** The store's connected Stripe account the payment was taken on (Connect). */
+    providerAccount: text("provider_account"),
     amountMinor: money("amount_minor"),
     currency: char("currency", { length: 3 }).notNull(),
     status: paymentStatus("status").notNull().default("pending"),
@@ -1163,6 +1206,8 @@ export const paymentProviders = commerce.table(
     provider: text("provider").notNull(),
     enabled: boolean("enabled").notNull().default(false),
     activeMode: paymentMode("active_mode").notNull().default("test"),
+    /** Stripe emails an invoice PDF with each order (Stripe Invoicing fees apply). */
+    orderInvoices: boolean("order_invoices").notNull().default(false),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -1199,6 +1244,32 @@ export const paymentCredentials = commerce.table(
       foreignColumns: [paymentProviders.storeId, paymentProviders.provider],
     }),
     index("payment_credentials_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
+ * The store's own Stripe account on Kaizen's Connect platform, per mode
+ * (decision D17). The store is the seller: payments are direct charges on
+ * this account. Status is copied from Stripe so pages need not ask it.
+ */
+export const stripeAccounts = commerce.table(
+  "stripe_accounts",
+  {
+    storeId: storeId().references(() => stores.id),
+    mode: paymentMode("mode").notNull(),
+    accountId: text("account_id").notNull(),
+    /** Stripe's status for the card_payments capability: active, pending, restricted, … */
+    cardPayments: text("card_payments").notNull().default("inactive"),
+    /** Stripe needs more information now (currently or past due). */
+    requirementsDue: boolean("requirements_due").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.mode] }),
+    unique("stripe_accounts_account_key").on(t.mode, t.accountId),
+    index("stripe_accounts_created_by_idx").on(t.createdBy),
   ],
 );
 

@@ -59,9 +59,8 @@ async function loadStore(slug: string): Promise<Store | null> {
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country,
       exists (
         select 1 from commerce.payment_providers p
-        join commerce.payment_credentials c
-          on c.store_id = p.store_id and c.provider = p.provider and c.mode = p.active_mode
-        where p.store_id = s.id and p.enabled and c.secret_key_ciphertext is not null
+        join commerce.stripe_accounts a on a.store_id = p.store_id and a.mode = p.active_mode
+        where p.store_id = s.id and p.enabled and a.card_payments = 'active'
       ) as payments_on,
       coalesce(
         json_agg(json_build_object(

@@ -94,16 +94,31 @@ Preview, marked Sensitive) and redeploy. It bypasses all database rules, so it
 must never reach the browser. Without it, the product editor asks for picture
 addresses instead.
 
-To take payments, a store owner saves their Stripe keys under **Payments**.
-Saving the secret key also creates Kaizen's webhook in their Stripe account
-(pointing at `/api/stripe/webhook/{store id}`), so payments are confirmed
-without copying a signing secret. Then they set shipping prices under
-**Shipping** and switch Stripe on. Shoppers get Stripe's receipt email once the
-owner turns it on in Stripe (Settings → Customer emails).
+Payments run on Stripe Connect (decision D17): each store sells through its
+own Stripe account, which Kaizen creates and the owner completes inside the
+admin. To switch payments on for the platform:
+
+1. In Kaizen's own Stripe account, turn on **Connect** (Dashboard → Connect →
+   Get started; choose a platform whose sellers have their own storefronts).
+2. In Vercel, add Kaizen's keys for the mode (Production and Preview; mark the
+   secret key Sensitive): `STRIPE_SECRET_KEY_TEST` and
+   `STRIPE_PUBLISHABLE_KEY_TEST`, later `STRIPE_SECRET_KEY_LIVE` and
+   `STRIPE_PUBLISHABLE_KEY_LIVE`. A restricted key (`rk_…`) works if it may
+   manage Connect accounts, account sessions, Checkout Sessions, webhook
+   endpoints and event destinations. Redeploy.
+3. On `/admin/platform` → **Stripe**, press **Connect webhooks** for the mode.
+   Kaizen creates its two webhooks in Stripe and keeps their secrets encrypted
+   (`SETTINGS_ENCRYPTION_KEY` must be set).
+4. Optionally set Kaizen's fee per sale on the same page (0 % by default).
+
+Each owner then opens **Payments**, presses **Set up Stripe**, answers
+Stripe's questions, sets shipping prices under **Shipping**, and switches
+checkout on. Payment methods, receipts and payouts are managed in the store's
+own Stripe Dashboard.
 
 Store owners ask for a store at `/sign-up`; platform admins approve requests at
 `/admin/platform`, which creates the store as a copy of the demo template.
 
-Payment keys and which payment methods are offered in each country are set in
-**Admin → Payments**. They are stored encrypted with `SETTINGS_ENCRYPTION_KEY`,
-which must be set in the server environment.
+Secrets Kaizen keeps in the database (its Stripe webhook secrets, and the
+per-store keys from before Connect) are encrypted with
+`SETTINGS_ENCRYPTION_KEY`, which must be set in the server environment.

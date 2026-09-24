@@ -69,7 +69,7 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
   return {
     details,
     countries,
-    payments: Boolean(payments.credentials.test.secretKeyHint || payments.credentials.live.secretKeyHint),
+    payments: Object.values(payments.accounts).some((a) => a.cardPayments === "active"),
     paymentsOn: payments.stripe.enabled,
     shipping: Number(shippingRow?.priced ?? 0) >= store.markets.length && store.markets.length > 0,
     products: ownProducts > 0 || demoProducts === 0,

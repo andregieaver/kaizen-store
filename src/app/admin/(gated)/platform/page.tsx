@@ -4,10 +4,13 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
+import { PAYMENT_MODES } from "@/lib/stripe-account";
 import { requireAccount } from "@/server/auth";
+import { getSaleFeeBps, listPlatformWebhooks } from "@/server/connect";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
+import { platformModes } from "@/server/stripe";
 
-import { decideAction } from "./actions";
+import { connectWebhooksAction, decideAction, saveSaleFeeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Access requests" };
 
@@ -17,7 +20,12 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 export default async function PlatformPage() {
   const account = await requireAccount();
   if (!account.platformAdmin) notFound();
-  const requests = await listAccessRequests();
+  const [requests, webhooks, saleFeeBps] = await Promise.all([
+    listAccessRequests(),
+    listPlatformWebhooks(),
+    getSaleFeeBps(),
+  ]);
+  const modes = platformModes();
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
 
@@ -67,6 +75,62 @@ export default async function PlatformPage() {
           </ul>
         </section>
       )}
+      <section aria-labelledby="stripe-heading" className="flex flex-col gap-4">
+        <div>
+          <h2 id="stripe-heading" className="font-medium">
+            Stripe
+          </h2>
+          <p className="text-sm text-muted">
+            Kaizen is a Stripe Connect platform: each store sells through its own Stripe account.
+            Keys come from Vercel (<code>STRIPE_SECRET_KEY_TEST</code>,{" "}
+            <code>STRIPE_PUBLISHABLE_KEY_TEST</code> and the <code>_LIVE</code> pair).
+          </p>
+        </div>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {PAYMENT_MODES.map((mode) => {
+            const configured = modes.includes(mode);
+            const hooks = webhooks.filter((hook) => hook.mode === mode);
+            return (
+              <li key={mode} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+                <h3 className="font-medium">{mode === "test" ? "Test mode" : "Live mode"}</h3>
+                <p>{configured ? "Keys are set." : "Keys are not set."}</p>
+                <p className={hooks.length === 2 ? "" : "text-muted"}>
+                  {hooks.length === 2
+                    ? `Webhooks connected ${hooks[0].updatedAt.slice(0, 10)} (${new URL(hooks[0].url).host}).`
+                    : "Webhooks are not connected: payments and account changes will not reach Kaizen."}
+                </p>
+                {configured && (
+                  <ActionForm action={connectWebhooksAction}>
+                    <input type="hidden" name="mode" value={mode} />
+                    <SubmitButton variant={hooks.length === 2 ? "secondary" : "primary"}>
+                      {hooks.length === 2 ? "Reconnect webhooks" : "Connect webhooks"}
+                    </SubmitButton>
+                  </ActionForm>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <ActionForm action={saveSaleFeeAction} className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Kaizen&apos;s fee on each sale (%)
+            <input
+              name="percent"
+              inputMode="decimal"
+              defaultValue={String(saleFeeBps / 100)}
+              className={`${control} w-32`}
+              aria-describedby="fee-hint"
+            />
+          </label>
+          <p id="fee-hint" className="text-sm text-muted">
+            Taken from each storefront payment and paid to Kaizen&apos;s Stripe balance. Stores
+            pay Stripe&apos;s own fees themselves. 0 means no fee.
+          </p>
+          <div>
+            <SubmitButton>Save fee</SubmitButton>
+          </div>
+        </ActionForm>
+      </section>
     </main>
   );
 }

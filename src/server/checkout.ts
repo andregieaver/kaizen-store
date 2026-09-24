@@ -6,11 +6,15 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 import { CHECKOUT_MINUTES, shippingCost, stripeLocale, vatIncluded } from "@/lib/checkout";
 import type { Market } from "@/lib/markets";
+import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { variantLabel } from "@/lib/product-input";
 
-import { getActiveStripeSecret } from "./settings";
-import { stripeFor } from "./stripe";
+import { saleFee } from "@/lib/stripe-account";
+
+import { getSaleFeeBps } from "./connect";
+import { getCheckoutAccount } from "./settings";
+import { platformStripe } from "./stripe";
 
 type Row = Record<string, unknown>;
 
@@ -22,6 +26,8 @@ export type PlacedOrder = {
   currency: string;
   lines: { title: string; unitPriceMinor: number; quantity: number }[];
   shippingMinor: number;
+  /** The VAT included in the total. */
+  taxMinor: number;
   totalMinor: number;
 };
 
@@ -193,6 +199,7 @@ export async function placeOrder(
         currency: market.currency,
         lines: priced.map((p) => ({ title: p.title, unitPriceMinor: p.unit, quantity: p.quantity })),
         shippingMinor: shipping,
+        taxMinor: tax,
         totalMinor: total,
       },
     };
@@ -217,9 +224,17 @@ export async function completeOrderPayment(orderId: string, reference: string): 
 
 export type CheckoutStart = { ok: true; url: string } | { ok: false; problem: CheckoutProblem; orderId?: string };
 
+/** Tags Kaizen's storefront sessions in the Stripe Dashboard (Stripe asks for 8 random letters). */
+const INTEGRATION_IDENTIFIER = "kaizen-storefront-qhwmzrtd";
+
+/** "Of which VAT" on the order invoice, in the shopper's language. */
+const VAT_LABELS: Record<string, string> = { nb: "Herav mva", sv: "Varav moms", da: "Heraf moms" };
+
 /**
  * From cart to Stripe: closes any earlier unpaid checkout for the same cart,
- * places the order, and opens a Stripe Checkout session for it.
+ * places the order, and opens a Stripe Checkout session for it on the
+ * store's own Stripe account (a direct charge: the store is the seller, and
+ * Kaizen's fee, if any, is taken as an application fee).
  */
 export async function startCheckout(
   shop: CheckoutShop,
@@ -227,22 +242,22 @@ export async function startCheckout(
   origin: string,
   shippingLabel: string,
 ): Promise<CheckoutStart> {
-  const stripeKeys = await getActiveStripeSecret(shop.storeId);
-  if (!stripeKeys) return { ok: false, problem: "payments_off" };
-  const stripe = stripeFor(stripeKeys.secretKey);
+  const connection = await getCheckoutAccount(shop.storeId);
+  const stripe = connection && platformStripe(connection.mode);
+  if (!connection || !stripe) return { ok: false, problem: "payments_off" };
 
   // A shopper who went back from Stripe and checks out again: the earlier
   // session is closed first, so the same basket cannot be paid twice.
   const earlier = await db().execute<Row>(sql`
-    select o.id, pay.provider_reference
+    select o.id, pay.provider_reference, pay.provider_account
     from commerce.orders o
     left join commerce.payments pay on pay.order_id = o.id and pay.provider = 'stripe'
     where o.store_id = ${shop.storeId}::uuid and o.cart_id = ${cartId}::uuid and o.status = 'pending_payment'
   `);
   for (const row of earlier) {
     const orderId = String(row.id);
-    if (row.provider_reference) {
-      const outcome = await closeSession(stripe, String(row.provider_reference));
+    if (row.provider_reference && row.provider_account) {
+      const outcome = await closeSession(stripe, String(row.provider_account), String(row.provider_reference));
       if (outcome === "paid") {
         await completeOrderPayment(orderId, String(row.provider_reference));
         return { ok: false, problem: "already_paid", orderId };
@@ -256,12 +271,16 @@ export async function startCheckout(
   if (!placed.ok) return placed;
   const { order } = placed;
 
-  const methods = await db().execute<Row>(sql`
-    select method from commerce.payment_methods
-    where store_id = ${shop.storeId}::uuid and market_code = ${shop.market.code} and enabled
+  const [store] = await db().execute<Row>(sql`
+    select legal_name, organisation_number from commerce.stores where id = ${shop.storeId}::uuid
   `);
+  const fee = saleFee(order.totalMinor, await getSaleFeeBps());
   const base = `${origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
+  const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId };
+  const seller = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]
+    .filter(Boolean)
+    .join(" · ");
 
   let session: Stripe.Checkout.Session;
   try {
@@ -269,8 +288,13 @@ export async function startCheckout(
       {
         mode: "payment",
         client_reference_id: order.orderId,
-        metadata: { order_id: order.orderId, store_id: shop.storeId },
-        payment_intent_data: { metadata: { order_id: order.orderId, store_id: shop.storeId } },
+        metadata,
+        integration_identifier: INTEGRATION_IDENTIFIER,
+        payment_intent_data: {
+          metadata,
+          description: `Order ${order.number}`,
+          ...(fee !== null && { application_fee_amount: fee }),
+        },
         line_items: order.lines.map((line) => ({
           quantity: line.quantity,
           price_data: { currency, unit_amount: line.unitPriceMinor, product_data: { name: line.title } },
@@ -287,17 +311,30 @@ export async function startCheckout(
         shipping_address_collection: {
           allowed_countries: [shop.market.code as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry],
         },
-        ...(methods.length > 0 && {
-          payment_method_types: methods.map(
-            (m) => String(m.method) as Stripe.Checkout.SessionCreateParams.PaymentMethodType,
-          ),
+        // No payment_method_types: Stripe shows the methods the store has
+        // turned on in its Stripe Dashboard that suit the shopper.
+        ...(connection.orderInvoices && {
+          invoice_creation: {
+            enabled: true,
+            invoice_data: {
+              description: `Order ${order.number}`,
+              metadata,
+              ...(seller && { footer: seller }),
+              custom_fields: [
+                {
+                  name: VAT_LABELS[shop.market.lang] ?? "Incl. VAT",
+                  value: formatMoney(order.taxMinor, order.currency, shop.market.locale),
+                },
+              ],
+            },
+          },
         }),
         locale: stripeLocale(shop.market.lang) as Stripe.Checkout.SessionCreateParams.Locale,
         success_url: `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${base}/cart`,
         expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_MINUTES * 60 + 60,
       },
-      { idempotencyKey: `checkout-${order.orderId}` },
+      { stripeAccount: connection.accountId, idempotencyKey: `checkout-${order.orderId}` },
     );
   } catch {
     await cancelUnpaidOrder(order.orderId, "stripe session could not be created");
@@ -305,9 +342,12 @@ export async function startCheckout(
   }
 
   await db().execute(sql`
-    insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
-    values (${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${order.totalMinor},
-            ${order.currency}, 'pending')
+    insert into commerce.payments (
+      store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status
+    ) values (
+      ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${connection.accountId},
+      ${order.totalMinor}, ${order.currency}, 'pending'
+    )
   `);
   if (!session.url) return { ok: false, problem: "payment_error" };
   return { ok: true, url: session.url };
@@ -320,12 +360,13 @@ export async function startCheckout(
  */
 async function closeSession(
   stripe: Stripe,
+  stripeAccount: string,
   sessionId: string,
 ): Promise<"closed" | "paid" | "processing"> {
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {}, { stripeAccount });
     if (session.status === "complete") return session.payment_status === "unpaid" ? "processing" : "paid";
-    if (session.status === "open") await stripe.checkout.sessions.expire(sessionId);
+    if (session.status === "open") await stripe.checkout.sessions.expire(sessionId, {}, { stripeAccount });
   } catch {
     // An unknown or already expired session is closed either way.
   }

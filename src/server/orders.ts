@@ -1,11 +1,14 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 
+import type { PaymentModeName } from "@/lib/stripe-account";
+
 import { getStripeSecrets } from "./settings";
-import { stripeFor } from "./stripe";
+import { platformStripe, stripeFor } from "./stripe";
 import { applySession } from "./stripe-webhooks";
 
 type Row = Record<string, unknown>;
@@ -88,23 +91,35 @@ export async function getShopperOrder(
   sessionId: string,
 ): Promise<OrderView | null> {
   const [payment] = await db().execute<Row>(sql`
-    select 1 as ok from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
-      and provider = 'stripe' and provider_reference = ${sessionId}
+    select pay.provider_account, a.mode
+    from commerce.payments pay
+    left join commerce.stripe_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
+    where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
+      and pay.provider = 'stripe' and pay.provider_reference = ${sessionId}
   `);
   if (!payment) return null;
 
   let order = await getOrder(storeId, orderId);
-  if (order?.status === "pending_payment") {
+  if (order?.status !== "pending_payment") return order;
+
+  // Stripe is unreachable or slow: the webhook will follow.
+  const apply = async (fetch: () => Promise<Stripe.Checkout.Session>) => {
+    try {
+      await applySession(storeId, await fetch());
+      order = await getOrder(storeId, orderId);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const stripe = payment.mode ? platformStripe(payment.mode as PaymentModeName) : null;
+  if (stripe && payment.provider_account) {
+    const stripeAccount = String(payment.provider_account);
+    await apply(() => stripe.checkout.sessions.retrieve(sessionId, {}, { stripeAccount }));
+  } else {
+    // A payment taken with the store's own keys, before Stripe Connect.
     for (const secret of await getStripeSecrets(storeId)) {
-      try {
-        const session = await stripeFor(secret).checkout.sessions.retrieve(sessionId);
-        await applySession(storeId, session);
-        order = await getOrder(storeId, orderId);
-        break;
-      } catch {
-        // Wrong mode's key (test vs live) or Stripe unreachable: the webhook will follow.
-      }
+      if (await apply(() => stripeFor(secret).checkout.sessions.retrieve(sessionId))) break;
     }
   }
   return order;
@@ -116,10 +131,9 @@ export async function getCheckoutInfo(storeId: string, marketCode: string) {
     select
       exists (
         select 1 from commerce.payment_providers p
-        join commerce.payment_credentials c
-          on c.store_id = p.store_id and c.provider = p.provider and c.mode = p.active_mode
+        join commerce.stripe_accounts a on a.store_id = p.store_id and a.mode = p.active_mode
         where p.store_id = ${storeId}::uuid and p.provider = 'stripe' and p.enabled
-          and c.secret_key_ciphertext is not null
+          and a.card_payments = 'active'
       ) as payments_on,
       (select amount_minor from commerce.shipping_rates
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as amount_minor,

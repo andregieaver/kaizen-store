@@ -6,18 +6,18 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { methodsForMarket } from "@/lib/payment-methods";
+import { storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
 import { requireMember, type Membership } from "@/server/auth";
+import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
 import {
   disableStaff,
   saveShippingSettings,
   inviteStaff,
-  saveStripeCredentials,
-  setPaymentMethods,
   setStripeProvider,
   type SaveResult,
 } from "@/server/settings";
@@ -25,7 +25,7 @@ import {
 // Every action takes the store's slug as its first (bound) argument and
 // re-checks the signed-in account's access to that store.
 
-const mode = z.enum(["test", "live"]);
+const mode = z.enum(PAYMENT_MODES as [PaymentModeName, ...PaymentModeName[]]);
 
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
   const member = await requireMember(storeSlug);
@@ -46,10 +46,8 @@ async function origin(): Promise<string> {
   return header ? new URL(header).origin : siteUrl();
 }
 
-const field = (formData: FormData, name: string) =>
-  String(formData.get(name) ?? "").trim() || undefined;
-
-export async function saveStripeCredentialsAction(
+/** Creates the store's own Stripe account for a mode; onboarding then opens on the page. */
+export async function createStripeAccountAction(
   storeSlug: string,
   _state: FormState,
   formData: FormData,
@@ -58,19 +56,32 @@ export async function saveStripeCredentialsAction(
   if (!("store" in owner)) return owner;
   const parsedMode = mode.safeParse(formData.get("mode"));
   if (!parsedMode.success) return { status: "error", messages: ["Unknown mode."] };
-  return toState(
-    await saveStripeCredentials(
-      owner,
-      parsedMode.data,
-      {
-        publishableKey: field(formData, "publishableKey"),
-        secretKey: field(formData, "secretKey"),
-        webhookSecret: field(formData, "webhookSecret"),
-      },
-      await origin(),
-    ),
-    `Saved the ${parsedMode.data} keys.`,
-  );
+  const storeUrl = `${await origin()}${storeBase(owner.store.slug)}`;
+  return toState(await createStripeAccount(owner, parsedMode.data, storeUrl));
+}
+
+/** A client secret for Stripe's embedded components (onboarding, account details). */
+export async function accountSessionAction(
+  storeSlug: string,
+  modeName: PaymentModeName,
+): Promise<{ ok: true; clientSecret: string } | { ok: false; problem: string }> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return { ok: false, problem: owner.messages[0] ?? "Not allowed." };
+  const parsedMode = mode.safeParse(modeName);
+  if (!parsedMode.success) return { ok: false, problem: "Unknown mode." };
+  return createAccountSession(owner.store.id, parsedMode.data);
+}
+
+/** After onboarding: reads the account's state from Stripe and shows it. */
+export async function refreshStripeAccountAction(storeSlug: string, modeName: PaymentModeName): Promise<void> {
+  const member = await requireMember(storeSlug);
+  const parsedMode = mode.safeParse(modeName);
+  if (!parsedMode.success) return;
+  if (await refreshStripeAccount(member.store.id, parsedMode.data)) {
+    // Whether the storefront can take payments may have changed.
+    updateTag(storeTag(member.store.slug));
+  }
+  refresh();
 }
 
 export async function setStripeProviderAction(
@@ -82,25 +93,15 @@ export async function setStripeProviderAction(
   if (!("store" in owner)) return owner;
   const parsedMode = mode.safeParse(formData.get("activeMode"));
   if (!parsedMode.success) return { status: "error", messages: ["Unknown mode."] };
-  const result = await setStripeProvider(owner, formData.get("enabled") === "on", parsedMode.data);
+  const result = await setStripeProvider(
+    owner,
+    formData.get("enabled") === "on",
+    parsedMode.data,
+    formData.get("orderInvoices") === "on",
+  );
   // The storefront's "cannot buy yet" notice depends on this switch.
   if (result.ok) updateTag(storeTag(owner.store.slug));
   return toState(result);
-}
-
-export async function setPaymentMethodsAction(
-  storeSlug: string,
-  _state: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  const enabled: Record<string, string[]> = {};
-  for (const { code } of member.store.markets) {
-    enabled[code] = methodsForMarket(code)
-      .map((method) => method.id)
-      .filter((id) => formData.get(`method:${code}:${id}`) === "on");
-  }
-  return toState(await setPaymentMethods(member, enabled));
 }
 
 export async function inviteStaffAction(

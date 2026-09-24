@@ -3,17 +3,12 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import {
-  isKnownMethod,
-  validateStripeCredentials,
-  type PaymentModeName,
-  type StripeCredentialInput,
-} from "@/lib/payment-methods";
-import { decryptSecret, encryptSecret, parseKey, secretHint } from "@/lib/secret-box";
-
-import { connectWebhook } from "./stripe";
+import { decryptSecret, parseKey } from "@/lib/secret-box";
+import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Membership, type Role } from "./auth";
+import { getStripeAccounts, type StripeAccount } from "./connect";
+import { platformModes } from "./stripe";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -23,149 +18,54 @@ export function encryptionKey(): Buffer | null {
   return parseKey(process.env.SETTINGS_ENCRYPTION_KEY);
 }
 
-export type CredentialStatus = {
-  mode: PaymentModeName;
-  publishableKey: string | null;
-  secretKeyHint: string | null;
-  webhookSecretHint: string | null;
-  updatedAt: string | null;
-};
-
 export type PaymentSettings = {
-  stripe: { enabled: boolean; activeMode: PaymentModeName };
-  credentials: Record<PaymentModeName, CredentialStatus>;
-  /** Enabled methods per market code. */
-  methods: Record<string, Set<string>>;
-  encryptionKeyConfigured: boolean;
+  stripe: { enabled: boolean; activeMode: PaymentModeName; orderInvoices: boolean };
+  /** The store's own Stripe accounts (Connect), by mode. */
+  accounts: Partial<Record<PaymentModeName, StripeAccount>>;
+  /** The modes Kaizen can take payments in (its platform keys are set). */
+  modes: PaymentModeName[];
 };
 
 export async function getPaymentSettings(store: Store): Promise<PaymentSettings> {
-  const [[provider], credentials, methods] = await Promise.all([
+  const [[provider], accounts] = await Promise.all([
     db().execute<Row>(sql`
-      select enabled, active_mode from commerce.payment_providers
+      select enabled, active_mode, order_invoices from commerce.payment_providers
       where store_id = ${store.id}::uuid and provider = 'stripe'
     `),
-    db().execute<Row>(sql`
-      select mode, publishable_key, secret_key_hint, webhook_secret_hint, updated_at
-      from commerce.payment_credentials
-      where store_id = ${store.id}::uuid and provider = 'stripe'
-    `),
-    db().execute<Row>(sql`
-      select market_code, method from commerce.payment_methods
-      where store_id = ${store.id}::uuid and enabled
-    `),
+    getStripeAccounts(store.id),
   ]);
-
-  const status = (mode: PaymentModeName): CredentialStatus => {
-    const row = credentials.find((c) => c.mode === mode);
-    return {
-      mode,
-      publishableKey: row?.publishable_key ? String(row.publishable_key) : null,
-      secretKeyHint: row?.secret_key_hint ? String(row.secret_key_hint) : null,
-      webhookSecretHint: row?.webhook_secret_hint ? String(row.webhook_secret_hint) : null,
-      updatedAt: row?.updated_at ? new Date(String(row.updated_at)).toISOString() : null,
-    };
-  };
-
-  const enabled: Record<string, Set<string>> = Object.fromEntries(
-    store.markets.map((market) => [market.code, new Set<string>()]),
-  );
-  for (const row of methods) enabled[String(row.market_code)]?.add(String(row.method));
-
   return {
     stripe: {
       enabled: Boolean(provider?.enabled),
       activeMode: (provider?.active_mode ?? "test") as PaymentModeName,
+      orderInvoices: Boolean(provider?.order_invoices),
     },
-    credentials: { test: status("test"), live: status("live") },
-    methods: enabled,
-    encryptionKeyConfigured: encryptionKey() !== null,
+    accounts,
+    modes: platformModes(),
   };
 }
 
 export type SaveResult = { ok: true; note?: string } | { ok: false; problems: string[] };
 
-/** Saves Stripe credentials for one mode. Empty fields keep their saved value. */
-export async function saveStripeCredentials(
-  { account, store }: Membership,
-  mode: PaymentModeName,
-  input: StripeCredentialInput,
-  origin: string,
-): Promise<SaveResult> {
-  const problems = validateStripeCredentials(mode, input);
-  const key = encryptionKey();
-  if ((input.secretKey || input.webhookSecret) && !key) {
-    problems.push("Payment keys cannot be stored right now. Try again later.");
-  }
-  if (problems.length > 0) return { ok: false, problems };
-
-  // A new secret key connects Kaizen's webhook in the owner's Stripe
-  // account, which also proves the key works.
-  let note: string | undefined;
-  if (input.secretKey && !input.webhookSecret) {
-    const hook = await connectWebhook(input.secretKey, origin, store.id);
-    if (hook.ok) {
-      input = { ...input, webhookSecret: hook.secret };
-      note = `Saved the ${mode} keys and connected Stripe: payments will be confirmed automatically.`;
-    } else {
-      note = `Saved the ${mode} keys, but Stripe could not be connected (${hook.problem}). Check that the secret key is right and allowed to manage webhooks, or add the webhook signing secret by hand.`;
-    }
-  }
-
-  const secret = input.secretKey && key ? encryptSecret(input.secretKey, key) : null;
-  const webhook = input.webhookSecret && key ? encryptSecret(input.webhookSecret, key) : null;
-
-  await db().execute(sql`
-    insert into commerce.payment_credentials as c (
-      store_id, provider, mode, publishable_key,
-      secret_key_ciphertext, secret_key_hint,
-      webhook_secret_ciphertext, webhook_secret_hint,
-      updated_at, updated_by
-    ) values (
-      ${store.id}::uuid, 'stripe', ${mode}, ${input.publishableKey || null},
-      ${secret}, ${input.secretKey ? secretHint(input.secretKey) : null},
-      ${webhook}, ${input.webhookSecret ? secretHint(input.webhookSecret) : null},
-      now(), ${account.id}::uuid
-    )
-    on conflict (store_id, provider, mode) do update set
-      publishable_key = coalesce(excluded.publishable_key, c.publishable_key),
-      secret_key_ciphertext = coalesce(excluded.secret_key_ciphertext, c.secret_key_ciphertext),
-      secret_key_hint = coalesce(excluded.secret_key_hint, c.secret_key_hint),
-      webhook_secret_ciphertext = coalesce(excluded.webhook_secret_ciphertext, c.webhook_secret_ciphertext),
-      webhook_secret_hint = coalesce(excluded.webhook_secret_hint, c.webhook_secret_hint),
-      updated_at = now(),
-      updated_by = excluded.updated_by
-  `);
-
-  await audit(account.id, store.id, "payments.credentials_saved", {
-    provider: "stripe",
-    mode,
-    changed: Object.entries(input)
-      .filter(([, value]) => Boolean(value))
-      .map(([field]) => field),
-  });
-  return { ok: true, note };
-}
-
-/** Turns Stripe on or off and chooses test or live mode. */
+/** Turns payments on or off, chooses test or live, and whether orders get an invoice. */
 export async function setStripeProvider(
   { account, store }: Membership,
   enabled: boolean,
   activeMode: PaymentModeName,
+  orderInvoices: boolean,
 ): Promise<SaveResult> {
   if (enabled) {
-    const settings = await getPaymentSettings(store);
-    const credentials = settings.credentials[activeMode];
-    if (!credentials.publishableKey || !credentials.secretKeyHint) {
+    const accounts = await getStripeAccounts(store.id);
+    if (accountStage(accounts[activeMode] ?? null) !== "ready") {
       return {
         ok: false,
-        problems: [`Save the ${activeMode} publishable and secret keys before enabling Stripe in ${activeMode} mode.`],
+        problems: [`Finish setting up your ${activeMode === "live" ? "live" : "test"} Stripe account first.`],
       };
     }
   }
   await db().execute(sql`
     update commerce.payment_providers
-       set enabled = ${enabled}, active_mode = ${activeMode},
+       set enabled = ${enabled}, active_mode = ${activeMode}, order_invoices = ${orderInvoices},
            updated_at = now(), updated_by = ${account.id}::uuid
      where store_id = ${store.id}::uuid and provider = 'stripe'
   `);
@@ -173,75 +73,32 @@ export async function setStripeProvider(
     provider: "stripe",
     enabled,
     activeMode,
+    orderInvoices,
   });
   return { ok: true };
 }
 
-/** Sets which payment methods are offered in each of the store's markets. */
-export async function setPaymentMethods(
-  { account, store }: Membership,
-  enabledByMarket: Record<string, string[]>,
-): Promise<SaveResult> {
-  const storeMarkets = new Set(store.markets.map((market) => market.code));
-  const rows: { market: string; method: string }[] = [];
-  for (const [market, methods] of Object.entries(enabledByMarket)) {
-    if (!storeMarkets.has(market)) {
-      return { ok: false, problems: [`The store does not sell to ${market}.`] };
-    }
-    for (const method of methods) {
-      if (!isKnownMethod(market, method)) {
-        return { ok: false, problems: [`${method} is not available in ${market}.`] };
-      }
-      rows.push({ market, method });
-    }
-  }
-  const markets = Object.keys(enabledByMarket);
-  if (markets.length === 0) return { ok: true };
-
-  await db().transaction(async (tx) => {
-    await tx.execute(sql`
-      update commerce.payment_methods
-         set enabled = false, updated_at = now(), updated_by = ${account.id}::uuid
-       where store_id = ${store.id}::uuid and enabled
-         and market_code in (${sql.join(markets.map((m) => sql`${m}`), sql`, `)})
-    `);
-    for (const { market, method } of rows) {
-      await tx.execute(sql`
-        insert into commerce.payment_methods (store_id, market_code, method, enabled, updated_at, updated_by)
-        values (${store.id}::uuid, ${market}, ${method}, true, now(), ${account.id}::uuid)
-        on conflict (store_id, market_code, method) do update set
-          enabled = true, updated_at = now(), updated_by = excluded.updated_by
-      `);
-    }
-  });
-  await audit(account.id, store.id, "payments.methods_updated", { enabled: enabledByMarket });
-  return { ok: true };
-}
+export type CheckoutAccount = { mode: PaymentModeName; accountId: string; orderInvoices: boolean };
 
 /**
- * The decrypted Stripe secret key for the store's active mode, for
- * server-side use at checkout. Null if Stripe is disabled or not configured.
+ * The store's Stripe account to take a payment on: payments are switched on
+ * and the account for the active mode can take card payments. Null otherwise.
  */
-export async function getActiveStripeSecret(storeId: string): Promise<{
-  mode: PaymentModeName;
-  secretKey: string;
-  publishableKey: string;
-} | null> {
-  const key = encryptionKey();
-  if (!key) return null;
+export async function getCheckoutAccount(storeId: string): Promise<CheckoutAccount | null> {
   const [row] = await db().execute<Row>(sql`
-    select p.active_mode, c.publishable_key, c.secret_key_ciphertext
+    select p.active_mode, p.order_invoices, a.account_id
     from commerce.payment_providers p
-    join commerce.payment_credentials c
-      on c.store_id = p.store_id and c.provider = p.provider and c.mode = p.active_mode
+    join commerce.stripe_accounts a on a.store_id = p.store_id and a.mode = p.active_mode
     where p.store_id = ${storeId}::uuid and p.provider = 'stripe' and p.enabled
+      and a.card_payments = 'active'
   `);
-  if (!row?.secret_key_ciphertext || !row.publishable_key) return null;
-  return {
-    mode: row.active_mode as PaymentModeName,
-    secretKey: decryptSecret(String(row.secret_key_ciphertext), key),
-    publishableKey: String(row.publishable_key),
-  };
+  return row
+    ? {
+        mode: row.active_mode as PaymentModeName,
+        accountId: String(row.account_id),
+        orderInvoices: Boolean(row.order_invoices),
+      }
+    : null;
 }
 
 export type AuditEntry = {
@@ -359,7 +216,10 @@ export async function disableStaff(
   }
 }
 
-/** The store's webhook signing secrets (test and live), decrypted. */
+/**
+ * The store's own webhook signing secrets (test and live), decrypted: only
+ * for payments started before Kaizen moved to Stripe Connect.
+ */
 export async function getWebhookSecrets(storeId: string): Promise<string[]> {
   const key = encryptionKey();
   if (!key) return [];
@@ -370,7 +230,7 @@ export async function getWebhookSecrets(storeId: string): Promise<string[]> {
   return rows.map((row) => decryptSecret(String(row.webhook_secret_ciphertext), key));
 }
 
-/** A store's Stripe secret key for a mode (to look up a session from either mode). */
+/** The store's own Stripe secret keys, for sessions started before Connect. */
 export async function getStripeSecrets(storeId: string): Promise<string[]> {
   const key = encryptionKey();
   if (!key) return [];

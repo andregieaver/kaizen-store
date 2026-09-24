@@ -64,6 +64,20 @@
       "when": 1790236226461,
       "tag": "20260924075026_reserve_account_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790238758969,
+      "tag": "20260924083238_connect",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790238760008,
+      "tag": "20260924083240_connect_rules",
+      "breakpoints": true
     }
   ]
 }
