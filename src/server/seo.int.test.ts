@@ -92,13 +92,19 @@ describe("a store's search settings", () => {
     const pages = await db().execute<Row>(sql`
       select p.slug, p.id = s.front_page_id as front, p.published -> 'translations' as translations
       from commerce.pages p join commerce.stores s on s.id = p.store_id
-      where s.slug = ${slug} order by p.slug
+      where s.slug = ${slug} and p.type = 'page' order by p.slug
     `);
     expect(pages.map((p) => [p.slug, p.front])).toEqual([
       ["forside", true],
       ["om-oss", false],
     ]);
     expect(pages[1].translations).toHaveProperty("sv-SE");
+    // The template's articles come along as articles (D57).
+    const [article] = await db().execute<Row>(sql`
+      select p.slug from commerce.pages p join commerce.stores s on s.id = p.store_id
+      where s.slug = ${slug} and p.type = 'article'
+    `);
+    expect(article?.slug).toBe("nye-produkter");
 
     const sitemap = await seo.storeSitemap(slug);
     for (const market of ["no", "se", "dk"]) expect(sitemap).toContain(`/s/${slug}/${market}/om-oss</loc>`);

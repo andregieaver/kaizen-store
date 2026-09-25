@@ -387,14 +387,14 @@ export type ButtonBlock = PartBase & {
 };
 
 /** What a content grid shows (D51): its kinds of content; articles come with the articles themselves. */
-export const GRID_CONTENT = { pages: "Pages", products: "Products" } as const;
+export const GRID_CONTENT = { pages: "Pages", articles: "Articles", products: "Products" } as const;
 export type GridContent = keyof typeof GRID_CONTENT;
 /**
  * Where a grid's items come from: the pages of the page's owner, or
  * products. On Kaizen's pages a store and market are named; on a store's
  * own pages (D53) they are the store's products in the shopper's market.
  */
-export type GridSource = { type: "pages" } | { type: "products"; storeId?: string; market?: string };
+export type GridSource = { type: "pages" } | { type: "articles" } | { type: "products"; storeId?: string; market?: string };
 export const GRID_SORTS = {
   newest: "Newest first",
   oldest: "Oldest first",
@@ -844,6 +844,7 @@ const contentGridBlock = z.object({
     "type",
     [
       z.object({ type: z.literal("pages") }),
+      z.object({ type: z.literal("articles") }),
       z.object({
         type: z.literal("products"),
         storeId: z.uuid("Choose the store whose products the grid shows.").optional(),

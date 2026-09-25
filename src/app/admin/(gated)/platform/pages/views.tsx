@@ -7,12 +7,13 @@ import { PageEditor } from "@/components/admin/page-editor";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
+import { ArticleView } from "@/components/article-view";
 import { PageArticle } from "@/components/page-article";
 import type { PageType } from "@/lib/page-content";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getPageForEdit, listPages } from "@/server/pages";
 import { listSavedParts } from "@/server/saved-parts";
-import { listTerms } from "@/server/taxonomy";
+import { bothTerms, listTerms } from "@/server/taxonomy";
 
 import { createPageTermAction, deletePageTermAction, updatePageTermAction } from "./actions";
 import { platformPageContext } from "./context";
@@ -23,6 +24,7 @@ import { platformPageContext } from "./context";
  */
 
 type Query = Promise<Record<string, string | string[] | undefined>>;
+
 type Params = Promise<{ pageId: string }>;
 
 const INTRO: Record<PageType, string> = {
@@ -111,11 +113,12 @@ export async function NewPageView({ type }: { type: PageType }) {
     listTerms({ storeId: null, contentType: type }),
     platformPageContext(type, admin.name ?? ""),
   ]);
+  const gridTerms = await bothTerms(null);
   return (
     <>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">New {PAGE_TYPE_COPY[type].one}</h1>
-      <PageEditor page={null} savedParts={saved} terms={terms} context={context} />
+      <PageEditor page={null} savedParts={saved} terms={terms} gridTerms={gridTerms} context={context} />
     </>
   );
 }
@@ -129,12 +132,13 @@ const load = async (type: PageType, params: Params) => {
 export async function EditPageView({ type, params, searchParams }: { type: PageType; params: Params; searchParams: Query }) {
   await connection();
   const admin = await requirePlatformAdmin();
-  const [page, { saved: justSaved }, saved, terms, context] = await Promise.all([
+  const [page, { saved: justSaved }, saved, terms, context, gridTerms] = await Promise.all([
     load(type, params),
     searchParams,
     listSavedParts(null),
     listTerms({ storeId: null, contentType: type }),
     platformPageContext(type, admin.name ?? ""),
+    bothTerms(null),
   ]);
   if (!page) notFound();
   const address = `${context.siteBase}/${page.slug}`;
@@ -147,6 +151,7 @@ export async function EditPageView({ type, params, searchParams }: { type: PageT
         notice={justSaved === "draft" ? "Draft saved." : justSaved === "published" ? `Published at ${address}.` : null}
         savedParts={saved}
         terms={terms}
+        gridTerms={gridTerms}
         context={context}
       />
     </>
@@ -176,7 +181,19 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
         </Link>
       </p>
       <div className="py-6">
-        <PageArticle content={page.draft} place={{ pageId: page.id, owner: null }} />
+        {type === "article" ? (
+          // As the blog will show it (D57); the date is the day it is first published.
+          <ArticleView
+            content={page.draft}
+            date={page.publishedAt}
+            byline={page.draft.author || "Kaizen"}
+            lang="en"
+            locale="en-GB"
+            place={{ pageId: page.id, owner: null }}
+          />
+        ) : (
+          <PageArticle content={page.draft} place={{ pageId: page.id, owner: null }} />
+        )}
       </div>
     </>
   );

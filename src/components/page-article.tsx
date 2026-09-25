@@ -17,10 +17,13 @@ import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, 
 export function PageArticle({
   content,
   place = { pageId: null, owner: null },
+  titled = false,
 }: {
   content: PageContent;
   /** Where the page is shown: for its content grids (D51, D53). */
   place?: GridPlace;
+  /** The title is already shown as the main heading (an article's header, D57). */
+  titled?: boolean;
 }) {
   const rows = content.rows.filter(rowShows);
   // A heading component at level 1 is the page's main heading (D49); else the title is, for screen readers.
@@ -29,7 +32,7 @@ export function PageArticle({
   );
   return (
     <article className="flex flex-col gap-8">
-      {!hasMainHeading && <h1 className="sr-only">{content.title}</h1>}
+      {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
         <Row key={row.id} row={row} place={place} />
       ))}

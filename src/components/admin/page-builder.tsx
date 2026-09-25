@@ -279,6 +279,8 @@ export type GridContext = {
   pageId: string | null;
   owner: string | null;
   pageTerms: Term[];
+  /** The owner's article categories and tags (D57), for a grid of articles. */
+  articleTerms: Term[];
   stores: GridStore[];
   actions: PageOwnerContext["actions"];
 };
@@ -3158,7 +3160,14 @@ function ContentGridFields({
   useEffect(() => {
     if (storeId) loadTerms(storeId);
   }, [storeId]);
-  const terms = source.type === "pages" ? grid.pageTerms : storeId && storeTerms?.storeId === storeId ? storeTerms.terms : [];
+  const terms =
+    source.type === "pages"
+      ? grid.pageTerms
+      : source.type === "articles"
+        ? grid.articleTerms
+        : storeId && storeTerms?.storeId === storeId
+          ? storeTerms.terms
+          : [];
   const store = source.type === "products" ? grid.stores.find((s) => s.id === source.storeId) : undefined;
   const products = source.type === "products";
   const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRICE_SORTS.includes(sort));
@@ -3176,8 +3185,8 @@ function ContentGridFields({
         value={source.type}
         onChange={(type) =>
           onChange(
-            type === "pages"
-              ? { source: { type: "pages" }, categories: [], tags: [], sort: PRICE_SORTS.includes(block.sort) ? "newest" : block.sort }
+            type === "pages" || type === "articles"
+              ? { source: { type }, categories: [], tags: [], sort: PRICE_SORTS.includes(block.sort) ? "newest" : block.sort }
               : { source: own ? { type: "products" } : productsOf(grid.stores[0]), categories: [], tags: [] },
           )
         }

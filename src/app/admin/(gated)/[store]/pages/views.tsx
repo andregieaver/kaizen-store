@@ -7,12 +7,13 @@ import { PageEditor } from "@/components/admin/page-editor";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
+import { ArticleView } from "@/components/article-view";
 import { PageArticle } from "@/components/page-article";
 import type { PageType } from "@/lib/page-content";
 import { requireMember } from "@/server/auth";
 import { getPageForEdit, listPages } from "@/server/pages";
 import { listSavedParts } from "@/server/saved-parts";
-import { listTerms } from "@/server/taxonomy";
+import { bothTerms, listTerms } from "@/server/taxonomy";
 
 import { createStorePageTermAction, deleteStorePageTermAction, setFrontPageAction, updateStorePageTermAction } from "./actions";
 import { storePageContext, storePagesBase } from "./context";
@@ -117,17 +118,25 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
 
 export async function StoreNewPageView({ type, params }: { type: PageType; params: StoreParams }) {
   const { store, account } = await requireMember((await params).store);
-  const [saved, library, terms] = await Promise.all([
+  const [saved, library, terms, gridTerms] = await Promise.all([
     listSavedParts(store.id),
     // Kaizen's saved parts, to start from (D56).
     listSavedParts(null),
     listTerms({ storeId: store.id, contentType: type }),
+    bothTerms(store.id),
   ]);
   return (
     <>
       {/* Only for screen readers: the title is in the editor, and the list is in the menu. */}
       <h1 className="sr-only">New {PAGE_TYPE_COPY[type].one}</h1>
-      <PageEditor page={null} savedParts={saved} library={library} terms={terms} context={storePageContext(store, type, account.name ?? "")} />
+      <PageEditor
+        page={null}
+        savedParts={saved}
+        library={library}
+        terms={terms}
+        gridTerms={gridTerms}
+        context={storePageContext(store, type, account.name ?? "")}
+      />
     </>
   );
 }
@@ -136,13 +145,14 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
 export async function StoreEditPageView({ type, params, searchParams }: { type: PageType; params: PageParams; searchParams: Query }) {
   const { store: storeSlug, pageId } = await params;
   const { store, account } = await requireMember(storeSlug);
-  const [page, { saved: justSaved }, saved, library, terms] = await Promise.all([
+  const [page, { saved: justSaved }, saved, library, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,
     searchParams,
     listSavedParts(store.id),
     // Kaizen's saved parts, to start from (D56).
     listSavedParts(null),
     listTerms({ storeId: store.id, contentType: type }),
+    bothTerms(store.id),
   ]);
   if (!page) notFound();
   const context = storePageContext(store, type, account.name ?? "");
@@ -158,6 +168,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         savedParts={saved}
         library={library}
         terms={terms}
+        gridTerms={gridTerms}
         context={context}
       />
     </>
@@ -186,7 +197,19 @@ export async function StorePreviewPageView({ type, params }: { type: PageType; p
           Back to editing
         </Link>
       </p>
-      <PageArticle content={page.draft} place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }} />
+      {type === "article" ? (
+        // As the blog will show it (D57), in the store's main language.
+        <ArticleView
+          content={page.draft}
+          date={page.publishedAt}
+          byline={page.draft.author || store.name}
+          lang={store.markets[0]?.lang ?? "en"}
+          locale={store.markets[0]?.locale ?? "en-GB"}
+          place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }}
+        />
+      ) : (
+        <PageArticle content={page.draft} place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }} />
+      )}
     </div>
   );
 }

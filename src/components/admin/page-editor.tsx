@@ -17,6 +17,7 @@ import {
   pageSlugProblem,
   type PageContent,
   type PageRow,
+  type PageType,
   type PageThumbnail,
 } from "@/lib/page-content";
 import { newBlock, newRow } from "@/lib/page-rows";
@@ -67,6 +68,7 @@ export function PageEditor({
   savedParts,
   library = [],
   terms: initialTerms,
+  gridTerms = {},
   context,
 }: {
   page: EditablePage | null;
@@ -76,6 +78,8 @@ export function PageEditor({
   savedParts: SavedPart[];
   /** Kaizen's saved parts as a starter library, on a store's pages (D56). */
   library?: SavedPart[];
+  /** The owner's page and article categories and tags, for content grids (D57); this type's are `terms`. */
+  gridTerms?: Partial<Record<PageType, Term[]>>;
   /** The owner's page categories and tags (D50). */
   terms: Term[];
   context: PageOwnerContext;
@@ -200,7 +204,14 @@ export function PageEditor({
         saved={savedParts}
         library={library}
         upload={upload}
-        grid={{ pageId: saved?.id ?? null, owner: context.owner, pageTerms: terms, stores: context.gridStores, actions }}
+        grid={{
+          pageId: saved?.id ?? null,
+          owner: context.owner,
+          pageTerms: context.type === "page" ? terms : (gridTerms.page ?? []),
+          articleTerms: context.type === "article" ? terms : (gridTerms.article ?? []),
+          stores: context.gridStores,
+          actions,
+        }}
         aside={
           <>
             {others.length > 0 && (

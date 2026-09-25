@@ -23,6 +23,8 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
   const label = block.buttonLabel || (block.source.type === "products" ? m.viewProduct : m.readMore);
   const button = buttonLook(block.button);
   const tile = block.tile;
+  // Articles show the day they appeared (D57), in the grid's language.
+  const day = new Intl.DateTimeFormat(data.locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   const tileStyle: CSSProperties = {
     ...frameStyle(tile ?? {}),
     ...(tile?.background && { backgroundColor: tile.background }),
@@ -65,6 +67,11 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
                 {item.title}
               </a>
             </Heading>
+          )}
+          {item.date && (
+            <time dateTime={item.date} className="text-sm text-muted">
+              {day.format(new Date(item.date))}
+            </time>
           )}
           {block.show.excerpt && item.excerpt && (
             <p

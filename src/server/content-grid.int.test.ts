@@ -72,6 +72,28 @@ describe("content grids (D51)", () => {
     expect((await gridData(grid({ categories: ["00000000-0000-4000-8000-000000000000"] }), { pageId: null, owner: null })).items).toEqual([]);
   });
 
+  it("shows articles newest first with their date, never pages, and a store's under its blog (D57)", async () => {
+    const save = async (owner: string | null, slug: string, type: "page" | "article") =>
+      created(
+        await pages.savePage(admin, owner, null, { ...newPageContent(), title: `${type} ${slug}`, slug: `${slug}-${run}` }, { publish: true, type }),
+      ).id;
+    const older = await save(null, "older", "article");
+    const newer = await save(null, "newer", "article");
+    await save(null, "not-an-article", "page");
+    const shown = await gridData(grid({ source: { type: "articles" } }), { pageId: null, owner: null });
+    const mine = shown.items.filter((i) => i.id === older || i.id === newer);
+    expect(mine.map((i) => i.id)).toEqual([newer, older]);
+    expect(mine[0]).toMatchObject({ href: `/blog/newer-${run}`, date: expect.any(String) });
+    expect(shown.items.some((i) => i.title.startsWith("page "))).toBe(false);
+
+    const demo = (await listGridStores()).find((s) => s.markets.length > 0);
+    if (!demo) throw new Error("no open store with markets in the test database");
+    const own = await save(demo.id, "store-news", "article");
+    const store = await gridData(grid({ source: { type: "articles" } }), { pageId: null, owner: demo.id, market: demo.markets[0].code });
+    expect(store.items.find((i) => i.id === own)?.href).toMatch(new RegExp(`/s/[^/]+/[a-z]+/blog/store-news-${run}$`));
+    await db().execute(sql`delete from commerce.pages where id = ${own}::uuid`);
+  });
+
   it("shows a store's products of a category, priced in the market, cheapest first", async () => {
     const stores = await listGridStores();
     const demo = stores.find((s) => s.markets.length > 0);

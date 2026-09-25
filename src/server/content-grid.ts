@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
-import { pageExcerpt, parsePageContent, type ContentGridBlock } from "@/lib/page-content";
+import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { summarize } from "@/lib/seo";
@@ -37,6 +37,8 @@ export type GridPlace = { pageId: string | null; owner: string | null; market?: 
 export async function gridData(block: ContentGridBlock, place: GridPlace): Promise<GridData> {
   const filter = { categories: block.categories, tags: block.tags, sort: block.sort, limit: block.limit };
   if (block.source.type === "pages") return gridPages(place.owner, place.market ?? null, filter, place.pageId);
+  // The owner's blog articles (D57), newest first unless chosen.
+  if (block.source.type === "articles") return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article");
   // On a store's page, its own products in the shopper's market (D53); on Kaizen's, the store and market chosen.
   const storeId = place.owner ?? block.source.storeId;
   const market = place.owner ? (place.market ?? block.source.market) : block.source.market;
@@ -54,17 +56,25 @@ async function storeAndMarket(storeId: string, marketCode: string | null) {
 
 type Filter = { categories: string[]; tags: string[]; sort: string; limit: number };
 
-/** The owner's published pages in the grid's categories and tags; a store's link within the market. */
-async function gridPages(owner: string | null, marketCode: string | null, filter: Filter, exclude: string | null): Promise<GridData> {
+/** The owner's published pages (or articles) in the grid's categories and tags; a store's link within the market. */
+async function gridPages(
+  owner: string | null,
+  marketCode: string | null,
+  filter: Filter,
+  exclude: string | null,
+  type: PageType = "page",
+): Promise<GridData> {
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(owner), termsTag({ storeId: owner, contentType: "page" }));
 
   const shop = owner ? await storeAndMarket(owner, marketCode) : null;
   if (owner && !shop) return { ...EMPTY_GRID };
-  const href = (slug: string) => (shop ? marketPath(shop.store.slug, shop.market.slug, `/${slug}`) : `/${slug}`);
+  const prefix = type === "article" ? "/blog" : "";
+  const href = (slug: string) =>
+    shop ? marketPath(shop.store.slug, shop.market.slug, `${prefix}/${slug}`) : `${prefix}/${slug}`;
   const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: "en", locale: "en-GB" };
-  const terms = await currentTerms(owner, "page");
+  const terms = await currentTerms(owner, type);
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tags = knownIds(terms, "tag", filter.tags);
   // Asked for, but all deleted since: nothing matches.
@@ -79,13 +89,20 @@ async function gridPages(owner: string | null, marketCode: string | null, filter
       : filter.sort === "title"
         ? sql`lower(p.published ->> 'title'), p.slug`
         : sql`p.published_at desc, p.slug`;
+  // Articles go by the day they first appeared (D57); pages by their last publishing.
+  const dated = type === "article";
+  const articleOrder =
+    filter.sort === "oldest"
+      ? sql`coalesce(p.first_published_at, p.published_at), p.slug`
+      : sql`coalesce(p.first_published_at, p.published_at) desc, p.slug`;
   const rows = await readDb().execute<Row>(sql`
-    select p.id, p.slug, p.published from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.type = 'page' and p.published_at is not null
+    select p.id, p.slug, p.published, coalesce(p.first_published_at, p.published_at) as first_published_at
+    from commerce.pages p
+    where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
       and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
       and ${matches("categories", categories)}
       and ${matches("tags", tags)}
-    order by ${order}
+    order by ${dated && filter.sort !== "title" ? articleOrder : order}
     limit ${Math.max(1, Math.min(48, filter.limit))}
   `);
   const items = rows.flatMap((row): GridItem[] => {
@@ -101,6 +118,7 @@ async function gridPages(owner: string | null, marketCode: string | null, filter
         excerpt: content.seo.description || pageExcerpt(content, EXCERPT_MAX),
         image: content.thumbnail ? { url: content.thumbnail.url, alt: content.thumbnail.alt } : null,
         price: null,
+        ...(dated && { date: new Date(String(row.first_published_at)).toISOString() }),
       },
     ];
   });

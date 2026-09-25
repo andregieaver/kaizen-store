@@ -381,7 +381,7 @@ describe("content grids (D51)", () => {
   });
 
   it("refuses an unknown source, too many items or columns, and a tile heading at H1", () => {
-    expect(problems(page({ source: { type: "articles" } }))).toEqual(["A content grid shows an unknown kind of content."]);
+    expect(problems(page({ source: { type: "videos" } }))).toEqual(["A content grid shows an unknown kind of content."]);
     expect(problems(page({ source: { type: "products", storeId: "x", market: "NO" } }))).toEqual([
       "Choose the store whose products the grid shows.",
     ]);

@@ -207,3 +207,12 @@ export async function deleteTerm(account: Account, scope: TermScope, id: string)
   });
   return { ok: true, id, terms: await listTerms(scope) };
 }
+
+/** An owner's page and article categories and tags, for content grids of either (D57). */
+export async function bothTerms(storeId: string | null): Promise<{ page: Term[]; article: Term[] }> {
+  const [page, article] = await Promise.all([
+    listTerms({ storeId, contentType: "page" }),
+    listTerms({ storeId, contentType: "article" }),
+  ]);
+  return { page, article };
+}

@@ -214,7 +214,10 @@ of running `playwright install`.
   as a read-only library (`library`). Articles (D57) are pages of type
   `article` at `/blog/{slug}`, edited under Blog with the same editor: the
   page functions, actions and `PageOwnerContext` take the type (a page
-  unless said); the routes share views in each `pages/views.tsx`. New block kinds go in `PageBlock`, `pageInput`,
+  unless said); the routes share views in each `pages/views.tsx`. On the
+  site, `ArticleView` draws an article's header over its rows, with
+  `articleJsonLd()`; `/blog` lists (Kaizen's in `(platform)/term-listing.tsx`,
+  a store's in `blog/blog-listing.tsx`) are content grids of articles. New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
 - Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):

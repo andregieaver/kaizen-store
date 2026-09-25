@@ -349,3 +349,51 @@ export function pageJsonLd({
     publisher: { "@id": store ? storeNodeId(store.storeUrl) : `${origin}/#organization` },
   };
 }
+
+/**
+ * An article in a blog (D57): an `Article` by its author (a person, or the
+ * store or Kaizen), published by the store or Kaizen, part of the site.
+ */
+export function articleJsonLd({
+  origin,
+  url,
+  title,
+  description,
+  image,
+  publishedAt,
+  modifiedAt,
+  author,
+  locale,
+  store,
+}: {
+  origin: string;
+  url: string;
+  title: string;
+  description: string;
+  image: string | null;
+  publishedAt: string;
+  modifiedAt: string;
+  /** The author's name, or null when the store or Kaizen wrote it. */
+  author: string | null;
+  locale: string;
+  /** For a store's article: its market's front page and the store's address. */
+  store?: { homeUrl: string; storeUrl: string };
+}): JsonLd {
+  const publisher = { "@id": store ? storeNodeId(store.storeUrl) : `${origin}/#organization` };
+  return {
+    "@context": SCHEMA,
+    "@type": "Article",
+    "@id": `${url}#article`,
+    url,
+    mainEntityOfPage: url,
+    headline: title.slice(0, 110),
+    description,
+    inLanguage: locale,
+    datePublished: publishedAt,
+    dateModified: modifiedAt,
+    ...(image && { image: [absoluteUrl(image, origin)] }),
+    author: author ? { "@type": "Person", name: author } : publisher,
+    publisher,
+    isPartOf: { "@id": store ? websiteNodeId(store.homeUrl) : `${origin}/#website` },
+  };
+}

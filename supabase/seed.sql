@@ -240,7 +240,24 @@ BEGIN
   UPDATE commerce.stores SET front_page_id = (SELECT id FROM commerce.pages WHERE store_id = v_store AND slug = 'forside')
    WHERE id = v_store;
 
+  -- A blog article (D57) in an article category, as new stores' blogs start empty
+  -- in production; locally it shows the blog.
+  INSERT INTO commerce.terms (store_id, content_type, kind, name, slug) VALUES (v_store, 'article', 'category', 'Nyheter', 'nyheter');
+  INSERT INTO commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at)
+  VALUES (v_store, 'article', 'nye-produkter', '{"title": "Nye produkter i høst", "slug": "nye-produkter", "thumbnail": null, "seo": {"title": "", "description": "Høstens nyheter i Kaizen Demo."}, "searchEngines": true, "aiAssistants": true, "categories": [], "tags": [], "author": "Kari Nordmann", "rows": [{"id": "row-autumn", "type": "row", "layout": "1", "columns": [{"id": "column-autumn", "blocks": [{"id": "text-autumn", "type": "richText", "doc": {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Denne høsten har vi fått inn nye notatbøker og handlenett."}]}]}}]}]}]}'::jsonb, '{"title": "Nye produkter i høst", "slug": "nye-produkter", "thumbnail": null, "seo": {"title": "", "description": "Høstens nyheter i Kaizen Demo."}, "searchEngines": true, "aiAssistants": true, "categories": [], "tags": [], "author": "Kari Nordmann", "rows": [{"id": "row-autumn", "type": "row", "layout": "1", "columns": [{"id": "column-autumn", "blocks": [{"id": "text-autumn", "type": "richText", "doc": {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Denne høsten har vi fått inn nye notatbøker og handlenett."}]}]}}]}]}]}'::jsonb, now(), now());
+  UPDATE commerce.pages p
+     SET draft = jsonb_set(p.draft, '{categories}', jsonb_build_array(t.id)),
+         published = jsonb_set(p.published, '{categories}', jsonb_build_array(t.id))
+    FROM commerce.terms t
+   WHERE p.store_id = v_store AND p.type = 'article' AND p.slug = 'nye-produkter'
+     AND t.store_id = v_store AND t.content_type = 'article' AND t.slug = 'nyheter';
+
   -- The demo's logo and menus (D30), copied to new stores with the catalogue.
   UPDATE commerce.stores SET navigation = '{"logo": {"url": "/demo/logo.svg", "width": 180, "height": 40}, "header": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Notatbok", "sv-SE": "Anteckningsbok", "da-DK": "Notesbog"}, "link": {"kind": "product", "handle": "demo-notatbok"}}, {"label": {"nb-NO": "Kopp", "sv-SE": "Kopp", "da-DK": "Krus"}, "link": {"kind": "product", "handle": "demo-keramikkopp"}}, {"label": {"nb-NO": "Bordlampe", "sv-SE": "Bordslampa", "da-DK": "Bordlampe"}, "link": {"kind": "product", "handle": "demo-bordlampe"}}], "footer": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Handlenett", "sv-SE": "Tygkasse", "da-DK": "Mulepose"}, "link": {"kind": "product", "handle": "demo-handlenett"}}, {"label": {"nb-NO": "Hjem og kjøkken", "sv-SE": "Hem och kök", "da-DK": "Hjem og køkken"}, "link": {"kind": "category", "slug": "hjem"}}, {"label": {}, "link": {"kind": "page", "slug": "om-oss"}}, {"label": {"nb-NO": "Laget med Kaizen", "sv-SE": "Byggd med Kaizen", "da-DK": "Lavet med Kaizen"}, "link": {"kind": "url", "url": "https://kaizenstore.cloud"}}]}'::jsonb WHERE id = v_store;
 END;
 $$;
+
+-- Kaizen's own blog (D57): one article, so the blog is not empty locally.
+INSERT INTO commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at)
+VALUES (NULL, 'article', 'welcome', '{"title": "Welcome to the Kaizen blog", "slug": "welcome", "thumbnail": null, "seo": {"title": "", "description": "News and guides from Kaizen."}, "searchEngines": true, "aiAssistants": true, "categories": [], "tags": [], "author": "Kaizen team", "rows": [{"id": "row-welcome", "type": "row", "layout": "1", "columns": [{"id": "column-welcome", "blocks": [{"id": "text-welcome", "type": "richText", "doc": {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "This is where we write about selling online across the EU."}]}]}}]}]}]}'::jsonb, '{"title": "Welcome to the Kaizen blog", "slug": "welcome", "thumbnail": null, "seo": {"title": "", "description": "News and guides from Kaizen."}, "searchEngines": true, "aiAssistants": true, "categories": [], "tags": [], "author": "Kaizen team", "rows": [{"id": "row-welcome", "type": "row", "layout": "1", "columns": [{"id": "column-welcome", "blocks": [{"id": "text-welcome", "type": "richText", "doc": {"type": "doc", "content": [{"type": "paragraph", "content": [{"type": "text", "text": "This is where we write about selling online across the EU."}]}]}}]}]}]}'::jsonb, now(), now())
+ON CONFLICT ON CONSTRAINT pages_store_slug_key DO NOTHING;

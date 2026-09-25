@@ -14,6 +14,8 @@ export type GridItem = {
   image: { url: string; alt: string } | null;
   /** Products only: the cheapest price in the market, and whether others cost more. */
   price: { view: PriceView; from: boolean } | null;
+  /** Articles only (D57): when it was first published, shown on its tile. */
+  date?: string;
 };
 
 export type GridData = { items: GridItem[]; lang: string; locale: string };

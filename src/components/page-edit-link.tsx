@@ -10,7 +10,16 @@ import { hasSessionCookie } from "@/lib/admin-return";
  * (D54). Visitors never see it: it is worked out in the browser, asking the
  * server only when a session cookie is there, so the page stays cached for all.
  */
-export function PageEditLink({ pageId, store }: { pageId: string; store?: string }) {
+export function PageEditLink({
+  pageId,
+  store,
+  article = false,
+}: {
+  pageId: string;
+  store?: string;
+  /** An article in the blog (D57), edited under Blog. */
+  article?: boolean;
+}) {
   const [editor, setEditor] = useState(false);
   useEffect(() => {
     if (!hasSessionCookie(document.cookie)) return;
@@ -28,7 +37,7 @@ export function PageEditLink({ pageId, store }: { pageId: string; store?: string
       {/* Room at the end of the page, so the button never hides the footer. */}
       <div aria-hidden className="h-16 print:hidden" />
       <a
-        href={store ? `/admin/${store}/pages/${pageId}` : `/admin/platform/pages/${pageId}`}
+        href={`/admin/${store ?? "platform"}/${article ? "articles" : "pages"}/${pageId}`}
         lang="en"
         className={`fixed z-50 rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-lg print:hidden ${
           // In a store, beside "Back to admin" and above the phone bar.
