@@ -5,6 +5,12 @@
 An AI-native online store selling EU-wide, built from scratch. The research and
 phased build plan are in `docs/plan.md`; read it before architectural work.
 
+## Workflow
+
+- Commit and push straight to `main`, which deploys to production (D5): no
+  feature branches or pull requests. Development is fast and tested in
+  production, so run lint, typecheck and the tests before every push.
+
 ## Stack
 
 - Next.js 16.3 (App Router, `cacheComponents` on), React 19, TypeScript, Tailwind 4, pnpm.
