@@ -97,11 +97,18 @@ describe("page addresses", () => {
 });
 
 describe("page input", () => {
+  const row = (blocks: unknown[], extra: Record<string, unknown> = {}) => ({
+    id: "r1",
+    type: "row",
+    layout: "1",
+    columns: [{ id: "c1", blocks }],
+    ...extra,
+  });
   const valid = {
     ...newPageContent(),
     title: " About Kaizen ",
     slug: "about",
-    blocks: [{ id: "b1", type: "richText", doc: doc(p("Hello there")) }],
+    rows: [row([{ id: "b1", type: "richText", doc: doc(p("Hello there")) }])],
   };
 
   it("accepts a page and trims its texts", () => {
@@ -116,9 +123,11 @@ describe("page input", () => {
       title: "",
       slug: "sign-up",
       thumbnail: { url: "javascript:alert(1)", width: 10, height: 10, alt: "" },
-      blocks: [
-        { id: "b1", type: "richText", doc: doc(p("x", [{ type: "link", attrs: { href: "javascript:x" } }])) },
-        { id: "b1", type: "richText", doc: doc(p("y")) },
+      rows: [
+        row([
+          { id: "b1", type: "richText", doc: doc(p("x", [{ type: "link", attrs: { href: "javascript:x" } }])) },
+          { id: "b1", type: "richText", doc: doc(p("y")) },
+        ]),
       ],
     });
     expect(result.success).toBe(false);
@@ -129,7 +138,26 @@ describe("page input", () => {
     expect(messages).toMatch(/not a link address/);
   });
 
-  it("refuses unknown block types", () => {
-    expect(pageInput.safeParse({ ...valid, blocks: [{ id: "x", type: "html", html: "<script>" }] }).success).toBe(false);
+  it("refuses unknown block types, unknown layouts and rows with the wrong number of columns", () => {
+    expect(pageInput.safeParse({ ...valid, rows: [row([{ id: "x", type: "html", html: "<script>" }])] }).success).toBe(false);
+    expect(pageInput.safeParse({ ...valid, rows: [row([], { layout: "7" })] }).success).toBe(false);
+    expect(pageInput.safeParse({ ...valid, rows: [row([], { layout: "2" })] }).success).toBe(false);
+  });
+
+  it("names two parts with one id", () => {
+    const result = pageInput.safeParse({ ...valid, rows: [row([]), row([], { columns: [{ id: "c2", blocks: [] }] })] });
+    expect(result.error?.issues.map((i) => i.message)).toContain(
+      "Two parts of the page have the same id. Reload the page and try again.",
+    );
+  });
+
+  it("reads a page saved before rows as one row with one column", () => {
+    const { rows: _rows, ...legacy } = valid;
+    void _rows;
+    const parsed = pageInput.parse({ ...legacy, blocks: [{ id: "b1", type: "richText", doc: doc(p("Old")) }] });
+    expect(parsed.rows).toEqual([
+      { id: "legacy-row", type: "row", layout: "1", columns: [{ id: "legacy-column", blocks: [expect.objectContaining({ id: "b1" })] }] },
+    ]);
+    expect(pageExcerpt(parsed)).toBe("Old");
   });
 });

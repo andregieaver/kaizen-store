@@ -2,7 +2,11 @@ import { expect, test } from "@playwright/test";
 
 import { testDb } from "./db";
 
-/** Kaizen's own pages (D42), as visitors see them. Pages are made in the database, as the admin saves them. */
+/**
+ * Kaizen's own pages (D42, D43), as visitors see them. Pages are made in the
+ * database, as the admin saves them; `content()` writes the shape saved
+ * before rows (a list of blocks), which pages must still read.
+ */
 
 const run = Date.now().toString(36);
 
@@ -41,7 +45,31 @@ test("a published page shows in Kaizen's header and footer; a draft does not sho
   const draft = `draft-${run}`;
   const sql = testDb();
   try {
-    const published = content("About Kaizen", live, "We make online stores. ");
+    // Rows of columns, as the builder saves them.
+    const { blocks, ...rest } = content("About Kaizen", live, "We make online stores. ");
+    const published = {
+      ...rest,
+      rows: [
+        {
+          id: "r1",
+          type: "row",
+          layout: "right-sidebar",
+          columns: [
+            { id: "c1", blocks },
+            {
+              id: "c2",
+              blocks: [
+                {
+                  id: "b2",
+                  type: "richText",
+                  doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "In the sidebar." }] }] },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
     await sql`
       insert into commerce.pages (slug, draft, published, published_at)
       values (${live}, ${sql.json(published)}, ${sql.json(published)}, now()),
@@ -55,6 +83,10 @@ test("a published page shows in Kaizen's header and footer; a draft does not sho
   await expect(page).toHaveTitle("About Kaizen · Kaizen");
   await expect(page.getByRole("heading", { level: 1, name: "About Kaizen" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Who we are" })).toBeVisible();
+  // The row's two columns sit side by side on a computer, the second one narrower.
+  const main = await page.getByText("We make online stores.").boundingBox();
+  const side = await page.getByText("In the sidebar.").boundingBox();
+  expect(side!.x).toBeGreaterThan(main!.x + main!.width - 1);
   await expect(page.getByRole("banner").getByRole("link", { name: "Kaizen", exact: true })).toBeVisible();
   await expect(page.getByRole("contentinfo")).toBeVisible();
   // Visitors without a session never see the editor's button.

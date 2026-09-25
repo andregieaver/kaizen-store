@@ -66,7 +66,7 @@ function readDraft(value: unknown, slug: string): PageContent {
       seo: { title: "", description: "" },
       searchEngines: true,
       aiAssistants: true,
-      blocks: [],
+      rows: [],
     }
   );
 }

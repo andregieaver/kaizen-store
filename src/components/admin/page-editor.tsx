@@ -1,22 +1,5 @@
 "use client";
 
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useState, useTransition } from "react";
 
@@ -30,21 +13,19 @@ import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { shrinkImage } from "@/lib/image-resize";
 import {
   ALT_MAX,
-  BLOCKS_MAX,
-  EMPTY_DOC,
   PAGE_SLUG_MAX,
   PAGE_TITLE_MAX,
   pageExcerpt,
   pageSlugFromTitle,
   pageSlugProblem,
-  richTextPlain,
-  type PageBlock,
   type PageContent,
+  type PageRow,
   type PageThumbnail,
 } from "@/lib/page-content";
+import { newBlock, newRow } from "@/lib/page-rows";
 import type { EditablePage, PageState } from "@/server/pages";
 
-import { RichTextEditor } from "./rich-text-editor";
+import { newId, PageBuilder } from "./page-builder";
 
 type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
 
@@ -60,17 +41,17 @@ const STATE_TEXT: Record<PageState, string> = {
   changed: "Published, with changes not yet published",
 };
 
-const newId = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `b${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-
-const newBlock = (): PageBlock => ({ id: newId(), type: "richText", doc: EMPTY_DOC });
+/** A new page starts with one full-width row holding an empty text block. */
+function startingRows(): PageRow[] {
+  const row = newRow("1", newId);
+  row.columns[0].blocks.push(newBlock("richText", newId));
+  return [row];
+}
 
 /**
  * One of Kaizen's pages (D42), held whole in the browser: title, address,
- * picture, search texts, who may read it, and its blocks, which can be
- * added, edited, deleted and dragged into order. Save keeps a draft;
+ * picture, search texts, who may read it, and its content: rows of
+ * columns of blocks, built in `PageBuilder` (D43). Save keeps a draft;
  * Publish puts the page on the site.
  */
 export function PageEditor({
@@ -91,7 +72,7 @@ export function PageEditor({
   const router = useRouter();
   const [saved, setSaved] = useState<EditablePage | null>(page);
   const [content, setContent] = useState<PageContent>(
-    page?.draft ?? { title: "", slug: "", thumbnail: null, seo: { title: "", description: "" }, searchEngines: true, aiAssistants: true, blocks: [newBlock()] },
+    page?.draft ?? { title: "", slug: "", thumbnail: null, seo: { title: "", description: "" }, searchEngines: true, aiAssistants: true, rows: startingRows() },
   );
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
@@ -105,6 +86,12 @@ export function PageEditor({
 
   const change = (next: Partial<PageContent>) => {
     setContent((current) => ({ ...current, ...next }));
+    setDirty(true);
+    setMessage(null);
+  };
+  // Rows change by function: a text block's editor reports from an earlier render.
+  const changeRows = (update: (rows: PageRow[]) => PageRow[]) => {
+    setContent((current) => ({ ...current, rows: update(current.rows) }));
     setDirty(true);
     setMessage(null);
   };
@@ -172,92 +159,88 @@ export function PageEditor({
   return (
     // Full width (see `PlatformMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter.
     <div className="flex flex-col gap-6 pb-28">
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
-        {/* The left sidebar, kept free for what comes next. */}
-        <div className="hidden lg:block" />
-
-        <div className="flex min-w-0 flex-col gap-6">
-          <Blocks blocks={content.blocks} onChange={(blocks) => change({ blocks })} />
-        </div>
-
-        {/* On phones the title and settings come first. */}
-        <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">
-          <section aria-label="Title and address" className={card}>
-            <label className={label}>
-              Title
-              <input
-                value={content.title}
-                maxLength={PAGE_TITLE_MAX}
-                onChange={(event) => {
-                  const title = event.target.value;
-                  change(slugFollows ? { title, slug: pageSlugFromTitle(title) } : { title });
+      <PageBuilder
+        rows={content.rows}
+        onRows={changeRows}
+        aside={
+          <>
+            <section aria-label="Title and address" className={card}>
+              <label className={label}>
+                Title
+                <input
+                  value={content.title}
+                  maxLength={PAGE_TITLE_MAX}
+                  onChange={(event) => {
+                    const title = event.target.value;
+                    change(slugFollows ? { title, slug: pageSlugFromTitle(title) } : { title });
+                  }}
+                  placeholder="About Kaizen"
+                  className={`${input} min-h-12 text-xl font-semibold`}
+                />
+              </label>
+              <SlugField
+                slug={content.slug}
+                follows={slugFollows}
+                origin={origin}
+                onChange={(slug) => {
+                  setSlugFollows(false);
+                  change({ slug });
                 }}
-                placeholder="About Kaizen"
-                className={`${input} min-h-12 text-xl font-semibold`}
+                onFollow={() => {
+                  setSlugFollows(!liveSlug);
+                  change({ slug: pageSlugFromTitle(content.title) });
+                }}
               />
-            </label>
-            <SlugField
-              slug={content.slug}
-              follows={slugFollows}
-              origin={origin}
-              onChange={(slug) => {
-                setSlugFollows(false);
-                change({ slug });
-              }}
-              onFollow={() => {
-                setSlugFollows(!liveSlug);
-                change({ slug: pageSlugFromTitle(content.title) });
-              }}
+              {moving && (
+                <p className="rounded-md bg-surface p-3 text-sm">
+                  When you publish, <strong>/{liveSlug}</strong> will lead to <strong>/{content.slug}</strong> for good
+                  (a permanent redirect), so links and search results keep working.
+                </p>
+              )}
+            </section>
+            <ThumbnailField
+              value={content.thumbnail}
+              upload={upload}
+              onChange={(thumbnail) => change({ thumbnail })}
             />
-            {moving && (
-              <p className="rounded-md bg-surface p-3 text-sm">
-                When you publish, <strong>/{liveSlug}</strong> will lead to <strong>/{content.slug}</strong> for good
-                (a permanent redirect), so links and search results keep working.
+            <section aria-labelledby="visibility-heading" className={card}>
+              <h2 id="visibility-heading" className="font-medium">
+                Who may read it
+              </h2>
+              <Switch
+                checked={content.searchEngines}
+                onChange={(searchEngines) => change({ searchEngines })}
+                title="Search engines"
+                help="Google, Bing and others may list the page. Off: the page asks not to be indexed and is left out of the sitemap."
+              />
+              <Switch
+                checked={content.aiAssistants}
+                onChange={(aiAssistants) => change({ aiAssistants })}
+                title="AI assistants"
+                help="ChatGPT, Claude, Perplexity and others may read the page. Off: it is left out of llms.txt and robots.txt asks AI crawlers to stay away."
+              />
+            </section>
+            <section aria-labelledby="search-heading" className={card}>
+              <h2 id="search-heading" className="font-medium">
+                Search and sharing
+              </h2>
+              <SearchSnippetFields
+                value={content.seo}
+                onChange={(seo) => change({ seo })}
+                fallback={{
+                  title: content.title || "The page's title",
+                  description: excerpt || defaultDescription,
+                }}
+                url={`${origin}/${content.slug}`}
+                lang="en"
+              />
+              <p className={hint}>
+                Empty fields use the title and the start of the text. When shared, the page shows its picture.
               </p>
-            )}
-          </section>
-          <ThumbnailField
-            value={content.thumbnail}
-            upload={upload}
-            onChange={(thumbnail) => change({ thumbnail })}
-          />
-          <section aria-labelledby="visibility-heading" className={card}>
-            <h2 id="visibility-heading" className="font-medium">
-              Who may read it
-            </h2>
-            <Switch
-              checked={content.searchEngines}
-              onChange={(searchEngines) => change({ searchEngines })}
-              title="Search engines"
-              help="Google, Bing and others may list the page. Off: the page asks not to be indexed and is left out of the sitemap."
-            />
-            <Switch
-              checked={content.aiAssistants}
-              onChange={(aiAssistants) => change({ aiAssistants })}
-              title="AI assistants"
-              help="ChatGPT, Claude, Perplexity and others may read the page. Off: it is left out of llms.txt and robots.txt asks AI crawlers to stay away."
-            />
-          </section>
-          <section aria-labelledby="search-heading" className={card}>
-            <h2 id="search-heading" className="font-medium">
-              Search and sharing
-            </h2>
-            <SearchSnippetFields
-              value={content.seo}
-              onChange={(seo) => change({ seo })}
-              fallback={{
-                title: content.title || "The page's title",
-                description: excerpt || defaultDescription,
-              }}
-              url={`${origin}/${content.slug}`}
-              lang="en"
-            />
-            <p className={hint}>
-              Empty fields use the title and the start of the text. When shared, the page shows its picture.
-            </p>
-          </section>
-        </div>
-      </div>
+            </section>
+          </>
+        }
+      />
 
       {problems.length > 0 && (
         <div role="alert" className="rounded-lg border border-red-700 p-4 text-sm">
@@ -520,190 +503,5 @@ function ThumbnailField({
         </p>
       )}
     </section>
-  );
-}
-
-/** The page's content: rich-text blocks, one under another, to edit, delete and drag into order. */
-function Blocks({ blocks, onChange }: { blocks: PageBlock[]; onChange: (blocks: PageBlock[]) => void }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-  const [confirming, setConfirming] = useState<string | null>(null);
-  const full = blocks.length >= BLOCKS_MAX;
-
-  const insertAt = (index: number) => {
-    const next = [...blocks];
-    next.splice(index, 0, newBlock());
-    onChange(next);
-  };
-  const move = (from: number, to: number) => onChange(arrayMove(blocks, from, to));
-  const remove = (id: string) => {
-    setConfirming(null);
-    onChange(blocks.filter((block) => block.id !== id));
-  };
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
-    const from = blocks.findIndex((b) => b.id === active.id);
-    const to = blocks.findIndex((b) => b.id === over.id);
-    if (from >= 0 && to >= 0) move(from, to);
-  };
-  const name = (id: string | number) => `text block ${blocks.findIndex((b) => b.id === id) + 1}`;
-
-  return (
-    <section aria-labelledby="content-heading" className="flex flex-col gap-4">
-      <div>
-        <h2 id="content-heading" className="font-medium">
-          Content
-        </h2>
-        <p className="text-sm text-muted">
-          Text blocks, one under another. Drag a block by its handle, or use Up and Down, to change the order.
-        </p>
-      </div>
-      <DndContext
-        id="page-blocks"
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={onDragEnd}
-        accessibility={{
-          announcements: {
-            onDragStart: ({ active }) => `Picked up ${name(active.id)}.`,
-            onDragOver: ({ active, over }) => (over ? `${name(active.id)} is over ${name(over.id)}.` : undefined),
-            onDragEnd: ({ active, over }) => (over ? `${name(active.id)} dropped at ${name(over.id)}.` : "Dropped."),
-            onDragCancel: ({ active }) => `Moving ${name(active.id)} was cancelled.`,
-          },
-          screenReaderInstructions: {
-            draggable: "To move this block, press Space or Enter, then the arrow keys, and Space or Enter again to drop it.",
-          },
-        }}
-      >
-        <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          <ol className="flex flex-col gap-4">
-            {blocks.map((block, index) => (
-              <SortableBlock
-                key={block.id}
-                block={block}
-                position={index + 1}
-                count={blocks.length}
-                onChange={(doc) => onChange(blocks.map((b) => (b.id === block.id ? { ...b, doc } : b)))}
-                onUp={() => move(index, index - 1)}
-                onDown={() => move(index, index + 1)}
-                onAddBelow={full ? null : () => insertAt(index + 1)}
-                confirming={confirming === block.id}
-                onDelete={() =>
-                  richTextPlain(block.doc).trim() === "" ? remove(block.id) : setConfirming(block.id)
-                }
-                onConfirm={() => remove(block.id)}
-                onCancel={() => setConfirming(null)}
-              />
-            ))}
-          </ol>
-        </SortableContext>
-      </DndContext>
-      {blocks.length === 0 && <p className="text-sm text-muted">The page has no content yet.</p>}
-      <button type="button" onClick={() => insertAt(blocks.length)} disabled={full} className={`${small} w-fit`}>
-        {full ? `At most ${BLOCKS_MAX} blocks` : "+ Add a text block"}
-      </button>
-      <p className={hint}>
-        Want to see it as visitors will? Save, then choose Preview draft. More kinds of blocks (pictures, products,
-        buttons) are coming.
-      </p>
-    </section>
-  );
-}
-
-function SortableBlock({
-  block,
-  position,
-  count,
-  onChange,
-  onUp,
-  onDown,
-  onAddBelow,
-  confirming,
-  onDelete,
-  onConfirm,
-  onCancel,
-}: {
-  block: PageBlock;
-  position: number;
-  count: number;
-  onChange: (doc: PageBlock["doc"]) => void;
-  onUp: () => void;
-  onDown: () => void;
-  onAddBelow: (() => void) | null;
-  confirming: boolean;
-  onDelete: () => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id: block.id,
-  });
-  const name = `Text block ${position}`;
-  return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`flex flex-col gap-2 rounded-lg border bg-background p-3 ${
-        isDragging ? "relative z-30 border-foreground shadow-xl" : "border-border"
-      }`}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag ${name.toLowerCase()} to move it`}
-          aria-roledescription="draggable block"
-          className="flex min-h-9 min-w-9 cursor-grab touch-none items-center justify-center rounded-md border border-border active:cursor-grabbing"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="currentColor">
-            <circle cx="9" cy="6" r="1.6" />
-            <circle cx="15" cy="6" r="1.6" />
-            <circle cx="9" cy="12" r="1.6" />
-            <circle cx="15" cy="12" r="1.6" />
-            <circle cx="9" cy="18" r="1.6" />
-            <circle cx="15" cy="18" r="1.6" />
-          </svg>
-        </button>
-        <span className="text-sm font-medium">{name}</span>
-        <div className="ml-auto flex flex-wrap gap-1">
-          <button type="button" onClick={onUp} disabled={position === 1} aria-label={`Move ${name.toLowerCase()} up`} className={small}>
-            ↑ Up
-          </button>
-          <button
-            type="button"
-            onClick={onDown}
-            disabled={position === count}
-            aria-label={`Move ${name.toLowerCase()} down`}
-            className={small}
-          >
-            ↓ Down
-          </button>
-          <button type="button" onClick={onDelete} aria-label={`Delete ${name.toLowerCase()}`} className={small}>
-            Delete
-          </button>
-        </div>
-      </div>
-      {confirming && (
-        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md bg-surface p-3 text-sm">
-          Delete {name.toLowerCase()} and its text?
-          <button type="button" onClick={onConfirm} className="min-h-9 rounded-md bg-red-700 px-3 text-white">
-            Delete block
-          </button>
-          <button type="button" onClick={onCancel} className="underline">
-            Keep it
-          </button>
-        </div>
-      )}
-      <RichTextEditor value={block.doc} onChange={onChange} label={name} />
-      {onAddBelow && (
-        <button type="button" onClick={onAddBelow} className="w-fit text-sm text-muted underline hover:text-foreground">
-          + Add a text block below
-        </button>
-      )}
-    </li>
   );
 }

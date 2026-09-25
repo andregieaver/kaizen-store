@@ -168,13 +168,18 @@ of running `playwright install`.
 - Pages (`/admin/platform/pages`, decision D42): `PageEditor` holds the whole
   page (title, address, picture, search texts, search/AI switches, blocks)
   and sends it as JSON to `savePageAction`, checked by `pageInput`
-  (`src/lib/page-content.ts`, shared with the browser). Blocks are rich text
+  (`src/lib/page-content.ts`, shared with the browser). Content is rows
+  (`ROW_LAYOUTS`) of columns of blocks (D43), edited in `PageBuilder`
+  (`src/components/admin/page-builder.tsx`: sidebar tabs, canvas, dnd-kit)
+  through the pure edits in `src/lib/page-rows.ts`. Pages saved as a plain
+  block list are read as one row (`upgradeLegacy`). Blocks are rich text
   for now: Tiptap JSON, cleaned by `cleanRichText()` and rendered by
   `<RichText>` as elements, never as HTML. `savePage()` keeps a draft
   (`pages.draft`); publishing copies it to `pages.published`. A published
   page's address moves only on publish, and the database leaves a redirect
   (`page_redirects`). Publishing, unpublishing and deleting call
-  `updateTag(PAGES_TAG)`. New block kinds go in `PageBlock` and `pageInput`.
+  `updateTag(PAGES_TAG)`. New block kinds go in `PageBlock`, `pageInput`,
+  `newBlock()` and the builder's Components tab.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
   store's `NavigationEditor` with platform link kinds (`PlatformMenuLink`: a
   page by id, home, sign-up, sign-in, a web address) and business details;

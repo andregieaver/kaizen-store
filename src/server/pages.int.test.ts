@@ -19,18 +19,23 @@ type Row = Record<string, unknown>;
 const run = Date.now().toString(36);
 let admin: Account;
 
+/** One full-width row holding the given blocks. */
+const oneRow = (blocks: unknown[]) => [
+  { id: "row-1", type: "row", layout: "1", columns: [{ id: "column-1", blocks }] },
+] as PageContent["rows"];
+
 /** A page as the editor sends it, with one text block. */
 const content = (slug: string, overrides: Partial<PageContent> = {}): PageContent => ({
   ...newPageContent(),
   title: `Page ${slug}`,
   slug,
-  blocks: [
+  rows: oneRow([
     {
       id: "block-1",
       type: "richText",
       doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: `About ${slug}.` }] }] },
     },
-  ],
+  ]),
   ...overrides,
 });
 
@@ -117,7 +122,7 @@ describe("saving and publishing", () => {
       null,
       {
         ...content(`unsafe-${run}`),
-        blocks: [
+        rows: oneRow([
           {
             id: "b",
             type: "richText",
@@ -131,7 +136,7 @@ describe("saving and publishing", () => {
               ],
             },
           },
-        ],
+        ]),
       },
       { publish: true },
     );

@@ -60,7 +60,7 @@ export default async function PlatformPage({ params }: Props) {
   const origin = siteUrl();
 
   return (
-    <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
       <JsonLdScript
         data={pageJsonLd({
           origin,

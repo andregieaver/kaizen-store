@@ -5,8 +5,9 @@ import { slugify } from "./slug";
 
 /**
  * A page built from blocks (D42): its title, address, picture, search texts,
- * whether search engines and AI assistants may use it, and its content, a
- * list of blocks. For now the only block is rich text. Shared by the admin
+ * whether search engines and AI assistants may use it, and its content:
+ * rows, each divided into columns (D43), each holding blocks. For now the
+ * only block is rich text. Shared by the admin
  * editor (in the browser) and the server, which checks everything again.
  */
 
@@ -226,12 +227,42 @@ export function richTextPlain(doc: RichTextDoc): string {
 }
 
 // ---------------------------------------------------------------------------
+// Rows and columns
+// ---------------------------------------------------------------------------
+
+/**
+ * How a row divides its width: each column's share. A page is rows, one
+ * under another; each row has these columns, and each column holds blocks.
+ * On phones the columns stack.
+ */
+export const ROW_LAYOUTS = {
+  "1": { label: "1 column", widths: [1] },
+  "2": { label: "2 columns", widths: [1, 1] },
+  "3": { label: "3 columns", widths: [1, 1, 1] },
+  "4": { label: "4 columns", widths: [1, 1, 1, 1] },
+  "5": { label: "5 columns", widths: [1, 1, 1, 1, 1] },
+  "6": { label: "6 columns", widths: [1, 1, 1, 1, 1, 1] },
+  "left-sidebar": { label: "Left sidebar", widths: [1, 2] },
+  "right-sidebar": { label: "Right sidebar", widths: [2, 1] },
+  "both-sidebars": { label: "Left and right sidebars", widths: [1, 2, 1] },
+} as const satisfies Record<string, { label: string; widths: readonly number[] }>;
+
+export type RowLayout = keyof typeof ROW_LAYOUTS;
+export const ROW_LAYOUT_KEYS = Object.keys(ROW_LAYOUTS) as [RowLayout, ...RowLayout[]];
+
+// ---------------------------------------------------------------------------
 // Pages
 // ---------------------------------------------------------------------------
 
 export type RichTextBlock = { id: string; type: "richText"; doc: RichTextDoc };
 /** One piece of a page's content. More kinds (pictures, products, …) come later. */
 export type PageBlock = RichTextBlock;
+export type BlockType = PageBlock["type"];
+
+export type PageColumn = { id: string; blocks: PageBlock[] };
+export type PageRow = { id: string; type: "row"; layout: RowLayout; columns: PageColumn[] };
+
+export const ROWS_MAX = 50;
 
 export type PageThumbnail = { url: string; width: number; height: number; alt: string };
 
@@ -246,8 +277,14 @@ export type PageContent = {
   searchEngines: boolean;
   /** AI assistants and AI crawlers may read it (else left out of llms.txt and closed to them in robots.txt). */
   aiAssistants: boolean;
-  blocks: PageBlock[];
+  /** The content: rows of columns of blocks. */
+  rows: PageRow[];
 };
+
+/** Every block on the page, row by row and column by column. */
+export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
+  return content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks));
+}
 
 /** Why an address cannot be used, or null if it is fine. */
 export function pageSlugProblem(slug: string): string | null {
@@ -266,12 +303,12 @@ export function pageSlugFromTitle(title: string): string {
   return RESERVED_PAGE_SLUGS.includes(slug) ? `${slug}-page` : slug;
 }
 
-const blockId = z
+const itemId = z
   .string()
-  .regex(/^[A-Za-z0-9_-]{1,64}$/, "A block could not be read. Reload the page and try again.");
+  .regex(/^[A-Za-z0-9_-]{1,64}$/, "Part of the page could not be read. Reload the page and try again.");
 
 const richTextBlock = z.object({
-  id: blockId,
+  id: itemId,
   type: z.literal("richText"),
   doc: z.unknown().transform((value, ctx) => {
     const cleaned = cleanRichText(value);
@@ -281,44 +318,78 @@ const richTextBlock = z.object({
   }),
 });
 
-/** What the editor sends, with the checks shown to the admin. */
-export const pageInput = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, "Give the page a title.")
-    .max(PAGE_TITLE_MAX, `Keep the title under ${PAGE_TITLE_MAX} characters.`),
-  slug: z
-    .string()
-    .trim()
-    .superRefine((slug, ctx) => {
-      const problem = pageSlugProblem(slug);
-      if (problem) ctx.addIssue({ code: "custom", message: problem });
-    }),
-  thumbnail: z
-    .object({
-      url: z.url({ protocol: /^https?$/, error: "The picture has an invalid address." }).max(1000),
-      width: z.number().int().min(1).max(10_000),
-      height: z.number().int().min(1).max(10_000),
-      alt: z.string().trim().max(ALT_MAX, `Keep the picture's description under ${ALT_MAX} characters.`),
-    })
-    .nullable(),
-  seo: z.object({
-    title: z.string().trim().max(TITLE_MAX, `Keep the search title under ${TITLE_MAX} characters.`),
-    description: z
-      .string()
-      .trim()
-      .max(DESCRIPTION_MAX, `Keep the search description under ${DESCRIPTION_MAX} characters.`),
-  }),
-  searchEngines: z.boolean(),
-  aiAssistants: z.boolean(),
-  blocks: z
-    .array(z.discriminatedUnion("type", [richTextBlock]))
-    .max(BLOCKS_MAX, `A page takes at most ${BLOCKS_MAX} blocks.`)
-    .refine((blocks) => new Set(blocks.map((b) => b.id)).size === blocks.length, {
-      message: "Two blocks have the same id. Reload the page and try again.",
-    }),
+const column = z.object({
+  id: itemId,
+  blocks: z.array(z.discriminatedUnion("type", [richTextBlock])),
 });
+
+const row = z
+  .object({
+    id: itemId,
+    type: z.literal("row"),
+    layout: z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout."),
+    columns: z.array(column),
+  })
+  .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {
+    message: "A row has the wrong number of columns for its layout. Reload the page and try again.",
+  });
+
+/**
+ * Pages saved before rows (a plain list of blocks) read as one row with
+ * one column; they are stored as rows the next time they are saved.
+ */
+function upgradeLegacy(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || "rows" in value || !("blocks" in value)) return value;
+  const { blocks, ...rest } = value as { blocks: unknown };
+  return { ...rest, rows: [{ id: "legacy-row", type: "row", layout: "1", columns: [{ id: "legacy-column", blocks }] }] };
+}
+
+/** What the editor sends, with the checks shown to the admin. */
+export const pageInput = z.preprocess(
+  upgradeLegacy,
+  z
+    .object({
+      title: z
+        .string()
+        .trim()
+        .min(1, "Give the page a title.")
+        .max(PAGE_TITLE_MAX, `Keep the title under ${PAGE_TITLE_MAX} characters.`),
+      slug: z
+        .string()
+        .trim()
+        .superRefine((slug, ctx) => {
+          const problem = pageSlugProblem(slug);
+          if (problem) ctx.addIssue({ code: "custom", message: problem });
+        }),
+      thumbnail: z
+        .object({
+          url: z.url({ protocol: /^https?$/, error: "The picture has an invalid address." }).max(1000),
+          width: z.number().int().min(1).max(10_000),
+          height: z.number().int().min(1).max(10_000),
+          alt: z.string().trim().max(ALT_MAX, `Keep the picture's description under ${ALT_MAX} characters.`),
+        })
+        .nullable(),
+      seo: z.object({
+        title: z.string().trim().max(TITLE_MAX, `Keep the search title under ${TITLE_MAX} characters.`),
+        description: z
+          .string()
+          .trim()
+          .max(DESCRIPTION_MAX, `Keep the search description under ${DESCRIPTION_MAX} characters.`),
+      }),
+      searchEngines: z.boolean(),
+      aiAssistants: z.boolean(),
+      rows: z.array(row).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
+    })
+    .superRefine((page, ctx) => {
+      if (pageBlocks(page).length > BLOCKS_MAX) {
+        ctx.addIssue({ code: "custom", message: `A page takes at most ${BLOCKS_MAX} blocks.` });
+      }
+      const ids = page.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]);
+      if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({ code: "custom", message: "Two parts of the page have the same id. Reload the page and try again." });
+      }
+    }),
+);
 
 /** A new page: nothing written yet, open to search engines and AI assistants. */
 export function newPageContent(): PageContent {
@@ -329,7 +400,7 @@ export function newPageContent(): PageContent {
     seo: { title: "", description: "" },
     searchEngines: true,
     aiAssistants: true,
-    blocks: [],
+    rows: [],
   };
 }
 
@@ -340,8 +411,8 @@ export function parsePageContent(value: unknown): PageContent | null {
 }
 
 /** The page's words, for the description when none is written. */
-export function pageExcerpt(content: Pick<PageContent, "blocks">, max?: number): string {
-  return summarize(content.blocks.map((block) => richTextPlain(block.doc)).join(" "), max);
+export function pageExcerpt(content: Pick<PageContent, "rows">, max?: number): string {
+  return summarize(pageBlocks(content).map((block) => richTextPlain(block.doc)).join(" "), max);
 }
 
 /** Whether two versions of a page say the same (the draft and what is published). */
