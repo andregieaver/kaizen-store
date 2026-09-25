@@ -283,3 +283,73 @@ test("rows, columns and components take their settings: width, background, link,
   expect(await css(aligned, "text-align")).toBe("center");
   expect((await second.boundingBox())!.y).toBeLessThan((await first.boundingBox())!.y);
 });
+
+test("a heading can be the page's main heading, a button links, and parts take borders, corners and shadows (D49)", async ({ page }) => {
+  const slug = `parts-${run}`;
+  const published = {
+    ...content("Parts", slug, "Unused. "),
+    blocks: undefined,
+    rows: [
+      {
+        id: "r1",
+        type: "row",
+        layout: "1",
+        columns: [
+          {
+            id: "c1",
+            htmlId: "card",
+            border: { width: { top: 2, right: 2, bottom: 2, left: 2 }, color: "#ff0000", style: "dashed" },
+            radius: 16,
+            shadow: "lg",
+            blocks: [
+              { id: "h1", type: "heading", text: "Sell across Europe", level: 1, size: "2xl", textColor: "#112233" },
+              {
+                id: "b1",
+                type: "button",
+                label: "Start your store",
+                href: "https://example.com/start",
+                newTab: true,
+                variant: "outline",
+                shape: "pill",
+                align: { mobile: "center" },
+              },
+              { id: "b2", type: "button", label: "Not ready", href: "" },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.pages (slug, draft, published, published_at)
+      values (${slug}, ${sql.json(published)}, ${sql.json(published)}, now())
+    `;
+  } finally {
+    await sql.end();
+  }
+  const css = (locator: import("@playwright/test").Locator, property: string) =>
+    locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
+
+  await page.goto(`/${slug}`);
+  // The heading is the page's one main heading: the title is no longer read out in its place.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sell across Europe");
+  await expect(page.locator("main h1")).toHaveCount(1);
+  expect(await css(page.locator("main h1"), "color")).toBe("rgb(17, 34, 51)");
+
+  const button = page.getByRole("link", { name: "Start your store (opens in a new tab)" });
+  await expect(button).toHaveAttribute("href", "https://example.com/start");
+  await expect(button).toHaveAttribute("target", "_blank");
+  await expect(button).toHaveAttribute("rel", "noopener noreferrer");
+  expect(await css(button.locator(".."), "text-align")).toBe("center");
+  // A button without an address is not shown.
+  await expect(page.getByText("Not ready")).toHaveCount(0);
+
+  const card = page.locator("#card");
+  expect(await css(card, "border-top-width")).toBe("2px");
+  expect(await css(card, "border-top-style")).toBe("dashed");
+  expect(await css(card, "border-top-color")).toBe("rgb(255, 0, 0)");
+  expect(await css(card, "border-top-left-radius")).toBe("16px");
+  expect(await css(card, "box-shadow")).not.toBe("none");
+});

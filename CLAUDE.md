@@ -179,12 +179,12 @@ of running `playwright install`.
   Pages saved as a plain
   block list are read as one row (`upgradeLegacy`). Blocks are rich text
   (Tiptap JSON, cleaned by `cleanRichText()` and rendered by `<RichText>`
-  as elements, never as HTML) or an image with a caption (D47, uploaded
-  with `ImageUploadButton`), both rendered by `<PageBlockView>`
-  (`src/components/page-block.tsx`) on the canvas and the site. Rows,
-  columns and blocks take optional settings (D47, D48: spacing, id and
-  classes, backgrounds, widths, column links, text alignment, picture
-  shape), changed with `patchRow()`/`patchColumn()`/`patchBlock()` in
+  as elements, never as HTML), an image with a caption (D47, uploaded
+  with `ImageUploadButton`), a heading or a button (D49), all rendered by
+  `<PageBlockView>` (`src/components/page-block.tsx`) on the canvas and
+  the site. Rows, columns and blocks take optional settings (D47–D49:
+  spacing, border, corners, shadow, id and classes, backgrounds, widths,
+  column links, text alignment, picture shape; `frameStyle()`), changed with `patchRow()`/`patchColumn()`/`patchBlock()` in
   settings dialogs with General, Style and Advanced tabs, and drawn by the
   shared helpers in `src/components/page-parts.tsx` (the canvas leaves out
   ids, classes and links). Copies drop a custom id the page already uses

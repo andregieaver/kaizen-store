@@ -200,6 +200,11 @@ describe("spacing and pictures", () => {
   it("starts a picture block without a picture", () => {
     expect(newBlock("image", id)).toMatchObject({ type: "image", image: null, caption: "" });
   });
+
+  it("starts a heading at level 2 and a button without text or address (D49)", () => {
+    expect(newBlock("heading", id)).toMatchObject({ type: "heading", text: "", level: 2 });
+    expect(newBlock("button", id)).toMatchObject({ type: "button", label: "", href: "" });
+  });
 });
 
 describe("settings (D48)", () => {

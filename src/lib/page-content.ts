@@ -6,8 +6,9 @@ import { slugify } from "./slug";
 /**
  * A page built from blocks (D42): its title, address, picture, search texts,
  * whether search engines and AI assistants may use it, and its content:
- * rows, each divided into columns (D43), each holding blocks: rich text or
- * a picture (D47), with settings of their own (D48). Shared by the admin
+ * rows, each divided into columns (D43), each holding blocks: rich text, a
+ * picture (D47), a heading or a button (D49), with settings of their own
+ * (D48, D49). Shared by the admin
  * editor (in the browser) and the server, which checks everything again.
  */
 
@@ -260,15 +261,40 @@ export type Sides = { top: number; right: number; bottom: number; left: number }
 export type Spacing = { margin?: Sides; padding?: Sides };
 export const SPACING_MAX = 240;
 
-/**
- * What every row, column and block can have (D47, D48): margin and padding,
- * and an id and classes of its own for the site (the editor leaves those
- * out, so a class cannot hide what is being edited).
- */
-export type PartBase = { style?: Spacing; htmlId?: string; className?: string };
-
 /** A colour as `#rrggbb`. */
 export type Color = string;
+
+export const BORDER_STYLES = { solid: "Solid", dashed: "Dashed", dotted: "Dotted" } as const;
+export type BorderStyle = keyof typeof BORDER_STYLES;
+/** A border (D49): its width on each side, in pixels, its colour and its line. */
+export type Border = { width: Sides; color: Color; style: BorderStyle };
+export const BORDER_MAX = 20;
+export const RADIUS_MAX = 200;
+
+/** Shadows to choose from (D49), each with its CSS. */
+export const SHADOWS = {
+  sm: { label: "Small", css: "0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08)" },
+  md: { label: "Medium", css: "0 4px 12px rgb(0 0 0 / 0.12)" },
+  lg: { label: "Large", css: "0 10px 30px rgb(0 0 0 / 0.15)" },
+  xl: { label: "Extra large", css: "0 20px 50px rgb(0 0 0 / 0.2)" },
+} as const;
+export type Shadow = keyof typeof SHADOWS;
+
+/**
+ * What every row, column and block can have (D47–D49): margin and padding,
+ * a border, rounded corners and a shadow, and an id and classes of its own
+ * for the site (the editor leaves those out, so a class cannot hide what
+ * is being edited).
+ */
+export type PartBase = {
+  style?: Spacing;
+  border?: Border;
+  /** Corner radius in pixels. */
+  radius?: number;
+  shadow?: Shadow;
+  htmlId?: string;
+  className?: string;
+};
 /** A row's or column's background (D48): a colour, or a picture with an optional colour over it. */
 export type Background =
   | { type: "color"; color: Color }
@@ -302,8 +328,61 @@ export type ImageBlock = PartBase & {
   caption: string;
   shape?: ImageShape;
 };
-/** One piece of a page's content. More kinds (products, buttons, …) come later. */
-export type PageBlock = RichTextBlock | ImageBlock;
+/** Heading levels: 1 is the page's main heading, used once (D49). */
+export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+/** How large a heading looks, apart from its level. */
+export const HEADING_SIZES = { sm: "Small", md: "Medium", lg: "Large", xl: "Extra large", "2xl": "Huge" } as const;
+export type HeadingSize = keyof typeof HEADING_SIZES;
+/** The size a heading has unless one is chosen. */
+export const HEADING_DEFAULT_SIZE: Record<HeadingLevel, HeadingSize> = { 1: "xl", 2: "lg", 3: "md", 4: "sm", 5: "sm", 6: "sm" };
+export const FONT_WEIGHTS = { normal: "Normal", medium: "Medium", semibold: "Semibold", bold: "Bold" } as const;
+export type FontWeight = keyof typeof FONT_WEIGHTS;
+export const HEADING_MAX = 300;
+
+/** A heading (D49): one line of text at a level, with its look. */
+export type HeadingBlock = PartBase & {
+  id: string;
+  type: "heading";
+  text: string;
+  level: HeadingLevel;
+  size?: HeadingSize;
+  /** Semibold unless chosen. */
+  weight?: FontWeight;
+  align?: TextAlignments;
+  textColor?: Color;
+};
+
+export const BUTTON_VARIANTS = { filled: "Filled", outline: "Outline", text: "Text link" } as const;
+export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
+export const BUTTON_SIZES = { sm: "Small", md: "Medium", lg: "Large" } as const;
+export type ButtonSize = keyof typeof BUTTON_SIZES;
+export const BUTTON_SHAPES = { rounded: "Rounded", pill: "Pill", square: "Square" } as const;
+export type ButtonShape = keyof typeof BUTTON_SHAPES;
+export const BUTTON_LABEL_MAX = 100;
+
+/**
+ * A button (D49): a link that looks like a button. Shown once it has both
+ * its text and its address; the defaults are filled, medium and rounded.
+ */
+export type ButtonBlock = PartBase & {
+  id: string;
+  type: "button";
+  label: string;
+  href: string;
+  newTab?: boolean;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  shape?: ButtonShape;
+  fullWidth?: boolean;
+  /** Where the button sits, by screen, as text is aligned. */
+  align?: TextAlignments;
+  /** The fill (or an outline's line and text); the site's text colour unless chosen. */
+  fill?: Color;
+  textColor?: Color;
+};
+
+/** One piece of a page's content. More kinds (products, …) come later. */
+export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -345,14 +424,49 @@ export function richTextIsEmpty(doc: RichTextDoc): boolean {
 
 /** Whether a block shows anything; empty ones are left out of the page. */
 export function blockHasContent(block: PageBlock): boolean {
-  return block.type === "richText" ? !richTextIsEmpty(block.doc) : block.image !== null;
+  switch (block.type) {
+    case "richText":
+      return !richTextIsEmpty(block.doc);
+    case "image":
+      return block.image !== null;
+    case "heading":
+      return block.text.trim() !== "";
+    case "button":
+      return block.label.trim() !== "" && block.href.trim() !== "";
+  }
 }
 
-/** A block's words: its text, or a picture's description and caption. */
+/**
+ * A block's words, for the page's excerpt and llms.txt: its text, a
+ * picture's description and caption, a heading. A button's few words say
+ * nothing about the page, so they are left out.
+ */
 export function blockText(block: PageBlock): string {
-  return block.type === "richText"
-    ? richTextPlain(block.doc)
-    : [block.image?.alt, block.caption].filter(Boolean).join(" ");
+  switch (block.type) {
+    case "richText":
+      return richTextPlain(block.doc);
+    case "image":
+      return [block.image?.alt, block.caption].filter(Boolean).join(" ");
+    case "heading":
+      return block.text;
+    case "button":
+      return "";
+  }
+}
+
+/** CSS for a part's border, rounded corners and shadow (D49); nothing for what it does not have. */
+export function frameStyle(part: Pick<PartBase, "border" | "radius" | "shadow">): Record<string, string> {
+  const css: Record<string, string> = {};
+  if (part.border) {
+    css.borderStyle = part.border.style;
+    css.borderColor = part.border.color;
+    for (const side of ["top", "right", "bottom", "left"] as const) {
+      css[`border${side[0].toUpperCase()}${side.slice(1)}Width`] = `${part.border.width[side]}px`;
+    }
+  }
+  if (part.radius) css.borderRadius = `${part.radius}px`;
+  if (part.shadow) css.boxShadow = SHADOWS[part.shadow].css;
+  return css;
 }
 
 /** CSS for a spacing: only the sides that have some. */
@@ -467,8 +581,30 @@ export function classNameProblem(value: string): string | null {
 const optionalText = <T extends z.ZodType>(schema: T) =>
   z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema.optional());
 
+const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.");
+
+const borderWidth = z
+  .number()
+  .int("A border is whole pixels.")
+  .min(0, "A border cannot be below 0.")
+  .max(BORDER_MAX, `Keep a border at ${BORDER_MAX} pixels or less.`);
+
 const partBase = {
   style: spacing,
+  border: z
+    .object({
+      width: z.object({ top: borderWidth, right: borderWidth, bottom: borderWidth, left: borderWidth }),
+      color,
+      style: z.enum(Object.keys(BORDER_STYLES) as [BorderStyle, ...BorderStyle[]]),
+    })
+    .optional(),
+  radius: z
+    .number()
+    .int("Rounded corners are whole pixels.")
+    .min(0)
+    .max(RADIUS_MAX, `Keep rounded corners at ${RADIUS_MAX} pixels or less.`)
+    .optional(),
+  shadow: z.enum(Object.keys(SHADOWS) as [Shadow, ...Shadow[]]).optional(),
   htmlId: optionalText(
     z
       .string()
@@ -489,8 +625,6 @@ const partBase = {
   ),
 };
 
-const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.");
-
 const background = z
   .discriminatedUnion("type", [
     z.object({ type: z.literal("color"), color }),
@@ -507,6 +641,7 @@ const background = z
   .optional();
 
 const textAlign = z.enum(["left", "center", "right"]).optional();
+const textAlignments = z.object({ mobile: textAlign, tablet: textAlign, desktop: textAlign }).optional();
 
 const richTextBlock = z.object({
   id: itemId,
@@ -517,7 +652,7 @@ const richTextBlock = z.object({
     ctx.addIssue({ code: "custom", message: cleaned.problem });
     return z.NEVER;
   }),
-  align: z.object({ mobile: textAlign, tablet: textAlign, desktop: textAlign }).optional(),
+  align: textAlignments,
   ...partBase,
 });
 
@@ -537,8 +672,39 @@ const imageBlock = z.object({
   ...partBase,
 });
 
-/** One block, as stored: rich text or a picture. */
-export const pageBlockSchema = z.discriminatedUnion("type", [richTextBlock, imageBlock]);
+const headingBlock = z.object({
+  id: itemId,
+  type: z.literal("heading"),
+  text: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`),
+  level: z.literal([1, 2, 3, 4, 5, 6], "A heading has an unknown level."),
+  size: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
+  weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
+  align: textAlignments,
+  textColor: color.optional(),
+  ...partBase,
+});
+
+const buttonBlock = z.object({
+  id: itemId,
+  type: z.literal("button"),
+  label: z.string().trim().max(BUTTON_LABEL_MAX, `Keep a button's text under ${BUTTON_LABEL_MAX} characters.`),
+  href: z
+    .string()
+    .trim()
+    .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /about, mailto: or tel:."),
+  newTab: z.boolean().optional(),
+  variant: z.enum(Object.keys(BUTTON_VARIANTS) as [ButtonVariant, ...ButtonVariant[]]).optional(),
+  size: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
+  shape: z.enum(Object.keys(BUTTON_SHAPES) as [ButtonShape, ...ButtonShape[]]).optional(),
+  fullWidth: z.boolean().optional(),
+  align: textAlignments,
+  fill: color.optional(),
+  textColor: color.optional(),
+  ...partBase,
+});
+
+/** One block, as stored: rich text, a picture, a heading or a button. */
+export const pageBlockSchema = z.discriminatedUnion("type", [richTextBlock, imageBlock, headingBlock, buttonBlock]);
 
 export const pageColumnSchema = z.object({
   id: itemId,
@@ -628,6 +794,10 @@ export const pageInput = z.preprocess(
       const ids = page.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]);
       if (new Set(ids).size !== ids.length) {
         ctx.addIssue({ code: "custom", message: "Two parts of the page have the same id. Reload the page and try again." });
+      }
+      const mainHeadings = pageBlocks(page).filter((b) => b.type === "heading" && b.level === 1).length;
+      if (mainHeadings > 1) {
+        ctx.addIssue({ code: "custom", message: "A page has one main heading (H1). Make the others H2 or smaller." });
       }
       const twice = repeatedHtmlId(page.rows);
       if (twice) ctx.addIssue({ code: "custom", message: `Two parts of the page have the id "${twice}". Give each its own.` });

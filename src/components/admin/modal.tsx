@@ -47,7 +47,8 @@ export function Modal({
       }`}
     >
       {open && (
-        <div className="flex max-h-[90dvh] flex-col">
+        // The dialog's own border takes 2 px of its 90dvh; only the middle scrolls.
+        <div className="flex max-h-[calc(90dvh-2px)] flex-col">
           <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-3">
             <h2 id={titleId} className="font-medium">
               {title}

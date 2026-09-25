@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   RESERVED_PAGE_SLUGS,
   blockHasContent,
+  frameStyle,
   spacingStyle,
   cleanRichText,
   isLinkAddress,
@@ -269,5 +270,75 @@ describe("row, column and component settings (D48)", () => {
     expect(problems(page({ htmlId: "same" }, { htmlId: "same" }))).toEqual([
       'Two parts of the page have the id "same". Give each its own.',
     ]);
+  });
+});
+
+describe("borders, corners and shadows; headings and buttons (D49)", () => {
+  const page = (blocks: unknown[], column: Record<string, unknown> = {}) => ({
+    ...newPageContent(),
+    title: "Parts",
+    slug: "parts",
+    rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks, ...column }] }],
+  });
+  const problems = (value: unknown) => {
+    const parsed = pageInput.safeParse(value);
+    return parsed.success ? [] : parsed.error.issues.map((i) => i.message);
+  };
+  const heading = (id: string, level: number, text = "Prices") => ({ id, type: "heading", text, level });
+  const button = (extra: Record<string, unknown> = {}) => ({ id: "btn", type: "button", label: "Start", href: "/sign-up", ...extra });
+
+  it("keeps a border, rounded corners and a shadow, within limits, and turns them into CSS", () => {
+    const frame = { border: { width: { top: 1, right: 2, bottom: 1, left: 0 }, color: "#d1d5db", style: "dashed" }, radius: 12, shadow: "md" };
+    expect(pageInput.parse(page([], frame)).rows[0].columns[0]).toMatchObject(frame);
+    expect(frameStyle(frame as never)).toEqual({
+      borderStyle: "dashed",
+      borderColor: "#d1d5db",
+      borderTopWidth: "1px",
+      borderRightWidth: "2px",
+      borderBottomWidth: "1px",
+      borderLeftWidth: "0px",
+      borderRadius: "12px",
+      boxShadow: "0 4px 12px rgb(0 0 0 / 0.12)",
+    });
+    expect(frameStyle({})).toEqual({});
+    expect(problems(page([], { border: { ...frame.border, width: { ...frame.border.width, top: 21 } } }))).toEqual([
+      "Keep a border at 20 pixels or less.",
+    ]);
+    expect(problems(page([], { border: { ...frame.border, style: "double" } }))).not.toEqual([]);
+    expect(problems(page([], { radius: 201 }))).toEqual(["Keep rounded corners at 200 pixels or less."]);
+    expect(problems(page([], { shadow: "huge" }))).not.toEqual([]);
+  });
+
+  it("keeps headings with their look, shows them once written, and counts their words", () => {
+    const styled = { ...heading("h", 2, " Our prices "), size: "2xl", weight: "bold", textColor: "#112233", align: { mobile: "center" } };
+    const parsed = pageInput.parse(page([styled, heading("e", 3, "")]));
+    const [first, empty] = parsed.rows[0].columns[0].blocks;
+    expect(first).toMatchObject({ text: "Our prices", level: 2, size: "2xl", weight: "bold", textColor: "#112233" });
+    expect([first, empty].map(blockHasContent)).toEqual([true, false]);
+    expect(pageExcerpt(parsed)).toBe("Our prices");
+    expect(problems(page([heading("x", 7)]))).toEqual(["A heading has an unknown level."]);
+    expect(problems(page([{ ...heading("x", 2), size: "giant" }]))).not.toEqual([]);
+  });
+
+  it("takes one main heading (H1) per page", () => {
+    expect(problems(page([heading("a", 1)]))).toEqual([]);
+    expect(problems(page([heading("a", 1), heading("b", 1)]))).toEqual([
+      "A page has one main heading (H1). Make the others H2 or smaller.",
+    ]);
+  });
+
+  it("keeps a button, shown once it has text and a safe address, and leaves its words out of the excerpt", () => {
+    const styled = button({ variant: "outline", size: "lg", shape: "pill", fullWidth: true, newTab: true, fill: "#1d4ed8", textColor: "#ffffff" });
+    const parsed = pageInput.parse(page([styled, button({ id: "draft", href: "" })]));
+    const [ready, draft] = parsed.rows[0].columns[0].blocks;
+    expect(ready).toMatchObject({ variant: "outline", size: "lg", shape: "pill", fullWidth: true, newTab: true });
+    expect([ready, draft].map(blockHasContent)).toEqual([true, false]);
+    expect(pageExcerpt(parsed)).toBe("");
+    for (const href of ["javascript:alert(1)", "//evil.example"]) {
+      expect(problems(page([button({ href })])), href).toEqual([
+        "A button's address must be https://…, a page like /about, mailto: or tel:.",
+      ]);
+    }
+    expect(problems(page([button({ variant: "ghost" })]))).not.toEqual([]);
   });
 });

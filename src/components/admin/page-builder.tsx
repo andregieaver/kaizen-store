@@ -40,8 +40,20 @@ import {
   ROW_LAYOUTS,
   ROW_LAYOUT_KEYS,
   ROWS_MAX,
+  BORDER_MAX,
+  BORDER_STYLES,
+  BUTTON_LABEL_MAX,
+  BUTTON_SHAPES,
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+  FONT_WEIGHTS,
+  HEADING_DEFAULT_SIZE,
+  HEADING_MAX,
+  HEADING_SIZES,
   HTML_ID_MAX,
   IMAGE_SHAPES,
+  RADIUS_MAX,
+  SHADOWS,
   SPACING_MAX,
   blockHasContent,
   blockText,
@@ -52,6 +64,17 @@ import {
   pageParts,
   type Background,
   type BlockType,
+  type BorderStyle,
+  type ButtonBlock,
+  type ButtonShape,
+  type ButtonSize,
+  type ButtonVariant,
+  type FontWeight,
+  type HeadingBlock,
+  type HeadingLevel,
+  type HeadingSize,
+  type RichTextBlock,
+  type Shadow,
   type ColumnLink,
   type ImageShape,
   type PartBase,
@@ -94,6 +117,7 @@ import {
   setSpacing,
   spacingOf,
   updateBlock,
+  type BlockPatch,
   type RowPatch,
   type Styled,
 } from "@/lib/page-rows";
@@ -188,7 +212,16 @@ function below({ active, activatorEvent, delta }: Move, over: Over, axis: "y" | 
   return axis === "y" ? point.y > over.rect.top + over.rect.height / 2 : point.x > over.rect.left + over.rect.width / 2;
 }
 
-const blockLabels: Record<BlockType, string> = { richText: "Rich text", image: "Image" };
+const blockLabels: Record<BlockType, string> = { richText: "Rich text", heading: "Heading", image: "Image", button: "Button" };
+/** The palette's components, in order. */
+const BLOCK_TYPES = ["richText", "heading", "image", "button"] as const satisfies readonly BlockType[];
+/** What a block is called when asking before it is deleted. */
+const blockThis: Record<BlockType, string> = {
+  richText: "this text",
+  heading: "this heading",
+  image: "this picture",
+  button: "this button",
+};
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
 const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
@@ -562,7 +595,7 @@ function Sidebar({
                 Drag a component into a column, or press it to add it to the column you last worked in.
               </p>
               <div className="grid grid-cols-2 gap-3">
-                {(["richText", "image"] as const).map((type) => (
+                {BLOCK_TYPES.map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -735,7 +768,7 @@ function SavedTile({ part, lifted = false }: { part: SavedPart | null; lifted?: 
             <span className="w-4 rounded-sm bg-foreground/75" />
           </span>
         ) : (
-          <TextIcon />
+          <BlockIcon type={part.content.type} />
         )}
       </span>
       <span className="flex min-w-0 flex-col">
@@ -749,7 +782,7 @@ function SavedTile({ part, lifted = false }: { part: SavedPart | null; lifted?: 
 /** A block on its way to another place: its kind and the start of its text. */
 function BlockPreview({ block }: { block: PageBlock | null }) {
   if (!block) return null;
-  const text = blockText(block).replace(/\s+/g, " ").trim();
+  const text = (blockText(block) || (block.type === "button" ? block.label : "")).replace(/\s+/g, " ").trim();
   return (
     <div className="w-64 rounded-md border border-foreground bg-background p-3 shadow-xl">
       <p className="text-xs text-muted">{blockLabels[block.type]}</p>
@@ -774,7 +807,24 @@ function ColumnPreview({ column }: { column: PageColumn | null }) {
 }
 
 function BlockIcon({ type }: { type: BlockType }) {
-  return type === "image" ? <ImageIcon /> : <TextIcon />;
+  switch (type) {
+    case "image":
+      return <ImageIcon />;
+    case "heading":
+      return <LetterIcon letter="H" bold />;
+    case "button":
+      return <ButtonIcon />;
+    default:
+      return <LetterIcon letter="T" />;
+  }
+}
+
+function ButtonIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <span className="rounded-full border-2 border-current px-2 text-[10px] leading-4 font-semibold">OK</span>
+    </span>
+  );
 }
 
 function ImageIcon() {
@@ -789,10 +839,13 @@ function ImageIcon() {
   );
 }
 
-function TextIcon() {
+function LetterIcon({ letter, bold = false }: { letter: string; bold?: boolean }) {
   return (
-    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 font-serif text-lg text-background">
-      T
+    <span
+      aria-hidden
+      className={`flex h-9 items-center justify-center rounded-sm bg-foreground/75 font-serif text-lg text-background ${bold ? "font-bold" : ""}`}
+    >
+      {letter}
     </span>
   );
 }
@@ -1191,7 +1244,7 @@ function BlockItem({
         onDuplicate={() => actions.onRows((rows) => duplicateBlock(rows, block.id, newId))}
         onDelete={() =>
           blockHasText(block)
-            ? actions.open({ kind: "delete", what: block.type === "image" ? "this picture" : "this text", run: remove })
+            ? actions.open({ kind: "delete", what: blockThis[block.type], run: remove })
             : remove()
         }
       />
@@ -1200,16 +1253,20 @@ function BlockItem({
         {blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (
-          <p className="rounded-md bg-surface p-3 text-sm text-muted">
-            {block.type === "image"
-              ? "No picture yet. Double-click or use the wrench to choose one."
-              : "Empty text. Double-click or use the wrench to write."}
-          </p>
+          <p className="rounded-md bg-surface p-3 text-sm text-muted">{EMPTY_BLOCK[block.type]}</p>
         )}
       </div>
     </div>
   );
 }
+
+/** What the canvas shows for a block with nothing to show yet. */
+const EMPTY_BLOCK: Record<BlockType, string> = {
+  richText: "Empty text. Double-click or use the wrench to write.",
+  heading: "Empty heading. Double-click or use the wrench to write it.",
+  image: "No picture yet. Double-click or use the wrench to choose one.",
+  button: "A button needs its text and an address. Double-click or use the wrench.",
+};
 
 // ---------------------------------------------------------------------------
 // Dialogs
@@ -1269,6 +1326,13 @@ function Dialogs({
       <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
     );
   };
+  /** The border, rounded corners and shadow of the row, column or block a dialog is for (D49). */
+  const frameFields = (target: Styled) => (
+    <FrameFields
+      value={partOf(rows, target) ?? {}}
+      onChange={(patch) => onRows((current) => patchPart(current, target, patch))}
+    />
+  );
   /** Margin and padding of the row, column or block a dialog is for (D47). */
   const spacingFields = (target: Styled) => (
     <SpacingFields
@@ -1311,9 +1375,10 @@ function Dialogs({
               <>
                 <TextAlignFields
                   value={block.align}
-                  onChange={(align) => onRows((current) => patchBlock(current, block.id, { align }))}
+                  onChange={(align) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, { align }))}
                 />
                 {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
               </>
             }
             advanced={advancedFields({ kind: "block", id: block.id })}
@@ -1349,9 +1414,84 @@ function Dialogs({
               <>
                 <ShapeChoice
                   value={block.shape}
-                  onChange={(shape) => onRows((current) => patchBlock(current, block.id, { shape }))}
+                  onChange={(shape) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { shape }))}
                 />
                 {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "heading"}
+        onClose={onClose}
+        title="Heading"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "heading" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <HeadingFields
+                block={block}
+                otherMainHeading={pageBlocks({ rows }).some((b) => b.id !== block.id && b.type === "heading" && b.level === 1)}
+                onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
+              />
+            }
+            style={
+              <>
+                <HeadingStyleFields
+                  block={block}
+                  onChange={(patch) => onRows((current) => patchBlock<HeadingBlock>(current, block.id, patch))}
+                />
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "button"}
+        onClose={onClose}
+        title="Button"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "button" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <ButtonFields block={block} onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))} />
+            }
+            style={
+              <>
+                <ButtonStyleFields
+                  block={block}
+                  onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
+                />
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
               </>
             }
             advanced={advancedFields({ kind: "block", id: block.id })}
@@ -1400,6 +1540,7 @@ function Dialogs({
                   onChange={(background) => onRows((current) => patchColumn(current, column.id, { background }))}
                 />
                 {spacingFields({ kind: "column", id: column.id })}
+                {frameFields({ kind: "column", id: column.id })}
               </>
             }
             advanced={advancedFields({ kind: "column", id: column.id })}
@@ -1425,6 +1566,7 @@ function Dialogs({
                   onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
                 />
                 {spacingFields({ kind: "row", id: row.id })}
+                {frameFields({ kind: "row", id: row.id })}
               </>
             }
             advanced={advancedFields({ kind: "row", id: row.id })}
@@ -1676,7 +1818,8 @@ function Choices<T extends string>({
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm has-checked:border-foreground has-checked:bg-surface has-checked:font-medium has-focus-visible:outline-2 has-disabled:cursor-default"
+            // `relative` keeps the hidden radio inside its button, not at the dialog's edge, where it would make the dialog scroll.
+            className="relative flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm has-checked:border-foreground has-checked:bg-surface has-checked:font-medium has-focus-visible:outline-2 has-disabled:cursor-default"
           >
             <input
               type="radio"
@@ -1988,9 +2131,11 @@ const ALIGN_OPTIONS = [
 
 /** A rich text's alignment on phones, tablets and computers (D48); each larger screen follows the smaller unless set. */
 function TextAlignFields({
+  what = "Text alignment",
   value,
   onChange,
 }: {
+  what?: string;
   value: TextAlignments | undefined;
   onChange: (value: TextAlignments | undefined) => void;
 }) {
@@ -2002,7 +2147,7 @@ function TextAlignFields({
   };
   return (
     <div className="flex flex-col gap-4">
-      <Choices legend="Text alignment on phones" options={ALIGN_OPTIONS} value={value?.mobile ?? "left"} onChange={(a) => set("mobile", a)} />
+      <Choices legend={`${what} on phones`} options={ALIGN_OPTIONS} value={value?.mobile ?? "left"} onChange={(a) => set("mobile", a)} />
       <Choices
         legend="On tablets"
         hint="768 pixels and wider"
@@ -2112,6 +2257,358 @@ function AdvancedFields({
           {classProblem ?? "Separated by spaces. A class changes the look only where the site's styles define it."}
         </span>
       </div>
+    </div>
+  );
+}
+
+/** Four sides in pixels, for a border's width (D49). */
+function SidesFields({
+  legend,
+  hint,
+  value,
+  max,
+  onChange,
+}: {
+  legend: string;
+  hint: string;
+  value: Sides;
+  max: number;
+  onChange: (sides: Sides) => void;
+}) {
+  const id = useId();
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-sm font-medium">
+        {legend} <span className="font-normal text-muted">({hint})</span>
+      </legend>
+      <div className="grid grid-cols-4 gap-2">
+        {SIDES.map((side) => (
+          <label key={side} htmlFor={`${id}-${side}`} className="flex flex-col gap-1 text-xs text-muted">
+            {side[0].toUpperCase() + side.slice(1)}
+            <input
+              id={`${id}-${side}`}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={max}
+              value={value[side]}
+              onChange={(event) =>
+                onChange({ ...value, [side]: Math.max(0, Math.min(max, Math.round(Number(event.target.value) || 0))) })
+              }
+              className="min-h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
+            />
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function NumberField({
+  label,
+  hint,
+  value,
+  max,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: number;
+  max: number;
+  onChange: (value: number) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label} <span className="font-normal text-muted">({hint})</span>
+      </label>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={max}
+        value={value}
+        onChange={(event) => onChange(Math.max(0, Math.min(max, Math.round(Number(event.target.value) || 0))))}
+        className="min-h-10 w-28 rounded-md border border-border bg-background px-2 text-sm"
+      />
+    </div>
+  );
+}
+
+/** A border (its line, width on each side and colour), rounded corners and a shadow (D49). */
+function FrameFields({
+  value,
+  onChange,
+}: {
+  value: Pick<PartBase, "border" | "radius" | "shadow">;
+  onChange: (patch: Partial<PartBase>) => void;
+}) {
+  const border = value.border;
+  return (
+    <div className="flex flex-col gap-4 border-t border-border pt-4">
+      <Choices
+        legend="Border"
+        options={[
+          { value: "none", label: "None" },
+          ...(Object.keys(BORDER_STYLES) as BorderStyle[]).map((style) => ({ value: style, label: BORDER_STYLES[style] })),
+        ]}
+        value={border?.style ?? "none"}
+        onChange={(style) =>
+          onChange({
+            border:
+              style === "none"
+                ? undefined
+                : { width: border?.width ?? { top: 1, right: 1, bottom: 1, left: 1 }, color: border?.color ?? "#d1d5db", style },
+          })
+        }
+      />
+      {border && (
+        <>
+          <SidesFields
+            legend="Border width"
+            hint="in pixels"
+            value={border.width}
+            max={BORDER_MAX}
+            onChange={(width) => onChange({ border: { ...border, width } })}
+          />
+          <ColorField label="Border colour" value={border.color} onChange={(color) => onChange({ border: { ...border, color } })} />
+        </>
+      )}
+      <NumberField
+        label="Rounded corners"
+        hint="radius, in pixels"
+        value={value.radius ?? 0}
+        max={RADIUS_MAX}
+        onChange={(radius) => onChange({ radius: radius || undefined })}
+      />
+      <Choices
+        legend="Shadow"
+        options={[
+          { value: "none", label: "None" },
+          ...(Object.keys(SHADOWS) as Shadow[]).map((shadow) => ({ value: shadow, label: SHADOWS[shadow].label })),
+        ]}
+        value={value.shadow ?? "none"}
+        onChange={(shadow) => onChange({ shadow: shadow === "none" ? undefined : shadow })}
+      />
+    </div>
+  );
+}
+
+/** A colour that is the site's own until one is chosen. */
+function OptionalColor({
+  label,
+  hint,
+  value,
+  fallback,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: string | undefined;
+  fallback: string;
+  onChange: (color: string | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <Check
+        label={`Own ${label.toLowerCase()}`}
+        hint={hint}
+        checked={value !== undefined}
+        onChange={(on) => onChange(on ? fallback : undefined)}
+      />
+      {value !== undefined && (
+        <div className="pl-7">
+          <ColorField label={label} value={value} onChange={onChange} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const LEVELS = [1, 2, 3, 4, 5, 6] as const;
+
+/** A heading's text and level (D49). */
+function HeadingFields({
+  block,
+  otherMainHeading = false,
+  onChange,
+}: {
+  block: HeadingBlock;
+  /** Whether another heading on the page is at level 1. */
+  otherMainHeading?: boolean;
+  onChange: (block: HeadingBlock) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-text`} className="text-sm font-medium">
+          Heading
+        </label>
+        <input
+          id={`${id}-text`}
+          value={block.text}
+          maxLength={HEADING_MAX}
+          onChange={(event) => onChange({ ...block, text: event.target.value })}
+          className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-semibold"
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <Choices
+          legend="Level"
+          hint="for search engines and screen readers; the size is under Style"
+          options={LEVELS.map((level) => ({ value: String(level), label: `H${level}` }))}
+          value={String(block.level)}
+          onChange={(level) => onChange({ ...block, level: Number(level) as HeadingLevel })}
+        />
+        <p className={`text-xs ${block.level === 1 && otherMainHeading ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+          {block.level === 1
+            ? otherMainHeading
+              ? "Another heading on this page is H1. A page has one main heading: make one of them H2."
+              : "H1 is the page's main heading, used once; the page's title is then no longer read out in its place."
+            : "H1 is the page's main heading; sections below it are H2, and parts of those H3 and so on."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** A heading's size, weight, alignment and colour (D49). */
+function HeadingStyleFields({ block, onChange }: { block: HeadingBlock; onChange: (patch: BlockPatch<HeadingBlock>) => void }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <Choices
+        legend="Size"
+        options={(Object.keys(HEADING_SIZES) as HeadingSize[]).map((size) => ({ value: size, label: HEADING_SIZES[size] }))}
+        value={block.size ?? HEADING_DEFAULT_SIZE[block.level]}
+        onChange={(size) => onChange({ size })}
+      />
+      <Choices
+        legend="Weight"
+        options={(Object.keys(FONT_WEIGHTS) as FontWeight[]).map((weight) => ({ value: weight, label: FONT_WEIGHTS[weight] }))}
+        value={block.weight ?? "semibold"}
+        onChange={(weight) => onChange({ weight: weight === "semibold" ? undefined : weight })}
+      />
+      <TextAlignFields value={block.align} onChange={(align) => onChange({ align })} />
+      <OptionalColor
+        label="Text colour"
+        hint="Otherwise the site's text colour."
+        value={block.textColor}
+        fallback="#111827"
+        onChange={(textColor) => onChange({ textColor })}
+      />
+    </div>
+  );
+}
+
+/** A button's text, address and whether it opens a new tab (D49). */
+function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (block: ButtonBlock) => void }) {
+  const id = useId();
+  const href = block.href.trim();
+  const problem =
+    href === ""
+      ? "The button shows on the site once it has an address."
+      : isLinkAddress(href)
+        ? null
+        : "Use a web address (https://…), a page on the site (/about), mailto: or tel:.";
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-label`} className="text-sm font-medium">
+          Text
+        </label>
+        <input
+          id={`${id}-label`}
+          value={block.label}
+          maxLength={BUTTON_LABEL_MAX}
+          placeholder="Start your store"
+          onChange={(event) => onChange({ ...block, label: event.target.value })}
+          className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-href`} className="text-sm font-medium">
+          Address
+        </label>
+        <input
+          id={`${id}-href`}
+          value={block.href}
+          maxLength={2000}
+          spellCheck={false}
+          placeholder="https://… or /about"
+          aria-invalid={Boolean(problem && href)}
+          aria-describedby={`${id}-href-hint`}
+          onChange={(event) => onChange({ ...block, href: event.target.value })}
+          className="min-h-10 rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700"
+        />
+        <span
+          id={`${id}-href-hint`}
+          className={`text-xs ${problem && href ? "text-red-700 dark:text-red-400" : "text-muted"}`}
+        >
+          {problem ?? "A page on this site, another site, an email or a phone number."}
+        </span>
+      </div>
+      <Check
+        label="Open in a new tab"
+        hint="Screen readers are told it opens a new tab."
+        checked={Boolean(block.newTab)}
+        onChange={(newTab) => onChange({ ...block, newTab: newTab || undefined })}
+      />
+    </div>
+  );
+}
+
+/** A button's look: kind, size, corners, width, place and colours (D49). */
+function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: (patch: BlockPatch<ButtonBlock>) => void }) {
+  const variant = block.variant ?? "filled";
+  return (
+    <div className="flex flex-col gap-4">
+      <Choices
+        legend="Style"
+        options={(Object.keys(BUTTON_VARIANTS) as ButtonVariant[]).map((v) => ({ value: v, label: BUTTON_VARIANTS[v] }))}
+        value={variant}
+        onChange={(v) => onChange({ variant: v === "filled" ? undefined : v })}
+      />
+      <Choices
+        legend="Size"
+        options={(Object.keys(BUTTON_SIZES) as ButtonSize[]).map((size) => ({ value: size, label: BUTTON_SIZES[size] }))}
+        value={block.size ?? "md"}
+        onChange={(size) => onChange({ size: size === "md" ? undefined : size })}
+      />
+      <Choices
+        legend="Corners"
+        disabled={variant === "text"}
+        options={(Object.keys(BUTTON_SHAPES) as ButtonShape[]).map((shape) => ({ value: shape, label: BUTTON_SHAPES[shape] }))}
+        value={block.shape ?? "rounded"}
+        onChange={(shape) => onChange({ shape: shape === "rounded" ? undefined : shape })}
+      />
+      <Check
+        label="Full width"
+        hint="As wide as its column."
+        checked={Boolean(block.fullWidth)}
+        onChange={(fullWidth) => onChange({ fullWidth })}
+      />
+      <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
+      <OptionalColor
+        label="Button colour"
+        hint={
+          variant === "filled"
+            ? "Fills the button; otherwise the site's text colour."
+            : "Colours the outline and text; otherwise the site's text colour."
+        }
+        value={block.fill}
+        fallback="#1d4ed8"
+        onChange={(fill) => onChange({ fill })}
+      />
+      <OptionalColor
+        label="Text colour"
+        hint={variant === "filled" ? "Otherwise the site's background colour." : "Otherwise the button colour."}
+        value={block.textColor}
+        fallback="#ffffff"
+        onChange={(textColor) => onChange({ textColor })}
+      />
     </div>
   );
 }
@@ -2352,7 +2849,13 @@ function SavedPartDialog({
                   />
                 ) : (
                   <div className="rounded-md border border-border p-3">
-                    <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                    {block.type === "image" ? (
+                      <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                    ) : block.type === "heading" ? (
+                      <HeadingFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                    ) : (
+                      <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                    )}
                   </div>
                 )}
                 {part.kind !== "block" && (
@@ -2361,7 +2864,7 @@ function SavedPartDialog({
                     onClick={() => change((r) => removeBlock(r, block.id))}
                     className="w-fit text-xs text-muted underline hover:text-foreground"
                   >
-                    {block.type === "image" ? "Remove this picture" : "Remove this text"}
+                    Remove {blockThis[block.type]}
                   </button>
                 )}
               </div>

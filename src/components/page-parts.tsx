@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import {
   ROW_LAYOUTS,
   blockText,
+  frameStyle,
   spacingStyle,
   type Background,
   type PageBlock,
@@ -39,6 +40,9 @@ const TEXT_ALIGN = {
   desktop: { left: "lg:text-left", center: "lg:text-center", right: "lg:text-right" },
 } as const;
 
+/** Rounded corners over a background picture clip it. */
+const clips = (part: PageRow | PageColumn) => Boolean(part.radius) && part.background?.type === "image";
+
 const colorStyle = (background: Background | undefined): CSSProperties =>
   background?.type === "color" ? { backgroundColor: background.color } : {};
 
@@ -46,8 +50,13 @@ const colorStyle = (background: Background | undefined): CSSProperties =>
 export function rowBox(row: PageRow, mode: PartsMode): Box {
   return {
     id: mode === "site" ? row.htmlId : undefined,
-    className: cx("relative isolate flex flex-col", row.fullHeight && "min-h-svh", mode === "site" && row.className),
-    style: { ...spacingStyle(row.style), ...colorStyle(row.background) },
+    className: cx(
+      "relative isolate flex flex-col",
+      row.fullHeight && "min-h-svh",
+      clips(row) && "overflow-hidden",
+      mode === "site" && row.className,
+    ),
+    style: { ...spacingStyle(row.style), ...frameStyle(row), ...colorStyle(row.background) },
   };
 }
 
@@ -81,11 +90,12 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
       row.equalHeight && JUSTIFY[row.align ?? "top"],
       // In the canvas the column sits inside its pointing band, which it fills.
       mode === "canvas" && "flex-1",
+      clips(column) && "overflow-hidden",
       // Links in the text stay usable above the column's own link.
       mode === "site" && column.link && "[&_.rich-text_a]:relative [&_.rich-text_a]:z-[2]",
       mode === "site" && column.className,
     ),
-    style: { ...spacingStyle(column.style), ...colorStyle(column.background) },
+    style: { ...spacingStyle(column.style), ...frameStyle(column), ...colorStyle(column.background) },
   };
 }
 
@@ -100,12 +110,21 @@ function alignClasses(align: TextAlignments | undefined): string | false {
   );
 }
 
-/** Around a block: its margin and padding, and a rich text's alignment by screen. */
+/**
+ * Around a block: its margin, padding, border and shadow, and the alignment
+ * by screen of rich text, a heading or a button. Rounded corners clip what
+ * it holds, such as a picture. A button takes its frame itself.
+ */
 export function blockBox(block: PageBlock, mode: PartsMode): Box {
   return {
     id: mode === "site" ? block.htmlId : undefined,
-    className: cx(block.type === "richText" && alignClasses(block.align), mode === "site" && block.className),
-    style: spacingStyle(block.style),
+    className: cx(
+      block.type !== "image" && alignClasses(block.align),
+      block.type !== "button" && Boolean(block.radius) && "overflow-hidden",
+      mode === "site" && block.className,
+    ),
+    // A button's border, corners and shadow are the button's own (`PageBlockView`).
+    style: { ...spacingStyle(block.style), ...(block.type === "button" ? {} : frameStyle(block)) },
   };
 }
 

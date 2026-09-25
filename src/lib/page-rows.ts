@@ -3,9 +3,7 @@ import {
   ROW_LAYOUTS,
   pageParts,
   type BlockType,
-  type ImageBlock,
   type PartBase,
-  type RichTextBlock,
   type PageBlock,
   type PageColumn,
   type PageRow,
@@ -39,6 +37,10 @@ export function newBlock(type: BlockType, id: NewId): PageBlock {
       return { id: id(), type, doc: EMPTY_DOC };
     case "image":
       return { id: id(), type, image: null, caption: "" };
+    case "heading":
+      return { id: id(), type, text: "", level: 2 };
+    case "button":
+      return { id: id(), type, label: "", href: "" };
   }
 }
 
@@ -265,7 +267,8 @@ export type Styled = { kind: "row" | "column" | "block"; id: string };
 /** Settings that can be changed on a row, a column or a block (not what they hold). */
 export type RowPatch = Partial<Omit<PageRow, "id" | "type" | "layout" | "columns">>;
 export type ColumnPatch = Partial<Omit<PageColumn, "id" | "blocks">>;
-export type BlockPatch = Partial<Omit<RichTextBlock, "id" | "type" | "doc"> & Omit<ImageBlock, "id" | "type" | "image" | "caption">>;
+/** Settings of a block of one kind (`T`), or those every block has. */
+export type BlockPatch<T extends PageBlock = PageBlock> = Partial<Omit<T, "id" | "type">>;
 
 /** Merges settings in; one set to undefined or false is taken out, so the page stays as small as it can. */
 function merge<T extends object>(part: T, patch: object): T {
@@ -288,7 +291,7 @@ export function patchColumn(rows: PageRow[], columnId: string, patch: ColumnPatc
   );
 }
 
-export function patchBlock(rows: PageRow[], blockId: string, patch: BlockPatch): PageRow[] {
+export function patchBlock<T extends PageBlock = PageBlock>(rows: PageRow[], blockId: string, patch: BlockPatch<T>): PageRow[] {
   return updateBlock(rows, blockId, (block) => merge(block, patch));
 }
 
