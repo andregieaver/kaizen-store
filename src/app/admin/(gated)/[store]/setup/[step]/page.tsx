@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
 import { SetupFrame } from "@/components/admin/setup-frame";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { storeBase } from "@/lib/paths";
@@ -27,8 +28,6 @@ type Props = PageProps<"/admin/[store]/setup/[step]">;
 
 export const metadata: Metadata = { title: "Set up your store" };
 
-const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
 
 export default async function SetupStepPage({ params }: Props) {
   const { store: slug, step } = await params;
@@ -111,66 +110,7 @@ async function DetailsStep({ member }: { member: Membership }) {
   const d = store.details;
   return (
     <ActionForm action={saveDetailsAction.bind(null, store.slug)} className="flex flex-col gap-4">
-      <label className={field}>
-        Store name
-        <input name="name" required maxLength={80} defaultValue={store.name} className={control} />
-        <span className="font-normal text-muted">Shown at the top of every page.</span>
-      </label>
-      <label className={field}>
-        Legal name of the business
-        <input
-          name="legalName"
-          required
-          autoComplete="organization"
-          defaultValue={d.legalName ?? ""}
-          placeholder="Kari Nordmann AS"
-          className={control}
-        />
-      </label>
-      <label className={field}>
-        <span>
-          Organisation number <span className="font-normal text-muted">(optional)</span>
-        </span>
-        <input
-          name="organisationNumber"
-          defaultValue={d.organisationNumber ?? ""}
-          placeholder="123 456 789"
-          className={control}
-        />
-      </label>
-      <label className={field}>
-        Contact email for shoppers
-        <input
-          type="email"
-          name="contactEmail"
-          required
-          autoComplete="email"
-          defaultValue={d.contactEmail ?? member.account.email}
-          className={control}
-        />
-      </label>
-      <label className={field}>
-        Business address
-        <textarea
-          name="postalAddress"
-          required
-          rows={3}
-          autoComplete="street-address"
-          defaultValue={d.postalAddress ?? ""}
-          placeholder={"Storgata 1\n0155 Oslo"}
-          className={`${control} py-2`}
-        />
-      </label>
-      <label className={field}>
-        Country the business is registered in
-        <select name="country" defaultValue={d.country ?? "NO"} className={control}>
-          {countries.map((country) => (
-            <option key={country.code} value={country.code}>
-              {country.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <BusinessDetailsFields name={store.name} details={d} countries={countries} fallbackEmail={member.account.email} />
       <div>
         <SubmitButton>Save and continue</SubmitButton>
       </div>

@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { updateTag } from "next/cache";
-import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { storeDetailsInput } from "@/lib/store-details";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
 import { STORES_TAG } from "@/server/seo";
@@ -39,21 +39,6 @@ function nextStep(storeSlug: string, step: SetupStepId): never {
   redirect(`/admin/${storeSlug}/setup/${next ? next.id : "launch"}`);
 }
 
-const optional = z
-  .string()
-  .trim()
-  .max(200)
-  .transform((value) => value || null);
-
-const detailsInput = z.object({
-  name: z.string().trim().min(1, "Enter the store's name.").max(80, "Keep the store name under 80 characters."),
-  legalName: z.string().trim().min(1, "Enter the business's legal name.").max(200),
-  organisationNumber: optional,
-  contactEmail: z.email("Enter a contact email shoppers can write to."),
-  postalAddress: z.string().trim().min(5, "Enter the business address.").max(300),
-  country: z.string().regex(/^[A-Z]{2}$/, "Choose the country the business is registered in."),
-});
-
 export async function saveDetailsAction(
   storeSlug: string,
   _state: FormState,
@@ -61,7 +46,7 @@ export async function saveDetailsAction(
 ): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
-  const parsed = detailsInput.safeParse(Object.fromEntries(formData));
+  const parsed = storeDetailsInput.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", messages: parsed.error.issues.map((issue) => issue.message) };
   }

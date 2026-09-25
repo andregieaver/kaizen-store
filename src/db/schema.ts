@@ -2216,6 +2216,40 @@ export const wishlistItems = commerce.table(
 );
 
 /**
+ * A store's places (D40): its office, and any shops and pickup points,
+ * each with an address and, if it has them, opening hours (see
+ * lib/opening-hours: the usual week, seasons and single dates).
+ */
+export const storeLocations = commerce.table(
+  "store_locations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** `office` (at most one), `shop` or `pickup`. */
+    kind: text("kind").notNull(),
+    name: text("name").notNull().default(""),
+    street: text("street").notNull(),
+    postalCode: text("postal_code").notNull(),
+    city: text("city").notNull(),
+    country: char("country", { length: 2 }).notNull(),
+    phone: text("phone").notNull().default(""),
+    /** How to find it, where to park, what to bring: shown with the address. */
+    notes: text("notes").notNull().default(""),
+    hours: jsonb("hours"),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("store_locations_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("store_locations_one_office").on(t.storeId).where(sql`${t.kind} = 'office'`),
+    index("store_locations_store_idx").on(t.storeId, t.kind, t.position),
+    check("store_locations_kind", sql`${t.kind} in ('office', 'shop', 'pickup')`),
+    check("store_locations_named", sql`${t.kind} = 'office' or length(trim(${t.name})) > 0`),
+  ],
+);
+
+/**
  * An item a shopper put in the cart from a wishlist (D36), written with the
  * cart line. Whether it was then bought is read from the order the cart
  * became. The list's name, the product's title and the price are kept as

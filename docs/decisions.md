@@ -150,6 +150,8 @@ history therefore still lists the nine single-store migrations, then:
 | `20260925085020_wishlist_cart_adds.sql` | `20260925085949` |
 | `20260925085021_wishlist_cart_adds_rules.sql` | `20260925085954` |
 | `20260925094805_connection_timeouts.sql` | `20260925094955` |
+| `20260925112943_store_locations.sql` | `20260925113202` |
+| `20260925112944_store_locations_rules.sql` | `20260925113206` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

@@ -351,6 +351,20 @@
       "when": 1790329685110,
       "tag": "20260925094805_connection_timeouts",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1790335783182,
+      "tag": "20260925112943_store_locations",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1790335784608,
+      "tag": "20260925112944_store_locations_rules",
+      "breakpoints": true
     }
   ]
 }
