@@ -17,6 +17,7 @@ export const CATALOG_TAG = "catalog";
 export const catalogTag = (storeId: string) => `catalog:${storeId}`;
 
 export type ProductSummary = {
+  id: string;
   handle: string;
   title: string;
   image: { url: string; alt: string } | null;
@@ -96,6 +97,7 @@ export async function listProducts(
 
   const rows = await db().execute<Row>(sql`
     select
+      p.id,
       p.handle,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url,
@@ -136,6 +138,7 @@ export async function listProducts(
     // Sold only by subscription: the best subscriber's price, as "from".
     const discount = numOrNull(row.subscriber_discount);
     return {
+      id: str(row.id),
       handle: str(row.handle),
       title: str(row.title),
       image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,

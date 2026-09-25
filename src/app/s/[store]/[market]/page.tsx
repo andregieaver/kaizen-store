@@ -44,6 +44,8 @@ export default async function MarketHome({ params }: PageProps<"/s/[store]/[mark
               href={productUrl(product.handle)}
               market={market}
               m={m}
+              store={store.slug}
+              base={marketPath(store.slug, market.slug)}
             />
           ))}
         </ul>

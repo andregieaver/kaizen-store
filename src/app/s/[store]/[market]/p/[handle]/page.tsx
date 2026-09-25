@@ -8,6 +8,7 @@ import { JsonLdScript } from "@/components/json-ld";
 import { Price } from "@/components/price";
 import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
+import { WishlistHeart } from "@/components/wishlist-heart";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -140,7 +141,17 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
       </div>
 
       <div className="flex flex-col gap-6">
-        <h1 className="text-3xl font-semibold tracking-tight">{product.title}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-3xl font-semibold tracking-tight">{product.title}</h1>
+          <WishlistHeart
+            store={store.slug}
+            market={market.slug}
+            base={marketPath(store.slug, market.slug)}
+            productId={product.id}
+            placement="page"
+            labels={{ save: m.wishlist.save(product.title), saved: m.wishlist.saved, removed: m.wishlist.removed }}
+          />
+        </div>
         <Price
           price={headlinePrice(product)}
           locale={market.locale}

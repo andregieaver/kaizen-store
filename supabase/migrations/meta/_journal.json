@@ -316,6 +316,20 @@
       "when": 1790295246585,
       "tag": "20260925001406_plan_reminders_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1790320489630,
+      "tag": "20260925071449_wishlists",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1790320490916,
+      "tag": "20260925071450_wishlists_rules",
+      "breakpoints": true
     }
   ]
 }

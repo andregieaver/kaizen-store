@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Price } from "@/components/price";
+import { WishlistHeart } from "@/components/wishlist-heart";
 import type { Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { ProductSummary } from "@/server/catalog";
@@ -11,14 +12,26 @@ export function ProductCard({
   href,
   market,
   m,
+  store,
+  base,
 }: {
   product: ProductSummary;
   href: string;
   market: Market;
   m: Messages;
+  /** The store's slug and the market's path, for the wishlist heart (D34). */
+  store: string;
+  base: string;
 }) {
   return (
     <li className="group relative flex flex-col gap-3">
+      <WishlistHeart
+        store={store}
+        market={market.slug}
+        base={base}
+        productId={product.id}
+        labels={{ save: m.wishlist.save(product.title), saved: m.wishlist.saved, removed: m.wishlist.removed }}
+      />
       {product.image && (
         <Image
           src={product.image.url}

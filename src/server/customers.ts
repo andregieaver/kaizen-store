@@ -382,6 +382,9 @@ export async function startSession(storeId: string, customerId: string): Promise
     path: "/",
     maxAge: SESSION_DAYS * 24 * 60 * 60,
   });
+  // Wishlists kept in this browser join the account (D34).
+  const { claimBrowserWishlists } = await import("./wishlists");
+  await claimBrowserWishlists(storeId, customerId);
 }
 
 export async function endSession(storeId: string): Promise<void> {

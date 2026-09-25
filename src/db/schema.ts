@@ -2152,3 +2152,65 @@ export const abandonedPlanCheckouts = commerce.table(
     index("abandoned_plan_checkouts_price_idx").on(t.priceId),
   ],
 );
+
+/**
+ * A shopper's wishlist in a store (D34): a signed-in customer's, or, for a
+ * shopper not signed in, this browser's (the hash of a token in a cookie),
+ * which joins the account at sign-in. A shopper can keep several.
+ */
+export const wishlists = commerce.table(
+  "wishlists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    customerId: uuid("customer_id"),
+    browserTokenHash: text("browser_token_hash"),
+    name: text("name").notNull(),
+    /** Whether items stay in the list once added to the cart (the shopper chooses). */
+    keepAfterCart: boolean("keep_after_cart").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("wishlists_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "wishlists_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    index("wishlists_customer_idx").on(t.storeId, t.customerId),
+    index("wishlists_browser_idx").on(t.storeId, t.browserTokenHash),
+    check("wishlists_owner", sql`${t.customerId} is not null or ${t.browserTokenHash} is not null`),
+    check("wishlists_name", sql`length(${t.name}) between 1 and 60`),
+  ],
+);
+
+/** A product in a wishlist, with the variant and quantity to add to the cart. */
+export const wishlistItems = commerce.table(
+  "wishlist_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    wishlistId: uuid("wishlist_id").notNull(),
+    productId: uuid("product_id").notNull(),
+    variantId: uuid("variant_id"),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "wishlist_items_wishlist_fk",
+      columns: [t.storeId, t.wishlistId],
+      foreignColumns: [wishlists.storeId, wishlists.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "wishlist_items_product_fk",
+      columns: [t.storeId, t.productId],
+      foreignColumns: [products.storeId, products.id],
+    }).onDelete("cascade"),
+    unique("wishlist_items_product_key").on(t.wishlistId, t.productId),
+    index("wishlist_items_product_idx").on(t.storeId, t.productId),
+    index("wishlist_items_variant_idx").on(t.variantId),
+    check("wishlist_items_quantity", sql`${t.quantity} between 1 and 99`),
+  ],
+);

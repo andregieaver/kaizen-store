@@ -8,6 +8,7 @@ import { marketPath } from "@/lib/paths";
 import type { Store } from "@/server/stores";
 
 import { CartLink, CartLinkShell } from "./cart-link";
+import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
@@ -146,6 +147,11 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
             >
               <Icon name="user" />
               <span className="sr-only">{m.account.title}</span>
+            </Link>
+            <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-surface">
+              <Icon name="heart" />
+              <WishlistCount base={base} />
+              <span className="sr-only">{m.wishlist.title}</span>
             </Link>
             <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>
               <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
