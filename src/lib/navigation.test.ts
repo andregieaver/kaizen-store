@@ -93,3 +93,34 @@ describe("category and tag links (D50)", () => {
     expect(platformNavigationSchema.safeParse(menu({ kind: "tag", slug: "Not Ok" })).success).toBe(false);
   });
 });
+
+describe("links to a store's pages (D54)", () => {
+  const names = {
+    ...termNames([]),
+    page: new Map([
+      ["om-oss", { slug: "om-oss", title: "Om oss" }],
+      // A page that moved is also known by its old address.
+      ["levering", { slug: "frakt", title: "Frakt" }],
+    ]),
+  };
+
+  it("lead to the page where it is now, named after it unless given a text", () => {
+    expect(menuHref({ kind: "page", slug: "om-oss" }, "/s/demo/no", names)).toEqual({ href: "/s/demo/no/om-oss", external: false });
+    expect(menuHref({ kind: "page", slug: "levering" }, "/s/demo/no", names).href).toBe("/s/demo/no/frakt");
+    expect(menuLabel({ label: {}, link: { kind: "page", slug: "levering" } }, "nb-NO", builtIn, names)).toBe("Frakt");
+    expect(menuLabel({ label: { "nb-NO": "Hvem vi er" }, link: { kind: "page", slug: "om-oss" } }, "nb-NO", builtIn, names)).toBe(
+      "Hvem vi er",
+    );
+  });
+
+  it("are left out while the page is not published, and need an address", () => {
+    expect(linkExists({ kind: "page", slug: "om-oss" }, names)).toBe(true);
+    expect(linkExists({ kind: "page", slug: "utkast" }, names)).toBe(false);
+    // Kaizen's page links are by id, and checked where its menus are drawn.
+    expect(linkExists({ kind: "page", pageId: "00000000-0000-4000-8000-000000000000" }, names)).toBe(true);
+    const menu = (link: unknown) => ({ logo: null, header: [{ label: {}, link }], footer: [] });
+    expect(navigationSchema.safeParse(menu({ kind: "page", slug: "om-oss" })).success).toBe(true);
+    expect(navigationSchema.safeParse(menu({ kind: "page", slug: "" })).success).toBe(false);
+    expect(navigationSchema.safeParse(menu({ kind: "page", pageId: "00000000-0000-4000-8000-000000000000" })).success).toBe(false);
+  });
+});

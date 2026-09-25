@@ -313,7 +313,10 @@ export function platformJsonLd({
   };
 }
 
-/** One of Kaizen's pages (D42): a `WebPage` on Kaizen's site, by Kaizen. */
+/**
+ * One of Kaizen's pages (D42): a `WebPage` on Kaizen's site, by Kaizen; or
+ * a store's page (D54), part of the store's site in a market, by the store.
+ */
 export function pageJsonLd({
   origin,
   url,
@@ -321,6 +324,7 @@ export function pageJsonLd({
   description,
   image,
   publishedAt,
+  store,
 }: {
   origin: string;
   url: string;
@@ -328,6 +332,8 @@ export function pageJsonLd({
   description: string;
   image: string | null;
   publishedAt: string;
+  /** For a store's page: its market's front page, the store's address and the market's language. */
+  store?: { homeUrl: string; storeUrl: string; locale: string };
 }): JsonLd {
   return {
     "@context": SCHEMA,
@@ -336,10 +342,10 @@ export function pageJsonLd({
     url,
     name: title,
     description,
-    inLanguage: "en",
+    inLanguage: store?.locale ?? "en",
     dateModified: publishedAt,
     ...(image && { primaryImageOfPage: { "@type": "ImageObject", url: absoluteUrl(image, origin) } }),
-    isPartOf: { "@id": `${origin}/#website` },
-    publisher: { "@id": `${origin}/#organization` },
+    isPartOf: { "@id": store ? websiteNodeId(store.homeUrl) : `${origin}/#website` },
+    publisher: { "@id": store ? storeNodeId(store.storeUrl) : `${origin}/#organization` },
   };
 }

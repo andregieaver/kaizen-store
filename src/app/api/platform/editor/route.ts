@@ -1,17 +1,16 @@
 import { connection } from "next/server";
 
-import { getAccount } from "@/server/auth";
+import { getAccount, getMembership } from "@/server/auth";
 
 /**
- * Whether the visitor may edit Kaizen's pages (D42). Asked by the "Edit
- * page" button on a page, only when the browser holds a session, so pages
- * themselves stay the same for everyone and cached.
+ * Whether the visitor may edit the page they are on: Kaizen's pages (D42)
+ * for platform admins, a store's pages (`?store=`, D54) for its people.
+ * Asked by the "Edit page" button only when the browser holds a session, so
+ * pages themselves stay the same for everyone and cached.
  */
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
-  const account = await getAccount();
-  return Response.json(
-    { editor: Boolean(account?.platformAdmin) },
-    { headers: { "Cache-Control": "private, no-store" } },
-  );
+  const store = new URL(request.url).searchParams.get("store");
+  const editor = store ? Boolean(await getMembership(store)) : Boolean((await getAccount())?.platformAdmin);
+  return Response.json({ editor }, { headers: { "Cache-Control": "private, no-store" } });
 }

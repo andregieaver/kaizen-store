@@ -30,6 +30,8 @@ export type Store = {
   seo: StoreSeo;
   /** Logo and menus for the storefront's header and footer (D30). */
   navigation: StoreNavigation;
+  /** The store's own page shown as its front page (D54), or null for the product list. */
+  frontPageId: string | null;
 };
 
 export type StoreDetails = {
@@ -66,7 +68,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -117,6 +119,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     ),
     seo: parseStoreSeo(row.seo),
     navigation: parseNavigation(row.navigation),
+    frontPageId: text(row.front_page_id),
   };
 }
 

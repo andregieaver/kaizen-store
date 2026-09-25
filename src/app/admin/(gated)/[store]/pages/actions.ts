@@ -4,14 +4,16 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import type { FormState } from "@/components/admin/action-form";
 import type { PageSaveState } from "@/components/admin/page-context";
 import type { GridData } from "@/lib/content-grid";
 import { pageBlockSchema } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
-import { deletePage, getPageForEdit, pagesTag, savePage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, unpublishPage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
+import { storeTag } from "@/server/stores";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 
 /**
@@ -65,7 +67,23 @@ export async function deleteStorePageAction(storeSlug: string, id: string): Prom
   if (!isId(id)) return { problems: ["Unknown page."] };
   await deletePage(member.account, member.store.id, id);
   pagesChanged(member);
+  // A deleted front page (D54) gives the store its product list back.
+  if (member.store.frontPageId === id) updateTag(storeTag(member.store.slug));
   redirect(`/admin/${member.store.slug}/pages?deleted=1`);
+}
+
+/** Chooses the page shown as the store's front page (D54), or the product list. */
+export async function setFrontPageAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  const choice = String(form.get("frontPage") ?? "");
+  if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
+  const result = await setFrontPage(member.account, member.store.id, choice || null);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(storeTag(member.store.slug));
+  return {
+    status: "ok",
+    messages: [choice ? "Saved. Your store opens with this page now." : "Saved. Your store opens with its products now."],
+  };
 }
 
 // Saved rows, columns and components: the store's own (D46, D53).

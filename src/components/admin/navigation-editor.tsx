@@ -28,6 +28,12 @@ type Targets = Partial<Record<TargetKind, Target[]>>;
 const TARGET_NOUNS: Record<TargetKind, string> = { product: "Product", page: "Page", category: "Category", tag: "Tag" };
 const isTargetKind = (kind: AnyLinkKind): kind is TargetKind => kind in TARGET_NOUNS;
 
+/**
+ * A link kind the menus offer. Kaizen's page links name the page by id; a
+ * store's (D54) by its address, which a store copied from the template keeps.
+ */
+type KindOption = { kind: AnyLinkKind; label: string; pageBy?: "id" | "slug" };
+
 /** Items carry a key while edited, so React keeps each row's inputs as rows move. */
 type Row = AnyMenuItem & { key: string };
 
@@ -59,8 +65,9 @@ const card = "flex flex-col gap-4 rounded-lg border border-border bg-background 
 const small = "min-h-10 rounded-md border border-border px-3 text-sm disabled:opacity-40";
 
 /** The link kinds a store's menus offer. */
-export const STORE_KINDS: { kind: AnyLinkKind; label: string }[] = [
-  { kind: "home", label: "Front page (all products)" },
+export const STORE_KINDS: KindOption[] = [
+  { kind: "home", label: "Front page" },
+  { kind: "page", label: "A page", pageBy: "slug" },
   { kind: "product", label: "A product" },
   { kind: "category", label: "A category's products" },
   { kind: "tag", label: "A tag's products" },
@@ -73,12 +80,12 @@ let counter = 0;
 const keyed = (item: AnyMenuItem): Row => ({ ...item, key: `row-${++counter}` });
 
 /** The link a new row, or a row switched to `kind`, starts with. */
-function linkFor(kind: AnyLinkKind, targets: Targets): AnyMenuLink {
+function linkFor(kind: AnyLinkKind, targets: Targets, kinds: KindOption[]): AnyMenuLink {
   switch (kind) {
     case "product":
       return { kind, handle: targets.product?.[0]?.value ?? "" };
     case "page":
-      return { kind, pageId: targets.page?.[0]?.value ?? "" };
+      return targetLink("page", targets.page?.[0]?.value ?? "", kinds);
     case "category":
     case "tag":
       return { kind, slug: targets[kind]?.[0]?.value ?? "" };
@@ -92,14 +99,16 @@ function linkFor(kind: AnyLinkKind, targets: Targets): AnyMenuLink {
 /** The page, product, category or tag a link points at, if the link has one. */
 function targetOf(link: AnyMenuLink): { kind: TargetKind; value: string } | null {
   if (link.kind === "product") return { kind: "product", value: link.handle };
-  if (link.kind === "page") return { kind: "page", value: link.pageId };
+  if (link.kind === "page") return { kind: "page", value: "pageId" in link ? link.pageId : link.slug };
   if (link.kind === "category" || link.kind === "tag") return { kind: link.kind, value: link.slug };
   return null;
 }
 
 /** A link to `value` of a target kind. */
-function targetLink(kind: TargetKind, value: string): AnyMenuLink {
-  if (kind === "page") return { kind, pageId: value };
+function targetLink(kind: TargetKind, value: string, kinds: KindOption[]): AnyMenuLink {
+  if (kind === "page") {
+    return kinds.find((k) => k.kind === "page")?.pageBy === "slug" ? { kind, slug: value } : { kind, pageId: value };
+  }
   if (kind === "product") return { kind, handle: value };
   return { kind, slug: value };
 }
@@ -121,7 +130,7 @@ export function NavigationEditor({
 }: {
   initial: Navigation;
   languages: Language[];
-  kinds?: { kind: AnyLinkKind; label: string }[];
+  kinds?: KindOption[];
   targets: Targets;
   copy?: NavigationCopy;
   /** Who runs the site, edited with the menus when given (Kaizen's footer). */
@@ -344,7 +353,7 @@ function MenuEditor({
   rows: Row[];
   onChange: (rows: Row[]) => void;
   languages: Language[];
-  kinds: { kind: AnyLinkKind; label: string }[];
+  kinds: KindOption[];
   targets: Targets;
   copy: NavigationCopy;
 }) {
@@ -358,7 +367,7 @@ function MenuEditor({
   };
   // A new link starts at the first product or page there is, else the front page.
   const first = kinds.find(({ kind }) => isTargetKind(kind) && (targets[kind]?.length ?? 0) > 0);
-  const add = () => onChange([...rows, keyed({ label: {}, link: linkFor(first?.kind ?? "home", targets) })]);
+  const add = () => onChange([...rows, keyed({ label: {}, link: linkFor(first?.kind ?? "home", targets, kinds) })]);
 
   return (
     <section aria-labelledby={`${name}-heading`} className={card}>
@@ -435,7 +444,7 @@ function MenuRow({
   position: number;
   onChange: (row: Row) => void;
   languages: Language[];
-  kinds: { kind: AnyLinkKind; label: string }[];
+  kinds: KindOption[];
   targets: Targets;
   copy: NavigationCopy;
 }) {
@@ -453,7 +462,7 @@ function MenuRow({
         Link {position} goes to
         <select
           value={kind}
-          onChange={(event) => setLink(linkFor(event.target.value as AnyLinkKind, targets))}
+          onChange={(event) => setLink(linkFor(event.target.value as AnyLinkKind, targets, kinds))}
           className={input}
         >
           {kinds.map((option) => (
@@ -472,7 +481,7 @@ function MenuRow({
           {noun}
           <select
             value={target.value}
-            onChange={(event) => setLink(targetLink(target.kind, event.target.value))}
+            onChange={(event) => setLink(targetLink(target.kind, event.target.value, kinds))}
             className={input}
           >
             {!chosen && <option value={target.value}>{noun} not found</option>}

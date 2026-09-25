@@ -10,7 +10,7 @@ export const MENU_LIMITS = { header: 8, footer: 12 } as const;
 export type MenuName = keyof typeof MENU_LIMITS;
 export const LABEL_MAX = 60;
 
-export const LINK_KINDS = ["home", "product", "category", "tag", "account", "cart", "url"] as const;
+export const LINK_KINDS = ["home", "page", "product", "category", "tag", "account", "cart", "url"] as const;
 export type LinkKind = (typeof LINK_KINDS)[number];
 
 export type MenuLink =
@@ -18,9 +18,14 @@ export type MenuLink =
   | { kind: "account" }
   | { kind: "cart" }
   | { kind: "product"; handle: string }
+  /** One of the store's pages (D54), by its address, which a store copied from the template keeps. */
+  | StorePageLink
   /** A category's or tag's products (D50), by its address, which a store copied from the template keeps. */
   | TermLink
   | { kind: "url"; url: string };
+
+/** A link to one of a store's pages (D54). */
+export type StorePageLink = { kind: "page"; slug: string };
 
 /** A link to a category or tag (D50), in a store's menus or Kaizen's. */
 export type TermLink = { kind: "category" | "tag"; slug: string };
@@ -63,6 +68,14 @@ const link = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("account") }),
   z.object({ kind: z.literal("cart") }),
   z.object({ kind: z.literal("product"), handle: z.string().trim().min(1, "Choose a product for each product link.").max(200) }),
+  z.object({
+    kind: z.literal("page"),
+    slug: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Choose a page for each page link.")
+      .max(80),
+  }),
   z.object({ kind: z.literal("category"), slug: termSlug("category") }),
   z.object({ kind: z.literal("tag"), slug: termSlug("tag") }),
   z.object({
@@ -102,10 +115,13 @@ export function cleanLabels(labels: Record<string, string>, locales: string[]): 
 }
 
 /** Where a menu item goes, from the shopper's country's front page (`/s/demo/no`). */
-export function menuHref(link: MenuLink, base: string): { href: string; external: boolean } {
+export function menuHref(link: MenuLink, base: string, names?: MenuNames): { href: string; external: boolean } {
   switch (link.kind) {
     case "home":
       return { href: base, external: false };
+    case "page":
+      // A page that moved is linked at its address now.
+      return { href: `${base}/${names?.page?.get(link.slug)?.slug ?? link.slug}`, external: false };
     case "account":
       return { href: `${base}/account`, external: false };
     case "cart":
@@ -131,8 +147,8 @@ export function menuLabel(
   item: MenuItem,
   locale: string,
   builtIn: { home: string; account: string; cart: string },
-  /** Category and tag names by address, for links without a text of their own. */
-  termNames?: TermNames,
+  /** Page titles, category and tag names by address, for links without a text of their own. */
+  termNames?: MenuNames,
 ): string {
   const own = item.label[locale];
   if (own) return own;
@@ -142,6 +158,10 @@ export function menuLabel(
   if ((item.link.kind === "category" || item.link.kind === "tag") && termNames) {
     const name = termNames[item.link.kind].get(item.link.slug);
     if (name) return name;
+  }
+  if (item.link.kind === "page") {
+    const title = termNames?.page?.get(item.link.slug)?.title;
+    if (title) return title;
   }
   return Object.values(item.label).find(Boolean) ?? "";
 }
@@ -155,9 +175,23 @@ export function termNames(terms: readonly { kind: "category" | "tag"; slug: stri
   return { category: of("category"), tag: of("tag") };
 }
 
-/** Whether a link still leads somewhere: a category or tag that is gone is left out of the menu. */
-export function linkExists(link: MenuLink | PlatformMenuLink, names: TermNames): boolean {
-  return link.kind === "category" || link.kind === "tag" ? names[link.kind].has(link.slug) : true;
+/**
+ * A store's published pages by address (D54), with where each is now and its
+ * title; a page that moved is also known by its old addresses.
+ */
+export type PageNames = ReadonlyMap<string, { slug: string; title: string }>;
+
+/** Names for menu links without a text of their own; a store's also has its pages. */
+export type MenuNames = TermNames & { page?: PageNames };
+
+/**
+ * Whether a link still leads somewhere: a category or tag that is gone, or a
+ * store page that is not published, is left out of the menu.
+ */
+export function linkExists(link: MenuLink | PlatformMenuLink, names: MenuNames): boolean {
+  if (link.kind === "category" || link.kind === "tag") return names[link.kind].has(link.slug);
+  if (link.kind === "page" && "slug" in link) return names.page?.has(link.slug) ?? false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------

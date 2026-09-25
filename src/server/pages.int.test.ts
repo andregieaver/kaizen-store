@@ -280,3 +280,61 @@ describe("a store's pages (D53)", () => {
     expect(await parts.updateSavedPart(admin, null, result.id, { ...block, name: "Taken" })).toMatchObject({ ok: false });
   });
 });
+
+describe("a store's front page and menu links (D54)", () => {
+  let storeId: string;
+  let otherId: string;
+  const slug = `front-${run}`;
+  const stores = import("./stores");
+  const navigation = import("./navigation");
+
+  beforeAll(async () => {
+    const insert = async (name: string) => {
+      const [row] = await db().execute<Row>(sql`
+        insert into commerce.stores (slug, name) values (${`${name}-${run}`}, ${name}) returning id
+      `);
+      return String(row.id);
+    };
+    storeId = await insert("front");
+    otherId = await insert("front-other");
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.pages where store_id in (${storeId}::uuid, ${otherId}::uuid)`);
+  });
+
+  it("shows only one of the store's own published pages as its front page", async () => {
+    const draft = await saved(await pages.savePage(admin, storeId, null, content(`draft-${run}`), { publish: false }));
+    const theirs = await saved(await pages.savePage(admin, otherId, null, content(slug), { publish: true }));
+    const own = await saved(await pages.savePage(admin, storeId, null, content(slug), { publish: true }));
+    expect(await pages.setFrontPage(admin, storeId, draft)).toEqual({
+      ok: false,
+      problems: ["Publish the page before making it the front page."],
+    });
+    expect(await pages.setFrontPage(admin, storeId, theirs)).toEqual({ ok: false, problems: ["That page no longer exists."] });
+    expect(await pages.setFrontPage(admin, storeId, own)).toEqual({ ok: true });
+    expect((await (await stores).getStore(`front-${run}`))?.frontPageId).toBe(own);
+    // Deleting it gives the store its product list back.
+    await pages.deletePage(admin, storeId, own);
+    expect((await (await stores).getStore(`front-${run}`))?.frontPageId).toBeNull();
+  });
+
+  it("names pages for menus under their addresses now and before, and checks menu links", async () => {
+    const id = await saved(await pages.savePage(admin, storeId, null, content(`about-${run}`), { publish: true }));
+    await saved(await pages.savePage(admin, storeId, id, content(`about-us-${run}`, { title: "About us" }), { publish: true }));
+    const names = new Map(await pages.publishedPageNames(storeId));
+    expect(names.get(`about-${run}`)).toEqual({ slug: `about-us-${run}`, title: "About us" });
+    expect(names.get(`about-us-${run}`)).toEqual({ slug: `about-us-${run}`, title: "About us" });
+    expect(new Map(await pages.publishedPageNames(otherId)).has(`about-${run}`)).toBe(false);
+
+    const store = (await (await stores).getStore(`front-${run}`))!;
+    const member = { account: admin, store, role: "owner" as const };
+    const menu = (pageSlug: string) => ({ logo: null, header: [{ label: {}, link: { kind: "page", slug: pageSlug } }], footer: [] });
+    expect(await (await navigation).saveNavigation(member, menu(`about-${run}`))).toEqual({ ok: true });
+    // Another store's page is not one of this store's.
+    expect(await (await navigation).saveNavigation(member, menu(slug))).toEqual({
+      ok: false,
+      problems: ["A menu links to a page that no longer exists. Choose another."],
+    });
+  });
+});

@@ -14,7 +14,18 @@ const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: 
  * An owner's pages (D42, D53): Kaizen's or a store's, each with its address,
  * whether it is on the site, and links to edit and view it.
  */
-export function PagesTable({ pages, adminBase, siteBase }: { pages: PageSummary[]; adminBase: string; siteBase: string }) {
+export function PagesTable({
+  pages,
+  adminBase,
+  siteBase,
+  frontPageId = null,
+}: {
+  pages: PageSummary[];
+  adminBase: string;
+  siteBase: string;
+  /** A store's front page (D54), marked in the list. */
+  frontPageId?: string | null;
+}) {
   return (
         <div className="overflow-x-auto rounded-lg border border-border bg-background">
           <table className="w-full text-left text-sm">
@@ -53,7 +64,7 @@ export function PagesTable({ pages, adminBase, siteBase }: { pages: PageSummary[
                           {page.title || "Untitled"}
                         </Link>
                         <span className="block truncate text-muted">
-                          {siteBase}/{page.slug}
+                          {page.id === frontPageId ? `Front page · ${siteBase}` : `${siteBase}/${page.slug}`}
                         </span>
                       </span>
                     </div>

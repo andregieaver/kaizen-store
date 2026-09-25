@@ -7,6 +7,7 @@ import { requireMember } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { termTargets } from "@/lib/taxonomy";
 import { listMenuProducts } from "@/server/navigation";
+import { listMenuPages } from "@/server/pages";
 import { listTerms } from "@/server/taxonomy";
 
 import { uploadImageAction } from "../../products/actions";
@@ -18,9 +19,10 @@ export const metadata: Metadata = { title: "Header and footer" };
 export default async function NavigationPage({ params }: PageProps<"/admin/[store]/settings/navigation">) {
   const { store } = await requireMember((await params).store);
   const home = store.markets[0];
-  const [products, terms] = await Promise.all([
+  const [products, terms, pages] = await Promise.all([
     listMenuProducts(store.id, home?.locale ?? "nb-NO"),
     listTerms({ storeId: store.id, contentType: "product" }),
+    listMenuPages(store.id),
   ]);
   const names = new Intl.DisplayNames(["en"], { type: "language" });
   const languages = [...new Map(store.markets.map((m) => [m.locale, m])).values()].map((market) => {
@@ -28,7 +30,7 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
     return {
       locale: market.locale,
       name: names.of(market.locale) ?? market.locale,
-      defaults: { home: m.allProducts, account: m.account.title, cart: m.cart },
+      defaults: { home: store.frontPageId ? m.home : m.allProducts, account: m.account.title, cart: m.cart },
     };
   });
 
@@ -44,6 +46,8 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
         initial={store.navigation}
         languages={languages}
         targets={{
+          // A store's pages by address (D54); a page shows in the menu once it is published.
+          page: pages.map((p) => ({ value: p.slug, title: p.title, note: p.published ? undefined : "not published" })),
           product: products.map((p) => ({
             value: p.handle,
             title: p.title,

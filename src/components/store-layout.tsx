@@ -5,6 +5,7 @@ import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, termNames, type MenuItem } from "@/lib/navigation";
 import { marketPath } from "@/lib/paths";
+import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 
@@ -30,13 +31,14 @@ async function MenuLinks({
 }: Props & { items: MenuItem[]; className?: string; linkClassName: string }) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
-  const builtIn = { home: m.allProducts, account: m.account.title, cart: m.cart };
-  // Category and tag links (D50) are named after them, and left out once they are gone.
-  const names = termNames(await siteTerms(store.id, "product"));
+  const builtIn = { home: store.frontPageId ? m.home : m.allProducts, account: m.account.title, cart: m.cart };
+  // Page, category and tag links (D50, D54) are named after them, and left out once they are gone.
+  const [terms, pages] = await Promise.all([siteTerms(store.id, "product"), publishedPageNames(store.id)]);
+  const names = { ...termNames(terms), page: new Map(pages) };
   return (
     <ul className={className}>
       {items.filter((item) => linkExists(item.link, names)).map((item, index) => {
-        const { href, external } = menuHref(item.link, base);
+        const { href, external } = menuHref(item.link, base, names);
         const text = menuLabel(item, market.locale, builtIn, names);
         return (
           <li key={`${index}-${href}`}>

@@ -82,7 +82,11 @@ export default async function MarketLayout({ children, params }: Props) {
               .join(" ") || null
           }
         />
-        <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+        {/* A store's page (D54) spans the window: its rows keep to this width themselves. */}
+        <main
+          id="main"
+          className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0"
+        >
           {children}
         </main>
         <StoreFooter store={store} market={market} />

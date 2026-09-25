@@ -267,6 +267,13 @@ export const stores = commerce.table(
     navigation: jsonb("navigation").notNull().default({}),
     /** Reminder emails about carts left at checkout (D33), on only when the store turns them on. */
     cartReminders: boolean("cart_reminders").notNull().default(false),
+    /**
+     * One of the store's own pages shown as its front page in every market
+     * (D54), instead of the product list. Null for the product list. The
+     * foreign key to `pages (store_id, id)` is in the `store_front_page_rules`
+     * migration: deleting the page sets only this column back to null.
+     */
+    frontPageId: uuid("front_page_id"),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -283,6 +290,7 @@ export const stores = commerce.table(
     uniqueIndex("stores_one_template_idx").on(t.isTemplate).where(sql`${t.isTemplate}`),
     index("stores_created_by_idx").on(t.createdBy),
     index("stores_country_idx").on(t.country),
+    index("stores_front_page_idx").on(t.id, t.frontPageId),
   ],
 );
 
@@ -2378,6 +2386,8 @@ export const pages = commerce.table(
   },
   (t) => [
     unique("pages_store_slug_key").on(t.storeId, t.slug).nullsNotDistinct(),
+    // For stores' front pages (D54): a store can only choose a page of its own.
+    unique("pages_store_id_key").on(t.storeId, t.id),
     index("pages_created_by_idx").on(t.createdBy),
     index("pages_updated_by_idx").on(t.updatedBy),
     check("pages_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),

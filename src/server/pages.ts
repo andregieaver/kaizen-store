@@ -327,6 +327,51 @@ export async function findPublishedPage(
     : null;
 }
 
+/**
+ * An owner's published pages by address, for menu links (D54): where each
+ * is now and its title, also under the addresses it had before, so a link
+ * follows a page that moved. Entries rather than a Map, to be cached.
+ */
+export async function publishedPageNames(owner: PageOwner): Promise<[string, { slug: string; title: string }][]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(pagesTag(owner));
+  const rows = await readDb().execute<Row>(sql`
+    select p.slug as address, p.slug, p.published ->> 'title' as title
+    from commerce.pages p
+    where p.store_id is not distinct from ${owner}::uuid and p.published_at is not null
+    union all
+    select r.slug, p.slug, p.published ->> 'title'
+    from commerce.page_redirects r
+    join commerce.pages p on p.id = r.page_id and p.published_at is not null
+    where r.store_id is not distinct from ${owner}::uuid
+  `);
+  return rows.map((row) => [String(row.address), { slug: String(row.slug), title: String(row.title ?? row.slug) }]);
+}
+
+/**
+ * Shows one of a store's published pages as its front page in every market
+ * (D54), or the product list again with null. The database keeps it to the
+ * store's own pages, and back to the list if the page is deleted.
+ */
+export async function setFrontPage(
+  account: Account,
+  storeId: string,
+  pageId: string | null,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  if (pageId !== null) {
+    const [page] = await db().execute<Row>(sql`
+      select published_at is not null as published from commerce.pages
+      where id = ${pageId}::uuid and store_id = ${storeId}::uuid
+    `);
+    if (!page) return { ok: false, problems: ["That page no longer exists."] };
+    if (!page.published) return { ok: false, problems: ["Publish the page before making it the front page."] };
+  }
+  await db().execute(sql`update commerce.stores set front_page_id = ${pageId}::uuid where id = ${storeId}::uuid`);
+  await audit(account.id, storeId, "store.front_page_changed", { page: pageId });
+  return { ok: true };
+}
+
 /** An owner's pages for the menu editor to link to: published or not, by title. */
 export async function listMenuPages(
   owner: PageOwner,

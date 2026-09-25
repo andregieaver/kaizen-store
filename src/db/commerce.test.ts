@@ -993,6 +993,22 @@ describe("pages", () => {
     ).rejects.toThrow(/in use/);
   });
 
+  it("lets a store show one of its own pages as its front page, until the page is deleted (D54)", async () => {
+    const other = await createStore("front-other", ["SE"]);
+    const { id: own } = await page("front", store);
+    const { id: theirs } = await page("front", other);
+    const { id: kaizens } = await page("front-kaizen");
+    const choose = (id: string) => db.query("update commerce.stores set front_page_id = $1 where id = $2", [id, store]);
+    await expect(choose(theirs)).rejects.toThrow(/stores_front_page_fk/);
+    await expect(choose(kaizens)).rejects.toThrow(/stores_front_page_fk/);
+    await choose(own);
+    await db.query("delete from commerce.pages where id = $1", [own]);
+    expect(await one("select id, front_page_id from commerce.stores where id = $1", [store])).toEqual({
+      id: store,
+      front_page_id: null,
+    });
+  });
+
   it("removes a page's redirects with the page", async () => {
     const { id } = await page("gone-soon");
     await publish(id);

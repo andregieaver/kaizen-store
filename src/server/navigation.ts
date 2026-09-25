@@ -52,8 +52,24 @@ export async function saveNavigation({ account, store }: Membership, input: unkn
     for (const row of rows) titles.set(String(row.handle), row.titles as Record<string, string>);
   }
 
+  // Page links (D54) name one of the store's pages, by its address now or one it had.
+  const slugs = [...new Set(items.flatMap((i) => (i.link.kind === "page" ? [i.link.slug] : [])))];
+  const known = new Set<string>();
+  if (slugs.length > 0) {
+    const list = sql.join(slugs.map((slug) => sql`${slug}`), sql`, `);
+    const rows = await db().execute<Row>(sql`
+      select slug from commerce.pages where store_id = ${store.id}::uuid and slug in (${list})
+      union
+      select slug from commerce.page_redirects where store_id = ${store.id}::uuid and slug in (${list})
+    `);
+    for (const row of rows) known.add(String(row.slug));
+  }
+
   const problems: string[] = [];
   const clean = (item: MenuItem): MenuItem => {
+    if (item.link.kind === "page" && !known.has(item.link.slug)) {
+      problems.push("A menu links to a page that no longer exists. Choose another.");
+    }
     let label = cleanLabels(item.label, locales);
     if (item.link.kind === "product") {
       const own = titles.get(item.link.handle);

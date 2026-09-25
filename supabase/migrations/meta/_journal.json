@@ -435,6 +435,27 @@
       "when": 1790369017825,
       "tag": "20260925204337_store_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790369627696,
+      "tag": "20260925205347_store_front_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1790369628847,
+      "tag": "20260925205348_store_front_page_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790370337243,
+      "tag": "20260925210537_store_front_page_index",
+      "breakpoints": true
     }
   ]
 }

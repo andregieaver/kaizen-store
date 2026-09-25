@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PagesTable } from "@/components/admin/pages-table";
 import { marketPath } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { listPages } from "@/server/pages";
 
+import { setFrontPageAction } from "./actions";
 import { storePagesBase } from "./context";
 
 export const metadata: Metadata = { title: "Pages" };
@@ -49,8 +51,66 @@ export default async function StorePagesPage({ params, searchParams }: PageProps
           No pages yet. Make the first one with New page.
         </p>
       ) : (
-        <PagesTable pages={pages} adminBase={base} siteBase={market ? marketPath(store.slug, market.slug) : ""} />
+        <PagesTable
+          pages={pages}
+          adminBase={base}
+          siteBase={market ? marketPath(store.slug, market.slug) : ""}
+          frontPageId={store.frontPageId}
+        />
       )}
+      <FrontPageForm
+        storeSlug={store.slug}
+        current={store.frontPageId}
+        pages={pages.filter((p) => p.state !== "draft" || p.id === store.frontPageId)}
+      />
     </div>
+  );
+}
+
+/**
+ * Which page shoppers land on (D54): the product list, or one of the store's
+ * published pages, in every country it sells to.
+ */
+function FrontPageForm({
+  storeSlug,
+  current,
+  pages,
+}: {
+  storeSlug: string;
+  current: string | null;
+  pages: { id: string; title: string; state: string }[];
+}) {
+  const unpublished = pages.find((p) => p.id === current)?.state === "draft";
+  return (
+    <ActionForm
+      action={setFrontPageAction.bind(null, storeSlug)}
+      className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5"
+    >
+      <h2 className="font-medium">Front page</h2>
+      <p className="max-w-2xl text-sm text-muted">
+        What shoppers see first in your store: your products, or one of your published pages (with a content grid of
+        products, for instance).
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
+          Your store opens with
+          <select name="frontPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+            <option value="">All products</option>
+            {pages.map((page) => (
+              <option key={page.id} value={page.id}>
+                {page.title || "Untitled"}
+                {page.state === "draft" ? " (not published)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <SubmitButton>Save</SubmitButton>
+      </div>
+      {unpublished && (
+        <p className="text-sm text-muted">
+          This page is not published, so shoppers see your products until you publish it again.
+        </p>
+      )}
+    </ActionForm>
   );
 }
