@@ -2214,3 +2214,42 @@ export const wishlistItems = commerce.table(
     check("wishlist_items_quantity", sql`${t.quantity} between 1 and 99`),
   ],
 );
+
+/**
+ * An item a shopper put in the cart from a wishlist (D36), written with the
+ * cart line. Whether it was then bought is read from the order the cart
+ * became. The list's name, the product's title and the price are kept as
+ * they were, so the record outlives the list, the product and the account.
+ */
+export const wishlistCartAdds = commerce.table(
+  "wishlist_cart_adds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    /** Set null (only this column) when the list is deleted: see the rules migration. */
+    wishlistId: uuid("wishlist_id"),
+    wishlistName: text("wishlist_name").notNull(),
+    /** The signed-in shopper, if any; set null when the account is deleted. */
+    customerId: uuid("customer_id"),
+    cartId: uuid("cart_id").notNull(),
+    productId: uuid("product_id"),
+    variantId: uuid("variant_id"),
+    title: text("title").notNull(),
+    sku: text("sku").notNull(),
+    /** How many went into the cart (fewer than asked when stock ran short). */
+    quantity: integer("quantity").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    unitPriceMinor: bigint("unit_price_minor", { mode: "number" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    cartRef("wishlist_cart_adds_cart_fk", t).onDelete("cascade"),
+    index("wishlist_cart_adds_store_created_idx").on(t.storeId, t.createdAt),
+    index("wishlist_cart_adds_cart_idx").on(t.storeId, t.cartId),
+    index("wishlist_cart_adds_wishlist_idx").on(t.storeId, t.wishlistId),
+    index("wishlist_cart_adds_customer_idx").on(t.storeId, t.customerId),
+    index("wishlist_cart_adds_product_idx").on(t.storeId, t.productId),
+    index("wishlist_cart_adds_variant_idx").on(t.storeId, t.variantId),
+    check("wishlist_cart_adds_quantity", sql`${t.quantity} > 0`),
+  ],
+);

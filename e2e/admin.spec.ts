@@ -78,6 +78,8 @@ test("admin pages send nothing of theirs to a visitor without a session, before 
     "/admin/platform/seo",
     "/admin/demo/customers",
     "/admin/demo/orders",
+    "/admin/demo/wishlists",
+    "/admin/demo/wishlists/activity",
   ];
   for (const path of paths) {
     const html = await (await request.get(path)).text();

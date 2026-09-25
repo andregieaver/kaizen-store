@@ -241,6 +241,8 @@ export async function changeLine(
   quantity: number,
   mode: "add" | "set",
   sellingPlanId: string | null = null,
+  /** Runs in the same transaction once the line is in the cart, with how many more it now holds. */
+  afterAdd?: (tx: Tx, cartId: string, added: number) => Promise<void>,
 ): Promise<{ outcome: LineOutcome | "removed" | "plan_conflict"; quantity: number }> {
   return db().transaction(async (tx) => {
     const samePlan = sql`selling_plan_id is not distinct from ${sellingPlanId}::uuid`;
@@ -279,6 +281,8 @@ export async function changeLine(
       values (${shop.storeId}::uuid, ${cartId}::uuid, ${variantId}::uuid, ${settled.quantity}, ${sellingPlanId}::uuid)
       on conflict on constraint cart_lines_cart_variant_plan_key do update set quantity = excluded.quantity
     `);
+    const added = settled.quantity - Number(current?.quantity ?? 0);
+    if (afterAdd && added > 0) await afterAdd(tx, cartId, added);
     return settled;
   });
 }

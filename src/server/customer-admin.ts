@@ -17,8 +17,8 @@ type Row = Record<string, unknown>;
  * order's, so no email ever stands in an address.
  */
 
-/** An order that was paid, even if it was cancelled and refunded later. */
-const bought = sql`(o.status in ('paid', 'fulfilled', 'closed')
+/** An order that was paid, even if it was cancelled and refunded later (the order's alias is `o`). */
+export const bought = sql`(o.status in ('paid', 'fulfilled', 'closed')
   or (o.status = 'cancelled' and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')))`;
 
 const LIVE = sql`('active', 'past_due', 'paused')`;

@@ -200,7 +200,17 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
               <dt className="text-muted">Account</dt>
               <dd>{accountLabel(customer.account)}</dd>
               <dt className="text-muted">Wishlist</dt>
-              <dd>{customer.account ? (customer.wishlistItems === 1 ? "1 item" : `${customer.wishlistItems} items`) : "–"}</dd>
+              <dd>
+                {customer.account && customer.customerId && customer.wishlistItems > 0 ? (
+                  <Link href={`${base}/wishlists?customer=${customer.customerId}`} className="underline">
+                    {customer.wishlistItems === 1 ? "1 item" : `${customer.wishlistItems} items`}
+                  </Link>
+                ) : customer.account ? (
+                  "Nothing saved"
+                ) : (
+                  "–"
+                )}
+              </dd>
               <dt className="text-muted">Cart reminders</dt>
               <dd>{customer.cartRemindersOptedOut ? "Said no" : "Allowed"}</dd>
             </dl>

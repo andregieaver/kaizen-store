@@ -20,6 +20,7 @@ import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads, getOrderEvents, type Address, type OrderEvent } from "@/server/orders";
+import { listCartAdds } from "@/server/wishlist-admin";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -53,12 +54,13 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const { store: slug, orderId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
     listEmails({ storeId: store.id, orderId }),
     customerSummary(store.id, orderId),
+    listCartAdds(store.id, { orderId }),
   ]);
   if (!order) notFound();
   const locale = store.markets[0]?.locale ?? order.locale;
@@ -158,6 +160,21 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                         {line.title}
                         {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">Digital download</span>}
                         {line.restocked > 0 && <span className="block text-xs text-muted">{line.restocked} put back in stock</span>}
+                        {fromWishlists
+                          .filter((add) => line.variantId && add.variantId === line.variantId)
+                          .slice(0, 1)
+                          .map((add) => (
+                            <span key={add.id} className="block text-xs text-muted">
+                              From the wishlist{" "}
+                              {add.wishlist.id ? (
+                                <Link href={`/admin/${store.slug}/wishlists/${add.wishlist.id}`} className="underline">
+                                  {add.wishlist.name}
+                                </Link>
+                              ) : (
+                                add.wishlist.name
+                              )}
+                            </span>
+                          ))}
                       </td>
                       <td className="py-2 font-mono text-xs">{line.sku}</td>
                       <td className="py-2 text-right">{line.quantity}</td>

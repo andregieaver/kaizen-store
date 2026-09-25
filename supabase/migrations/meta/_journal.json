@@ -330,6 +330,20 @@
       "when": 1790320490916,
       "tag": "20260925071450_wishlists_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1790326220202,
+      "tag": "20260925085020_wishlist_cart_adds",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1790326221701,
+      "tag": "20260925085021_wishlist_cart_adds_rules",
+      "breakpoints": true
     }
   ]
 }

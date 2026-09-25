@@ -361,7 +361,10 @@ export async function addWishlistToCart(
       outcomes[id] = "needs_variant";
       continue;
     }
-    const result = await changeLine({ storeId, market }, String(row.variant_id), Number(row.quantity), "add");
+    const variantId = String(row.variant_id);
+    const result = await changeLine({ storeId, market }, variantId, Number(row.quantity), "add", null, (tx, cartId, added) =>
+      recordCartAdd(tx, { storeId, market, wishlistId, cartId, variantId, quantity: added }),
+    );
     const outcome = result.outcome === "added" || result.outcome === "capped" ? result.outcome : "unavailable";
     outcomes[id] = outcome;
     if (outcome !== "unavailable") added.push(id);
@@ -372,6 +375,34 @@ export async function addWishlistToCart(
     `);
   }
   return { outcomes };
+}
+
+type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/**
+ * The record of an item going from a list to the cart (D36), for the
+ * store's admin, with the list's name, the title and the price as they are now.
+ */
+async function recordCartAdd(
+  tx: Tx,
+  add: { storeId: string; market: Market; wishlistId: string; cartId: string; variantId: string; quantity: number },
+): Promise<void> {
+  await tx.execute(sql`
+    insert into commerce.wishlist_cart_adds (store_id, wishlist_id, wishlist_name, customer_id, cart_id,
+      product_id, variant_id, title, sku, quantity, currency, unit_price_minor)
+    select w.store_id, w.id, w.name, w.customer_id, ${add.cartId}::uuid,
+      p.id, v.id, coalesce(tl.title, tf.title, p.handle), v.sku, ${add.quantity}, ${add.market.currency}, cp.amount_minor
+    from commerce.wishlists w
+    join commerce.product_variants v on v.store_id = w.store_id and v.id = ${add.variantId}::uuid
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+    left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${add.market.locale}
+    left join lateral (
+      select title from commerce.product_translations where product_id = p.id order by locale limit 1
+    ) tf on true
+    left join commerce.current_prices cp
+      on cp.variant_id = v.id and cp.market_code = ${add.market.code} and cp.currency = ${add.market.currency}
+    where w.store_id = ${add.storeId}::uuid and w.id = ${add.wishlistId}::uuid
+  `);
 }
 
 // ---------------------------------------------------------------------------
