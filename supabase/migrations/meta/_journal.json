@@ -456,6 +456,13 @@
       "when": 1790370337243,
       "tag": "20260925210537_store_front_page_index",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1790373344591,
+      "tag": "20260925215544_store_pages_copy",
+      "breakpoints": true
     }
   ]
 }

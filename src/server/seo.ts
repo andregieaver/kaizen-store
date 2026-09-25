@@ -11,6 +11,7 @@ import { toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeBase } from "@/lib/paths";
 import { pageExcerpt } from "@/lib/page-content";
+import { localizePage } from "@/lib/page-translation";
 import {
   AI_ASSISTANT_BOTS,
   AI_TRAINING_BOTS,
@@ -120,6 +121,8 @@ export type PublicStore = {
   /** Open, set up and not hidden: listed in sitemaps and llms.txt. */
   indexable: boolean;
   updatedAt: string;
+  /** Its front page (D54), shown at each market's own address rather than its page address. */
+  frontPageId: string | null;
 };
 
 /** Every open store, for robots.txt, the sitemap index and Kaizen's llms.txt. */
@@ -128,7 +131,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheLife("hours");
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.seo, s.is_template, s.setup_completed_at,
+    select s.id, s.slug, s.name, s.seo, s.is_template, s.setup_completed_at, s.front_page_id,
       greatest(s.created_at, s.setup_completed_at,
         (select max(p.updated_at) from commerce.products p where p.store_id = s.id)) as updated_at,
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
@@ -151,6 +154,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       markets,
       indexable: Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
       updatedAt: new Date(String(row.updated_at)).toISOString(),
+      frontPageId: row.front_page_id ? String(row.front_page_id) : null,
     };
   });
 }
@@ -318,15 +322,24 @@ export async function siteRobots(): Promise<string> {
   // `$` ends the path, so closing /about leaves /about-us open.
   const closed = pages.filter((page) => !page.content.aiAssistants).map((page) => ({ allow: false, path: `/${page.slug}$` }));
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
-  for (const store of stores) mergeGroups(groups, storeRobotsGroups(store.seo, storeBase(store.slug)));
+  for (const store of stores) mergeGroups(groups, await storeGroups(store));
   return renderRobots(groups, [`${siteUrl()}/sitemap.xml`, ...parsed.sitemaps]);
 }
 
+/** A store's rules: its own, and its pages closed to AI crawlers (D54) in every market. */
+async function storeGroups(store: Pick<Store, "id" | "slug" | "seo">) {
+  const base = storeBase(store.slug);
+  const groups = storeRobotsGroups(store.seo, base);
+  const closed = (await listPublishedPages(store.id))
+    .filter((page) => !page.content.aiAssistants)
+    .map((page) => ({ allow: false, path: `${base}/*/${page.slug}$` }));
+  if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
+  return groups;
+}
+
 /** The robots.txt a store would have on its own address (and a preview of its part of the site's). */
-export function storeRobots(store: Pick<Store, "slug" | "seo">): string {
-  return renderRobots(storeRobotsGroups(store.seo, storeBase(store.slug)), [
-    `${siteUrl()}${storeSitemapPath(store.slug)}`,
-  ]);
+export async function storeRobots(store: Pick<Store, "id" | "slug" | "seo">): Promise<string> {
+  return renderRobots(await storeGroups(store), [`${siteUrl()}${storeSitemapPath(store.slug)}`]);
 }
 
 const xml = (value: string) =>
@@ -373,7 +386,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   const store = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   if (!store) return null;
   const origin = siteUrl();
-  const products = await listIndexedProducts(store.id);
+  const [products, pages] = await Promise.all([listIndexedProducts(store.id), listPublishedPages(store.id)]);
   const base = `${origin}${storeBase(store.slug)}`;
 
   const entry = (
@@ -410,6 +423,14 @@ export async function storeSitemap(slug: string): Promise<string | null> {
         entry(version.href, versions, { lastmod: product.updatedAt, images: product.images.slice(0, 5) }),
       );
     }),
+    // Its pages (D54) open to search engines, in every market; the front page is the markets' own address.
+    ...pages
+      .filter((page) => page.content.searchEngines && page.id !== store.frontPageId)
+      .flatMap((page) => {
+        const versions = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/${page.slug}` }));
+        const image = page.content.thumbnail ? [page.content.thumbnail.url] : [];
+        return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image }));
+      }),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
 }
@@ -467,10 +488,11 @@ export async function storeLlms(slug: string): Promise<string | null> {
   const origin = siteUrl();
   const m = t(market.lang);
   const home = (code: string) => `${origin}${marketPath(store.slug, code.toLowerCase())}`;
-  const [products, indexed, shipping] = await Promise.all([
+  const [products, indexed, shipping, pages] = await Promise.all([
     listProducts(store.id, market.code, market.locale),
     listIndexedProducts(store.id),
     Promise.all(store.markets.map((mk) => getShippingFacts(store.id, mk.code))),
+    listPublishedPages(store.id),
   ]);
   const byHandle = new Map(indexed.map((p) => [p.handle, p]));
   const money = (minor: number, currency: string) => formatMoney(minor, currency, "en-GB");
@@ -509,6 +531,16 @@ export async function storeLlms(slug: string): Promise<string | null> {
             note: [price, description].filter(Boolean).join(". "),
           };
         }),
+      },
+      {
+        // Its own pages open to AI assistants (D54), in the first market's language.
+        heading: "Pages",
+        links: pages
+          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId)
+          .map((page) => {
+            const c = localizePage(page.content, market.locale);
+            return { title: c.title, url: `${home(market.code)}/${page.slug}`, note: c.seo.description || pageExcerpt(c, 200) };
+          }),
       },
       {
         heading: "Optional",

@@ -209,7 +209,9 @@ of running `playwright install`.
   written in its main language with texts in its other languages over it
   (D55, `src/lib/page-translation.ts`: `mapTexts()` lists every text, so a
   new block's texts go there too; `localizePage()` on the site; the builder's
-  `translate` mode). New block kinds go in `PageBlock`, `pageInput`,
+  `translate` mode). New stores get the template's published pages and front
+  page (`clone_store()`, D56); store builders also offer Kaizen's saved parts
+  as a read-only library (`library`). New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
 - Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):

@@ -6,7 +6,6 @@ import { PageEditLink } from "@/components/page-edit-link";
 import { ProductCard } from "@/components/product-card";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
-import { pageExcerpt } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
@@ -36,11 +35,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { store, market } = loaded;
   const c = localizePage(loaded.frontPage.content, market.locale);
   const title = c.seo.title || store.seo.title[market.locale] || store.name;
+  // The page's own description, else the store's (the start of a front page's text rarely describes the store).
   const description =
-    c.seo.description ||
-    store.seo.description[market.locale] ||
-    pageExcerpt(c) ||
-    t(market.lang).storeSummary(store.name, market.name);
+    c.seo.description || store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
   return {
     ...(c.seo.title && { title: { absolute: c.seo.title } }),
     description,

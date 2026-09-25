@@ -64,6 +64,7 @@ export function PageEditor({
   page,
   notice = null,
   savedParts,
+  library = [],
   terms: initialTerms,
   context,
 }: {
@@ -72,6 +73,8 @@ export function PageEditor({
   notice?: string | null;
   /** The owner's saved rows, columns and components, for the builder's Saved tab (D46). */
   savedParts: SavedPart[];
+  /** Kaizen's saved parts as a starter library, on a store's pages (D56). */
+  library?: SavedPart[];
   /** The owner's page categories and tags (D50). */
   terms: Term[];
   context: PageOwnerContext;
@@ -188,6 +191,7 @@ export function PageEditor({
         onRows={changeRows}
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
         saved={savedParts}
+        library={library}
         upload={upload}
         grid={{ pageId: saved?.id ?? null, owner: context.owner, pageTerms: terms, stores: context.gridStores, actions }}
         aside={

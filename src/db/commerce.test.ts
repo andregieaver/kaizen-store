@@ -1009,6 +1009,53 @@ describe("pages", () => {
     });
   });
 
+  it("copies a store's published pages and its front page to stores made from it, with their categories (D53-D55)", async () => {
+    const template = await createStore("pages-template", ["NO"]);
+    const { id: category } = await one<{ id: string }>(
+      "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'page', 'category', 'Help', 'help') returning id",
+      [template],
+    );
+    const content = (slug: string) =>
+      JSON.stringify({
+        title: slug,
+        categories: [category],
+        rows: [{ columns: [{ blocks: [{ type: "contentGrid", categories: [category], source: { type: "products", storeId: template } }] }] }],
+        translations: { "sv-SE": { title: `${slug} på svenska` } },
+      });
+    const insert = (slug: string, published: boolean) =>
+      one<{ id: string }>(
+        `insert into commerce.pages (store_id, slug, draft, published, published_at)
+         values ($1, $2, $3, case when $4 then $3::jsonb end, case when $4 then now() end) returning id`,
+        [template, slug, content(slug), published],
+      );
+    const front = await insert("front", true);
+    await insert("about", true);
+    await insert("draft-only", false);
+    await db.query("update commerce.stores set front_page_id = $1 where id = $2", [front.id, template]);
+    const owner = await createAccount("pages-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'pages-copy', 'Copy', $2) as id", [template, owner]);
+
+    const { rows } = await db.query<{ id: string; slug: string; published: { categories: string[]; rows: unknown[]; translations: unknown } }>(
+      "select id, slug, published from commerce.pages where store_id = $1 order by slug",
+      [copy],
+    );
+    // Published pages only, published in the copy.
+    expect(rows.map((r) => r.slug)).toEqual(["about", "front"]);
+    const { id: copiedCategory } = await one<{ id: string }>(
+      "select id from commerce.terms where store_id = $1 and content_type = 'page' and slug = 'help'",
+      [copy],
+    );
+    const about = rows[0].published;
+    expect(about.categories).toEqual([copiedCategory]);
+    expect(about.rows).toEqual([
+      { columns: [{ blocks: [{ type: "contentGrid", categories: [copiedCategory], source: { type: "products", storeId: copy } }] }] },
+    ]);
+    expect(about.translations).toEqual({ "sv-SE": { title: "about på svenska" } });
+    expect((await one<{ front_page_id: string }>("select front_page_id from commerce.stores where id = $1", [copy])).front_page_id).toBe(
+      rows[1].id,
+    );
+  });
+
   it("removes a page's redirects with the page", async () => {
     const { id } = await page("gone-soon");
     await publish(id);

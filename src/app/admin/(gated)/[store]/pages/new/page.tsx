@@ -11,15 +11,17 @@ export const metadata: Metadata = { title: "New page" };
 
 export default async function NewStorePagePage({ params }: PageProps<"/admin/[store]/pages/new">) {
   const { store } = await requireMember((await params).store);
-  const [saved, terms] = await Promise.all([
+  const [saved, library, terms] = await Promise.all([
     listSavedParts(store.id),
+    // Kaizen's saved parts, to start from (D56).
+    listSavedParts(null),
     listTerms({ storeId: store.id, contentType: "page" }),
   ]);
   return (
     <>
       {/* Only for screen readers: the title is in the editor, and Pages is in the menu. */}
       <h1 className="sr-only">New page</h1>
-      <PageEditor page={null} savedParts={saved} terms={terms} context={storePageContext(store)} />
+      <PageEditor page={null} savedParts={saved} library={library} terms={terms} context={storePageContext(store)} />
     </>
   );
 }

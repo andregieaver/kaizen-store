@@ -43,3 +43,13 @@ test("a store page reads in the market's language where it is translated, else i
   await page.goto("/s/demo/dk/om-oss");
   await expect(page.getByText("Vi selger ting for hjem og kontor.")).toBeVisible();
 });
+
+test("the store opens with its front page, a content grid of its products, at the market's own address", async ({ page }) => {
+  await page.goto("/s/demo/se");
+  await expect(page.getByRole("heading", { level: 1, name: "Produkter" })).toBeVisible();
+  const tote = page.getByRole("listitem").filter({ has: page.getByRole("heading", { level: 2, name: "Demo: Tygkasse i canvas" }) });
+  await expect(tote).toContainText("inkl. moms");
+  // The page's own address leads to the front page.
+  await page.goto("/s/demo/se/forside");
+  await expect(page).toHaveURL("/s/demo/se");
+});

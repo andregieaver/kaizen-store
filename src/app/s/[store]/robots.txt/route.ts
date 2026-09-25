@@ -9,5 +9,5 @@ import { getOpenStore } from "@/server/stores";
 export async function GET(_request: Request, { params }: RouteContext<"/s/[store]/robots.txt">) {
   const store = await getOpenStore((await params).store);
   if (!store) return new Response("Not found", { status: 404 });
-  return new Response(storeRobots(store), { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+  return new Response(await storeRobots(store), { headers: { "Content-Type": "text/plain; charset=utf-8" } });
 }

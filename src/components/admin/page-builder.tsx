@@ -311,10 +311,13 @@ export function PageBuilder({
   aside,
   grid,
   translate = null,
+  library = [],
 }: {
   rows: PageRow[];
   onRows: Rows;
   grid: GridContext;
+  /** Kaizen's saved parts, for a store's pages: a starter library to copy from, not to change (D56). */
+  library?: SavedPart[];
   /** Set while the page's texts are translated (D55). */
   translate?: Translating | null;
   /** Uploads a picture, shrunk in the browser first; null where uploads are not set up. */
@@ -334,6 +337,8 @@ export function PageBuilder({
   const [lastColumn, setLastColumn] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [parts, setParts] = useState<SavedPart[]>(saved);
+  /** A saved part by id: the owner's, or one from Kaizen's library. */
+  const findPart = (id: string) => parts.find((p) => p.id === id) ?? library.find((p) => p.id === id);
   const [tab, setTab] = useState<Tab>("components");
   const blockCount = pageBlocks({ rows }).length;
   const blocksFull = blockCount >= BLOCKS_MAX;
@@ -360,9 +365,10 @@ export function PageBuilder({
 
   /** Puts a copy of a saved part on the page: a row at `index`, a column into a row (or a row of its own), a block into a column. */
   const placeSaved = (
-    part: SavedPart,
+    saved: SavedPart,
     place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number } = {},
   ) => {
+    const part = library.includes(saved) ? forStore(saved) : saved;
     if (part.kind === "row") {
       // A saved part's custom ids come along unless the page already uses them (D48).
       const row = copyRow(part.content, newId, htmlIds(rows));
@@ -414,7 +420,7 @@ export function PageBuilder({
     const after = below(end, over);
 
     if (from.kind === "saved") {
-      const part = parts.find((p) => p.id === from.partId);
+      const part = findPart(from.partId);
       if (!part) return;
       if (part.kind === "row") {
         const index =
@@ -539,7 +545,9 @@ export function PageBuilder({
           onAddRow={(layout) => addRow(layout)}
           onAddBlock={(type) => addBlock(type, lastColumn)}
           parts={parts}
+          library={library}
           onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
+          onUseLibrary={(part) => placeSaved(part)}
           rowsFull={rowsFull}
           blocksFull={blocksFull}
         />
@@ -559,7 +567,7 @@ export function PageBuilder({
         ) : dragging?.kind === "block" ? (
           <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
         ) : dragging?.kind === "saved" ? (
-          <SavedTile part={parts.find((p) => p.id === dragging.partId) ?? null} lifted />
+          <SavedTile part={findPart(dragging.partId) ?? null} lifted />
         ) : dragging?.kind === "column" ? (
           <ColumnPreview column={rows.flatMap((r) => r.columns).find((c) => c.id === dragging.columnId) ?? null} />
         ) : null}
@@ -603,7 +611,9 @@ function Sidebar({
   onAddRow,
   onAddBlock,
   parts,
+  library,
   onOpenSaved,
+  onUseLibrary,
   rowsFull,
   blocksFull,
 }: {
@@ -612,7 +622,9 @@ function Sidebar({
   onAddRow: (layout: RowLayout) => void;
   onAddBlock: (type: BlockType) => void;
   parts: SavedPart[];
+  library: SavedPart[];
   onOpenSaved: (partId: string) => void;
+  onUseLibrary: (part: SavedPart) => void;
   rowsFull: boolean;
   blocksFull: boolean;
 }) {
@@ -698,7 +710,12 @@ function Sidebar({
               </div>
             </>
           )}
-          {t.key === "saved" && <SavedList parts={parts} onOpen={onOpenSaved} />}
+          {t.key === "saved" && (
+            <>
+              <SavedList parts={parts} onOpen={onOpenSaved} />
+              {library.length > 0 && <LibraryList parts={library} onUse={onUseLibrary} />}
+            </>
+          )}
           {t.key === "layers" && <p className="text-sm text-muted">Coming soon.</p>}
         </div>
       ))}
@@ -800,8 +817,58 @@ function SavedList({ parts, onOpen }: { parts: SavedPart[]; onOpen: (partId: str
   );
 }
 
+/**
+ * Kaizen's saved parts in a store's builder (D56): a starter library. Each
+ * is dragged onto the page, or pressed to add it where the last work was;
+ * the store gets a copy and the library stays as it is.
+ */
+function LibraryList({ parts, onUse }: { parts: SavedPart[]; onUse: (part: SavedPart) => void }) {
+  return (
+    <section aria-labelledby="library-heading" className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
+      <div>
+        <h3 id="library-heading" className="text-sm font-medium">
+          Kaizen&apos;s library
+        </h3>
+        <p className="text-xs text-muted">Ready-made parts to start from. Drag one onto the page, or press it to add a copy.</p>
+      </div>
+      {(["row", "column", "block"] as const).map((kind) => {
+        const own = parts.filter((p) => p.kind === kind);
+        if (own.length === 0) return null;
+        return (
+          <section key={kind} aria-label={`Library ${SAVED_KIND_LABELS[kind].many.toLowerCase()}`} className="flex flex-col gap-2">
+            <h4 className="text-xs font-medium tracking-wide text-muted uppercase">{SAVED_KIND_LABELS[kind].many}</h4>
+            <ul className="flex flex-col gap-1">
+              {own.map((part) => (
+                <li key={part.id}>
+                  <SavedItem part={part} onOpen={() => onUse(part)} action="add a copy" />
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </section>
+  );
+}
+
+/**
+ * A part from Kaizen's library made fit for a store's page (D56): its
+ * content grids show the store's own products and drop Kaizen's categories
+ * and tags, which are not the store's.
+ */
+function forStore(part: SavedPart): SavedPart {
+  const block = (b: PageBlock): PageBlock =>
+    b.type === "contentGrid"
+      ? { ...b, source: b.source.type === "products" ? { type: "products" } : b.source, categories: [], tags: [] }
+      : b;
+  const column = (c: PageColumn): PageColumn => ({ ...c, blocks: c.blocks.map(block) });
+  if (part.kind === "block") return { ...part, content: block(part.content) };
+  if (part.kind === "column") return { ...part, content: column(part.content) };
+  return { ...part, content: { ...part.content, columns: part.content.columns.map(column) } };
+}
+
 /** A saved part: the pointer drags it onto the page; pressing it (mouse or keyboard) opens it. */
-function SavedItem({ part, onOpen }: { part: SavedPart; onOpen: () => void }) {
+function SavedItem({ part, onOpen, action = "open to change or add" }: { part: SavedPart; onOpen: () => void; action?: string }) {
   const { setNodeRef, listeners, isDragging } = useDraggable({
     id: `saved:${part.id}`,
     data: { kind: "saved", partId: part.id, part: part.kind } satisfies DragData,
@@ -812,7 +879,7 @@ function SavedItem({ part, onOpen }: { part: SavedPart; onOpen: () => void }) {
       type="button"
       onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
       onClick={onOpen}
-      aria-label={`${part.name}, saved ${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: open to change or add`}
+      aria-label={`${part.name}, saved ${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: ${action}`}
       className={`w-full touch-none text-left ${isDragging ? "opacity-40" : ""}`}
     >
       <SavedTile part={part} />
