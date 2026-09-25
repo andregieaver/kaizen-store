@@ -162,7 +162,6 @@ export function PageEditor({
       <PageBuilder
         rows={content.rows}
         onRows={changeRows}
-        page={{ title: content.title, thumbnail: content.thumbnail }}
         aside={
           <>
             <section aria-label="Title and address" className={card}>
@@ -450,7 +449,7 @@ function ThumbnailField({
         <h2 id="thumbnail-heading" className="font-medium">
           Picture
         </h2>
-        <p className="text-sm text-muted">At the top of the page and when it is shared. Wide pictures work best.</p>
+        <p className="text-sm text-muted">Shown when the page is shared, and in lists. Wide pictures work best.</p>
       </div>
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture

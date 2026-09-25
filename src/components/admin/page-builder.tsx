@@ -39,7 +39,6 @@ import {
   type PageBlock,
   type PageColumn,
   type PageRow,
-  type PageThumbnail,
   type RowLayout,
 } from "@/lib/page-content";
 import {
@@ -50,7 +49,7 @@ import {
   insertBlock,
   insertRow,
   moveBlock,
-  moveColumn,
+  moveColumnTo,
   moveRow,
   newBlock,
   newRow,
@@ -67,7 +66,7 @@ import { RichTextEditor } from "./rich-text-editor";
 /**
  * The page builder (D43, D44): a left sidebar with tabs (components, rows,
  * and two for later), the canvas, and the page's own settings on the right.
- * The canvas shows the page as the site will, with its title and picture:
+ * The canvas shows the page's rows as the site will:
  * pointing at (or tapping) a row, column or block outlines it and shows its
  * tools, to drag, edit, duplicate or delete it. Rich text is edited in a
  * dialog. Rows are dragged from the sidebar onto the canvas and components
@@ -97,7 +96,8 @@ const movesRows = (data: DragData | null) => data?.kind === "palette-row" || dat
 
 /**
  * Rows land between rows; components and blocks land in columns, before or
- * after a block; a column moves among its own row's columns.
+ * after a block; a column lands beside another column, in any row, or last
+ * in the row it is dropped on.
  */
 const collision: CollisionDetection = (args) => {
   const active = dataOf(args.active);
@@ -105,23 +105,29 @@ const collision: CollisionDetection = (args) => {
     const data = container.data.current as DragData | undefined;
     if (container.id === args.active.id || !data) return false;
     if (movesRows(active)) return data.kind === "row" || data.kind === "canvas-end";
-    if (active?.kind === "column") return data.kind === "column" && data.rowId === active.rowId;
+    if (active?.kind === "column") return data.kind === "column" || data.kind === "row";
     return data.kind === "block" || data.kind === "column";
   });
   const within = pointerWithin({ ...args, droppableContainers: targets });
   if (within.length > 0) {
-    // Over a block inside a column: the block says where, not the column.
-    const block = within.find((hit) => (hit.data?.droppableContainer.data.current as DragData | undefined)?.kind === "block");
-    return block ? [block] : within;
+    // The innermost says where: a block rather than its column, a column rather than its row.
+    const kindOf = (hit: (typeof within)[number]) => (hit.data?.droppableContainer.data.current as DragData | undefined)?.kind;
+    for (const kind of ["block", "column", "row"] as const) {
+      const hit = within.find((h) => kindOf(h) === kind);
+      if (hit) return [hit];
+    }
+    return within;
   }
   return closestCenter({ ...args, droppableContainers: targets });
 };
 
-/** Whether the dragged item's middle is below the middle of what it is over. */
-function below(active: Active, over: Over): boolean {
+/** Whether the dragged item's middle is below (or, for columns, right of) the middle of what it is over. */
+function below(active: Active, over: Over, axis: "y" | "x" = "y"): boolean {
   const rect = active.rect.current.translated;
   if (!rect) return false;
-  return rect.top + rect.height / 2 > over.rect.top + over.rect.height / 2;
+  return axis === "y"
+    ? rect.top + rect.height / 2 > over.rect.top + over.rect.height / 2
+    : rect.left + rect.width / 2 > over.rect.left + over.rect.width / 2;
 }
 
 const blockLabels: Record<BlockType, string> = { richText: "Rich text" };
@@ -148,13 +154,10 @@ type Actions = {
 export function PageBuilder({
   rows,
   onRows,
-  page,
   aside,
 }: {
   rows: PageRow[];
   onRows: Rows;
-  /** The page's title and picture, shown above the rows as on the site. */
-  page: { title: string; thumbnail: PageThumbnail | null };
   aside: ReactNode;
 }) {
   const sensors = useSensors(
@@ -192,8 +195,17 @@ export function PageBuilder({
 
   const onDragMove = ({ active, over }: DragMoveEvent) => {
     const data = dataOf(over);
-    const next =
-      over && (data?.kind === "row" || data?.kind === "block") ? { id: String(over.id), after: below(active, over) } : null;
+    const from = dataOf(active);
+    // A column shows where it lands beside another row's columns; in its own row they make room.
+    const next = !over
+      ? null
+      : from?.kind === "column"
+        ? data?.kind === "column" && data.rowId !== from.rowId
+          ? { id: String(over.id), after: below(active, over, "x") }
+          : null
+        : data?.kind === "row" || data?.kind === "block"
+          ? { id: String(over.id), after: below(active, over) }
+          : null;
     setTarget((current) => (current?.id === next?.id && current?.after === next?.after ? current : next));
   };
 
@@ -216,10 +228,19 @@ export function PageBuilder({
     }
 
     if (from.kind === "column") {
-      if (to.kind !== "column" || to.rowId !== from.rowId) return;
-      const row = rows.find((r) => r.id === from.rowId);
+      // Onto a row, outside its columns: last in that row.
+      if (to.kind === "row") {
+        const row = rows.find((r) => r.id === to.rowId);
+        if (row) onRows((current) => moveColumnTo(current, from.columnId, row.id, row.columns.length));
+        return;
+      }
+      if (to.kind !== "column") return;
+      const row = rows.find((r) => r.id === to.rowId);
       const index = row?.columns.findIndex((c) => c.id === to.columnId) ?? -1;
-      if (index >= 0) onRows((current) => moveColumn(current, from.columnId, index));
+      if (!row || index < 0) return;
+      // In its own row a column takes the place of the one it is over; elsewhere it goes beside it.
+      const place = to.rowId === from.rowId ? index : index + (below(active, over, "x") ? 1 : 0);
+      onRows((current) => moveColumnTo(current, from.columnId, row.id, place));
       return;
     }
 
@@ -295,7 +316,7 @@ export function PageBuilder({
           blocksFull={blocksFull}
         />
 
-        <Canvas rows={rows} page={page} dragging={dragging} target={target} actions={actions} />
+        <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
 
         {/* On phones the title and settings come first. */}
         <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">{aside}</div>
@@ -308,6 +329,8 @@ export function PageBuilder({
           <Tile label={blockLabels[dragging.type]} preview={<TextIcon />} lifted />
         ) : dragging?.kind === "block" ? (
           <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
+        ) : dragging?.kind === "column" ? (
+          <ColumnPreview column={rows.flatMap((r) => r.columns).find((c) => c.id === dragging.columnId) ?? null} />
         ) : null}
       </DragOverlay>
 
@@ -495,6 +518,21 @@ function BlockPreview({ block }: { block: PageBlock | null }) {
   );
 }
 
+/** A column on its way to another place: how many blocks it takes, and the start of its text. */
+function ColumnPreview({ column }: { column: PageColumn | null }) {
+  if (!column) return null;
+  const text = column.blocks.map((b) => richTextPlain(b.doc)).join(" ").replace(/\s+/g, " ").trim();
+  const count = column.blocks.length;
+  return (
+    <div className="w-64 rounded-md border-2 border-dashed border-blue-600 bg-background p-3 shadow-xl">
+      <p className="text-xs text-muted">
+        Column · {count === 1 ? "1 component" : `${count} components`}
+      </p>
+      <p className="truncate text-sm">{text || "Empty"}</p>
+    </div>
+  );
+}
+
 function TextIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 font-serif text-lg text-background">
@@ -515,13 +553,11 @@ function TextIcon() {
  */
 function Canvas({
   rows,
-  page,
   dragging,
   target,
   actions,
 }: {
   rows: PageRow[];
-  page: { title: string; thumbnail: PageThumbnail | null };
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
   actions: Actions;
@@ -540,19 +576,6 @@ function Canvas({
         Content
       </h2>
       <div className="flex flex-col gap-8">
-        <p aria-hidden className="text-4xl font-semibold tracking-tight text-balance">
-          {page.title || <span className="text-muted">Title</span>}
-        </p>
-        {page.thumbnail && (
-          // eslint-disable-next-line @next/next/no-img-element -- the page's picture, as the site shows it
-          <img
-            src={page.thumbnail.url}
-            alt=""
-            width={page.thumbnail.width}
-            height={page.thumbnail.height}
-            className="h-auto w-full rounded-lg bg-surface object-cover"
-          />
-        )}
         <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
           <ol className="flex flex-col gap-8">
             {rows.map((row, index) => (
@@ -590,15 +613,13 @@ function CanvasEnd({ empty, active }: { empty: boolean; active: boolean }) {
   );
 }
 
-/** Where a dragged row or block will land. */
-function Line({ at }: { at: "before" | "after" | null }) {
+/** Where a dragged row or block will land, or (`vertical`) a column beside the columns of a row. */
+function Line({ at, vertical = false }: { at: "before" | "after" | null; vertical?: boolean }) {
   if (!at) return null;
-  return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute inset-x-0 z-30 h-1 rounded-full bg-blue-600 ${at === "before" ? "-top-3" : "-bottom-3"}`}
-    />
-  );
+  const place = vertical
+    ? `inset-y-0 w-1 ${at === "before" ? "-left-[18px]" : "-right-[18px]"}`
+    : `inset-x-0 h-1 ${at === "before" ? "-top-3" : "-bottom-3"}`;
+  return <span aria-hidden className={`pointer-events-none absolute z-30 rounded-full bg-blue-600 ${place}`} />;
 }
 
 const toolClass =
@@ -764,6 +785,7 @@ function ColumnItem({
   });
   const droppingBlock = dragging?.kind === "palette-block" || dragging?.kind === "block";
   const remove = () => actions.onRows((rows) => removeColumn(rows, column.id));
+  const columnLine = target?.id === `column:${column.id}` ? (target.after ? "after" : "before") : null;
   // A block from its own column shows its new place by moving; anything else by a line.
   const line = (blockId: string) =>
     target?.id === blockId && !(dragging?.kind === "block" && dragging.columnId === column.id)
@@ -782,7 +804,7 @@ function ColumnItem({
       onFocusCapture={() => actions.onColumn(column.id)}
       onPointerDownCapture={() => actions.onColumn(column.id)}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`-my-2 flex min-w-0 flex-col gap-6 rounded-sm py-2 ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""} ${
+      className={`-my-2 flex min-w-0 flex-col gap-6 rounded-sm py-2 ${isDragging ? "opacity-40" : ""} ${
         droppingBlock && isOver ? "bg-blue-50 dark:bg-blue-950" : ""
       }`}
     >
@@ -809,6 +831,7 @@ function ColumnItem({
         }
         deleteDisabled={count <= 1}
       />
+      <Line at={columnLine} vertical />
       <SortableContext items={column.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
         {column.blocks.map((block, index) => (
           <BlockItem

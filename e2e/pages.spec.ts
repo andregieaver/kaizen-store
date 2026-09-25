@@ -81,7 +81,8 @@ test("a published page shows in Kaizen's header and footer; a draft does not sho
 
   await page.goto(`/${live}`);
   await expect(page).toHaveTitle("About Kaizen · Kaizen");
-  await expect(page.getByRole("heading", { level: 1, name: "About Kaizen" })).toBeVisible();
+  // The title is the page's heading for screen readers and search engines, not shown (D45).
+  await expect(page.getByRole("heading", { level: 1, name: "About Kaizen" })).toBeAttached();
   await expect(page.getByRole("heading", { level: 2, name: "Who we are" })).toBeVisible();
   // The row's two columns sit side by side on a computer, the second one narrower.
   const main = await page.getByText("We make online stores.").boundingBox();

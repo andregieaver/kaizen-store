@@ -1,26 +1,18 @@
-import Image from "next/image";
 import type { CSSProperties } from "react";
 
 import { ROW_LAYOUTS, type PageContent, type PageRow } from "@/lib/page-content";
 
 import { hasContent, RichText } from "./rich-text";
 
-/** A page's title, picture and rows (D42, D43): on the site, and in the admin's preview of a draft. */
+/**
+ * A page's rows (D42, D43): on the site, and in the admin's preview of a
+ * draft. Only the rows show (D45); the title is the page's heading for
+ * screen readers and search engines, and the picture is for sharing.
+ */
 export function PageArticle({ content }: { content: PageContent }) {
   return (
     <article className="flex flex-col gap-8">
-      <h1 className="text-4xl font-semibold tracking-tight text-balance">{content.title}</h1>
-      {content.thumbnail && (
-        <Image
-          src={content.thumbnail.url}
-          alt={content.thumbnail.alt}
-          width={content.thumbnail.width}
-          height={content.thumbnail.height}
-          unoptimized
-          priority
-          className="h-auto w-full rounded-lg bg-surface object-cover"
-        />
-      )}
+      <h1 className="sr-only">{content.title}</h1>
       {content.rows.filter(rowHasContent).map((row) => (
         <Row key={row.id} row={row} />
       ))}

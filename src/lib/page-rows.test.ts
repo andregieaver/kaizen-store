@@ -11,6 +11,7 @@ import {
   insertRow,
   moveBlock,
   moveColumn,
+  moveColumnTo,
   moveRow,
   newBlock,
   newRow,
@@ -115,5 +116,41 @@ describe("duplicating and columns", () => {
   it("moves a column within its row", () => {
     const { rows, left } = filled();
     expect(text(moveColumn(rows, left, 1)[0])).toEqual([["r"], ["l"]]);
+  });
+});
+
+describe("moving a column to another row", () => {
+  const two = () => {
+    let rows = [newRow("left-sidebar", id), newRow("2", id)];
+    rows = insertBlock(rows, rows[0].columns[1].id, { ...newBlock("richText", id), id: "a" }, 0);
+    rows = insertBlock(rows, rows[0].columns[1].id, { ...newBlock("richText", id), id: "b" }, 1);
+    return rows;
+  };
+
+  it("takes its blocks along and divides both rows evenly", () => {
+    const rows = two();
+    const moving = rows[0].columns[1].id;
+    const next = moveColumnTo(rows, moving, rows[1].id, 1);
+    expect(next[0].layout).toBe("1");
+    expect(next[1].layout).toBe("3");
+    expect(text(next[1])).toEqual([[], ["a", "b"], []]);
+  });
+
+  it("removes the row it left when that was its only column", () => {
+    let rows = [newRow("1", id), newRow("3", id)];
+    rows = insertBlock(rows, rows[0].columns[0].id, { ...newBlock("richText", id), id: "x" }, 0);
+    const next = moveColumnTo(rows, rows[0].columns[0].id, rows[1].id, 99);
+    expect(next).toHaveLength(1);
+    expect(next[0].layout).toBe("4");
+    expect(text(next[0])[3]).toEqual(["x"]);
+  });
+
+  it("refuses a row with six columns, and keeps the layout within its own row", () => {
+    const rows = [newRow("1", id), newRow("6", id)];
+    expect(moveColumnTo(rows, rows[0].columns[0].id, rows[1].id, 0)).toBe(rows);
+    const own = two();
+    const moved = moveColumnTo(own, own[0].columns[1].id, own[0].id, 0);
+    expect(moved[0].layout).toBe("left-sidebar");
+    expect(text(moved[0])).toEqual([["a", "b"], []]);
   });
 });

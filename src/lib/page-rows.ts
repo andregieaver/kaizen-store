@@ -180,3 +180,31 @@ export function moveColumn(rows: PageRow[], columnId: string, to: number): PageR
   columns.splice(clamp(to, columns.length), 0, column);
   return rows.map((r) => (r.id === found.row.id ? { ...r, columns } : r));
 }
+
+/**
+ * Moves a column, with all its blocks, to `index` among another row's
+ * columns (or its own: then as `moveColumn`, keeping the layout). The
+ * target row's columns become equal, one more of them; the row it left
+ * becomes equal with one fewer, or goes if that was its only column. A row
+ * already holding six columns takes no more.
+ */
+export function moveColumnTo(rows: PageRow[], columnId: string, rowId: string, index: number): PageRow[] {
+  const found = findColumn(rows, columnId);
+  const target = rows.find((r) => r.id === rowId);
+  if (!found || !target) return rows;
+  if (found.row.id === rowId) return moveColumn(rows, columnId, index);
+  if (target.columns.length >= 6) return rows;
+  const column = found.row.columns[found.index];
+  return rows.flatMap((row) => {
+    if (row.id === found.row.id) {
+      const columns = row.columns.filter((c) => c.id !== columnId);
+      return columns.length === 0 ? [] : [{ ...row, layout: equalLayout(columns.length), columns }];
+    }
+    if (row.id === rowId) {
+      const columns = [...row.columns];
+      columns.splice(clamp(index, columns.length), 0, column);
+      return [{ ...row, layout: equalLayout(columns.length), columns }];
+    }
+    return [row];
+  });
+}
