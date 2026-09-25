@@ -121,13 +121,24 @@ const collision: CollisionDetection = (args) => {
   return closestCenter({ ...args, droppableContainers: targets });
 };
 
-/** Whether the dragged item's middle is below (or, for columns, right of) the middle of what it is over. */
-function below(active: Active, over: Over, axis: "y" | "x" = "y"): boolean {
-  const rect = active.rect.current.translated;
-  if (!rect) return false;
-  return axis === "y"
-    ? rect.top + rect.height / 2 > over.rect.top + over.rect.height / 2
-    : rect.left + rect.width / 2 > over.rect.left + over.rect.width / 2;
+type Move = { active: Active; over: Over | null; activatorEvent: Event; delta: { x: number; y: number } };
+
+/**
+ * Whether the pointer is below (or, for columns, right of) the middle of
+ * what it is over. Dragged with the keyboard, there is no pointer: the
+ * dragged item's middle counts instead.
+ */
+function below({ active, activatorEvent, delta }: Move, over: Over, axis: "y" | "x" = "y"): boolean {
+  let point: { x: number; y: number } | null = null;
+  if ("clientX" in activatorEvent && typeof activatorEvent.clientX === "number") {
+    const start = activatorEvent as PointerEvent;
+    point = { x: start.clientX + delta.x, y: start.clientY + delta.y };
+  } else {
+    const rect = active.rect.current.translated;
+    if (rect) point = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+  if (!point) return false;
+  return axis === "y" ? point.y > over.rect.top + over.rect.height / 2 : point.x > over.rect.left + over.rect.width / 2;
 }
 
 const blockLabels: Record<BlockType, string> = { richText: "Rich text" };
@@ -193,7 +204,8 @@ export function PageBuilder({
     setDialog({ kind: "edit-block", blockId: block.id });
   };
 
-  const onDragMove = ({ active, over }: DragMoveEvent) => {
+  const onDragMove = (move: DragMoveEvent) => {
+    const { active, over } = move;
     const data = dataOf(over);
     const from = dataOf(active);
     // A column shows where it lands beside another row's columns; in its own row they make room.
@@ -201,21 +213,22 @@ export function PageBuilder({
       ? null
       : from?.kind === "column"
         ? data?.kind === "column" && data.rowId !== from.rowId
-          ? { id: String(over.id), after: below(active, over, "x") }
+          ? { id: String(over.id), after: below(move, over, "x") }
           : null
         : data?.kind === "row" || data?.kind === "block"
-          ? { id: String(over.id), after: below(active, over) }
+          ? { id: String(over.id), after: below(move, over) }
           : null;
     setTarget((current) => (current?.id === next?.id && current?.after === next?.after ? current : next));
   };
 
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
+  const onDragEnd = (end: DragEndEvent) => {
+    const { active, over } = end;
     setDragging(null);
     setTarget(null);
     const from = dataOf(active);
     const to = dataOf(over);
     if (!from || !to || !over) return;
-    const after = below(active, over);
+    const after = below(end, over);
 
     if (from.kind === "palette-row" || from.kind === "row") {
       const index =
@@ -239,7 +252,7 @@ export function PageBuilder({
       const index = row?.columns.findIndex((c) => c.id === to.columnId) ?? -1;
       if (!row || index < 0) return;
       // In its own row a column takes the place of the one it is over; elsewhere it goes beside it.
-      const place = to.rowId === from.rowId ? index : index + (below(active, over, "x") ? 1 : 0);
+      const place = to.rowId === from.rowId ? index : index + (below(end, over, "x") ? 1 : 0);
       onRows((current) => moveColumnTo(current, from.columnId, row.id, place));
       return;
     }
