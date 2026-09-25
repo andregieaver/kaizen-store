@@ -1,7 +1,11 @@
 import {
   EMPTY_DOC,
   ROW_LAYOUTS,
+  pageParts,
   type BlockType,
+  type ImageBlock,
+  type PartBase,
+  type RichTextBlock,
   type PageBlock,
   type PageColumn,
   type PageRow,
@@ -128,29 +132,46 @@ export function equalLayout(count: number): RowLayout {
   return String(Math.max(1, Math.min(6, count))) as RowLayout;
 }
 
-/** Copies with new ids throughout: for duplicating, and for putting a saved part on the page (D46). */
-export const copyBlock = (block: PageBlock, id: NewId): PageBlock => ({ ...structuredClone(block), id: id() });
-export const copyColumn = (column: PageColumn, id: NewId): PageColumn => ({
-  id: id(),
-  blocks: column.blocks.map((b) => copyBlock(b, id)),
-});
-export const copyRow = (row: PageRow, id: NewId): PageRow => ({
-  ...row,
-  id: id(),
-  columns: row.columns.map((c) => copyColumn(c, id)),
-});
+/** The custom ids (D48) used on the page, so that a copy does not take one again. */
+export function htmlIds(rows: PageRow[]): Set<string> {
+  return new Set(pageParts(rows).flatMap((part) => (part.htmlId ? [part.htmlId] : [])));
+}
+
+/** A part keeps its custom id only while no other part has it; the id is then taken. */
+function keepHtmlId<T extends PartBase>(part: T, taken: Set<string>): T {
+  if (!part.htmlId) return part;
+  if (!taken.has(part.htmlId)) {
+    taken.add(part.htmlId);
+    return part;
+  }
+  const rest = { ...part };
+  delete rest.htmlId;
+  return rest;
+}
+
+/**
+ * Copies with new ids throughout: for duplicating, and for putting a saved
+ * part on the page (D46). Custom ids in `taken` (the page's) are left out,
+ * since an id is used once on a page.
+ */
+export const copyBlock = (block: PageBlock, id: NewId, taken = new Set<string>()): PageBlock =>
+  keepHtmlId({ ...structuredClone(block), id: id() }, taken);
+export const copyColumn = (column: PageColumn, id: NewId, taken = new Set<string>()): PageColumn =>
+  keepHtmlId({ ...structuredClone(column), id: id(), blocks: column.blocks.map((b) => copyBlock(b, id, taken)) }, taken);
+export const copyRow = (row: PageRow, id: NewId, taken = new Set<string>()): PageRow =>
+  keepHtmlId({ ...structuredClone(row), id: id(), columns: row.columns.map((c) => copyColumn(c, id, taken)) }, taken);
 
 /** A copy of the row, with new ids throughout, right after it. */
 export function duplicateRow(rows: PageRow[], rowId: string, id: NewId): PageRow[] {
   const index = rows.findIndex((r) => r.id === rowId);
   if (index < 0) return rows;
-  return insertRow(rows, copyRow(rows[index], id), index + 1);
+  return insertRow(rows, copyRow(rows[index], id, htmlIds(rows)), index + 1);
 }
 
 /** A copy of the block right after it. */
 export function duplicateBlock(rows: PageRow[], blockId: string, id: NewId): PageRow[] {
   const place = findBlock(rows, blockId);
-  return place ? insertBlock(rows, place.columnId, copyBlock(place.block, id), place.index + 1) : rows;
+  return place ? insertBlock(rows, place.columnId, copyBlock(place.block, id, htmlIds(rows)), place.index + 1) : rows;
 }
 
 function findColumn(rows: PageRow[], columnId: string): { row: PageRow; index: number } | null {
@@ -175,7 +196,7 @@ export function duplicateColumn(rows: PageRow[], columnId: string, id: NewId): P
   const found = findColumn(rows, columnId);
   if (!found || found.row.columns.length >= 6) return rows;
   const columns = [...found.row.columns];
-  columns.splice(found.index + 1, 0, copyColumn(columns[found.index], id));
+  columns.splice(found.index + 1, 0, copyColumn(columns[found.index], id, htmlIds(rows)));
   return rows.map((r) => (r.id === found.row.id ? { ...r, layout: equalLayout(columns.length), columns } : r));
 }
 
@@ -238,23 +259,59 @@ export function insertColumn(rows: PageRow[], rowId: string, column: PageColumn,
   });
 }
 
-/** Where spacing is set: a row, a column or a block, by id. */
+/** A row, a column or a block, by id: what a settings dialog is for. */
 export type Styled = { kind: "row" | "column" | "block"; id: string };
 
-/** Gives a row, column or block its margin and padding (D47). */
+/** Settings that can be changed on a row, a column or a block (not what they hold). */
+export type RowPatch = Partial<Omit<PageRow, "id" | "type" | "layout" | "columns">>;
+export type ColumnPatch = Partial<Omit<PageColumn, "id" | "blocks">>;
+export type BlockPatch = Partial<Omit<RichTextBlock, "id" | "type" | "doc"> & Omit<ImageBlock, "id" | "type" | "image" | "caption">>;
+
+/** Merges settings in; one set to undefined or false is taken out, so the page stays as small as it can. */
+function merge<T extends object>(part: T, patch: object): T {
+  const next = { ...part, ...patch } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined || value === false) delete next[key];
+  }
+  return next as T;
+}
+
+export function patchRow(rows: PageRow[], rowId: string, patch: RowPatch): PageRow[] {
+  return rows.map((row) => (row.id === rowId ? merge(row, patch) : row));
+}
+
+export function patchColumn(rows: PageRow[], columnId: string, patch: ColumnPatch): PageRow[] {
+  return rows.map((row) =>
+    row.columns.some((c) => c.id === columnId)
+      ? { ...row, columns: row.columns.map((c) => (c.id === columnId ? merge(c, patch) : c)) }
+      : row,
+  );
+}
+
+export function patchBlock(rows: PageRow[], blockId: string, patch: BlockPatch): PageRow[] {
+  return updateBlock(rows, blockId, (block) => merge(block, patch));
+}
+
+/** The row, column or block a target names. */
+export function partOf(rows: PageRow[], target: Styled): PageRow | PageColumn | PageBlock | undefined {
+  if (target.kind === "block") return findBlock(rows, target.id)?.block;
+  if (target.kind === "row") return rows.find((r) => r.id === target.id);
+  return rows.flatMap((r) => r.columns).find((c) => c.id === target.id);
+}
+
+/** Changes the settings every part has: margin and padding, id and classes (D47, D48). */
+export function patchPart(rows: PageRow[], target: Styled, patch: Partial<PartBase>): PageRow[] {
+  if (target.kind === "block") return patchBlock(rows, target.id, patch);
+  if (target.kind === "row") return patchRow(rows, target.id, patch);
+  return patchColumn(rows, target.id, patch);
+}
+
+/** Gives a row, column or block its margin and padding (D47); none when both are left out. */
 export function setSpacing(rows: PageRow[], target: Styled, style: Spacing): PageRow[] {
-  if (target.kind === "block") return updateBlock(rows, target.id, (b) => ({ ...b, style }));
-  return rows.map((row) => {
-    if (target.kind === "row") return row.id === target.id ? { ...row, style } : row;
-    return row.columns.some((c) => c.id === target.id)
-      ? { ...row, columns: row.columns.map((c) => (c.id === target.id ? { ...c, style } : c)) }
-      : row;
-  });
+  return patchPart(rows, target, { style: style.margin || style.padding ? style : undefined });
 }
 
 /** The spacing a row, column or block has now. */
 export function spacingOf(rows: PageRow[], target: Styled): Spacing | undefined {
-  if (target.kind === "block") return findBlock(rows, target.id)?.block.style;
-  if (target.kind === "row") return rows.find((r) => r.id === target.id)?.style;
-  return rows.flatMap((r) => r.columns).find((c) => c.id === target.id)?.style;
+  return partOf(rows, target)?.style;
 }

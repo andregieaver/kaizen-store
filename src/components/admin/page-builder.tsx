@@ -25,7 +25,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useId, useState, useTransition, type CSSProperties, type PointerEventHandler, type ReactNode } from "react";
+import { useId, useState, useTransition, type PointerEventHandler, type ReactNode } from "react";
 
 import {
   createSavedPartAction,
@@ -34,17 +34,29 @@ import {
 } from "@/app/admin/(gated)/platform/pages/actions";
 
 import { PageBlockView } from "@/components/page-block";
+import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
 import {
   BLOCKS_MAX,
   ROW_LAYOUTS,
   ROW_LAYOUT_KEYS,
   ROWS_MAX,
+  HTML_ID_MAX,
+  IMAGE_SHAPES,
   SPACING_MAX,
   blockHasContent,
   blockText,
+  classNameProblem,
+  htmlIdProblem,
+  isLinkAddress,
   pageBlocks,
-  spacingStyle,
+  pageParts,
+  type Background,
   type BlockType,
+  type ColumnLink,
+  type ImageShape,
+  type PartBase,
+  type TextAlign,
+  type TextAlignments,
   type PageBlock,
   type PageColumn,
   type ImageBlock,
@@ -61,6 +73,7 @@ import {
   duplicateColumn,
   duplicateRow,
   findBlock,
+  htmlIds,
   insertBlock,
   insertColumn,
   insertRow,
@@ -73,9 +86,15 @@ import {
   removeColumn,
   removeRow,
   setRowLayout,
+  partOf,
+  patchBlock,
+  patchColumn,
+  patchPart,
+  patchRow,
   setSpacing,
   spacingOf,
   updateBlock,
+  type RowPatch,
   type Styled,
 } from "@/lib/page-rows";
 
@@ -252,15 +271,17 @@ export function PageBuilder({
     place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number } = {},
   ) => {
     if (part.kind === "row") {
-      if (!rowsFull) onRows((current) => insertRow(current, copyRow(part.content, newId), place.index ?? current.length));
+      // A saved part's custom ids come along unless the page already uses them (D48).
+      const row = copyRow(part.content, newId, htmlIds(rows));
+      if (!rowsFull) onRows((current) => insertRow(current, row, place.index ?? current.length));
     } else if (part.kind === "column") {
-      const column = copyColumn(part.content, newId);
+      const column = copyColumn(part.content, newId, htmlIds(rows));
       onRows((current) => {
         if (place.rowId) return insertColumn(current, place.rowId, column, place.columnIndex ?? Number.MAX_SAFE_INTEGER);
         return insertRow(current, { id: newId(), type: "row", layout: "1", columns: [column] }, current.length);
       });
     } else if (!blocksFull) {
-      const block = copyBlock(part.content, newId);
+      const block = copyBlock(part.content, newId, htmlIds(rows));
       const columnId = place.columnId === undefined ? lastColumn : place.columnId;
       onRows((current) => {
         if (columnId && current.some((r) => r.columns.some((c) => c.id === columnId))) {
@@ -942,8 +963,9 @@ function RowItem({
     id: row.id,
     data: { kind: "row", rowId: row.id } satisfies DragData,
   });
-  const widths = ROW_LAYOUTS[row.layout].widths;
   const remove = () => actions.onRows((rows) => removeRow(rows, row.id));
+  const box = rowBox(row, "canvas");
+  const grid = rowGrid(row);
 
   return (
     <li
@@ -952,7 +974,8 @@ function RowItem({
       tabIndex={0}
       aria-label={`${name}, ${ROW_LAYOUTS[row.layout].label.toLowerCase()}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`-m-4 p-4 ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
+      // A full-width row reaches the canvas's edges; its band for pointing is then above and below only.
+      className={`${row.width === "full" ? "-mx-6 -my-4 py-4" : "-m-4 p-4"} ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
     >
       <Tools
         label={name}
@@ -975,22 +998,23 @@ function RowItem({
       />
       <Line at={line} />
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
-        <div
-          style={{ ...spacingStyle(row.style), "--columns": widths.map((w) => `minmax(0, ${w}fr)`).join(" ") } as CSSProperties}
-          className="grid gap-8 md:[grid-template-columns:var(--columns)]"
-        >
-          {row.columns.map((column, index) => (
-            <ColumnItem
-              key={column.id}
-              column={column}
-              rowId={row.id}
-              name={`${name}, column ${index + 1}`}
-              count={row.columns.length}
-              dragging={dragging}
-              target={target}
-              actions={actions}
-            />
-          ))}
+        <div className={box.className} style={box.style}>
+          <PartBackground background={row.background} />
+          <div className={rowInnerClass(row, "canvas")}>
+            <div className={grid.className} style={grid.style}>
+              {row.columns.map((column, index) => (
+                <ColumnItem
+                  key={column.id}
+                  column={column}
+                  row={row}
+                  name={`${name}, column ${index + 1}`}
+                  dragging={dragging}
+                  target={target}
+                  actions={actions}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </SortableContext>
     </li>
@@ -999,21 +1023,22 @@ function RowItem({
 
 function ColumnItem({
   column,
-  rowId,
+  row,
   name,
-  count,
   dragging,
   target,
   actions,
 }: {
   column: PageColumn;
-  rowId: string;
+  row: PageRow;
   name: string;
-  count: number;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
   actions: Actions;
 }) {
+  const rowId = row.id;
+  const count = row.columns.length;
+  const box = columnBox(column, row, "canvas");
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `column:${column.id}`,
     data: { kind: "column", columnId: column.id, rowId } satisfies DragData,
@@ -1067,8 +1092,14 @@ function ColumnItem({
         deleteDisabled={count <= 1}
       />
       <Line at={columnLine} vertical />
-      {/* The column's own margin and padding, inside its band for pointing. */}
-      <div style={spacingStyle(column.style)} className="flex flex-col gap-6">
+      {/* The column itself, as the site draws it, inside its band for pointing. */}
+      <div className={box.className} style={box.style}>
+      <PartBackground background={column.background} />
+      {column.link && (
+        <span className="pointer-events-none absolute top-0 right-0 z-10 max-w-[80%] -translate-y-full truncate rounded-t bg-foreground/80 px-1.5 py-0.5 text-[11px] text-background">
+          Links to {column.link.href || "…"}
+        </span>
+      )}
       <SortableContext items={column.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
         {column.blocks.map((block, index) => (
           <BlockItem
@@ -1165,7 +1196,7 @@ function BlockItem({
         }
       />
       <Line at={line} />
-      <div style={spacingStyle(block.style)}>
+      <div className={blockBox(block, "canvas").className || undefined} style={blockBox(block, "canvas").style}>
         {blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (
@@ -1224,6 +1255,20 @@ function Dialogs({
   const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
   const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
+  const layoutChoice = (row: PageRow) => (
+    <LayoutChoice value={row.layout} onChange={(layout) => onRows((current) => setRowLayout(current, row.id, layout, newId))} />
+  );
+  /** The id and classes of the row, column or block a dialog is for (D48). */
+  const advancedFields = (target: Styled) => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    const others = new Set(
+      pageParts(rows).flatMap((p) => (p !== part && p.htmlId ? [p.htmlId.trim()] : [])),
+    );
+    return (
+      <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
+    );
+  };
   /** Margin and padding of the row, column or block a dialog is for (D47). */
   const spacingFields = (target: Styled) => (
     <SpacingFields
@@ -1249,18 +1294,30 @@ function Dialogs({
         wide
       >
         {block?.type === "richText" && (
-          <div className="flex flex-col gap-5">
-            <RichTextEditor
-              // A new block opens with nothing written; the editor starts from what is stored.
-              key={block.id}
-              value={block.doc}
-              onChange={(doc) =>
-                onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
-              }
-              label="Text"
-            />
-            {spacingFields({ kind: "block", id: block.id })}
-          </div>
+          <SettingsTabs
+            key={block.id}
+            general={
+              <RichTextEditor
+                // A new block opens with nothing written; the editor starts from what is stored.
+                key={block.id}
+                value={block.doc}
+                onChange={(doc) =>
+                  onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
+                }
+                label="Text"
+              />
+            }
+            style={
+              <>
+                <TextAlignFields
+                  value={block.align}
+                  onChange={(align) => onRows((current) => patchBlock(current, block.id, { align }))}
+                />
+                {spacingFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
         )}
       </Modal>
 
@@ -1279,14 +1336,26 @@ function Dialogs({
         wide
       >
         {block?.type === "image" && (
-          <div className="flex flex-col gap-5">
-            <ImageFields
-              block={block}
-              upload={upload}
-              onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
-            />
-            {spacingFields({ kind: "block", id: block.id })}
-          </div>
+          <SettingsTabs
+            key={block.id}
+            general={
+              <ImageFields
+                block={block}
+                upload={upload}
+                onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
+              />
+            }
+            style={
+              <>
+                <ShapeChoice
+                  value={block.shape}
+                  onChange={(shape) => onRows((current) => patchBlock(current, block.id, { shape }))}
+                />
+                {spacingFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
         )}
       </Modal>
 
@@ -1302,19 +1371,64 @@ function Dialogs({
             </>
           )
         }
+        wide
       >
-        {row && (
-          <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted">
-              {column ? "A column's width comes from its row's layout. " : ""}
-              With fewer columns, the text of the columns that go moves to the last one.
-            </p>
-            <LayoutChoice
-              value={row.layout}
-              onChange={(layout) => onRows((current) => setRowLayout(current, row.id, layout, newId))}
-            />
-            {spacingFields(column ? { kind: "column", id: column.id } : { kind: "row", id: row.id })}
-          </div>
+        {row && column && (
+          <SettingsTabs
+            key={column.id}
+            general={
+              <>
+                <ColumnLinkFields
+                  link={column.link}
+                  onChange={(link) => onRows((current) => patchColumn(current, column.id, { link }))}
+                />
+                <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+                  <legend className="float-left mb-2 w-full text-sm font-medium">Row layout</legend>
+                  <p className="text-sm text-muted">
+                    A column&apos;s width comes from its row&apos;s layout. With fewer columns, the text of the
+                    columns that go moves to the last one.
+                  </p>
+                  {layoutChoice(row)}
+                </fieldset>
+              </>
+            }
+            style={
+              <>
+                <BackgroundFields
+                  value={column.background}
+                  upload={upload}
+                  onChange={(background) => onRows((current) => patchColumn(current, column.id, { background }))}
+                />
+                {spacingFields({ kind: "column", id: column.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "column", id: column.id })}
+          />
+        )}
+        {row && !column && (
+          <SettingsTabs
+            key={row.id}
+            general={
+              <>
+                <p className="text-sm text-muted">
+                  With fewer columns, the text of the columns that go moves to the last one.
+                </p>
+                {layoutChoice(row)}
+                <RowFields row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
+              </>
+            }
+            style={
+              <>
+                <BackgroundFields
+                  value={row.background}
+                  upload={upload}
+                  onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
+                />
+                {spacingFields({ kind: "row", id: row.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "row", id: row.id })}
+          />
         )}
       </Modal>
 
@@ -1485,6 +1599,519 @@ function ImageFields({
           className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
         />
       </label>
+    </div>
+  );
+}
+
+const SETTINGS_TABS = [
+  { key: "general", label: "General" },
+  { key: "style", label: "Style" },
+  { key: "advanced", label: "Advanced" },
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
+
+/** A settings dialog's three tabs (D48): what it holds, how it looks, and its id and classes. */
+function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
+  const [tab, setTab] = useState<SettingsTab>("general");
+  const id = useId();
+  const select = (index: number) => {
+    const next = SETTINGS_TABS[(index + SETTINGS_TABS.length) % SETTINGS_TABS.length].key;
+    setTab(next);
+    document.getElementById(`${id}-${next}`)?.focus();
+  };
+  return (
+    <div className="flex flex-col gap-5">
+      <div role="tablist" aria-label="Settings" className="sticky -top-5 z-10 -mx-5 -mt-5 flex border-b border-border bg-background px-3">
+        {SETTINGS_TABS.map((t, index) => (
+          <button
+            key={t.key}
+            id={`${id}-${t.key}`}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            aria-controls={`${id}-panel`}
+            tabIndex={tab === t.key ? 0 : -1}
+            onClick={() => setTab(t.key)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowRight") select(index + 1);
+              if (event.key === "ArrowLeft") select(index - 1);
+            }}
+            className="min-h-11 border-b-2 border-transparent px-3 text-sm font-medium text-muted aria-selected:border-foreground aria-selected:text-foreground"
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${tab}`} className="flex flex-col gap-5">
+        {panels[tab]}
+      </div>
+    </div>
+  );
+}
+
+/** One of a few choices, as a row of buttons (radio buttons underneath). */
+function Choices<T extends string>({
+  legend,
+  hint,
+  options,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  legend: string;
+  hint?: string;
+  options: readonly { value: T; label: string; picture?: ReactNode }[];
+  value: T;
+  onChange: (value: T) => void;
+  disabled?: boolean;
+}) {
+  const name = useId();
+  return (
+    <fieldset disabled={disabled} className="flex flex-col gap-2 disabled:opacity-50">
+      <legend className="float-left mb-2 w-full text-sm font-medium">
+        {legend}
+        {hint && <span className="font-normal text-muted"> ({hint})</span>}
+      </legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <label
+            key={option.value}
+            className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm has-checked:border-foreground has-checked:bg-surface has-checked:font-medium has-focus-visible:outline-2 has-disabled:cursor-default"
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+            />
+            {option.picture}
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function Check({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-start gap-3 text-sm">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-0.5 size-4 shrink-0" />
+      <span className="flex flex-col gap-0.5">
+        <span className="font-medium">{label}</span>
+        {hint && <span className="text-xs text-muted">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** A colour: the browser's picker, or `#rrggbb` typed. */
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
+  const id = useId();
+  const [text, setText] = useState(value);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${label}: choose`}
+          value={value}
+          onChange={(event) => {
+            setText(event.target.value);
+            onChange(event.target.value);
+          }}
+          className="h-10 w-14 cursor-pointer rounded-md border border-border bg-background p-1"
+        />
+        <input
+          id={id}
+          value={text}
+          maxLength={7}
+          spellCheck={false}
+          aria-invalid={!HEX.test(text)}
+          onChange={(event) => {
+            setText(event.target.value);
+            if (HEX.test(event.target.value)) onChange(event.target.value.toLowerCase());
+          }}
+          className="min-h-10 w-28 rounded-md border border-border bg-background px-2 font-mono text-sm aria-invalid:border-red-700"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** A row's or column's background (D48): none, a colour, or a picture with an optional colour over it. */
+function BackgroundFields({
+  value,
+  upload,
+  onChange,
+}: {
+  value: Background | undefined;
+  upload: Upload | null;
+  onChange: (background: Background | undefined) => void;
+}) {
+  // A picture chosen as the kind waits for its upload before it is kept.
+  const [kind, setKind] = useState<"none" | Background["type"]>(value?.type ?? "none");
+  const choose = (next: typeof kind) => {
+    setKind(next);
+    if (next === "none") onChange(undefined);
+    if (next === "color") onChange({ type: "color", color: value?.type === "color" ? value.color : "#f3f4f6" });
+    if (next === "image") onChange(value?.type === "image" ? value : undefined);
+  };
+  const image = value?.type === "image" ? value : null;
+  return (
+    <div className="flex flex-col gap-4">
+      <Choices
+        legend="Background"
+        options={[
+          { value: "none", label: "None" },
+          { value: "color", label: "Colour" },
+          { value: "image", label: "Picture" },
+        ]}
+        value={kind}
+        onChange={choose}
+      />
+      {kind === "color" && value?.type === "color" && (
+        <ColorField label="Background colour" value={value.color} onChange={(color) => onChange({ type: "color", color })} />
+      )}
+      {kind === "image" && (
+        <div className="flex flex-col gap-3">
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
+            <img src={image.image.url} alt="" className="max-h-48 w-full rounded-md border border-border object-cover" />
+          ) : (
+            <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
+              No picture yet
+            </div>
+          )}
+          <ImageUploadButton
+            upload={upload}
+            label={image ? "Replace picture" : "Upload picture"}
+            onUploaded={(uploaded) => onChange({ type: "image", image: uploaded, overlay: image?.overlay ?? null })}
+          />
+          {image && (
+            <>
+              <Check
+                label="Colour over the picture"
+                hint="Makes text on the picture easier to read."
+                checked={Boolean(image.overlay)}
+                onChange={(on) => onChange({ ...image, overlay: on ? { color: "#000000", opacity: 40 } : null })}
+              />
+              {image.overlay && (
+                <OverlayFields
+                  overlay={image.overlay}
+                  onChange={(overlay) => onChange({ ...image, overlay })}
+                />
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OverlayFields({
+  overlay,
+  onChange,
+}: {
+  overlay: { color: string; opacity: number };
+  onChange: (overlay: { color: string; opacity: number }) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-wrap items-end gap-6 pl-7">
+      <ColorField label="Overlay colour" value={overlay.color} onChange={(color) => onChange({ ...overlay, color })} />
+      <div className="flex flex-col gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          Opacity
+        </label>
+        <div className="flex min-h-10 items-center gap-3">
+          <input
+            id={id}
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={overlay.opacity}
+            onChange={(event) => onChange({ ...overlay, opacity: Number(event.target.value) })}
+            className="w-40"
+          />
+          <output htmlFor={id} className="w-10 text-sm tabular-nums">
+            {overlay.opacity}%
+          </output>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A row's width, height, order on phones and how its columns line up (D48). */
+function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  const full = row.width === "full";
+  return (
+    <div className="flex flex-col gap-4 border-t border-border pt-4">
+      <Choices
+        legend="Row width"
+        options={[
+          { value: "content", label: "Content width" },
+          { value: "full", label: "Full width" },
+        ]}
+        value={row.width ?? "content"}
+        onChange={(width) => onChange(width === "full" ? { width } : { width: undefined, contentWidth: undefined })}
+      />
+      <Choices
+        legend="Content width"
+        hint={full ? "what the row holds" : "for a full-width row"}
+        disabled={!full}
+        options={[
+          { value: "content", label: "Content width" },
+          { value: "full", label: "Full width" },
+        ]}
+        value={row.contentWidth ?? "content"}
+        onChange={(contentWidth) => onChange({ contentWidth: contentWidth === "full" ? contentWidth : undefined })}
+      />
+      <Check
+        label="As tall as the screen"
+        hint="At least the height of the browser window."
+        checked={Boolean(row.fullHeight)}
+        onChange={(fullHeight) => onChange({ fullHeight })}
+      />
+      <Check
+        label="Reverse the columns on phones"
+        hint="On phones the columns stack; this puts the last one first."
+        checked={Boolean(row.reverseOnMobile)}
+        onChange={(reverseOnMobile) => onChange({ reverseOnMobile })}
+      />
+      <Check
+        label="Equal column height"
+        hint="Every column as tall as the tallest, so their backgrounds line up."
+        checked={Boolean(row.equalHeight)}
+        onChange={(equalHeight) => onChange({ equalHeight })}
+      />
+      <Choices
+        legend="Column content"
+        options={[
+          { value: "top", label: "Top" },
+          { value: "middle", label: "Middle" },
+          { value: "bottom", label: "Bottom" },
+        ]}
+        value={row.align ?? "top"}
+        onChange={(align) => onChange({ align: align === "top" ? undefined : align })}
+      />
+    </div>
+  );
+}
+
+/** Whether the whole column is a link, where to, and its name for screen readers (D48). */
+function ColumnLinkFields({ link, onChange }: { link: ColumnLink | undefined; onChange: (link: ColumnLink | undefined) => void }) {
+  const id = useId();
+  const href = link?.href.trim() ?? "";
+  const problem =
+    link && href === ""
+      ? "Give the link an address, or switch it off."
+      : link && !isLinkAddress(href)
+        ? "Use a web address (https://…), a page on the site (/about), mailto: or tel:."
+        : null;
+  return (
+    <div className="flex flex-col gap-3">
+      <Check
+        label="Make the whole column a link"
+        hint="Pressing anywhere in the column opens the address. Links in its text still work."
+        checked={Boolean(link)}
+        onChange={(on) => onChange(on ? { href: "", label: "" } : undefined)}
+      />
+      {link && (
+        <div className="flex flex-col gap-3 pl-7">
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${id}-href`} className="text-sm font-medium">
+              Address
+            </label>
+            <input
+              id={`${id}-href`}
+              value={link.href}
+              maxLength={2000}
+              spellCheck={false}
+              placeholder="https://… or /about"
+              aria-invalid={Boolean(problem)}
+              aria-describedby={`${id}-href-hint`}
+              onChange={(event) => onChange({ ...link, href: event.target.value })}
+              className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal aria-invalid:border-red-700"
+            />
+            <span
+              id={`${id}-href-hint`}
+              className={`text-xs font-normal ${problem ? "text-red-700 dark:text-red-400" : "text-muted"}`}
+            >
+              {problem ?? "A page on this site, another site, an email or a phone number."}
+            </span>
+          </div>
+          <label htmlFor={`${id}-label`} className="flex flex-col gap-1 text-sm font-medium">
+            <span>
+              Description <span className="font-normal text-muted">(optional, for screen readers)</span>
+            </span>
+            <input
+              id={`${id}-label`}
+              value={link.label}
+              maxLength={200}
+              placeholder="Where the link leads; else the column's text is read"
+              onChange={(event) => onChange({ ...link, label: event.target.value })}
+              className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ALIGN_OPTIONS = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Centre" },
+  { value: "right", label: "Right" },
+] as const;
+
+/** A rich text's alignment on phones, tablets and computers (D48); each larger screen follows the smaller unless set. */
+function TextAlignFields({
+  value,
+  onChange,
+}: {
+  value: TextAlignments | undefined;
+  onChange: (value: TextAlignments | undefined) => void;
+}) {
+  const set = (screen: keyof TextAlignments, align: TextAlign | "same") => {
+    const next: TextAlignments = { ...value };
+    if (align === "same" || (screen === "mobile" && align === "left")) delete next[screen];
+    else next[screen] = align;
+    onChange(Object.keys(next).length > 0 ? next : undefined);
+  };
+  return (
+    <div className="flex flex-col gap-4">
+      <Choices legend="Text alignment on phones" options={ALIGN_OPTIONS} value={value?.mobile ?? "left"} onChange={(a) => set("mobile", a)} />
+      <Choices
+        legend="On tablets"
+        hint="768 pixels and wider"
+        options={[{ value: "same", label: "As on phones" }, ...ALIGN_OPTIONS]}
+        value={value?.tablet ?? "same"}
+        onChange={(a) => set("tablet", a)}
+      />
+      <Choices
+        legend="On computers"
+        hint="1024 pixels and wider"
+        options={[{ value: "same", label: "As on tablets" }, ...ALIGN_OPTIONS]}
+        value={value?.desktop ?? "same"}
+        onChange={(a) => set("desktop", a)}
+      />
+    </div>
+  );
+}
+
+const SHAPE_PICTURES: Record<ImageShape | "original", string> = {
+  original: "h-4 w-6 rounded-sm border-dashed",
+  landscape: "h-[18px] w-6 rounded-sm",
+  portrait: "h-6 w-[18px] rounded-sm",
+  panorama: "h-2.5 w-7 rounded-sm",
+  square: "size-5 rounded-sm",
+  circle: "size-5 rounded-full",
+};
+
+/** How a picture is cropped (D48). */
+function ShapeChoice({ value, onChange }: { value: ImageShape | undefined; onChange: (shape: ImageShape | undefined) => void }) {
+  const options = (["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({
+    value: shape,
+    label: shape === "original" ? "Original" : IMAGE_SHAPES[shape],
+    picture: <span aria-hidden className={`inline-block border-2 border-current ${SHAPE_PICTURES[shape]}`} />,
+  }));
+  return (
+    <Choices
+      legend="Shape"
+      hint="the picture is cropped to it"
+      options={options}
+      value={value ?? "original"}
+      onChange={(shape) => onChange(shape === "original" ? undefined : shape)}
+    />
+  );
+}
+
+/** A part's own id and classes, for the site (D48). */
+function AdvancedFields({
+  part,
+  taken,
+  onChange,
+}: {
+  part: PartBase;
+  /** The ids other parts of the page use. */
+  taken: Set<string>;
+  onChange: (patch: Partial<PartBase>) => void;
+}) {
+  const id = useId();
+  const htmlId = part.htmlId?.trim() ?? "";
+  const idProblem = htmlId
+    ? (htmlIdProblem(htmlId) ?? (taken.has(htmlId) ? "Another part of this page has this id." : null))
+    : null;
+  const classProblem = classNameProblem(part.className ?? "");
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted">These are used on the site only; the editor leaves them out.</p>
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-id`} className="text-sm font-medium">
+          Id
+        </label>
+        <input
+          id={`${id}-id`}
+          value={part.htmlId ?? ""}
+          maxLength={HTML_ID_MAX}
+          spellCheck={false}
+          autoCapitalize="off"
+          aria-invalid={Boolean(idProblem)}
+          aria-describedby={`${id}-id-hint`}
+          onChange={(event) => onChange({ htmlId: event.target.value || undefined })}
+          className="min-h-10 rounded-md border border-border bg-background px-3 font-mono text-sm font-normal aria-invalid:border-red-700"
+        />
+        <span id={`${id}-id-hint`} className={`text-xs font-normal ${idProblem ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+          {idProblem ??
+            (htmlId
+              ? `A link to #${htmlId} opens the page here.`
+              : "Lets a link lead straight here: with the id prices, a link to #prices opens the page at this part.")}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-classes`} className="text-sm font-medium">
+          Classes
+        </label>
+        <input
+          id={`${id}-classes`}
+          value={part.className ?? ""}
+          maxLength={400}
+          spellCheck={false}
+          autoCapitalize="off"
+          aria-invalid={Boolean(classProblem)}
+          aria-describedby={`${id}-classes-hint`}
+          onChange={(event) => onChange({ className: event.target.value || undefined })}
+          className="min-h-10 rounded-md border border-border bg-background px-3 font-mono text-sm font-normal aria-invalid:border-red-700"
+        />
+        <span
+          id={`${id}-classes-hint`}
+          className={`text-xs font-normal ${classProblem ? "text-red-700 dark:text-red-400" : "text-muted"}`}
+        >
+          {classProblem ?? "Separated by spaces. A class changes the look only where the site's styles define it."}
+        </span>
+      </div>
     </div>
   );
 }

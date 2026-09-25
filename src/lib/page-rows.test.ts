@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import type { PageRow } from "./page-content";
 import {
   canDuplicateColumn,
+  copyColumn,
   copyRow,
+  htmlIds,
   insertColumn,
   duplicateBlock,
   duplicateColumn,
@@ -17,6 +19,9 @@ import {
   moveRow,
   newBlock,
   newRow,
+  patchColumn,
+  patchPart,
+  patchRow,
   removeColumn,
   removeRow,
   setRowLayout,
@@ -194,5 +199,37 @@ describe("spacing and pictures", () => {
 
   it("starts a picture block without a picture", () => {
     expect(newBlock("image", id)).toMatchObject({ type: "image", image: null, caption: "" });
+  });
+});
+
+describe("settings (D48)", () => {
+  it("merges settings in and takes out those switched off", () => {
+    let rows = [newRow("2", id)];
+    const rowId = rows[0].id;
+    rows = patchRow(rows, rowId, { width: "full", fullHeight: true, htmlId: "hero" });
+    expect(rows[0]).toMatchObject({ width: "full", fullHeight: true, htmlId: "hero" });
+    rows = patchRow(rows, rowId, { fullHeight: false, width: undefined });
+    expect(rows[0]).not.toHaveProperty("fullHeight");
+    expect(rows[0]).not.toHaveProperty("width");
+    const column = rows[0].columns[0].id;
+    rows = patchColumn(rows, column, { link: { href: "/about", label: "" } });
+    expect(rows[0].columns[0].link).toEqual({ href: "/about", label: "" });
+    rows = patchPart(rows, { kind: "column", id: column }, { className: "card" });
+    expect(rows[0].columns[0]).toMatchObject({ className: "card", link: { href: "/about" } });
+    rows = setSpacing(rows, { kind: "row", id: rowId }, {});
+    expect(rows[0]).not.toHaveProperty("style");
+  });
+
+  it("leaves a custom id off a copy while the page uses it, and keeps a column's settings when copied", () => {
+    let rows = [newRow("2", id)];
+    const column = rows[0].columns[0].id;
+    rows = patchColumn(rows, column, { htmlId: "offer", className: "card", style: { padding: { top: 8, right: 8, bottom: 8, left: 8 } } });
+    const three = duplicateColumn(rows, column, id);
+    expect(three[0].columns[1]).toMatchObject({ className: "card", style: { padding: { top: 8 } } });
+    expect(three[0].columns[1].htmlId).toBeUndefined();
+    expect(htmlIds(three)).toEqual(new Set(["offer"]));
+    // A saved part put on a page that does not use its id keeps it.
+    expect(copyColumn(rows[0].columns[0], id, new Set()).htmlId).toBe("offer");
+    expect(copyRow(rows[0], id, htmlIds(rows)).columns[0].htmlId).toBeUndefined();
   });
 });

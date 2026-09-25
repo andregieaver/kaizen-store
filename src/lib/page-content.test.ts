@@ -202,3 +202,72 @@ describe("pictures and spacing (D47)", () => {
     }
   });
 });
+
+describe("row, column and component settings (D48)", () => {
+  const block = { id: "b1", type: "richText", doc: doc(p("Hei")) };
+  const page = (row: Record<string, unknown> = {}, column: Record<string, unknown> = {}, blocks: unknown[] = [block]) => ({
+    ...newPageContent(),
+    title: "Settings",
+    slug: "settings",
+    rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks, ...column }], ...row }],
+  });
+  const problems = (value: unknown) => {
+    const parsed = pageInput.safeParse(value);
+    return parsed.success ? [] : parsed.error.issues.map((i) => i.message);
+  };
+
+  it("keeps a row's width, height, order, column heights and background", () => {
+    const settings = {
+      width: "full",
+      contentWidth: "content",
+      fullHeight: true,
+      reverseOnMobile: true,
+      equalHeight: true,
+      align: "middle",
+      background: { type: "image", image: { url: "https://example.com/b.webp", width: 1600, height: 900 }, overlay: { color: "#000000", opacity: 40 } },
+    };
+    expect(pageInput.parse(page(settings)).rows[0]).toMatchObject(settings);
+    expect(problems(page({ width: "wide" }))).not.toEqual([]);
+    expect(problems(page({ background: { type: "color", color: "red" } }))).toEqual([
+      "A colour is written as # and six hex digits, like #1f2937.",
+    ]);
+    expect(problems(page({ background: { type: "image", image: { url: "javascript:x", width: 1, height: 1 }, overlay: null } }))).not.toEqual([]);
+    expect(problems(page({ background: { type: "image", image: { url: "https://e.com/a", width: 1, height: 1 }, overlay: { color: "#000000", opacity: 101 } } }))).not.toEqual([]);
+  });
+
+  it("keeps a column's link when its address is safe", () => {
+    expect(pageInput.parse(page({}, { link: { href: " /sign-up " } })).rows[0].columns[0].link).toEqual({ href: "/sign-up", label: "" });
+    for (const href of ["", "javascript:alert(1)", "//evil.example"]) {
+      expect(problems(page({}, { link: { href, label: "" } })), href).toEqual([
+        "A column's link needs an address: https://…, a page like /about, mailto: or tel:.",
+      ]);
+    }
+  });
+
+  it("keeps text alignment by screen and a picture's shape", () => {
+    const aligned = { ...block, align: { mobile: "center", desktop: "right" } };
+    const picture = { id: "i1", type: "image", image: null, caption: "", shape: "circle" };
+    const blocks = pageInput.parse(page({}, {}, [aligned, picture])).rows[0].columns[0].blocks;
+    expect(blocks[0]).toMatchObject({ align: { mobile: "center", desktop: "right" } });
+    expect(blocks[1]).toMatchObject({ shape: "circle" });
+    expect(problems(page({}, {}, [{ ...block, align: { tablet: "justify" } }]))).not.toEqual([]);
+    expect(problems(page({}, {}, [{ ...picture, shape: "oval" }]))).not.toEqual([]);
+  });
+
+  it("takes ids and classes, tidied, and drops empty ones", () => {
+    const parsed = pageInput.parse(page({ htmlId: " prices ", className: "  hero   dark " }, { htmlId: "", className: " " }));
+    expect(parsed.rows[0]).toMatchObject({ htmlId: "prices", className: "hero dark" });
+    expect(parsed.rows[0].columns[0].htmlId).toBeUndefined();
+    expect(parsed.rows[0].columns[0].className).toBeUndefined();
+    expect(problems(page({ htmlId: "1st" }))[0]).toMatch(/^An id starts with a letter/);
+    expect(problems(page({ htmlId: "two words" }))[0]).toMatch(/^An id starts with a letter/);
+    expect(problems(page({ htmlId: "main" }))).toEqual(['The id "main" is used by the site itself. Choose another.']);
+    expect(problems(page({ className: 'a" onclick="x' }))[0]).toMatch(/without quotes/);
+  });
+
+  it("refuses the same id on two parts of a page", () => {
+    expect(problems(page({ htmlId: "same" }, { htmlId: "same" }))).toEqual([
+      'Two parts of the page have the id "same". Give each its own.',
+    ]);
+  });
+});

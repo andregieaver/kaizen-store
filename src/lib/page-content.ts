@@ -6,8 +6,8 @@ import { slugify } from "./slug";
 /**
  * A page built from blocks (D42): its title, address, picture, search texts,
  * whether search engines and AI assistants may use it, and its content:
- * rows, each divided into columns (D43), each holding blocks. For now the
- * only block is rich text. Shared by the admin
+ * rows, each divided into columns (D43), each holding blocks: rich text or
+ * a picture (D47), with settings of their own (D48). Shared by the admin
  * editor (in the browser) and the server, which checks everything again.
  */
 
@@ -260,21 +260,83 @@ export type Sides = { top: number; right: number; bottom: number; left: number }
 export type Spacing = { margin?: Sides; padding?: Sides };
 export const SPACING_MAX = 240;
 
-export type RichTextBlock = { id: string; type: "richText"; doc: RichTextDoc; style?: Spacing };
+/**
+ * What every row, column and block can have (D47, D48): margin and padding,
+ * and an id and classes of its own for the site (the editor leaves those
+ * out, so a class cannot hide what is being edited).
+ */
+export type PartBase = { style?: Spacing; htmlId?: string; className?: string };
+
+/** A colour as `#rrggbb`. */
+export type Color = string;
+/** A row's or column's background (D48): a colour, or a picture with an optional colour over it. */
+export type Background =
+  | { type: "color"; color: Color }
+  | {
+      type: "image";
+      image: { url: string; width: number; height: number };
+      /** A colour laid over the picture, `opacity` 0–100, so text on it can be read. */
+      overlay: { color: Color; opacity: number } | null;
+    };
+
+export type TextAlign = "left" | "center" | "right";
+/** Text alignment by screen (D48): phones, from tablets (768 px) and from computers (1024 px) up; each unset follows the smaller. */
+export type TextAlignments = { mobile?: TextAlign; tablet?: TextAlign; desktop?: TextAlign };
+
+/** How a picture is cropped (D48); none keeps its own shape. */
+export const IMAGE_SHAPES = {
+  landscape: "Landscape",
+  portrait: "Portrait",
+  panorama: "Panorama",
+  square: "Square",
+  circle: "Circle",
+} as const;
+export type ImageShape = keyof typeof IMAGE_SHAPES;
+
+export type RichTextBlock = PartBase & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
 /** A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. */
-export type ImageBlock = {
+export type ImageBlock = PartBase & {
   id: string;
   type: "image";
   image: { url: string; width: number; height: number; alt: string } | null;
   caption: string;
-  style?: Spacing;
+  shape?: ImageShape;
 };
 /** One piece of a page's content. More kinds (products, buttons, …) come later. */
 export type PageBlock = RichTextBlock | ImageBlock;
 export type BlockType = PageBlock["type"];
 
-export type PageColumn = { id: string; blocks: PageBlock[]; style?: Spacing };
-export type PageRow = { id: string; type: "row"; layout: RowLayout; columns: PageColumn[]; style?: Spacing };
+/** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
+export type ColumnLink = { href: string; label: string };
+
+export type PageColumn = PartBase & {
+  id: string;
+  blocks: PageBlock[];
+  background?: Background;
+  link?: ColumnLink;
+};
+
+export type VerticalAlign = "top" | "middle" | "bottom";
+
+export type PageRow = PartBase & {
+  id: string;
+  type: "row";
+  layout: RowLayout;
+  columns: PageColumn[];
+  /** The row's own width: the content's (the default) or the whole screen's (D48). */
+  width?: "content" | "full";
+  /** In a full-width row, whether what is in it keeps to the content's width (the default) or spreads too. */
+  contentWidth?: "content" | "full";
+  /** At least as tall as the screen. */
+  fullHeight?: boolean;
+  /** On phones, where columns stack, the last comes first. */
+  reverseOnMobile?: boolean;
+  /** Columns as tall as the tallest; what is in them sits at `align`. */
+  equalHeight?: boolean;
+  /** Where columns' content sits, top (the default), middle or bottom. */
+  align?: VerticalAlign;
+  background?: Background;
+};
 
 /** Whether a rich-text document holds nothing but empty paragraphs. */
 export function richTextIsEmpty(doc: RichTextDoc): boolean {
@@ -325,6 +387,23 @@ export type PageContent = {
   rows: PageRow[];
 };
 
+/** Every row, column and block, in page order. */
+export function pageParts(rows: PageRow[]): (PageRow | PageColumn | PageBlock)[] {
+  return rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...column.blocks])]);
+}
+
+/** A custom id used by more than one part, if any. */
+export function repeatedHtmlId(rows: PageRow[]): string | null {
+  const seen = new Set<string>();
+  for (const part of pageParts(rows)) {
+    const id = part.htmlId?.trim();
+    if (!id) continue;
+    if (seen.has(id)) return id;
+    seen.add(id);
+  }
+  return null;
+}
+
 /** Every block on the page, row by row and column by column. */
 export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
   return content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks));
@@ -359,6 +438,76 @@ const side = z
 const sides = z.object({ top: side, right: side, bottom: side, left: side });
 const spacing = z.object({ margin: sides.optional(), padding: sides.optional() }).optional();
 
+/** Ids the site's own layout uses, which a part of a page cannot take. */
+export const RESERVED_HTML_IDS: readonly string[] = ["main"];
+export const HTML_ID_MAX = 64;
+export const CLASS_NAMES_MAX = 20;
+
+/** Why an id cannot be used, or null. */
+export function htmlIdProblem(value: string): string | null {
+  if (value.length > HTML_ID_MAX) return `Keep an id under ${HTML_ID_MAX} characters.`;
+  if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(value)) {
+    return "An id starts with a letter, followed by letters, digits, hyphens or underscores, without spaces.";
+  }
+  if (RESERVED_HTML_IDS.includes(value)) return `The id "${value}" is used by the site itself. Choose another.`;
+  return null;
+}
+
+/** Why a list of classes cannot be used, or null. */
+export function classNameProblem(value: string): string | null {
+  const names = value.trim().split(/\s+/).filter(Boolean);
+  if (names.length > CLASS_NAMES_MAX) return `Use at most ${CLASS_NAMES_MAX} classes.`;
+  if (names.some((name) => name.length > 64 || /["'<>`\\]/.test(name))) {
+    return "A class is up to 64 characters, without quotes, backslashes or angle brackets.";
+  }
+  return null;
+}
+
+/** Empty text is the same as none. */
+const optionalText = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema.optional());
+
+const partBase = {
+  style: spacing,
+  htmlId: optionalText(
+    z
+      .string()
+      .trim()
+      .superRefine((value, ctx) => {
+        const problem = htmlIdProblem(value);
+        if (problem) ctx.addIssue({ code: "custom", message: problem });
+      }),
+  ),
+  className: optionalText(
+    z
+      .string()
+      .superRefine((value, ctx) => {
+        const problem = classNameProblem(value);
+        if (problem) ctx.addIssue({ code: "custom", message: problem });
+      })
+      .transform((value) => value.trim().split(/\s+/).join(" ")),
+  ),
+};
+
+const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.");
+
+const background = z
+  .discriminatedUnion("type", [
+    z.object({ type: z.literal("color"), color }),
+    z.object({
+      type: z.literal("image"),
+      image: z.object({
+        url: z.url({ protocol: /^https?$/, error: "A background picture has an invalid address." }).max(1000),
+        width: z.number().int().min(1).max(10_000),
+        height: z.number().int().min(1).max(10_000),
+      }),
+      overlay: z.object({ color, opacity: z.number().int().min(0).max(100) }).nullable(),
+    }),
+  ])
+  .optional();
+
+const textAlign = z.enum(["left", "center", "right"]).optional();
+
 const richTextBlock = z.object({
   id: itemId,
   type: z.literal("richText"),
@@ -368,7 +517,8 @@ const richTextBlock = z.object({
     ctx.addIssue({ code: "custom", message: cleaned.problem });
     return z.NEVER;
   }),
-  style: spacing,
+  align: z.object({ mobile: textAlign, tablet: textAlign, desktop: textAlign }).optional(),
+  ...partBase,
 });
 
 const imageBlock = z.object({
@@ -383,7 +533,8 @@ const imageBlock = z.object({
     })
     .nullable(),
   caption: z.string().trim().max(ALT_MAX, `Keep a caption under ${ALT_MAX} characters.`).default(""),
-  style: spacing,
+  shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
+  ...partBase,
 });
 
 /** One block, as stored: rich text or a picture. */
@@ -392,7 +543,17 @@ export const pageBlockSchema = z.discriminatedUnion("type", [richTextBlock, imag
 export const pageColumnSchema = z.object({
   id: itemId,
   blocks: z.array(pageBlockSchema),
-  style: spacing,
+  background,
+  link: z
+    .object({
+      href: z
+        .string()
+        .trim()
+        .refine(isLinkAddress, "A column's link needs an address: https://…, a page like /about, mailto: or tel:."),
+      label: z.string().trim().max(200, "Keep a column link's description under 200 characters.").default(""),
+    })
+    .optional(),
+  ...partBase,
 });
 
 export const pageRowSchema = z
@@ -401,7 +562,14 @@ export const pageRowSchema = z
     type: z.literal("row"),
     layout: z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout."),
     columns: z.array(pageColumnSchema),
-    style: spacing,
+    width: z.enum(["content", "full"]).optional(),
+    contentWidth: z.enum(["content", "full"]).optional(),
+    fullHeight: z.boolean().optional(),
+    reverseOnMobile: z.boolean().optional(),
+    equalHeight: z.boolean().optional(),
+    align: z.enum(["top", "middle", "bottom"]).optional(),
+    background,
+    ...partBase,
   })
   .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {
     message: "A row has the wrong number of columns for its layout. Reload the page and try again.",
@@ -461,6 +629,8 @@ export const pageInput = z.preprocess(
       if (new Set(ids).size !== ids.length) {
         ctx.addIssue({ code: "custom", message: "Two parts of the page have the same id. Reload the page and try again." });
       }
+      const twice = repeatedHtmlId(page.rows);
+      if (twice) ctx.addIssue({ code: "custom", message: `Two parts of the page have the id "${twice}". Give each its own.` });
     }),
 );
 

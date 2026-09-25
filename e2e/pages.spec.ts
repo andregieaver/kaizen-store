@@ -194,5 +194,92 @@ test("a picture block shows with its caption, and rows, columns and blocks keep 
     locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
   expect(await px(figure.locator(".."), "margin-top")).toBe("16px");
   expect(await px(figure.locator("../.."), "padding-top")).toBe("24px");
-  expect(await px(figure.locator("../../.."), "margin-top")).toBe("40px");
+  // Block, column, columns, the row's inside, the row.
+  expect(await px(figure.locator("../../../../.."), "margin-top")).toBe("40px");
+});
+
+test("rows, columns and components take their settings: width, background, link, order, alignment and shape (D48)", async ({ page }) => {
+  const slug = `settings-${run}`;
+  const text = (id: string, words: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    type: "richText",
+    doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] },
+    ...extra,
+  });
+  const published = {
+    ...content("Settings", slug, "Unused. "),
+    blocks: undefined,
+    rows: [
+      {
+        id: "r1",
+        type: "row",
+        layout: "2",
+        width: "full",
+        reverseOnMobile: true,
+        equalHeight: true,
+        align: "middle",
+        background: { type: "color", color: "#112233" },
+        htmlId: "hero",
+        className: "hero-row",
+        columns: [
+          {
+            id: "c1",
+            link: { href: "/sign-up", label: "Get started" },
+            background: { type: "color", color: "#ffffff" },
+            blocks: [text("t1", "A short column.", { htmlId: "intro" })],
+          },
+          {
+            id: "c2",
+            blocks: [
+              text("t2", "Aligned text.", { htmlId: "aligned", align: { mobile: "center", desktop: "right" } }),
+              {
+                id: "i1",
+                type: "image",
+                image: { url: "https://example.com/face.webp", width: 1600, height: 900, alt: "A face" },
+                caption: "",
+                shape: "circle",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.pages (slug, draft, published, published_at)
+      values (${slug}, ${sql.json(published)}, ${sql.json(published)}, now())
+    `;
+  } finally {
+    await sql.end();
+  }
+  const css = (locator: import("@playwright/test").Locator, property: string) =>
+    locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
+
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto(`/${slug}`);
+  const row = page.locator("#hero");
+  await expect(row).toHaveClass(/hero-row/);
+  expect(await css(row, "background-color")).toBe("rgb(17, 34, 51)");
+  // The row spans the window; what it holds keeps to the content's width.
+  expect((await row.boundingBox())?.width).toBe(1400);
+  const intro = page.locator("#intro");
+  const aligned = page.locator("#aligned");
+  expect((await intro.boundingBox())!.x).toBeGreaterThan(150);
+  expect(await css(aligned, "text-align")).toBe("right");
+  // The whole first column is a link, named by its description; the columns are equally tall.
+  await expect(page.getByRole("link", { name: "Get started" })).toHaveAttribute("href", "/sign-up");
+  const first = intro.locator("..");
+  const second = aligned.locator("..");
+  expect((await first.boundingBox())!.height).toBe((await second.boundingBox())!.height);
+  const picture = page.getByRole("img", { name: "A face" });
+  const box = (await picture.boundingBox())!;
+  expect(Math.abs(box.width - box.height)).toBeLessThan(1);
+  expect(await css(picture, "border-top-left-radius")).not.toBe("0px");
+
+  // On a phone the columns stack, the last first, and the text is centred.
+  await page.setViewportSize({ width: 390, height: 800 });
+  expect(await css(aligned, "text-align")).toBe("center");
+  expect((await second.boundingBox())!.y).toBeLessThan((await first.boundingBox())!.y);
 });

@@ -32,7 +32,7 @@ export default async function PreviewPagePage({ params }: PageProps<"/admin/plat
           Back to editing
         </Link>
       </p>
-      <div className="mx-auto w-full max-w-5xl py-6">
+      <div className="py-6">
         <PageArticle content={page.draft} />
       </div>
     </>
