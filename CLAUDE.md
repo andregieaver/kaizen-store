@@ -170,8 +170,10 @@ of running `playwright install`.
   and sends it as JSON to `savePageAction`, checked by `pageInput`
   (`src/lib/page-content.ts`, shared with the browser). Content is rows
   (`ROW_LAYOUTS`) of columns of blocks (D43), edited in `PageBuilder`
-  (`src/components/admin/page-builder.tsx`: sidebar tabs, canvas, dnd-kit)
-  through the pure edits in `src/lib/page-rows.ts`. Pages saved as a plain
+  (`src/components/admin/page-builder.tsx`: sidebar tabs, a canvas that
+  renders the page as the site does with hover tools per row, column and
+  block (D44, rules in globals.css), dialogs, dnd-kit) through the pure
+  edits in `src/lib/page-rows.ts`. Pages saved as a plain
   block list are read as one row (`upgradeLegacy`). Blocks are rich text
   for now: Tiptap JSON, cleaned by `cleanRichText()` and rendered by
   `<RichText>` as elements, never as HTML. `savePage()` keeps a draft

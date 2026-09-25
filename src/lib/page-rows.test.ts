@@ -1,7 +1,23 @@
 import { describe, expect, it } from "vitest";
 
 import type { PageRow } from "./page-content";
-import { findBlock, insertBlock, insertRow, moveBlock, moveRow, newBlock, newRow, removeRow, setRowLayout } from "./page-rows";
+import {
+  canDuplicateColumn,
+  duplicateBlock,
+  duplicateColumn,
+  duplicateRow,
+  findBlock,
+  insertBlock,
+  insertRow,
+  moveBlock,
+  moveColumn,
+  moveRow,
+  newBlock,
+  newRow,
+  removeColumn,
+  removeRow,
+  setRowLayout,
+} from "./page-rows";
 
 let n = 0;
 const id = () => `id${++n}`;
@@ -49,5 +65,55 @@ describe("blocks", () => {
     expect(text(rows[0])).toEqual([["c", "a"]]);
     expect(text(rows[1])).toEqual([[], ["b"]]);
     expect(findBlock(rows, "b")).toMatchObject({ rowId: rows[1].id, columnId: right, index: 0 });
+  });
+});
+
+describe("duplicating and columns", () => {
+  const filled = () => {
+    let rows = [newRow("left-sidebar", id)];
+    const [left, right] = rows[0].columns.map((c) => c.id);
+    rows = insertBlock(rows, left, { ...newBlock("richText", id), id: "l" }, 0);
+    rows = insertBlock(rows, right, { ...newBlock("richText", id), id: "r" }, 0);
+    return { rows, left, right };
+  };
+
+  it("copies a row with new ids everywhere, right after it", () => {
+    const { rows } = filled();
+    const next = duplicateRow(rows, rows[0].id, id);
+    expect(next).toHaveLength(2);
+    expect(next[1].layout).toBe("left-sidebar");
+    const ids = next.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]);
+    expect(new Set(ids).size).toBe(ids.length);
+    // A copy, not the same objects: changing one leaves the other.
+    expect(next[1].columns[0].blocks[0].doc).not.toBe(next[0].columns[0].blocks[0].doc);
+  });
+
+  it("copies a block right after it", () => {
+    const { rows, left } = filled();
+    const next = duplicateBlock(rows, "l", id);
+    const blocks = next[0].columns.find((c) => c.id === left)!.blocks;
+    expect(blocks[0].id).toBe("l");
+    expect(blocks).toHaveLength(2);
+    expect(blocks[1].id).not.toBe("l");
+  });
+
+  it("adds and takes out columns, making them equal, and keeps one", () => {
+    const { rows, left, right } = filled();
+    const three = duplicateColumn(rows, left, id);
+    expect(three[0].layout).toBe("3");
+    expect(text(three[0])[2]).toEqual(["r"]);
+    const one = removeColumn(rows, left);
+    expect(one[0].layout).toBe("1");
+    expect(text(one[0])).toEqual([["r"]]);
+    expect(removeColumn(one, right)).toBe(one);
+    let six = [newRow("6", id)];
+    expect(canDuplicateColumn(six, six[0].columns[0].id)).toBe(false);
+    six = duplicateColumn(six, six[0].columns[0].id, id);
+    expect(six[0].columns).toHaveLength(6);
+  });
+
+  it("moves a column within its row", () => {
+    const { rows, left } = filled();
+    expect(text(moveColumn(rows, left, 1)[0])).toEqual([["r"], ["l"]]);
   });
 });

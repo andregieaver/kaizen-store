@@ -162,6 +162,7 @@ export function PageEditor({
       <PageBuilder
         rows={content.rows}
         onRows={changeRows}
+        page={{ title: content.title, thumbnail: content.thumbnail }}
         aside={
           <>
             <section aria-label="Title and address" className={card}>

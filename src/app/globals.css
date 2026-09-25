@@ -106,3 +106,35 @@ body:has([data-product-bar]) [data-default-bar] {
   color: var(--muted);
   pointer-events: none;
 }
+
+/*
+ * The page builder's canvas (D44): the row, column or block under the
+ * pointer, or holding the focus, is outlined and shows its tools; only the
+ * innermost one, so a block's outline hides its column's and row's. While
+ * something is dragged, none show.
+ */
+[data-builder-item] {
+  position: relative;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+[data-builder-item="column"] {
+  outline-style: dashed;
+}
+[data-builder-item] > [data-builder-tools] {
+  opacity: 0;
+  pointer-events: none;
+}
+[data-builder-item]:is(:hover, :focus-within):not(:has([data-builder-item]:is(:hover, :focus-within))) {
+  outline-color: #2563eb;
+}
+[data-builder-item]:is(:hover, :focus-within):not(:has([data-builder-item]:is(:hover, :focus-within))) > [data-builder-tools] {
+  opacity: 1;
+  pointer-events: auto;
+}
+[data-builder-dragging] [data-builder-tools] {
+  display: none;
+}
+[data-builder-dragging] [data-builder-item] {
+  outline-color: transparent !important;
+}

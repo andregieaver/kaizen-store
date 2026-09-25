@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
+  horizontalListSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
@@ -26,6 +27,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useId, useState, type CSSProperties, type PointerEventHandler, type ReactNode } from "react";
 
+import { hasContent, RichText } from "@/components/rich-text";
 import {
   BLOCKS_MAX,
   ROW_LAYOUTS,
@@ -37,32 +39,41 @@ import {
   type PageBlock,
   type PageColumn,
   type PageRow,
+  type PageThumbnail,
   type RowLayout,
 } from "@/lib/page-content";
 import {
+  duplicateBlock,
+  duplicateColumn,
+  duplicateRow,
   findBlock,
   insertBlock,
   insertRow,
   moveBlock,
+  moveColumn,
   moveRow,
   newBlock,
   newRow,
   removeBlock,
+  removeColumn,
   removeRow,
   setRowLayout,
   updateBlock,
 } from "@/lib/page-rows";
 
+import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
 
 /**
- * The page builder (D43): a left sidebar with tabs (components, rows, and
- * two for later), the canvas of rows, each divided into columns holding
- * blocks, and the page's own settings on the right. Rows are dragged from
- * the sidebar onto the canvas and components into columns; rows and blocks
- * already on the page are dragged by their handles, blocks into any column.
- * Everything also works without a mouse: the sidebar's tiles add when
- * pressed, and rows and blocks have buttons to move and delete them.
+ * The page builder (D43, D44): a left sidebar with tabs (components, rows,
+ * and two for later), the canvas, and the page's own settings on the right.
+ * The canvas shows the page as the site will, with its title and picture:
+ * pointing at (or tapping) a row, column or block outlines it and shows its
+ * tools, to drag, edit, duplicate or delete it. Rich text is edited in a
+ * dialog. Rows are dragged from the sidebar onto the canvas and components
+ * into columns; blocks move into any column, columns within their row. The
+ * sidebar's tiles also add when pressed, and the drag handles work with the
+ * keyboard.
  */
 
 type Rows = (update: (rows: PageRow[]) => PageRow[]) => void;
@@ -78,18 +89,24 @@ type DragData =
   | { kind: "palette-block"; type: BlockType }
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
-  | { kind: "column"; columnId: string }
+  | { kind: "column"; columnId: string; rowId: string }
   | { kind: "canvas-end" };
 
 const dataOf = (item: Active | Over | null): DragData | null => (item?.data.current as DragData | undefined) ?? null;
 const movesRows = (data: DragData | null) => data?.kind === "palette-row" || data?.kind === "row";
 
-/** Rows land between rows; components and blocks land in columns, before or after a block. */
+/**
+ * Rows land between rows; components and blocks land in columns, before or
+ * after a block; a column moves among its own row's columns.
+ */
 const collision: CollisionDetection = (args) => {
-  const rows = movesRows(dataOf(args.active));
+  const active = dataOf(args.active);
   const targets = args.droppableContainers.filter((container) => {
-    const kind = (container.data.current as DragData | undefined)?.kind;
-    return container.id !== args.active.id && (rows ? kind === "row" || kind === "canvas-end" : kind === "block" || kind === "column");
+    const data = container.data.current as DragData | undefined;
+    if (container.id === args.active.id || !data) return false;
+    if (movesRows(active)) return data.kind === "row" || data.kind === "canvas-end";
+    if (active?.kind === "column") return data.kind === "column" && data.rowId === active.rowId;
+    return data.kind === "block" || data.kind === "column";
   });
   const within = pointerWithin({ ...args, droppableContainers: targets });
   if (within.length > 0) {
@@ -109,9 +126,37 @@ function below(active: Active, over: Over): boolean {
 
 const blockLabels: Record<BlockType, string> = { richText: "Rich text" };
 
-const small = "flex min-h-8 min-w-8 items-center justify-center rounded-md border border-border px-2 text-xs disabled:opacity-40";
+const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
+const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
+const blockHasText = (block: PageBlock) => richTextPlain(block.doc).trim() !== "";
 
-export function PageBuilder({ rows, onRows, aside }: { rows: PageRow[]; onRows: Rows; aside: ReactNode }) {
+/** What a dialog is open for. */
+type Dialog =
+  | { kind: "edit-block"; blockId: string }
+  | { kind: "edit-row"; rowId: string; fromColumn: boolean }
+  | { kind: "delete"; what: string; run: () => void };
+
+/** What the canvas can ask of the builder. */
+type Actions = {
+  onRows: Rows;
+  open: (dialog: Dialog) => void;
+  onAddBlock: (type: BlockType, columnId: string) => void;
+  onColumn: (columnId: string) => void;
+  blocksFull: boolean;
+};
+
+export function PageBuilder({
+  rows,
+  onRows,
+  page,
+  aside,
+}: {
+  rows: PageRow[];
+  onRows: Rows;
+  /** The page's title and picture, shown above the rows as on the site. */
+  page: { title: string; thumbnail: PageThumbnail | null };
+  aside: ReactNode;
+}) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -121,6 +166,7 @@ export function PageBuilder({ rows, onRows, aside }: { rows: PageRow[]; onRows: 
   const [target, setTarget] = useState<{ id: string; after: boolean } | null>(null);
   /** The column last worked in, where pressing a component adds it. */
   const [lastColumn, setLastColumn] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<Dialog | null>(null);
   const blockCount = pageBlocks({ rows }).length;
   const blocksFull = blockCount >= BLOCKS_MAX;
   const rowsFull = rows.length >= ROWS_MAX;
@@ -140,6 +186,8 @@ export function PageBuilder({ rows, onRows, aside }: { rows: PageRow[]; onRows: 
       row.columns[0].blocks.push(block);
       return insertRow(current, row, current.length);
     });
+    // A new text block opens for writing straight away.
+    setDialog({ kind: "edit-block", blockId: block.id });
   };
 
   const onDragMove = ({ active, over }: DragMoveEvent) => {
@@ -167,6 +215,14 @@ export function PageBuilder({ rows, onRows, aside }: { rows: PageRow[]; onRows: 
       return;
     }
 
+    if (from.kind === "column") {
+      if (to.kind !== "column" || to.rowId !== from.rowId) return;
+      const row = rows.find((r) => r.id === from.rowId);
+      const index = row?.columns.findIndex((c) => c.id === to.columnId) ?? -1;
+      if (index >= 0) onRows((current) => moveColumn(current, from.columnId, index));
+      return;
+    }
+
     if (to.kind !== "column" && to.kind !== "block") return;
     const columnId = to.columnId;
     const place = to.kind === "block" ? findBlock(rows, to.blockId) : null;
@@ -184,11 +240,27 @@ export function PageBuilder({ rows, onRows, aside }: { rows: PageRow[]; onRows: 
   };
 
   const announce = (id: string | number) => {
-    const row = rows.findIndex((r) => r.id === id);
+    const key = String(id);
+    const row = rows.findIndex((r) => r.id === key);
     if (row >= 0) return `row ${row + 1}`;
-    const block = findBlock(rows, String(id));
+    for (const [r, each] of rows.entries()) {
+      const column = each.columns.findIndex((c) => `column:${c.id}` === key);
+      if (column >= 0) return `row ${r + 1}, column ${column + 1}`;
+    }
+    const block = findBlock(rows, key);
     if (block) return `a block in row ${rows.findIndex((r) => r.id === block.rowId) + 1}`;
     return "the page";
+  };
+
+  const actions: Actions = {
+    onRows,
+    open: setDialog,
+    onAddBlock: (type, columnId) => {
+      addBlock(type, columnId);
+      setLastColumn(columnId);
+    },
+    onColumn: setLastColumn,
+    blocksFull,
   };
 
   return (
@@ -223,18 +295,7 @@ export function PageBuilder({ rows, onRows, aside }: { rows: PageRow[]; onRows: 
           blocksFull={blocksFull}
         />
 
-        <Canvas
-          rows={rows}
-          onRows={onRows}
-          dragging={dragging}
-          target={target}
-          onAddBlock={(type, columnId) => {
-            addBlock(type, columnId);
-            setLastColumn(columnId);
-          }}
-          onColumn={setLastColumn}
-          blocksFull={blocksFull}
-        />
+        <Canvas rows={rows} page={page} dragging={dragging} target={target} actions={actions} />
 
         {/* On phones the title and settings come first. */}
         <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">{aside}</div>
@@ -249,6 +310,8 @@ export function PageBuilder({ rows, onRows, aside }: { rows: PageRow[]; onRows: 
           <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
         ) : null}
       </DragOverlay>
+
+      <Dialogs dialog={dialog} rows={rows} onRows={onRows} onClose={() => setDialog(null)} />
     </DndContext>
   );
 }
@@ -444,55 +507,69 @@ function TextIcon() {
 // The canvas
 // ---------------------------------------------------------------------------
 
+/**
+ * The page as the site shows it (the same markup and spacing as
+ * `PageArticle`). Rows get 16 px of room around them and columns 8 px above
+ * and below, taken back by negative margins, so each can be pointed at
+ * outside what it holds.
+ */
 function Canvas({
   rows,
-  onRows,
+  page,
   dragging,
   target,
-  onAddBlock,
-  onColumn,
-  blocksFull,
+  actions,
 }: {
   rows: PageRow[];
-  onRows: Rows;
+  page: { title: string; thumbnail: PageThumbnail | null };
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
-  onAddBlock: (type: BlockType, columnId: string) => void;
-  onColumn: (columnId: string) => void;
-  blocksFull: boolean;
+  actions: Actions;
 }) {
-  const [confirming, setConfirming] = useState<string | null>(null);
-  const draggingRows = movesRows(dragging);
-  // Existing rows show their new place by moving; new ones by a line.
-  const showLine = (id: string) => target?.id === id && dragging?.kind !== "row" ? (target.after ? "after" : "before") : null;
-
   return (
-    <section aria-labelledby="content-heading" className="flex min-w-0 flex-col gap-4">
+    <section
+      aria-labelledby="content-heading"
+      data-builder-dragging={dragging ? "" : undefined}
+      // Links in the text are for visitors; in the editor they do nothing.
+      onClickCapture={(event) => {
+        if ((event.target as Element).closest("a")) event.preventDefault();
+      }}
+      className="min-w-0 rounded-lg border border-border bg-background px-6 pt-10 pb-8"
+    >
       <h2 id="content-heading" className="sr-only">
         Content
       </h2>
-      <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
-        <ol className="flex flex-col gap-4">
-          {rows.map((row, index) => (
-            <RowItem
-              key={row.id}
-              row={row}
-              position={index + 1}
-              count={rows.length}
-              line={showLine(row.id)}
-              onRows={onRows}
-              dragging={dragging}
-              target={target}
-              confirming={confirming === row.id}
-              onConfirm={(on) => setConfirming(on ? row.id : null)}
-              onAddBlock={onAddBlock}
-              onColumn={onColumn}
-              blocksFull={blocksFull}
-            />
-          ))}
-        </ol>
-      </SortableContext>
-      <CanvasEnd empty={rows.length === 0} active={draggingRows} />
+      <div className="flex flex-col gap-8">
+        <p aria-hidden className="text-4xl font-semibold tracking-tight text-balance">
+          {page.title || <span className="text-muted">Title</span>}
+        </p>
+        {page.thumbnail && (
+          // eslint-disable-next-line @next/next/no-img-element -- the page's picture, as the site shows it
+          <img
+            src={page.thumbnail.url}
+            alt=""
+            width={page.thumbnail.width}
+            height={page.thumbnail.height}
+            className="h-auto w-full rounded-lg bg-surface object-cover"
+          />
+        )}
+        <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+          <ol className="flex flex-col gap-8">
+            {rows.map((row, index) => (
+              <RowItem
+                key={row.id}
+                row={row}
+                name={`Row ${index + 1}`}
+                line={target?.id === row.id && dragging?.kind !== "row" ? (target.after ? "after" : "before") : null}
+                dragging={dragging}
+                target={target}
+                actions={actions}
+              />
+            ))}
+          </ol>
+        </SortableContext>
+        <CanvasEnd empty={rows.length === 0} active={movesRows(dragging)} />
+      </div>
     </section>
   );
 }
@@ -500,12 +577,12 @@ function Canvas({
 /** Below the last row: where a row dropped goes last, and what an empty page says. */
 function CanvasEnd({ empty, active }: { empty: boolean; active: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas-end", data: { kind: "canvas-end" } satisfies DragData });
-  if (!empty && !active) return <div ref={setNodeRef} />;
+  if (!empty && !active) return <div ref={setNodeRef} className="-mt-8" />;
   return (
     <div
       ref={setNodeRef}
       className={`flex min-h-28 items-center justify-center rounded-lg border-2 border-dashed p-6 text-center text-sm text-muted ${
-        isOver ? "border-foreground bg-surface" : "border-border"
+        isOver ? "border-blue-600 bg-surface" : "border-border"
       }`}
     >
       {empty ? "The page is empty. Drag a row here from Rows, or press one to add it." : "Drop the row here to put it last."}
@@ -513,177 +590,180 @@ function CanvasEnd({ empty, active }: { empty: boolean; active: boolean }) {
   );
 }
 
+/** Where a dragged row or block will land. */
 function Line({ at }: { at: "before" | "after" | null }) {
   if (!at) return null;
   return (
     <span
       aria-hidden
-      className={`pointer-events-none absolute inset-x-0 z-10 h-1 rounded-full bg-blue-600 ${at === "before" ? "-top-2.5" : "-bottom-2.5"}`}
+      className={`pointer-events-none absolute inset-x-0 z-30 h-1 rounded-full bg-blue-600 ${at === "before" ? "-top-3" : "-bottom-3"}`}
     />
   );
 }
 
-const rowHasText = (row: PageRow) => row.columns.some((c) => c.blocks.some((b) => richTextPlain(b.doc).trim() !== ""));
+const toolClass =
+  "flex size-7 items-center justify-center rounded hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white disabled:opacity-40";
+/** A drag handle in the tools; the button is made where `useSortable` is, with its ref and listeners. */
+const handleClass = `${toolClass} cursor-grab touch-none active:cursor-grabbing`;
+
+/**
+ * A row, column or block's tools: shown with its outline while it is
+ * pointed at or holds the focus, and only for the innermost one (the rules
+ * are in globals.css, `[data-builder-item]`).
+ */
+function Tools({
+  label,
+  handle,
+  onEdit,
+  editLabel,
+  onDuplicate,
+  duplicateDisabled = false,
+  onDelete,
+  deleteDisabled = false,
+}: {
+  label: string;
+  /** The drag handle, made where `useSortable` is (see `handleClass`). */
+  handle: ReactNode;
+  onEdit: () => void;
+  editLabel: string;
+  onDuplicate: () => void;
+  duplicateDisabled?: boolean;
+  onDelete: () => void;
+  deleteDisabled?: boolean;
+}) {
+  const tool = toolClass;
+  const lower = label.toLowerCase();
+  return (
+    <div
+      data-builder-tools
+      className="absolute top-0 left-0 z-20 flex -translate-y-full items-center gap-0.5 rounded-t-md bg-blue-600 px-1 text-white shadow"
+    >
+      {handle}
+      <button type="button" onClick={onEdit} aria-label={`${editLabel} (${lower})`} title={editLabel} className={tool}>
+        <Icon name="wrench" />
+      </button>
+      <button
+        type="button"
+        onClick={onDuplicate}
+        disabled={duplicateDisabled}
+        aria-label={`Duplicate ${lower}`}
+        title="Duplicate"
+        className={tool}
+      >
+        <Icon name="copy" />
+      </button>
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={deleteDisabled}
+        aria-label={`Delete ${lower}`}
+        title="Delete"
+        className={tool}
+      >
+        <Icon name="trash" />
+      </button>
+      <span className="px-1 text-xs whitespace-nowrap">{label}</span>
+    </div>
+  );
+}
 
 function RowItem({
   row,
-  position,
-  count,
+  name,
   line,
-  onRows,
   dragging,
   target,
-  confirming,
-  onConfirm,
-  onAddBlock,
-  onColumn,
-  blocksFull,
+  actions,
 }: {
   row: PageRow;
-  position: number;
-  count: number;
+  name: string;
   line: "before" | "after" | null;
-  onRows: Rows;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
-  confirming: boolean;
-  onConfirm: (on: boolean) => void;
-  onAddBlock: (type: BlockType, columnId: string) => void;
-  onColumn: (columnId: string) => void;
-  blocksFull: boolean;
+  actions: Actions;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: row.id,
     data: { kind: "row", rowId: row.id } satisfies DragData,
   });
-  const name = `Row ${position}`;
-  const layoutId = useId();
   const widths = ROW_LAYOUTS[row.layout].widths;
-  const remove = () => onRows((rows) => removeRow(rows, row.id));
+  const remove = () => actions.onRows((rows) => removeRow(rows, row.id));
 
   return (
     <li
       ref={setNodeRef}
+      data-builder-item="row"
+      tabIndex={0}
+      aria-label={`${name}, ${ROW_LAYOUTS[row.layout].label.toLowerCase()}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`relative flex flex-col gap-3 rounded-lg border bg-background p-3 ${
-        isDragging ? "z-30 border-foreground shadow-xl" : "border-border"
-      }`}
+      className={`-m-4 p-4 ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
     >
+      <Tools
+        label={name}
+        handle={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label={`Drag ${name.toLowerCase()} to move it`}
+            className={handleClass}
+          >
+            <Icon name="grip" />
+          </button>
+        }
+        onEdit={() => actions.open({ kind: "edit-row", rowId: row.id, fromColumn: false })}
+        editLabel="Change the layout"
+        onDuplicate={() => actions.onRows((rows) => duplicateRow(rows, row.id, newId))}
+        onDelete={() => (rowHasText(row) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and everything in it`, run: remove }) : remove())}
+      />
       <Line at={line} />
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag ${name.toLowerCase()} to move it`}
-          aria-roledescription="draggable row"
-          className={`${small} cursor-grab touch-none active:cursor-grabbing`}
+      <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
+        <div
+          style={{ "--columns": widths.map((w) => `minmax(0, ${w}fr)`).join(" ") } as CSSProperties}
+          className="grid gap-8 md:[grid-template-columns:var(--columns)]"
         >
-          <Grip />
-        </button>
-        <span className="text-sm font-medium">{name}</span>
-        <label htmlFor={layoutId} className="sr-only">
-          Layout of {name.toLowerCase()}
-        </label>
-        <select
-          id={layoutId}
-          value={row.layout}
-          onChange={(event) => onRows((rows) => setRowLayout(rows, row.id, event.target.value as RowLayout, newId))}
-          className="min-h-8 rounded-md border border-border bg-background px-2 text-xs"
-        >
-          {ROW_LAYOUT_KEYS.map((layout) => (
-            <option key={layout} value={layout}>
-              {ROW_LAYOUTS[layout].label}
-            </option>
+          {row.columns.map((column, index) => (
+            <ColumnItem
+              key={column.id}
+              column={column}
+              rowId={row.id}
+              name={`${name}, column ${index + 1}`}
+              count={row.columns.length}
+              dragging={dragging}
+              target={target}
+              actions={actions}
+            />
           ))}
-        </select>
-        <div className="ml-auto flex gap-1">
-          <button
-            type="button"
-            onClick={() => onRows((rows) => moveRow(rows, row.id, position - 2))}
-            disabled={position === 1}
-            aria-label={`Move ${name.toLowerCase()} up`}
-            className={small}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            onClick={() => onRows((rows) => moveRow(rows, row.id, position))}
-            disabled={position === count}
-            aria-label={`Move ${name.toLowerCase()} down`}
-            className={small}
-          >
-            ↓
-          </button>
-          <button
-            type="button"
-            onClick={() => (rowHasText(row) ? onConfirm(true) : remove())}
-            aria-label={`Delete ${name.toLowerCase()}`}
-            className={small}
-          >
-            Delete
-          </button>
         </div>
-      </div>
-      {confirming && (
-        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md bg-surface p-3 text-sm">
-          Delete {name.toLowerCase()} and everything in it?
-          <button type="button" onClick={remove} className="min-h-9 rounded-md bg-red-700 px-3 text-white">
-            Delete row
-          </button>
-          <button type="button" onClick={() => onConfirm(false)} className="underline">
-            Keep it
-          </button>
-        </div>
-      )}
-      <div
-        style={{ "--columns": widths.map((w) => `minmax(0, ${w}fr)`).join(" ") } as CSSProperties}
-        className="grid gap-3 md:[grid-template-columns:var(--columns)]"
-      >
-        {row.columns.map((column, index) => (
-          <ColumnItem
-            key={column.id}
-            column={column}
-            name={`${name}, column ${index + 1}`}
-            onRows={onRows}
-            dragging={dragging}
-            target={target}
-            onAddBlock={onAddBlock}
-            onColumn={onColumn}
-            blocksFull={blocksFull}
-          />
-        ))}
-      </div>
+      </SortableContext>
     </li>
   );
 }
 
 function ColumnItem({
   column,
+  rowId,
   name,
-  onRows,
+  count,
   dragging,
   target,
-  onAddBlock,
-  onColumn,
-  blocksFull,
+  actions,
 }: {
   column: PageColumn;
+  rowId: string;
   name: string;
-  onRows: Rows;
+  count: number;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
-  onAddBlock: (type: BlockType, columnId: string) => void;
-  onColumn: (columnId: string) => void;
-  blocksFull: boolean;
+  actions: Actions;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `column:${column.id}`,
-    data: { kind: "column", columnId: column.id } satisfies DragData,
+    data: { kind: "column", columnId: column.id, rowId } satisfies DragData,
   });
   const droppingBlock = dragging?.kind === "palette-block" || dragging?.kind === "block";
+  const remove = () => actions.onRows((rows) => removeColumn(rows, column.id));
   // A block from its own column shows its new place by moving; anything else by a line.
   const line = (blockId: string) =>
     target?.id === blockId && !(dragging?.kind === "block" && dragging.columnId === column.id)
@@ -695,14 +775,40 @@ function ColumnItem({
   return (
     <div
       ref={setNodeRef}
+      data-builder-item="column"
+      tabIndex={0}
       role="group"
       aria-label={name}
-      onFocusCapture={() => onColumn(column.id)}
-      onPointerDownCapture={() => onColumn(column.id)}
-      className={`flex min-h-24 min-w-0 flex-col gap-3 rounded-md border border-dashed p-2 ${
-        droppingBlock && isOver ? "border-foreground bg-surface" : droppingBlock ? "border-muted" : "border-border"
+      onFocusCapture={() => actions.onColumn(column.id)}
+      onPointerDownCapture={() => actions.onColumn(column.id)}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={`-my-2 flex min-w-0 flex-col gap-6 rounded-sm py-2 ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""} ${
+        droppingBlock && isOver ? "bg-blue-50 dark:bg-blue-950" : ""
       }`}
     >
+      <Tools
+        label={name.replace(/^Row \d+, c/, "C")}
+        handle={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label={`Drag ${name.toLowerCase()} to move it`}
+            className={handleClass}
+          >
+            <Icon name="grip" />
+          </button>
+        }
+        onEdit={() => actions.open({ kind: "edit-row", rowId, fromColumn: true })}
+        editLabel="Change the row's layout"
+        onDuplicate={() => actions.onRows((rows) => duplicateColumn(rows, column.id, newId))}
+        duplicateDisabled={count >= 6}
+        onDelete={() =>
+          columnHasText(column) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and its text`, run: remove }) : remove()
+        }
+        deleteDisabled={count <= 1}
+      />
       <SortableContext items={column.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
         {column.blocks.map((block, index) => (
           <BlockItem
@@ -710,27 +816,29 @@ function ColumnItem({
             block={block}
             columnId={column.id}
             name={`${name}, ${blockLabels[block.type].toLowerCase()} ${index + 1}`}
-            first={index === 0}
-            last={index === column.blocks.length - 1}
             line={line(block.id)}
-            onRows={onRows}
+            actions={actions}
           />
         ))}
       </SortableContext>
       {column.blocks.length === 0 && (
-        <p className="flex flex-1 items-center justify-center p-2 text-center text-xs text-muted">
+        <div
+          className={`flex min-h-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed p-3 text-center text-xs text-muted ${
+            droppingBlock ? "border-blue-600" : "border-border"
+          }`}
+        >
           Drag a component here
-        </p>
+          <button
+            type="button"
+            onClick={() => actions.onAddBlock("richText", column.id)}
+            disabled={actions.blocksFull}
+            aria-label={`Add rich text to ${name.toLowerCase()}`}
+            className="underline hover:text-foreground disabled:opacity-40"
+          >
+            or add rich text
+          </button>
+        </div>
       )}
-      <button
-        type="button"
-        onClick={() => onAddBlock("richText", column.id)}
-        disabled={blocksFull}
-        aria-label={`Add rich text to ${name.toLowerCase()}`}
-        className="w-fit text-xs text-muted underline hover:text-foreground disabled:opacity-40"
-      >
-        + Rich text
-      </button>
     </div>
   );
 }
@@ -739,95 +847,199 @@ function BlockItem({
   block,
   columnId,
   name,
-  first,
-  last,
   line,
-  onRows,
+  actions,
 }: {
   block: PageBlock;
   columnId: string;
   name: string;
-  first: boolean;
-  last: boolean;
   line: "before" | "after" | null;
-  onRows: Rows;
+  actions: Actions;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
     data: { kind: "block", blockId: block.id, columnId } satisfies DragData,
   });
-  const [confirming, setConfirming] = useState(false);
-  const remove = () => onRows((rows) => removeBlock(rows, block.id));
-  const move = (by: number) =>
-    onRows((rows) => {
-      const place = findBlock(rows, block.id);
-      return place ? moveBlock(rows, block.id, columnId, place.index + by) : rows;
-    });
+  const remove = () => actions.onRows((rows) => removeBlock(rows, block.id));
+  const edit = () => actions.open({ kind: "edit-block", blockId: block.id });
 
   return (
     <div
       ref={setNodeRef}
+      data-builder-item="block"
+      tabIndex={0}
+      role="group"
+      aria-label={name}
+      onDoubleClick={edit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.target === event.currentTarget) {
+          event.preventDefault();
+          edit();
+        }
+      }}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`relative flex flex-col gap-2 rounded-md bg-background ${isDragging ? "opacity-40" : ""}`}
+      className={isDragging ? "opacity-40" : ""}
     >
-      <Line at={line} />
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          {...attributes}
-          {...listeners}
-          aria-label={`Drag ${name.toLowerCase()} to move it`}
-          aria-roledescription="draggable block"
-          className={`${small} cursor-grab touch-none active:cursor-grabbing`}
-        >
-          <Grip />
-        </button>
-        <span className="min-w-0 flex-1 truncate text-xs text-muted">{blockLabels[block.type]}</span>
-        <button type="button" onClick={() => move(-1)} disabled={first} aria-label={`Move ${name.toLowerCase()} up`} className={small}>
-          ↑
-        </button>
-        <button type="button" onClick={() => move(1)} disabled={last} aria-label={`Move ${name.toLowerCase()} down`} className={small}>
-          ↓
-        </button>
-        <button
-          type="button"
-          onClick={() => (richTextPlain(block.doc).trim() === "" ? remove() : setConfirming(true))}
-          aria-label={`Delete ${name.toLowerCase()}`}
-          className={small}
-        >
-          ✕
-        </button>
-      </div>
-      {confirming && (
-        <div role="alert" className="flex flex-wrap items-center gap-2 rounded-md bg-surface p-2 text-xs">
-          Delete this text?
-          <button type="button" onClick={remove} className="min-h-8 rounded-md bg-red-700 px-2 text-white">
-            Delete
+      <Tools
+        label={blockLabels[block.type]}
+        handle={
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label={`Drag ${name.toLowerCase()} to move it`}
+            className={handleClass}
+          >
+            <Icon name="grip" />
           </button>
-          <button type="button" onClick={() => setConfirming(false)} className="underline">
-            Keep it
-          </button>
-        </div>
-      )}
-      <RichTextEditor
-        value={block.doc}
-        onChange={(doc) => onRows((rows) => updateBlock(rows, block.id, (b) => ({ ...b, doc })))}
-        label={name}
+        }
+        onEdit={edit}
+        editLabel="Edit"
+        onDuplicate={() => actions.onRows((rows) => duplicateBlock(rows, block.id, newId))}
+        onDelete={() => (blockHasText(block) ? actions.open({ kind: "delete", what: "this text", run: remove }) : remove())}
       />
+      <Line at={line} />
+      {hasContent(block.doc) ? (
+        <RichText doc={block.doc} />
+      ) : (
+        <p className="rounded-md bg-surface p-3 text-sm text-muted">Empty text. Double-click or use the wrench to write.</p>
+      )}
     </div>
   );
 }
 
-function Grip() {
+// ---------------------------------------------------------------------------
+// Dialogs
+// ---------------------------------------------------------------------------
+
+function Dialogs({
+  dialog,
+  rows,
+  onRows,
+  onClose,
+}: {
+  dialog: Dialog | null;
+  rows: PageRow[];
+  onRows: Rows;
+  onClose: () => void;
+}) {
+  const done = (
+    <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+      Done
+    </button>
+  );
+  const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
+  const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
+
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
+    <>
+      <Modal open={Boolean(block)} onClose={onClose} title="Edit rich text" footer={done} wide>
+        {block && (
+          <RichTextEditor
+            // A new block opens with nothing written; the editor starts from what is stored.
+            key={block.id}
+            value={block.doc}
+            onChange={(doc) => onRows((current) => updateBlock(current, block.id, (b) => ({ ...b, doc })))}
+            label="Text"
+          />
+        )}
+      </Modal>
+
+      <Modal open={Boolean(row)} onClose={onClose} title="Row layout" footer={done}>
+        {row && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted">
+              {dialog?.kind === "edit-row" && dialog.fromColumn ? "A column's width comes from its row's layout. " : ""}
+              With fewer columns, the text of the columns that go moves to the last one.
+            </p>
+            <div role="radiogroup" aria-label="Layout" className="grid grid-cols-3 gap-3">
+              {ROW_LAYOUT_KEYS.map((layout) => (
+                <button
+                  key={layout}
+                  type="button"
+                  role="radio"
+                  aria-checked={row.layout === layout}
+                  onClick={() => onRows((current) => setRowLayout(current, row.id, layout, newId))}
+                  className="flex flex-col gap-2 rounded-md border border-transparent p-2 text-left hover:bg-surface aria-checked:border-blue-600 aria-checked:bg-blue-50 dark:aria-checked:bg-blue-950"
+                >
+                  <LayoutPreview layout={layout} />
+                  <span className="text-xs">{ROW_LAYOUTS[layout].label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={dialog?.kind === "delete"}
+        onClose={onClose}
+        title="Delete?"
+        footer={
+          <>
+            <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-border px-4 text-sm">
+              Keep it
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (dialog?.kind === "delete") dialog.run();
+                onClose();
+              }}
+              className="min-h-10 rounded-md bg-red-700 px-4 text-sm font-medium text-white"
+            >
+              Delete
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm">
+          Delete {dialog?.kind === "delete" ? dialog.what : ""}? Until you save the draft, the saved page keeps it.
+        </p>
+      </Modal>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Icons
+// ---------------------------------------------------------------------------
+
+const ICONS = {
+  grip: (
+    <g fill="currentColor" stroke="none">
       <circle cx="9" cy="6" r="1.6" />
       <circle cx="15" cy="6" r="1.6" />
       <circle cx="9" cy="12" r="1.6" />
       <circle cx="15" cy="12" r="1.6" />
       <circle cx="9" cy="18" r="1.6" />
       <circle cx="15" cy="18" r="1.6" />
+    </g>
+  ),
+  wrench: <path d="M14.7 6.3a4 4 0 0 0-5.1 5.1L3.5 17.5a1.4 1.4 0 0 0 2 2l6.1-6.1a4 4 0 0 0 5.1-5.1l-2.4 2.4-2.1-.4-.4-2.1z" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" />
+    </>
+  ),
+  trash: <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />,
+};
+
+function Icon({ name }: { name: keyof typeof ICONS }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {ICONS[name]}
     </svg>
   );
 }

@@ -1,4 +1,4 @@
-import { EMPTY_DOC, ROW_LAYOUTS, type BlockType, type PageBlock, type PageRow, type RowLayout } from "./page-content";
+import { EMPTY_DOC, ROW_LAYOUTS, type BlockType, type PageBlock, type PageColumn, type PageRow, type RowLayout } from "./page-content";
 
 /**
  * The page builder's edits (D43), as pure functions on a page's rows: each
@@ -110,4 +110,73 @@ export function moveBlock(rows: PageRow[], blockId: string, columnId: string, in
 export function updateBlock(rows: PageRow[], blockId: string, change: (block: PageBlock) => PageBlock): PageRow[] {
   const place = findBlock(rows, blockId);
   return place ? mapColumn(rows, place.columnId, (blocks) => blocks.map((b) => (b.id === blockId ? change(b) : b))) : rows;
+}
+
+/** The layout with `count` equal columns (1 to 6). */
+export function equalLayout(count: number): RowLayout {
+  return String(Math.max(1, Math.min(6, count))) as RowLayout;
+}
+
+const copyBlock = (block: PageBlock, id: NewId): PageBlock => ({ ...structuredClone(block), id: id() });
+const copyColumn = (column: PageColumn, id: NewId): PageColumn => ({
+  id: id(),
+  blocks: column.blocks.map((b) => copyBlock(b, id)),
+});
+
+/** A copy of the row, with new ids throughout, right after it. */
+export function duplicateRow(rows: PageRow[], rowId: string, id: NewId): PageRow[] {
+  const index = rows.findIndex((r) => r.id === rowId);
+  if (index < 0) return rows;
+  const row = rows[index];
+  return insertRow(rows, { ...row, id: id(), columns: row.columns.map((c) => copyColumn(c, id)) }, index + 1);
+}
+
+/** A copy of the block right after it. */
+export function duplicateBlock(rows: PageRow[], blockId: string, id: NewId): PageRow[] {
+  const place = findBlock(rows, blockId);
+  return place ? insertBlock(rows, place.columnId, copyBlock(place.block, id), place.index + 1) : rows;
+}
+
+function findColumn(rows: PageRow[], columnId: string): { row: PageRow; index: number } | null {
+  for (const row of rows) {
+    const index = row.columns.findIndex((c) => c.id === columnId);
+    if (index >= 0) return { row, index };
+  }
+  return null;
+}
+
+/** Whether a column can be copied: a row takes at most six columns. */
+export function canDuplicateColumn(rows: PageRow[], columnId: string): boolean {
+  const found = findColumn(rows, columnId);
+  return Boolean(found && found.row.columns.length < 6);
+}
+
+/**
+ * A copy of the column right after it. The row gets one more column, so its
+ * columns become equal (a sidebar layout has a set number of columns).
+ */
+export function duplicateColumn(rows: PageRow[], columnId: string, id: NewId): PageRow[] {
+  const found = findColumn(rows, columnId);
+  if (!found || found.row.columns.length >= 6) return rows;
+  const columns = [...found.row.columns];
+  columns.splice(found.index + 1, 0, copyColumn(columns[found.index], id));
+  return rows.map((r) => (r.id === found.row.id ? { ...r, layout: equalLayout(columns.length), columns } : r));
+}
+
+/** Takes a column and its blocks out; the rest become equal. A row keeps at least one column. */
+export function removeColumn(rows: PageRow[], columnId: string): PageRow[] {
+  const found = findColumn(rows, columnId);
+  if (!found || found.row.columns.length <= 1) return rows;
+  const columns = found.row.columns.filter((c) => c.id !== columnId);
+  return rows.map((r) => (r.id === found.row.id ? { ...r, layout: equalLayout(columns.length), columns } : r));
+}
+
+/** Moves a column within its row; widths stay with the places, so it takes the width of its new place. */
+export function moveColumn(rows: PageRow[], columnId: string, to: number): PageRow[] {
+  const found = findColumn(rows, columnId);
+  if (!found) return rows;
+  const columns = [...found.row.columns];
+  const [column] = columns.splice(found.index, 1);
+  columns.splice(clamp(to, columns.length), 0, column);
+  return rows.map((r) => (r.id === found.row.id ? { ...r, columns } : r));
 }
