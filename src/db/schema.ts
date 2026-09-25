@@ -2442,3 +2442,68 @@ export const savedParts = commerce.table(
     check("saved_parts_name", sql`length(trim(${t.name})) between 1 and 80`),
   ],
 );
+
+/**
+ * A category or tag (D50) for one kind of content (`page`, `article` or
+ * `product`) of Kaizen's (`store_id` null) or a store's. Categories nest
+ * (`parent_id`, a category of the same owner and content); tags are flat.
+ * Pages carry theirs in their content (`categories`, `tags`), so they go
+ * live when the page is published; products in `product_terms`.
+ */
+export const terms = commerce.table(
+  "terms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id),
+    contentType: text("content_type").notNull(),
+    kind: text("kind").notNull(),
+    parentId: uuid("parent_id").references((): AnyPgColumn => terms.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("terms_scope_slug_key").on(t.storeId, t.contentType, t.kind, t.slug).nullsNotDistinct(),
+    // For product_terms: a product's terms are its own store's product terms.
+    unique("terms_store_content_id_key").on(t.storeId, t.contentType, t.id),
+    index("terms_scope_idx").on(t.storeId, t.contentType, t.kind, t.position),
+    index("terms_parent_idx").on(t.parentId),
+    check("terms_content_type", sql`${t.contentType} in ('page', 'article', 'product')`),
+    check("terms_kind", sql`${t.kind} in ('category', 'tag')`),
+    check("terms_products_in_stores", sql`${t.contentType} <> 'product' or ${t.storeId} is not null`),
+    check("terms_tags_flat", sql`${t.kind} = 'category' or ${t.parentId} is null`),
+    check("terms_not_own_parent", sql`${t.parentId} is null or ${t.parentId} <> ${t.id}`),
+    check("terms_name", sql`length(trim(${t.name})) between 1 and 80`),
+    check("terms_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),
+  ],
+);
+
+/** A product's categories and tags (D50): only its own store's product terms. */
+export const productTerms = commerce.table(
+  "product_terms",
+  {
+    storeId: uuid("store_id").notNull(),
+    productId: uuid("product_id").notNull(),
+    termId: uuid("term_id").notNull(),
+    contentType: text("content_type").notNull().default("product"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.productId, t.termId] }),
+    // Cover both composite foreign keys.
+    index("product_terms_product_idx").on(t.storeId, t.productId),
+    index("product_terms_term_idx").on(t.storeId, t.contentType, t.termId),
+    check("product_terms_content_type", sql`${t.contentType} = 'product'`),
+    foreignKey({
+      name: "product_terms_product_fk",
+      columns: [t.storeId, t.productId],
+      foreignColumns: [products.storeId, products.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "product_terms_term_fk",
+      columns: [t.storeId, t.contentType, t.termId],
+      foreignColumns: [terms.storeId, terms.contentType, terms.id],
+    }).onDelete("cascade"),
+  ],
+);

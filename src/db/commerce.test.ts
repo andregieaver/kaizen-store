@@ -1006,6 +1006,76 @@ describe("saved parts", () => {
   });
 });
 
+describe("categories and tags (D50)", () => {
+  const term = (values: { store?: string | null; type?: string; kind?: string; parent?: string | null; slug: string }) =>
+    one<{ id: string }>(
+      `insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug)
+       values ($1, $2, $3, $4, $5, $5) returning id`,
+      [values.store ?? null, values.type ?? "page", values.kind ?? "category", values.parent ?? null, values.slug],
+    );
+
+  it("keeps one address per owner, content and kind", async () => {
+    await term({ slug: "guides" });
+    await expect(term({ slug: "guides" })).rejects.toThrow(/terms_scope_slug_key/);
+    await expect(term({ slug: "guides", kind: "tag" })).resolves.toBeDefined();
+    await expect(term({ slug: "guides", store })).resolves.toBeDefined();
+    await expect(term({ slug: "Not An Address" })).rejects.toThrow(/terms_slug_format/);
+  });
+
+  it("nests categories of the same owner and content, never tags and never in a circle", async () => {
+    const top = await term({ slug: "top" });
+    const child = await term({ slug: "child", parent: top.id });
+    const grandchild = await term({ slug: "grandchild", parent: child.id });
+    await expect(term({ slug: "tagged", kind: "tag", parent: top.id })).rejects.toThrow(/terms_tags_flat/);
+    const tag = await term({ slug: "a-tag", kind: "tag" });
+    await expect(term({ slug: "under-tag", parent: tag.id })).rejects.toThrow(/same kind of content/);
+    await expect(term({ slug: "other-owner", store, parent: top.id })).rejects.toThrow(/same kind of content/);
+    await expect(
+      db.query("update commerce.terms set parent_id = $1 where id = $2", [grandchild.id, top.id]),
+    ).rejects.toThrow(/inside itself/);
+    // A deleted category leaves its children at the top.
+    await db.query("delete from commerce.terms where id = $1", [child.id]);
+    expect((await one<{ parent_id: string | null }>("select parent_id from commerce.terms where id = $1", [grandchild.id])).parent_id).toBeNull();
+  });
+
+  it("gives products only their own store's product categories and tags", async () => {
+    const { productId, storeId } = await createProduct();
+    const own = await term({ store: storeId, type: "product", slug: "lamps" });
+    const pageTerm = await term({ store: storeId, type: "page", slug: "lamps" });
+    const otherStore = await createStore("terms-other", ["DE"]);
+    const foreign = await term({ store: otherStore, type: "product", slug: "lamps" });
+    const assign = (termId: string, storeId_ = storeId) =>
+      db.query("insert into commerce.product_terms (store_id, product_id, term_id) values ($1, $2, $3)", [storeId_, productId, termId]);
+    await expect(assign(own.id)).resolves.toBeDefined();
+    await expect(assign(pageTerm.id)).rejects.toThrow(/product_terms_term_fk/);
+    await expect(assign(foreign.id)).rejects.toThrow(/product_terms_term_fk/);
+    await expect(assign(foreign.id, otherStore)).rejects.toThrow(/product_terms_product_fk/);
+    await expect(term({ type: "product", slug: "platform-products" })).rejects.toThrow(/terms_products_in_stores/);
+    // A store made from this one gets copies of its categories, nesting and product links.
+    const parent = await term({ store: storeId, type: "product", slug: "lighting" });
+    const nested = await term({ store: storeId, type: "product", slug: "desk-lamps", parent: parent.id });
+    await assign(nested.id);
+    const owner = await createAccount("terms-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'terms-copy', 'Copy', $2) as id", [
+      storeId,
+      owner,
+    ]);
+    const copied = await db.query<{ slug: string; parent: string | null; products: number }>(
+      `select t.slug, p.slug as parent, (select count(*)::int from commerce.product_terms pt where pt.term_id = t.id) as products
+       from commerce.terms t left join commerce.terms p on p.id = t.parent_id
+       where t.store_id = $1 and t.content_type = 'product' order by t.slug`,
+      [copy],
+    );
+    expect(copied.rows).toContainEqual({ slug: "desk-lamps", parent: "lighting", products: 1 });
+    expect(copied.rows).toContainEqual({ slug: "lamps", parent: null, products: 1 });
+    // Deleting a category takes it off its products.
+    await db.query("delete from commerce.terms where id = $1", [own.id]);
+    expect(
+      (await db.query("select 1 from commerce.product_terms where product_id = $1 and term_id = $2", [productId, own.id])).rows,
+    ).toEqual([]);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

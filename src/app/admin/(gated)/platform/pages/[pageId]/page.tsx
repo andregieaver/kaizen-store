@@ -9,6 +9,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { getPageForEdit } from "@/server/pages";
 import { listSavedParts } from "@/server/saved-parts";
+import { listTerms } from "@/server/taxonomy";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
 
 import { uploadPlatformImageAction } from "../../actions";
@@ -26,7 +27,12 @@ export const metadata: Metadata = { title: "Edit page" };
 export default async function EditPagePage({ params, searchParams }: Props) {
   await connection();
   await requirePlatformAdmin();
-  const [page, { saved: justSaved }, saved] = await Promise.all([load(params), searchParams, listSavedParts()]);
+  const [page, { saved: justSaved }, saved, terms] = await Promise.all([
+    load(params),
+    searchParams,
+    listSavedParts(),
+    listTerms({ storeId: null, contentType: "page" }),
+  ]);
   if (!page) notFound();
   return (
     <>
@@ -39,6 +45,7 @@ export default async function EditPagePage({ params, searchParams }: Props) {
         origin={siteUrl()}
         defaultDescription={PLATFORM_DEFAULTS.description}
         savedParts={saved}
+        terms={terms}
         upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       />
     </>

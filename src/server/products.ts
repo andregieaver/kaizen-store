@@ -13,9 +13,11 @@ import {
   type ProductInput,
 } from "@/lib/product-input";
 import type { PlanInterval } from "@/lib/subscriptions";
+import type { Term } from "@/lib/taxonomy";
 
 import { storedFileInfo, uploadsEnabled } from "./media";
 import type { Store } from "./stores";
+import { listTerms, scopedTermIds } from "./taxonomy";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -37,10 +39,12 @@ export type EditorContext = {
   operators: Operator[];
   /** Where stock is counted; null until the first product is saved. */
   locationName: string | null;
+  /** The store's product categories and tags (D50). */
+  terms: Term[];
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location]] = await Promise.all([
+  const [operators, [location], terms] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -50,11 +54,13 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       select name from commerce.inventory_locations
       where store_id = ${store.id}::uuid and active order by created_at limit 1
     `),
+    listTerms({ storeId: store.id, contentType: "product" }),
   ]);
   const locales = [...new Set(store.markets.map((m) => m.locale))];
   return {
     locales,
     primaryLocale: locales[0] ?? "en",
+    terms,
     markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name })),
     operators: operators.map((row) => ({
       id: String(row.id),
@@ -108,6 +114,8 @@ export function emptyProduct(context: EditorContext): ProductInput {
     schemes: ["packaging"],
     manufacturer: context.operators[0] ? { id: context.operators[0].id } : null,
     responsiblePerson: null,
+    categories: [],
+    tags: [],
   };
 }
 
@@ -191,7 +199,7 @@ export async function getProductForEdit(
   `);
   if (!product) return null;
 
-  const [translations, media, schemes, variants, prices, files, plans] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files, plans, termRows] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -231,6 +239,11 @@ export async function getProductForEdit(
       select id, interval, interval_count, discount_percent, trial_days, signup_fee, min_cycles from commerce.selling_plans
       where store_id = ${store.id}::uuid and product_id = ${productId}::uuid and active
       order by position, created_at
+    `),
+    db().execute<Row>(sql`
+      select t.id, t.kind from commerce.product_terms pt
+      join commerce.terms t on t.id = pt.term_id
+      where pt.store_id = ${store.id}::uuid and pt.product_id = ${productId}::uuid
     `),
   ]);
 
@@ -329,6 +342,8 @@ export async function getProductForEdit(
     schemes: schemes.map((s) => String(s.scheme)),
     manufacturer: choice(product.manufacturer_id),
     responsiblePerson: choice(product.responsible_person_id),
+    categories: termRows.filter((t) => t.kind === "category").map((t) => String(t.id)),
+    tags: termRows.filter((t) => t.kind === "tag").map((t) => String(t.id)),
   };
 }
 
@@ -375,6 +390,12 @@ export async function saveProduct(
     }
   }
   if (problems.length > 0) return { ok: false, problems };
+  // Only the store's own product categories and tags; one deleted meanwhile is left out.
+  const termScope = { storeId: store.id, contentType: "product" } as const;
+  const termIds = [
+    ...(await scopedTermIds(termScope, "category", input.categories)),
+    ...(await scopedTermIds(termScope, "tag", input.tags)),
+  ];
 
   try {
     const id = await db().transaction(async (tx) => {
@@ -394,6 +415,13 @@ export async function saveProduct(
       await saveVariants(tx, store.id, saved, context, input, locationId);
       await saveFiles(tx, store.id, saved, input);
       await savePlans(tx, store.id, saved, input, context.markets);
+      await tx.execute(sql`delete from commerce.product_terms where store_id = ${store.id}::uuid and product_id = ${saved}::uuid`);
+      for (const termId of termIds) {
+        await tx.execute(sql`
+          insert into commerce.product_terms (store_id, product_id, term_id)
+          values (${store.id}::uuid, ${saved}::uuid, ${termId}::uuid)
+        `);
+      }
       // Last, so the publishing check sees the finished listing.
       await tx.execute(sql`
         update commerce.products set status = ${input.status}, updated_at = now()

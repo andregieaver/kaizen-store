@@ -407,6 +407,20 @@
       "when": 1790349789841,
       "tag": "20260925152309_saved_parts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1790365706556,
+      "tag": "20260925194826_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790365707857,
+      "tag": "20260925194827_terms_rules",
+      "breakpoints": true
     }
   ]
 }

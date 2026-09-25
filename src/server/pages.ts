@@ -7,6 +7,7 @@ import { db, readDb } from "@/db/client";
 import { pageInput, parsePageContent, samePageContent, type PageContent } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
+import { scopedTermIds } from "./taxonomy";
 
 /**
  * Kaizen's own pages (D42), built from blocks in the platform admin and
@@ -66,6 +67,8 @@ function readDraft(value: unknown, slug: string): PageContent {
       seo: { title: "", description: "" },
       searchEngines: true,
       aiAssistants: true,
+      categories: [],
+      tags: [],
       rows: [],
     }
   );
@@ -147,7 +150,13 @@ export async function savePage(
 ): Promise<PageResult> {
   const parsed = pageInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
-  const content = parsed.data;
+  // Only Kaizen's page categories and tags; one deleted meanwhile is left out.
+  const scope = { storeId: null, contentType: "page" } as const;
+  const content = {
+    ...parsed.data,
+    categories: await scopedTermIds(scope, "category", parsed.data.categories),
+    tags: await scopedTermIds(scope, "tag", parsed.data.tags),
+  };
   const json = JSON.stringify(content);
 
   let result: PageResult;

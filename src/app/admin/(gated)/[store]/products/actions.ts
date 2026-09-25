@@ -8,6 +8,7 @@ import { productInput, type ProductInput } from "@/lib/product-input";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
 import { startFileUpload, uploadProductImage, type FileUpload, type UploadResult } from "@/server/media";
+import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import {
   getEditorContext,
   getProductForEdit,
@@ -98,4 +99,35 @@ export async function startFileUploadAction(storeSlug: string, fileName: string)
   const name = z.string().trim().min(1).max(200).safeParse(fileName);
   if (!name.success) return { ok: false, problem: "The file needs a name." };
   return startFileUpload(member.store.id, name.data);
+}
+
+// ---------------------------------------------------------------------------
+// The store's product categories and tags (D50)
+// ---------------------------------------------------------------------------
+
+const productTerms = (member: Membership) => ({ storeId: member.store.id, contentType: "product" }) as const;
+
+function termsChanged(member: Membership, result: TermsResult): TermsResult {
+  if (result.ok) {
+    updateTag(termsTag(productTerms(member)));
+    refreshCatalogue(member);
+  }
+  return result;
+}
+
+export async function createProductTermAction(storeSlug: string, input: unknown): Promise<TermsResult> {
+  const member = await requireMember(storeSlug);
+  return termsChanged(member, await createTerm(member.account, productTerms(member), input));
+}
+
+export async function updateProductTermAction(storeSlug: string, id: string, input: unknown): Promise<TermsResult> {
+  const member = await requireMember(storeSlug);
+  if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown category or tag."] };
+  return termsChanged(member, await updateTerm(member.account, productTerms(member), id, input));
+}
+
+export async function deleteProductTermAction(storeSlug: string, id: string): Promise<TermsResult> {
+  const member = await requireMember(storeSlug);
+  if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown category or tag."] };
+  return termsChanged(member, await deleteTerm(member.account, productTerms(member), id));
 }

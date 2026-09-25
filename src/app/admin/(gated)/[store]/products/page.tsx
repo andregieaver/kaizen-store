@@ -16,12 +16,20 @@ export default async function ProductsPage({ params, searchParams }: Props) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Products</h1>
-        <Link
-          href={`/admin/${store.slug}/products/new`}
-          className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
-        >
-          Add product
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/admin/${store.slug}/products/categories`}
+            className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium"
+          >
+            Categories and tags
+          </Link>
+          <Link
+            href={`/admin/${store.slug}/products/new`}
+            className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+          >
+            Add product
+          </Link>
+        </div>
       </div>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-background" />}>
         <ProductList storeSlug={store.slug} searchParams={searchParams} />

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { minorUnitDigits } from "./money";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
+import { termIdsSchema } from "./taxonomy";
 import {
   MAX_DISCOUNT_PERCENT,
   MAX_INTERVAL_COUNT,
@@ -210,6 +211,8 @@ export const productInput = z.object({
   schemes: z.array(z.enum(PRODUCER_SCHEMES.map((s) => s.id) as [string, ...string[]])),
   manufacturer: operatorSchema,
   responsiblePerson: operatorSchema,
+  /** The store's product categories and tags, by id (D50). */
+  ...termIdsSchema.shape,
 });
 
 export type ProductInput = z.infer<typeof productInput>;

@@ -195,6 +195,13 @@ of running `playwright install`.
   `updateTag(PAGES_TAG)`. New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
+- Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):
+  `commerce.terms` per owner (`store_id`, null for Kaizen) and kind of
+  content (`page`, `article`, `product`); categories nest, tags are flat.
+  Pages carry theirs in their content (`categories`, `tags`); products in
+  `product_terms`. `TermsManager` and `TermPicker`
+  (`src/components/admin/terms.tsx`) manage and choose them; changes
+  `updateTag(termsTag(scope))`.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
   store's `NavigationEditor` with platform link kinds (`PlatformMenuLink`: a
   page by id, home, sign-up, sign-in, a web address) and business details;

@@ -12,12 +12,14 @@ import {
 } from "react";
 
 import {
+  createProductTermAction,
   saveProductAction,
   startFileUploadAction,
   uploadImageAction,
   type SaveState,
 } from "@/app/admin/(gated)/[store]/products/actions";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
+import { TermPicker } from "@/components/admin/terms";
 import { fileSize } from "@/lib/file-size";
 import { shrinkImage } from "@/lib/image-resize";
 import type { CountryOption } from "@/lib/iso-countries";
@@ -231,6 +233,22 @@ export function ProductEditor(props: Props) {
         productUrl={`${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle || slugify(title) || "product"}`}
       />
       <MediaSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
+      <section aria-labelledby="terms-heading" className={card}>
+        <h2 id="terms-heading" className="mb-1 font-medium">
+          Categories and tags
+        </h2>
+        <p className="mb-4 text-sm text-muted">
+          Shoppers find the product through its categories and tags, in menus and in content grids.
+        </p>
+        <TermPicker
+          terms={context.terms}
+          value={{ categories: product.categories, tags: product.tags }}
+          onChange={(ids) => update((p) => ({ ...p, ...ids }))}
+          onTerms={(terms) => setContext((c) => ({ ...c, terms }))}
+          create={createProductTermAction.bind(null, storeSlug)}
+          manageHref={`/admin/${storeSlug}/products/categories`}
+        />
+      </section>
       <VariantsSection product={product} update={update} context={context} countries={props.countries} />
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />

@@ -17,6 +17,7 @@ import {
   type EditorContext,
 } from "./products";
 import type { Store } from "./stores";
+import { createTerm } from "./taxonomy";
 
 type Row = Record<string, unknown>;
 
@@ -132,6 +133,32 @@ describe("saving a product", () => {
       [`K-HVIT-${run}`, { NO: "249,00" }, 5],
       [`K-SVART-${run}`, { NO: "249,00", SE: "269,00" }, 0],
     ]);
+  });
+
+  it("keeps the product's categories and tags: only the store's own product ones (D50)", async () => {
+    const [account] = await db().execute<Row>(sql`
+      insert into commerce.accounts (email, name) values (${`products-${run}@example.com`}, 'Owner') returning id, email
+    `);
+    const owner = { id: String(account.id), email: String(account.email), name: "Owner", platformAdmin: false };
+    const own = await createTerm(owner, { storeId: store.id, contentType: "product" }, { kind: "category", name: "Kopper" });
+    const tag = await createTerm(owner, { storeId: store.id, contentType: "product" }, { kind: "tag", name: "Nyhet" });
+    const foreign = await createTerm(owner, { storeId: other.id, contentType: "product" }, { kind: "category", name: "Kopper" });
+    if (!own.ok || !tag.ok || !foreign.ok) throw new Error("terms not created");
+    context = await getEditorContext(store);
+    expect(context.terms.map((t) => t.name).sort()).toEqual(["Kopper", "Nyhet"]);
+
+    const current = await getProductForEdit(store, context, productId);
+    const { archived: _archived, ...input } = current!;
+    void _archived;
+    const result = await saveProduct(store, context, productId, {
+      ...input,
+      categories: [own.id, foreign.id],
+      tags: [tag.id, own.id],
+    });
+    expect(result).toMatchObject({ ok: true });
+    const saved = await getProductForEdit(store, context, productId);
+    expect(saved?.categories).toEqual([own.id]);
+    expect(saved?.tags).toEqual([tag.id]);
   });
 
   it("changes prices through the price history and ends removed prices", async () => {

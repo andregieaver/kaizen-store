@@ -35,12 +35,20 @@ export default async function PagesPage({ searchParams }: PageProps<"/admin/plat
             .
           </p>
         </div>
-        <Link
-          href="/admin/platform/pages/new"
-          className="flex min-h-11 items-center rounded-md bg-foreground px-5 font-medium text-background"
-        >
-          New page
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            href="/admin/platform/pages/categories"
+            className="flex min-h-11 items-center rounded-md border border-border px-5 font-medium"
+          >
+            Categories and tags
+          </Link>
+          <Link
+            href="/admin/platform/pages/new"
+            className="flex min-h-11 items-center rounded-md bg-foreground px-5 font-medium text-background"
+          >
+            New page
+          </Link>
+        </div>
       </div>
 
       {query.deleted && (

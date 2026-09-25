@@ -4,17 +4,20 @@ import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useState, useTransition } from "react";
 
 import {
+  createPageTermAction,
   deletePageAction,
   savePageAction,
   unpublishPageAction,
   type PageSaveState,
 } from "@/app/admin/(gated)/platform/pages/actions";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
+import { TermPicker } from "@/components/admin/terms";
 import { shrinkImage } from "@/lib/image-resize";
 import {
   ALT_MAX,
   PAGE_SLUG_MAX,
   PAGE_TITLE_MAX,
+  newPageContent,
   pageExcerpt,
   pageSlugFromTitle,
   pageSlugProblem,
@@ -24,6 +27,7 @@ import {
 } from "@/lib/page-content";
 import { newBlock, newRow } from "@/lib/page-rows";
 import type { SavedPart } from "@/lib/saved-parts";
+import type { Term } from "@/lib/taxonomy";
 import type { EditablePage, PageState } from "@/server/pages";
 
 import { newId, PageBuilder } from "./page-builder";
@@ -62,6 +66,7 @@ export function PageEditor({
   defaultDescription,
   savedParts,
   upload,
+  terms: initialTerms,
 }: {
   page: EditablePage | null;
   /** Said when the editor opens, such as "Draft saved." after a new page's first save. */
@@ -72,11 +77,14 @@ export function PageEditor({
   /** Saved rows, columns and components, for the builder's Saved tab (D46). */
   savedParts: SavedPart[];
   upload: Upload | null;
+  /** Kaizen's page categories and tags (D50). */
+  terms: Term[];
 }) {
+  const [terms, setTerms] = useState(initialTerms);
   const router = useRouter();
   const [saved, setSaved] = useState<EditablePage | null>(page);
   const [content, setContent] = useState<PageContent>(
-    page?.draft ?? { title: "", slug: "", thumbnail: null, seo: { title: "", description: "" }, searchEngines: true, aiAssistants: true, rows: startingRows() },
+    page?.draft ?? { ...newPageContent(), rows: startingRows() },
   );
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
@@ -203,6 +211,19 @@ export function PageEditor({
                   (a permanent redirect), so links and search results keep working.
                 </p>
               )}
+            </section>
+            <section aria-labelledby="terms-heading" className={card}>
+              <h2 id="terms-heading" className="font-medium">
+                Categories and tags
+              </h2>
+              <TermPicker
+                terms={terms}
+                value={{ categories: content.categories, tags: content.tags }}
+                onChange={(ids) => change(ids)}
+                onTerms={setTerms}
+                create={createPageTermAction}
+                manageHref="/admin/platform/pages/categories"
+              />
             </section>
             <ThumbnailField
               value={content.thumbnail}

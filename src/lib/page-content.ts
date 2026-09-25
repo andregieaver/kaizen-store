@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
+import { termIdsSchema } from "./taxonomy";
 
 /**
  * A page built from blocks (D42): its title, address, picture, search texts,
@@ -497,6 +498,9 @@ export type PageContent = {
   searchEngines: boolean;
   /** AI assistants and AI crawlers may read it (else left out of llms.txt and closed to them in robots.txt). */
   aiAssistants: boolean;
+  /** Its categories and tags, by id (D50); published with the page. */
+  categories: string[];
+  tags: string[];
   /** The content: rows of columns of blocks. */
   rows: PageRow[];
 };
@@ -785,6 +789,7 @@ export const pageInput = z.preprocess(
       }),
       searchEngines: z.boolean(),
       aiAssistants: z.boolean(),
+      ...termIdsSchema.shape,
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
     })
     .superRefine((page, ctx) => {
@@ -813,6 +818,8 @@ export function newPageContent(): PageContent {
     seo: { title: "", description: "" },
     searchEngines: true,
     aiAssistants: true,
+    categories: [],
+    tags: [],
     rows: [],
   };
 }

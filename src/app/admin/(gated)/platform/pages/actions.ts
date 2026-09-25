@@ -7,6 +7,7 @@ import { z } from "zod";
 import { requirePlatformAdmin } from "@/server/auth";
 import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage, type EditablePage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
+import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 
 export type PageSaveState = { status: "saved"; page: EditablePage } | { status: "error"; problems: string[] };
 
@@ -73,4 +74,36 @@ export async function deleteSavedPartAction(id: string): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
   return deleteSavedPart(admin, id);
+}
+
+// ---------------------------------------------------------------------------
+// Kaizen's page categories and tags (D50)
+// ---------------------------------------------------------------------------
+
+const pageTerms = { storeId: null, contentType: "page" } as const;
+
+/** Listings and grids of pages show categories and tags. */
+function termsChanged(result: TermsResult): TermsResult {
+  if (result.ok) {
+    updateTag(termsTag(pageTerms));
+    updateTag(PAGES_TAG);
+  }
+  return result;
+}
+
+export async function createPageTermAction(input: unknown): Promise<TermsResult> {
+  const admin = await requirePlatformAdmin();
+  return termsChanged(await createTerm(admin, pageTerms, input));
+}
+
+export async function updatePageTermAction(id: string, input: unknown): Promise<TermsResult> {
+  const admin = await requirePlatformAdmin();
+  if (!isId(id)) return { ok: false, problems: ["Unknown category or tag."] };
+  return termsChanged(await updateTerm(admin, pageTerms, id, input));
+}
+
+export async function deletePageTermAction(id: string): Promise<TermsResult> {
+  const admin = await requirePlatformAdmin();
+  if (!isId(id)) return { ok: false, problems: ["Unknown category or tag."] };
+  return termsChanged(await deleteTerm(admin, pageTerms, id));
 }
