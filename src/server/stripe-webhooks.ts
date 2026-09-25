@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
+import { markCheckoutRecovered } from "./cart-reminders";
 import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
 import { sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
@@ -83,6 +84,8 @@ export async function applySession(
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
     if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
+    // Paid: no reminders about this cart, or others with the same email (D33).
+    await markCheckoutRecovered(storeId, orderId);
     // The account asked for at checkout opens now, with the paid email (D32).
     const opened = await openCheckoutAccount(storeId, orderId);
     // The order joins the customer's account, if they have one (D28).

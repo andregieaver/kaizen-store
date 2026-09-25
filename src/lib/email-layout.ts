@@ -20,6 +20,8 @@ export type EmailContent = {
   /** The store's name and legal details, at the foot. */
   footer: string[];
   lang: string;
+  /** A way to stop emails like this one, at the very foot (D33). */
+  unsubscribe?: { text: string; linkText: string; url: string };
 };
 
 export type RenderedEmail = { subject: string; html: string; text: string };
@@ -85,11 +87,18 @@ export function renderEmail(content: EmailContent): RenderedEmail {
 ${content.blocks.map(blockHtml).join("\n")}
 </td></tr></table>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px"><tr><td style="padding:16px 24px;font-size:13px;line-height:1.5;color:#525252">
-${content.footer.map(escapeHtml).join("<br>")}
+${content.footer.map(escapeHtml).join("<br>")}${
+    content.unsubscribe
+      ? `<br><br>${escapeHtml(content.unsubscribe.text)} <a href="${escapeHtml(content.unsubscribe.url)}" style="color:#525252">${escapeHtml(content.unsubscribe.linkText)}</a>`
+      : ""
+  }
 </td></tr></table>
 </td></tr></table>
 </body>
 </html>`;
-  const text = [...content.blocks.map(blockText), "", ...content.footer].join("\n\n").replace(/\n{3,}/g, "\n\n");
+  const stop = content.unsubscribe
+    ? [`${content.unsubscribe.text} ${content.unsubscribe.linkText}: ${content.unsubscribe.url}`]
+    : [];
+  const text = [...content.blocks.map(blockText), "", ...content.footer, ...stop].join("\n\n").replace(/\n{3,}/g, "\n\n");
   return { subject: content.subject, html, text };
 }

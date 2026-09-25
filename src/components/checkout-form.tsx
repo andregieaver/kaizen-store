@@ -12,6 +12,7 @@ import {
 import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
+import { captureCheckoutEmailAction, checkoutRemindersAction } from "@/app/s/[store]/[market]/checkout/actions";
 
 export type CheckoutFormLabels = {
   contact: string;
@@ -26,6 +27,18 @@ export type CheckoutFormLabels = {
   expired: string;
   backToCart: string;
   seeOrder: string;
+};
+
+/**
+ * Reminders about the cart (D33), for shoppers who are not signed in when
+ * the store sends them: the email is kept as soon as it is typed, and the
+ * notice under the field lets the shopper say no.
+ */
+export type CheckoutReminderOption = {
+  store: string;
+  market: string;
+  optedOut: boolean;
+  labels: { notice: string; optOut: string; optedOut: string; undo: string };
 };
 
 /** Opening an account with the order (D32), offered to shoppers who are not signed in. */
@@ -72,6 +85,7 @@ export function CheckoutForm({
   labels,
   links,
   account = null,
+  reminders = null,
 }: {
   publishableKey: string;
   stripeAccount: string;
@@ -83,6 +97,7 @@ export function CheckoutForm({
   /** The cart, and the order page (for a session paid meanwhile). */
   links: { cart: string; order: string };
   account?: CheckoutAccountOption | null;
+  reminders?: CheckoutReminderOption | null;
 }) {
   // Stripe runs in the browser only; the server sends the waiting state.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -101,7 +116,7 @@ export function CheckoutForm({
       stripe={stripe}
       options={{ clientSecret, elementsOptions: { appearance: appearance(dark), loader: "auto" } }}
     >
-      <Form labels={labels} links={links} ships={ships} account={account} />
+      <Form labels={labels} links={links} ships={ships} account={account} reminders={reminders} />
     </CheckoutElementsProvider>
   );
 }
@@ -122,11 +137,13 @@ function Form({
   links,
   ships,
   account,
+  reminders,
 }: {
   labels: CheckoutFormLabels;
   links: { cart: string; order: string };
   ships: boolean;
   account: CheckoutAccountOption | null;
+  reminders: CheckoutReminderOption | null;
 }) {
   const state = useCheckoutElements();
   const [busy, setBusy] = useState(false);
@@ -138,6 +155,28 @@ function Form({
   const saved = useRef(false);
   const problemRef = useRef<HTMLParagraphElement>(null);
   const id = useId();
+  const [optedOut, setOptedOut] = useState(reminders?.optedOut ?? false);
+  // The last complete email typed, and the pause before keeping it.
+  const typedEmail = useRef<string | null>(null);
+  const captureTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onContactChange = (event: { complete: boolean; value: { email: string } }) => {
+    if (!reminders) return;
+    typedEmail.current = event.complete ? event.value.email : null;
+    if (captureTimer.current) clearTimeout(captureTimer.current);
+    if (!event.complete || optedOut) return;
+    const typed = event.value.email;
+    // Kept as soon as the shopper stops typing a valid address.
+    captureTimer.current = setTimeout(() => void captureCheckoutEmailAction(reminders.store, reminders.market, typed), 600);
+  };
+
+  const toggleReminders = () => {
+    if (!reminders) return;
+    const next = !optedOut;
+    if (captureTimer.current) clearTimeout(captureTimer.current);
+    setOptedOut(next);
+    void checkoutRemindersAction(reminders.store, reminders.market, next, typedEmail.current);
+  };
 
   if (state.type === "loading") return <Waiting label={labels.loading} />;
   if (state.type === "error") {
@@ -220,7 +259,15 @@ function Form({
         <h2 id="contact-heading" className="text-lg font-medium">
           {labels.contact}
         </h2>
-        <ContactDetailsElement />
+        <ContactDetailsElement onChange={onContactChange} />
+        {reminders && (
+          <p aria-live="polite" className="text-sm text-muted">
+            {optedOut ? reminders.labels.optedOut : reminders.labels.notice}{" "}
+            <button type="button" onClick={toggleReminders} className="underline hover:text-foreground">
+              {optedOut ? reminders.labels.undo : reminders.labels.optOut}
+            </button>
+          </p>
+        )}
         {account && (
           <div className="flex flex-col gap-3">
             <div className="flex items-start gap-3">

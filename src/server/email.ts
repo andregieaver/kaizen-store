@@ -37,7 +37,7 @@ type Delivery = { ok: true; id: string } | { ok: false; error: string };
 export async function deliver(
   settings: EmailSettings,
   id: string,
-  message: Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo">,
+  message: Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers">,
   fetcher: typeof fetch = fetch,
 ): Promise<Delivery> {
   const body = JSON.stringify({
@@ -47,6 +47,7 @@ export async function deliver(
     html: message.email.html,
     text: message.email.text,
     ...(message.replyTo && { reply_to: [message.replyTo] }),
+    ...(message.headers && { headers: message.headers }),
     tags: [
       { name: "kind", value: message.kind.replace(/[^A-Za-z0-9_-]/g, "_") },
       { name: "store", value: message.storeId ?? "kaizen" },
@@ -97,6 +98,8 @@ export type OutgoingEmail = {
   idempotencyKey?: string;
   orderId?: string | null;
   subscriptionId?: string | null;
+  /** Extra headers, such as List-Unsubscribe on reminders (D33). */
+  headers?: Record<string, string>;
 };
 
 export type SendOutcome = "sent" | "logged" | "failed" | "duplicate";

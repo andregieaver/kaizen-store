@@ -288,6 +288,20 @@
       "when": 1790290570912,
       "tag": "20260924225610_email_delivery_events",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1790293893309,
+      "tag": "20260924235133_cart_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790293894676,
+      "tag": "20260924235134_cart_reminders_rules",
+      "breakpoints": true
     }
   ]
 }

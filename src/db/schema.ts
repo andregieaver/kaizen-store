@@ -263,6 +263,8 @@ export const stores = commerce.table(
      * checks: `StoreNavigation` in lib/navigation.
      */
     navigation: jsonb("navigation").notNull().default({}),
+    /** Reminder emails about carts left at checkout (D33), on only when the store turns them on. */
+    cartReminders: boolean("cart_reminders").notNull().default(false),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -2003,4 +2005,86 @@ export const paymentMethods = commerce.table(
     }),
     index("payment_methods_updated_by_idx").on(t.updatedBy),
   ],
+);
+
+/**
+ * A step in a store's reminders about carts left at checkout (D33): sent
+ * this long after the shopper typed their email, in each of the store's
+ * languages, optionally with a discount code. Steps go in order of delay.
+ */
+export const cartReminderSteps = commerce.table(
+  "cart_reminder_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    delayMinutes: integer("delay_minutes").notNull(),
+    active: boolean("active").notNull().default(true),
+    discountCodeId: uuid("discount_code_id"),
+    /** Per locale: `{"nb-NO": {subject, heading, body, button}}`. */
+    content: jsonb("content").notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("cart_reminder_steps_store_id_key").on(t.storeId, t.id),
+    index("cart_reminder_steps_store_idx").on(t.storeId, t.delayMinutes),
+    check("cart_reminder_steps_delay", sql`${t.delayMinutes} between 30 and 43200`),
+  ],
+);
+
+/**
+ * A checkout a shopper who is not signed in gave their email for (D33):
+ * the cart as it was, for the reminders, until it is paid, the shopper
+ * opts out, or it grows old. Opting out erases the email and the cart.
+ */
+export const abandonedCheckouts = commerce.table(
+  "abandoned_checkouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    cartId: uuid("cart_id").notNull(),
+    orderId: uuid("order_id"),
+    email: text("email"),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    locale: text("locale").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** The cart as shown in the reminders: `[{variantId, sellingPlanId, title, quantity, unitPriceMinor}]`. */
+    lines: jsonb("lines").notNull().default([]),
+    subtotalMinor: money("subtotal_minor").default(0),
+    /** The secret in the reminder's links: back to the cart, and to stop the reminders. */
+    token: text("token").notNull().unique(),
+    capturedAt: timestamp("captured_at", { withTimezone: true }),
+    optedOutAt: timestamp("opted_out_at", { withTimezone: true }),
+    remindersSent: integer("reminders_sent").notNull().default(0),
+    /** The delay of the last step sent; the next step is the next longer one. */
+    lastDelayMinutes: integer("last_delay_minutes").notNull().default(0),
+    lastReminderAt: timestamp("last_reminder_at", { withTimezone: true }),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }),
+    recoveredAt: timestamp("recovered_at", { withTimezone: true }),
+    recoveredOrderId: uuid("recovered_order_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("abandoned_checkouts_cart_key").on(t.storeId, t.cartId),
+    index("abandoned_checkouts_due_idx")
+      .on(t.capturedAt)
+      .where(sql`${t.recoveredAt} is null and ${t.optedOutAt} is null and ${t.email} is not null`),
+    index("abandoned_checkouts_email_idx").on(t.storeId, sql`lower(${t.email})`),
+    index("abandoned_checkouts_store_idx").on(t.storeId, t.createdAt),
+  ],
+);
+
+/** Emails that asked a store for no reminders (D33), from checkout or an email's link. */
+export const emailOptOuts = commerce.table(
+  "email_opt_outs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    email: text("email").notNull(),
+    /** `checkout` or `unsubscribe`. */
+    source: text("source").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("email_opt_outs_email_idx").on(t.storeId, sql`lower(${t.email})`)],
 );
