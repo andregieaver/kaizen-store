@@ -160,11 +160,14 @@ export async function listEmails({
   storeId,
   orderId,
   subscriptionId,
+  to,
   limit = 100,
 }: {
   storeId?: string | null;
   orderId?: string;
   subscriptionId?: string;
+  /** Only emails to this address (a customer's, D35). */
+  to?: string;
   limit?: number;
 }): Promise<EmailLogRow[]> {
   const rows = await db().execute<Row>(sql`
@@ -175,6 +178,7 @@ export async function listEmails({
       ${storeId ? sql`and e.store_id = ${storeId}::uuid` : sql``}
       ${orderId ? sql`and e.order_id = ${orderId}::uuid` : sql``}
       ${subscriptionId ? sql`and e.subscription_id = ${subscriptionId}::uuid` : sql``}
+      ${to ? sql`and lower(e.to_address) = ${to.toLowerCase()}` : sql``}
     order by e.created_at desc
     limit ${limit}
   `);

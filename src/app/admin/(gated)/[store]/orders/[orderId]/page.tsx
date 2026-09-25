@@ -12,9 +12,11 @@ import {
   ResendButton,
   SendForm,
 } from "@/components/admin/order-actions";
+import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { requireMember } from "@/server/auth";
+import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads, getOrderEvents, type Address, type OrderEvent } from "@/server/orders";
@@ -51,11 +53,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const { store: slug, orderId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails] = await Promise.all([
+  const [order, events, downloads, emails, customer] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
     listEmails({ storeId: store.id, orderId }),
+    customerSummary(store.id, orderId),
   ]);
   if (!order) notFound();
   const locale = store.markets[0]?.locale ?? order.locale;
@@ -127,6 +130,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </div>
         )}
       </div>
+      {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
       {events.some((e) => e.type === "stock.short") && (
         <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">
           Some items were paid for after their stock ran out. Contact the customer before sending.
@@ -287,7 +291,15 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
         <div className="flex flex-col gap-6">
           <section aria-labelledby="customer" className={`${card} text-sm`}>
-            <h2 id="customer" className="mb-2 font-medium">Customer</h2>
+            <h2 id="customer" className="mb-2 font-medium">
+              {customer ? (
+                <Link href={`/admin/${store.slug}/customers/${customer.key}`} className="underline">
+                  {customer.name || "Customer"}
+                </Link>
+              ) : (
+                "Customer"
+              )}
+            </h2>
             {order.email ? (
               <a href={`mailto:${order.email}`} className="break-all underline">{order.email}</a>
             ) : (

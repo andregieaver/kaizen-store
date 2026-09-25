@@ -79,7 +79,15 @@ async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searc
                     {order.items} {order.items === 1 ? "item" : "items"}
                   </span>
                 </td>
-                <td className="px-4 py-2">{order.name || order.email || "–"}</td>
+                <td className="px-4 py-2">
+                  {order.email ? (
+                    <Link href={`/admin/${store.slug}/customers/${order.id}`} className="underline-offset-2 hover:underline">
+                      {order.name || order.email}
+                    </Link>
+                  ) : (
+                    "–"
+                  )}
+                </td>
                 <td className="hidden px-4 py-2 sm:table-cell">
                   <time dateTime={order.placedAt}>
                     {new Date(order.placedAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" })}

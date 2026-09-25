@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { SubscriptionActions, type StaffChange } from "@/components/admin/subscription-actions";
 import { SubscriptionContentsForm } from "@/components/subscription-contents-form";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
@@ -10,6 +11,7 @@ import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requireMember } from "@/server/auth";
+import { customerSummary } from "@/server/customer-admin";
 import type { OrderStatus } from "@/server/orders";
 import { allowedChanges, getSubscription, swapChoices } from "@/server/subscriptions";
 
@@ -23,7 +25,10 @@ export default async function SubscriptionPage({
   const { store: slug, subscriptionId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(subscriptionId).success) notFound();
-  const subscription = await getSubscription(store.id, subscriptionId);
+  const [subscription, customer] = await Promise.all([
+    getSubscription(store.id, subscriptionId),
+    customerSummary(store.id, subscriptionId),
+  ]);
   if (!subscription) notFound();
   const locale = store.markets[0]?.locale ?? subscription.locale;
   const money = (minor: number) => formatMoney(minor, subscription.currency, locale);
@@ -54,6 +59,8 @@ export default async function SubscriptionPage({
           · started {date(subscription.createdAt)} · {subscription.marketCode}
         </p>
       </div>
+
+      {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
 
       <div className="grid gap-6 md:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">
@@ -148,7 +155,15 @@ export default async function SubscriptionPage({
 
         <div className="flex flex-col gap-6">
           <section aria-labelledby="customer" className="rounded-lg border border-border bg-background p-5 text-sm">
-            <h2 id="customer" className="mb-2 font-medium">Customer</h2>
+            <h2 id="customer" className="mb-2 font-medium">
+              {customer ? (
+                <Link href={`/admin/${store.slug}/customers/${customer.key}`} className="underline">
+                  {customer.name || "Customer"}
+                </Link>
+              ) : (
+                "Customer"
+              )}
+            </h2>
             {subscription.email ? (
               <a href={`mailto:${subscription.email}`} className="underline">{subscription.email}</a>
             ) : (

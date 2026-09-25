@@ -23,6 +23,7 @@ export default async function StoreAdminLayout({
   const nav = [
     { href: base, label: "Overview" },
     { href: `${base}/orders`, label: "Orders" },
+    { href: `${base}/customers`, label: "Customers" },
     { href: `${base}/subscriptions`, label: "Subscriptions" },
     { href: `${base}/products`, label: "Products" },
     { href: `${base}/discounts`, label: "Discounts" },

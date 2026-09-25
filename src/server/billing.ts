@@ -889,3 +889,83 @@ export async function planCurrencies(): Promise<string[]> {
   `);
   return rows.map((row) => String(row.currency)).sort((a, b) => (a === "NOK" ? -1 : b === "NOK" ? 1 : a.localeCompare(b)));
 }
+
+// ---------------------------------------------------------------------------
+// Invoices (D35): Kaizen's invoices to a store for its plan, read from Stripe
+// ---------------------------------------------------------------------------
+
+export type PlanInvoice = {
+  id: string;
+  number: string | null;
+  status: string;
+  totalMinor: number;
+  paidMinor: number;
+  currency: string;
+  createdAt: string;
+  dueAt: string | null;
+  paidAt: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+  lines: { description: string; amountMinor: number }[];
+  mode: PaymentModeName;
+};
+
+const when = (seconds: number | null | undefined) => (seconds ? new Date(seconds * 1000).toISOString() : null);
+
+function toInvoice(invoice: Stripe.Invoice, mode: PaymentModeName): PlanInvoice {
+  return {
+    id: invoice.id ?? "",
+    number: invoice.number ?? null,
+    status: invoice.status ?? "draft",
+    totalMinor: invoice.total,
+    paidMinor: invoice.amount_paid,
+    currency: invoice.currency.toUpperCase(),
+    createdAt: new Date(invoice.created * 1000).toISOString(),
+    dueAt: when(invoice.due_date),
+    paidAt: when(invoice.status_transitions?.paid_at),
+    periodStart: when(invoice.period_start),
+    periodEnd: when(invoice.period_end),
+    hostedUrl: invoice.hosted_invoice_url ?? null,
+    pdfUrl: invoice.invoice_pdf ?? null,
+    lines: invoice.lines.data.map((line) => ({ description: line.description ?? "", amountMinor: line.amount })),
+    mode,
+  };
+}
+
+/** The store's Stripe account as Kaizen's customer, in the mode Kaizen bills in now. */
+async function billedAccount(storeId: string) {
+  const mode = billingMode();
+  const stripe = mode && platformStripe(mode);
+  const accountId = mode ? (await getStripeAccounts(storeId))[mode]?.accountId : null;
+  return mode && stripe && accountId ? { mode, stripe, accountId } : null;
+}
+
+/**
+ * The store's latest plan invoices, newest first: none when it has never
+ * been billed, null when Stripe cannot be asked.
+ */
+export async function listStoreInvoices(storeId: string, limit = 12): Promise<PlanInvoice[] | null> {
+  const billed = await billedAccount(storeId);
+  if (!billed) return [];
+  try {
+    const page = await billed.stripe.invoices.list({ customer_account: billed.accountId, limit });
+    return page.data.map((invoice) => toInvoice(invoice, billed.mode));
+  } catch {
+    return null;
+  }
+}
+
+/** One plan invoice, only if it is this store's. */
+export async function getStoreInvoice(storeId: string, invoiceId: string): Promise<PlanInvoice | null> {
+  if (!/^in_[A-Za-z0-9]+$/.test(invoiceId)) return null;
+  const billed = await billedAccount(storeId);
+  if (!billed) return null;
+  try {
+    const invoice = await billed.stripe.invoices.retrieve(invoiceId);
+    return invoice.customer_account === billed.accountId ? toInvoice(invoice, billed.mode) : null;
+  } catch {
+    return null;
+  }
+}

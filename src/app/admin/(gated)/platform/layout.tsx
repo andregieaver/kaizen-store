@@ -9,6 +9,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
   if (!account.platformAdmin) notFound();
   const nav = [
     { href: "/admin/platform", label: "Access requests" },
+    { href: "/admin/platform/customers", label: "Customers" },
     { href: "/admin/platform/stores", label: "Stores" },
     { href: "/admin/platform/plans", label: "Plans" },
     { href: "/admin/platform/discounts", label: "Discounts" },

@@ -3,9 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { CustomerBar } from "@/components/admin/customer-bar";
+import { InvoiceList } from "@/components/admin/plan-invoices";
 import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
-import { billingMode, getStoreBilling, listPlans } from "@/server/billing";
+import { billingMode, getStoreBilling, listPlans, listStoreInvoices } from "@/server/billing";
+import { listStorePeople } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
 
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
@@ -18,7 +21,14 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 export default async function PlatformStorePage({ params }: PageProps<"/admin/platform/stores/[store]">) {
   const store = await getStore((await params).store);
   if (!store) notFound();
-  const [billing, plans] = await Promise.all([getStoreBilling(store.id), listPlans()]);
+  const [billing, plans, people, invoices] = await Promise.all([
+    getStoreBilling(store.id),
+    listPlans(),
+    listStorePeople(store.id),
+    listStoreInvoices(store.id, 12),
+  ]);
+  const owner = people.find((p) => p.role === "owner");
+  const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
   if (!billing) notFound();
   const mode = billingMode();
   const onPlan = isOnPlan(billing.status);
@@ -44,6 +54,19 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           </Link>
         </p>
       </div>
+
+      {owner && (
+        <CustomerBar
+          customer={{
+            href: `/admin/platform/customers/${owner.id}`,
+            name: owner.name,
+            email: owner.email,
+            account: "verified",
+            badge: `Owner of ${store.name}`,
+            facts: [people.length === 1 ? "Runs the store alone" : `${people.length} people run the store`],
+          }}
+        />
+      )}
 
       <section aria-labelledby="current-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
         <h2 id="current-heading" className="mb-2 font-medium">
@@ -192,6 +215,32 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           </label>
           <SubmitButton>Save fee</SubmitButton>
         </ActionForm>
+      </section>
+      <section aria-labelledby="invoices-heading" className="rounded-lg border border-border bg-background p-5">
+        <h2 id="invoices-heading" className="mb-3 font-medium">
+          Invoices
+        </h2>
+        <InvoiceList storeSlug={store.slug} invoices={invoices} date={date} />
+      </section>
+
+      <section aria-labelledby="people-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
+        <h2 id="people-heading" className="mb-3 font-medium">
+          People
+        </h2>
+        {people.length === 0 ? (
+          <p className="text-muted">Nobody runs the store yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {people.map((person) => (
+              <li key={person.id} className="flex flex-wrap justify-between gap-2 py-2">
+                <Link href={`/admin/platform/customers/${person.id}`} className="underline">
+                  {person.name || person.email}
+                </Link>
+                <span className="text-muted capitalize">{person.role}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </>
   );

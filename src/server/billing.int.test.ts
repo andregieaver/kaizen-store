@@ -45,6 +45,25 @@ const fake = vi.hoisted(() => {
       ],
     },
   });
+  /** A plan invoice for the given Stripe account (D35). */
+  const invoiceAccount = { id: "" };
+  const invoice = (invoiceId: string, account: string) => ({
+    id: invoiceId,
+    number: "KZ-0001",
+    status: "paid",
+    total: 43625,
+    amount_paid: 43625,
+    currency: "nok",
+    created: 1_790_000_000,
+    due_date: null,
+    status_transitions: { paid_at: 1_790_000_100 },
+    period_start: 1_790_000_000,
+    period_end: 1_792_600_000,
+    hosted_invoice_url: "https://invoice.stripe.test/i/1",
+    invoice_pdf: "https://invoice.stripe.test/i/1.pdf",
+    customer_account: account,
+    lines: { data: [{ description: "Kaizen Standard", amount: 34900 }, { description: "MVA 25 %", amount: 8725 }] },
+  });
   /** What the fake Checkout session hands back on return. */
   const sessions = { storeId: "", stripePrice: "" };
   const client = {
@@ -57,6 +76,10 @@ const fake = vi.hoisted(() => {
       update: record("prices.update", (p) => ({ id: p.id })),
     },
     taxRates: { create: record("taxRates.create", () => ({ id: id("txr") })) },
+    invoices: {
+      list: record("invoices.list", (p) => ({ data: [invoice("in_fake1", String(p.customer_account))] })),
+      retrieve: record("invoices.retrieve", (p) => invoice(String(p.id), p.id === "in_other" ? "acct_someone_else" : invoiceAccount.id)),
+    },
     billingPortal: {
       configurations: { create: record("portal.configurations.create", () => ({ id: id("bpc") })) },
       sessions: { create: record("portal.sessions.create", () => ({ url: "https://billing.stripe.test/session" })) },
@@ -112,7 +135,7 @@ const fake = vi.hoisted(() => {
       createExternalAccount: record("accounts.createExternalAccount", () => ({ id: id("ba") })),
     },
   };
-  return { client, calls, sessions, tag, refuseUpdates };
+  return { client, calls, sessions, tag, refuseUpdates, invoiceAccount };
 });
 
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, refresh: () => {} }));
@@ -575,5 +598,29 @@ describe("owners choosing their own plan", () => {
       id: `sub_checkout${fake.tag}`,
       proration_behavior: "create_prorations",
     });
+  });
+
+  it("reads the store's plan invoices from Stripe, and refuses another store's (D35)", async () => {
+    const [account] = await db().execute<Row>(sql`
+      select account_id from commerce.stripe_accounts where store_id = ${ownerStore}::uuid and mode = 'test'
+    `);
+    fake.invoiceAccount.id = String(account.account_id);
+    const invoices = await billing.listStoreInvoices(ownerStore);
+    expect(invoices).toEqual([
+      expect.objectContaining({ id: "in_fake1", number: "KZ-0001", status: "paid", totalMinor: 43625, currency: "NOK", mode: "test" }),
+    ]);
+    expect(fake.calls.filter((c) => c.method === "invoices.list").at(-1)?.params).toMatchObject({
+      customer_account: String(account.account_id),
+    });
+    expect(await billing.getStoreInvoice(ownerStore, "in_fake2")).toMatchObject({
+      lines: [
+        { description: "Kaizen Standard", amountMinor: 34900 },
+        { description: "MVA 25 %", amountMinor: 8725 },
+      ],
+    });
+    expect(await billing.getStoreInvoice(ownerStore, "in_other")).toBeNull();
+    expect(await billing.getStoreInvoice(ownerStore, "not-an-invoice")).toBeNull();
+    // A store never billed has no invoices, rather than Stripe being unreachable.
+    expect(await billing.listStoreInvoices("00000000-0000-4000-8000-000000000000")).toEqual([]);
   });
 });

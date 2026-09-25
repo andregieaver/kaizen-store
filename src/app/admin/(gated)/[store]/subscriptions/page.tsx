@@ -61,7 +61,15 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
                 {s.items} {s.items === 1 ? "item" : "items"}
               </span>
             </td>
-            <td className="px-4 py-2">{s.name || s.email || "–"}</td>
+            <td className="px-4 py-2">
+              {s.email ? (
+                <Link href={`/admin/${store.slug}/customers/${s.id}`} className="underline-offset-2 hover:underline">
+                  {s.name || s.email}
+                </Link>
+              ) : (
+                "–"
+              )}
+            </td>
             <td className="hidden px-4 py-2 sm:table-cell">
               {(() => {
                 const state = s.status === "cancelled" ? null : renewalState(s);
