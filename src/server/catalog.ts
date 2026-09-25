@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
 
-import { db } from "@/db/client";
+import { db, readDb } from "@/db/client";
 import { priceView, type PriceView } from "@/lib/pricing";
 import type { Delivery } from "@/lib/product-input";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
@@ -95,7 +95,7 @@ export async function listProducts(
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
 
-  const rows = await db().execute<Row>(sql`
+  const rows = await readDb().execute<Row>(sql`
     select
       p.id,
       p.handle,
@@ -162,7 +162,7 @@ export async function getProduct(
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
 
-  const [product] = await db().execute<Row>(sql`
+  const [product] = await readDb().execute<Row>(sql`
     select
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only,
       coalesce(tl.title, tf.title) as title,
@@ -190,13 +190,13 @@ export async function getProduct(
   if (!product) return null;
 
   const [media, variants, plans] = await Promise.all([
-    db().execute<Row>(sql`
+    readDb().execute<Row>(sql`
       select url, thumbnail_url, coalesce(alt ->> ${locale}, '') as alt
       from commerce.product_media
       where product_id = ${product.id}
       order by position
     `),
-    db().execute<Row>(sql`
+    readDb().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.delivery, cp.amount_minor, cp.currency, cp.prior_30d_minor
       from commerce.product_variants v
       join commerce.current_prices cp
@@ -204,7 +204,7 @@ export async function getProduct(
       where v.product_id = ${product.id} and v.active
       order by cp.amount_minor, v.sku
     `),
-    db().execute<Row>(sql`
+    readDb().execute<Row>(sql`
       select id, interval, interval_count, discount_percent, trial_days, min_cycles,
         coalesce((signup_fee ->> ${marketCode})::bigint, 0) as signup_fee
       from commerce.selling_plans

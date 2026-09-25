@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
-import { db } from "@/db/client";
+import { readDb } from "@/db/client";
 import { toMarket, type Market } from "@/lib/markets";
 import { isStoreSlug } from "@/lib/paths";
 import { parseNavigation, type StoreNavigation } from "@/lib/navigation";
@@ -63,7 +63,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   cacheLife("hours");
   cacheTag(storeTag(slug));
 
-  const [row] = await db().execute<Row>(sql`
+  const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation,
@@ -131,7 +131,7 @@ export async function templateStoreSlug(): Promise<string | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(TEMPLATE_TAG);
-  const [row] = await db().execute<Row>(sql`
+  const [row] = await readDb().execute<Row>(sql`
     select slug from commerce.stores where is_template
   `);
   return row ? String(row.slug) : null;
@@ -141,7 +141,7 @@ export async function templateStoreSlug(): Promise<string | null> {
 export async function listCountries(): Promise<Country[]> {
   "use cache";
   cacheLife("days");
-  const rows = await db().execute<Row>(sql`
+  const rows = await readDb().execute<Row>(sql`
     select code, name, currency, in_eu from commerce.countries order by name
   `);
   return rows.map((row) => ({

@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import type { z } from "zod";
 
-import { db } from "@/db/client";
+import { db, readDb } from "@/db/client";
 import { t } from "@/lib/i18n";
 import { toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -78,7 +78,7 @@ export async function getPlatformSeo(): Promise<StoreSeo> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLATFORM_SEO_TAG);
-  const [row] = await db().execute<Row>(sql`select seo from commerce.platform_settings`);
+  const [row] = await readDb().execute<Row>(sql`select seo from commerce.platform_settings`);
   return parseStoreSeo(row?.seo);
 }
 
@@ -123,7 +123,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(STORES_TAG);
-  const rows = await db().execute<Row>(sql`
+  const rows = await readDb().execute<Row>(sql`
     select s.id, s.slug, s.name, s.seo, s.is_template, s.setup_completed_at,
       greatest(s.created_at, s.setup_completed_at,
         (select max(p.updated_at) from commerce.products p where p.store_id = s.id)) as updated_at,
@@ -166,7 +166,7 @@ export async function listIndexedProducts(storeId: string): Promise<IndexedProdu
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
-  const rows = await db().execute<Row>(sql`
+  const rows = await readDb().execute<Row>(sql`
     select p.handle, p.updated_at,
       (select coalesce(json_object_agg(t.locale, json_build_object(
           'title', t.title,
@@ -232,7 +232,7 @@ export async function getShippingFacts(storeId: string, marketCode: string): Pro
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
-  const [row] = await db().execute<Row>(sql`
+  const [row] = await readDb().execute<Row>(sql`
     select amount_minor, free_over_minor, currency from commerce.shipping_rates
     where store_id = ${storeId}::uuid and market_code = ${marketCode}
   `);
