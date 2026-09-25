@@ -12,6 +12,7 @@ describe("reads that meet a passing hiccup", () => {
     expect(isTransientDbError(failed("57014"))).toBe(true); // statement timeout
     expect(isTransientDbError(failed("08006"))).toBe(true); // connection failure
     expect(isTransientDbError(Object.assign(new Error("reset"), { code: "ECONNRESET" }))).toBe(true);
+    expect(isTransientDbError(Object.assign(new Error("Failed query"), { cause: new Error("Connection terminated unexpectedly") }))).toBe(true);
     expect(isTransientDbError(failed("42P01"))).toBe(false); // no such table
     expect(isTransientDbError(failed("23505"))).toBe(false); // unique violation
     expect(isTransientDbError(new Error("plain"))).toBe(false);
