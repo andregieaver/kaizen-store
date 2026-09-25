@@ -19,10 +19,12 @@ export const metadata: Metadata = { title: "Header and footer" };
 export default async function NavigationPage({ params }: PageProps<"/admin/[store]/settings/navigation">) {
   const { store } = await requireMember((await params).store);
   const home = store.markets[0];
-  const [products, terms, pages] = await Promise.all([
+  const [products, terms, pages, articles, blogTerms] = await Promise.all([
     listMenuProducts(store.id, home?.locale ?? "nb-NO"),
     listTerms({ storeId: store.id, contentType: "product" }),
     listMenuPages(store.id),
+    listMenuPages(store.id, "article"),
+    listTerms({ storeId: store.id, contentType: "article" }),
   ]);
   const names = new Intl.DisplayNames(["en"], { type: "language" });
   const languages = [...new Map(store.markets.map((m) => [m.locale, m])).values()].map((market) => {
@@ -30,7 +32,7 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
     return {
       locale: market.locale,
       name: names.of(market.locale) ?? market.locale,
-      defaults: { home: store.frontPageId ? m.home : m.allProducts, account: m.account.title, cart: m.cart },
+      defaults: { home: store.frontPageId ? m.home : m.allProducts, account: m.account.title, cart: m.cart, blog: m.blog },
     };
   });
 
@@ -54,6 +56,9 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
             note: p.status === "draft" ? "draft" : undefined,
           })),
           ...termTargets(terms),
+          // Articles by address and blog categories (D57).
+          article: articles.map((a) => ({ value: a.slug, title: a.title, note: a.published ? undefined : "not published" })),
+          blogCategory: termTargets(blogTerms).category,
         }}
         upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
         save={saveNavigationAction.bind(null, store.slug)}

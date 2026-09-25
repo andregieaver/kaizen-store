@@ -10,7 +10,7 @@ export const MENU_LIMITS = { header: 8, footer: 12 } as const;
 export type MenuName = keyof typeof MENU_LIMITS;
 export const LABEL_MAX = 60;
 
-export const LINK_KINDS = ["home", "page", "product", "category", "tag", "account", "cart", "url"] as const;
+export const LINK_KINDS = ["home", "page", "product", "category", "tag", "blog", "article", "blogCategory", "account", "cart", "url"] as const;
 export type LinkKind = (typeof LINK_KINDS)[number];
 
 export type MenuLink =
@@ -22,10 +22,16 @@ export type MenuLink =
   | StorePageLink
   /** A category's or tag's products (D50), by its address, which a store copied from the template keeps. */
   | TermLink
+  /** The blog, one of its articles by address, or its articles in a category (D57). */
+  | BlogLink
+  | { kind: "article"; slug: string }
   | { kind: "url"; url: string };
 
 /** A link to one of a store's pages (D54). */
 export type StorePageLink = { kind: "page"; slug: string };
+
+/** A link to the blog, or to its articles in a category (D57), in a store's menus or Kaizen's. */
+export type BlogLink = { kind: "blog" } | { kind: "blogCategory"; slug: string };
 
 /** A link to a category or tag (D50), in a store's menus or Kaizen's. */
 export type TermLink = { kind: "category" | "tag"; slug: string };
@@ -78,6 +84,16 @@ const link = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("category"), slug: termSlug("category") }),
   z.object({ kind: z.literal("tag"), slug: termSlug("tag") }),
+  z.object({ kind: z.literal("blog") }),
+  z.object({
+    kind: z.literal("article"),
+    slug: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Choose an article for each article link.")
+      .max(80),
+  }),
+  z.object({ kind: z.literal("blogCategory"), slug: termSlug("category") }),
   z.object({
     kind: z.literal("url"),
     url: z.string().trim().max(1000).refine(isMenuAddress, "A menu link has an invalid web address."),
@@ -131,6 +147,12 @@ export function menuHref(link: MenuLink, base: string, names?: MenuNames): { hre
     case "category":
     case "tag":
       return { href: `${base}/${link.kind}/${link.slug}`, external: false };
+    case "blog":
+      return { href: `${base}/blog`, external: false };
+    case "article":
+      return { href: `${base}/blog/${names?.article?.get(link.slug)?.slug ?? link.slug}`, external: false };
+    case "blogCategory":
+      return { href: `${base}/blog/category/${link.slug}`, external: false };
     case "url":
       return link.url.startsWith("/")
         ? { href: `${base}${link.url}`, external: false }
@@ -146,7 +168,7 @@ export function menuHref(link: MenuLink, base: string, names?: MenuNames): { hre
 export function menuLabel(
   item: MenuItem,
   locale: string,
-  builtIn: { home: string; account: string; cart: string },
+  builtIn: { home: string; account: string; cart: string; blog?: string },
   /** Page titles, category and tag names by address, for links without a text of their own. */
   termNames?: MenuNames,
 ): string {
@@ -154,6 +176,15 @@ export function menuLabel(
   if (own) return own;
   if (item.link.kind === "home" || item.link.kind === "account" || item.link.kind === "cart") {
     return builtIn[item.link.kind];
+  }
+  if (item.link.kind === "blog" && builtIn.blog) return builtIn.blog;
+  if (item.link.kind === "article") {
+    const title = termNames?.article?.get(item.link.slug)?.title;
+    if (title) return title;
+  }
+  if (item.link.kind === "blogCategory") {
+    const name = termNames?.blogCategory?.get(item.link.slug);
+    if (name) return name;
   }
   if ((item.link.kind === "category" || item.link.kind === "tag") && termNames) {
     const name = termNames[item.link.kind].get(item.link.slug);
@@ -181,8 +212,8 @@ export function termNames(terms: readonly { kind: "category" | "tag"; slug: stri
  */
 export type PageNames = ReadonlyMap<string, { slug: string; title: string }>;
 
-/** Names for menu links without a text of their own; a store's also has its pages. */
-export type MenuNames = TermNames & { page?: PageNames };
+/** Names for menu links without a text of their own; a store's also has its pages, articles and blog categories (D57). */
+export type MenuNames = TermNames & { page?: PageNames; article?: PageNames; blogCategory?: ReadonlyMap<string, string> };
 
 /**
  * Whether a link still leads somewhere: a category or tag that is gone, or a
@@ -191,6 +222,8 @@ export type MenuNames = TermNames & { page?: PageNames };
 export function linkExists(link: MenuLink | PlatformMenuLink, names: MenuNames): boolean {
   if (link.kind === "category" || link.kind === "tag") return names[link.kind].has(link.slug);
   if (link.kind === "page" && "slug" in link) return names.page?.has(link.slug) ?? false;
+  if (link.kind === "article" && "slug" in link) return names.article?.has(link.slug) ?? false;
+  if (link.kind === "blogCategory") return names.blogCategory?.has(link.slug) ?? false;
   return true;
 }
 
@@ -199,7 +232,7 @@ export function linkExists(link: MenuLink | PlatformMenuLink, names: MenuNames):
 // ---------------------------------------------------------------------------
 
 /** Where a link in Kaizen's own menus can go. */
-export const PLATFORM_LINK_KINDS = ["home", "page", "category", "tag", "signUp", "signIn", "url"] as const;
+export const PLATFORM_LINK_KINDS = ["home", "page", "category", "tag", "blog", "article", "blogCategory", "signUp", "signIn", "url"] as const;
 export type PlatformLinkKind = (typeof PLATFORM_LINK_KINDS)[number];
 
 export type PlatformMenuLink =
@@ -210,6 +243,9 @@ export type PlatformMenuLink =
   | { kind: "page"; pageId: string }
   /** Kaizen's pages in a category or with a tag (D50), by its address. */
   | TermLink
+  /** The blog, one of its articles by id, or its articles in a category (D57). */
+  | BlogLink
+  | { kind: "article"; pageId: string }
   | { kind: "url"; url: string };
 
 export type PlatformMenuItem = { label: Record<string, string>; link: PlatformMenuLink };
@@ -230,6 +266,9 @@ const platformLink = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("page"), pageId: z.uuid("Choose a page for each page link.") }),
   z.object({ kind: z.literal("category"), slug: termSlug("category") }),
   z.object({ kind: z.literal("tag"), slug: termSlug("tag") }),
+  z.object({ kind: z.literal("blog") }),
+  z.object({ kind: z.literal("article"), pageId: z.uuid("Choose an article for each article link.") }),
+  z.object({ kind: z.literal("blogCategory"), slug: termSlug("category") }),
   z.object({
     kind: z.literal("url"),
     url: z.string().trim().max(1000).refine(isMenuAddress, "A menu link has an invalid web address."),
@@ -258,8 +297,13 @@ export type MenuPage = { id: string; slug: string; title: string };
 export function platformMenuLink(
   item: PlatformMenuItem,
   pages: ReadonlyMap<string, MenuPage>,
-  builtIn: { home: string; signUp: string; signIn: string },
+  builtIn: { home: string; signUp: string; signIn: string; blog?: string },
   terms: TermNames = { category: new Map(), tag: new Map() },
+  /** Kaizen's published articles by id, and its blog categories' names by address (D57). */
+  blog: { articles: ReadonlyMap<string, MenuPage>; categories: ReadonlyMap<string, string> } = {
+    articles: new Map(),
+    categories: new Map(),
+  },
 ): { href: string; text: string; external: boolean } | null {
   const own = item.label.en || Object.values(item.label).find(Boolean) || "";
   switch (item.link.kind) {
@@ -278,6 +322,16 @@ export function platformMenuLink(
       // A category or tag that is gone is left out.
       const name = terms[item.link.kind].get(item.link.slug);
       return name ? { href: `/${item.link.kind}/${item.link.slug}`, text: own || name, external: false } : null;
+    }
+    case "blog":
+      return { href: "/blog", text: own || builtIn.blog || "Blog", external: false };
+    case "article": {
+      const article = blog.articles.get(item.link.pageId);
+      return article ? { href: `/blog/${article.slug}`, text: own || article.title, external: false } : null;
+    }
+    case "blogCategory": {
+      const name = blog.categories.get(item.link.slug);
+      return name ? { href: `/blog/category/${item.link.slug}`, text: own || name, external: false } : null;
     }
     case "url":
       return own ? { href: item.link.url, text: own, external: !item.link.url.startsWith("/") } : null;

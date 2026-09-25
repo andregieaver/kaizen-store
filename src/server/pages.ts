@@ -381,6 +381,7 @@ export async function findPublishedPage(
 export async function publishedPageNames(
   owner: PageOwner,
   locale: string | null = null,
+  type: PageType = "page",
 ): Promise<[string, { slug: string; title: string }][]> {
   "use cache";
   cacheLife("hours");
@@ -390,12 +391,12 @@ export async function publishedPageNames(
   const rows = await readDb().execute<Row>(sql`
     select p.slug as address, p.slug, ${title} as title
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.type = 'page' and p.published_at is not null
+    where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
     union all
     select r.slug, p.slug, ${title}
     from commerce.page_redirects r
     join commerce.pages p on p.id = r.page_id and p.published_at is not null
-    where r.store_id is not distinct from ${owner}::uuid and r.type = 'page'
+    where r.store_id is not distinct from ${owner}::uuid and r.type = ${type}
   `);
   return rows.map((row) => [String(row.address), { slug: String(row.slug), title: String(row.title ?? row.slug) }]);
 }

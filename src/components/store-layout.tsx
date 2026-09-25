@@ -31,10 +31,20 @@ async function MenuLinks({
 }: Props & { items: MenuItem[]; className?: string; linkClassName: string }) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
-  const builtIn = { home: store.frontPageId ? m.home : m.allProducts, account: m.account.title, cart: m.cart };
-  // Page, category and tag links (D50, D54) are named after them, and left out once they are gone.
-  const [terms, pages] = await Promise.all([siteTerms(store.id, "product"), publishedPageNames(store.id, market.locale)]);
-  const names = { ...termNames(terms), page: new Map(pages) };
+  const builtIn = { home: store.frontPageId ? m.home : m.allProducts, account: m.account.title, cart: m.cart, blog: m.blog };
+  // Page, article, category and tag links (D50, D54, D57) are named after them, and left out once they are gone.
+  const [terms, pages, articles, blogTerms] = await Promise.all([
+    siteTerms(store.id, "product"),
+    publishedPageNames(store.id, market.locale),
+    publishedPageNames(store.id, market.locale, "article"),
+    siteTerms(store.id, "article"),
+  ]);
+  const names = {
+    ...termNames(terms),
+    page: new Map(pages),
+    article: new Map(articles),
+    blogCategory: termNames(blogTerms).category,
+  };
   return (
     <ul className={className}>
       {items.filter((item) => linkExists(item.link, names)).map((item, index) => {

@@ -272,20 +272,23 @@ export function PageEditor({
                 <h2 id="author-heading" className="font-medium">
                   Author
                 </h2>
-                <label className={label}>
-                  Written by
-                  <input
-                    value={content.author ?? ""}
-                    maxLength={AUTHOR_MAX}
-                    onChange={(event) => change({ author: event.target.value })}
-                    placeholder="Name"
-                    className={input}
-                  />
-                  <span className={hint}>
+                <div className="flex flex-col gap-1">
+                  <label className={label}>
+                    Written by
+                    <input
+                      value={content.author ?? ""}
+                      maxLength={AUTHOR_MAX}
+                      onChange={(event) => change({ author: event.target.value })}
+                      placeholder="Name"
+                      aria-describedby="author-hint"
+                      className={input}
+                    />
+                  </label>
+                  <span id="author-hint" className={hint}>
                     Shown under the title with the date, and told to search engines. Empty shows{" "}
                     {context.owner === null ? "Kaizen" : "the store"} as the author.
                   </span>
-                </label>
+                </div>
               </section>
             )}
             <section aria-labelledby="terms-heading" className={card}>

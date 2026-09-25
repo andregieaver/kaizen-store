@@ -124,3 +124,42 @@ describe("links to a store's pages (D54)", () => {
     expect(navigationSchema.safeParse(menu({ kind: "page", pageId: "00000000-0000-4000-8000-000000000000" })).success).toBe(false);
   });
 });
+
+describe("links to the blog (D57)", () => {
+  const names = {
+    ...termNames([]),
+    article: new Map([["hei", { slug: "hei-igjen", title: "Hei igjen" }]]),
+    blogCategory: new Map([["nyheter", "Nyheter"]]),
+  };
+
+  it("lead to a store's blog, its articles where they are now, and its categories", () => {
+    expect(menuHref({ kind: "blog" }, "/s/demo/no").href).toBe("/s/demo/no/blog");
+    expect(menuHref({ kind: "article", slug: "hei" }, "/s/demo/no", names).href).toBe("/s/demo/no/blog/hei-igjen");
+    expect(menuHref({ kind: "blogCategory", slug: "nyheter" }, "/s/demo/no").href).toBe("/s/demo/no/blog/category/nyheter");
+    expect(menuLabel({ label: {}, link: { kind: "blog" } }, "nb-NO", { ...builtIn, blog: "Blogg" }, names)).toBe("Blogg");
+    expect(menuLabel({ label: {}, link: { kind: "article", slug: "hei" } }, "nb-NO", builtIn, names)).toBe("Hei igjen");
+    expect(menuLabel({ label: {}, link: { kind: "blogCategory", slug: "nyheter" } }, "nb-NO", builtIn, names)).toBe("Nyheter");
+    expect(linkExists({ kind: "article", slug: "utkast" }, names)).toBe(false);
+    expect(linkExists({ kind: "blogCategory", slug: "borte" }, names)).toBe(false);
+    const menu = (link: unknown) => ({ logo: null, header: [{ label: {}, link }], footer: [] });
+    expect(navigationSchema.safeParse(menu({ kind: "article", slug: "hei" })).success).toBe(true);
+    expect(navigationSchema.safeParse(menu({ kind: "blog" })).success).toBe(true);
+  });
+
+  it("lead to Kaizen's blog and its articles by id, left out while not published", () => {
+    const platform = { home: "Home", signUp: "Start", signIn: "Sign in", blog: "Blog" };
+    const id = "00000000-0000-4000-8000-000000000001";
+    const blog = {
+      articles: new Map([[id, { id, slug: "welcome", title: "Welcome" }]]),
+      categories: new Map([["news", "News"]]),
+    };
+    const link = (l: unknown) => platformMenuLink({ label: {}, link: l as never }, new Map(), platform, undefined, blog);
+    expect(link({ kind: "blog" })).toEqual({ href: "/blog", text: "Blog", external: false });
+    expect(link({ kind: "article", pageId: id })).toEqual({ href: "/blog/welcome", text: "Welcome", external: false });
+    expect(link({ kind: "article", pageId: "00000000-0000-4000-8000-000000000002" })).toBeNull();
+    expect(link({ kind: "blogCategory", slug: "news" })).toEqual({ href: "/blog/category/news", text: "News", external: false });
+    const menu = (l: unknown) => ({ logo: null, header: [{ label: {}, link: l }], footer: [] });
+    expect(platformNavigationSchema.safeParse(menu({ kind: "article", pageId: id })).success).toBe(true);
+    expect(platformNavigationSchema.safeParse(menu({ kind: "article", slug: "welcome" })).success).toBe(false);
+  });
+});

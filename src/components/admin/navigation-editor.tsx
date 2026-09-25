@@ -23,9 +23,16 @@ type Save = (
 type Language = { locale: string; name: string; defaults: Partial<Record<AnyLinkKind, string>> };
 /** Something a link can point at: a product (by handle), a page (by id), a category or tag (by address). */
 type Target = { value: string; title: string; note?: string };
-type TargetKind = "product" | "page" | "category" | "tag";
+type TargetKind = "product" | "page" | "category" | "tag" | "article" | "blogCategory";
 type Targets = Partial<Record<TargetKind, Target[]>>;
-const TARGET_NOUNS: Record<TargetKind, string> = { product: "Product", page: "Page", category: "Category", tag: "Tag" };
+const TARGET_NOUNS: Record<TargetKind, string> = {
+  product: "Product",
+  page: "Page",
+  category: "Category",
+  tag: "Tag",
+  article: "Article",
+  blogCategory: "Blog category",
+};
 const isTargetKind = (kind: AnyLinkKind): kind is TargetKind => kind in TARGET_NOUNS;
 
 /**
@@ -71,6 +78,9 @@ export const STORE_KINDS: KindOption[] = [
   { kind: "product", label: "A product" },
   { kind: "category", label: "A category's products" },
   { kind: "tag", label: "A tag's products" },
+  { kind: "blog", label: "The blog" },
+  { kind: "article", label: "An article", pageBy: "slug" },
+  { kind: "blogCategory", label: "A blog category's articles" },
   { kind: "account", label: "My account" },
   { kind: "cart", label: "Cart" },
   { kind: "url", label: "Web address" },
@@ -85,9 +95,11 @@ function linkFor(kind: AnyLinkKind, targets: Targets, kinds: KindOption[]): AnyM
     case "product":
       return { kind, handle: targets.product?.[0]?.value ?? "" };
     case "page":
-      return targetLink("page", targets.page?.[0]?.value ?? "", kinds);
+    case "article":
+      return targetLink(kind, targets[kind]?.[0]?.value ?? "", kinds);
     case "category":
     case "tag":
+    case "blogCategory":
       return { kind, slug: targets[kind]?.[0]?.value ?? "" };
     case "url":
       return { kind, url: "" };
@@ -99,15 +111,17 @@ function linkFor(kind: AnyLinkKind, targets: Targets, kinds: KindOption[]): AnyM
 /** The page, product, category or tag a link points at, if the link has one. */
 function targetOf(link: AnyMenuLink): { kind: TargetKind; value: string } | null {
   if (link.kind === "product") return { kind: "product", value: link.handle };
-  if (link.kind === "page") return { kind: "page", value: "pageId" in link ? link.pageId : link.slug };
-  if (link.kind === "category" || link.kind === "tag") return { kind: link.kind, value: link.slug };
+  if (link.kind === "page" || link.kind === "article") return { kind: link.kind, value: "pageId" in link ? link.pageId : link.slug };
+  if (link.kind === "category" || link.kind === "tag" || link.kind === "blogCategory") return { kind: link.kind, value: link.slug };
   return null;
 }
 
 /** A link to `value` of a target kind. */
 function targetLink(kind: TargetKind, value: string, kinds: KindOption[]): AnyMenuLink {
-  if (kind === "page") {
-    return kinds.find((k) => k.kind === "page")?.pageBy === "slug" ? { kind, slug: value } : { kind, pageId: value };
+  if (kind === "page" || kind === "article") {
+    const bySlug = kinds.find((k) => k.kind === kind)?.pageBy === "slug";
+    if (kind === "page") return bySlug ? { kind, slug: value } : { kind, pageId: value };
+    return bySlug ? { kind, slug: value } : { kind, pageId: value };
   }
   if (kind === "product") return { kind, handle: value };
   return { kind, slug: value };

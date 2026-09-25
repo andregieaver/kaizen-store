@@ -26,7 +26,10 @@ test("Kaizen's blog lists its articles, newest first, and an article has its hea
 });
 
 test("a store's blog is in its layout and language, with its article categories", async ({ page }) => {
-  await page.goto("/s/demo/no/blog");
+  // The footer's blog link (D57) is named in the store's language.
+  await page.goto("/s/demo/no");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Blogg", exact: true }).click();
+  await expect(page).toHaveURL("/s/demo/no/blog");
   await expect(page.locator("html")).toHaveAttribute("lang", "nb");
   await expect(page.getByRole("heading", { level: 1, name: "Blogg" })).toBeVisible();
   await page.getByRole("navigation", { name: "Blogg" }).getByRole("link", { name: "Nyheter" }).click();

@@ -105,6 +105,11 @@ describe("a store's search settings", () => {
       where s.slug = ${slug} and p.type = 'article'
     `);
     expect(article?.slug).toBe("nye-produkter");
+    // Its blog is in the sitemap and llms.txt (D57).
+    const withBlog = await seo.storeSitemap(slug);
+    expect(withBlog).toContain(`/s/${slug}/se/blog/nye-produkter</loc>`);
+    expect(withBlog).toContain(`/s/${slug}/no/blog</loc>`);
+    expect(await seo.storeLlms(slug)).toContain(`## Blog\n\n- [Nye produkter i høst](`);
 
     const sitemap = await seo.storeSitemap(slug);
     for (const market of ["no", "se", "dk"]) expect(sitemap).toContain(`/s/${slug}/${market}/om-oss</loc>`);

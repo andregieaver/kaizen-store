@@ -315,12 +315,20 @@ const PLATFORM_PRIVATE = ["/admin", "/api/", "/auth/"];
  * under its address.
  */
 export async function siteRobots(): Promise<string> {
-  const [platform, stores, pages] = await Promise.all([getPlatformSeo(), listPublicStores(), listPublishedPages()]);
+  const [platform, stores, pages, articles] = await Promise.all([
+    getPlatformSeo(),
+    listPublicStores(),
+    listPublishedPages(),
+    listPublishedPages(null, "article"),
+  ]);
   const parsed = parseRobotsRules(platform.robots, { sitemaps: true });
   const groups = parsed.groups;
   addRules(groups, ["*"], PLATFORM_PRIVATE.map((path) => ({ allow: false, path })));
-  // `$` ends the path, so closing /about leaves /about-us open.
-  const closed = pages.filter((page) => !page.content.aiAssistants).map((page) => ({ allow: false, path: `/${page.slug}$` }));
+  // `$` ends the path, so closing /about leaves /about-us open; articles are under /blog (D57).
+  const closed = [
+    ...pages.filter((page) => !page.content.aiAssistants).map((page) => ({ allow: false, path: `/${page.slug}$` })),
+    ...articles.filter((a) => !a.content.aiAssistants).map((a) => ({ allow: false, path: `/blog/${a.slug}$` })),
+  ];
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
   for (const store of stores) mergeGroups(groups, await storeGroups(store));
   return renderRobots(groups, [`${siteUrl()}/sitemap.xml`, ...parsed.sitemaps]);
@@ -330,9 +338,11 @@ export async function siteRobots(): Promise<string> {
 async function storeGroups(store: Pick<Store, "id" | "slug" | "seo">) {
   const base = storeBase(store.slug);
   const groups = storeRobotsGroups(store.seo, base);
-  const closed = (await listPublishedPages(store.id))
-    .filter((page) => !page.content.aiAssistants)
-    .map((page) => ({ allow: false, path: `${base}/*/${page.slug}$` }));
+  const [pages, articles] = await Promise.all([listPublishedPages(store.id), listPublishedPages(store.id, "article")]);
+  const closed = [
+    ...pages.filter((page) => !page.content.aiAssistants).map((page) => ({ allow: false, path: `${base}/*/${page.slug}$` })),
+    ...articles.filter((a) => !a.content.aiAssistants).map((a) => ({ allow: false, path: `${base}/*/blog/${a.slug}$` })),
+  ];
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
   return groups;
 }
@@ -359,15 +369,19 @@ export async function sitemapIndex(): Promise<string> {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</sitemapindex>\n`;
 }
 
-/** Kaizen's own pages: the front page, sign-up and every published page open to search engines (D42). */
+/** Kaizen's own pages: the front page, sign-up and every published page and article open to search engines (D42, D57). */
 export async function platformSitemap(): Promise<string> {
   const origin = siteUrl();
-  const pages = (await listPublishedPages()).filter((page) => page.content.searchEngines);
+  const [pages, articles] = await Promise.all([listPublishedPages(), listPublishedPages(null, "article")]);
+  const listed = [
+    ...pages.filter((page) => page.content.searchEngines).map((page) => ({ page, path: `/${page.slug}` })),
+    ...articles.filter((a) => a.content.searchEngines).map((page) => ({ page, path: `/blog/${page.slug}` })),
+  ];
   const urls = [
-    ...["/", "/sign-up"].map((path) => `<url><loc>${origin}${path}</loc></url>`),
-    ...pages.map(
-      (page) =>
-        `<url><loc>${xml(`${origin}/${page.slug}`)}</loc><lastmod>${page.publishedAt}</lastmod>${
+    ...["/", "/sign-up", ...(articles.length > 0 ? ["/blog"] : [])].map((path) => `<url><loc>${origin}${path}</loc></url>`),
+    ...listed.map(
+      ({ page, path }) =>
+        `<url><loc>${xml(`${origin}${path}`)}</loc><lastmod>${page.publishedAt}</lastmod>${
           page.content.thumbnail
             ? `<image:image><image:loc>${xml(absoluteUrl(page.content.thumbnail.url, origin))}</image:loc></image:image>`
             : ""
@@ -386,7 +400,11 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   const store = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   if (!store) return null;
   const origin = siteUrl();
-  const [products, pages] = await Promise.all([listIndexedProducts(store.id), listPublishedPages(store.id)]);
+  const [products, pages, articles] = await Promise.all([
+    listIndexedProducts(store.id),
+    listPublishedPages(store.id),
+    listPublishedPages(store.id, "article"),
+  ]);
   const base = `${origin}${storeBase(store.slug)}`;
 
   const entry = (
@@ -431,6 +449,20 @@ export async function storeSitemap(slug: string): Promise<string | null> {
         const image = page.content.thumbnail ? [page.content.thumbnail.url] : [];
         return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image }));
       }),
+    // Its blog (D57): the list in every market, and each article open to search engines.
+    ...(articles.length > 0
+      ? store.markets.map((m) => {
+          const versions = store.markets.map((v) => ({ locale: v.locale, href: `${base}/${v.slug}/blog` }));
+          return entry(`${base}/${m.slug}/blog`, versions);
+        })
+      : []),
+    ...articles
+      .filter((article) => article.content.searchEngines)
+      .flatMap((article) => {
+        const versions = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/blog/${article.slug}` }));
+        const image = article.content.thumbnail ? [article.content.thumbnail.url] : [];
+        return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
+      }),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
 }
@@ -438,7 +470,12 @@ export async function storeSitemap(slug: string): Promise<string | null> {
 /** Kaizen's llms.txt: what Kaizen is, its pages open to AI assistants (D42), and where each open store's own llms.txt is. */
 export async function platformLlms(): Promise<string> {
   const origin = siteUrl();
-  const [seo, stores, pages] = await Promise.all([getPlatformSeo(), listPublicStores(), listPublishedPages()]);
+  const [seo, stores, pages, articles] = await Promise.all([
+    getPlatformSeo(),
+    listPublicStores(),
+    listPublishedPages(),
+    listPublishedPages(null, "article"),
+  ]);
   return renderLlms({
     name: seo.title.en || PLATFORM_DEFAULTS.title,
     summary: seo.description.en || PLATFORM_DEFAULTS.description,
@@ -465,6 +502,17 @@ export async function platformLlms(): Promise<string> {
           })),
       },
       {
+        // Kaizen's blog (D57), newest first.
+        heading: "Blog",
+        links: articles
+          .filter((article) => article.content.aiAssistants)
+          .map((article) => ({
+            title: article.content.title,
+            url: `${origin}/blog/${article.slug}`,
+            note: article.content.seo.description || pageExcerpt(article.content, 200),
+          })),
+      },
+      {
         heading: "Kaizen",
         links: [
           { title: "Start a store", url: `${origin}/sign-up` },
@@ -488,11 +536,12 @@ export async function storeLlms(slug: string): Promise<string | null> {
   const origin = siteUrl();
   const m = t(market.lang);
   const home = (code: string) => `${origin}${marketPath(store.slug, code.toLowerCase())}`;
-  const [products, indexed, shipping, pages] = await Promise.all([
+  const [products, indexed, shipping, pages, articles] = await Promise.all([
     listProducts(store.id, market.code, market.locale),
     listIndexedProducts(store.id),
     Promise.all(store.markets.map((mk) => getShippingFacts(store.id, mk.code))),
     listPublishedPages(store.id),
+    listPublishedPages(store.id, "article"),
   ]);
   const byHandle = new Map(indexed.map((p) => [p.handle, p]));
   const money = (minor: number, currency: string) => formatMoney(minor, currency, "en-GB");
@@ -540,6 +589,16 @@ export async function storeLlms(slug: string): Promise<string | null> {
           .map((page) => {
             const c = localizePage(page.content, market.locale);
             return { title: c.title, url: `${home(market.code)}/${page.slug}`, note: c.seo.description || pageExcerpt(c, 200) };
+          }),
+      },
+      {
+        // Its blog (D57), newest first, in the first market's language.
+        heading: "Blog",
+        links: articles
+          .filter((article) => article.content.aiAssistants)
+          .map((article) => {
+            const c = localizePage(article.content, market.locale);
+            return { title: c.title, url: `${home(market.code)}/blog/${article.slug}`, note: c.seo.description || pageExcerpt(c, 200) };
           }),
       },
       {

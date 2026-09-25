@@ -19,6 +19,9 @@ const KINDS: { kind: AnyLinkKind; label: string }[] = [
   { kind: "page", label: "A page" },
   { kind: "category", label: "A category's pages" },
   { kind: "tag", label: "A tag's pages" },
+  { kind: "blog", label: "The blog" },
+  { kind: "article", label: "An article" },
+  { kind: "blogCategory", label: "A blog category's articles" },
   { kind: "home", label: "Front page" },
   { kind: "signUp", label: "Start your store (sign-up)" },
   { kind: "signIn", label: "Sign in" },
@@ -41,10 +44,12 @@ export default async function PlatformNavigationPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
-  const [{ navigation, business }, pages, terms] = await Promise.all([
+  const [{ navigation, business }, pages, terms, articles, blogTerms] = await Promise.all([
     getPlatformNavigationForEdit(),
     listMenuPages(null),
     listTerms({ storeId: null, contentType: "page" }),
+    listMenuPages(null, "article"),
+    listTerms({ storeId: null, contentType: "article" }),
   ]);
   return (
     <>
@@ -57,7 +62,9 @@ export default async function PlatformNavigationPage() {
       </div>
       <NavigationEditor
         initial={navigation}
-        languages={[{ locale: "en", name: "English", defaults: { home: "Home", signUp: "Start your store", signIn: "Sign in" } }]}
+        languages={[
+          { locale: "en", name: "English", defaults: { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" } },
+        ]}
         kinds={KINDS}
         targets={{
           page: pages.map((page) => ({
@@ -66,6 +73,9 @@ export default async function PlatformNavigationPage() {
             note: page.published ? undefined : "draft",
           })),
           ...termTargets(terms),
+          // Kaizen's articles by id and blog categories by address (D57).
+          article: articles.map((a) => ({ value: a.id, title: a.title, note: a.published ? undefined : "draft" })),
+          blogCategory: termTargets(blogTerms).category,
         }}
         copy={COPY}
         business={business}

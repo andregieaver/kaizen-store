@@ -17,7 +17,7 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 type Props = { chrome: PlatformChrome };
 
 const m = t("en");
-const BUILT_IN = { home: "Home", signUp: "Start your store", signIn: "Sign in" };
+const BUILT_IN = { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" };
 
 function MenuLinks({
   items,
@@ -25,7 +25,7 @@ function MenuLinks({
   className,
   linkClassName,
 }: Props & { items: PlatformMenuItem[]; className?: string; linkClassName: string }) {
-  const links = items.flatMap((item) => platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms) ?? []);
+  const links = items.flatMap((item) => platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms, chrome.blog) ?? []);
   if (links.length === 0) return null;
   return (
     <ul className={className}>

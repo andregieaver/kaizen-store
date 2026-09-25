@@ -35,6 +35,8 @@ export type PlatformChrome = {
   pages: Map<string, MenuPage>;
   /** Page category and tag names by address, for links to their listings (D50). */
   terms: TermNames;
+  /** Published articles by id, and blog category names by address (D57). */
+  blog: { articles: Map<string, MenuPage>; categories: ReadonlyMap<string, string> };
 };
 
 async function loadSettings(): Promise<{ navigation: PlatformNavigation; business: BusinessDetails }> {
@@ -47,11 +49,19 @@ async function loadSettings(): Promise<{ navigation: PlatformNavigation; busines
 
 /** Kaizen's logo, menus and business details, and the pages its menus can link to. */
 export async function getPlatformChrome(): Promise<PlatformChrome> {
-  const [settings, pages, terms] = await Promise.all([loadSettings(), listPublishedPages(), siteTerms(null, "page")]);
+  const [settings, pages, terms, articles, blogTerms] = await Promise.all([
+    loadSettings(),
+    listPublishedPages(),
+    siteTerms(null, "page"),
+    listPublishedPages(null, "article"),
+    siteTerms(null, "article"),
+  ]);
+  const byId = (list: typeof pages) => new Map(list.map((p) => [p.id, { id: p.id, slug: p.slug, title: p.content.title }]));
   return {
     ...settings,
-    pages: new Map(pages.map((page) => [page.id, { id: page.id, slug: page.slug, title: page.content.title }])),
+    pages: byId(pages),
     terms: termNames(terms),
+    blog: { articles: byId(articles), categories: termNames(blogTerms).category },
   };
 }
 
@@ -74,21 +84,25 @@ export async function savePlatformNavigation(account: Account, input: unknown): 
     return { ok: false, problems: [...new Set(issues.map((i) => i.message))] };
   }
   const items = [...parsed.data.header, ...parsed.data.footer];
-  const ids = [...new Set(items.flatMap((i) => (i.link.kind === "page" ? [i.link.pageId] : [])))];
+  const ids = [...new Set(items.flatMap((i) => (i.link.kind === "page" || i.link.kind === "article" ? [i.link.pageId] : [])))];
+  // Page and article links name one of Kaizen's own, of that type (D57).
   const existing = new Set<string>();
   if (ids.length > 0) {
     const rows = await db().execute<Row>(sql`
-      select id from commerce.pages
-      where store_id is null and type = 'page' and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
+      select type || ':' || id as key from commerce.pages
+      where store_id is null and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
     `);
-    for (const row of rows) existing.add(String(row.id));
+    for (const row of rows) existing.add(String(row.key));
   }
 
   const problems: string[] = [];
   const clean = (item: PlatformNavigation["header"][number]) => {
     const label = cleanLabels(item.label, ["en"]);
-    if (item.link.kind === "page" && !existing.has(item.link.pageId)) {
+    if (item.link.kind === "page" && !existing.has(`page:${item.link.pageId}`)) {
       problems.push("A menu links to a page that no longer exists. Choose another.");
+    }
+    if (item.link.kind === "article" && !existing.has(`article:${item.link.pageId}`)) {
+      problems.push("A menu links to an article that no longer exists. Choose another.");
     }
     if (item.link.kind === "url" && !label.en) problems.push("Give each web address link a text.");
     return { label, link: item.link };
