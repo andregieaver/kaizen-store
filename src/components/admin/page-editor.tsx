@@ -3,13 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useState, useTransition } from "react";
 
-import {
-  createPageTermAction,
-  deletePageAction,
-  savePageAction,
-  unpublishPageAction,
-  type PageSaveState,
-} from "@/app/admin/(gated)/platform/pages/actions";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
 import { shrinkImage } from "@/lib/image-resize";
@@ -28,12 +21,11 @@ import {
 import { newBlock, newRow } from "@/lib/page-rows";
 import type { SavedPart } from "@/lib/saved-parts";
 import type { Term } from "@/lib/taxonomy";
-import type { GridStore } from "@/server/content-grid";
 import type { EditablePage, PageState } from "@/server/pages";
 
+import type { Upload } from "./image-upload";
+import type { PageOwnerContext, PageSaveState } from "./page-context";
 import { newId, PageBuilder } from "./page-builder";
-
-type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -55,35 +47,29 @@ function startingRows(): PageRow[] {
 }
 
 /**
- * One of Kaizen's pages (D42), held whole in the browser: title, address,
- * picture, search texts, who may read it, and its content: rows of
- * columns of blocks, built in `PageBuilder` (D43). Save keeps a draft;
- * Publish puts the page on the site.
+ * A page (D42), Kaizen's or a store's (D53), held whole in the browser:
+ * title, address, picture, search texts, who may read it, and its content:
+ * rows of columns of blocks, built in `PageBuilder` (D43). Save keeps a
+ * draft; Publish puts the page on the site. What differs between owners
+ * comes in `context`.
  */
 export function PageEditor({
   page,
   notice = null,
-  origin,
-  defaultDescription,
   savedParts,
-  upload,
   terms: initialTerms,
-  gridStores,
+  context,
 }: {
   page: EditablePage | null;
   /** Said when the editor opens, such as "Draft saved." after a new page's first save. */
   notice?: string | null;
-  origin: string;
-  /** Kaizen's own description, the last fallback for a page without text. */
-  defaultDescription: string;
-  /** Saved rows, columns and components, for the builder's Saved tab (D46). */
+  /** The owner's saved rows, columns and components, for the builder's Saved tab (D46). */
   savedParts: SavedPart[];
-  upload: Upload | null;
-  /** Kaizen's page categories and tags (D50). */
+  /** The owner's page categories and tags (D50). */
   terms: Term[];
-  /** Open stores and their markets, for content grids of products (D51). */
-  gridStores: GridStore[];
+  context: PageOwnerContext;
 }) {
+  const { actions, origin, defaultDescription, upload, reserved, adminBase, siteBase } = context;
   const [terms, setTerms] = useState(initialTerms);
   const router = useRouter();
   const [saved, setSaved] = useState<EditablePage | null>(page);
@@ -92,7 +78,7 @@ export function PageEditor({
   );
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
-    !page || (!page.published && page.draft.slug === pageSlugFromTitle(page.draft.title)),
+    !page || (!page.published && page.draft.slug === pageSlugFromTitle(page.draft.title, reserved)),
   );
   const [dirty, setDirty] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
@@ -123,16 +109,16 @@ export function PageEditor({
   const submit = (publish: boolean) =>
     startBusy(async () => {
       setProblems([]);
-      const outcome: PageSaveState = await savePageAction(saved?.id ?? null, JSON.stringify(content), publish);
+      const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify(content), publish);
       if (outcome.status === "error") {
         setProblems(outcome.problems);
         return;
       }
       setDirty(false);
       setSaved(outcome.page);
-      setMessage(publish ? `Published at /${outcome.page.slug}.` : "Draft saved.");
+      setMessage(publish ? `Published at ${siteBase}/${outcome.page.slug}.` : "Draft saved.");
       // A new page moves to its own address; the editor there says what happened.
-      if (!saved) router.replace(`/admin/platform/pages/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
+      if (!saved) router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
     });
 
   // Ctrl/Cmd + S saves the draft.
@@ -151,7 +137,7 @@ export function PageEditor({
   const unpublish = () =>
     startBusy(async () => {
       if (!saved) return;
-      const outcome = await unpublishPageAction(saved.id);
+      const outcome = await actions.unpublish(saved.id);
       if (outcome.status === "error") setProblems(outcome.problems);
       else {
         setSaved(outcome.page);
@@ -163,12 +149,12 @@ export function PageEditor({
     startBusy(async () => {
       if (!saved) return;
       setDirty(false);
-      const outcome = await deletePageAction(saved.id);
+      const outcome = await actions.remove(saved.id);
       if (outcome) setProblems(outcome.problems);
     });
 
   const liveSlug = saved?.published ? saved.slug : null;
-  const moving = liveSlug !== null && content.slug !== liveSlug && pageSlugProblem(content.slug) === null;
+  const moving = liveSlug !== null && content.slug !== liveSlug && pageSlugProblem(content.slug, reserved) === null;
   const excerpt = pageExcerpt(content);
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
@@ -180,7 +166,7 @@ export function PageEditor({
         onRows={changeRows}
         saved={savedParts}
         upload={upload}
-        grid={{ pageId: saved?.id ?? null, pageTerms: terms, stores: gridStores }}
+        grid={{ pageId: saved?.id ?? null, owner: context.owner, pageTerms: terms, stores: context.gridStores, actions }}
         aside={
           <>
             <section aria-label="Title and address" className={card}>
@@ -191,7 +177,7 @@ export function PageEditor({
                   maxLength={PAGE_TITLE_MAX}
                   onChange={(event) => {
                     const title = event.target.value;
-                    change(slugFollows ? { title, slug: pageSlugFromTitle(title) } : { title });
+                    change(slugFollows ? { title, slug: pageSlugFromTitle(title, reserved) } : { title });
                   }}
                   placeholder="About Kaizen"
                   className={`${input} min-h-12 text-xl font-semibold`}
@@ -201,13 +187,15 @@ export function PageEditor({
                 slug={content.slug}
                 follows={slugFollows}
                 origin={origin}
+                siteBase={siteBase}
+                reserved={reserved}
                 onChange={(slug) => {
                   setSlugFollows(false);
                   change({ slug });
                 }}
                 onFollow={() => {
                   setSlugFollows(!liveSlug);
-                  change({ slug: pageSlugFromTitle(content.title) });
+                  change({ slug: pageSlugFromTitle(content.title, reserved) });
                 }}
               />
               {moving && (
@@ -226,8 +214,8 @@ export function PageEditor({
                 value={{ categories: content.categories, tags: content.tags }}
                 onChange={(ids) => change(ids)}
                 onTerms={setTerms}
-                create={createPageTermAction}
-                manageHref="/admin/platform/pages/categories"
+                create={actions.createTerm}
+                manageHref={`${adminBase}/categories`}
               />
             </section>
             <ThumbnailField
@@ -263,7 +251,7 @@ export function PageEditor({
                   title: content.title || "The page's title",
                   description: excerpt || defaultDescription,
                 }}
-                url={`${origin}/${content.slug}`}
+                url={`${origin}${siteBase}/${content.slug}`}
                 lang="en"
               />
               <p className={hint}>
@@ -308,12 +296,12 @@ export function PageEditor({
           </p>
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
             {saved && (
-              <a href={`/admin/platform/pages/${saved.id}/preview`} target="_blank" rel="noopener" className="underline">
+              <a href={`${adminBase}/${saved.id}/preview`} target="_blank" rel="noopener" className="underline">
                 Preview draft{dirty ? " (last saved)" : ""}
               </a>
             )}
             {liveSlug && (
-              <a href={`/${liveSlug}`} target="_blank" rel="noopener" className="underline">
+              <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
                 View page
               </a>
             )}
@@ -354,17 +342,21 @@ function SlugField({
   slug,
   follows,
   origin,
+  siteBase,
+  reserved,
   onChange,
   onFollow,
 }: {
   slug: string;
   follows: boolean;
   origin: string;
+  siteBase: string;
+  reserved: readonly string[];
   onChange: (slug: string) => void;
   onFollow: () => void;
 }) {
   const id = useId();
-  const problem = slug ? pageSlugProblem(slug) : null;
+  const problem = slug ? pageSlugProblem(slug, reserved) : null;
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium">
@@ -396,7 +388,8 @@ function SlugField({
         {problem ?? (
           <>
             <span className="block break-all text-foreground">
-              {origin.replace(/^https?:\/\//, "")}/{slug}
+              {origin.replace(/^https?:\/\//, "")}
+              {siteBase}/{slug}
             </span>
             {follows ? "Made from the title as you type. Edit it to choose your own." : "Lowercase letters, digits and hyphens."}
           </>

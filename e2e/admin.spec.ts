@@ -56,6 +56,9 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/platform/seo",
     "/admin/demo/discounts",
     "/admin/platform/discounts",
+    "/admin/demo/pages",
+    "/admin/demo/pages/new",
+    "/admin/demo/pages/categories",
   ];
   for (const path of paths) {
     await page.goto(path);

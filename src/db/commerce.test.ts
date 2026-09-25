@@ -2,6 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { minorUnitDigits } from "@/lib/money";
+import { RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 
 import { createTestDatabase } from "./testing";
@@ -948,6 +949,14 @@ describe("pages", () => {
       await expect(page(slug)).rejects.toThrow(/pages_slug_not_reserved/);
     }
     await expect(page("admin", store)).resolves.toBeDefined();
+  });
+
+  it("keeps a store's routes from its pages, as the app's list does (D53)", async () => {
+    for (const slug of RESERVED_STORE_PAGE_SLUGS) {
+      await expect(page(slug, store)).rejects.toThrow(/pages_store_slug_not_reserved/);
+    }
+    // Kaizen's pages may use them: they live at the site's root.
+    await expect(page("wishlist")).resolves.toBeDefined();
   });
 
   it("keeps the published copy and its date together", async () => {

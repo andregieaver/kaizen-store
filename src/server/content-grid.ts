@@ -11,7 +11,7 @@ import { summarize } from "@/lib/seo";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
 
 import { listGridProducts } from "./catalog";
-import { PAGES_TAG } from "./pages";
+import { pagesTag } from "./pages";
 import { getOpenStore } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
 
@@ -25,22 +25,45 @@ type Row = Record<string, unknown>;
 
 const EXCERPT_MAX = 300;
 
-/** A grid's items; `pageId` is the page it is on, left out of a grid of pages. */
-export async function gridData(block: ContentGridBlock, pageId: string | null): Promise<GridData> {
+/**
+ * Where a grid is shown: the page it is on (left out of a grid of pages),
+ * whose page it is (a store's, or Kaizen's: null), and on a store's page
+ * the market the shopper is in (else the store's first).
+ */
+export type GridPlace = { pageId: string | null; owner: string | null; market?: string };
+
+/** A grid's items where it is shown. */
+export async function gridData(block: ContentGridBlock, place: GridPlace): Promise<GridData> {
   const filter = { categories: block.categories, tags: block.tags, sort: block.sort, limit: block.limit };
-  if (block.source.type === "pages") return gridPages(filter, pageId);
-  return gridProducts(block.source.storeId, block.source.market, filter);
+  if (block.source.type === "pages") return gridPages(place.owner, place.market ?? null, filter, place.pageId);
+  // On a store's page, its own products in the shopper's market (D53); on Kaizen's, the store and market chosen.
+  const storeId = place.owner ?? block.source.storeId;
+  const market = place.owner ? (place.market ?? block.source.market) : block.source.market;
+  if (!storeId) return { ...EMPTY_GRID };
+  return gridProducts(storeId, market ?? null, filter);
+}
+
+/** An open store by id, and one of its markets (by code, else its first). */
+async function storeAndMarket(storeId: string, marketCode: string | null) {
+  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  const store = row ? await getOpenStore(String(row.slug)) : null;
+  const market = store && (marketCode ? store.markets.find((m) => m.code === marketCode) : store.markets[0]);
+  return store && market ? { store, market } : null;
 }
 
 type Filter = { categories: string[]; tags: string[]; sort: string; limit: number };
 
-/** Kaizen's published pages in the grid's categories and tags. */
-async function gridPages(filter: Filter, exclude: string | null): Promise<GridData> {
+/** The owner's published pages in the grid's categories and tags; a store's link within the market. */
+async function gridPages(owner: string | null, marketCode: string | null, filter: Filter, exclude: string | null): Promise<GridData> {
   "use cache";
   cacheLife("hours");
-  cacheTag(PAGES_TAG, termsTag({ storeId: null, contentType: "page" }));
+  cacheTag(pagesTag(owner), termsTag({ storeId: owner, contentType: "page" }));
 
-  const terms = await currentTerms(null, "page");
+  const shop = owner ? await storeAndMarket(owner, marketCode) : null;
+  if (owner && !shop) return { ...EMPTY_GRID };
+  const href = (slug: string) => (shop ? marketPath(shop.store.slug, shop.market.slug, `/${slug}`) : `/${slug}`);
+  const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: "en", locale: "en-GB" };
+  const terms = await currentTerms(owner, "page");
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tags = knownIds(terms, "tag", filter.tags);
   // Asked for, but all deleted since: nothing matches.
@@ -57,7 +80,7 @@ async function gridPages(filter: Filter, exclude: string | null): Promise<GridDa
         : sql`p.published_at desc, p.slug`;
   const rows = await readDb().execute<Row>(sql`
     select p.id, p.slug, p.published from commerce.pages p
-    where p.store_id is null and p.published_at is not null
+    where p.store_id is not distinct from ${owner}::uuid and p.published_at is not null
       and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
       and ${matches("categories", categories)}
       and ${matches("tags", tags)}
@@ -70,7 +93,7 @@ async function gridPages(filter: Filter, exclude: string | null): Promise<GridDa
     return [
       {
         id: String(row.id),
-        href: `/${String(row.slug)}`,
+        href: href(String(row.slug)),
         title: content.title,
         excerpt: content.seo.description || pageExcerpt(content, EXCERPT_MAX),
         image: content.thumbnail ? { url: content.thumbnail.url, alt: content.thumbnail.alt } : null,
@@ -78,19 +101,18 @@ async function gridPages(filter: Filter, exclude: string | null): Promise<GridDa
       },
     ];
   });
-  return { items, lang: "en", locale: "en-GB" };
+  return { items, ...language };
 }
 
-/** A store's products in the grid's categories and tags, priced in one of its markets. */
-async function gridProducts(storeId: string, marketCode: string, filter: Filter): Promise<GridData> {
+/** A store's products in the grid's categories and tags, priced in one of its markets (its first unless named). */
+async function gridProducts(storeId: string, marketCode: string | null, filter: Filter): Promise<GridData> {
   "use cache";
   cacheLife("hours");
   cacheTag(termsTag({ storeId, contentType: "product" }));
 
-  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
-  const store = row ? await getOpenStore(String(row.slug)) : null;
-  const market = store?.markets.find((m) => m.code === marketCode);
-  if (!store || !market) return { ...EMPTY_GRID };
+  const shop = await storeAndMarket(storeId, marketCode);
+  if (!shop) return { ...EMPTY_GRID };
+  const { store, market } = shop;
 
   const terms = await currentTerms(storeId, "product");
   const categoryIds = withDescendants(terms, knownIds(terms, "category", filter.categories));

@@ -35,13 +35,6 @@ import {
   type ReactNode,
 } from "react";
 
-import {
-  createSavedPartAction,
-  deleteSavedPartAction,
-  gridPreviewAction,
-  gridTermsAction,
-  updateSavedPartAction,
-} from "@/app/admin/(gated)/platform/pages/actions";
 import { ContentGridView } from "@/components/content-grid";
 
 import { PageBlockView, type ButtonLook } from "@/components/page-block";
@@ -152,6 +145,7 @@ import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 
 import { ImageUploadButton, type Upload } from "./image-upload";
+import type { PageOwnerContext } from "./page-context";
 import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
 
@@ -273,8 +267,19 @@ type Dialog =
 /** A row, column or component about to be saved, or being changed. */
 type SavedPartDraft = Pick<SavedPart, "kind" | "content">;
 
-/** What content grids (D51) need: the page they are on, Kaizen's page terms and the stores whose products they can show. */
-export type GridContext = { pageId: string | null; pageTerms: Term[]; stores: GridStore[] };
+/**
+ * What the builder needs from its page and owner (D53): the page it is
+ * on, whose it is, the owner's page terms and (on Kaizen's pages) the
+ * stores whose products a content grid can show, and the owner's actions
+ * for saved parts and grids.
+ */
+export type GridContext = {
+  pageId: string | null;
+  owner: string | null;
+  pageTerms: Term[];
+  stores: GridStore[];
+  actions: PageOwnerContext["actions"];
+};
 
 /** What the canvas can ask of the builder. */
 type Actions = {
@@ -1307,7 +1312,7 @@ function BlockItem({
       <Line at={line} />
       <div className={blockBox(block, "canvas").className || undefined} style={blockBox(block, "canvas").style}>
         {block.type === "contentGrid" ? (
-          <GridPreview block={block} pageId={actions.grid.pageId} />
+          <GridPreview block={block} grid={actions.grid} />
         ) : blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (
@@ -1703,6 +1708,7 @@ function Dialogs({
 
       {dialog?.kind === "save-as" && (
         <SaveAsDialog
+          create={grid.actions.createPart}
           part={dialog.part}
           onCancel={() => (dialog.back ? open(dialog.back) : onClose())}
           onSaved={(next, id) => {
@@ -1715,6 +1721,7 @@ function Dialogs({
       {savedPart && (
         <SavedPartDialog
           key={savedPart.id + savedPart.updatedAt}
+          actions={grid.actions}
           part={savedPart}
           onClose={onClose}
           onParts={onParts}
@@ -2737,11 +2744,12 @@ function mergeOptional<T extends object>(current: T | undefined, patch: Partial<
  * A content grid on the canvas (D51): its items as the site will show them,
  * asked of the server again when what it shows changes (not its look).
  */
-function GridPreview({ block, pageId }: { block: ContentGridBlock; pageId: string | null }) {
+function GridPreview({ block, grid }: { block: ContentGridBlock; grid: GridContext }) {
+  const pageId = grid.pageId;
   const key = JSON.stringify([block.source, block.categories, block.tags, block.sort, block.limit]);
   const [result, setResult] = useState<{ key: string; data: GridData | { problem: string } } | null>(null);
   const load = useEffectEvent((forKey: string) => {
-    void gridPreviewAction(block, pageId).then((data) => setResult({ key: forKey, data }));
+    void grid.actions.gridPreview(block, pageId).then((data) => setResult({ key: forKey, data }));
   });
   useEffect(() => load(key), [key]);
 
@@ -2846,15 +2854,17 @@ function ContentGridFields({
 }) {
   const id = useId();
   const source = block.source;
-  const storeId = source.type === "products" ? source.storeId : null;
+  // On a store's page (D53) its own products, in the shopper's market.
+  const own = grid.owner !== null;
+  const storeId = source.type === "products" ? (grid.owner ?? source.storeId ?? null) : null;
   const [storeTerms, setStoreTerms] = useState<{ storeId: string; terms: Term[] } | null>(null);
   const loadTerms = useEffectEvent((forStore: string) => {
-    void gridTermsAction(forStore).then((terms) => setStoreTerms({ storeId: forStore, terms }));
+    void grid.actions.gridTerms(forStore).then((terms) => setStoreTerms({ storeId: forStore, terms }));
   });
   useEffect(() => {
     if (storeId) loadTerms(storeId);
   }, [storeId]);
-  const terms = source.type === "pages" ? grid.pageTerms : storeTerms?.storeId === storeId ? storeTerms.terms : [];
+  const terms = source.type === "pages" ? grid.pageTerms : storeId && storeTerms?.storeId === storeId ? storeTerms.terms : [];
   const store = source.type === "products" ? grid.stores.find((s) => s.id === source.storeId) : undefined;
   const products = source.type === "products";
   const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRICE_SORTS.includes(sort));
@@ -2874,11 +2884,17 @@ function ContentGridFields({
           onChange(
             type === "pages"
               ? { source: { type: "pages" }, categories: [], tags: [], sort: PRICE_SORTS.includes(block.sort) ? "newest" : block.sort }
-              : { source: productsOf(grid.stores[0]), categories: [], tags: [] },
+              : { source: own ? { type: "products" } : productsOf(grid.stores[0]), categories: [], tags: [] },
           )
         }
       />
+      {products && own && (
+        <p className="text-sm text-muted">
+          The store&apos;s own products, priced in the market of the shopper viewing the page, in its language.
+        </p>
+      )}
       {products &&
+        !own &&
         (grid.stores.length === 0 ? (
           <p className="text-sm text-muted">No store is open yet, so there are no products to show.</p>
         ) : (
@@ -3103,10 +3119,12 @@ const field = "min-h-10 w-full rounded-md border border-border bg-background px-
 
 /** Names a row, column or component and saves it under Saved (D46). */
 function SaveAsDialog({
+  create,
   part,
   onCancel,
   onSaved,
 }: {
+  create: PageOwnerContext["actions"]["createPart"];
   part: SavedPartDraft;
   onCancel: () => void;
   onSaved: (parts: SavedPart[], id: string) => void;
@@ -3118,7 +3136,7 @@ function SaveAsDialog({
   const kind = SAVED_KIND_LABELS[part.kind].one.toLowerCase();
   const submit = () =>
     start(async () => {
-      const result = await createSavedPartAction({ ...part, name });
+      const result = await create({ ...part, name });
       if (result.ok) onSaved(result.parts, result.id);
       else setProblems(result.problems);
     });
@@ -3186,12 +3204,14 @@ function SaveAsDialog({
  * then on, never the pages that already have it.
  */
 function SavedPartDialog({
+  actions,
   part,
   onClose,
   onParts,
   onUse,
   upload,
 }: {
+  actions: PageOwnerContext["actions"];
   part: SavedPart;
   onClose: () => void;
   onParts: (parts: SavedPart[]) => void;
@@ -3224,14 +3244,14 @@ function SavedPartDialog({
         : { kind: "block", content: rows[0].columns[0].blocks[0] };
   const save = () =>
     start(async () => {
-      const result = await updateSavedPartAction(part.id, { ...content(), name });
+      const result = await actions.updatePart(part.id, { ...content(), name });
       if (!result.ok) return setProblems(result.problems);
       onParts(result.parts);
       onClose();
     });
   const remove = () =>
     start(async () => {
-      const result = await deleteSavedPartAction(part.id);
+      const result = await actions.deletePart(part.id);
       if (result.ok) onParts(result.parts);
       onClose();
     });

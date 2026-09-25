@@ -3,6 +3,7 @@ import { after } from "next/server";
 
 import { AdminTrail, SignOutForm } from "@/components/admin/admin-trail";
 import { StoreSidebar, StoreTabs, type NavGroup, type NavItem } from "@/components/admin/store-admin-nav";
+import { StoreMain } from "@/components/admin/store-main";
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
 import { storeBase } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
@@ -35,6 +36,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
     { href: `${base}/orders`, label: "Orders" },
     { href: `${base}/subscriptions`, label: "Subscriptions" },
     { href: `${base}/products`, label: "Products" },
+    { href: `${base}/pages`, label: "Pages" },
     { href: `${base}/discounts`, label: "Coupons" },
     { href: `${base}/wishlists`, label: "Wishlists" },
   ];
@@ -123,14 +125,17 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         </header>
       </HidingHeader>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-1 gap-10 px-4">
-        <aside className="hidden w-52 shrink-0 py-8 lg:block">
-          <div className="sticky top-32">
-            <StoreSidebar groups={groups} label="Settings" />
-          </div>
-        </aside>
-        <main className="min-w-0 flex-1 py-8">{children}</main>
-      </div>
+      <StoreMain
+        sidebar={
+          <aside className="hidden w-52 shrink-0 py-8 lg:block">
+            <div className="sticky top-32">
+              <StoreSidebar groups={groups} label="Settings" />
+            </div>
+          </aside>
+        }
+      >
+        {children}
+      </StoreMain>
 
       <MobileMenu title={<span className="font-medium">{store.name}</span>} labels={{ close: "Close menu", menu: "Menu" }}>
         <StoreSidebar groups={[{ heading: "Sections", items: tabs }, ...groups]} label="All pages" />

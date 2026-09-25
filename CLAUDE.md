@@ -165,9 +165,16 @@ of running `playwright install`.
   (`choosePlan()`: Stripe Checkout for the first plan, an instant prorated
   change after; `completePlanCheckout()` records it on return), and create
   more stores at `/admin/stores` (`createStoreForOwner()`, decision D19).
-- Pages (`/admin/platform/pages`, decision D42): `PageEditor` holds the whole
+- Pages (`/admin/platform/pages` for Kaizen, `/admin/{store}/pages` for a
+  store; decisions D42, D53): one `PageEditor` and `PageBuilder` serve both.
+  The route passes a `PageOwnerContext` (`src/components/admin/page-context.ts`:
+  owner, addresses, reserved slugs, upload and bound server actions); the
+  server functions in `pages.ts`, `saved-parts.ts` and `taxonomy.ts` take the
+  owner (a store id, or null for Kaizen), and store actions call
+  `requireMember`. Never import owner-specific actions into the builder.
+  `PageEditor` holds the whole
   page (title, address, picture, search texts, search/AI switches, blocks)
-  and sends it as JSON to `savePageAction`, checked by `pageInput`
+  and sends it as JSON to the save action, checked by `pageInput`
   (`src/lib/page-content.ts`, shared with the browser). Content is rows
   (`ROW_LAYOUTS`) of columns of blocks (D43), edited in `PageBuilder`
   (`src/components/admin/page-builder.tsx`: sidebar tabs, a canvas that
@@ -183,7 +190,7 @@ of running `playwright install`.
   with `ImageUploadButton`), a heading or a button (D49), or a content
   grid (D51: items from `gridData()` in `src/server/content-grid.ts`, shown
   by `ContentGridView`; on the site through `ContentGridSection`, in the
-  canvas through `gridPreviewAction`), all rendered by
+  canvas through the grid preview action), all rendered by
   `<PageBlockView>` (`src/components/page-block.tsx`) on the canvas and
   the site. Rows, columns and blocks take optional settings (D47–D49:
   spacing, border, corners, shadow, id and classes, backgrounds, widths,
@@ -195,7 +202,7 @@ of running `playwright install`.
   (`pages.draft`); publishing copies it to `pages.published`. A published
   page's address moves only on publish, and the database leaves a redirect
   (`page_redirects`). Publishing, unpublishing and deleting call
-  `updateTag(PAGES_TAG)`. New block kinds go in `PageBlock`, `pageInput`,
+  `updateTag(pagesTag(owner))`. New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
 - Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):

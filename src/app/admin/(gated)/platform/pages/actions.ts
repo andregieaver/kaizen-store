@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requirePlatformAdmin } from "@/server/auth";
-import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage, type EditablePage } from "@/server/pages";
+import type { PageSaveState } from "@/components/admin/page-context";
+import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { gridData } from "@/server/content-grid";
@@ -13,7 +14,6 @@ import type { GridData } from "@/lib/content-grid";
 import { pageBlockSchema } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
 
-export type PageSaveState = { status: "saved"; page: EditablePage } | { status: "error"; problems: string[] };
 
 const isId = (id: string) => z.uuid().safeParse(id).success;
 
@@ -31,11 +31,11 @@ export async function savePageAction(id: string | null, payload: string, publish
   } catch {
     return { status: "error", problems: ["The page could not be read. Reload and try again."] };
   }
-  const result = await savePage(admin, id, json, { publish: publish === true });
+  const result = await savePage(admin, null, id, json, { publish: publish === true });
   if (!result.ok) return { status: "error", problems: result.problems };
   // Drafts are not on the site; publishing changes pages, menus, sitemap and llms.txt.
   if (publish) updateTag(PAGES_TAG);
-  const page = await getPageForEdit(result.id);
+  const page = await getPageForEdit(null, result.id);
   if (!page) return { status: "error", problems: ["The page was saved but could not be read back."] };
   return { status: "saved", page };
 }
@@ -43,9 +43,9 @@ export async function savePageAction(id: string | null, payload: string, publish
 export async function unpublishPageAction(id: string): Promise<PageSaveState> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { status: "error", problems: ["Unknown page."] };
-  await unpublishPage(admin, id);
+  await unpublishPage(admin, null, id);
   updateTag(PAGES_TAG);
-  const page = await getPageForEdit(id);
+  const page = await getPageForEdit(null, id);
   if (!page) return { status: "error", problems: ["This page no longer exists."] };
   return { status: "saved", page };
 }
@@ -54,7 +54,7 @@ export async function unpublishPageAction(id: string): Promise<PageSaveState> {
 export async function deletePageAction(id: string): Promise<{ problems: string[] } | void> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { problems: ["Unknown page."] };
-  await deletePage(admin, id);
+  await deletePage(admin, null, id);
   updateTag(PAGES_TAG);
   redirect("/admin/platform/pages?deleted=1");
 }
@@ -65,19 +65,19 @@ export async function deletePageAction(id: string): Promise<{ problems: string[]
 
 export async function createSavedPartAction(input: unknown): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
-  return createSavedPart(admin, input);
+  return createSavedPart(admin, null, input);
 }
 
 export async function updateSavedPartAction(id: string, input: unknown): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
-  return updateSavedPart(admin, id, input);
+  return updateSavedPart(admin, null, id, input);
 }
 
 export async function deleteSavedPartAction(id: string): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
-  return deleteSavedPart(admin, id);
+  return deleteSavedPart(admin, null, id);
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ export async function gridPreviewAction(block: unknown, pageId: string | null): 
   if (!parsed.success || parsed.data.type !== "contentGrid") {
     return { problem: parsed.success ? "Not a content grid." : parsed.error.issues[0].message };
   }
-  return gridData(parsed.data, pageId !== null && isId(pageId) ? pageId : null);
+  return gridData(parsed.data, { pageId: pageId !== null && isId(pageId) ? pageId : null, owner: null });
 }
 
 /** A store's product categories and tags, for a grid of its products. */

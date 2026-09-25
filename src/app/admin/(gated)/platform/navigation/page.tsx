@@ -43,7 +43,7 @@ export default async function PlatformNavigationPage() {
   await requirePlatformAdmin();
   const [{ navigation, business }, pages, terms] = await Promise.all([
     getPlatformNavigationForEdit(),
-    listMenuPages(),
+    listMenuPages(null),
     listTerms({ storeId: null, contentType: "page" }),
   ]);
   return (

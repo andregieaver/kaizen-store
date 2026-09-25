@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."pages" ADD CONSTRAINT "pages_store_slug_not_reserved" CHECK ("commerce"."pages"."store_id" is null or "commerce"."pages"."slug" not in ('account', 'cart', 'category', 'checkout', 'download', 'order', 'p', 'subscription', 'tag', 'unsubscribe', 'wishlist'));

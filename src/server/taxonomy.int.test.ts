@@ -76,6 +76,7 @@ describe("categories and tags (D50)", () => {
     const saved = await pages.savePage(
       admin,
       null,
+      null,
       {
         ...newPageContent(),
         title: "Tagged",
@@ -86,7 +87,7 @@ describe("categories and tags (D50)", () => {
       },
       { publish: false },
     );
-    const page = await pages.getPageForEdit(ok(saved).id);
+    const page = await pages.getPageForEdit(null, ok(saved).id);
     expect(page?.draft.categories).toEqual([category.id]);
     expect(page?.draft.tags).toEqual([tag.id]);
   });

@@ -15,7 +15,7 @@ export default async function PreviewPagePage({ params }: PageProps<"/admin/plat
   await connection();
   await requirePlatformAdmin();
   const { pageId } = await params;
-  const page = z.uuid().safeParse(pageId).success ? await getPageForEdit(pageId) : null;
+  const page = z.uuid().safeParse(pageId).success ? await getPageForEdit(null, pageId) : null;
   if (!page) notFound();
   return (
     <>
@@ -33,7 +33,7 @@ export default async function PreviewPagePage({ params }: PageProps<"/admin/plat
         </Link>
       </p>
       <div className="py-6">
-        <PageArticle content={page.draft} pageId={page.id} />
+        <PageArticle content={page.draft} place={{ pageId: page.id, owner: null }} />
       </div>
     </>
   );

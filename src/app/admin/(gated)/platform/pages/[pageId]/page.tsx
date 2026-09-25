@@ -4,22 +4,18 @@ import { connection } from "next/server";
 import { z } from "zod";
 
 import { PageEditor } from "@/components/admin/page-editor";
-import { siteUrl } from "@/lib/site";
 import { requirePlatformAdmin } from "@/server/auth";
-import { uploadsEnabled } from "@/server/media";
 import { getPageForEdit } from "@/server/pages";
 import { listSavedParts } from "@/server/saved-parts";
 import { listTerms } from "@/server/taxonomy";
-import { listGridStores } from "@/server/content-grid";
-import { PLATFORM_DEFAULTS } from "@/server/seo";
 
-import { uploadPlatformImageAction } from "../../actions";
+import { platformPageContext } from "../context";
 
 type Props = PageProps<"/admin/platform/pages/[pageId]">;
 
 async function load(params: Props["params"]) {
   const { pageId } = await params;
-  return z.uuid().safeParse(pageId).success ? getPageForEdit(pageId) : null;
+  return z.uuid().safeParse(pageId).success ? getPageForEdit(null, pageId) : null;
 }
 
 export const metadata: Metadata = { title: "Edit page" };
@@ -28,12 +24,12 @@ export const metadata: Metadata = { title: "Edit page" };
 export default async function EditPagePage({ params, searchParams }: Props) {
   await connection();
   await requirePlatformAdmin();
-  const [page, { saved: justSaved }, saved, terms, gridStores] = await Promise.all([
+  const [page, { saved: justSaved }, saved, terms, context] = await Promise.all([
     load(params),
     searchParams,
-    listSavedParts(),
+    listSavedParts(null),
     listTerms({ storeId: null, contentType: "page" }),
-    listGridStores(),
+    platformPageContext(),
   ]);
   if (!page) notFound();
   return (
@@ -44,12 +40,9 @@ export default async function EditPagePage({ params, searchParams }: Props) {
         key={page.id}
         page={page}
         notice={justSaved === "draft" ? "Draft saved." : justSaved === "published" ? `Published at /${page.slug}.` : null}
-        origin={siteUrl()}
-        defaultDescription={PLATFORM_DEFAULTS.description}
         savedParts={saved}
         terms={terms}
-        gridStores={gridStores}
-        upload={uploadsEnabled() ? uploadPlatformImageAction : null}
+        context={context}
       />
     </>
   );

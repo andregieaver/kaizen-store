@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   RESERVED_PAGE_SLUGS,
+  RESERVED_STORE_PAGE_SLUGS,
+  reservedPageSlugs,
   blockHasContent,
   frameStyle,
   spacingStyle,
@@ -125,7 +127,7 @@ describe("page input", () => {
     const result = pageInput.safeParse({
       ...valid,
       title: "",
-      slug: "sign-up",
+      slug: "Sign Up",
       thumbnail: { url: "javascript:alert(1)", width: 10, height: 10, alt: "" },
       rows: [
         row([
@@ -137,7 +139,7 @@ describe("page input", () => {
     expect(result.success).toBe(false);
     const messages = result.error?.issues.map((i) => i.message).join("\n");
     expect(messages).toMatch(/title/);
-    expect(messages).toMatch(/used by Kaizen/);
+    expect(messages).toMatch(/lowercase letters/);
     expect(messages).toMatch(/picture/);
     expect(messages).toMatch(/not a link address/);
   });
@@ -389,5 +391,27 @@ describe("content grids (D51)", () => {
     expect(problems(page({ columns: { mobile: 1, tablet: 2, desktop: 7 } }))).not.toEqual([]);
     expect(problems(page({ headingLevel: 1 }))).toEqual(["A tile's heading has an unknown level."]);
     expect(problems(page({ gap: 97 }))).toEqual(["Keep the space between tiles at 96 pixels or less."]);
+  });
+});
+
+describe("addresses by owner (D53)", () => {
+  it("keeps Kaizen's routes from Kaizen's pages, and a store's routes from its pages", () => {
+    expect(pageSlugProblem("sign-up")).toMatch(/used by Kaizen/);
+    expect(pageSlugProblem("sign-up", reservedPageSlugs("store-id"))).toBeNull();
+    expect(pageSlugProblem("cart", reservedPageSlugs("store-id"))).toMatch(/used by the store/);
+    expect(pageSlugProblem("cart", reservedPageSlugs(null))).toBeNull();
+    expect(pageSlugFromTitle("Cart", RESERVED_STORE_PAGE_SLUGS)).toBe("cart-page");
+    // What the builder saves is read whoever owns it: the address rules are the owner's.
+    expect(pageInput.safeParse({ ...newPageContent(), title: "Help", slug: "help" }).success).toBe(true);
+  });
+});
+
+describe("a store's reserved addresses (D53)", () => {
+  it("cover every route inside a store's market", async () => {
+    const { readdir } = await import("node:fs/promises");
+    const entries = await readdir(new URL("../app/s/[store]/[market]/", import.meta.url), { withFileTypes: true });
+    const routes = entries.filter((e) => e.isDirectory() && !e.name.startsWith("[") && !e.name.startsWith("(")).map((e) => e.name);
+    expect(routes.length).toBeGreaterThan(5);
+    for (const route of routes) expect(RESERVED_STORE_PAGE_SLUGS, route).toContain(route);
   });
 });

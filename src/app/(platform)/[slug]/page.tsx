@@ -25,7 +25,7 @@ export async function generateStaticParams() {
 
 async function load(params: Props["params"]) {
   const { slug } = await params;
-  return pageSlugProblem(slug) === null ? findPublishedPage(slug) : null;
+  return pageSlugProblem(slug) === null ? findPublishedPage(null, slug) : null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -71,7 +71,7 @@ export default async function PlatformPage({ params }: Props) {
           publishedAt: page.publishedAt,
         })}
       />
-      <PageArticle content={c} pageId={page.id} />
+      <PageArticle content={c} place={{ pageId: page.id, owner: null }} />
       <PageEditLink pageId={page.id} />
     </main>
   );

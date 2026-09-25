@@ -47,7 +47,7 @@ export async function TermPages({ kind, params }: { kind: TermKind; params: Para
     limit: 48,
     emptyText: "No pages here yet.",
   };
-  const data = await gridData(grid, null);
+  const data = await gridData(grid, { pageId: null, owner: null });
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
 
   return (

@@ -2386,6 +2386,11 @@ export const pages = commerce.table(
       "pages_slug_not_reserved",
       sql`${t.storeId} is not null or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'category', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
     ),
+    // A store's own routes inside each of its markets (D53).
+    check(
+      "pages_store_slug_not_reserved",
+      sql`${t.storeId} is null or ${t.slug} not in ('account', 'cart', 'category', 'checkout', 'download', 'order', 'p', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
+    ),
     check("pages_published_together", sql`(${t.published} is null) = (${t.publishedAt} is null)`),
   ],
 );

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { newPageContent, type PageContent } from "@/lib/page-content";
+import { newBlock } from "@/lib/page-rows";
 
 import type { Account } from "./auth";
 import type { PageResult } from "./pages";
@@ -60,24 +61,24 @@ afterAll(async () => {
 describe("saving and publishing", () => {
   it("keeps a new draft off the site until it is published", async () => {
     const slug = `draft-${run}`;
-    const id = await saved(await pages.savePage(admin, null, content(slug), { publish: false }));
-    expect(await pages.findPublishedPage(slug)).toBeNull();
-    expect((await pages.getPageForEdit(id))?.state).toBe("draft");
+    const id = await saved(await pages.savePage(admin, null, null, content(slug), { publish: false }));
+    expect(await pages.findPublishedPage(null, slug)).toBeNull();
+    expect((await pages.getPageForEdit(null, id))?.state).toBe("draft");
 
-    await pages.savePage(admin, id, content(slug), { publish: true });
-    const found = await pages.findPublishedPage(slug);
+    await pages.savePage(admin, null, id, content(slug), { publish: true });
+    const found = await pages.findPublishedPage(null, slug);
     expect(found && "page" in found && found.page.content.title).toBe(`Page ${slug}`);
-    expect((await pages.getPageForEdit(id))?.state).toBe("published");
+    expect((await pages.getPageForEdit(null, id))?.state).toBe("published");
   });
 
   it("keeps what visitors see while the draft changes, until published again", async () => {
     const slug = `live-${run}`;
-    const id = await saved(await pages.savePage(admin, null, content(slug), { publish: true }));
-    await pages.savePage(admin, id, content(slug, { title: "New title" }), { publish: false });
+    const id = await saved(await pages.savePage(admin, null, null, content(slug), { publish: true }));
+    await pages.savePage(admin, null, id, content(slug, { title: "New title" }), { publish: false });
 
-    const found = await pages.findPublishedPage(slug);
+    const found = await pages.findPublishedPage(null, slug);
     expect(found && "page" in found && found.page.content.title).toBe(`Page ${slug}`);
-    const page = await pages.getPageForEdit(id);
+    const page = await pages.getPageForEdit(null, id);
     expect(page?.state).toBe("changed");
     expect(page?.draft.title).toBe("New title");
   });
@@ -85,21 +86,21 @@ describe("saving and publishing", () => {
   it("moves a live page's address only when published, and redirects the old one", async () => {
     const before = `before-${run}`;
     const after = `after-${run}`;
-    const id = await saved(await pages.savePage(admin, null, content(before), { publish: true }));
+    const id = await saved(await pages.savePage(admin, null, null, content(before), { publish: true }));
 
-    await pages.savePage(admin, id, content(after), { publish: false });
-    expect(await pages.findPublishedPage(before)).toMatchObject({ page: { id } });
-    expect(await pages.findPublishedPage(after)).toBeNull();
+    await pages.savePage(admin, null, id, content(after), { publish: false });
+    expect(await pages.findPublishedPage(null, before)).toMatchObject({ page: { id } });
+    expect(await pages.findPublishedPage(null, after)).toBeNull();
 
-    await pages.savePage(admin, id, content(after), { publish: true });
-    expect(await pages.findPublishedPage(after)).toMatchObject({ page: { id } });
-    expect(await pages.findPublishedPage(before)).toEqual({ redirect: after });
+    await pages.savePage(admin, null, id, content(after), { publish: true });
+    expect(await pages.findPublishedPage(null, after)).toMatchObject({ page: { id } });
+    expect(await pages.findPublishedPage(null, before)).toEqual({ redirect: after });
   });
 
   it("gives a draft's new address to it at once while it is not published", async () => {
-    const id = await saved(await pages.savePage(admin, null, content(`first-${run}`), { publish: false }));
-    await pages.savePage(admin, id, content(`second-${run}`), { publish: false });
-    expect((await pages.getPageForEdit(id))?.slug).toBe(`second-${run}`);
+    const id = await saved(await pages.savePage(admin, null, null, content(`first-${run}`), { publish: false }));
+    await pages.savePage(admin, null, id, content(`second-${run}`), { publish: false });
+    expect((await pages.getPageForEdit(null, id))?.slug).toBe(`second-${run}`);
     // Nobody saw the first address, so it does not redirect.
     const [redirect] = await db().execute<Row>(sql`select 1 from commerce.page_redirects where slug = ${`first-${run}`}`);
     expect(redirect).toBeUndefined();
@@ -107,18 +108,19 @@ describe("saving and publishing", () => {
 
   it("refuses an address another page has, and one Kaizen uses", async () => {
     const slug = `taken-${run}`;
-    await saved(await pages.savePage(admin, null, content(slug), { publish: false }));
-    expect(await pages.savePage(admin, null, content(slug), { publish: false })).toEqual({
+    await saved(await pages.savePage(admin, null, null, content(slug), { publish: false }));
+    expect(await pages.savePage(admin, null, null, content(slug), { publish: false })).toEqual({
       ok: false,
       problems: [`Another page already has the address /${slug}. Choose another.`],
     });
-    const reserved = await pages.savePage(admin, null, content("sign-up"), { publish: false });
+    const reserved = await pages.savePage(admin, null, null, content("sign-up"), { publish: false });
     expect(reserved.ok).toBe(false);
   });
 
   it("refuses unsafe content", async () => {
     const result = await pages.savePage(
       admin,
+      null,
       null,
       {
         ...content(`unsafe-${run}`),
@@ -145,13 +147,13 @@ describe("saving and publishing", () => {
 
   it("takes a page off the site and deletes it", async () => {
     const slug = `gone-${run}`;
-    const id = await saved(await pages.savePage(admin, null, content(slug), { publish: true }));
-    expect(await pages.unpublishPage(admin, id)).toBe(true);
-    expect(await pages.findPublishedPage(slug)).toBeNull();
-    expect((await pages.getPageForEdit(id))?.state).toBe("draft");
+    const id = await saved(await pages.savePage(admin, null, null, content(slug), { publish: true }));
+    expect(await pages.unpublishPage(admin, null, id)).toBe(true);
+    expect(await pages.findPublishedPage(null, slug)).toBeNull();
+    expect((await pages.getPageForEdit(null, id))?.state).toBe("draft");
 
-    expect(await pages.deletePage(admin, id)).toBe(true);
-    expect(await pages.getPageForEdit(id)).toBeNull();
+    expect(await pages.deletePage(admin, null, id)).toBe(true);
+    expect(await pages.getPageForEdit(null, id)).toBeNull();
     const [log] = await db().execute<Row>(sql`
       select action from commerce.audit_log where account_id = ${admin.id}::uuid order by id desc limit 1
     `);
@@ -163,8 +165,8 @@ describe("search engines, AI assistants and menus", () => {
   it("lists pages in the sitemap and llms.txt as each allows, and closes them to AI crawlers when asked", async () => {
     const open = `open-${run}`;
     const hidden = `hidden-${run}`;
-    await pages.savePage(admin, null, content(open), { publish: true });
-    await pages.savePage(admin, null, content(hidden, { searchEngines: false, aiAssistants: false }), { publish: true });
+    await pages.savePage(admin, null, null, content(open), { publish: true });
+    await pages.savePage(admin, null, null, content(hidden, { searchEngines: false, aiAssistants: false }), { publish: true });
 
     const sitemap = await seo.platformSitemap();
     expect(sitemap).toContain(`/${open}</loc>`);
@@ -182,7 +184,7 @@ describe("search engines, AI assistants and menus", () => {
   });
 
   it("links menus to pages by id, so a link follows its page and waits until it is published", async () => {
-    const id = await saved(await pages.savePage(admin, null, content(`menu-${run}`), { publish: false }));
+    const id = await saved(await pages.savePage(admin, null, null, content(`menu-${run}`), { publish: false }));
     const input = {
       logo: null,
       header: [{ label: {}, link: { kind: "page", pageId: id } }],
@@ -196,7 +198,7 @@ describe("search engines, AI assistants and menus", () => {
       expect(chrome.business.legalName).toBe("Kaizen AS");
       expect(chrome.pages.has(id)).toBe(false);
 
-      await pages.savePage(admin, id, content(`menu-moved-${run}`), { publish: true });
+      await pages.savePage(admin, null, id, content(`menu-moved-${run}`), { publish: true });
       chrome = await nav.getPlatformChrome();
       expect(chrome.pages.get(id)).toMatchObject({ slug: `menu-moved-${run}`, title: `Page menu-moved-${run}` });
 
@@ -209,5 +211,72 @@ describe("search engines, AI assistants and menus", () => {
     } finally {
       await nav.savePlatformNavigation(admin, { ...original.navigation, business: original.business });
     }
+  });
+});
+
+describe("a store's pages (D53)", () => {
+  let storeId: string;
+  const savedParts = import("./saved-parts");
+
+  beforeAll(async () => {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.stores (slug, name) values (${`pages-${run}`}, 'Pages store') returning id
+    `);
+    storeId = String(row.id);
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.pages where store_id = ${storeId}::uuid`);
+    await db().execute(sql`delete from commerce.saved_parts where store_id = ${storeId}::uuid`);
+  });
+
+  it("keeps a store's pages its own, with its own addresses", async () => {
+    const slug = `help-${run}`;
+    const own = await saved(await pages.savePage(admin, storeId, null, content(slug), { publish: true }));
+    // Kaizen can use the same address; neither sees the other's page.
+    const kaizen = await saved(await pages.savePage(admin, null, null, content(slug), { publish: true }));
+    expect((await pages.listPages(storeId)).map((p) => p.id)).toEqual([own]);
+    expect((await pages.listPages(null)).map((p) => p.id)).not.toContain(own);
+    expect(await pages.getPageForEdit(null, own)).toBeNull();
+    expect(await pages.findPublishedPage(storeId, slug)).toMatchObject({ page: { id: own } });
+    expect(await pages.findPublishedPage(null, slug)).toMatchObject({ page: { id: kaizen } });
+    expect(await pages.unpublishPage(admin, null, own)).toBe(false);
+    expect(await pages.deletePage(admin, null, own)).toBe(false);
+  });
+
+  it("refuses the store's own routes as addresses, but not Kaizen's", async () => {
+    expect(await pages.savePage(admin, storeId, null, content("cart"), { publish: false })).toEqual({
+      ok: false,
+      problems: ["The address cart is used by the store itself. Choose another."],
+    });
+    expect((await pages.savePage(admin, storeId, null, content(`sign-up-${run}`), { publish: false })).ok).toBe(true);
+    expect((await pages.savePage(admin, storeId, null, content("support"), { publish: false })).ok).toBe(true);
+  });
+
+  it("shows only the store's own products in its grids", async () => {
+    const grid = (source: Record<string, unknown>) =>
+      content(`grid-${run}`, {
+        rows: oneRow([{ ...newBlock("contentGrid", () => "g1"), source }]),
+      });
+    expect(await pages.savePage(admin, storeId, null, grid({ type: "products", storeId: "00000000-0000-4000-8000-000000000000" }), { publish: false })).toEqual({
+      ok: false,
+      problems: ["A content grid on a store's page shows that store's own products."],
+    });
+    expect((await pages.savePage(admin, storeId, null, grid({ type: "products" }), { publish: false })).ok).toBe(true);
+    // Kaizen's pages name the store and market.
+    expect(await pages.savePage(admin, null, null, grid({ type: "products" }), { publish: false })).toEqual({
+      ok: false,
+      problems: ["Choose the store and market for each content grid of products."],
+    });
+  });
+
+  it("keeps saved parts apart", async () => {
+    const parts = await savedParts;
+    const block = { kind: "block", name: `Own ${run}`, content: newBlock("heading", () => "h1") };
+    const result = await parts.createSavedPart(admin, storeId, block);
+    if (!result.ok) throw new Error(result.problems.join(" "));
+    expect((await parts.listSavedParts(storeId)).map((p) => p.id)).toEqual([result.id]);
+    expect((await parts.listSavedParts(null)).map((p) => p.id)).not.toContain(result.id);
+    expect(await parts.updateSavedPart(admin, null, result.id, { ...block, name: "Taken" })).toMatchObject({ ok: false });
   });
 });

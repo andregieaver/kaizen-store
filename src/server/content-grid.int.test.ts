@@ -52,6 +52,7 @@ describe("content grids (D51)", () => {
         await pages.savePage(
           admin,
           null,
+          null,
           { ...newPageContent(), title: `Page ${slug}`, slug: `${slug}-${run}`, seo: { title: "", description: `About ${slug}` }, categories },
           { publish },
         ),
@@ -61,14 +62,14 @@ describe("content grids (D51)", () => {
     await save("elsewhere", [other.id]);
     await save("draft", [guides.id], false);
 
-    const shown = await gridData(grid({ categories: [guides.id] }), null);
+    const shown = await gridData(grid({ categories: [guides.id] }), { pageId: null, owner: null });
     expect(shown.items.map((i) => i.title)).toEqual([`Page second`, `Page first`]);
     expect(shown.items[0]).toMatchObject({ href: `/second-${run}`, excerpt: "About second", price: null });
 
-    const onPage = await gridData(grid({ categories: [guides.id], sort: "oldest" }), first);
+    const onPage = await gridData(grid({ categories: [guides.id], sort: "oldest" }), { pageId: first, owner: null });
     expect(onPage.items.map((i) => i.id)).toEqual([second]);
     // A category deleted since matches nothing, rather than everything.
-    expect((await gridData(grid({ categories: ["00000000-0000-4000-8000-000000000000"] }), null)).items).toEqual([]);
+    expect((await gridData(grid({ categories: ["00000000-0000-4000-8000-000000000000"] }), { pageId: null, owner: null })).items).toEqual([]);
   });
 
   it("shows a store's products of a category, priced in the market, cheapest first", async () => {
@@ -88,13 +89,20 @@ describe("content grids (D51)", () => {
     const market = demo.markets[0].code;
     const shown = await gridData(
       grid({ source: { type: "products", storeId: demo.id, market }, categories: [mugs.id], sort: "priceLow" }),
-      null,
+      { pageId: null, owner: null },
     );
     expect(shown.items).toHaveLength(products.length);
     expect(shown.items.every((i) => i.href.includes("/p/") && i.price !== null)).toBe(true);
     const prices = shown.items.map((i) => i.price!.view.amountMinor);
     expect(prices).toEqual([...prices].sort((a, b) => a - b));
+    // On the store's own page (D53), its products in the shopper's market, whatever the grid names.
+    const own = await gridData(grid({ source: { type: "products" }, categories: [mugs.id] }), {
+      pageId: null,
+      owner: demo.id,
+      market,
+    });
+    expect(own.items.map((i) => i.id).sort()).toEqual(shown.items.map((i) => i.id).sort());
     // A market the store does not have shows nothing.
-    expect((await gridData(grid({ source: { type: "products", storeId: demo.id, market: "ZZ" } }), null)).items).toEqual([]);
+    expect((await gridData(grid({ source: { type: "products", storeId: demo.id, market: "ZZ" } }), { pageId: null, owner: null })).items).toEqual([]);
   });
 });

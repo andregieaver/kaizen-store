@@ -388,10 +388,11 @@ export type ButtonBlock = PartBase & {
 export const GRID_CONTENT = { pages: "Pages", products: "Products" } as const;
 export type GridContent = keyof typeof GRID_CONTENT;
 /**
- * Where a grid's items come from: the pages of the page's owner (Kaizen's
- * for now), or a store's products priced in one of its markets.
+ * Where a grid's items come from: the pages of the page's owner, or
+ * products. On Kaizen's pages a store and market are named; on a store's
+ * own pages (D53) they are the store's products in the shopper's market.
  */
-export type GridSource = { type: "pages" } | { type: "products"; storeId: string; market: string };
+export type GridSource = { type: "pages" } | { type: "products"; storeId?: string; market?: string };
 export const GRID_SORTS = {
   newest: "Newest first",
   oldest: "Oldest first",
@@ -594,21 +595,54 @@ export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
   return content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks));
 }
 
-/** Why an address cannot be used, or null if it is fine. */
-export function pageSlugProblem(slug: string): string | null {
+/**
+ * Kept in step with the `pages_store_slug_not_reserved` check: a store's own
+ * routes inside each of its markets (`/s/{store}/{market}/…`), D53.
+ */
+export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
+  "account",
+  "cart",
+  "category",
+  "checkout",
+  "download",
+  "order",
+  "p",
+  "subscription",
+  "tag",
+  "unsubscribe",
+  "wishlist",
+];
+
+/** The addresses an owner's pages cannot take: Kaizen's (null) or a store's. */
+export const reservedPageSlugs = (storeId: string | null): readonly string[] =>
+  storeId === null ? RESERVED_PAGE_SLUGS : RESERVED_STORE_PAGE_SLUGS;
+
+/** Why an address is not well formed, or null. */
+function slugFormatProblem(slug: string): string | null {
   if (slug.length === 0) return "Give the page an address.";
   if (slug.length > PAGE_SLUG_MAX) return `Keep the address under ${PAGE_SLUG_MAX} characters.`;
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     return "An address is lowercase letters and digits, with single hyphens between words.";
   }
-  if (RESERVED_PAGE_SLUGS.includes(slug)) return `The address /${slug} is used by Kaizen itself. Choose another.`;
+  return null;
+}
+
+/** Why an address cannot be used, or null if it is fine; `reserved` is the owner's (Kaizen's by default). */
+export function pageSlugProblem(slug: string, reserved: readonly string[] = RESERVED_PAGE_SLUGS): string | null {
+  const problem = slugFormatProblem(slug);
+  if (problem) return problem;
+  if (reserved.includes(slug)) {
+    return reserved === RESERVED_PAGE_SLUGS
+      ? `The address /${slug} is used by Kaizen itself. Choose another.`
+      : `The address ${slug} is used by the store itself. Choose another.`;
+  }
   return null;
 }
 
 /** The address suggested from a title: "Om oss & priser" becomes "om-oss-priser". */
-export function pageSlugFromTitle(title: string): string {
+export function pageSlugFromTitle(title: string, reserved: readonly string[] = RESERVED_PAGE_SLUGS): string {
   const slug = slugify(title, PAGE_SLUG_MAX);
-  return RESERVED_PAGE_SLUGS.includes(slug) ? `${slug}-page` : slug;
+  return reserved.includes(slug) ? `${slug}-page` : slug;
 }
 
 const itemId = z
@@ -785,8 +819,8 @@ const contentGridBlock = z.object({
       z.object({ type: z.literal("pages") }),
       z.object({
         type: z.literal("products"),
-        storeId: z.uuid("Choose the store whose products the grid shows."),
-        market: z.string().regex(/^[A-Z]{2}$/, "Choose the market whose prices the grid shows."),
+        storeId: z.uuid("Choose the store whose products the grid shows.").optional(),
+        market: z.string().regex(/^[A-Z]{2}$/, "Choose the market whose prices the grid shows.").optional(),
       }),
     ],
     "A content grid shows an unknown kind of content.",
@@ -901,8 +935,9 @@ export const pageInput = z.preprocess(
       slug: z
         .string()
         .trim()
+        // Only the form here: which addresses are taken depends on the owner (`savePage`).
         .superRefine((slug, ctx) => {
-          const problem = pageSlugProblem(slug);
+          const problem = slugFormatProblem(slug);
           if (problem) ctx.addIssue({ code: "custom", message: problem });
         }),
       thumbnail: z

@@ -1,5 +1,7 @@
 import { blockHasContent, type PageContent, type PageRow } from "@/lib/page-content";
 
+import type { GridPlace } from "@/server/content-grid";
+
 import { ContentGridSection } from "./content-grid-section";
 import { PageBlockView } from "./page-block";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "./page-parts";
@@ -12,7 +14,14 @@ import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, 
  * columns and blocks carry their own settings (D47, D48; `page-parts.tsx`).
  * A row keeps to the content's width unless it is set to the full width.
  */
-export function PageArticle({ content, pageId = null }: { content: PageContent; pageId?: string | null }) {
+export function PageArticle({
+  content,
+  place = { pageId: null, owner: null },
+}: {
+  content: PageContent;
+  /** Where the page is shown: for its content grids (D51, D53). */
+  place?: GridPlace;
+}) {
   const rows = content.rows.filter(rowShows);
   // A heading component at level 1 is the page's main heading (D49); else the title is, for screen readers.
   const hasMainHeading = rows.some((row) =>
@@ -22,7 +31,7 @@ export function PageArticle({ content, pageId = null }: { content: PageContent; 
     <article className="flex flex-col gap-8">
       {!hasMainHeading && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
-        <Row key={row.id} row={row} pageId={pageId} />
+        <Row key={row.id} row={row} place={place} />
       ))}
     </article>
   );
@@ -32,7 +41,7 @@ export function PageArticle({ content, pageId = null }: { content: PageContent; 
 const rowShows = (row: PageRow) =>
   Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockHasContent));
 
-function Row({ row, pageId }: { row: PageRow; pageId: string | null }) {
+function Row({ row, place }: { row: PageRow; place: GridPlace }) {
   const box = rowBox(row, "site");
   const grid = rowGrid(row);
   return (
@@ -52,7 +61,7 @@ function Row({ row, pageId }: { row: PageRow; pageId: string | null }) {
                     return (
                       <div key={block.id} id={b.id} className={b.className || undefined} style={b.style}>
                         {block.type === "contentGrid" ? (
-                          <ContentGridSection block={block} pageId={pageId} />
+                          <ContentGridSection block={block} place={place} />
                         ) : (
                           <PageBlockView block={block} />
                         )}
