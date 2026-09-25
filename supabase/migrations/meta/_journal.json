@@ -365,6 +365,20 @@
       "when": 1790335784608,
       "tag": "20260925112944_store_locations_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1790336512746,
+      "tag": "20260925114152_integrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1790336514249,
+      "tag": "20260925114154_integrations_rules",
+      "breakpoints": true
     }
   ]
 }

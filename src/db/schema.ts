@@ -2250,6 +2250,65 @@ export const storeLocations = commerce.table(
 );
 
 /**
+ * A store's connection to an automation service (D41): Zapier or Make.
+ * Kaizen sends the store's events it asks for to its webhook address,
+ * which is kept encrypted (it is all a sender needs).
+ */
+export const storeIntegrations = commerce.table(
+  "store_integrations",
+  {
+    storeId: storeId().references(() => stores.id),
+    /** `zapier` or `make`. */
+    provider: text("provider").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    webhookUrlEncrypted: text("webhook_url_encrypted").notNull(),
+    /** Where the address points, shown to staff: e.g. `hooks.zapier.com/…/abc1`. */
+    webhookHint: text("webhook_hint").notNull(),
+    events: text("events").array().notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.provider] }),
+    index("store_integrations_updated_by_idx").on(t.updatedBy),
+    check("store_integrations_provider", sql`${t.provider} in ('zapier', 'make')`),
+  ],
+);
+
+/**
+ * One event on its way to an integration (D41): queued by the database as
+ * the event happens, its content built and sent by Kaizen, and tried again
+ * later when the service does not take it. Kept 30 days.
+ */
+export const integrationDeliveries = commerce.table(
+  "integration_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    provider: text("provider").notNull(),
+    /** `order.paid`, `order.sent`, `customer.created`, … or `test`. */
+    event: text("event").notNull(),
+    /** The order, customer or subscription it is about. */
+    subjectId: uuid("subject_id"),
+    /** What was sent, built at the first try and sent the same on every retry. */
+    payload: jsonb("payload"),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    lastStatus: integer("last_status"),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("integration_deliveries_due_idx").on(t.nextAttemptAt).where(sql`${t.status} = 'pending'`),
+    index("integration_deliveries_store_idx").on(t.storeId, t.provider, t.createdAt),
+    check("integration_deliveries_status", sql`${t.status} in ('pending', 'delivered', 'failed')`),
+  ],
+);
+
+/**
  * An item a shopper put in the cart from a wishlist (D36), written with the
  * cart line. Whether it was then bought is read from the order the cart
  * became. The list's name, the product's title and the price are kept as
