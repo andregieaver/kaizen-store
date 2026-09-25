@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+import { PlatformMain } from "@/components/admin/platform-main";
 import { requirePlatformAdmin } from "@/server/auth";
 
 /** Kaizen's own admin: access requests, stores' plans and fees, plans, Stripe. */
@@ -33,7 +35,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
           </ul>
         </nav>
       </div>
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8">{children}</main>
+      <PlatformMain>{children}</PlatformMain>
     </>
   );
 }

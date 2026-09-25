@@ -170,9 +170,18 @@ export function PageEditor({
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
   return (
+    // Full width (see `PlatformMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter.
     <div className="flex flex-col gap-6 pb-28">
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
+        {/* The left sidebar, kept free for what comes next. */}
+        <div className="hidden lg:block" />
+
         <div className="flex min-w-0 flex-col gap-6">
+          <Blocks blocks={content.blocks} onChange={(blocks) => change({ blocks })} />
+        </div>
+
+        {/* On phones the title and settings come first. */}
+        <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">
           <section aria-label="Title and address" className={card}>
             <label className={label}>
               Title
@@ -207,11 +216,6 @@ export function PageEditor({
               </p>
             )}
           </section>
-
-          <Blocks blocks={content.blocks} onChange={(blocks) => change({ blocks })} />
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-6">
           <ThumbnailField
             value={content.thumbnail}
             upload={upload}
@@ -267,7 +271,7 @@ export function PageEditor({
       )}
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           <button
             type="button"
             onClick={() => submit(false)}
@@ -353,7 +357,9 @@ function SlugField({
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center rounded-md border border-border focus-within:outline-2">
-          <span className="shrink-0 pl-3 text-sm text-muted">{origin.replace(/^https?:\/\//, "")}/</span>
+          <span aria-hidden className="shrink-0 pl-3 text-sm text-muted">
+            /
+          </span>
           <input
             id={id}
             value={slug}
@@ -372,7 +378,14 @@ function SlugField({
         )}
       </div>
       <span id={`${id}-hint`} className={problem ? "text-xs text-red-700 dark:text-red-400" : hint}>
-        {problem ?? (follows ? "Made from the title as you type. Edit it to choose your own." : "Lowercase letters, digits and hyphens.")}
+        {problem ?? (
+          <>
+            <span className="block break-all text-foreground">
+              {origin.replace(/^https?:\/\//, "")}/{slug}
+            </span>
+            {follows ? "Made from the title as you type. Edit it to choose your own." : "Lowercase letters, digits and hyphens."}
+          </>
+        )}
       </span>
     </div>
   );
