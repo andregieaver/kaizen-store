@@ -1,5 +1,6 @@
 import "server-only";
 
+import { attachDatabasePool } from "@vercel/functions";
 import type { SQLWrapper } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -10,6 +11,9 @@ import * as schema from "./schema";
 
 let instance: ReturnType<typeof create> | undefined;
 
+/** Seconds an unused connection stays open. */
+const IDLE_SECONDS = 5;
+
 function create() {
   const client = postgres(serverEnv().DATABASE_URL, {
     // Supabase's transaction-mode pooler does not support prepared statements.
@@ -17,10 +21,23 @@ function create() {
     // Functions are short-lived and many run at once; the pooler does the
     // pooling, so each instance keeps only a few connections.
     max: 5,
-    idle_timeout: 20,
+    idle_timeout: IDLE_SECONDS,
     connect_timeout: 5,
   });
-  return drizzle(client, { schema });
+
+  // Vercel freezes an instance between requests. Frozen mid-query, it leaves
+  // the pooler's connection to Postgres waiting on it, and enough of those
+  // leave every page waiting for a connection; frozen with connections
+  // open, it wakes up to dead ones. So each query asks Vercel to keep the
+  // instance running until its connections have gone idle and closed.
+  const released = new Set<() => void>();
+  attachDatabasePool({
+    options: { idleTimeoutMillis: (IDLE_SECONDS + 1) * 1000 },
+    on: (_event: "release", listener: () => void) => void released.add(listener),
+  });
+  const keepAlive = { logQuery: () => released.forEach((listener) => listener()) };
+
+  return drizzle(client, { schema, logger: keepAlive });
 }
 
 /** The server-side database connection, created on first use. */

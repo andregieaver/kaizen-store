@@ -344,6 +344,13 @@
       "when": 1790326221701,
       "tag": "20260925085021_wishlist_cart_adds_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1790329685110,
+      "tag": "20260925094805_connection_timeouts",
+      "breakpoints": true
     }
   ]
 }
