@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
@@ -15,6 +16,8 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 
 /** Platform admins approve beta requests here; approval creates the store. */
 export default async function PlatformPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const account = await requireAccount();
   if (!account.platformAdmin) notFound();
   const requests = await listAccessRequests();

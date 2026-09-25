@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import { EmailLog } from "@/components/admin/email-log";
 import { emailEventsSetup } from "@/lib/email-settings";
@@ -8,6 +9,8 @@ export const metadata: Metadata = { title: "Emails" };
 
 /** Every email Kaizen has sent or logged, and whether sending is set up (D26, D32). */
 export default async function PlatformEmailsPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const [emails, settings] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings())]);
   const webhook = emailEventsSetup() === "ok";
   return (

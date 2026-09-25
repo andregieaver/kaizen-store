@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PAYMENT_MODES } from "@/lib/stripe-account";
@@ -12,6 +13,8 @@ export const metadata: Metadata = { title: "Stripe" };
 const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
 
 export default async function PlatformStripePage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const [webhooks, saleFeeBps, checkoutUi] = await Promise.all([
     listPlatformWebhooks(),
     getSaleFeeBps(),

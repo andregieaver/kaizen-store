@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 
 import { formatBps, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listStoreBilling } from "@/server/billing";
@@ -8,6 +9,8 @@ export const metadata: Metadata = { title: "Stores" };
 
 /** Every store with its plan, subscription and fee. */
 export default async function PlatformStoresPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const stores = await listStoreBilling();
   return (
     <>

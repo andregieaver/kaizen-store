@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 
 import { describeDelay } from "@/lib/cart-reminders";
 import { formatMoney } from "@/lib/money";
@@ -31,6 +32,8 @@ const tile = "flex flex-col gap-1 rounded-lg border border-border bg-background 
  * not finish (D33): the platform's side of the stores' cart reminders.
  */
 export default async function PlanRemindersPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const [settings, stats, checkouts, discounts] = await Promise.all([
     getPlanReminderSettings(),
     planReminderStats(),

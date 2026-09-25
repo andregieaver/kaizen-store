@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatBps, PLAN_INTERVALS, priceLabel, type PlanInterval } from "@/lib/plans";
@@ -15,6 +16,8 @@ const INTERVAL_LABEL: Record<PlanInterval, string> = { month: "Per month", year:
 
 /** Kaizen's plans for stores: tiers, prices and fees, kept in step with Stripe. */
 export default async function PlansPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const [plans, currencies] = await Promise.all([listPlans(), planCurrencies()]);
   const modes = platformModes();
   return (

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
@@ -18,6 +19,8 @@ const hint = "text-sm font-normal text-muted";
 
 /** Kaizen's own pages in search, shares and AI assistants, and the site-wide crawler rules (D21). */
 export default async function PlatformSeoPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const seo = await getPlatformSeo();
   const origin = siteUrl();
   return (

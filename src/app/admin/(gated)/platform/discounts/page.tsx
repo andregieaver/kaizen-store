@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import Link from "next/link";
 
@@ -22,6 +23,8 @@ const money = (minor: number, currency: string) => formatMoney(minor, currency, 
  * promotion code in Stripe; store owners type it on their Plan page.
  */
 export default async function PlatformDiscountsPage() {
+  // Per request: admin pages never read the database while the site is built.
+  await connection();
   const [discounts, currencies] = await Promise.all([listPlatformDiscounts(), planCurrencies()]);
   const modes = platformModes();
 
