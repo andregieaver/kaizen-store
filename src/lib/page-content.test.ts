@@ -15,6 +15,7 @@ import {
   richTextPlain,
   type RichTextDoc,
 } from "./page-content";
+import { newBlock } from "./page-rows";
 
 const doc = (...content: unknown[]) => ({ type: "doc", content });
 const p = (text: string, marks?: unknown[]) => ({ type: "paragraph", content: [{ type: "text", text, ...(marks && { marks }) }] });
@@ -340,5 +341,53 @@ describe("borders, corners and shadows; headings and buttons (D49)", () => {
       ]);
     }
     expect(problems(page([button({ variant: "ghost" })]))).not.toEqual([]);
+  });
+});
+
+describe("content grids (D51)", () => {
+  const page = (grid: Record<string, unknown>) => ({
+    ...newPageContent(),
+    title: "Grid",
+    slug: "grid",
+    rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [{ ...newBlock("contentGrid", () => "g1"), ...grid }] }] }],
+  });
+  const problems = (value: unknown) => {
+    const parsed = pageInput.safeParse(value);
+    return parsed.success ? [] : parsed.error.issues.map((i) => i.message);
+  };
+
+  it("starts as a grid of pages that passes the checks, shown whatever it finds", () => {
+    const parsed = pageInput.parse(page({}));
+    const grid = parsed.rows[0].columns[0].blocks[0];
+    expect(grid).toMatchObject({ type: "contentGrid", source: { type: "pages" }, limit: 6, columns: { mobile: 1, tablet: 2, desktop: 3 } });
+    expect(blockHasContent(grid)).toBe(true);
+    expect(pageExcerpt(parsed)).toBe("");
+  });
+
+  it("keeps a grid of a store's products, filtered, sorted and styled", () => {
+    const grid = {
+      source: { type: "products", storeId: "00000000-0000-4000-8000-000000000001", market: "NO" },
+      categories: ["00000000-0000-4000-8000-000000000002"],
+      sort: "priceLow",
+      limit: 12,
+      columns: { mobile: 2, tablet: 3, desktop: 6 },
+      imageShape: "square",
+      button: { variant: "outline" },
+      tile: { background: "#ffffff", padding: 16, radius: 8, shadow: "sm" },
+    };
+    expect(pageInput.parse(page(grid)).rows[0].columns[0].blocks[0]).toMatchObject(grid);
+  });
+
+  it("refuses an unknown source, too many items or columns, and a tile heading at H1", () => {
+    expect(problems(page({ source: { type: "articles" } }))).toEqual(["A content grid shows an unknown kind of content."]);
+    expect(problems(page({ source: { type: "products", storeId: "x", market: "NO" } }))).toEqual([
+      "Choose the store whose products the grid shows.",
+    ]);
+    expect(problems(page({ limit: 49 }))).toEqual(["A grid shows at most 48 items."]);
+    expect(problems(page({ limit: 0 }))).toEqual(["A grid shows at least one item."]);
+    expect(problems(page({ columns: { mobile: 3, tablet: 2, desktop: 3 } }))).not.toEqual([]);
+    expect(problems(page({ columns: { mobile: 1, tablet: 2, desktop: 7 } }))).not.toEqual([]);
+    expect(problems(page({ headingLevel: 1 }))).toEqual(["A tile's heading has an unknown level."]);
+    expect(problems(page({ gap: 97 }))).toEqual(["Keep the space between tiles at 96 pixels or less."]);
   });
 });

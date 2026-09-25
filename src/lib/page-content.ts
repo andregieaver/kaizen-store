@@ -382,8 +382,69 @@ export type ButtonBlock = PartBase & {
   textColor?: Color;
 };
 
+/** What a content grid shows (D51): its kinds of content; articles come with the articles themselves. */
+export const GRID_CONTENT = { pages: "Pages", products: "Products" } as const;
+export type GridContent = keyof typeof GRID_CONTENT;
+/**
+ * Where a grid's items come from: the pages of the page's owner (Kaizen's
+ * for now), or a store's products priced in one of its markets.
+ */
+export type GridSource = { type: "pages" } | { type: "products"; storeId: string; market: string };
+export const GRID_SORTS = {
+  newest: "Newest first",
+  oldest: "Oldest first",
+  title: "Title, A to Z",
+  priceLow: "Price, low to high",
+  priceHigh: "Price, high to low",
+} as const;
+export type GridSort = keyof typeof GRID_SORTS;
+/** Sorts that need prices: products only. */
+export const PRICE_SORTS: readonly GridSort[] = ["priceLow", "priceHigh"];
+export const GRID_LIMIT_MAX = 48;
+export const GRID_GAP_MAX = 96;
+export const GRID_COLUMNS_MAX = { mobile: 2, tablet: 4, desktop: 6 } as const;
+export type GridColumns = { mobile: number; tablet: number; desktop: number };
+/** A tile's parts, each on or off per grid. */
+export const GRID_ELEMENTS = { image: "Picture", heading: "Heading", excerpt: "Excerpt", price: "Price", button: "Button" } as const;
+export type GridElement = keyof typeof GRID_ELEMENTS;
+/** A tile's own box: background, padding, border, corners and shadow. */
+export type GridTile = { background?: Color; padding?: number; border?: Border; radius?: number; shadow?: Shadow };
+
+/**
+ * A content grid (D51): items of one kind, chosen by categories and tags
+ * (a category includes its subcategories; with both, an item needs one of
+ * each), sorted and limited, shown as tiles in columns by screen. Each
+ * tile has a picture, heading, excerpt, price (products) and button,
+ * each switched on or off, styled like the components they resemble.
+ */
+export type ContentGridBlock = PartBase & {
+  id: string;
+  type: "contentGrid";
+  source: GridSource;
+  categories: string[];
+  tags: string[];
+  sort: GridSort;
+  limit: number;
+  columns: GridColumns;
+  show: Record<GridElement, boolean>;
+  /** The button's text; empty uses "Read more" or "View product" in the content's language. */
+  buttonLabel: string;
+  /** Shown when nothing matches; empty shows nothing. */
+  emptyText: string;
+  /** Pictures cropped alike keep the tiles even; landscape unless chosen. */
+  imageShape?: ImageShape | "original";
+  headingLevel: Exclude<HeadingLevel, 1>;
+  headingSize?: HeadingSize;
+  /** Lines of excerpt at most. */
+  excerptLines: number;
+  button?: Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor">;
+  tile?: GridTile;
+  /** Space between tiles, in pixels. */
+  gap: number;
+};
+
 /** One piece of a page's content. More kinds (products, …) come later. */
-export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock;
+export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -434,6 +495,9 @@ export function blockHasContent(block: PageBlock): boolean {
       return block.text.trim() !== "";
     case "button":
       return block.label.trim() !== "" && block.href.trim() !== "";
+    case "contentGrid":
+      // Its items are looked up when it is shown; with none, it says so (or nothing).
+      return true;
   }
 }
 
@@ -451,6 +515,7 @@ export function blockText(block: PageBlock): string {
     case "heading":
       return block.text;
     case "button":
+    case "contentGrid":
       return "";
   }
 }
@@ -707,8 +772,74 @@ const buttonBlock = z.object({
   ...partBase,
 });
 
-/** One block, as stored: rich text, a picture, a heading or a button. */
-export const pageBlockSchema = z.discriminatedUnion("type", [richTextBlock, imageBlock, headingBlock, buttonBlock]);
+const count = (max: number) => z.number().int().min(1).max(max);
+
+const contentGridBlock = z.object({
+  id: itemId,
+  type: z.literal("contentGrid"),
+  source: z.discriminatedUnion(
+    "type",
+    [
+      z.object({ type: z.literal("pages") }),
+      z.object({
+        type: z.literal("products"),
+        storeId: z.uuid("Choose the store whose products the grid shows."),
+        market: z.string().regex(/^[A-Z]{2}$/, "Choose the market whose prices the grid shows."),
+      }),
+    ],
+    "A content grid shows an unknown kind of content.",
+  ),
+  ...termIdsSchema.shape,
+  sort: z.enum(Object.keys(GRID_SORTS) as [GridSort, ...GridSort[]]).default("newest"),
+  limit: z.number().int().min(1, "A grid shows at least one item.").max(GRID_LIMIT_MAX, `A grid shows at most ${GRID_LIMIT_MAX} items.`),
+  columns: z.object({
+    mobile: count(GRID_COLUMNS_MAX.mobile),
+    tablet: count(GRID_COLUMNS_MAX.tablet),
+    desktop: count(GRID_COLUMNS_MAX.desktop),
+  }),
+  show: z.object({
+    image: z.boolean(),
+    heading: z.boolean(),
+    excerpt: z.boolean(),
+    price: z.boolean(),
+    button: z.boolean(),
+  }),
+  buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
+  emptyText: z.string().trim().max(300, "Keep the text for an empty grid under 300 characters.").default(""),
+  imageShape: z.enum(["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
+  headingLevel: z.literal([2, 3, 4, 5, 6], "A tile's heading has an unknown level."),
+  headingSize: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
+  excerptLines: z.number().int().min(1).max(6),
+  button: z
+    .object({
+      variant: buttonBlock.shape.variant,
+      size: buttonBlock.shape.size,
+      shape: buttonBlock.shape.shape,
+      fill: color.optional(),
+      textColor: color.optional(),
+    })
+    .optional(),
+  tile: z
+    .object({
+      background: color.optional(),
+      padding: z.number().int().min(0).max(SPACING_MAX).optional(),
+      border: partBase.border,
+      radius: partBase.radius,
+      shadow: partBase.shadow,
+    })
+    .optional(),
+  gap: z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space between tiles at ${GRID_GAP_MAX} pixels or less.`),
+  ...partBase,
+});
+
+/** One block, as stored: rich text, a picture, a heading, a button or a content grid. */
+export const pageBlockSchema = z.discriminatedUnion("type", [
+  richTextBlock,
+  imageBlock,
+  headingBlock,
+  buttonBlock,
+  contentGridBlock,
+]);
 
 export const pageColumnSchema = z.object({
   id: itemId,

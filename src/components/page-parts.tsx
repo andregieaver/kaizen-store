@@ -119,7 +119,7 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
   return {
     id: mode === "site" ? block.htmlId : undefined,
     className: cx(
-      block.type !== "image" && alignClasses(block.align),
+      "align" in block && alignClasses(block.align),
       block.type !== "button" && Boolean(block.radius) && "overflow-hidden",
       mode === "site" && block.className,
     ),

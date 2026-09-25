@@ -280,3 +280,99 @@ export async function getAvailability(
   `);
   return new Map(rows.map((r) => [str(r.variant_id), num(r.available)]));
 }
+
+export type GridProduct = ProductSummary & { description: string };
+
+/**
+ * Active products with a price in the market for a content grid (D51):
+ * only those in one of `categoryIds` (when given) and one of `tagIds`
+ * (when given), sorted and at most `limit`.
+ */
+export async function listGridProducts(
+  storeId: string,
+  marketCode: string,
+  locale: string,
+  filter: { categoryIds: string[]; tagIds: string[]; sort: string; limit: number },
+): Promise<GridProduct[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CATALOG_TAG, catalogTag(storeId));
+
+  const ids = (list: string[]) => `{${list.filter((id) => /^[0-9a-f-]{36}$/i.test(id)).join(",")}}`;
+  const inTerms = (list: string[]) =>
+    list.length === 0
+      ? sql`true`
+      : sql`exists (
+          select 1 from commerce.product_terms pt
+          where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${ids(list)}::uuid[])
+        )`;
+  const order =
+    filter.sort === "oldest"
+      ? sql`p.created_at, p.handle`
+      : filter.sort === "title"
+        ? sql`lower(coalesce(tl.title, tf.title)), p.handle`
+        : filter.sort === "priceLow"
+          ? sql`pr.min_amount, p.handle`
+          : filter.sort === "priceHigh"
+            ? sql`pr.min_amount desc, p.handle`
+            : sql`p.created_at desc, p.handle`;
+
+  const rows = await readDb().execute<Row>(sql`
+    select
+      p.id,
+      p.handle,
+      coalesce(tl.title, tf.title) as title,
+      coalesce(nullif(tl.description, ''), tf.description, '') as description,
+      coalesce(m.thumbnail_url, m.url) as image_url,
+      coalesce(m.alt ->> ${locale}, '') as image_alt,
+      pr.min_amount,
+      pr.max_amount,
+      pr.currency,
+      pr.prior_30d,
+      case when p.subscription_only then (
+        select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
+      ) end as subscriber_discount
+    from commerce.products p
+    left join commerce.product_translations tl
+      on tl.product_id = p.id and tl.locale = ${locale}
+    left join lateral (
+      select title, description from commerce.product_translations
+      where product_id = p.id order by locale limit 1
+    ) tf on true
+    left join lateral (
+      select url, thumbnail_url, alt from commerce.product_media
+      where product_id = p.id order by position limit 1
+    ) m on true
+    join lateral (
+      select
+        min(cp.amount_minor) as min_amount,
+        max(cp.amount_minor) as max_amount,
+        min(cp.currency) as currency,
+        (array_agg(cp.prior_30d_minor order by cp.amount_minor))[1] as prior_30d
+      from commerce.current_prices cp
+      join commerce.product_variants v on v.id = cp.variant_id
+      where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
+    ) pr on pr.min_amount is not null
+    where p.store_id = ${storeId}::uuid and p.status = 'active'
+      and ${inTerms(filter.categoryIds)}
+      and ${inTerms(filter.tagIds)}
+    order by ${order}
+    limit ${Math.max(1, Math.min(48, filter.limit))}
+  `);
+
+  return rows.map((row) => {
+    const discount = numOrNull(row.subscriber_discount);
+    return {
+      id: str(row.id),
+      handle: str(row.handle),
+      title: str(row.title),
+      description: str(row.description),
+      image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
+      price:
+        discount === null
+          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d))
+          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null),
+      priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
+    };
+  });
+}

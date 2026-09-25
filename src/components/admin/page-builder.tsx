@@ -25,15 +25,26 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useId, useState, useTransition, type PointerEventHandler, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useState,
+  useTransition,
+  type PointerEventHandler,
+  type ReactNode,
+} from "react";
 
 import {
   createSavedPartAction,
   deleteSavedPartAction,
+  gridPreviewAction,
+  gridTermsAction,
   updateSavedPartAction,
 } from "@/app/admin/(gated)/platform/pages/actions";
+import { ContentGridView } from "@/components/content-grid";
 
-import { PageBlockView } from "@/components/page-block";
+import { PageBlockView, type ButtonLook } from "@/components/page-block";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
 import {
   BLOCKS_MAX,
@@ -47,6 +58,13 @@ import {
   BUTTON_SIZES,
   BUTTON_VARIANTS,
   FONT_WEIGHTS,
+  GRID_COLUMNS_MAX,
+  GRID_CONTENT,
+  GRID_ELEMENTS,
+  GRID_GAP_MAX,
+  GRID_LIMIT_MAX,
+  GRID_SORTS,
+  PRICE_SORTS,
   HEADING_DEFAULT_SIZE,
   HEADING_MAX,
   HEADING_SIZES,
@@ -76,6 +94,12 @@ import {
   type RichTextBlock,
   type Shadow,
   type ColumnLink,
+  type ContentGridBlock,
+  type GridColumns,
+  type GridContent,
+  type GridElement,
+  type GridSort,
+  type GridSource,
   type ImageShape,
   type PartBase,
   type TextAlign,
@@ -122,7 +146,10 @@ import {
   type Styled,
 } from "@/lib/page-rows";
 
+import type { GridData } from "@/lib/content-grid";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
+import { byName, categoryTree, type Term } from "@/lib/taxonomy";
+import type { GridStore } from "@/server/content-grid";
 
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { Modal } from "./modal";
@@ -212,15 +239,22 @@ function below({ active, activatorEvent, delta }: Move, over: Over, axis: "y" | 
   return axis === "y" ? point.y > over.rect.top + over.rect.height / 2 : point.x > over.rect.left + over.rect.width / 2;
 }
 
-const blockLabels: Record<BlockType, string> = { richText: "Rich text", heading: "Heading", image: "Image", button: "Button" };
+const blockLabels: Record<BlockType, string> = {
+  richText: "Rich text",
+  heading: "Heading",
+  image: "Image",
+  button: "Button",
+  contentGrid: "Content grid",
+};
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
   heading: "this heading",
   image: "this picture",
   button: "this button",
+  contentGrid: "this content grid",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -239,8 +273,12 @@ type Dialog =
 /** A row, column or component about to be saved, or being changed. */
 type SavedPartDraft = Pick<SavedPart, "kind" | "content">;
 
+/** What content grids (D51) need: the page they are on, Kaizen's page terms and the stores whose products they can show. */
+export type GridContext = { pageId: string | null; pageTerms: Term[]; stores: GridStore[] };
+
 /** What the canvas can ask of the builder. */
 type Actions = {
+  grid: GridContext;
   onRows: Rows;
   open: (dialog: Dialog) => void;
   onAddBlock: (type: BlockType, columnId: string) => void;
@@ -254,9 +292,11 @@ export function PageBuilder({
   saved,
   upload,
   aside,
+  grid,
 }: {
   rows: PageRow[];
   onRows: Rows;
+  grid: GridContext;
   /** Uploads a picture, shrunk in the browser first; null where uploads are not set up. */
   upload: Upload | null;
   /** Kaizen's saved rows, columns and components (D46). */
@@ -433,6 +473,7 @@ export function PageBuilder({
   };
 
   const actions: Actions = {
+    grid,
     onRows,
     open: setDialog,
     onAddBlock: (type, columnId) => {
@@ -512,6 +553,7 @@ export function PageBuilder({
         }}
         onUse={(part) => placeSaved(part)}
         upload={upload}
+        grid={grid}
       />
     </DndContext>
   );
@@ -814,9 +856,23 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <LetterIcon letter="H" bold />;
     case "button":
       return <ButtonIcon />;
+    case "contentGrid":
+      return <GridIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function GridIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <span className="grid grid-cols-3 gap-0.5">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} className="size-2 rounded-[2px] bg-current" />
+        ))}
+      </span>
+    </span>
+  );
 }
 
 function ButtonIcon() {
@@ -1250,7 +1306,9 @@ function BlockItem({
       />
       <Line at={line} />
       <div className={blockBox(block, "canvas").className || undefined} style={blockBox(block, "canvas").style}>
-        {blockHasContent(block) ? (
+        {block.type === "contentGrid" ? (
+          <GridPreview block={block} pageId={actions.grid.pageId} />
+        ) : blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (
           <p className="rounded-md bg-surface p-3 text-sm text-muted">{EMPTY_BLOCK[block.type]}</p>
@@ -1266,6 +1324,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   heading: "Empty heading. Double-click or use the wrench to write it.",
   image: "No picture yet. Double-click or use the wrench to choose one.",
   button: "A button needs its text and an address. Double-click or use the wrench.",
+  contentGrid: "Content grid.",
 };
 
 // ---------------------------------------------------------------------------
@@ -1282,7 +1341,9 @@ function Dialogs({
   onParts,
   onUse,
   upload,
+  grid,
 }: {
+  grid: GridContext;
   dialog: Dialog | null;
   rows: PageRow[];
   onRows: Rows;
@@ -1489,6 +1550,45 @@ function Dialogs({
                 <ButtonStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
+                />
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "contentGrid"}
+        onClose={onClose}
+        title="Content grid"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "contentGrid" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <ContentGridFields
+                block={block}
+                grid={grid}
+                onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
+              />
+            }
+            style={
+              <>
+                <GridStyleFields
+                  block={block}
+                  onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
                 />
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -2341,15 +2441,19 @@ function NumberField({
 function FrameFields({
   value,
   onChange,
+  what,
 }: {
+  /** Whose, when a dialog has two sets, such as a content grid's tiles. */
+  what?: string;
   value: Pick<PartBase, "border" | "radius" | "shadow">;
   onChange: (patch: Partial<PartBase>) => void;
 }) {
   const border = value.border;
+  const name = (label: string) => (what ? `${what} ${label.toLowerCase()}` : label);
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       <Choices
-        legend="Border"
+        legend={name("Border")}
         options={[
           { value: "none", label: "None" },
           ...(Object.keys(BORDER_STYLES) as BorderStyle[]).map((style) => ({ value: style, label: BORDER_STYLES[style] })),
@@ -2367,24 +2471,24 @@ function FrameFields({
       {border && (
         <>
           <SidesFields
-            legend="Border width"
+            legend={name("Border width")}
             hint="in pixels"
             value={border.width}
             max={BORDER_MAX}
             onChange={(width) => onChange({ border: { ...border, width } })}
           />
-          <ColorField label="Border colour" value={border.color} onChange={(color) => onChange({ border: { ...border, color } })} />
+          <ColorField label={name("Border colour")} value={border.color} onChange={(color) => onChange({ border: { ...border, color } })} />
         </>
       )}
       <NumberField
-        label="Rounded corners"
+        label={name("Rounded corners")}
         hint="radius, in pixels"
         value={value.radius ?? 0}
         max={RADIUS_MAX}
         onChange={(radius) => onChange({ radius: radius || undefined })}
       />
       <Choices
-        legend="Shadow"
+        legend={name("Shadow")}
         options={[
           { value: "none", label: "None" },
           ...(Object.keys(SHADOWS) as Shadow[]).map((shadow) => ({ value: shadow, label: SHADOWS[shadow].label })),
@@ -2562,9 +2666,25 @@ function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (bloc
 
 /** A button's look: kind, size, corners, width, place and colours (D49). */
 function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: (patch: BlockPatch<ButtonBlock>) => void }) {
-  const variant = block.variant ?? "filled";
   return (
     <div className="flex flex-col gap-4">
+      <ButtonLookFields look={block} onChange={onChange} />
+      <Check
+        label="Full width"
+        hint="As wide as its column."
+        checked={Boolean(block.fullWidth)}
+        onChange={(fullWidth) => onChange({ fullWidth })}
+      />
+      <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
+    </div>
+  );
+}
+
+/** A button's kind, size, corners and colours (D49): a button's, or a content grid's tile buttons (D51). */
+function ButtonLookFields({ look, onChange }: { look: ButtonLook; onChange: (patch: Partial<ButtonLook>) => void }) {
+  const variant = look.variant ?? "filled";
+  return (
+    <>
       <Choices
         legend="Style"
         options={(Object.keys(BUTTON_VARIANTS) as ButtonVariant[]).map((v) => ({ value: v, label: BUTTON_VARIANTS[v] }))}
@@ -2574,23 +2694,16 @@ function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: 
       <Choices
         legend="Size"
         options={(Object.keys(BUTTON_SIZES) as ButtonSize[]).map((size) => ({ value: size, label: BUTTON_SIZES[size] }))}
-        value={block.size ?? "md"}
+        value={look.size ?? "md"}
         onChange={(size) => onChange({ size: size === "md" ? undefined : size })}
       />
       <Choices
         legend="Corners"
         disabled={variant === "text"}
         options={(Object.keys(BUTTON_SHAPES) as ButtonShape[]).map((shape) => ({ value: shape, label: BUTTON_SHAPES[shape] }))}
-        value={block.shape ?? "rounded"}
+        value={look.shape ?? "rounded"}
         onChange={(shape) => onChange({ shape: shape === "rounded" ? undefined : shape })}
       />
-      <Check
-        label="Full width"
-        hint="As wide as its column."
-        checked={Boolean(block.fullWidth)}
-        onChange={(fullWidth) => onChange({ fullWidth })}
-      />
-      <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
       <OptionalColor
         label="Button colour"
         hint={
@@ -2598,17 +2711,369 @@ function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: 
             ? "Fills the button; otherwise the site's text colour."
             : "Colours the outline and text; otherwise the site's text colour."
         }
-        value={block.fill}
+        value={look.fill}
         fallback="#1d4ed8"
         onChange={(fill) => onChange({ fill })}
       />
       <OptionalColor
         label="Text colour"
         hint={variant === "filled" ? "Otherwise the site's background colour." : "Otherwise the button colour."}
-        value={block.textColor}
+        value={look.textColor}
         fallback="#ffffff"
         onChange={(textColor) => onChange({ textColor })}
       />
+    </>
+  );
+}
+
+/** Merges settings into an optional object; ones set to undefined go, and an empty object goes too. */
+function mergeOptional<T extends object>(current: T | undefined, patch: Partial<T>): T | undefined {
+  const next: Record<string, unknown> = { ...current, ...patch };
+  for (const [key, value] of Object.entries(next)) if (value === undefined) delete next[key];
+  return Object.keys(next).length > 0 ? (next as T) : undefined;
+}
+
+/**
+ * A content grid on the canvas (D51): its items as the site will show them,
+ * asked of the server again when what it shows changes (not its look).
+ */
+function GridPreview({ block, pageId }: { block: ContentGridBlock; pageId: string | null }) {
+  const key = JSON.stringify([block.source, block.categories, block.tags, block.sort, block.limit]);
+  const [result, setResult] = useState<{ key: string; data: GridData | { problem: string } } | null>(null);
+  const load = useEffectEvent((forKey: string) => {
+    void gridPreviewAction(block, pageId).then((data) => setResult({ key: forKey, data }));
+  });
+  useEffect(() => load(key), [key]);
+
+  const note = (text: string) => <p className="rounded-md bg-surface p-3 text-sm text-muted">{text}</p>;
+  if (!result) return note("Content grid: finding what it shows …");
+  if ("problem" in result.data) return note(`Content grid: ${result.data.problem}`);
+  const stale = result.key !== key;
+  if (result.data.items.length === 0) {
+    return note(
+      block.emptyText
+        ? `Content grid: nothing matches yet, so the site shows “${block.emptyText}”.`
+        : "Content grid: nothing matches yet, so the site shows nothing here. Double-click to change what it shows.",
+    );
+  }
+  return (
+    <div className={stale ? "opacity-60 transition-opacity" : undefined}>
+      <ContentGridView block={block} data={result.data} />
+    </div>
+  );
+}
+
+/** Categories and tags to show, as checkboxes: none chosen shows all. */
+function TermChecks({
+  terms,
+  value,
+  onChange,
+}: {
+  terms: Term[];
+  value: { categories: string[]; tags: string[] };
+  onChange: (value: { categories: string[]; tags: string[] }) => void;
+}) {
+  const tree = categoryTree(terms);
+  const tags = terms.filter((t) => t.kind === "tag").sort(byName);
+  const toggle = (key: "categories" | "tags", id: string, on: boolean) => {
+    const ids = value[key].filter((x) => x !== id);
+    onChange({ ...value, [key]: on ? [...ids, id] : ids });
+  };
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {(
+        [
+          ["categories", "Categories", tree],
+          ["tags", "Tags", tags.map((t) => ({ ...t, depth: 0 }))],
+        ] as const
+      ).map(([key, legend, list]) => (
+        <fieldset key={key} className="flex flex-col gap-1">
+          <legend className="mb-1 text-sm font-medium">{legend}</legend>
+          {list.length === 0 ? (
+            <p className="text-sm text-muted">None yet.</p>
+          ) : (
+            list.map((term) => (
+              <label key={term.id} className="flex min-h-8 items-center gap-2 text-sm" style={{ paddingLeft: `${term.depth * 1.25}rem` }}>
+                <input
+                  type="checkbox"
+                  checked={value[key].includes(term.id)}
+                  onChange={(event) => toggle(key, term.id, event.target.checked)}
+                  className="size-4"
+                />
+                {term.name}
+              </label>
+            ))
+          )}
+        </fieldset>
+      ))}
+    </div>
+  );
+}
+
+/** Tiles side by side on phones, tablets and computers. */
+function ColumnsFields({ value, onChange }: { value: GridColumns; onChange: (value: GridColumns) => void }) {
+  const screens = [
+    ["mobile", "Columns on phones"],
+    ["tablet", "On tablets"],
+    ["desktop", "On computers"],
+  ] as const;
+  return (
+    <div className="flex flex-col gap-4">
+      {screens.map(([screen, legend]) => (
+        <Choices
+          key={screen}
+          legend={legend}
+          options={Array.from({ length: GRID_COLUMNS_MAX[screen] }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+          value={String(value[screen])}
+          onChange={(n) => onChange({ ...value, [screen]: Number(n) })}
+        />
+      ))}
+    </div>
+  );
+}
+
+const gridField = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+
+/** What a content grid shows and how many to a row (D51). */
+function ContentGridFields({
+  block,
+  grid,
+  onChange,
+}: {
+  block: ContentGridBlock;
+  grid: GridContext;
+  onChange: (patch: BlockPatch<ContentGridBlock>) => void;
+}) {
+  const id = useId();
+  const source = block.source;
+  const storeId = source.type === "products" ? source.storeId : null;
+  const [storeTerms, setStoreTerms] = useState<{ storeId: string; terms: Term[] } | null>(null);
+  const loadTerms = useEffectEvent((forStore: string) => {
+    void gridTermsAction(forStore).then((terms) => setStoreTerms({ storeId: forStore, terms }));
+  });
+  useEffect(() => {
+    if (storeId) loadTerms(storeId);
+  }, [storeId]);
+  const terms = source.type === "pages" ? grid.pageTerms : storeTerms?.storeId === storeId ? storeTerms.terms : [];
+  const store = source.type === "products" ? grid.stores.find((s) => s.id === source.storeId) : undefined;
+  const products = source.type === "products";
+  const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRICE_SORTS.includes(sort));
+  const productsOf = (s: GridStore | undefined): GridSource => ({
+    type: "products",
+    storeId: s?.id ?? "",
+    market: s?.markets[0]?.code ?? "",
+  });
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Choices
+        legend="Show"
+        options={(Object.keys(GRID_CONTENT) as GridContent[]).map((type) => ({ value: type, label: GRID_CONTENT[type] }))}
+        value={source.type}
+        onChange={(type) =>
+          onChange(
+            type === "pages"
+              ? { source: { type: "pages" }, categories: [], tags: [], sort: PRICE_SORTS.includes(block.sort) ? "newest" : block.sort }
+              : { source: productsOf(grid.stores[0]), categories: [], tags: [] },
+          )
+        }
+      />
+      {products &&
+        (grid.stores.length === 0 ? (
+          <p className="text-sm text-muted">No store is open yet, so there are no products to show.</p>
+        ) : (
+          <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${id}-store`} className="text-sm font-medium">
+                Store
+              </label>
+              <select
+                id={`${id}-store`}
+                value={store?.id ?? ""}
+                onChange={(event) => onChange({ source: productsOf(grid.stores.find((s) => s.id === event.target.value)), categories: [], tags: [] })}
+                className={gridField}
+              >
+                {!store && <option value="">Choose a store</option>}
+                {grid.stores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor={`${id}-market`} className="text-sm font-medium">
+                Market <span className="font-normal text-muted">(prices and language)</span>
+              </label>
+              <select
+                id={`${id}-market`}
+                value={source.type === "products" ? source.market : ""}
+                onChange={(event) => onChange({ source: { type: "products", storeId: store?.id ?? "", market: event.target.value } })}
+                className={gridField}
+              >
+                {store?.markets.map((m) => (
+                  <option key={m.code} value={m.code}>
+                    {m.code} · {m.currency}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ))}
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <p className="text-sm font-medium">Only these</p>
+        <p className="text-xs text-muted">
+          None chosen shows all. A category includes its subcategories; with categories and tags, an item needs one of
+          each.
+        </p>
+        <TermChecks terms={terms} value={{ categories: block.categories, tags: block.tags }} onChange={(ids) => onChange(ids)} />
+      </div>
+      <div className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${id}-sort`} className="text-sm font-medium">
+            Order
+          </label>
+          <select
+            id={`${id}-sort`}
+            value={block.sort}
+            onChange={(event) => onChange({ sort: event.target.value as GridSort })}
+            className={gridField}
+          >
+            {sorts.map((sort) => (
+              <option key={sort} value={sort}>
+                {GRID_SORTS[sort]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <NumberField
+          label="How many"
+          hint={`at most ${GRID_LIMIT_MAX}`}
+          value={block.limit}
+          max={GRID_LIMIT_MAX}
+          onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
+        />
+      </div>
+      <div className="border-t border-border pt-4">
+        <ColumnsFields value={block.columns} onChange={(columns) => onChange({ columns })} />
+      </div>
+      <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
+        <legend className="float-left mb-2 w-full text-sm font-medium">In each tile</legend>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          {(Object.keys(GRID_ELEMENTS) as GridElement[])
+            .filter((element) => element !== "price" || products)
+            .map((element) => (
+              <label key={element} className="flex min-h-8 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={block.show[element]}
+                  onChange={(event) => onChange({ show: { ...block.show, [element]: event.target.checked } })}
+                  className="size-4"
+                />
+                {GRID_ELEMENTS[element]}
+              </label>
+            ))}
+        </div>
+      </fieldset>
+      {block.show.button && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${id}-button`} className="text-sm font-medium">
+            Button text
+          </label>
+          <input
+            id={`${id}-button`}
+            value={block.buttonLabel}
+            maxLength={BUTTON_LABEL_MAX}
+            placeholder={products ? "View product (in the market's language)" : "Read more"}
+            onChange={(event) => onChange({ buttonLabel: event.target.value })}
+            className={gridField}
+          />
+        </div>
+      )}
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-empty`} className="text-sm font-medium">
+          When nothing matches
+        </label>
+        <input
+          id={`${id}-empty`}
+          value={block.emptyText}
+          maxLength={300}
+          placeholder="Show nothing"
+          onChange={(event) => onChange({ emptyText: event.target.value })}
+          className={gridField}
+        />
+      </div>
+    </div>
+  );
+}
+
+const GRID_LEVELS = [2, 3, 4, 5, 6] as const;
+
+/** How a content grid's tiles look (D51): picture, heading, excerpt, button and the tile itself. */
+function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChange: (patch: BlockPatch<ContentGridBlock>) => void }) {
+  const tile = block.tile;
+  return (
+    <div className="flex flex-col gap-4">
+      <Choices
+        legend="Pictures"
+        hint="cropped alike, so tiles line up"
+        options={(["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({
+          value: shape,
+          label: shape === "original" ? "Original" : IMAGE_SHAPES[shape],
+          picture: <span aria-hidden className={`inline-block border-2 border-current ${SHAPE_PICTURES[shape]}`} />,
+        }))}
+        value={block.imageShape ?? "landscape"}
+        onChange={(shape) => onChange({ imageShape: shape === "landscape" ? undefined : shape })}
+      />
+      <Choices
+        legend="Heading level"
+        hint="under the heading above the grid"
+        options={GRID_LEVELS.map((level) => ({ value: String(level), label: `H${level}` }))}
+        value={String(block.headingLevel)}
+        onChange={(level) => onChange({ headingLevel: Number(level) as ContentGridBlock["headingLevel"] })}
+      />
+      <Choices
+        legend="Heading size"
+        options={(Object.keys(HEADING_SIZES) as HeadingSize[]).map((size) => ({ value: size, label: HEADING_SIZES[size] }))}
+        value={block.headingSize ?? "sm"}
+        onChange={(size) => onChange({ headingSize: size === "sm" ? undefined : size })}
+      />
+      <NumberField
+        label="Excerpt"
+        hint="lines at most, 1 to 6"
+        value={block.excerptLines}
+        max={6}
+        onChange={(lines) => onChange({ excerptLines: Math.max(1, lines) })}
+      />
+      <div className="flex flex-col gap-4 border-t border-border pt-4">
+        <p className="text-sm font-medium">Buttons</p>
+        <ButtonLookFields look={block.button ?? {}} onChange={(patch) => onChange({ button: mergeOptional(block.button, patch) })} />
+      </div>
+      <div className="flex flex-col gap-4 border-t border-border pt-4">
+        <p className="text-sm font-medium">Tiles</p>
+        <NumberField
+          label="Space between tiles"
+          hint={`in pixels, up to ${GRID_GAP_MAX}`}
+          value={block.gap}
+          max={GRID_GAP_MAX}
+          onChange={(gap) => onChange({ gap })}
+        />
+        <OptionalColor
+          label="Tile background"
+          hint="Otherwise none."
+          value={tile?.background}
+          fallback="#f5f5f4"
+          onChange={(background) => onChange({ tile: mergeOptional(tile, { background }) })}
+        />
+        <NumberField
+          label="Space inside each tile"
+          hint="padding, in pixels"
+          value={tile?.padding ?? 0}
+          max={SPACING_MAX}
+          onChange={(padding) => onChange({ tile: mergeOptional(tile, { padding: padding || undefined }) })}
+        />
+        <FrameFields what="Tile" value={tile ?? {}} onChange={(patch) => onChange({ tile: mergeOptional(tile, patch) })} />
+      </div>
     </div>
   );
 }
@@ -2853,6 +3318,8 @@ function SavedPartDialog({
                       <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : block.type === "heading" ? (
                       <HeadingFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                    ) : block.type === "contentGrid" ? (
+                      <p className="text-sm text-muted">Content grid: change its settings where it is used on a page.</p>
                     ) : (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     )}

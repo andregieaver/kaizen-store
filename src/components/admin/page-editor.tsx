@@ -28,6 +28,7 @@ import {
 import { newBlock, newRow } from "@/lib/page-rows";
 import type { SavedPart } from "@/lib/saved-parts";
 import type { Term } from "@/lib/taxonomy";
+import type { GridStore } from "@/server/content-grid";
 import type { EditablePage, PageState } from "@/server/pages";
 
 import { newId, PageBuilder } from "./page-builder";
@@ -67,6 +68,7 @@ export function PageEditor({
   savedParts,
   upload,
   terms: initialTerms,
+  gridStores,
 }: {
   page: EditablePage | null;
   /** Said when the editor opens, such as "Draft saved." after a new page's first save. */
@@ -79,6 +81,8 @@ export function PageEditor({
   upload: Upload | null;
   /** Kaizen's page categories and tags (D50). */
   terms: Term[];
+  /** Open stores and their markets, for content grids of products (D51). */
+  gridStores: GridStore[];
 }) {
   const [terms, setTerms] = useState(initialTerms);
   const router = useRouter();
@@ -176,6 +180,7 @@ export function PageEditor({
         onRows={changeRows}
         saved={savedParts}
         upload={upload}
+        grid={{ pageId: saved?.id ?? null, pageTerms: terms, stores: gridStores }}
         aside={
           <>
             <section aria-label="Title and address" className={card}>

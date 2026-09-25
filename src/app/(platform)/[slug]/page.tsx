@@ -71,7 +71,7 @@ export default async function PlatformPage({ params }: Props) {
           publishedAt: page.publishedAt,
         })}
       />
-      <PageArticle content={c} />
+      <PageArticle content={c} pageId={page.id} />
       <PageEditLink pageId={page.id} />
     </main>
   );

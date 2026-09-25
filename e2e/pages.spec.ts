@@ -353,3 +353,108 @@ test("a heading can be the page's main heading, a button links, and parts take b
   expect(await css(card, "border-top-left-radius")).toBe("16px");
   expect(await css(card, "box-shadow")).not.toBe("none");
 });
+
+test("a content grid shows pages of a category and a store's products with prices (D51)", async ({ page }) => {
+  const sql = testDb();
+  const slug = `grid-${run}`;
+  let demoId = "";
+  let market = "";
+  try {
+    const [guides] = await sql`
+      insert into commerce.terms (store_id, content_type, kind, name, slug)
+      values (null, 'page', 'category', ${`Guides ${run}`}, ${`guides-${run}`}) returning id
+    `;
+    const listed = (title: string, pageSlug: string, categories: string[]) => ({
+      ...content(title, pageSlug, "Text. "),
+      seo: { title: "", description: `About ${title}` },
+      categories,
+      tags: [],
+    });
+    for (const [title, categories] of [
+      ["Grid guide one", [guides.id]],
+      ["Grid guide two", [guides.id]],
+      ["Grid elsewhere", []],
+    ] as const) {
+      const pageSlug = `${title.toLowerCase().replaceAll(" ", "-")}-${run}`;
+      const body = listed(title, pageSlug, [...categories]);
+      await sql`
+        insert into commerce.pages (slug, draft, published, published_at)
+        values (${pageSlug}, ${sql.json(body)}, ${sql.json(body)}, now())
+      `;
+    }
+    const [demo] = await sql`
+      select s.id, min(m.code) as market from commerce.stores s join commerce.markets m on m.store_id = s.id and m.active
+      where s.slug = 'demo' group by s.id
+    `;
+    demoId = demo.id;
+    market = demo.market;
+    const gridBlock = (id: string, extra: Record<string, unknown>) => ({
+      id,
+      type: "contentGrid",
+      categories: [],
+      tags: [],
+      sort: "newest",
+      limit: 6,
+      columns: { mobile: 1, tablet: 2, desktop: 3 },
+      show: { image: true, heading: true, excerpt: true, price: true, button: true },
+      buttonLabel: "",
+      emptyText: "",
+      headingLevel: 3,
+      excerptLines: 3,
+      gap: 24,
+      ...extra,
+    });
+    const body = {
+      ...content("Grids", slug, "Unused. "),
+      blocks: undefined,
+      rows: [
+        {
+          id: "r1",
+          type: "row",
+          layout: "1",
+          columns: [
+            {
+              id: "c1",
+              blocks: [
+                gridBlock("pages-grid", { htmlId: "pages-grid", source: { type: "pages" }, categories: [guides.id], sort: "title" }),
+                gridBlock("products-grid", {
+                  htmlId: "products-grid",
+                  source: { type: "products", storeId: demoId, market },
+                  limit: 2,
+                  sort: "priceLow",
+                  buttonLabel: "Buy",
+                }),
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    await sql`
+      insert into commerce.pages (slug, draft, published, published_at)
+      values (${slug}, ${sql.json(body)}, ${sql.json(body)}, now())
+    `;
+  } finally {
+    await sql.end();
+  }
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/${slug}`);
+  const pagesGrid = page.locator("#pages-grid");
+  await expect(pagesGrid.getByRole("heading", { level: 3 })).toHaveText(["Grid guide one", "Grid guide two"]);
+  await expect(pagesGrid.getByRole("link", { name: "Grid guide one", exact: true })).toHaveAttribute(
+    "href",
+    `/grid-guide-one-${run}`,
+  );
+  await expect(pagesGrid.getByRole("link", { name: "Read more: Grid guide two" })).toBeVisible();
+  await expect(pagesGrid.getByText("About Grid guide one")).toBeVisible();
+  // Three columns on a computer.
+  const columns = await pagesGrid.locator("ul").evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  expect(columns).toBe(3);
+
+  const productsGrid = page.locator("#products-grid");
+  await expect(productsGrid.locator("li")).toHaveCount(2);
+  await expect(productsGrid.getByRole("link", { name: /^Buy: / }).first()).toHaveAttribute("href", new RegExp(`^/s/demo/[a-z]+/p/`));
+  // Prices come with their VAT label, in the market's language.
+  await expect(productsGrid.locator("li").first()).toContainText(/\d/);
+});

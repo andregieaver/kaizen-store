@@ -33,7 +33,7 @@ export default async function PreviewPagePage({ params }: PageProps<"/admin/plat
         </Link>
       </p>
       <div className="py-6">
-        <PageArticle content={page.draft} />
+        <PageArticle content={page.draft} pageId={page.id} />
       </div>
     </>
   );

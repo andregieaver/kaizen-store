@@ -41,6 +41,23 @@ export function newBlock(type: BlockType, id: NewId): PageBlock {
       return { id: id(), type, text: "", level: 2 };
     case "button":
       return { id: id(), type, label: "", href: "" };
+    case "contentGrid":
+      return {
+        id: id(),
+        type,
+        source: { type: "pages" },
+        categories: [],
+        tags: [],
+        sort: "newest",
+        limit: 6,
+        columns: { mobile: 1, tablet: 2, desktop: 3 },
+        show: { image: true, heading: true, excerpt: true, price: true, button: true },
+        buttonLabel: "",
+        emptyText: "",
+        headingLevel: 3,
+        excerptLines: 3,
+        gap: 24,
+      };
   }
 }
 

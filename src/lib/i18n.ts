@@ -102,6 +102,10 @@ const messages = {
     gallerySlide: (n: number, total: number) => `${n} av ${total}`,
     chooseMarket: "Velg land",
     noProducts: "Ingen produkter ennå.",
+    /** Content grids (D51): a tile's button, and a grid with nothing to show. */
+    readMore: "Les mer",
+    viewProduct: "Se produktet",
+    nothingHere: "Ingenting her ennå.",
     demoNotice: "Dette er en demobutikk. Ingenting kan kjøpes ennå.",
     testNotice: "Testmodus: ingen ekte betalinger. Betal med testkortet 4242 4242 4242 4242.",
     checkoutTitle: "Kasse",
@@ -424,6 +428,10 @@ const messages = {
     gallerySlide: (n: number, total: number) => `${n} av ${total}`,
     chooseMarket: "Välj land",
     noProducts: "Inga produkter ännu.",
+    /** Content grids (D51): a tile's button, and a grid with nothing to show. */
+    readMore: "Läs mer",
+    viewProduct: "Visa produkten",
+    nothingHere: "Inget här ännu.",
     demoNotice: "Det här är en demobutik. Inget kan köpas ännu.",
     testNotice: "Testläge: inga riktiga betalningar. Betala med testkortet 4242 4242 4242 4242.",
     checkoutTitle: "Kassa",
@@ -748,6 +756,10 @@ const messages = {
     gallerySlide: (n: number, total: number) => `${n} af ${total}`,
     chooseMarket: "Vælg land",
     noProducts: "Ingen produkter endnu.",
+    /** Content grids (D51): a tile's button, and a grid with nothing to show. */
+    readMore: "Læs mere",
+    viewProduct: "Se produktet",
+    nothingHere: "Intet her endnu.",
     demoNotice: "Dette er en demobutik. Intet kan købes endnu.",
     testNotice: "Testtilstand: ingen rigtige betalinger. Betal med testkortet 4242 4242 4242 4242.",
     checkoutTitle: "Kasse",
@@ -1070,6 +1082,10 @@ const messages = {
     gallerySlide: (n: number, total: number) => `${n} of ${total}`,
     chooseMarket: "Choose country",
     noProducts: "No products yet.",
+    /** Content grids (D51): a tile's button, and a grid with nothing to show. */
+    readMore: "Read more",
+    viewProduct: "View product",
+    nothingHere: "Nothing here yet.",
     demoNotice: "This is a demo store. Nothing can be bought yet.",
     testNotice: "Test mode: no real payments. Pay with the test card 4242 4242 4242 4242.",
     checkoutTitle: "Checkout",

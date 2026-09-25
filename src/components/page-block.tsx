@@ -19,7 +19,7 @@ import { RichText } from "./rich-text";
 // Written out whole so Tailwind finds every class.
 
 /** Crops (D48). */
-const SHAPES: Record<ImageShape, string> = {
+export const SHAPES: Record<ImageShape, string> = {
   landscape: "aspect-[4/3] object-cover rounded-lg",
   portrait: "aspect-[3/4] object-cover rounded-lg",
   panorama: "aspect-[3/1] object-cover rounded-lg",
@@ -27,14 +27,14 @@ const SHAPES: Record<ImageShape, string> = {
   circle: "aspect-square object-cover rounded-full",
 };
 
-const HEADING_SIZES: Record<HeadingSize, string> = {
+export const HEADING_SIZES: Record<HeadingSize, string> = {
   sm: "text-lg",
   md: "text-xl md:text-2xl",
   lg: "text-2xl md:text-3xl",
   xl: "text-3xl md:text-5xl",
   "2xl": "text-4xl md:text-6xl",
 };
-const WEIGHTS: Record<FontWeight, string> = {
+export const WEIGHTS: Record<FontWeight, string> = {
   normal: "font-normal",
   medium: "font-medium",
   semibold: "font-semibold",
@@ -59,6 +59,9 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Heading block={block} />;
     case "button":
       return <Button block={block} />;
+    case "contentGrid":
+      // Its items are looked up where it is shown: `ContentGridSection` on the site, a preview in the editor.
+      return null;
     case "image":
       if (!block.image) return null;
       return (
@@ -89,34 +92,44 @@ function Heading({ block }: { block: HeadingBlock }) {
   );
 }
 
+/** How a button looks (D49): its kind, size, corners and colours; also a content grid's tile buttons (D51). */
+export type ButtonLook = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor">;
+
+/** The classes and colours of a link that looks like a button. */
+export function buttonLook(look: ButtonLook | undefined, fullWidth = false): { className: string; style: CSSProperties } {
+  const variant = look?.variant ?? "filled";
+  const size = look?.size ?? "md";
+  const colors =
+    variant === "filled"
+      ? "border-2 border-transparent bg-foreground text-background hover:opacity-90"
+      : variant === "outline"
+        ? "border-2 border-current text-foreground hover:bg-foreground/5"
+        : "text-foreground underline underline-offset-4 hover:no-underline";
+  return {
+    className: `relative z-[2] inline-flex items-center justify-center text-center font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
+      BUTTON_SIZES[size]
+    } ${variant === "text" ? "" : `${BUTTON_PADDING[size]} ${BUTTON_SHAPES[look?.shape ?? "rounded"]}`} ${fullWidth ? "w-full" : ""} ${colors}`,
+    style:
+      variant === "filled"
+        ? { backgroundColor: look?.fill, color: look?.textColor }
+        : { color: look?.textColor ?? look?.fill, borderColor: look?.fill },
+  };
+}
+
 /**
  * A link that looks like a button. Its colour fills it, or draws an
  * outline's line and text, or colours a text link; its text colour is for
  * a filled button. It stays usable above a column's own link.
  */
 function Button({ block }: { block: ButtonBlock }) {
-  const variant = block.variant ?? "filled";
-  const look =
-    variant === "filled"
-      ? "border-2 border-transparent bg-foreground text-background hover:opacity-90"
-      : variant === "outline"
-        ? "border-2 border-current text-foreground hover:bg-foreground/5"
-        : "text-foreground underline underline-offset-4 hover:no-underline";
-  const style: CSSProperties =
-    variant === "filled"
-      ? { backgroundColor: block.fill, color: block.textColor }
-      : { color: block.textColor ?? block.fill, borderColor: block.fill };
+  const look = buttonLook(block, block.fullWidth);
   return (
     <a
       href={block.href}
       {...(block.newTab && { target: "_blank", rel: "noopener noreferrer" })}
       // A border, corners and shadow chosen for the button win over its style's own.
-      style={{ ...style, ...frameStyle(block) }}
-      className={`relative z-[2] inline-flex items-center justify-center text-center font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
-        BUTTON_SIZES[block.size ?? "md"]
-      } ${variant === "text" ? "" : `${BUTTON_PADDING[block.size ?? "md"]} ${BUTTON_SHAPES[block.shape ?? "rounded"]}`} ${
-        block.fullWidth ? "w-full" : ""
-      } ${look}`}
+      style={{ ...look.style, ...frameStyle(block) }}
+      className={look.className}
     >
       {block.label}
       {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}

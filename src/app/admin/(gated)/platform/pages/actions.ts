@@ -7,7 +7,11 @@ import { z } from "zod";
 import { requirePlatformAdmin } from "@/server/auth";
 import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage, type EditablePage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
-import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
+import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
+import { gridData } from "@/server/content-grid";
+import type { GridData } from "@/lib/content-grid";
+import { pageBlockSchema } from "@/lib/page-content";
+import type { Term } from "@/lib/taxonomy";
 
 export type PageSaveState = { status: "saved"; page: EditablePage } | { status: "error"; problems: string[] };
 
@@ -106,4 +110,25 @@ export async function deletePageTermAction(id: string): Promise<TermsResult> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { ok: false, problems: ["Unknown category or tag."] };
   return termsChanged(await deleteTerm(admin, pageTerms, id));
+}
+
+// ---------------------------------------------------------------------------
+// Content grids (D51): what the builder's preview shows
+// ---------------------------------------------------------------------------
+
+/** A grid's items as the site will show them, for the canvas. */
+export async function gridPreviewAction(block: unknown, pageId: string | null): Promise<GridData | { problem: string }> {
+  await requirePlatformAdmin();
+  const parsed = pageBlockSchema.safeParse(block);
+  if (!parsed.success || parsed.data.type !== "contentGrid") {
+    return { problem: parsed.success ? "Not a content grid." : parsed.error.issues[0].message };
+  }
+  return gridData(parsed.data, pageId !== null && isId(pageId) ? pageId : null);
+}
+
+/** A store's product categories and tags, for a grid of its products. */
+export async function gridTermsAction(storeId: string): Promise<Term[]> {
+  await requirePlatformAdmin();
+  if (!isId(storeId)) return [];
+  return listTerms({ storeId, contentType: "product" });
 }

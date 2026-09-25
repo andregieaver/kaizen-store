@@ -180,7 +180,10 @@ of running `playwright install`.
   block list are read as one row (`upgradeLegacy`). Blocks are rich text
   (Tiptap JSON, cleaned by `cleanRichText()` and rendered by `<RichText>`
   as elements, never as HTML), an image with a caption (D47, uploaded
-  with `ImageUploadButton`), a heading or a button (D49), all rendered by
+  with `ImageUploadButton`), a heading or a button (D49), or a content
+  grid (D51: items from `gridData()` in `src/server/content-grid.ts`, shown
+  by `ContentGridView`; on the site through `ContentGridSection`, in the
+  canvas through `gridPreviewAction`), all rendered by
   `<PageBlockView>` (`src/components/page-block.tsx`) on the canvas and
   the site. Rows, columns and blocks take optional settings (D47–D49:
   spacing, border, corners, shadow, id and classes, backgrounds, widths,

@@ -1,5 +1,6 @@
 import { blockHasContent, type PageContent, type PageRow } from "@/lib/page-content";
 
+import { ContentGridSection } from "./content-grid-section";
 import { PageBlockView } from "./page-block";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 
@@ -11,7 +12,7 @@ import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, 
  * columns and blocks carry their own settings (D47, D48; `page-parts.tsx`).
  * A row keeps to the content's width unless it is set to the full width.
  */
-export function PageArticle({ content }: { content: PageContent }) {
+export function PageArticle({ content, pageId = null }: { content: PageContent; pageId?: string | null }) {
   const rows = content.rows.filter(rowShows);
   // A heading component at level 1 is the page's main heading (D49); else the title is, for screen readers.
   const hasMainHeading = rows.some((row) =>
@@ -21,7 +22,7 @@ export function PageArticle({ content }: { content: PageContent }) {
     <article className="flex flex-col gap-8">
       {!hasMainHeading && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
-        <Row key={row.id} row={row} />
+        <Row key={row.id} row={row} pageId={pageId} />
       ))}
     </article>
   );
@@ -31,7 +32,7 @@ export function PageArticle({ content }: { content: PageContent }) {
 const rowShows = (row: PageRow) =>
   Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockHasContent));
 
-function Row({ row }: { row: PageRow }) {
+function Row({ row, pageId }: { row: PageRow; pageId: string | null }) {
   const box = rowBox(row, "site");
   const grid = rowGrid(row);
   return (
@@ -50,7 +51,11 @@ function Row({ row }: { row: PageRow }) {
                     const b = blockBox(block, "site");
                     return (
                       <div key={block.id} id={b.id} className={b.className || undefined} style={b.style}>
-                        <PageBlockView block={block} />
+                        {block.type === "contentGrid" ? (
+                          <ContentGridSection block={block} pageId={pageId} />
+                        ) : (
+                          <PageBlockView block={block} />
+                        )}
                       </div>
                     );
                   })}
