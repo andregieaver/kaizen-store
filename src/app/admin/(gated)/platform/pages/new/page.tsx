@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { connection } from "next/server";
 
 import { PageEditor } from "@/components/admin/page-editor";
@@ -17,12 +16,8 @@ export default async function NewPagePage() {
   await requirePlatformAdmin();
   return (
     <>
-      <div>
-        <Link href="/admin/platform/pages" className="text-sm underline">
-          ← Pages
-        </Link>
-        <h1 className="text-2xl font-semibold">New page</h1>
-      </div>
+      {/* Only for screen readers: the title is in the editor, and Pages is in the menu. */}
+      <h1 className="sr-only">New page</h1>
       <PageEditor
         page={null}
         origin={siteUrl()}

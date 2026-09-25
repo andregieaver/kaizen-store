@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { z } from "zod";
@@ -30,12 +29,8 @@ export default async function EditPagePage({ params, searchParams }: Props) {
   if (!page) notFound();
   return (
     <>
-      <div>
-        <Link href="/admin/platform/pages" className="text-sm underline">
-          ← Pages
-        </Link>
-        <h1 className="text-2xl font-semibold">{page.draft.title || "Untitled page"}</h1>
-      </div>
+      {/* Only for screen readers: the title is in the editor, and Pages is in the menu. */}
+      <h1 className="sr-only">Edit {page.draft.title || "Untitled page"}</h1>
       <PageEditor
         key={page.id}
         page={page}
