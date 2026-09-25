@@ -53,6 +53,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       items: [
         { href: `${base}/settings/seo`, label: "SEO & Reach" },
         { href: `${base}/settings/navigation`, label: "Header and footer" },
+        { href: `${base}/settings/company`, label: "Company" },
       ],
     },
     {

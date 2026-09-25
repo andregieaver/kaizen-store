@@ -9,6 +9,7 @@ export function DeleteDiscountButton({
   used = 0,
   compact = false,
   question: asked,
+  label = "Delete this code",
 }: {
   action: () => Promise<{ ok: true } | { ok: false; problems: string[] }>;
   code: string;
@@ -18,6 +19,8 @@ export function DeleteDiscountButton({
   compact?: boolean;
   /** Asks this instead of the store's question. */
   question?: string;
+  /** The full-size button's words. */
+  label?: string;
 }) {
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export function DeleteDiscountButton({
             Delete<span className="sr-only"> {code}</span>
           </>
         ) : (
-          "Delete this code"
+          label
         )}
       </button>
       {problem && (

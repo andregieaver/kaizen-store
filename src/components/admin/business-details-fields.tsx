@@ -22,11 +22,13 @@ export function BusinessDetailsFields({
 }) {
   return (
     <>
-      <label className={field}>
-        Store name
-        <input name="name" required maxLength={80} defaultValue={name} className={control} />
-        <span className="font-normal text-muted">Shown at the top of every page.</span>
-      </label>
+      <div className={field}>
+        <label htmlFor="store-name">Store name</label>
+        <input id="store-name" name="name" required maxLength={80} aria-describedby="store-name-hint" defaultValue={name} className={control} />
+        <p id="store-name-hint" className="font-normal text-muted">
+          Shown at the top of every page.
+        </p>
+      </div>
       <label className={field}>
         Legal name of the business
         <input
