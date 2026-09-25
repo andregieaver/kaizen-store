@@ -10,6 +10,7 @@ import { listStoreInvoices } from "@/server/billing";
 import { listEmails } from "@/server/email";
 import { getPlatformCustomer } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -22,6 +23,7 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function PlatformCustomerPage({ params }: PageProps<"/admin/platform/customers/[accountId]">) {
   await connection();
+  await requirePlatformAdmin();
   const { accountId } = await params;
   if (!z.uuid().safeParse(accountId).success) notFound();
   const customer = await getPlatformCustomer(accountId);

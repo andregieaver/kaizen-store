@@ -13,6 +13,7 @@ import { platformModes } from "@/server/stripe";
 
 import { createPlatformDiscountAction, deletePlatformDiscountAction, setPlatformDiscountActiveAction } from "../actions";
 import { deleteQuestion, PlatformDiscountFields } from "./discount-fields";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Discounts" };
 
@@ -25,6 +26,7 @@ const money = (minor: number, currency: string) => formatMoney(minor, currency, 
 export default async function PlatformDiscountsPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const [discounts, currencies] = await Promise.all([listPlatformDiscounts(), planCurrencies()]);
   const modes = platformModes();
 

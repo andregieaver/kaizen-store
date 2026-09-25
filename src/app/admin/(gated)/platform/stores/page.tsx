@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { formatBps, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listStoreBilling } from "@/server/billing";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Stores" };
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Stores" };
 export default async function PlatformStoresPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const stores = await listStoreBilling();
   return (
     <>

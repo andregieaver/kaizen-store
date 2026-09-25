@@ -10,6 +10,7 @@ import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { getStoreBilling, getStoreInvoice } from "@/server/billing";
 import { listStorePeople } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Invoice" };
 
@@ -21,6 +22,7 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function PlanInvoicePage({ params }: PageProps<"/admin/platform/stores/[store]/invoices/[invoiceId]">) {
   await connection();
+  await requirePlatformAdmin();
   const { store: slug, invoiceId } = await params;
   const store = await getStore(slug);
   if (!store) notFound();

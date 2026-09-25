@@ -7,6 +7,7 @@ import { getCheckoutUi, getSaleFeeBps, listPlatformWebhooks } from "@/server/con
 import { platformModes, WEBHOOK_KINDS } from "@/server/stripe";
 
 import { connectWebhooksAction, saveCheckoutUiAction, saveSaleFeeAction } from "../actions";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Stripe" };
 
@@ -15,6 +16,7 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 export default async function PlatformStripePage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const [webhooks, saleFeeBps, checkoutUi] = await Promise.all([
     listPlatformWebhooks(),
     getSaleFeeBps(),

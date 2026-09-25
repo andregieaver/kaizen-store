@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { EmailLog } from "@/components/admin/email-log";
 import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Emails" };
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Emails" };
 export default async function PlatformEmailsPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const [emails, settings] = await Promise.all([listEmails({ limit: 200 }), Promise.resolve(emailSettings())]);
   const webhook = emailEventsSetup() === "ok";
   return (

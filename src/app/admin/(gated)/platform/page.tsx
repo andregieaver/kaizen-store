@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
-import { requireAccount } from "@/server/auth";
+import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 
 import { decideAction } from "./actions";
@@ -18,8 +17,7 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 export default async function PlatformPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
-  const account = await requireAccount();
-  if (!account.platformAdmin) notFound();
+  await requirePlatformAdmin();
   const requests = await listAccessRequests();
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");

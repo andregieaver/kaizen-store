@@ -12,6 +12,7 @@ import { listStorePeople } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
 
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Store plan" };
 
@@ -19,6 +20,7 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 
 /** One store's plan with Kaizen: start, change or cancel it, and its fee. */
 export default async function PlatformStorePage({ params }: PageProps<"/admin/platform/stores/[store]">) {
+  await requirePlatformAdmin();
   const store = await getStore((await params).store);
   if (!store) notFound();
   const [billing, plans, people, invoices] = await Promise.all([

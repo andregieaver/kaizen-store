@@ -9,6 +9,7 @@ import { uploadsEnabled } from "@/server/media";
 import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 
 import { savePlatformSeoAction, uploadPlatformImageAction } from "../actions";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Search" };
 
@@ -21,6 +22,7 @@ const hint = "text-sm font-normal text-muted";
 export default async function PlatformSeoPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const seo = await getPlatformSeo();
   const origin = siteUrl();
   return (

@@ -4,6 +4,7 @@ import { connection } from "next/server";
 
 import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listPlatformCustomers } from "@/server/platform-customers";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Customers" };
 export default async function PlatformCustomersPage({ searchParams }: PageProps<"/admin/platform/customers">) {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const raw = (await searchParams).q;
   const q = typeof raw === "string" ? raw : "";
   const customers = await listPlatformCustomers({ q });

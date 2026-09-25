@@ -63,6 +63,29 @@ test("admin pages are not reachable without a session", async ({ page }) => {
   }
 });
 
+test("admin pages send nothing of theirs to a visitor without a session, before the redirect", async ({ request }) => {
+  // The redirect runs in the browser, so the response itself must hold none of
+  // the page: every admin page's heading has this class, rendered or streamed.
+  const paths = [
+    "/admin/platform",
+    "/admin/platform/customers",
+    "/admin/platform/stores",
+    "/admin/platform/stores/demo",
+    "/admin/platform/plans",
+    "/admin/platform/emails",
+    "/admin/platform/plan-reminders",
+    "/admin/platform/stripe",
+    "/admin/platform/seo",
+    "/admin/demo/customers",
+    "/admin/demo/orders",
+  ];
+  for (const path of paths) {
+    const html = await (await request.get(path)).text();
+    expect(html, path).toContain("/admin/sign-in");
+    expect(html, path).not.toContain("text-2xl font-semibold");
+  }
+});
+
 test("a sign-in link without a code is rejected", async ({ page }) => {
   await page.goto("/auth/callback");
   await expect(page).toHaveURL("/admin/sign-in?error=link");

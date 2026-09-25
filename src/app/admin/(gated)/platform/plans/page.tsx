@@ -8,6 +8,7 @@ import { listPlans, planCurrencies, type Plan } from "@/server/billing";
 import { platformModes } from "@/server/stripe";
 
 import { savePlanAction, syncPlansAction } from "../actions";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Plans" };
 
@@ -18,6 +19,7 @@ const INTERVAL_LABEL: Record<PlanInterval, string> = { month: "Per month", year:
 export default async function PlansPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const [plans, currencies] = await Promise.all([listPlans(), planCurrencies()]);
   const modes = platformModes();
   return (

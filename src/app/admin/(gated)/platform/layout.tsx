@@ -1,12 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-
-import { requireAccount } from "@/server/auth";
+import { requirePlatformAdmin } from "@/server/auth";
 
 /** Kaizen's own admin: access requests, stores' plans and fees, plans, Stripe. */
 export default async function PlatformLayout({ children }: LayoutProps<"/admin/platform">) {
-  const account = await requireAccount();
-  if (!account.platformAdmin) notFound();
+  await requirePlatformAdmin();
   const nav = [
     { href: "/admin/platform", label: "Access requests" },
     { href: "/admin/platform/customers", label: "Customers" },

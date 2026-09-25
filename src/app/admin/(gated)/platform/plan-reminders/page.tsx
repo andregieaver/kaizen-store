@@ -13,6 +13,7 @@ import {
 import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { setPlanRemindersAction } from "./actions";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Plan reminders" };
 
@@ -34,6 +35,7 @@ const tile = "flex flex-col gap-1 rounded-lg border border-border bg-background 
 export default async function PlanRemindersPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
+  await requirePlatformAdmin();
   const [settings, stats, checkouts, discounts] = await Promise.all([
     getPlanReminderSettings(),
     planReminderStats(),

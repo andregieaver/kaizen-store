@@ -9,10 +9,12 @@ import { getPlanReminderStep } from "@/server/plan-reminders";
 
 import { deletePlanReminderAction } from "../actions";
 import { PlanReminderForm } from "../reminder-form";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Plan reminder" };
 
 export default async function PlanReminderPage({ params }: PageProps<"/admin/platform/plan-reminders/[stepId]">) {
+  await requirePlatformAdmin();
   const { stepId } = await params;
   if (!z.uuid().safeParse(stepId).success) notFound();
   const step = await getPlanReminderStep(stepId);

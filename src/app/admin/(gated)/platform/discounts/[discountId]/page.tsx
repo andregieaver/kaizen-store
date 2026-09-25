@@ -10,11 +10,13 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { deletePlatformDiscountAction, updatePlatformDiscountAction } from "../../actions";
 import { deleteQuestion, PlatformDiscountFields } from "../discount-fields";
+import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Discount code" };
 
 /** Changes one of Kaizen's plan codes (D31). */
 export default async function PlatformDiscountPage({ params }: PageProps<"/admin/platform/discounts/[discountId]">) {
+  await requirePlatformAdmin();
   const { discountId } = await params;
   if (!z.uuid().safeParse(discountId).success) notFound();
   const [discounts, currencies] = await Promise.all([listPlatformDiscounts(), planCurrencies()]);

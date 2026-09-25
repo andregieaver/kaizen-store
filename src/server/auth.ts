@@ -62,6 +62,18 @@ export async function requireAccount(): Promise<Account> {
   return account;
 }
 
+/**
+ * For platform pages and actions: a platform admin's account; anyone else
+ * signs in or is not found. Every platform page asks for itself: a
+ * layout's check does not stop its page rendering (and streaming its data)
+ * alongside it.
+ */
+export async function requirePlatformAdmin(): Promise<Account> {
+  const account = await requireAccount();
+  if (!account.platformAdmin) notFound();
+  return account;
+}
+
 /** The stores an account works in, by name. */
 export async function listStores(account: Account): Promise<StoreSummary[]> {
   const rows = await db().execute<Row>(sql`
