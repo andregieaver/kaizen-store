@@ -131,6 +131,51 @@ export function defaultText(locale: string, n = 0): ReminderText {
   return texts[Math.min(n, texts.length - 1)];
 }
 
+/**
+ * Kaizen's own reminders to store owners who left a plan unpaid (D33), in
+ * English like the rest of the admin; `{store}` is the owner's store.
+ */
+const PLAN_DEFAULTS: [ReminderText, ReminderText, ReminderText] = [
+  {
+    subject: "Finish choosing a plan for {store}",
+    heading: "Your plan is one step away",
+    body: "You started paying for a Kaizen plan for {store} but did not finish. Pick up where you left off: it takes a minute.",
+    button: "Finish choosing your plan",
+  },
+  {
+    subject: "Still deciding on a plan for {store}?",
+    heading: "Still deciding?",
+    body: "Your choice is saved. If you have questions about the plans, just reply to this email.",
+    button: "Choose your plan",
+  },
+  {
+    subject: "Last reminder about your Kaizen plan",
+    heading: "Last reminder",
+    body: "This is the last reminder about the plan for {store}.",
+    button: "Choose your plan",
+  },
+];
+
+export function defaultPlanSteps(): Omit<ReminderStep, "id">[] {
+  return [60, 24 * 60, 3 * 24 * 60].map((delayMinutes, i) => ({
+    delayMinutes,
+    active: true,
+    discountCodeId: null,
+    content: { en: PLAN_DEFAULTS[i] },
+  }));
+}
+
+export function defaultPlanText(n = 0): ReminderText {
+  return PLAN_DEFAULTS[Math.min(n, PLAN_DEFAULTS.length - 1)];
+}
+
+const PLAN_WORDS = {
+  total: "Total",
+  codeAdded: (code: string) => `The discount code ${code} is applied to your plan when you follow the link.`,
+  stop: "No more reminders about Kaizen plans?",
+  stopLink: "Unsubscribe",
+};
+
 /** The words around a reminder, in the shopper's language. */
 const WORDS: Record<string, { total: string; codeAdded: (code: string) => string; stop: string; stopLink: string }> = {
   nb: {
@@ -176,9 +221,11 @@ export function buildReminderEmail(input: {
   code: string | null;
   restoreUrl: string;
   unsubscribeUrl: string;
+  /** A store's cart, or Kaizen's plan (D33). */
+  purpose?: "cart" | "plan";
 }): EmailContent {
   const lang = input.locale.split("-")[0];
-  const words = WORDS[lang] ?? WORDS.en;
+  const words = input.purpose === "plan" ? PLAN_WORDS : (WORDS[lang] ?? WORDS.en);
   const values = { store: input.storeName, code: input.code ?? "" };
   const money = (minor: number) => formatMoney(minor, input.currency, input.locale);
   const total = input.lines.reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0);

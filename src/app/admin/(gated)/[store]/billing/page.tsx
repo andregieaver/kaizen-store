@@ -5,6 +5,7 @@ import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatMoney } from "@/lib/money";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { requireMember } from "@/server/auth";
+import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan } from "@/server/billing";
 
 import {
@@ -12,6 +13,7 @@ import {
   choosePlanAction,
   openBillingPortalAction,
   ownerCancelPlanAction,
+  planRemindersOptOutAction,
   removePlanDiscountAction,
 } from "../../actions";
 
@@ -19,13 +21,14 @@ export const metadata: Metadata = { title: "Plan" };
 
 /** The store's plan with Kaizen: choose or change it, its fee per sale, and Kaizen's invoices. */
 export default async function BillingPage({ params, searchParams }: PageProps<"/admin/[store]/billing">) {
-  const { store, role } = await requireMember((await params).store);
+  const { store, role, account } = await requireMember((await params).store);
   const { checkout } = await searchParams;
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
 
   const [billing, plans] = await Promise.all([getStoreBilling(store.id), listPlans()]);
   const isOwner = role === "owner";
+  const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
   const mode = billingMode();
   const onPlan = isOnPlan(billing?.status) && billing?.mode === mode;
   const current = plans.find((plan) => plan.id === billing?.planId);
@@ -97,6 +100,16 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
             </p>
             {!isOwner && <p className="text-sm text-muted">Only an owner of the store can change its plan.</p>}
           </div>
+          {!onPlan && isOwner && reminders && (
+            <form action={planRemindersOptOutAction.bind(null, store.slug, !optedOut)} className="text-sm text-muted">
+              {optedOut
+                ? "Kaizen sends you no reminders about plans you start paying for. "
+                : "If you go to pay and do not finish, Kaizen may email you a reminder. "}
+              <button type="submit" className="underline hover:text-foreground">
+                {optedOut ? "Send me reminders" : "Do not send me reminders"}
+              </button>
+            </form>
+          )}
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {offered.map((plan) => (
               <li key={plan.id}>

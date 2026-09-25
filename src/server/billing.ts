@@ -5,13 +5,14 @@ import Stripe from "stripe";
 
 import { db } from "@/db/client";
 import type { PlatformDiscount } from "@/lib/discounts";
-import { effectiveFeeBps, type PlanInterval } from "@/lib/plans";
+import { effectiveFeeBps, isOnPlan, type PlanInterval } from "@/lib/plans";
 import { storeBase } from "@/lib/paths";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Account } from "./auth";
 import { createStripeAccount, getSaleFeeBps, getStripeAccounts } from "./connect";
 import { findPlatformDiscount } from "./platform-discounts";
+import { capturePlanCheckout, markPlanCheckoutRecovered, planRemindersOn, planRemindersOptedOut } from "./plan-reminders";
 import type { SaveResult } from "./settings";
 import { platformModes, platformStripe } from "./stripe";
 import { getStore } from "./stores";
@@ -510,6 +511,8 @@ export async function applySubscription(
        or b.subscription_id = excluded.subscription_id
        or excluded.status not in ('canceled', 'incomplete_expired')
   `);
+  // On a plan: no more reminders about paying for one (D33).
+  if (isOnPlan(subscription.status)) await markPlanCheckoutRecovered(storeId);
   return true;
 }
 
@@ -755,8 +758,18 @@ export async function choosePlan(
   const back = `${origin}/admin/${p.store.slug}/billing`;
   try {
     const vatRates = await vatRatesFor(p);
+    // Reminders if the owner does not finish (D33): said on Stripe's page too.
+    const reminders = (await planRemindersOn()) && !(await planRemindersOptedOut(owner.id));
     const session = await p.stripe.checkout.sessions.create({
       mode: "subscription",
+      ...(reminders && {
+        custom_text: {
+          submit: {
+            message:
+              "If you do not finish, Kaizen may email you a reminder about this plan. You can turn reminders off on your Plan page or in any reminder.",
+          },
+        },
+      }),
       customer_account: p.accountId,
       line_items: [{ price: p.stripePrice, quantity: 1, ...(vatRates.length > 0 && { tax_rates: vatRates }) }],
       ...(waiting.promotionCode && { discounts: [{ promotion_code: waiting.promotionCode }] }),
@@ -770,6 +783,7 @@ export async function choosePlan(
       cancel_url: back,
     });
     if (!session.url) return { ok: false, problems: ["Stripe did not return a payment page."] };
+    if (reminders) await capturePlanCheckout(owner, p.store.id, priceId);
     await audit(owner.id, p.store.id, "billing.checkout_started", { priceId, planId: p.price.planId });
     return { ok: true, checkoutUrl: session.url };
   } catch (error) {

@@ -302,6 +302,20 @@
       "when": 1790293894676,
       "tag": "20260924235134_cart_reminders_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790295245122,
+      "tag": "20260925001405_plan_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1790295246585,
+      "tag": "20260925001406_plan_reminders_rules",
+      "breakpoints": true
     }
   ]
 }

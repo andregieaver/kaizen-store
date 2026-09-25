@@ -199,6 +199,8 @@ export const accounts = commerce.table(
     name: text("name"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
+    /** The owner asked Kaizen for no reminders about plans left unpaid (D33). */
+    planRemindersOptedOutAt: timestamp("plan_reminders_opted_out_at", { withTimezone: true }),
     createdAt: createdAt(),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
   },
@@ -336,6 +338,8 @@ export const platformSettings = commerce.table(
      * payment form, or `hosted`, Stripe's checkout page (the fallback).
      */
     checkoutUi: text("checkout_ui").notNull().default("custom"),
+    /** Reminders to store owners who started paying for a plan and did not finish (D33). */
+    planReminders: boolean("plan_reminders").notNull().default(false),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -2087,4 +2091,64 @@ export const emailOptOuts = commerce.table(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("email_opt_outs_email_idx").on(t.storeId, sql`lower(${t.email})`)],
+);
+
+/** A step in Kaizen's reminders to owners who left a plan unpaid (D33); like a store's cart reminders. */
+export const planReminderSteps = commerce.table(
+  "plan_reminder_steps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    delayMinutes: integer("delay_minutes").notNull(),
+    active: boolean("active").notNull().default(true),
+    platformDiscountId: uuid("platform_discount_id").references(() => platformDiscountCodes.id, { onDelete: "set null" }),
+    /** Per locale: `{"en": {subject, heading, body, button}}`. */
+    content: jsonb("content").notNull().default({}),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("plan_reminder_steps_delay_idx").on(t.delayMinutes),
+    check("plan_reminder_steps_delay", sql`${t.delayMinutes} between 30 and 43200`),
+  ],
+);
+
+/**
+ * An owner who went to pay for a plan (D33): the latest attempt per store,
+ * until the store is on a plan, the owner opts out, or it grows old.
+ */
+export const abandonedPlanCheckouts = commerce.table(
+  "abandoned_plan_checkouts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .unique()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    email: text("email"),
+    priceId: uuid("price_id").references(() => planPrices.id, { onDelete: "set null" }),
+    planName: text("plan_name").notNull(),
+    amountMinor: money("amount_minor"),
+    currency: char("currency", { length: 3 }).notNull(),
+    interval: text("interval").notNull(),
+    token: text("token").notNull().unique(),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+    remindersSent: integer("reminders_sent").notNull().default(0),
+    lastDelayMinutes: integer("last_delay_minutes").notNull().default(0),
+    lastReminderAt: timestamp("last_reminder_at", { withTimezone: true }),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }),
+    optedOutAt: timestamp("opted_out_at", { withTimezone: true }),
+    recoveredAt: timestamp("recovered_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("abandoned_plan_checkouts_due_idx")
+      .on(t.capturedAt)
+      .where(sql`${t.recoveredAt} is null and ${t.optedOutAt} is null and ${t.email} is not null`),
+    index("abandoned_plan_checkouts_account_idx").on(t.accountId),
+    index("abandoned_plan_checkouts_price_idx").on(t.priceId),
+  ],
 );

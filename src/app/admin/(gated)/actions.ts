@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireMember, type Membership } from "@/server/auth";
 import { applyPlanDiscount, cancelPlan, choosePlan, portalUrl, removeWaitingDiscount } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
+import { setPlanRemindersOptOut } from "@/server/plan-reminders";
 import { catalogTag } from "@/server/catalog";
 import { saveStoreSeo, STORES_TAG } from "@/server/seo";
 import { storeTag } from "@/server/stores";
@@ -239,4 +240,11 @@ export async function removePlanDiscountAction(storeSlug: string): Promise<FormS
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   return toState(await removeWaitingDiscount(owner.account, owner.store.id), "Code removed.");
+}
+
+/** The Plan page's link: no reminders from Kaizen about plans left unpaid, or reminders after all (D33). */
+export async function planRemindersOptOutAction(storeSlug: string, optOut: boolean): Promise<void> {
+  const member = await requireMember(storeSlug);
+  await setPlanRemindersOptOut(member.account.id, optOut);
+  refresh();
 }

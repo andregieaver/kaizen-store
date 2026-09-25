@@ -50,6 +50,7 @@ export function ReminderEditor({
   save,
   sendTest,
   back,
+  purpose = "cart",
 }: {
   initial: { id: string | null; delayMinutes: number; active: boolean; discountCodeId: string | null; content: Record<string, ReminderText> };
   storeName: string;
@@ -58,6 +59,8 @@ export function ReminderEditor({
   save: Save;
   sendTest: SendTest | null;
   back: string;
+  /** A store's cart reminders, or Kaizen's plan reminders to owners (D33). */
+  purpose?: "cart" | "plan";
 }) {
   const router = useRouter();
   const id = useId();
@@ -92,9 +95,10 @@ export function ReminderEditor({
         code,
         restoreUrl: "#",
         unsubscribeUrl: "#",
+        purpose,
       }),
     );
-  }, [text, language, storeName, code]);
+  }, [text, language, storeName, code, purpose]);
 
   const submit = () =>
     startSaving(async () => {
@@ -157,8 +161,9 @@ export function ReminderEditor({
               </select>
             </div>
             <p className={hint}>
-              Counted from when the shopper typed their email at checkout. At least 30 minutes, at most 30 days. Reminders
-              stop as soon as the cart is bought.
+              {purpose === "plan"
+                ? "Counted from when the owner went to pay. At least 30 minutes, at most 30 days. Reminders stop as soon as the store is on a plan."
+                : "Counted from when the shopper typed their email at checkout. At least 30 minutes, at most 30 days. Reminders stop as soon as the cart is bought."}
             </p>
           </fieldset>
           <label className="flex items-center gap-3 text-sm font-medium">
@@ -183,8 +188,9 @@ export function ReminderEditor({
             </select>
           </label>
           <p className={hint}>
-            Shown in the email and added to the cart when the shopper follows the link. Make codes under Discounts; a code
-            that is switched off is left out.
+            {purpose === "plan"
+              ? "Shown in the email and applied to the plan when the owner follows the link. Make codes under Discounts; a code that is switched off is left out."
+              : "Shown in the email and added to the cart when the shopper follows the link. Make codes under Discounts; a code that is switched off is left out."}
           </p>
         </section>
 
@@ -232,7 +238,9 @@ export function ReminderEditor({
           </label>
           <p className={hint}>
             {"{store}"} becomes the store&apos;s name and {"{code}"} the discount code. A blank line starts a new paragraph.
-            The cart, its total and the link to stop reminders are added for you.
+            {purpose === "plan"
+              ? " The plan, its price and the link to stop reminders are added for you."
+              : " The cart, its total and the link to stop reminders are added for you."}
           </p>
         </section>
 
@@ -271,7 +279,7 @@ export function ReminderEditor({
             {testMessage.message}
           </p>
         )}
-        {sendTest && <p className={hint}>The test sends the saved version, with a sample cart.</p>}
+        {sendTest && <p className={hint}>The test sends the saved version, with a sample {purpose === "plan" ? "plan" : "cart"}.</p>}
         {preview && (
           <div className="overflow-hidden rounded-lg border border-border bg-background">
             <p className="border-b border-border px-4 py-2 text-sm">

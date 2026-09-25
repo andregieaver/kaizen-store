@@ -123,6 +123,7 @@ vi.mock("./stripe", async (importActual) => ({
 }));
 
 const billing = await import("./billing");
+const planReminders = await import("./plan-reminders");
 const { POST: billingWebhook } = await import("@/app/api/stripe/billing/[mode]/route");
 
 const run = Date.now().toString(36);
@@ -467,6 +468,8 @@ describe("owners choosing their own plan", () => {
 
   it("sends a store without a plan to Stripe Checkout, paid by card, with VAT for Norway", async () => {
     const price = await activePrice("month");
+    // Kaizen's plan reminders (D33) are on: Stripe's page says so, and the attempt is kept.
+    await planReminders.setPlanRemindersEnabled(admin, true);
     const result = await billing.choosePlan(owner, ownerSlug, price?.id as string, "https://kaizen.test");
     expect(result).toEqual({ ok: true, checkoutUrl: "https://checkout.stripe.test/plan" });
     const params = calls("checkout.sessions.create").at(-1)?.params;
@@ -476,9 +479,48 @@ describe("owners choosing their own plan", () => {
       line_items: [{ quantity: 1, tax_rates: [expect.stringMatching(/^txr_/)] }],
       subscription_data: { metadata: { kaizen_store_id: ownerStore, kaizen_price_id: price?.id } },
       success_url: `https://kaizen.test/admin/${ownerSlug}/billing?checkout={CHECKOUT_SESSION_ID}`,
+      custom_text: { submit: { message: expect.stringContaining("Kaizen may email you a reminder") } },
     });
     // Nothing is recorded until the owner has paid.
     expect((await billing.getStoreBilling(ownerStore))?.status).toBeNull();
+    const [kept] = await db().execute<Row>(sql`
+      select email, price_id, amount_minor from commerce.abandoned_plan_checkouts where store_id = ${ownerStore}::uuid
+    `);
+    expect(kept).toMatchObject({ email: owner.email.toLowerCase(), price_id: price?.id, amount_minor: String(price?.amountMinor) });
+  });
+
+  it("reminds an owner who did not finish paying (D33), once per reminder, and stops when they say no", async () => {
+    const reminders = () => db().execute<Row>(sql`
+      select subject, html from commerce.email_messages where kind = 'plan_reminder' and to_address = ${owner.email.toLowerCase()}
+    `);
+    await db().execute(sql`
+      update commerce.abandoned_plan_checkouts set captured_at = now() - interval '2 hours' where store_id = ${ownerStore}::uuid
+    `);
+    await planReminders.sendDuePlanReminders();
+    await planReminders.sendDuePlanReminders();
+    const sent = await reminders();
+    expect(sent).toHaveLength(1);
+    const [{ token }] = await db().execute<Row>(sql`select token from commerce.abandoned_plan_checkouts where store_id = ${ownerStore}::uuid`);
+    expect(String(sent[0].html)).toContain(`/admin/${ownerSlug}/billing/resume/${token}`);
+    expect(String(sent[0].html)).toContain(`/unsubscribe/${token}`);
+
+    expect(await planReminders.openPlanReminderLink(String(token))).toMatchObject({ storeId: ownerStore });
+    expect(await planReminders.unsubscribeFromPlanReminders(String(token))).toBe(true);
+    expect(await planReminders.planRemindersOptedOut(owner.id)).toBe(true);
+    await db().execute(sql`
+      update commerce.abandoned_plan_checkouts set captured_at = now() - interval '5 days' where store_id = ${ownerStore}::uuid
+    `);
+    await planReminders.sendDuePlanReminders();
+    expect(await reminders()).toHaveLength(1);
+
+    // Reminders again, and a new attempt starts the reminders over.
+    await planReminders.setPlanRemindersOptOut(owner.id, false);
+    const price = await activePrice("month");
+    await billing.choosePlan(owner, ownerSlug, price?.id as string, "https://kaizen.test");
+    const [again] = await db().execute<Row>(sql`
+      select email, reminders_sent, opted_out_at from commerce.abandoned_plan_checkouts where store_id = ${ownerStore}::uuid
+    `);
+    expect(again).toMatchObject({ email: owner.email.toLowerCase(), reminders_sent: 0, opted_out_at: null });
   });
 
   it("records the plan when the owner returns from Checkout, and only for their own store", async () => {
@@ -498,6 +540,12 @@ describe("owners choosing their own plan", () => {
       status: "active",
       priceId: price?.id,
     });
+    // On a plan: no more plan reminders (D33).
+    const [paid] = await db().execute<Row>(sql`
+      select recovered_at from commerce.abandoned_plan_checkouts where store_id = ${ownerStore}::uuid
+    `);
+    expect(paid.recovered_at).not.toBeNull();
+    await planReminders.setPlanRemindersEnabled(admin, false);
   });
 
   it("changes a running plan at once instead of opening Checkout again", async () => {
