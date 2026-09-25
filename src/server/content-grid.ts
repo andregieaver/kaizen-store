@@ -6,6 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { readDb } from "@/db/client";
 import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
 import { pageExcerpt, parsePageContent, type ContentGridBlock } from "@/lib/page-content";
+import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { summarize } from "@/lib/seo";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
@@ -88,8 +89,10 @@ async function gridPages(owner: string | null, marketCode: string | null, filter
     limit ${Math.max(1, Math.min(48, filter.limit))}
   `);
   const items = rows.flatMap((row): GridItem[] => {
-    const content = parsePageContent(row.published);
-    if (!content) return [];
+    const stored = parsePageContent(row.published);
+    if (!stored) return [];
+    // A store's page in the market's language where it is translated (D55).
+    const content = localizePage(stored, shop?.market.locale);
     return [
       {
         id: String(row.id),

@@ -19,6 +19,13 @@ import {
   type PageThumbnail,
 } from "@/lib/page-content";
 import { newBlock, newRow } from "@/lib/page-rows";
+import {
+  localizePage,
+  translationOf,
+  translationProgress,
+  withTranslation,
+  type PageLanguage,
+} from "@/lib/page-translation";
 import type { SavedPart } from "@/lib/saved-parts";
 import type { Term } from "@/lib/taxonomy";
 import type { EditablePage, PageState } from "@/server/pages";
@@ -85,18 +92,31 @@ export function PageEditor({
   const [message, setMessage] = useState<string | null>(notice);
   const [busy, startBusy] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // The language being written (D55): the main one builds the page; another only says its texts.
+  const [main, ...others] = context.languages;
+  const [locale, setLocale] = useState(main.locale);
+  const language = context.languages.find((l) => l.locale === locale) ?? main;
+  const translating = language.locale !== main.locale;
 
-  const change = (next: Partial<PageContent>) => {
-    setContent((current) => ({ ...current, ...next }));
+  /**
+   * Changes the page; while translating, the change is made to the page as
+   * it reads in that language, and what then differs from the main
+   * language's texts becomes its translation.
+   */
+  const edit = (update: (page: PageContent) => PageContent) => {
+    setContent((current) => {
+      if (!translating) return update(current);
+      const edited = update(localizePage(current, locale));
+      return withTranslation(current, locale, translationOf(current, edited));
+    });
     setDirty(true);
     setMessage(null);
   };
+  const change = (next: Partial<PageContent>) => edit((current) => ({ ...current, ...next }));
   // Rows change by function: a text block's editor reports from an earlier render.
-  const changeRows = (update: (rows: PageRow[]) => PageRow[]) => {
-    setContent((current) => ({ ...current, rows: update(current.rows) }));
-    setDirty(true);
-    setMessage(null);
-  };
+  const changeRows = (update: (rows: PageRow[]) => PageRow[]) => edit((current) => ({ ...current, rows: update(current.rows) }));
+  /** The page as the language being written reads. */
+  const view = translating ? localizePage(content, locale) : content;
 
   // Leaving with unsaved changes asks first.
   useEffect(() => {
@@ -155,34 +175,51 @@ export function PageEditor({
 
   const liveSlug = saved?.published ? saved.slug : null;
   const moving = liveSlug !== null && content.slug !== liveSlug && pageSlugProblem(content.slug, reserved) === null;
-  const excerpt = pageExcerpt(content);
+  const excerpt = pageExcerpt(view);
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
   return (
     // Full width (see `PlatformMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter.
     <div className="flex flex-col gap-6 pb-28">
       <PageBuilder
-        rows={content.rows}
+        // A new language starts with its dialogs closed.
+        key={locale}
+        rows={view.rows}
         onRows={changeRows}
+        translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
         saved={savedParts}
         upload={upload}
         grid={{ pageId: saved?.id ?? null, owner: context.owner, pageTerms: terms, stores: context.gridStores, actions }}
         aside={
           <>
+            {others.length > 0 && (
+              <LanguageField
+                languages={context.languages}
+                value={locale}
+                onChange={setLocale}
+                progress={(l) => translationProgress(content, l)}
+              />
+            )}
             <section aria-label="Title and address" className={card}>
               <label className={label}>
-                Title
+                {translating ? `Title in ${language.name}` : "Title"}
                 <input
-                  value={content.title}
+                  value={view.title}
                   maxLength={PAGE_TITLE_MAX}
                   onChange={(event) => {
                     const title = event.target.value;
-                    change(slugFollows ? { title, slug: pageSlugFromTitle(title, reserved) } : { title });
+                    // The address is one for all languages, made from the main title.
+                    change(slugFollows && !translating ? { title, slug: pageSlugFromTitle(title, reserved) } : { title });
                   }}
                   placeholder="About Kaizen"
                   className={`${input} min-h-12 text-xl font-semibold`}
                 />
               </label>
+              {translating ? (
+                <p className={hint}>
+                  The address, {content.slug}, is the same in every language. Change it in {main.name}.
+                </p>
+              ) : (
               <SlugField
                 slug={content.slug}
                 follows={slugFollows}
@@ -198,13 +235,16 @@ export function PageEditor({
                   change({ slug: pageSlugFromTitle(content.title, reserved) });
                 }}
               />
-              {moving && (
+              )}
+              {moving && !translating && (
                 <p className="rounded-md bg-surface p-3 text-sm">
                   When you publish, <strong>/{liveSlug}</strong> will lead to <strong>/{content.slug}</strong> for good
                   (a permanent redirect), so links and search results keep working.
                 </p>
               )}
             </section>
+            {!translating && (
+            <>
             <section aria-labelledby="terms-heading" className={card}>
               <h2 id="terms-heading" className="font-medium">
                 Categories and tags
@@ -240,19 +280,39 @@ export function PageEditor({
                 help="ChatGPT, Claude, Perplexity and others may read the page. Off: it is left out of llms.txt and robots.txt asks AI crawlers to stay away."
               />
             </section>
+            </>
+            )}
+            {translating && view.thumbnail && (
+              <section aria-labelledby="thumbnail-alt-heading" className={card}>
+                <h2 id="thumbnail-alt-heading" className="font-medium">
+                  Picture
+                </h2>
+                <label className={label}>
+                  Description of the picture in {language.name}
+                  <textarea
+                    value={view.thumbnail.alt}
+                    maxLength={ALT_MAX}
+                    rows={2}
+                    onChange={(event) => view.thumbnail && change({ thumbnail: { ...view.thumbnail, alt: event.target.value } })}
+                    className={`${input} py-2`}
+                  />
+                  <span className={hint}>In {main.name}: {content.thumbnail?.alt || "no description"}</span>
+                </label>
+              </section>
+            )}
             <section aria-labelledby="search-heading" className={card}>
               <h2 id="search-heading" className="font-medium">
                 Search and sharing
               </h2>
               <SearchSnippetFields
-                value={content.seo}
+                value={view.seo}
                 onChange={(seo) => change({ seo })}
                 fallback={{
-                  title: content.title || "The page's title",
+                  title: view.title || "The page's title",
                   description: excerpt || defaultDescription,
                 }}
                 url={`${origin}${siteBase}/${content.slug}`}
-                lang="en"
+                lang={language.locale}
               />
               <p className={hint}>
                 Empty fields use the title and the start of the text. When shared, the page shows its picture.
@@ -527,6 +587,57 @@ function ThumbnailField({
           {problem}
         </p>
       )}
+    </section>
+  );
+}
+
+/**
+ * Which language is being written (D55): the main one builds the page, and
+ * each other one has its own texts over it, with how many are done.
+ */
+function LanguageField({
+  languages,
+  value,
+  onChange,
+  progress,
+}: {
+  languages: PageLanguage[];
+  value: string;
+  onChange: (locale: string) => void;
+  progress: (locale: string) => { done: number; of: number };
+}) {
+  const [main, ...others] = languages;
+  return (
+    <section aria-labelledby="language-heading" className={card}>
+      <h2 id="language-heading" className="font-medium">
+        Language
+      </h2>
+      <div role="radiogroup" aria-labelledby="language-heading" className="flex flex-wrap gap-2">
+        {languages.map((language) => {
+          const done = language === main ? null : progress(language.locale);
+          return (
+            <label
+              key={language.locale}
+              className="relative flex cursor-pointer flex-col rounded-md border border-border px-3 py-1.5 text-sm has-checked:border-foreground has-checked:bg-foreground has-checked:text-background has-focus-visible:outline-2"
+            >
+              <input
+                type="radio"
+                name="page-language"
+                value={language.locale}
+                checked={value === language.locale}
+                onChange={() => onChange(language.locale)}
+                className="sr-only"
+              />
+              <span className="font-medium">{language.name}</span>
+              <span className="text-xs opacity-80">{done ? `${done.done} of ${done.of} texts` : "Main language"}</span>
+            </label>
+          );
+        })}
+      </div>
+      <p className={hint}>
+        The page is built in {main.name}. In {others.map((l) => l.name).join(", ")}, you translate its texts; a text not
+        translated shows in {main.name}.
+      </p>
     </section>
   );
 }

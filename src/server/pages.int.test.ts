@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { newPageContent, type PageContent } from "@/lib/page-content";
+import { newPageContent, type ContentGridBlock, type PageContent } from "@/lib/page-content";
 import { newBlock } from "@/lib/page-rows";
 
 import type { Account } from "./auth";
@@ -336,5 +336,56 @@ describe("a store's front page and menu links (D54)", () => {
       ok: false,
       problems: ["A menu links to a page that no longer exists. Choose another."],
     });
+  });
+});
+
+describe("a store's page in its languages (D55)", () => {
+  let storeId: string;
+  const grid = import("./content-grid");
+
+  beforeAll(async () => {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.stores (slug, name, country) values (${`lang-${run}`}, 'Languages', 'SE') returning id
+    `);
+    storeId = String(row.id);
+    await db().execute(sql`
+      insert into commerce.markets (store_id, code, currency, default_locale, locales, active)
+      select ${storeId}::uuid, code, currency, default_locale, locales, true
+      from commerce.countries where code in ('NO', 'SE')
+    `);
+  });
+
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.pages where store_id = ${storeId}::uuid`);
+  });
+
+  it("keeps texts in the store's other languages only, its own country's being the main one", async () => {
+    expect((await pages.ownerLanguages(storeId)).map((l) => l.locale)).toEqual(["sv-SE", "nb-NO"]);
+    expect((await pages.ownerLanguages(null)).map((l) => l.locale)).toEqual(["en"]);
+    const input = content(`lang-${run}`, {
+      title: "Om oss",
+      translations: {
+        "nb-NO": { title: "Hvem vi er", "block.block-1.doc": { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hei." }] }] } },
+        // The main language, and one the store does not sell in, are not kept.
+        "sv-SE": { title: "Vilka vi är" },
+        "fi-FI": { title: "Keitä olemme" },
+      },
+    });
+    const id = await saved(await pages.savePage(admin, storeId, null, input, { publish: true }));
+    const page = await pages.getPageForEdit(storeId, id);
+    expect(Object.keys(page?.draft.translations ?? {})).toEqual(["nb-NO"]);
+    expect(page?.draft.translations?.["nb-NO"].title).toBe("Hvem vi er");
+
+    // Menus and grids read the page in the market's language, else the main one.
+    expect(new Map(await pages.publishedPageNames(storeId, "nb-NO")).get(`lang-${run}`)?.title).toBe("Hvem vi er");
+    expect(new Map(await pages.publishedPageNames(storeId, "sv-SE")).get(`lang-${run}`)?.title).toBe("Om oss");
+    const block = { ...newBlock("contentGrid", () => "g"), source: { type: "pages" } } as ContentGridBlock;
+    const { gridData } = await grid;
+    expect((await gridData(block, { pageId: null, owner: storeId, market: "NO" })).items.map((i) => i.title)).toEqual(["Hvem vi er"]);
+    expect((await gridData(block, { pageId: null, owner: storeId, market: "SE" })).items.map((i) => i.title)).toEqual(["Om oss"]);
+
+    // Kaizen's pages are in English only.
+    const kaizen = await saved(await pages.savePage(admin, null, null, { ...input, slug: `lang-kaizen-${run}` }, { publish: false }));
+    expect((await pages.getPageForEdit(null, kaizen))?.draft.translations).toBeUndefined();
   });
 });

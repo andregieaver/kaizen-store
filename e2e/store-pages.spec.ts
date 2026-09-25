@@ -34,3 +34,12 @@ test("a store page is in every market, and unknown pages and the store's routes 
   await expect(page).toHaveURL("/s/demo/no/cart");
   await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("Om Kaizen Demo");
 });
+
+test("a store page reads in the market's language where it is translated, else in the main one", async ({ page }) => {
+  await page.goto("/s/demo/se/om-oss");
+  await expect(page.getByText("Vi säljer saker för hem och kontor.")).toBeVisible();
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /säljer saker/);
+  await expect(page.locator("html")).toHaveAttribute("lang", "sv");
+  await page.goto("/s/demo/dk/om-oss");
+  await expect(page.getByText("Vi selger ting for hjem og kontor.")).toBeVisible();
+});

@@ -3,6 +3,7 @@ import "server-only";
 import type { PageOwnerContext } from "@/components/admin/page-context";
 import { t } from "@/lib/i18n";
 import { RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
+import { pageLanguages } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { uploadsEnabled } from "@/server/media";
@@ -37,6 +38,8 @@ export function storePageContext(store: Store): PageOwnerContext {
     adminBase: storePagesBase(store),
     siteBase: market ? marketPath(store.slug, market.slug) : `/s/${store.slug}`,
     origin: siteUrl(),
+    // One page in every language the store sells in, its own country's first (D55).
+    languages: pageLanguages(store.markets.map((m) => m.locale)),
     reserved: RESERVED_STORE_PAGE_SLUGS,
     defaultDescription:
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),

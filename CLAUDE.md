@@ -205,7 +205,11 @@ of running `playwright install`.
   `updateTag(pagesTag(owner))`. A store's published pages are at
   `/s/{store}/{market}/{slug}` (D54, `StorePageArticle`), linked from its
   menus by address (`{ kind: "page", slug }`), and one can be its front page
-  (`stores.front_page_id`, chosen on its Pages list). New block kinds go in `PageBlock`, `pageInput`,
+  (`stores.front_page_id`, chosen on its Pages list). A store's page is
+  written in its main language with texts in its other languages over it
+  (D55, `src/lib/page-translation.ts`: `mapTexts()` lists every text, so a
+  new block's texts go there too; `localizePage()` on the site; the builder's
+  `translate` mode). New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
 - Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):

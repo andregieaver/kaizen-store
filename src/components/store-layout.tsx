@@ -33,7 +33,7 @@ async function MenuLinks({
   const base = marketPath(store.slug, market.slug);
   const builtIn = { home: store.frontPageId ? m.home : m.allProducts, account: m.account.title, cart: m.cart };
   // Page, category and tag links (D50, D54) are named after them, and left out once they are gone.
-  const [terms, pages] = await Promise.all([siteTerms(store.id, "product"), publishedPageNames(store.id)]);
+  const [terms, pages] = await Promise.all([siteTerms(store.id, "product"), publishedPageNames(store.id, market.locale)]);
   const names = { ...termNames(terms), page: new Map(pages) };
   return (
     <ul className={className}>

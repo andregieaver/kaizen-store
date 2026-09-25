@@ -1,4 +1,5 @@
 import type { GridData } from "@/lib/content-grid";
+import type { PageLanguage } from "@/lib/page-translation";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { EditablePage } from "@/server/pages";
@@ -24,6 +25,8 @@ export type PageOwnerContext = {
   siteBase: string;
   /** The site's origin, for showing a page's full address. */
   origin: string;
+  /** The languages the owner's pages are written in, the main one first (D55); Kaizen's are English only. */
+  languages: PageLanguage[];
   /** Addresses the owner's pages cannot take. */
   reserved: readonly string[];
   /** The owner's own description: the last fallback for a page without text. */

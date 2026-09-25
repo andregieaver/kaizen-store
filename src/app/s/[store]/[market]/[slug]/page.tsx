@@ -7,6 +7,7 @@ import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
+import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { pageJsonLd } from "@/lib/structured-data";
@@ -43,7 +44,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!loaded || "redirect" in loaded.found) return {};
   const { store, market } = loaded;
   const { page } = loaded.found;
-  const c = page.content;
+  // In the market's language where the page is translated (D55).
+  const c = localizePage(page.content, market.locale);
   const title = c.seo.title || c.title;
   const description =
     c.seo.description || pageExcerpt(c) || store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
@@ -78,7 +80,7 @@ export default async function StorePage({ params }: Props) {
   const { page } = found;
   // The front page (D54) has one address: the market's own.
   if (page.id === store.frontPageId) permanentRedirect(home);
-  const c = page.content;
+  const c = localizePage(page.content, market.locale);
   const origin = siteUrl();
 
   return (

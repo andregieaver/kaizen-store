@@ -13,6 +13,8 @@ import {
   type PageContent,
 } from "@/lib/page-content";
 
+import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
+
 import { audit, type Account } from "./auth";
 import { scopedTermIds } from "./taxonomy";
 
@@ -177,8 +179,11 @@ export async function savePage(
   if (gridProblem) return { ok: false, problems: [gridProblem] };
   // Only the owner's page categories and tags; one deleted meanwhile is left out.
   const scope = { storeId: owner, contentType: "page" } as const;
+  // Texts in the owner's other languages (D55); Kaizen's pages are in English only.
+  const translated = cleanTranslations(parsed.data, (await ownerLanguages(owner)).slice(1));
+  if (!translated.ok) return { ok: false, problems: translated.problems };
   const content = {
-    ...parsed.data,
+    ...translated.content,
     categories: await scopedTermIds(scope, "category", parsed.data.categories),
     tags: await scopedTermIds(scope, "tag", parsed.data.tags),
   };
@@ -254,6 +259,20 @@ export async function deletePage(account: Account, owner: PageOwner, id: string)
     await audit(account.id, owner, `${auditPrefix(owner)}.page_deleted`, { page: id, slug: rows[0].slug, title: rows[0].title });
   }
   return rows.length > 0;
+}
+
+/**
+ * The languages an owner's pages are written in (D55): a store's markets'
+ * languages, its own country's first (the main one); Kaizen's, English.
+ */
+export async function ownerLanguages(owner: PageOwner): Promise<PageLanguage[]> {
+  if (owner === null) return pageLanguages(["en"]);
+  const rows = await db().execute<Row>(sql`
+    select m.default_locale from commerce.markets m join commerce.stores s on s.id = m.store_id
+    where m.store_id = ${owner}::uuid and m.active
+    order by (m.code = s.country) desc nulls last, m.created_at, m.code
+  `);
+  return pageLanguages(rows.map((row) => String(row.default_locale)));
 }
 
 /** Audit actions keep their names for Kaizen's pages (`platform.page_…`); a store's are `store.page_…`. */
@@ -332,16 +351,21 @@ export async function findPublishedPage(
  * is now and its title, also under the addresses it had before, so a link
  * follows a page that moved. Entries rather than a Map, to be cached.
  */
-export async function publishedPageNames(owner: PageOwner): Promise<[string, { slug: string; title: string }][]> {
+export async function publishedPageNames(
+  owner: PageOwner,
+  locale: string | null = null,
+): Promise<[string, { slug: string; title: string }][]> {
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(owner));
+  // The title in the shopper's language where the page is translated (D55).
+  const title = sql`coalesce(nullif(p.published #>> array['translations', ${locale ?? ""}, 'title'], ''), p.published ->> 'title')`;
   const rows = await readDb().execute<Row>(sql`
-    select p.slug as address, p.slug, p.published ->> 'title' as title
+    select p.slug as address, p.slug, ${title} as title
     from commerce.pages p
     where p.store_id is not distinct from ${owner}::uuid and p.published_at is not null
     union all
-    select r.slug, p.slug, p.published ->> 'title'
+    select r.slug, p.slug, ${title}
     from commerce.page_redirects r
     join commerce.pages p on p.id = r.page_id and p.published_at is not null
     where r.store_id is not distinct from ${owner}::uuid

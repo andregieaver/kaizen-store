@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PageOwnerContext } from "@/components/admin/page-context";
 import { RESERVED_PAGE_SLUGS } from "@/lib/page-content";
+import { pageLanguages } from "@/lib/page-translation";
 import { siteUrl } from "@/lib/site";
 import { listGridStores } from "@/server/content-grid";
 import { uploadsEnabled } from "@/server/media";
@@ -27,6 +28,7 @@ export async function platformPageContext(): Promise<PageOwnerContext> {
     adminBase: "/admin/platform/pages",
     siteBase: "",
     origin: siteUrl(),
+    languages: pageLanguages(["en"]),
     reserved: RESERVED_PAGE_SLUGS,
     defaultDescription: PLATFORM_DEFAULTS.description,
     upload: uploadsEnabled() ? uploadPlatformImageAction : null,

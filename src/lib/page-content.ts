@@ -571,7 +571,17 @@ export type PageContent = {
   tags: string[];
   /** The content: rows of columns of blocks. */
   rows: PageRow[];
+  /**
+   * Its texts in the owner's other languages (D55), by locale: only those
+   * that differ from the page's own (`src/lib/page-translation.ts`).
+   */
+  translations?: Record<string, PageTranslation>;
 };
+
+/** A text of a page in another language: plain, or rich text for a rich text block (D55). */
+export type PageText = string | RichTextDoc;
+/** A page's texts in one language, by their place on the page (`block.{id}.text`, …). */
+export type PageTranslation = Record<string, PageText>;
 
 /** Every row, column and block, in page order. */
 export function pageParts(rows: PageRow[]): (PageRow | PageColumn | PageBlock)[] {
@@ -959,6 +969,16 @@ export const pageInput = z.preprocess(
       aiAssistants: z.boolean(),
       ...termIdsSchema.shape,
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
+      // Checked against the page and its owner's languages when saved (`cleanTranslations`).
+      translations: z
+        .record(
+          z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/, "A translation has an unknown language."),
+          z.record(
+            z.string().max(120),
+            z.custom<PageText>((v) => typeof v === "string" || (typeof v === "object" && v !== null && !Array.isArray(v))),
+          ),
+        )
+        .optional(),
     })
     .superRefine((page, ctx) => {
       if (pageBlocks(page).length > BLOCKS_MAX) {

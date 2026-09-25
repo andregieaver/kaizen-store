@@ -73,6 +73,8 @@ import {
   isLinkAddress,
   pageBlocks,
   pageParts,
+  richTextPlain,
+  ALT_MAX,
   type Background,
   type BlockType,
   type BorderStyle,
@@ -281,8 +283,18 @@ export type GridContext = {
   actions: PageOwnerContext["actions"];
 };
 
+/**
+ * Translating the page (D55): the canvas shows it in another language
+ * (`name`), whose texts are edited over the main language's (`mainName`,
+ * shown from `source`). Rows, columns and settings are the main language's
+ * and cannot change here.
+ */
+export type Translating = { name: string; mainName: string; source: PageRow[] };
+
 /** What the canvas can ask of the builder. */
 type Actions = {
+  /** Only texts change while translating (D55). */
+  translating: boolean;
   grid: GridContext;
   onRows: Rows;
   open: (dialog: Dialog) => void;
@@ -298,10 +310,13 @@ export function PageBuilder({
   upload,
   aside,
   grid,
+  translate = null,
 }: {
   rows: PageRow[];
   onRows: Rows;
   grid: GridContext;
+  /** Set while the page's texts are translated (D55). */
+  translate?: Translating | null;
   /** Uploads a picture, shrunk in the browser first; null where uploads are not set up. */
   upload: Upload | null;
   /** Kaizen's saved rows, columns and components (D46). */
@@ -478,6 +493,7 @@ export function PageBuilder({
   };
 
   const actions: Actions = {
+    translating: translate !== null,
     grid,
     onRows,
     open: setDialog,
@@ -514,6 +530,9 @@ export function PageBuilder({
       }}
     >
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
+        {translate ? (
+          <TranslateNote translate={translate} />
+        ) : (
         <Sidebar
           tab={tab}
           onTab={setTab}
@@ -524,6 +543,7 @@ export function PageBuilder({
           rowsFull={rowsFull}
           blocksFull={blocksFull}
         />
+        )}
 
         <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
 
@@ -559,6 +579,7 @@ export function PageBuilder({
         onUse={(part) => placeSaved(part)}
         upload={upload}
         grid={grid}
+        translate={translate}
       />
     </DndContext>
   );
@@ -1013,13 +1034,13 @@ function Tools({
   deleteDisabled = false,
 }: {
   label: string;
-  /** The drag handle, made where `useSortable` is (see `handleClass`). */
-  handle: ReactNode;
+  /** The drag handle, made where `useSortable` is (see `handleClass`); none while translating. */
+  handle?: ReactNode;
   onEdit: () => void;
   editLabel: string;
-  onDuplicate: () => void;
+  onDuplicate?: () => void;
   duplicateDisabled?: boolean;
-  onDelete: () => void;
+  onDelete?: () => void;
   deleteDisabled?: boolean;
 }) {
   const tool = toolClass;
@@ -1033,26 +1054,30 @@ function Tools({
       <button type="button" onClick={onEdit} aria-label={`${editLabel} (${lower})`} title={editLabel} className={tool}>
         <Icon name="wrench" />
       </button>
-      <button
-        type="button"
-        onClick={onDuplicate}
-        disabled={duplicateDisabled}
-        aria-label={`Duplicate ${lower}`}
-        title="Duplicate"
-        className={tool}
-      >
-        <Icon name="copy" />
-      </button>
-      <button
-        type="button"
-        onClick={onDelete}
-        disabled={deleteDisabled}
-        aria-label={`Delete ${lower}`}
-        title="Delete"
-        className={tool}
-      >
-        <Icon name="trash" />
-      </button>
+      {onDuplicate && (
+        <button
+          type="button"
+          onClick={onDuplicate}
+          disabled={duplicateDisabled}
+          aria-label={`Duplicate ${lower}`}
+          title="Duplicate"
+          className={tool}
+        >
+          <Icon name="copy" />
+        </button>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={deleteDisabled}
+          aria-label={`Delete ${lower}`}
+          title="Delete"
+          className={tool}
+        >
+          <Icon name="trash" />
+        </button>
+      )}
       <span className="px-1 text-xs whitespace-nowrap">{label}</span>
     </div>
   );
@@ -1076,6 +1101,7 @@ function RowItem({
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: row.id,
     data: { kind: "row", rowId: row.id } satisfies DragData,
+    disabled: actions.translating,
   });
   const remove = () => actions.onRows((rows) => removeRow(rows, row.id));
   const box = rowBox(row, "canvas");
@@ -1091,6 +1117,7 @@ function RowItem({
       // A full-width row reaches the canvas's edges; its band for pointing is then above and below only.
       className={`${row.width === "full" ? "-mx-6 -my-4 py-4" : "-m-4 p-4"} ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
     >
+      {!actions.translating && (
       <Tools
         label={name}
         handle={
@@ -1110,6 +1137,7 @@ function RowItem({
         onDuplicate={() => actions.onRows((rows) => duplicateRow(rows, row.id, newId))}
         onDelete={() => (rowHasText(row) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and everything in it`, run: remove }) : remove())}
       />
+      )}
       <Line at={line} />
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
         <div className={box.className} style={box.style}>
@@ -1156,6 +1184,7 @@ function ColumnItem({
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `column:${column.id}`,
     data: { kind: "column", columnId: column.id, rowId } satisfies DragData,
+    disabled: actions.translating,
   });
   const droppingBlock = dragging?.kind === "palette-block" || dragging?.kind === "block";
   const remove = () => actions.onRows((rows) => removeColumn(rows, column.id));
@@ -1182,6 +1211,16 @@ function ColumnItem({
         droppingBlock && isOver ? "bg-blue-50 dark:bg-blue-950" : ""
       }`}
     >
+      {actions.translating ? (
+        // Translating, a column has only its link's description to say (D55).
+        column.link && (
+          <Tools
+            label={name.replace(/^Row \d+, c/, "C")}
+            onEdit={() => actions.open({ kind: "edit-row", rowId, columnId: column.id })}
+            editLabel="Translate"
+          />
+        )
+      ) : (
       <Tools
         label={name.replace(/^Row \d+, c/, "C")}
         handle={
@@ -1205,6 +1244,7 @@ function ColumnItem({
         }
         deleteDisabled={count <= 1}
       />
+      )}
       <Line at={columnLine} vertical />
       {/* The column itself, as the site draws it, inside its band for pointing. */}
       <div className={box.className} style={box.style}>
@@ -1226,7 +1266,7 @@ function ColumnItem({
           />
         ))}
       </SortableContext>
-      {column.blocks.length === 0 && (
+      {column.blocks.length === 0 && !actions.translating && (
         <div
           className={`flex min-h-24 flex-col items-center justify-center gap-1 rounded-md border border-dashed p-3 text-center text-xs text-muted ${
             droppingBlock ? "border-blue-600" : "border-border"
@@ -1265,6 +1305,7 @@ function BlockItem({
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
     data: { kind: "block", blockId: block.id, columnId } satisfies DragData,
+    disabled: actions.translating,
   });
   const remove = () => actions.onRows((rows) => removeBlock(rows, block.id));
   const edit = () => actions.open({ kind: "edit-block", blockId: block.id });
@@ -1286,6 +1327,9 @@ function BlockItem({
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={isDragging ? "opacity-40" : ""}
     >
+      {actions.translating ? (
+        <Tools label={blockLabels[block.type]} onEdit={edit} editLabel="Translate" />
+      ) : (
       <Tools
         label={blockLabels[block.type]}
         handle={
@@ -1309,6 +1353,7 @@ function BlockItem({
             : remove()
         }
       />
+      )}
       <Line at={line} />
       <div className={blockBox(block, "canvas").className || undefined} style={blockBox(block, "canvas").style}>
         {block.type === "contentGrid" ? (
@@ -1347,8 +1392,10 @@ function Dialogs({
   onUse,
   upload,
   grid,
+  translate,
 }: {
   grid: GridContext;
+  translate: Translating | null;
   dialog: Dialog | null;
   rows: PageRow[];
   onRows: Rows;
@@ -1360,6 +1407,7 @@ function Dialogs({
   onUse: (part: SavedPart) => void;
   upload: Upload | null;
 }) {
+  if (translate) return <TranslateDialogs dialog={dialog} rows={rows} onRows={onRows} onClose={onClose} translate={translate} />;
   const done = (
     <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
       Done
@@ -1732,6 +1780,185 @@ function Dialogs({
           upload={upload}
         />
       )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Translating (D55)
+// ---------------------------------------------------------------------------
+
+/** In place of the sidebar while translating: what can be done here, and where the rest is. */
+function TranslateNote({ translate }: { translate: Translating }) {
+  return (
+    <section aria-labelledby="translate-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm">
+      <h2 id="translate-heading" className="font-medium">
+        Translating into {translate.name}
+      </h2>
+      <p>
+        Point at a text on the page and press <strong>Translate</strong> (or double-click it) to write it in {translate.name}.
+        The title and search texts are on the right.
+      </p>
+      <p className="text-muted">
+        A text you leave as it is shows in {translate.mainName}. Rows, pictures and settings are the same in every
+        language: change them in {translate.mainName}.
+      </p>
+    </section>
+  );
+}
+
+const translateField = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+
+/** The main language's text beside the one being written. */
+function Original({ mainName, text }: { mainName: string; text: string }) {
+  if (!text.trim()) return null;
+  return (
+    <div className="rounded-md bg-surface p-3 text-sm">
+      <span className="block text-xs text-muted">In {mainName}</span>
+      <span className="whitespace-pre-line">{text}</span>
+    </div>
+  );
+}
+
+/** One line (or a few) of text in the language being translated into. */
+function TranslateText({
+  label,
+  value,
+  max,
+  original,
+  mainName,
+  multiline = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  max: number;
+  original: string;
+  mainName: string;
+  multiline?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      {multiline ? (
+        <textarea
+          id={id}
+          value={value}
+          maxLength={max}
+          rows={3}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${translateField} py-2`}
+        />
+      ) : (
+        <input id={id} value={value} maxLength={max} onChange={(event) => onChange(event.target.value)} className={translateField} />
+      )}
+      <Original mainName={mainName} text={original} />
+    </div>
+  );
+}
+
+/**
+ * The dialogs while translating (D55): a part's texts only, each beside
+ * the main language's. A text left as it was keeps showing in that language.
+ */
+function TranslateDialogs({
+  dialog,
+  rows,
+  onRows,
+  onClose,
+  translate,
+}: {
+  dialog: Dialog | null;
+  rows: PageRow[];
+  onRows: Rows;
+  onClose: () => void;
+  translate: Translating;
+}) {
+  const { name, mainName, source } = translate;
+  const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
+  const original = block ? findBlock(source, block.id)?.block : null;
+  const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
+  const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
+  const originalColumn = column ? source.flatMap((r) => r.columns).find((c) => c.id === column.id) : null;
+  const set = <T extends PageBlock>(patch: Partial<T>) => {
+    if (block) onRows((current) => updateBlock(current, block.id, (b) => ({ ...b, ...patch }) as PageBlock));
+  };
+  const texts = (b: PageBlock, o: PageBlock | null | undefined) => {
+    const was = <K extends string>(key: K) => ((o as Record<K, unknown> | null | undefined)?.[key] as string | undefined) ?? "";
+    switch (b.type) {
+      case "richText":
+        return (
+          <div className="flex flex-col gap-3">
+            <RichTextEditor key={b.id} value={b.doc} onChange={(doc) => set<RichTextBlock>({ doc })} label={`Text in ${name}`} />
+            <Original mainName={mainName} text={o?.type === "richText" ? richTextPlain(o.doc) : ""} />
+          </div>
+        );
+      case "heading":
+        return (
+          <TranslateText label={`Heading in ${name}`} value={b.text} max={HEADING_MAX} original={was("text")} mainName={mainName} onChange={(text) => set<HeadingBlock>({ text })} />
+        );
+      case "button":
+        return (
+          <TranslateText label={`Button text in ${name}`} value={b.label} max={BUTTON_LABEL_MAX} original={was("label")} mainName={mainName} onChange={(label) => set<ButtonBlock>({ label })} />
+        );
+      case "image":
+        return (
+          <div className="flex flex-col gap-5">
+            {b.image && (
+              <TranslateText
+                label={`Description of the picture in ${name}`}
+                value={b.image.alt}
+                max={ALT_MAX}
+                original={o?.type === "image" ? (o.image?.alt ?? "") : ""}
+                mainName={mainName}
+                multiline
+                onChange={(alt) => set<ImageBlock>({ image: b.image && { ...b.image, alt } })}
+              />
+            )}
+            <TranslateText label={`Caption in ${name}`} value={b.caption} max={ALT_MAX} original={was("caption")} mainName={mainName} onChange={(caption) => set<ImageBlock>({ caption })} />
+          </div>
+        );
+      case "contentGrid":
+        return (
+          <div className="flex flex-col gap-5">
+            <p className="text-sm text-muted">
+              The tiles show each page or product in {name} by themselves. Here are the grid&apos;s own texts.
+            </p>
+            <TranslateText label={`Button text in ${name}`} value={b.buttonLabel} max={BUTTON_LABEL_MAX} original={was("buttonLabel")} mainName={mainName} onChange={(buttonLabel) => set<ContentGridBlock>({ buttonLabel })} />
+            <TranslateText label={`Text when nothing matches, in ${name}`} value={b.emptyText} max={300} original={was("emptyText")} mainName={mainName} onChange={(emptyText) => set<ContentGridBlock>({ emptyText })} />
+          </div>
+        );
+    }
+  };
+  const done = (
+    <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+      Done
+    </button>
+  );
+  return (
+    <>
+      <Modal open={Boolean(block)} onClose={onClose} title={block ? `Translate ${blockLabels[block.type].toLowerCase()}` : "Translate"} footer={done} wide>
+        {block && texts(block, original)}
+      </Modal>
+      <Modal open={Boolean(column?.link)} onClose={onClose} title="Translate the column's link" footer={done}>
+        {column?.link && (
+          <TranslateText
+            label={`Description of the link in ${name}`}
+            value={column.link.label}
+            max={200}
+            original={originalColumn?.link?.label ?? ""}
+            mainName={mainName}
+            onChange={(label) => {
+              const link = column.link && { ...column.link, label };
+              onRows((current) => patchColumn(current, column.id, { link }));
+            }}
+          />
+        )}
+      </Modal>
     </>
   );
 }

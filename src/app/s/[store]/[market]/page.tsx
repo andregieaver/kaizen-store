@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/product-card";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { pageExcerpt } from "@/lib/page-content";
+import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { storeHomeJsonLd } from "@/lib/structured-data";
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const loaded = await load(params);
   if (!loaded?.frontPage) return {};
   const { store, market } = loaded;
-  const c = loaded.frontPage.content;
+  const c = localizePage(loaded.frontPage.content, market.locale);
   const title = c.seo.title || store.seo.title[market.locale] || store.name;
   const description =
     c.seo.description ||
@@ -81,7 +82,7 @@ export default async function MarketHome({ params }: Props) {
       <>
         {jsonLd}
         <StorePageArticle
-          content={frontPage.content}
+          content={localizePage(frontPage.content, market.locale)}
           place={{ pageId: frontPage.id, owner: store.id, market: market.code }}
         />
         <PageEditLink pageId={frontPage.id} store={store.slug} />
