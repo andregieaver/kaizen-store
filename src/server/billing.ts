@@ -800,7 +800,7 @@ export async function choosePlan(
         custom_text: {
           submit: {
             message:
-              "If you do not finish, Kaizen may email you a reminder about this plan. You can turn reminders off on your Plan page or in any reminder.",
+              "If you do not finish, Kaizen may email you a reminder about this plan. You can turn reminders off on your Billing page or in any reminder.",
           },
         },
       }),

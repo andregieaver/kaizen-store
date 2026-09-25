@@ -17,7 +17,7 @@ import {
   removePlanDiscountAction,
 } from "../../actions";
 
-export const metadata: Metadata = { title: "Plan" };
+export const metadata: Metadata = { title: "Billing" };
 
 /** The store's plan with Kaizen: choose or change it, its fee per sale, and Kaizen's invoices. */
 export default async function BillingPage({ params, searchParams }: PageProps<"/admin/[store]/billing">) {
@@ -55,7 +55,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Plan</h1>
+        <h1 className="text-2xl font-semibold">Billing</h1>
         <p className="text-sm text-muted">
           What {store.name} pays Kaizen. Each store has its own plan.
         </p>

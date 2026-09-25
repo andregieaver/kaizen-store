@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { SignOutForm } from "@/components/admin/admin-trail";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
+import { OutsideStoreAdmin } from "@/components/admin/store-admin-nav";
 import { getAccount } from "@/server/auth";
 import { countPendingRequests } from "@/server/platform";
 
@@ -25,24 +26,31 @@ async function Gate({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <SessionKeeper />
-      <header className="border-b border-border bg-background">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3">
-          <Link href="/admin" className="font-semibold">
-            Kaizen
-          </Link>
-          <div className="flex items-center gap-3 text-sm">
-            {account.platformAdmin && (
-              <Link href="/admin/platform" className="underline">
-                Platform{pending > 0 ? ` (${pending} waiting)` : ""}
-              </Link>
-            )}
-            <Link href="/admin/account" className="text-muted underline" title="Your account">
-              {account.email}
+      {/* A store's admin has its own header, with the same links (D39). */}
+      <OutsideStoreAdmin>
+        <header className="border-b border-border bg-background">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3">
+            <Link href="/admin" className="font-semibold">
+              Kaizen
             </Link>
-            <SignOutForm action={signOut} />
+            <div className="flex items-center gap-3 text-sm">
+              {account.platformAdmin && (
+                <Link href="/admin/platform" className="underline">
+                  Platform{pending > 0 ? ` (${pending} waiting)` : ""}
+                </Link>
+              )}
+              <Link
+                href="/admin/account"
+                className="text-muted underline"
+                title="Your account"
+              >
+                {account.email}
+              </Link>
+              <SignOutForm action={signOut} />
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </OutsideStoreAdmin>
       {children}
     </div>
   );

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { storeBase } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { getSetupProgress } from "@/server/setup";
 import { platformModes } from "@/server/stripe";
@@ -34,12 +33,7 @@ export default async function AdminOverview({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Overview</h1>
-        <Link href={storeBase(store.slug)} className="text-sm underline">
-          View your store
-        </Link>
-      </div>
+      <h1 className="text-2xl font-semibold">Overview</h1>
       {!store.setupCompletedAt && (
         <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
           This store is not open yet. An owner can finish the setup.

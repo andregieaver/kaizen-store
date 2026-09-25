@@ -14,7 +14,7 @@ import { altTextGaps, storeSitemapPath } from "@/server/seo";
 import { saveStoreSeoAction } from "../../../actions";
 import { uploadImageAction } from "../../products/actions";
 
-export const metadata: Metadata = { title: "Search and sharing" };
+export const metadata: Metadata = { title: "SEO & Reach" };
 
 const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
@@ -37,7 +37,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Search and sharing</h1>
+        <h1 className="text-2xl font-semibold">SEO &amp; Reach</h1>
         <p className="text-sm text-muted">
           How {store.name} shows up in Google and Bing, when a link is shared, and to AI assistants such
           as ChatGPT and Claude. Kaizen fills in what it can from your products and business details;
@@ -89,7 +89,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
 
       <ActionForm
         action={saveStoreSeoAction.bind(null, store.slug)}
-        successMessage="Search and sharing saved."
+        successMessage="SEO & Reach saved."
         className="flex flex-col gap-6"
       >
         <section aria-labelledby="home-heading" className={card}>

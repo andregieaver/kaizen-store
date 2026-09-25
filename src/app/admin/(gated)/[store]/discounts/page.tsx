@@ -9,7 +9,7 @@ import { listDiscounts } from "@/server/discounts";
 
 import { deleteDiscountAction } from "./actions";
 
-export const metadata: Metadata = { title: "Discounts" };
+export const metadata: Metadata = { title: "Coupons" };
 
 const STATUS = {
   active: "Active",
@@ -32,11 +32,11 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Discounts</h1>
-          <p className="text-sm text-muted">Codes shoppers type in the cart for money off or free shipping.</p>
+          <h1 className="text-2xl font-semibold">Coupons</h1>
+          <p className="text-sm text-muted">Codes shoppers type in the cart or at checkout for money off or free shipping.</p>
         </div>
         <Link href={`${base}/new`} className="min-h-10 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background">
-          New code
+          New coupon
         </Link>
       </div>
       {discounts.length === 0 ? (

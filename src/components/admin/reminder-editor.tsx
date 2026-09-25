@@ -190,7 +190,7 @@ export function ReminderEditor({
           <p className={hint}>
             {purpose === "plan"
               ? "Shown in the email and applied to the plan when the owner follows the link. Make codes under Discounts; a code that is switched off is left out."
-              : "Shown in the email and added to the cart when the shopper follows the link. Make codes under Discounts; a code that is switched off is left out."}
+              : "Shown in the email and added to the cart when the shopper follows the link. Make codes under Coupons; a code that is switched off is left out."}
           </p>
         </section>
 

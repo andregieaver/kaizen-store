@@ -10,7 +10,7 @@ import { getDiscount } from "@/server/discounts";
 import { deleteDiscountAction } from "../actions";
 import { DiscountForm } from "../discount-form";
 
-export const metadata: Metadata = { title: "Discount code" };
+export const metadata: Metadata = { title: "Coupon" };
 
 export default async function DiscountPage({ params }: PageProps<"/admin/[store]/discounts/[discountId]">) {
   const { store: slug, discountId } = await params;
@@ -22,7 +22,7 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/discounts`} className="text-sm underline">
-          Discounts
+          Coupons
         </Link>
         <h1 className="font-mono text-2xl font-semibold">{discount.code}</h1>
         <p className="text-sm text-muted">

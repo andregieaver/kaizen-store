@@ -6,7 +6,7 @@ import { listStaff } from "@/server/settings";
 
 import { disableStaffAction, inviteStaffAction } from "../../actions";
 
-export const metadata: Metadata = { title: "Staff" };
+export const metadata: Metadata = { title: "Team" };
 
 export default async function StaffPage({ params }: PageProps<"/admin/[store]/staff">) {
   const { account, store, role } = await requireMember((await params).store);
@@ -16,7 +16,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Staff</h1>
+        <h1 className="text-2xl font-semibold">Team</h1>
         <p className="text-sm text-muted">
           People listed here can sign in with a link sent to their email. Owners manage staff and
           payment keys; admins manage everything else.
