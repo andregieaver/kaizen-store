@@ -154,6 +154,26 @@ describe("Kaizen's codes for plans (D31)", () => {
     expect((await getStoreBilling(storeId))?.discount).toBeNull();
   });
 
+  it("are recognised when the owner types one on Stripe's own page (D38)", async () => {
+    const [synced] = await db().execute<Row>(sql`
+      select s.stripe_id from commerce.stripe_sync s
+      join commerce.platform_discount_codes d on d.id::text = s.local_id
+      where s.mode = 'test' and s.kind = 'promotion_code' and d.code = ${`START${run}`}
+    `);
+    await applySubscription(
+      {
+        ...structuredClone(fake.subscription),
+        metadata: { kaizen_store_id: storeId },
+        discounts: [{ id: "di_typed", promotion_code: String(synced.stripe_id) }],
+      } as unknown as Stripe.Subscription,
+      "test",
+    );
+    const billing = await getStoreBilling(storeId);
+    expect(billing?.discount?.code).toBe(`START${run}`);
+    expect(billing?.discount?.appliedAt).not.toBeNull();
+    await applySubscription({ ...structuredClone(fake.subscription), discounts: [] } as unknown as Stripe.Subscription, "test");
+  });
+
   it("stop working when switched off, in Kaizen and in Stripe", async () => {
     const [row] = await db().execute<Row>(sql`select id from commerce.platform_discount_codes where code = ${`START${run}`}`);
     expect(await setPlatformDiscountActive(admin, String(row.id), false)).toMatchObject({ ok: true });

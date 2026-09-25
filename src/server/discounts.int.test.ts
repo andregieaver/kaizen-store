@@ -39,6 +39,8 @@ const fake = vi.hoisted(() => {
 });
 
 vi.mock("server-only", () => ({}));
+// No shopper signed in: checks at checkout run as a guest's.
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, set: () => {}, delete: () => {} }) }));
 vi.mock("./stripe", () => ({
   platformStripe: () => fake.client,
   platformModes: () => ["test"],
@@ -46,7 +48,7 @@ vi.mock("./stripe", () => ({
 }));
 
 const { cancelUnpaidOrder, placeOrder, startCheckout } = await import("./checkout");
-const { deleteDiscount, saveDiscount } = await import("./discounts");
+const { checkCodeForOrder, deleteDiscount, saveDiscount } = await import("./discounts");
 
 const run = Date.now().toString(36);
 const slug = `disc-${run}`;
@@ -240,6 +242,29 @@ describe("placing an order with a code", () => {
     `);
     expect(orders.length).toBeGreaterThan(0);
     expect(orders[0]).toEqual({ discount_code_id: null, discount_code: "SOMMER", discount_minor: "7960" });
+  });
+});
+
+describe("a code typed at checkout (D38)", () => {
+  it("is checked against the order waiting for payment, saying why it does not apply", async () => {
+    await code({ code: "KASSE10", kind: "percent", percent: "10", minSubtotals: { NO: "300" } });
+    const placed = await placeOrder({ storeId, market: no }, await cart([["DEMO-TOTE", 1, null]], null));
+    if (!placed.ok) throw new Error(placed.problem);
+    const shop = { storeId, market: no };
+    expect(await checkCodeForOrder(shop, placed.order.orderId, "finnes-ikke")).toEqual({
+      ok: false,
+      problem: "unknown",
+      minimumMinor: null,
+    });
+    // One tote (199,00) is below the code's 300,00.
+    expect(await checkCodeForOrder(shop, placed.order.orderId, "kasse10")).toEqual({
+      ok: false,
+      problem: "minimum",
+      minimumMinor: 30000,
+    });
+    const two = await placeOrder({ storeId, market: no }, await cart([["DEMO-TOTE", 2, null]], null));
+    if (!two.ok) throw new Error(two.problem);
+    expect(await checkCodeForOrder(shop, two.order.orderId, " kasse10 ")).toEqual({ ok: true, code: "KASSE10" });
   });
 });
 

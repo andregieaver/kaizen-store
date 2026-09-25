@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { requireMember } from "@/server/auth";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
-import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan } from "@/server/billing";
+import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
 
 import {
   applyPlanDiscountAction,
@@ -40,6 +40,17 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const currency = offered.some((plan) => plan.prices.some((p) => p.active && p.currency === storeCurrency))
     ? storeCurrency
     : "NOK";
+
+  // A code waiting for the plan to be chosen: the plans show what they cost with it.
+  const waiting = billing?.discount && !billing.discount.appliedAt ? billing.discount : null;
+  const codeField = (
+    <PlanDiscount
+      discount={billing?.discount ?? null}
+      apply={applyPlanDiscountAction.bind(null, store.slug)}
+      remove={removePlanDiscountAction.bind(null, store.slug)}
+      canEdit={isOwner}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -77,14 +88,8 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         {mode === "test" && <p className="mt-3 text-muted">Kaizen is in test mode: no real money is charged.</p>}
       </section>
 
-      {mode && (isOwner || billing?.discount) && (
-        <PlanDiscount
-          discount={billing?.discount ?? null}
-          apply={applyPlanDiscountAction.bind(null, store.slug)}
-          remove={removePlanDiscountAction.bind(null, store.slug)}
-          canEdit={isOwner}
-        />
-      )}
+      {/* On a running plan a code applies at once; otherwise it goes with the plan chosen below (D38). */}
+      {mode && onPlan && (isOwner || billing?.discount) && codeField}
 
       {offered.length > 0 && mode && (
         <section aria-labelledby="plans-heading" className="flex flex-col gap-4">
@@ -100,6 +105,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
             </p>
             {!isOwner && <p className="text-sm text-muted">Only an owner of the store can change its plan.</p>}
           </div>
+          {!onPlan && (isOwner || billing?.discount) && codeField}
           {!onPlan && isOwner && reminders && (
             <form action={planRemindersOptOutAction.bind(null, store.slug, !optedOut)} className="text-sm text-muted">
               {optedOut
@@ -120,6 +126,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
                   currentPosition={onPlan ? current?.position ?? null : null}
                   storeSlug={store.slug}
                   disabled={!isOwner}
+                  discount={onPlan ? null : waiting}
                 />
               </li>
             ))}
@@ -164,6 +171,7 @@ function PlanCard({
   currentPosition,
   storeSlug,
   disabled,
+  discount,
 }: {
   plan: Plan;
   currency: string;
@@ -171,6 +179,8 @@ function PlanCard({
   currentPosition: number | null;
   storeSlug: string;
   disabled: boolean;
+  /** A code waiting for the plan to be chosen (D38). */
+  discount: NonNullable<StoreBilling["discount"]> | null;
 }) {
   const monthly = plan.prices.find((p) => p.active && p.currency === currency && p.interval === "month");
   const yearly = plan.prices.find((p) => p.active && p.currency === currency && p.interval === "year");
@@ -213,6 +223,9 @@ function PlanCard({
             or {formatMoney(yearly.amountMinor, currency, "nb-NO")} / year{saving > 0 ? ` (save ${saving} %)` : ""}
           </p>
         )}
+        {discount && (monthly || yearly) && (
+          <WithCode discount={discount} currency={currency} monthly={monthly?.amountMinor} yearly={yearly?.amountMinor} />
+        )}
         <p className="mt-2">{formatBps(plan.saleFeeBps)} Kaizen fee per sale</p>
       </div>
       <ActionForm action={choosePlanAction.bind(null, storeSlug)} className="mt-auto flex flex-col gap-2">
@@ -220,5 +233,41 @@ function PlanCard({
         {button(monthly, "monthly")}
       </ActionForm>
     </article>
+  );
+}
+
+/** What a plan costs with the code waiting for it, and for how long. */
+function WithCode({
+  discount,
+  currency,
+  monthly,
+  yearly,
+}: {
+  discount: NonNullable<StoreBilling["discount"]>;
+  currency: string;
+  monthly: number | undefined;
+  yearly: number | undefined;
+}) {
+  const off = (minor: number) =>
+    discount.kind === "percent"
+      ? Math.round((minor * (100 - discount.percent)) / 100)
+      : Math.max(0, minor - (discount.amounts[currency.toLowerCase()] ?? minor));
+  // A fixed amount in another currency does not apply to this price.
+  if (discount.kind === "fixed" && discount.amounts[currency.toLowerCase()] === undefined) return null;
+  const how =
+    discount.duration === "once"
+      ? "on the first payment"
+      : discount.duration === "repeating"
+        ? `for ${discount.durationMonths} ${discount.durationMonths === 1 ? "month" : "months"}`
+        : "for as long as the plan runs";
+  const price = (minor: number) => formatMoney(off(minor), currency, "nb-NO");
+  return (
+    <p className="mt-2 rounded-md bg-surface px-2 py-1">
+      With <span className="font-mono font-medium">{discount.code}</span>:{" "}
+      {[monthly !== undefined && `${price(monthly)} / month`, yearly !== undefined && `${price(yearly)} / year`]
+        .filter(Boolean)
+        .join(" or ")}
+      , {how}
+    </p>
   );
 }

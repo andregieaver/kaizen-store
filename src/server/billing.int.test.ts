@@ -503,7 +503,10 @@ describe("owners choosing their own plan", () => {
       subscription_data: { metadata: { kaizen_store_id: ownerStore, kaizen_price_id: price?.id } },
       success_url: `https://kaizen.test/admin/${ownerSlug}/billing?checkout={CHECKOUT_SESSION_ID}`,
       custom_text: { submit: { message: expect.stringContaining("Kaizen may email you a reminder") } },
+      // No code saved on the Plan page: Stripe's page has a field for one (D38).
+      allow_promotion_codes: true,
     });
+    expect(params).not.toHaveProperty("discounts");
     // Nothing is recorded until the owner has paid.
     expect((await billing.getStoreBilling(ownerStore))?.status).toBeNull();
     const [kept] = await db().execute<Row>(sql`

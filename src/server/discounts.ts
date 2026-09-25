@@ -285,6 +285,47 @@ export async function previewCartDiscount(
     : { code, ok: false, problem: result.problem, minimumMinor: found.discount.minSubtotals[shop.market.code] ?? null };
 }
 
+/**
+ * Whether a code the shopper types at checkout would apply to the order
+ * waiting for payment, checked as placing the order will (D31, D38): the
+ * order is only placed again once it does, so a code that does not work
+ * never costs the shopper their checkout.
+ */
+export async function checkCodeForOrder(
+  shop: Shop,
+  orderId: string,
+  text: string,
+): Promise<{ ok: true; code: string } | { ok: false; problem: DiscountProblem; minimumMinor: number | null }> {
+  const customer = await getCustomer(shop.storeId);
+  const found = await findUsableDiscount(db(), shop.storeId, text, { market: shop.market, customerId: customer?.id ?? null });
+  if (!found.ok) return { ok: false, problem: found.problem, minimumMinor: null };
+  const [order] = await db().execute<Row>(sql`
+    select shipping_minor from commerce.orders where store_id = ${shop.storeId}::uuid and id = ${orderId}::uuid
+  `);
+  const lines = await db().execute<Row>(sql`
+    select ol.id, v.product_id, ol.unit_price_minor, ol.quantity, ol.selling_plan_id is not null as recurring
+    from commerce.order_lines ol
+    join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
+    where ol.store_id = ${shop.storeId}::uuid and ol.order_id = ${orderId}::uuid
+  `);
+  if (!order) return { ok: false, problem: "not_applicable", minimumMinor: null };
+  const result = applyDiscount(found.discount, {
+    marketCode: shop.market.code,
+    lines: lines.map((line) => ({
+      key: String(line.id),
+      productId: String(line.product_id),
+      unitMinor: Number(line.unit_price_minor),
+      quantity: Number(line.quantity),
+      todayMinor: Number(line.unit_price_minor) * Number(line.quantity),
+      recurring: Boolean(line.recurring),
+    })),
+    shippingMinor: Number(order.shipping_minor),
+  });
+  return result.ok
+    ? { ok: true, code: found.discount.code }
+    : { ok: false, problem: result.problem, minimumMinor: found.discount.minSubtotals[shop.market.code] ?? null };
+}
+
 /** The store's products to choose from, by title in the store's first language. */
 export async function listProductChoices(storeId: string, locale: string): Promise<{ id: string; title: string }[]> {
   const rows = await db().execute<Row>(sql`

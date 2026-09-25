@@ -446,6 +446,39 @@ export async function storeFeeBps(storeId: string): Promise<number> {
 }
 
 /**
+ * Kaizen's code an owner typed on Stripe's payment page (D38): Stripe
+ * reports only its own promotion code, which Kaizen made from the code.
+ * Events name a subscription's discounts by id, so Stripe is asked for them.
+ */
+async function codeTypedAtStripe(subscription: Stripe.Subscription, mode: PaymentModeName): Promise<string | null> {
+  const promotionOf = (discount: string | Stripe.Discount) =>
+    typeof discount === "string"
+      ? null
+      : typeof discount.promotion_code === "string"
+        ? discount.promotion_code
+        : (discount.promotion_code?.id ?? null);
+  let promotions = (subscription.discounts ?? []).map(promotionOf);
+  if (promotions.length > 0 && promotions.every((id) => id === null)) {
+    const stripe = platformStripe(mode);
+    if (!stripe) return null;
+    try {
+      const full = await stripe.subscriptions.retrieve(subscription.id, { expand: ["discounts"] });
+      promotions = (full.discounts ?? []).map(promotionOf);
+    } catch {
+      return null;
+    }
+  }
+  const ids = promotions.filter((id): id is string => id !== null);
+  if (ids.length === 0) return null;
+  const [row] = await db().execute<Row>(sql`
+    select local_id from commerce.stripe_sync
+    where mode = ${mode} and kind = 'promotion_code' and stripe_id in (${sql.join(ids.map((id) => sql`${id}`), sql`, `)})
+    limit 1
+  `);
+  return row ? String(row.local_id) : null;
+}
+
+/**
  * Records a subscription as Stripe reports it. An event about an older,
  * cancelled subscription never replaces the store's current one.
  */
@@ -475,8 +508,9 @@ export async function applySubscription(
   // Kaizen's code on the plan (D31): set when a code was applied, and gone
   // once Stripe no longer gives the discount. A code still waiting for a
   // plan to be chosen is left alone.
-  const discountId = subscription.metadata?.kaizen_discount_id || null;
   const hasDiscounts = Array.isArray(subscription.discounts) ? subscription.discounts.length > 0 : null;
+  const discountId =
+    subscription.metadata?.kaizen_discount_id || (hasDiscounts ? await codeTypedAtStripe(subscription, mode) : null);
   const applies = discountId !== null && hasDiscounts !== false;
 
   await db().execute(sql`
@@ -772,7 +806,8 @@ export async function choosePlan(
       }),
       customer_account: p.accountId,
       line_items: [{ price: p.stripePrice, quantity: 1, ...(vatRates.length > 0 && { tax_rates: vatRates }) }],
-      ...(waiting.promotionCode && { discounts: [{ promotion_code: waiting.promotionCode }] }),
+      // A code saved on the Plan page goes along; without one, Stripe's page has a field for Kaizen's codes (D38).
+      ...(waiting.promotionCode ? { discounts: [{ promotion_code: waiting.promotionCode }] } : { allow_promotion_codes: true }),
       subscription_data: {
         description: `Kaizen ${p.price.planName}: ${p.store.name}`,
         metadata: { ...p.metadata, ...waiting.metadata },

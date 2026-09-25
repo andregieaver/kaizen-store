@@ -1,11 +1,19 @@
 "use server";
 
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { t } from "@/lib/i18n";
+import { formatMoney } from "@/lib/money";
+import { marketPath } from "@/lib/paths";
+import { siteUrl } from "@/lib/site";
 import { readCartId } from "@/server/cart";
 import { captureCheckout, setCheckoutOptOut } from "@/server/cart-reminders";
-import { getOpenCheckout } from "@/server/checkout";
+import { getOpenCheckout, startCheckout } from "@/server/checkout";
 import { getCustomer } from "@/server/customers";
+import { checkCodeForOrder, setCartCode } from "@/server/discounts";
 import { resolveShop } from "@/server/shop";
 
 const email = z.email().max(254);
@@ -48,4 +56,66 @@ export async function checkoutRemindersAction(
     await captureCheckout(found.shop.store.id, found.shop.market, found.cartId, found.orderId, address.data);
   }
   return { optedOut: optOut };
+}
+
+/** Why the code typed did not apply, and the code, to show it again. */
+export type CheckoutCodeState = { problem: string | null; tried: string };
+
+/**
+ * A discount code typed at checkout, or the code taken off (D38). A code is
+ * checked against the order first and, if it does not apply, the shopper is
+ * told why and the checkout stays as it was. When it does, it goes on the
+ * cart and the order is placed again at the new price, with the consent to
+ * downloads the shopper already gave. An order that starts a subscription
+ * is placed again only once the shopper agrees to its new renewal price.
+ */
+export async function checkoutCodeAction(
+  storeSlug: string,
+  marketSlug: string,
+  _state: CheckoutCodeState,
+  form: FormData,
+): Promise<CheckoutCodeState> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return { problem: null, tried: "" };
+  const m = t(shop.market.lang);
+  const cartShop = { storeId: shop.store.id, market: shop.market };
+  const cartId = await readCartId(cartShop);
+  const open = cartId ? await getOpenCheckout(shop.store.id, cartId) : null;
+  if (!cartId || !open) {
+    refresh();
+    return { problem: null, tried: "" };
+  }
+
+  const removing = form.get("intent") === "remove";
+  const text = String(form.get("code") ?? "").slice(0, 60);
+  if (!removing) {
+    if (!text.trim()) return { problem: null, tried: "" };
+    const check = await checkCodeForOrder(cartShop, open.orderId, text);
+    if (!check.ok) {
+      return {
+        problem:
+          check.problem === "minimum" && check.minimumMinor
+            ? `${m.minimumFor} ${formatMoney(check.minimumMinor, shop.market.currency, shop.market.locale)}.`
+            : m.codeProblems[check.problem],
+        tried: text,
+      };
+    }
+  }
+  await setCartCode(cartShop, removing ? null : text);
+  if (open.subscription) {
+    refresh();
+    return { problem: null, tried: "" };
+  }
+
+  const header = (await headers()).get("origin");
+  const result = await startCheckout(
+    { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
+    cartId,
+    header ? new URL(header).origin : siteUrl(),
+    m.shipping,
+    { digital: open.digital, subscription: false },
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null },
+  );
+  // On a problem (stock ran out meanwhile, ...) the cart says what.
+  redirect(result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart"));
 }

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import { CheckoutButton } from "@/components/checkout-button";
+import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { checkoutLabels } from "@/lib/checkout-labels";
@@ -15,6 +16,7 @@ import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
 import { getCustomer } from "@/server/customers";
+import { getCartCode } from "@/server/discounts";
 import { getOrder, type OrderView } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
 import { platformPublishableKey } from "@/server/stripe";
@@ -56,7 +58,11 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!open || !order) redirect(`${base}/cart`);
   const publishableKey = platformPublishableKey(open.mode);
-  const [customer, reminders] = await Promise.all([getCustomer(store.id), cartRemindersOn(store.id)]);
+  const [customer, reminders, cartCode] = await Promise.all([
+    getCustomer(store.id),
+    cartRemindersOn(store.id),
+    getCartCode({ storeId: store.id, market }),
+  ]);
   const optedOut = reminders && !customer ? await checkoutOptedOut(store.id, cartId!) : false;
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const restart = open.expired || open.changed || !publishableKey;
@@ -74,6 +80,20 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
                 money(open.subscription.totalMinor),
               )
             : null
+        }
+        code={
+          <CheckoutCodeForm
+            store={store.slug}
+            market={market.slug}
+            code={cartCode}
+            labels={{
+              label: m.haveCode,
+              code: m.discountCode,
+              apply: m.applyCode,
+              remove: m.removeCode,
+              applying: m.savingChange,
+            }}
+          />
         }
       />
       <div className="flex flex-col gap-6 md:order-first">
@@ -172,12 +192,15 @@ function Summary({
   m,
   money,
   renewal,
+  code,
 }: {
   order: OrderView;
   m: Messages;
   money: (minor: number) => string;
   /** A subscription's terms, repeated where the shopper pays (D25). */
   renewal: string | null;
+  /** The field for a discount code (D38). */
+  code: ReactNode;
 }) {
   return (
     <section aria-labelledby="summary-heading" className="rounded-lg border border-border p-4 md:sticky md:top-4">
@@ -194,6 +217,7 @@ function Summary({
           </li>
         ))}
       </ul>
+      <div className="mt-3 border-t border-border pt-3">{code}</div>
       <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-sm">
         <div className="flex justify-between">
           <dt>{m.subtotal}</dt>
