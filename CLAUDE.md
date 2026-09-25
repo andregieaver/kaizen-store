@@ -56,7 +56,7 @@ of running `playwright install`.
 ## Storefront
 
 - Kaizen is multi-tenant (`docs/platform.md`). `/` is the platform's home
-  page; each store lives at `/s/{store}`, a country chooser that suggests but
+  page, and Kaizen's own pages (D42) live at `/{page}`; each store lives at `/s/{store}`, a country chooser that suggests but
   never redirects (unless the store has one market), and `/s/{store}/{market}`
   (`no`, `se`, `dk`, …), each market its own root layout with its own
   `<html lang>`. Build links with `marketPath()` / `storeBase()` from
@@ -159,6 +159,20 @@ of running `playwright install`.
   (`choosePlan()`: Stripe Checkout for the first plan, an instant prorated
   change after; `completePlanCheckout()` records it on return), and create
   more stores at `/admin/stores` (`createStoreForOwner()`, decision D19).
+- Pages (`/admin/platform/pages`, decision D42): `PageEditor` holds the whole
+  page (title, address, picture, search texts, search/AI switches, blocks)
+  and sends it as JSON to `savePageAction`, checked by `pageInput`
+  (`src/lib/page-content.ts`, shared with the browser). Blocks are rich text
+  for now: Tiptap JSON, cleaned by `cleanRichText()` and rendered by
+  `<RichText>` as elements, never as HTML. `savePage()` keeps a draft
+  (`pages.draft`); publishing copies it to `pages.published`. A published
+  page's address moves only on publish, and the database leaves a redirect
+  (`page_redirects`). Publishing, unpublishing and deleting call
+  `updateTag(PAGES_TAG)`. New block kinds go in `PageBlock` and `pageInput`.
+- Kaizen's own header and footer (`/admin/platform/navigation`) use the
+  store's `NavigationEditor` with platform link kinds (`PlatformMenuLink`: a
+  page by id, home, sign-up, sign-in, a web address) and business details;
+  `getPlatformChrome()` feeds `src/components/platform-layout.tsx`.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

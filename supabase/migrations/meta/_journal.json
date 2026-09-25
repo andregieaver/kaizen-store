@@ -379,6 +379,20 @@
       "when": 1790336514249,
       "tag": "20260925114154_integrations_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1790340709640,
+      "tag": "20260925125149_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1790340711042,
+      "tag": "20260925125151_pages_rules",
+      "breakpoints": true
     }
   ]
 }

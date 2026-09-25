@@ -340,6 +340,10 @@ export const platformSettings = commerce.table(
     checkoutUi: text("checkout_ui").notNull().default("custom"),
     /** Reminders to store owners who started paying for a plan and did not finish (D33). */
     planReminders: boolean("plan_reminders").notNull().default(false),
+    /** Kaizen's own header and footer (D42): logo and menus. Shape: `PlatformNavigation` in lib/navigation. */
+    navigation: jsonb("navigation").notNull().default({}),
+    /** Who runs Kaizen, shown in the footer of its pages (D42): `BusinessDetails` in lib/navigation. */
+    business: jsonb("business").notNull().default({}),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -2344,5 +2348,66 @@ export const wishlistCartAdds = commerce.table(
     index("wishlist_cart_adds_product_idx").on(t.storeId, t.productId),
     index("wishlist_cart_adds_variant_idx").on(t.storeId, t.variantId),
     check("wishlist_cart_adds_quantity", sql`${t.quantity} > 0`),
+  ],
+);
+
+/**
+ * A page built from blocks (D42): for now Kaizen's own pages, served at
+ * `/{slug}` (`store_id` null); stores' pages will share the table. `draft`
+ * is the working copy the editor saves; `published` is what visitors see,
+ * copied from the draft on publishing, so a published page can be edited
+ * without changing it. `slug` is the address in use: the live one once
+ * published, else the draft's. Shape and checks: `PageContent` in
+ * lib/page-content.
+ */
+export const pages = commerce.table(
+  "pages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizen's own pages. */
+    storeId: uuid("store_id").references(() => stores.id),
+    slug: text("slug").notNull(),
+    draft: jsonb("draft").notNull(),
+    published: jsonb("published"),
+    /** When it was last published; null while it is not public. */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("pages_store_slug_key").on(t.storeId, t.slug).nullsNotDistinct(),
+    index("pages_created_by_idx").on(t.createdBy),
+    index("pages_updated_by_idx").on(t.updatedBy),
+    check("pages_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),
+    // The platform's own routes at the root of the site.
+    check(
+      "pages_slug_not_reserved",
+      sql`${t.storeId} is not null or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'unsubscribe', 'www')`,
+    ),
+    check("pages_published_together", sql`(${t.published} is null) = (${t.publishedAt} is null)`),
+  ],
+);
+
+/**
+ * An address a published page had before its slug changed (D42): visiting
+ * it redirects permanently to the page's address now. A page taking the
+ * address later replaces the redirect.
+ */
+export const pageRedirects = commerce.table(
+  "page_redirects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id),
+    slug: text("slug").notNull(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => pages.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("page_redirects_store_slug_key").on(t.storeId, t.slug).nullsNotDistinct(),
+    index("page_redirects_page_idx").on(t.pageId),
   ],
 );

@@ -25,7 +25,7 @@ test("anyone can ask for a store, and the form does not reveal repeat requests",
 
 test("the home page leads to sign-up", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Start your store" }).click();
+  await page.getByRole("main").getByRole("link", { name: "Start your store" }).click();
   await expect(page).toHaveURL("/sign-up");
   await expect(page.getByRole("heading", { level: 1, name: "Start your store" })).toBeVisible();
 });

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Plan reminders", robots: { index: fa
 /** Stopping Kaizen's reminders about plans (D33): a button, so mail scanners unsubscribe no one. */
 export default function UnsubscribePage({ params, searchParams }: Props) {
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-16">
+    <main id="main" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-16">
       <h1 className="text-3xl font-semibold tracking-tight">Plan reminders</h1>
       <Suspense fallback={<div className="h-24 animate-pulse rounded-lg bg-surface" />}>
         <Unsubscribe params={params} searchParams={searchParams} />

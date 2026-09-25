@@ -14,7 +14,7 @@ export const metadata: Metadata = { alternates: { canonical: "/" } };
 export default async function Home() {
   const [demo, seo] = await Promise.all([templateStoreSlug(), getPlatformSeo()]);
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">
+    <main id="main" className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">
       <JsonLdScript
         data={platformJsonLd({
           origin: siteUrl(),

@@ -38,7 +38,13 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
       <NavigationEditor
         initial={store.navigation}
         languages={languages}
-        products={products}
+        targets={{
+          product: products.map((p) => ({
+            value: p.handle,
+            title: p.title,
+            note: p.status === "draft" ? "draft" : undefined,
+          })),
+        }}
         upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
         save={saveNavigationAction.bind(null, store.slug)}
         previewHref={home ? marketPath(store.slug, home.slug) : "/"}

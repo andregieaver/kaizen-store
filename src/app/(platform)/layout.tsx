@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
+import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
+import { getPlatformChrome } from "@/server/platform-navigation";
 import { getPlatformSeo, PLATFORM_DEFAULTS, verificationTags } from "@/server/seo";
 
 import "../globals.css";
@@ -22,10 +26,30 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function PlatformLayout({ children }: LayoutProps<"/">) {
+/** Kaizen's own pages, with its header and footer (D42), built like a store's. */
+export default async function PlatformLayout({ children }: LayoutProps<"/">) {
+  const chrome = await getPlatformChrome();
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
+      <body className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
+        >
+          {t("en").skipToContent}
+        </a>
+        <PlatformHeader chrome={chrome} />
+        {children}
+        <PlatformFooter chrome={chrome} />
+        {/* Phone enhancements, each in its own boundary, as in the storefront (D30). */}
+        <Suspense fallback={null}>
+          <PlatformBottomBar />
+        </Suspense>
+        <Suspense fallback={null}>
+          <PlatformMenu chrome={chrome} />
+        </Suspense>
+      </body>
     </html>
   );
 }

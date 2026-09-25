@@ -312,3 +312,34 @@ export function platformJsonLd({
     ],
   };
 }
+
+/** One of Kaizen's pages (D42): a `WebPage` on Kaizen's site, by Kaizen. */
+export function pageJsonLd({
+  origin,
+  url,
+  title,
+  description,
+  image,
+  publishedAt,
+}: {
+  origin: string;
+  url: string;
+  title: string;
+  description: string;
+  image: string | null;
+  publishedAt: string;
+}): JsonLd {
+  return {
+    "@context": SCHEMA,
+    "@type": "WebPage",
+    "@id": url,
+    url,
+    name: title,
+    description,
+    inLanguage: "en",
+    dateModified: publishedAt,
+    ...(image && { primaryImageOfPage: { "@type": "ImageObject", url: absoluteUrl(image, origin) } }),
+    isPartOf: { "@id": `${origin}/#website` },
+    publisher: { "@id": `${origin}/#organization` },
+  };
+}

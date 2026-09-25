@@ -921,6 +921,79 @@ describe("paying for an order", () => {
   });
 });
 
+describe("pages", () => {
+  const draft = JSON.stringify({ title: "About" });
+  const page = (slug: string, storeId: string | null = null) =>
+    one<{ id: string }>(
+      "insert into commerce.pages (store_id, slug, draft) values ($1, $2, $3) returning id",
+      [storeId, slug, draft],
+    );
+  const redirects = async (slug: string) =>
+    (await db.query<{ page_id: string }>("select page_id from commerce.page_redirects where store_id is null and slug = $1", [slug])).rows;
+  const publish = (id: string) =>
+    db.query("update commerce.pages set published = draft, published_at = now() where id = $1", [id]);
+
+  it("gives each address to one page, per store and on the platform", async () => {
+    await page("about-us");
+    await expect(page("about-us")).rejects.toThrow(/pages_store_slug_key/);
+    // A store's page may share a platform page's address.
+    await expect(page("about-us", store)).resolves.toBeDefined();
+  });
+
+  it("refuses badly formed addresses and the platform's own routes", async () => {
+    for (const slug of ["About", "a--b", "-a", "a b", "x".repeat(81)]) {
+      await expect(page(slug)).rejects.toThrow(/pages_slug_format/);
+    }
+    for (const slug of ["admin", "s", "sign-up", "api", "unsubscribe"]) {
+      await expect(page(slug)).rejects.toThrow(/pages_slug_not_reserved/);
+    }
+    await expect(page("admin", store)).resolves.toBeDefined();
+  });
+
+  it("keeps the published copy and its date together", async () => {
+    const { id } = await page("together");
+    await expect(
+      db.query("update commerce.pages set published = draft where id = $1", [id]),
+    ).rejects.toThrow(/pages_published_together/);
+  });
+
+  it("redirects a published page's old address, and a page taking it replaces the redirect", async () => {
+    const { id } = await page("old-name");
+    // Not published yet: nobody knows the address, so no redirect.
+    await db.query("update commerce.pages set slug = 'first-name' where id = $1", [id]);
+    expect(await redirects("old-name")).toEqual([]);
+
+    await publish(id);
+    await db.query("update commerce.pages set slug = 'new-name' where id = $1", [id]);
+    expect(await redirects("first-name")).toEqual([{ page_id: id }]);
+
+    // Moving back takes the address again; the old redirect goes.
+    await db.query("update commerce.pages set slug = 'first-name' where id = $1", [id]);
+    expect(await redirects("first-name")).toEqual([]);
+    expect(await redirects("new-name")).toEqual([{ page_id: id }]);
+
+    // Another page taking an old address replaces its redirect.
+    await page("new-name");
+    expect(await redirects("new-name")).toEqual([]);
+  });
+
+  it("never lets a redirect shadow a page's address", async () => {
+    const { id } = await page("shadowed");
+    await expect(
+      db.query("insert into commerce.page_redirects (slug, page_id) values ('shadowed', $1)", [id]),
+    ).rejects.toThrow(/in use/);
+  });
+
+  it("removes a page's redirects with the page", async () => {
+    const { id } = await page("gone-soon");
+    await publish(id);
+    await db.query("update commerce.pages set slug = 'gone-later' where id = $1", [id]);
+    expect(await redirects("gone-soon")).toHaveLength(1);
+    await db.query("delete from commerce.pages where id = $1", [id]);
+    expect(await redirects("gone-soon")).toEqual([]);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

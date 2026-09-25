@@ -16,7 +16,7 @@ const control = "min-h-11 rounded-md border border-border bg-background px-3 fon
 
 export default function SignUpPage() {
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
+    <main id="main" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Start your store</h1>
         <p className="mt-2 text-muted">

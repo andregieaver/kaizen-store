@@ -10,7 +10,10 @@ import { t } from "@/lib/i18n";
 import { toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeBase } from "@/lib/paths";
+import { pageExcerpt } from "@/lib/page-content";
 import {
+  AI_ASSISTANT_BOTS,
+  AI_TRAINING_BOTS,
   absoluteUrl,
   addRules,
   mergeGroups,
@@ -29,6 +32,7 @@ import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
+import { listPublishedPages } from "./pages";
 import type { SaveResult } from "./settings";
 import { getOpenStore, type Store } from "./stores";
 
@@ -301,12 +305,19 @@ export const storeSitemapPath = (slug: string) => `${storeBase(slug)}/store-site
 /** Kaizen's own pages that are not for crawlers. */
 const PLATFORM_PRIVATE = ["/admin", "/api/", "/auth/"];
 
-/** The robots.txt for the whole site: Kaizen's rules, then each open store's under its address. */
+/**
+ * The robots.txt for the whole site: Kaizen's rules (with its pages closed
+ * to AI crawlers where the page says so, D42), then each open store's
+ * under its address.
+ */
 export async function siteRobots(): Promise<string> {
-  const [platform, stores] = await Promise.all([getPlatformSeo(), listPublicStores()]);
+  const [platform, stores, pages] = await Promise.all([getPlatformSeo(), listPublicStores(), listPublishedPages()]);
   const parsed = parseRobotsRules(platform.robots, { sitemaps: true });
   const groups = parsed.groups;
   addRules(groups, ["*"], PLATFORM_PRIVATE.map((path) => ({ allow: false, path })));
+  // `$` ends the path, so closing /about leaves /about-us open.
+  const closed = pages.filter((page) => !page.content.aiAssistants).map((page) => ({ allow: false, path: `/${page.slug}$` }));
+  if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
   for (const store of stores) mergeGroups(groups, storeRobotsGroups(store.seo, storeBase(store.slug)));
   return renderRobots(groups, [`${siteUrl()}/sitemap.xml`, ...parsed.sitemaps]);
 }
@@ -335,10 +346,22 @@ export async function sitemapIndex(): Promise<string> {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</sitemapindex>\n`;
 }
 
-export function platformSitemap(): string {
+/** Kaizen's own pages: the front page, sign-up and every published page open to search engines (D42). */
+export async function platformSitemap(): Promise<string> {
   const origin = siteUrl();
-  const urls = ["/", "/sign-up"].map((path) => `<url><loc>${origin}${path}</loc></url>`);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+  const pages = (await listPublishedPages()).filter((page) => page.content.searchEngines);
+  const urls = [
+    ...["/", "/sign-up"].map((path) => `<url><loc>${origin}${path}</loc></url>`),
+    ...pages.map(
+      (page) =>
+        `<url><loc>${xml(`${origin}/${page.slug}`)}</loc><lastmod>${page.publishedAt}</lastmod>${
+          page.content.thumbnail
+            ? `<image:image><image:loc>${xml(absoluteUrl(page.content.thumbnail.url, origin))}</image:loc></image:image>`
+            : ""
+        }</url>`,
+    ),
+  ];
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
 /**
@@ -391,10 +414,10 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
 }
 
-/** Kaizen's llms.txt: what Kaizen is, and where each open store's own llms.txt is. */
+/** Kaizen's llms.txt: what Kaizen is, its pages open to AI assistants (D42), and where each open store's own llms.txt is. */
 export async function platformLlms(): Promise<string> {
   const origin = siteUrl();
-  const [seo, stores] = await Promise.all([getPlatformSeo(), listPublicStores()]);
+  const [seo, stores, pages] = await Promise.all([getPlatformSeo(), listPublicStores(), listPublishedPages()]);
   return renderLlms({
     name: seo.title.en || PLATFORM_DEFAULTS.title,
     summary: seo.description.en || PLATFORM_DEFAULTS.description,
@@ -408,6 +431,16 @@ export async function platformLlms(): Promise<string> {
             title: store.name,
             url: `${origin}${storeBase(store.slug)}/llms.txt`,
             note: `sells to ${store.markets.map((m) => m.name).join(", ")}`,
+          })),
+      },
+      {
+        heading: "Pages",
+        links: pages
+          .filter((page) => page.content.aiAssistants)
+          .map((page) => ({
+            title: page.content.title,
+            url: `${origin}/${page.slug}`,
+            note: page.content.seo.description || pageExcerpt(page.content, 200),
           })),
       },
       {

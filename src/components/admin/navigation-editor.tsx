@@ -6,58 +6,116 @@ import { shrinkImage } from "@/lib/image-resize";
 import {
   LABEL_MAX,
   MENU_LIMITS,
-  type LinkKind,
+  type AnyLinkKind,
+  type AnyMenuItem,
+  type AnyMenuLink,
+  type BusinessDetails,
   type Logo,
-  type MenuItem,
-  type MenuLink,
   type MenuName,
-  type StoreNavigation,
 } from "@/lib/navigation";
 
 type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
-type Save = (input: StoreNavigation) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
-type Language = { locale: string; name: string; defaults: { home: string; account: string; cart: string } };
-type Product = { handle: string; title: string; status: string };
+type Navigation = { logo: Logo | null; header: AnyMenuItem[]; footer: AnyMenuItem[] };
+type Save = (
+  input: Navigation & { business?: BusinessDetails },
+) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
+/** A language's built-in texts for links to Kaizen's own pages (the front page, the cart, …). */
+type Language = { locale: string; name: string; defaults: Partial<Record<AnyLinkKind, string>> };
+/** Something a link can point at: a product (by handle) or a page (by id). */
+type Target = { value: string; title: string; note?: string };
+type Targets = { product?: Target[]; page?: Target[] };
 
 /** Items carry a key while edited, so React keeps each row's inputs as rows move. */
-type Row = MenuItem & { key: string };
+type Row = AnyMenuItem & { key: string };
+
+/** What the page says around the menus: the store's words, or Kaizen's. */
+export type NavigationCopy = {
+  logo: string;
+  header: string;
+  footer: string;
+  saved: string;
+  view: string;
+  urlHint: string;
+  urlPlaceholder: string;
+};
+
+export const STORE_COPY: NavigationCopy = {
+  logo: "Shown in the header instead of the store's name, up to 40 pixels high. A wide PNG with a transparent background works best. Without a logo, the header shows the name.",
+  header:
+    "Across the top on computers, and in the slide-out menu on phones. The cart, My account and the country choice are always there, so they need no link here.",
+  footer: "At the bottom of every page, beside your business details, which the law requires and Kaizen always shows.",
+  saved: "Saved. Your store shows it now.",
+  view: "View the store",
+  urlHint: "A full address opens that site; one starting with / is a page in your store.",
+  urlPlaceholder: "https://… or /p/product-name",
+};
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
 const small = "min-h-10 rounded-md border border-border px-3 text-sm disabled:opacity-40";
 
-const KIND_LABELS: Record<LinkKind, string> = {
-  home: "Front page (all products)",
-  product: "A product",
-  account: "My account",
-  cart: "Cart",
-  url: "Web address",
-};
+/** The link kinds a store's menus offer. */
+export const STORE_KINDS: { kind: AnyLinkKind; label: string }[] = [
+  { kind: "home", label: "Front page (all products)" },
+  { kind: "product", label: "A product" },
+  { kind: "account", label: "My account" },
+  { kind: "cart", label: "Cart" },
+  { kind: "url", label: "Web address" },
+];
 
 let counter = 0;
-const keyed = (item: MenuItem): Row => ({ ...item, key: `row-${++counter}` });
+const keyed = (item: AnyMenuItem): Row => ({ ...item, key: `row-${++counter}` });
+
+/** The link a new row, or a row switched to `kind`, starts with. */
+function linkFor(kind: AnyLinkKind, targets: Targets): AnyMenuLink {
+  switch (kind) {
+    case "product":
+      return { kind, handle: targets.product?.[0]?.value ?? "" };
+    case "page":
+      return { kind, pageId: targets.page?.[0]?.value ?? "" };
+    case "url":
+      return { kind, url: "" };
+    default:
+      return { kind };
+  }
+}
+
+/** The page or product a link points at, if the link has one. */
+function targetOf(link: AnyMenuLink): { kind: "product" | "page"; value: string } | null {
+  if (link.kind === "product") return { kind: "product", value: link.handle };
+  if (link.kind === "page") return { kind: "page", value: link.pageId };
+  return null;
+}
 
 /**
- * The storefront's logo and its two menus (D30). Changes stay in the page
- * until saved; every storefront page shows them straight after.
+ * A logo and two menus: a store's (D30) or Kaizen's own (D42). Changes stay
+ * in the page until saved; every page shows them straight after.
  */
 export function NavigationEditor({
   initial,
   languages,
-  products,
+  kinds = STORE_KINDS,
+  targets,
+  copy = STORE_COPY,
+  business,
   upload,
   save,
   previewHref,
 }: {
-  initial: StoreNavigation;
+  initial: Navigation;
   languages: Language[];
-  products: Product[];
+  kinds?: { kind: AnyLinkKind; label: string }[];
+  targets: Targets;
+  copy?: NavigationCopy;
+  /** Who runs the site, edited with the menus when given (Kaizen's footer). */
+  business?: BusinessDetails;
   upload: Upload | null;
   save: Save;
   previewHref: string;
 }) {
   const [logo, setLogo] = useState<Logo | null>(initial.logo);
+  const [details, setDetails] = useState<BusinessDetails | undefined>(business);
   const [menus, setMenus] = useState<Record<MenuName, Row[]>>({
     header: initial.header.map(keyed),
     footer: initial.footer.map(keyed),
@@ -74,8 +132,13 @@ export function NavigationEditor({
 
   const submit = () =>
     startSaving(async () => {
-      const strip = (rows: Row[]): MenuItem[] => rows.map(({ label, link }) => ({ label, link }));
-      const outcome = await save({ logo, header: strip(menus.header), footer: strip(menus.footer) });
+      const strip = (rows: Row[]): AnyMenuItem[] => rows.map(({ label, link }) => ({ label, link }));
+      const outcome = await save({
+        logo,
+        header: strip(menus.header),
+        footer: strip(menus.footer),
+        ...(details && { business: details }),
+      });
       setResult(outcome);
       if (outcome.ok) setDirty(false);
     });
@@ -83,6 +146,7 @@ export function NavigationEditor({
   return (
     <div className="flex flex-col gap-6 pb-24">
       <LogoField
+        help={copy.logo}
         logo={logo}
         upload={upload}
         onChange={(next) => {
@@ -94,21 +158,35 @@ export function NavigationEditor({
       <MenuEditor
         name="header"
         title="Header menu"
-        help="Across the top on computers, and in the slide-out menu on phones. The cart, My account and the country choice are always there, so they need no link here."
+        help={copy.header}
         rows={menus.header}
         onChange={(rows) => change("header", rows)}
         languages={languages}
-        products={products}
+        kinds={kinds}
+        targets={targets}
+        copy={copy}
       />
       <MenuEditor
         name="footer"
         title="Footer menu"
-        help="At the bottom of every page, beside your business details, which the law requires and Kaizen always shows."
+        help={copy.footer}
         rows={menus.footer}
         onChange={(rows) => change("footer", rows)}
         languages={languages}
-        products={products}
+        kinds={kinds}
+        targets={targets}
+        copy={copy}
       />
+      {details && (
+        <BusinessFields
+          value={details}
+          onChange={(next) => {
+            setDetails(next);
+            setDirty(true);
+            setResult(null);
+          }}
+        />
+      )}
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
@@ -122,13 +200,13 @@ export function NavigationEditor({
           </button>
           <p role="status" aria-live="polite" className="text-sm">
             {result?.ok
-              ? "Saved. Your store shows it now."
+              ? copy.saved
               : dirty
                 ? "Unsaved changes."
                 : ""}
           </p>
           <a href={previewHref} target="_blank" rel="noopener" className="ml-auto text-sm underline">
-            View the store
+            {copy.view}
           </a>
         </div>
       </div>
@@ -146,7 +224,17 @@ export function NavigationEditor({
   );
 }
 
-function LogoField({ logo, upload, onChange }: { logo: Logo | null; upload: Upload | null; onChange: (logo: Logo | null) => void }) {
+function LogoField({
+  help,
+  logo,
+  upload,
+  onChange,
+}: {
+  help: string;
+  logo: Logo | null;
+  upload: Upload | null;
+  onChange: (logo: Logo | null) => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -178,10 +266,7 @@ function LogoField({ logo, upload, onChange }: { logo: Logo | null; upload: Uplo
         <h2 id="logo-heading" className="font-medium">
           Logo
         </h2>
-        <p className="text-sm text-muted">
-          Shown in the header instead of the store&apos;s name, up to 40 pixels high. A wide PNG with a transparent
-          background works best. Without a logo, the header shows the name.
-        </p>
+        <p className="text-sm text-muted">{help}</p>
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex h-20 min-w-40 items-center justify-center rounded-md border border-dashed border-border bg-surface px-4">
@@ -233,7 +318,9 @@ function MenuEditor({
   rows,
   onChange,
   languages,
-  products,
+  kinds,
+  targets,
+  copy,
 }: {
   name: MenuName;
   title: string;
@@ -241,7 +328,9 @@ function MenuEditor({
   rows: Row[];
   onChange: (rows: Row[]) => void;
   languages: Language[];
-  products: Product[];
+  kinds: { kind: AnyLinkKind; label: string }[];
+  targets: Targets;
+  copy: NavigationCopy;
 }) {
   const limit = MENU_LIMITS[name];
   const update = (index: number, row: Row) => onChange(rows.map((r, i) => (i === index ? row : r)));
@@ -251,15 +340,9 @@ function MenuEditor({
     next.splice(to, 0, row);
     onChange(next);
   };
-  const add = () =>
-    onChange([
-      ...rows,
-      keyed(
-        products[0]
-          ? { label: {}, link: { kind: "product", handle: products[0].handle } }
-          : { label: {}, link: { kind: "home" } },
-      ),
-    ]);
+  // A new link starts at the first product or page there is, else the front page.
+  const first = kinds.find(({ kind }) => (kind === "product" || kind === "page") && (targets[kind]?.length ?? 0) > 0);
+  const add = () => onChange([...rows, keyed({ label: {}, link: linkFor(first?.kind ?? "home", targets) })]);
 
   return (
     <section aria-labelledby={`${name}-heading`} className={card}>
@@ -280,7 +363,9 @@ function MenuEditor({
                 position={index + 1}
                 onChange={(next) => update(index, next)}
                 languages={languages}
-                products={products}
+                kinds={kinds}
+                targets={targets}
+                copy={copy}
               />
               <div className="flex flex-wrap gap-2">
                 <button
@@ -326,18 +411,25 @@ function MenuRow({
   position,
   onChange,
   languages,
-  products,
+  kinds,
+  targets,
+  copy,
 }: {
   row: Row;
   position: number;
   onChange: (row: Row) => void;
   languages: Language[];
-  products: Product[];
+  kinds: { kind: AnyLinkKind; label: string }[];
+  targets: Targets;
+  copy: NavigationCopy;
 }) {
-  const setLink = (link: MenuLink) => onChange({ ...row, link });
+  const setLink = (link: AnyMenuLink) => onChange({ ...row, link });
   const hintId = useId();
   const kind = row.link.kind;
-  const product = kind === "product" ? products.find((p) => p.handle === (row.link as { handle: string }).handle) : null;
+  const target = targetOf(row.link);
+  const options = target ? (targets[target.kind] ?? []) : [];
+  const chosen = target ? options.find((option) => option.value === target.value) : null;
+  const noun = target?.kind === "page" ? "Page" : "Product";
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -345,58 +437,59 @@ function MenuRow({
         Link {position} goes to
         <select
           value={kind}
-          onChange={(event) => {
-            const next = event.target.value as LinkKind;
-            setLink(
-              next === "product"
-                ? { kind: "product", handle: products[0]?.handle ?? "" }
-                : next === "url"
-                  ? { kind: "url", url: "" }
-                  : { kind: next },
-            );
-          }}
+          onChange={(event) => setLink(linkFor(event.target.value as AnyLinkKind, targets))}
           className={input}
         >
-          {Object.entries(KIND_LABELS).map(([value, text]) => (
-            <option key={value} value={value} disabled={value === "product" && products.length === 0}>
-              {text}
+          {kinds.map((option) => (
+            <option
+              key={option.kind}
+              value={option.kind}
+              disabled={(option.kind === "product" || option.kind === "page") && !targets[option.kind]?.length}
+            >
+              {option.label}
             </option>
           ))}
         </select>
       </label>
-      {kind === "product" && (
+      {target && (
         <label className={label}>
-          Product
+          {noun}
           <select
-            value={(row.link as { handle: string }).handle}
-            onChange={(event) => setLink({ kind: "product", handle: event.target.value })}
+            value={target.value}
+            onChange={(event) =>
+              setLink(
+                target.kind === "page"
+                  ? { kind: "page", pageId: event.target.value }
+                  : { kind: "product", handle: event.target.value },
+              )
+            }
             className={input}
           >
-            {!product && <option value={(row.link as { handle: string }).handle}>Product not found</option>}
-            {products.map((p) => (
-              <option key={p.handle} value={p.handle}>
-                {p.title}
-                {p.status === "draft" ? " (draft)" : ""}
+            {!chosen && <option value={target.value}>{noun} not found</option>}
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.title}
+                {option.note ? ` (${option.note})` : ""}
               </option>
             ))}
           </select>
         </label>
       )}
-      {kind === "url" && (
+      {row.link.kind === "url" && (
         <div className="flex flex-col gap-1">
           <label className={label}>
             Web address
             <input
-              value={(row.link as { url: string }).url}
+              value={row.link.url}
               onChange={(event) => setLink({ kind: "url", url: event.target.value })}
-              placeholder="https://… or /p/product-name"
+              placeholder={copy.urlPlaceholder}
               inputMode="url"
               aria-describedby={`${hintId}-url`}
               className={input}
             />
           </label>
           <span id={`${hintId}-url`} className="text-xs text-muted">
-            A full address opens that site; one starting with / is a page in your store.
+            {copy.urlHint}
           </span>
         </div>
       )}
@@ -409,8 +502,8 @@ function MenuRow({
               maxLength={LABEL_MAX}
               onChange={(event) => onChange({ ...row, label: { ...row.label, [language.locale]: event.target.value } })}
               placeholder={
-                kind === "product"
-                  ? (product?.title ?? "The product's title")
+                target
+                  ? (chosen?.title ?? `The ${noun.toLowerCase()}'s title`)
                   : kind === "url"
                     ? "Required"
                     : language.defaults[kind]
@@ -422,5 +515,39 @@ function MenuRow({
         ))}
       </div>
     </div>
+  );
+}
+
+/** Who runs the site: the footer shows it on every page, as the law asks. */
+function BusinessFields({ value, onChange }: { value: BusinessDetails; onChange: (value: BusinessDetails) => void }) {
+  const field = (name: keyof BusinessDetails, text: string, props: { type?: string; autoComplete?: string } = {}) => (
+    <label className={label}>
+      {text}
+      <input
+        value={value[name]}
+        onChange={(event) => onChange({ ...value, [name]: event.target.value })}
+        className={input}
+        {...props}
+      />
+    </label>
+  );
+  return (
+    <section aria-labelledby="business-heading" className={card}>
+      <div>
+        <h2 id="business-heading" className="font-medium">
+          Business details
+        </h2>
+        <p className="text-sm text-muted">
+          Who runs the site, in the footer of every page: Norwegian and EU law ask every web service to say who it is and
+          how to reach it.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field("legalName", "Company name", { autoComplete: "organization" })}
+        {field("organisationNumber", "Organisation number")}
+        {field("postalAddress", "Address", { autoComplete: "street-address" })}
+        {field("contactEmail", "Contact email", { type: "email", autoComplete: "email" })}
+      </div>
+    </section>
   );
 }
