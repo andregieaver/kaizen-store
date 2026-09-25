@@ -5,7 +5,9 @@ import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
+import { termTargets } from "@/lib/taxonomy";
 import { listMenuProducts } from "@/server/navigation";
+import { listTerms } from "@/server/taxonomy";
 
 import { uploadImageAction } from "../../products/actions";
 import { saveNavigationAction } from "./actions";
@@ -16,7 +18,10 @@ export const metadata: Metadata = { title: "Header and footer" };
 export default async function NavigationPage({ params }: PageProps<"/admin/[store]/settings/navigation">) {
   const { store } = await requireMember((await params).store);
   const home = store.markets[0];
-  const products = await listMenuProducts(store.id, home?.locale ?? "nb-NO");
+  const [products, terms] = await Promise.all([
+    listMenuProducts(store.id, home?.locale ?? "nb-NO"),
+    listTerms({ storeId: store.id, contentType: "product" }),
+  ]);
   const names = new Intl.DisplayNames(["en"], { type: "language" });
   const languages = [...new Map(store.markets.map((m) => [m.locale, m])).values()].map((market) => {
     const m = t(market.lang);
@@ -44,6 +49,7 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
             title: p.title,
             note: p.status === "draft" ? "draft" : undefined,
           })),
+          ...termTargets(terms),
         }}
         upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
         save={saveNavigationAction.bind(null, store.slug)}

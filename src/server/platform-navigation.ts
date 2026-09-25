@@ -13,10 +13,13 @@ import {
   type BusinessDetails,
   type MenuPage,
   type PlatformNavigation,
+  termNames,
+  type TermNames,
 } from "@/lib/navigation";
 
 import { audit, type Account } from "./auth";
 import { listPublishedPages } from "./pages";
+import { siteTerms } from "./taxonomy";
 import type { SaveResult } from "./settings";
 
 type Row = Record<string, unknown>;
@@ -30,6 +33,8 @@ export type PlatformChrome = {
   business: BusinessDetails;
   /** Published pages by id, so menu links follow a page to a new address. */
   pages: Map<string, MenuPage>;
+  /** Page category and tag names by address, for links to their listings (D50). */
+  terms: TermNames;
 };
 
 async function loadSettings(): Promise<{ navigation: PlatformNavigation; business: BusinessDetails }> {
@@ -42,10 +47,11 @@ async function loadSettings(): Promise<{ navigation: PlatformNavigation; busines
 
 /** Kaizen's logo, menus and business details, and the pages its menus can link to. */
 export async function getPlatformChrome(): Promise<PlatformChrome> {
-  const [settings, pages] = await Promise.all([loadSettings(), listPublishedPages()]);
+  const [settings, pages, terms] = await Promise.all([loadSettings(), listPublishedPages(), siteTerms(null, "page")]);
   return {
     ...settings,
     pages: new Map(pages.map((page) => [page.id, { id: page.id, slug: page.slug, title: page.content.title }])),
+    terms: termNames(terms),
   };
 }
 

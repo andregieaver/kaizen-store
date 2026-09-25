@@ -10,7 +10,7 @@ export const MENU_LIMITS = { header: 8, footer: 12 } as const;
 export type MenuName = keyof typeof MENU_LIMITS;
 export const LABEL_MAX = 60;
 
-export const LINK_KINDS = ["home", "product", "account", "cart", "url"] as const;
+export const LINK_KINDS = ["home", "product", "category", "tag", "account", "cart", "url"] as const;
 export type LinkKind = (typeof LINK_KINDS)[number];
 
 export type MenuLink =
@@ -18,7 +18,12 @@ export type MenuLink =
   | { kind: "account" }
   | { kind: "cart" }
   | { kind: "product"; handle: string }
+  /** A category's or tag's products (D50), by its address, which a store copied from the template keeps. */
+  | TermLink
   | { kind: "url"; url: string };
+
+/** A link to a category or tag (D50), in a store's menus or Kaizen's. */
+export type TermLink = { kind: "category" | "tag"; slug: string };
 
 /** A menu item: its text in each of the store's languages, and where it goes. */
 export type MenuItem = { label: Record<string, string>; link: MenuLink };
@@ -43,6 +48,14 @@ export function isMenuAddress(value: string): boolean {
   }
 }
 
+function termSlug(kind: "category" | "tag") {
+  return z
+    .string()
+    .trim()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, `Choose a ${kind} for each ${kind} link.`)
+    .max(80);
+}
+
 const label = z.record(z.string(), z.string().trim().max(LABEL_MAX, `Keep menu texts under ${LABEL_MAX} characters.`));
 
 const link = z.discriminatedUnion("kind", [
@@ -50,6 +63,8 @@ const link = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("account") }),
   z.object({ kind: z.literal("cart") }),
   z.object({ kind: z.literal("product"), handle: z.string().trim().min(1, "Choose a product for each product link.").max(200) }),
+  z.object({ kind: z.literal("category"), slug: termSlug("category") }),
+  z.object({ kind: z.literal("tag"), slug: termSlug("tag") }),
   z.object({
     kind: z.literal("url"),
     url: z.string().trim().max(1000).refine(isMenuAddress, "A menu link has an invalid web address."),
@@ -97,6 +112,9 @@ export function menuHref(link: MenuLink, base: string): { href: string; external
       return { href: `${base}/cart`, external: false };
     case "product":
       return { href: `${base}/p/${encodeURIComponent(link.handle)}`, external: false };
+    case "category":
+    case "tag":
+      return { href: `${base}/${link.kind}/${link.slug}`, external: false };
     case "url":
       return link.url.startsWith("/")
         ? { href: `${base}${link.url}`, external: false }
@@ -113,13 +131,33 @@ export function menuLabel(
   item: MenuItem,
   locale: string,
   builtIn: { home: string; account: string; cart: string },
+  /** Category and tag names by address, for links without a text of their own. */
+  termNames?: TermNames,
 ): string {
   const own = item.label[locale];
   if (own) return own;
   if (item.link.kind === "home" || item.link.kind === "account" || item.link.kind === "cart") {
     return builtIn[item.link.kind];
   }
+  if ((item.link.kind === "category" || item.link.kind === "tag") && termNames) {
+    const name = termNames[item.link.kind].get(item.link.slug);
+    if (name) return name;
+  }
   return Object.values(item.label).find(Boolean) ?? "";
+}
+
+/** A store's or Kaizen's category and tag names by address, for menus (D50). */
+export type TermNames = { category: ReadonlyMap<string, string>; tag: ReadonlyMap<string, string> };
+
+/** Names by address, from categories and tags. */
+export function termNames(terms: readonly { kind: "category" | "tag"; slug: string; name: string }[]): TermNames {
+  const of = (kind: "category" | "tag") => new Map(terms.filter((t) => t.kind === kind).map((t) => [t.slug, t.name]));
+  return { category: of("category"), tag: of("tag") };
+}
+
+/** Whether a link still leads somewhere: a category or tag that is gone is left out of the menu. */
+export function linkExists(link: MenuLink | PlatformMenuLink, names: TermNames): boolean {
+  return link.kind === "category" || link.kind === "tag" ? names[link.kind].has(link.slug) : true;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +165,7 @@ export function menuLabel(
 // ---------------------------------------------------------------------------
 
 /** Where a link in Kaizen's own menus can go. */
-export const PLATFORM_LINK_KINDS = ["home", "page", "signUp", "signIn", "url"] as const;
+export const PLATFORM_LINK_KINDS = ["home", "page", "category", "tag", "signUp", "signIn", "url"] as const;
 export type PlatformLinkKind = (typeof PLATFORM_LINK_KINDS)[number];
 
 export type PlatformMenuLink =
@@ -136,6 +174,8 @@ export type PlatformMenuLink =
   | { kind: "signIn" }
   /** One of Kaizen's pages, by id, so it follows the page to a new address. */
   | { kind: "page"; pageId: string }
+  /** Kaizen's pages in a category or with a tag (D50), by its address. */
+  | TermLink
   | { kind: "url"; url: string };
 
 export type PlatformMenuItem = { label: Record<string, string>; link: PlatformMenuLink };
@@ -154,6 +194,8 @@ const platformLink = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("signUp") }),
   z.object({ kind: z.literal("signIn") }),
   z.object({ kind: z.literal("page"), pageId: z.uuid("Choose a page for each page link.") }),
+  z.object({ kind: z.literal("category"), slug: termSlug("category") }),
+  z.object({ kind: z.literal("tag"), slug: termSlug("tag") }),
   z.object({
     kind: z.literal("url"),
     url: z.string().trim().max(1000).refine(isMenuAddress, "A menu link has an invalid web address."),
@@ -183,6 +225,7 @@ export function platformMenuLink(
   item: PlatformMenuItem,
   pages: ReadonlyMap<string, MenuPage>,
   builtIn: { home: string; signUp: string; signIn: string },
+  terms: TermNames = { category: new Map(), tag: new Map() },
 ): { href: string; text: string; external: boolean } | null {
   const own = item.label.en || Object.values(item.label).find(Boolean) || "";
   switch (item.link.kind) {
@@ -195,6 +238,12 @@ export function platformMenuLink(
     case "page": {
       const page = pages.get(item.link.pageId);
       return page ? { href: `/${page.slug}`, text: own || page.title, external: false } : null;
+    }
+    case "category":
+    case "tag": {
+      // A category or tag that is gone is left out.
+      const name = terms[item.link.kind].get(item.link.slug);
+      return name ? { href: `/${item.link.kind}/${item.link.slug}`, text: own || name, external: false } : null;
     }
     case "url":
       return own ? { href: item.link.url, text: own, external: !item.link.url.startsWith("/") } : null;

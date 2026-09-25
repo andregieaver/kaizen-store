@@ -25,7 +25,7 @@ function MenuLinks({
   className,
   linkClassName,
 }: Props & { items: PlatformMenuItem[]; className?: string; linkClassName: string }) {
-  const links = items.flatMap((item) => platformMenuLink(item, chrome.pages, BUILT_IN) ?? []);
+  const links = items.flatMap((item) => platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms) ?? []);
   if (links.length === 0) return null;
   return (
     <ul className={className}>

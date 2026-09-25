@@ -63,6 +63,18 @@ export async function siteTerms(storeId: string | null, contentType: ContentType
   return rows.map(toTerm);
 }
 
+/**
+ * The same, read now: for cached functions that carry `termsTag` themselves,
+ * such as content grids, so they never see an older cached list.
+ */
+export async function currentTerms(storeId: string | null, contentType: ContentType): Promise<Term[]> {
+  const rows = await readDb().execute<Row>(sql`
+    select id, kind, parent_id, name, slug from commerce.terms
+    where ${scopeWhere({ storeId, contentType })}
+  `);
+  return rows.map(toTerm);
+}
+
 /** Only the ids that are this scope's categories (or tags), each once. */
 export async function scopedTermIds(scope: TermScope, kind: TermKind, ids: readonly string[]): Promise<string[]> {
   const unique = [...new Set(ids)].filter((id) => /^[0-9a-f-]{36}$/i.test(id));

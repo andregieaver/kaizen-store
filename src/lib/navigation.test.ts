@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { EMPTY_NAVIGATION, isMenuAddress, menuHref, menuLabel, navigationSchema, parseNavigation } from "./navigation";
+import {
+  EMPTY_NAVIGATION,
+  isMenuAddress,
+  linkExists,
+  menuHref,
+  menuLabel,
+  navigationSchema,
+  parseNavigation,
+  platformMenuLink,
+  platformNavigationSchema,
+  termNames,
+} from "./navigation";
 
 const builtIn = { home: "Alle produkter", account: "Min konto", cart: "Handlekurv" };
 
@@ -46,5 +57,39 @@ describe("addresses and stored values", () => {
     expect(navigationSchema.safeParse({ logo: null, header: Array(8).fill(item), footer: [] }).success).toBe(true);
     expect(parseNavigation({ header: "nope" })).toEqual(EMPTY_NAVIGATION);
     expect(parseNavigation(null)).toEqual(EMPTY_NAVIGATION);
+  });
+});
+
+describe("category and tag links (D50)", () => {
+  const names = termNames([
+    { kind: "category", slug: "kopper", name: "Kopper" },
+    { kind: "tag", slug: "nyhet", name: "Nyhet" },
+  ]);
+
+  it("lead to the store's listings, named after the category or tag unless given a text", () => {
+    expect(menuHref({ kind: "category", slug: "kopper" }, "/s/demo/no")).toEqual({ href: "/s/demo/no/category/kopper", external: false });
+    expect(menuHref({ kind: "tag", slug: "nyhet" }, "/s/demo/no")).toEqual({ href: "/s/demo/no/tag/nyhet", external: false });
+    expect(menuLabel({ label: {}, link: { kind: "category", slug: "kopper" } }, "nb-NO", builtIn, names)).toBe("Kopper");
+    expect(menuLabel({ label: { "nb-NO": "Krus" }, link: { kind: "category", slug: "kopper" } }, "nb-NO", builtIn, names)).toBe("Krus");
+  });
+
+  it("are left out once the category or tag is gone", () => {
+    expect(linkExists({ kind: "category", slug: "kopper" }, names)).toBe(true);
+    expect(linkExists({ kind: "tag", slug: "gone" }, names)).toBe(false);
+    expect(linkExists({ kind: "home" }, names)).toBe(true);
+    const platform = { home: "Home", signUp: "Start", signIn: "Sign in" };
+    expect(platformMenuLink({ label: {}, link: { kind: "tag", slug: "nyhet" } }, new Map(), platform, names)).toEqual({
+      href: "/tag/nyhet",
+      text: "Nyhet",
+      external: false,
+    });
+    expect(platformMenuLink({ label: { en: "Old" }, link: { kind: "category", slug: "gone" } }, new Map(), platform, names)).toBeNull();
+  });
+
+  it("need an address", () => {
+    const menu = (link: unknown) => ({ logo: null, header: [{ label: {}, link }], footer: [] });
+    expect(navigationSchema.safeParse(menu({ kind: "category", slug: "kopper" })).success).toBe(true);
+    expect(navigationSchema.safeParse(menu({ kind: "category", slug: "" })).success).toBe(false);
+    expect(platformNavigationSchema.safeParse(menu({ kind: "tag", slug: "Not Ok" })).success).toBe(false);
   });
 });

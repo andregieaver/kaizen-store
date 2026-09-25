@@ -2381,10 +2381,10 @@ export const pages = commerce.table(
     index("pages_created_by_idx").on(t.createdBy),
     index("pages_updated_by_idx").on(t.updatedBy),
     check("pages_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),
-    // The platform's own routes at the root of the site.
+    // The platform's own routes at the root of the site (category and tag listings: D50).
     check(
       "pages_slug_not_reserved",
-      sql`${t.storeId} is not null or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'unsubscribe', 'www')`,
+      sql`${t.storeId} is not null or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'category', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
     ),
     check("pages_published_together", sql`(${t.published} is null) = (${t.publishedAt} is null)`),
   ],

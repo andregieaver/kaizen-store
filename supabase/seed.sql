@@ -206,7 +206,29 @@ BEGIN
 
   UPDATE commerce.products SET status = 'active' WHERE id = v_product;
 
+  -- Categories and tags (D50), with the demo's products in them; a lamp is
+  -- in Belysning, inside Hjem, so it shows under Hjem too.
+  INSERT INTO commerce.terms (store_id, content_type, kind, name, slug) VALUES
+    (v_store, 'product', 'category', 'Papir', 'papir'),
+    (v_store, 'product', 'category', 'Hjem', 'hjem'),
+    (v_store, 'product', 'tag', 'Nyhet', 'nyhet');
+  INSERT INTO commerce.terms (store_id, content_type, kind, parent_id, name, slug)
+  SELECT v_store, 'product', 'category', id, 'Belysning', 'belysning'
+    FROM commerce.terms WHERE store_id = v_store AND content_type = 'product' AND kind = 'category' AND slug = 'hjem';
+  INSERT INTO commerce.product_terms (store_id, product_id, term_id)
+  SELECT v_store, p.id, t.id
+    FROM commerce.products p
+    JOIN commerce.terms t ON t.store_id = v_store AND t.content_type = 'product'
+   WHERE p.store_id = v_store
+     AND (p.handle, t.kind, t.slug) IN (
+       ('demo-notatbok', 'category', 'papir'),
+       ('demo-keramikkopp', 'category', 'hjem'),
+       ('demo-bordlampe', 'category', 'belysning'),
+       ('demo-notatbok', 'tag', 'nyhet'),
+       ('demo-handlenett', 'tag', 'nyhet')
+     );
+
   -- The demo's logo and menus (D30), copied to new stores with the catalogue.
-  UPDATE commerce.stores SET navigation = '{"logo": {"url": "/demo/logo.svg", "width": 180, "height": 40}, "header": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Notatbok", "sv-SE": "Anteckningsbok", "da-DK": "Notesbog"}, "link": {"kind": "product", "handle": "demo-notatbok"}}, {"label": {"nb-NO": "Kopp", "sv-SE": "Kopp", "da-DK": "Krus"}, "link": {"kind": "product", "handle": "demo-keramikkopp"}}, {"label": {"nb-NO": "Bordlampe", "sv-SE": "Bordslampa", "da-DK": "Bordlampe"}, "link": {"kind": "product", "handle": "demo-bordlampe"}}], "footer": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Handlenett", "sv-SE": "Tygkasse", "da-DK": "Mulepose"}, "link": {"kind": "product", "handle": "demo-handlenett"}}, {"label": {"nb-NO": "Laget med Kaizen", "sv-SE": "Byggd med Kaizen", "da-DK": "Lavet med Kaizen"}, "link": {"kind": "url", "url": "https://kaizenstore.cloud"}}]}'::jsonb WHERE id = v_store;
+  UPDATE commerce.stores SET navigation = '{"logo": {"url": "/demo/logo.svg", "width": 180, "height": 40}, "header": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Notatbok", "sv-SE": "Anteckningsbok", "da-DK": "Notesbog"}, "link": {"kind": "product", "handle": "demo-notatbok"}}, {"label": {"nb-NO": "Kopp", "sv-SE": "Kopp", "da-DK": "Krus"}, "link": {"kind": "product", "handle": "demo-keramikkopp"}}, {"label": {"nb-NO": "Bordlampe", "sv-SE": "Bordslampa", "da-DK": "Bordlampe"}, "link": {"kind": "product", "handle": "demo-bordlampe"}}], "footer": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Handlenett", "sv-SE": "Tygkasse", "da-DK": "Mulepose"}, "link": {"kind": "product", "handle": "demo-handlenett"}}, {"label": {"nb-NO": "Hjem og kjøkken", "sv-SE": "Hem och kök", "da-DK": "Hjem og køkken"}, "link": {"kind": "category", "slug": "hjem"}}, {"label": {"nb-NO": "Laget med Kaizen", "sv-SE": "Byggd med Kaizen", "da-DK": "Lavet med Kaizen"}, "link": {"kind": "url", "url": "https://kaizenstore.cloud"}}]}'::jsonb WHERE id = v_store;
 END;
 $$;

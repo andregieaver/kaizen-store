@@ -13,7 +13,7 @@ import { knownIds, withDescendants } from "@/lib/taxonomy";
 import { listGridProducts } from "./catalog";
 import { PAGES_TAG } from "./pages";
 import { getOpenStore } from "./stores";
-import { siteTerms, termsTag } from "./taxonomy";
+import { currentTerms, termsTag } from "./taxonomy";
 
 /**
  * The items a content grid (D51) shows, looked up for the site and for the
@@ -40,7 +40,7 @@ async function gridPages(filter: Filter, exclude: string | null): Promise<GridDa
   cacheLife("hours");
   cacheTag(PAGES_TAG, termsTag({ storeId: null, contentType: "page" }));
 
-  const terms = await siteTerms(null, "page");
+  const terms = await currentTerms(null, "page");
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tags = knownIds(terms, "tag", filter.tags);
   // Asked for, but all deleted since: nothing matches.
@@ -92,7 +92,7 @@ async function gridProducts(storeId: string, marketCode: string, filter: Filter)
   const market = store?.markets.find((m) => m.code === marketCode);
   if (!store || !market) return { ...EMPTY_GRID };
 
-  const terms = await siteTerms(storeId, "product");
+  const terms = await currentTerms(storeId, "product");
   const categoryIds = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tagIds = knownIds(terms, "tag", filter.tags);
   if ((filter.categories.length > 0 && categoryIds.length === 0) || (filter.tags.length > 0 && tagIds.length === 0)) {

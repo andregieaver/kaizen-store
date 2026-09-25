@@ -3,9 +3,10 @@ import { Suspense } from "react";
 
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
-import { menuHref, menuLabel, type MenuItem } from "@/lib/navigation";
+import { linkExists, menuHref, menuLabel, termNames, type MenuItem } from "@/lib/navigation";
 import { marketPath } from "@/lib/paths";
 import type { Store } from "@/server/stores";
+import { siteTerms } from "@/server/taxonomy";
 
 import { CartLink, CartLinkShell } from "./cart-link";
 import { WishlistCount } from "./wishlist-heart";
@@ -20,7 +21,7 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 type Props = { store: Store; market: Market };
 
-function MenuLinks({
+async function MenuLinks({
   items,
   store,
   market,
@@ -30,11 +31,13 @@ function MenuLinks({
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
   const builtIn = { home: m.allProducts, account: m.account.title, cart: m.cart };
+  // Category and tag links (D50) are named after them, and left out once they are gone.
+  const names = termNames(await siteTerms(store.id, "product"));
   return (
     <ul className={className}>
-      {items.map((item, index) => {
+      {items.filter((item) => linkExists(item.link, names)).map((item, index) => {
         const { href, external } = menuHref(item.link, base);
-        const text = menuLabel(item, market.locale, builtIn);
+        const text = menuLabel(item, market.locale, builtIn, names);
         return (
           <li key={`${index}-${href}`}>
             {external ? (

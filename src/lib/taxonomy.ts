@@ -136,3 +136,14 @@ export function knownIds(terms: Term[], kind: TermKind, ids: readonly string[]):
   const known = new Set(terms.filter((t) => t.kind === kind).map((t) => t.id));
   return [...new Set(ids)].filter((id) => known.has(id));
 }
+
+/** Categories (as a tree, indented) and tags as menu link targets, by address. */
+export function termTargets(terms: Term[]): { category: { value: string; title: string }[]; tag: { value: string; title: string }[] } {
+  return {
+    category: categoryTree(terms).map((c) => ({ value: c.slug, title: `${"\u2003".repeat(c.depth)}${c.name}` })),
+    tag: terms
+      .filter((t) => t.kind === "tag")
+      .sort(byName)
+      .map((t) => ({ value: t.slug, title: t.name })),
+  };
+}

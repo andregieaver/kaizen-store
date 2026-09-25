@@ -27,6 +27,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   "api",
   "app",
   "auth",
+  "category",
   "forgot-password",
   "help",
   "mail",
@@ -40,6 +41,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   "status",
   "stores",
   "support",
+  "tag",
   "unsubscribe",
   "www",
 ];

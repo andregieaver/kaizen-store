@@ -421,6 +421,13 @@
       "when": 1790365707857,
       "tag": "20260925194827_terms_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790367579030,
+      "tag": "20260925201939_reserve_term_slugs",
+      "breakpoints": true
     }
   ]
 }

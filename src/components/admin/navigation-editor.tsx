@@ -21,9 +21,12 @@ type Save = (
 ) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
 /** A language's built-in texts for links to Kaizen's own pages (the front page, the cart, …). */
 type Language = { locale: string; name: string; defaults: Partial<Record<AnyLinkKind, string>> };
-/** Something a link can point at: a product (by handle) or a page (by id). */
+/** Something a link can point at: a product (by handle), a page (by id), a category or tag (by address). */
 type Target = { value: string; title: string; note?: string };
-type Targets = { product?: Target[]; page?: Target[] };
+type TargetKind = "product" | "page" | "category" | "tag";
+type Targets = Partial<Record<TargetKind, Target[]>>;
+const TARGET_NOUNS: Record<TargetKind, string> = { product: "Product", page: "Page", category: "Category", tag: "Tag" };
+const isTargetKind = (kind: AnyLinkKind): kind is TargetKind => kind in TARGET_NOUNS;
 
 /** Items carry a key while edited, so React keeps each row's inputs as rows move. */
 type Row = AnyMenuItem & { key: string };
@@ -59,6 +62,8 @@ const small = "min-h-10 rounded-md border border-border px-3 text-sm disabled:op
 export const STORE_KINDS: { kind: AnyLinkKind; label: string }[] = [
   { kind: "home", label: "Front page (all products)" },
   { kind: "product", label: "A product" },
+  { kind: "category", label: "A category's products" },
+  { kind: "tag", label: "A tag's products" },
   { kind: "account", label: "My account" },
   { kind: "cart", label: "Cart" },
   { kind: "url", label: "Web address" },
@@ -74,18 +79,29 @@ function linkFor(kind: AnyLinkKind, targets: Targets): AnyMenuLink {
       return { kind, handle: targets.product?.[0]?.value ?? "" };
     case "page":
       return { kind, pageId: targets.page?.[0]?.value ?? "" };
+    case "category":
+    case "tag":
+      return { kind, slug: targets[kind]?.[0]?.value ?? "" };
     case "url":
       return { kind, url: "" };
     default:
-      return { kind };
+      return { kind } as AnyMenuLink;
   }
 }
 
-/** The page or product a link points at, if the link has one. */
-function targetOf(link: AnyMenuLink): { kind: "product" | "page"; value: string } | null {
+/** The page, product, category or tag a link points at, if the link has one. */
+function targetOf(link: AnyMenuLink): { kind: TargetKind; value: string } | null {
   if (link.kind === "product") return { kind: "product", value: link.handle };
   if (link.kind === "page") return { kind: "page", value: link.pageId };
+  if (link.kind === "category" || link.kind === "tag") return { kind: link.kind, value: link.slug };
   return null;
+}
+
+/** A link to `value` of a target kind. */
+function targetLink(kind: TargetKind, value: string): AnyMenuLink {
+  if (kind === "page") return { kind, pageId: value };
+  if (kind === "product") return { kind, handle: value };
+  return { kind, slug: value };
 }
 
 /**
@@ -341,7 +357,7 @@ function MenuEditor({
     onChange(next);
   };
   // A new link starts at the first product or page there is, else the front page.
-  const first = kinds.find(({ kind }) => (kind === "product" || kind === "page") && (targets[kind]?.length ?? 0) > 0);
+  const first = kinds.find(({ kind }) => isTargetKind(kind) && (targets[kind]?.length ?? 0) > 0);
   const add = () => onChange([...rows, keyed({ label: {}, link: linkFor(first?.kind ?? "home", targets) })]);
 
   return (
@@ -429,7 +445,7 @@ function MenuRow({
   const target = targetOf(row.link);
   const options = target ? (targets[target.kind] ?? []) : [];
   const chosen = target ? options.find((option) => option.value === target.value) : null;
-  const noun = target?.kind === "page" ? "Page" : "Product";
+  const noun = target ? TARGET_NOUNS[target.kind] : "";
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -444,7 +460,7 @@ function MenuRow({
             <option
               key={option.kind}
               value={option.kind}
-              disabled={(option.kind === "product" || option.kind === "page") && !targets[option.kind]?.length}
+              disabled={isTargetKind(option.kind) && !targets[option.kind]?.length}
             >
               {option.label}
             </option>
@@ -456,13 +472,7 @@ function MenuRow({
           {noun}
           <select
             value={target.value}
-            onChange={(event) =>
-              setLink(
-                target.kind === "page"
-                  ? { kind: "page", pageId: event.target.value }
-                  : { kind: "product", handle: event.target.value },
-              )
-            }
+            onChange={(event) => setLink(targetLink(target.kind, event.target.value))}
             className={input}
           >
             {!chosen && <option value={target.value}>{noun} not found</option>}
@@ -503,7 +513,7 @@ function MenuRow({
               onChange={(event) => onChange({ ...row, label: { ...row.label, [language.locale]: event.target.value } })}
               placeholder={
                 target
-                  ? (chosen?.title ?? `The ${noun.toLowerCase()}'s title`)
+                  ? (chosen?.title.trim() ?? `The ${noun.toLowerCase()}'s ${target.kind === "category" || target.kind === "tag" ? "name" : "title"}`)
                   : kind === "url"
                     ? "Required"
                     : language.defaults[kind]
