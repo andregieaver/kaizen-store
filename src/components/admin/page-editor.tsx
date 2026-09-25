@@ -23,6 +23,7 @@ import {
   type PageThumbnail,
 } from "@/lib/page-content";
 import { newBlock, newRow } from "@/lib/page-rows";
+import type { SavedPart } from "@/lib/saved-parts";
 import type { EditablePage, PageState } from "@/server/pages";
 
 import { newId, PageBuilder } from "./page-builder";
@@ -59,6 +60,7 @@ export function PageEditor({
   notice = null,
   origin,
   defaultDescription,
+  savedParts,
   upload,
 }: {
   page: EditablePage | null;
@@ -67,6 +69,8 @@ export function PageEditor({
   origin: string;
   /** Kaizen's own description, the last fallback for a page without text. */
   defaultDescription: string;
+  /** Saved rows, columns and components, for the builder's Saved tab (D46). */
+  savedParts: SavedPart[];
   upload: Upload | null;
 }) {
   const router = useRouter();
@@ -162,6 +166,7 @@ export function PageEditor({
       <PageBuilder
         rows={content.rows}
         onRows={changeRows}
+        saved={savedParts}
         aside={
           <>
             <section aria-label="Title and address" className={card}>

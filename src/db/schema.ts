@@ -2411,3 +2411,34 @@ export const pageRedirects = commerce.table(
     index("page_redirects_page_idx").on(t.pageId),
   ],
 );
+
+/**
+ * A row, column or component saved to use again (D46): for now Kaizen's own
+ * (`store_id` null), shown under Saved in the page builder. Using one puts a
+ * copy on the page; changing it later changes what the next use gets, not
+ * the pages that already have it. Shape: `PageRow`, `PageColumn` or
+ * `PageBlock` in lib/page-content.
+ */
+export const savedParts = commerce.table(
+  "saved_parts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizen's own. */
+    storeId: uuid("store_id").references(() => stores.id),
+    /** `row`, `column` or `block`. */
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    content: jsonb("content").notNull(),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("saved_parts_store_kind_idx").on(t.storeId, t.kind, t.name),
+    index("saved_parts_created_by_idx").on(t.createdBy),
+    index("saved_parts_updated_by_idx").on(t.updatedBy),
+    check("saved_parts_kind", sql`${t.kind} in ('row', 'column', 'block')`),
+    check("saved_parts_name", sql`length(trim(${t.name})) between 1 and 80`),
+  ],
+);

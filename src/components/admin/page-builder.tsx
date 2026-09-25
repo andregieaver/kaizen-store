@@ -25,7 +25,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useId, useState, type CSSProperties, type PointerEventHandler, type ReactNode } from "react";
+import { useId, useState, useTransition, type CSSProperties, type PointerEventHandler, type ReactNode } from "react";
+
+import {
+  createSavedPartAction,
+  deleteSavedPartAction,
+  updateSavedPartAction,
+} from "@/app/admin/(gated)/platform/pages/actions";
 
 import { hasContent, RichText } from "@/components/rich-text";
 import {
@@ -42,11 +48,15 @@ import {
   type RowLayout,
 } from "@/lib/page-content";
 import {
+  copyBlock,
+  copyColumn,
+  copyRow,
   duplicateBlock,
   duplicateColumn,
   duplicateRow,
   findBlock,
   insertBlock,
+  insertColumn,
   insertRow,
   moveBlock,
   moveColumnTo,
@@ -59,6 +69,8 @@ import {
   setRowLayout,
   updateBlock,
 } from "@/lib/page-rows";
+
+import { SAVED_KIND_LABELS, SAVED_NAME_MAX, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 
 import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
@@ -89,10 +101,14 @@ type DragData =
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
   | { kind: "column"; columnId: string; rowId: string }
+  | { kind: "saved"; partId: string; part: SavedPartKind }
   | { kind: "canvas-end" };
 
 const dataOf = (item: Active | Over | null): DragData | null => (item?.data.current as DragData | undefined) ?? null;
-const movesRows = (data: DragData | null) => data?.kind === "palette-row" || data?.kind === "row";
+const movesRows = (data: DragData | null) =>
+  data?.kind === "palette-row" || data?.kind === "row" || (data?.kind === "saved" && data.part === "row");
+/** A column on the page, or a saved one on its way to the page. */
+const movesColumn = (data: DragData | null) => data?.kind === "column" || (data?.kind === "saved" && data.part === "column");
 
 /**
  * Rows land between rows; components and blocks land in columns, before or
@@ -106,6 +122,8 @@ const collision: CollisionDetection = (args) => {
     if (container.id === args.active.id || !data) return false;
     if (movesRows(active)) return data.kind === "row" || data.kind === "canvas-end";
     if (active?.kind === "column") return data.kind === "column" || data.kind === "row";
+    // A saved column can also start a row of its own, last.
+    if (movesColumn(active)) return data.kind === "column" || data.kind === "row" || data.kind === "canvas-end";
     return data.kind === "block" || data.kind === "column";
   });
   const within = pointerWithin({ ...args, droppableContainers: targets });
@@ -150,8 +168,13 @@ const blockHasText = (block: PageBlock) => richTextPlain(block.doc).trim() !== "
 /** What a dialog is open for. */
 type Dialog =
   | { kind: "edit-block"; blockId: string }
-  | { kind: "edit-row"; rowId: string; fromColumn: boolean }
-  | { kind: "delete"; what: string; run: () => void };
+  | { kind: "edit-row"; rowId: string; columnId: string | null }
+  | { kind: "delete"; what: string; run: () => void }
+  | { kind: "save-as"; part: SavedPartDraft; back: Dialog | null }
+  | { kind: "edit-saved"; partId: string };
+
+/** A row, column or component about to be saved, or being changed. */
+type SavedPartDraft = Pick<SavedPart, "kind" | "content">;
 
 /** What the canvas can ask of the builder. */
 type Actions = {
@@ -165,10 +188,13 @@ type Actions = {
 export function PageBuilder({
   rows,
   onRows,
+  saved,
   aside,
 }: {
   rows: PageRow[];
   onRows: Rows;
+  /** Kaizen's saved rows, columns and components (D46). */
+  saved: SavedPart[];
   aside: ReactNode;
 }) {
   const sensors = useSensors(
@@ -181,6 +207,8 @@ export function PageBuilder({
   /** The column last worked in, where pressing a component adds it. */
   const [lastColumn, setLastColumn] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [parts, setParts] = useState<SavedPart[]>(saved);
+  const [tab, setTab] = useState<Tab>("components");
   const blockCount = pageBlocks({ rows }).length;
   const blocksFull = blockCount >= BLOCKS_MAX;
   const rowsFull = rows.length >= ROWS_MAX;
@@ -204,6 +232,33 @@ export function PageBuilder({
     setDialog({ kind: "edit-block", blockId: block.id });
   };
 
+  /** Puts a copy of a saved part on the page: a row at `index`, a column into a row (or a row of its own), a block into a column. */
+  const placeSaved = (
+    part: SavedPart,
+    place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number } = {},
+  ) => {
+    if (part.kind === "row") {
+      if (!rowsFull) onRows((current) => insertRow(current, copyRow(part.content, newId), place.index ?? current.length));
+    } else if (part.kind === "column") {
+      const column = copyColumn(part.content, newId);
+      onRows((current) => {
+        if (place.rowId) return insertColumn(current, place.rowId, column, place.columnIndex ?? Number.MAX_SAFE_INTEGER);
+        return insertRow(current, { id: newId(), type: "row", layout: "1", columns: [column] }, current.length);
+      });
+    } else if (!blocksFull) {
+      const block = copyBlock(part.content, newId);
+      const columnId = place.columnId === undefined ? lastColumn : place.columnId;
+      onRows((current) => {
+        if (columnId && current.some((r) => r.columns.some((c) => c.id === columnId))) {
+          return insertBlock(current, columnId, block, place.blockIndex ?? Number.MAX_SAFE_INTEGER);
+        }
+        const row = newRow("1", newId);
+        row.columns[0].blocks.push(block);
+        return insertRow(current, row, current.length);
+      });
+    }
+  };
+
   const onDragMove = (move: DragMoveEvent) => {
     const { active, over } = move;
     const data = dataOf(over);
@@ -211,8 +266,8 @@ export function PageBuilder({
     // A column shows where it lands beside another row's columns; in its own row they make room.
     const next = !over
       ? null
-      : from?.kind === "column"
-        ? data?.kind === "column" && data.rowId !== from.rowId
+      : movesColumn(from)
+        ? data?.kind === "column" && (from?.kind !== "column" || data.rowId !== from.rowId)
           ? { id: String(over.id), after: below(move, over, "x") }
           : null
         : data?.kind === "row" || data?.kind === "block"
@@ -229,6 +284,29 @@ export function PageBuilder({
     const to = dataOf(over);
     if (!from || !to || !over) return;
     const after = below(end, over);
+
+    if (from.kind === "saved") {
+      const part = parts.find((p) => p.id === from.partId);
+      if (!part) return;
+      if (part.kind === "row") {
+        const index =
+          to.kind === "canvas-end" ? rows.length : to.kind === "row" ? rows.findIndex((r) => r.id === to.rowId) : -1;
+        if (index >= 0) placeSaved(part, { index: to.kind === "row" && after ? index + 1 : index });
+      } else if (part.kind === "column") {
+        if (to.kind === "canvas-end") placeSaved(part);
+        else if (to.kind === "row") placeSaved(part, { rowId: to.rowId });
+        else if (to.kind === "column") {
+          const row = rows.find((r) => r.id === to.rowId);
+          const index = row?.columns.findIndex((c) => c.id === to.columnId) ?? -1;
+          if (row && index >= 0) placeSaved(part, { rowId: row.id, columnIndex: index + (below(end, over, "x") ? 1 : 0) });
+        }
+      } else if (to.kind === "column" || to.kind === "block") {
+        const place = to.kind === "block" ? findBlock(rows, to.blockId) : null;
+        placeSaved(part, { columnId: to.columnId, blockIndex: place ? place.index + (after ? 1 : 0) : undefined });
+        setLastColumn(to.columnId);
+      }
+      return;
+    }
 
     if (from.kind === "palette-row" || from.kind === "row") {
       const index =
@@ -323,8 +401,12 @@ export function PageBuilder({
     >
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
         <Sidebar
+          tab={tab}
+          onTab={setTab}
           onAddRow={(layout) => addRow(layout)}
           onAddBlock={(type) => addBlock(type, lastColumn)}
+          parts={parts}
+          onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
           rowsFull={rowsFull}
           blocksFull={blocksFull}
         />
@@ -342,12 +424,26 @@ export function PageBuilder({
           <Tile label={blockLabels[dragging.type]} preview={<TextIcon />} lifted />
         ) : dragging?.kind === "block" ? (
           <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
+        ) : dragging?.kind === "saved" ? (
+          <SavedTile part={parts.find((p) => p.id === dragging.partId) ?? null} lifted />
         ) : dragging?.kind === "column" ? (
           <ColumnPreview column={rows.flatMap((r) => r.columns).find((c) => c.id === dragging.columnId) ?? null} />
         ) : null}
       </DragOverlay>
 
-      <Dialogs dialog={dialog} rows={rows} onRows={onRows} onClose={() => setDialog(null)} />
+      <Dialogs
+        dialog={dialog}
+        rows={rows}
+        onRows={onRows}
+        open={setDialog}
+        onClose={() => setDialog(null)}
+        parts={parts}
+        onParts={(next, savedId) => {
+          setParts(next);
+          if (savedId) setTab("saved");
+        }}
+        onUse={(part) => placeSaved(part)}
+      />
     </DndContext>
   );
 }
@@ -359,23 +455,30 @@ export function PageBuilder({
 const TABS = [
   { key: "components", label: "Components" },
   { key: "rows", label: "Rows" },
-  { key: "sections", label: "Sections" },
+  { key: "saved", label: "Saved" },
   { key: "layers", label: "Layers" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
 function Sidebar({
+  tab,
+  onTab: setTab,
   onAddRow,
   onAddBlock,
+  parts,
+  onOpenSaved,
   rowsFull,
   blocksFull,
 }: {
+  tab: Tab;
+  onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
   onAddBlock: (type: BlockType) => void;
+  parts: SavedPart[];
+  onOpenSaved: (partId: string) => void;
   rowsFull: boolean;
   blocksFull: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>("components");
   const id = useId();
   const select = (index: number) => {
     const next = TABS[(index + TABS.length) % TABS.length].key;
@@ -455,7 +558,8 @@ function Sidebar({
               </div>
             </>
           )}
-          {(t.key === "sections" || t.key === "layers") && <p className="text-sm text-muted">Coming soon.</p>}
+          {t.key === "saved" && <SavedList parts={parts} onOpen={onOpenSaved} />}
+          {t.key === "layers" && <p className="text-sm text-muted">Coming soon.</p>}
         </div>
       ))}
     </aside>
@@ -515,6 +619,90 @@ function LayoutPreview({ layout }: { layout: RowLayout }) {
       {ROW_LAYOUTS[layout].widths.map((width, index) => (
         <span key={index} style={{ flexGrow: width }} className="basis-0 rounded-sm bg-foreground/75" />
       ))}
+    </span>
+  );
+}
+
+/**
+ * Saved rows, columns and components (D46), by kind. Drag one onto the page
+ * to use a copy; press one to change it (or add it from there).
+ */
+function SavedList({ parts, onOpen }: { parts: SavedPart[]; onOpen: (partId: string) => void }) {
+  if (parts.length === 0) {
+    return (
+      <p className="text-xs text-muted">
+        Nothing saved yet. Open a row&apos;s, column&apos;s or component&apos;s settings (the wrench) and choose Save as.
+      </p>
+    );
+  }
+  return (
+    <>
+      <p className="text-xs text-muted">
+        Drag one onto the page to use a copy, or press it to change it. Pages that use it keep their own copy.
+      </p>
+      {(["row", "column", "block"] as const).map((kind) => {
+        const own = parts.filter((p) => p.kind === kind);
+        if (own.length === 0) return null;
+        return (
+          <section key={kind} aria-label={SAVED_KIND_LABELS[kind].many} className="flex flex-col gap-2">
+            <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{SAVED_KIND_LABELS[kind].many}</h3>
+            <ul className="flex flex-col gap-1">
+              {own.map((part) => (
+                <li key={part.id}>
+                  <SavedItem part={part} onOpen={() => onOpen(part.id)} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
+/** A saved part: the pointer drags it onto the page; pressing it (mouse or keyboard) opens it. */
+function SavedItem({ part, onOpen }: { part: SavedPart; onOpen: () => void }) {
+  const { setNodeRef, listeners, isDragging } = useDraggable({
+    id: `saved:${part.id}`,
+    data: { kind: "saved", partId: part.id, part: part.kind } satisfies DragData,
+  });
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
+      onClick={onOpen}
+      aria-label={`${part.name}, saved ${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: open to change or add`}
+      className={`w-full touch-none text-left ${isDragging ? "opacity-40" : ""}`}
+    >
+      <SavedTile part={part} />
+    </button>
+  );
+}
+
+function SavedTile({ part, lifted = false }: { part: SavedPart | null; lifted?: boolean }) {
+  if (!part) return null;
+  return (
+    <span
+      className={`flex cursor-grab items-center gap-3 rounded-md border border-border p-2 hover:bg-surface ${
+        lifted ? "w-56 bg-background shadow-xl" : ""
+      }`}
+    >
+      <span className="w-12 shrink-0">
+        {part.kind === "row" ? (
+          <LayoutPreview layout={part.content.layout} />
+        ) : part.kind === "column" ? (
+          <span aria-hidden className="flex h-9 justify-center">
+            <span className="w-4 rounded-sm bg-foreground/75" />
+          </span>
+        ) : (
+          <TextIcon />
+        )}
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm">{part.name}</span>
+        <span className="text-xs text-muted">{SAVED_KIND_LABELS[part.kind].one}</span>
+      </span>
     </span>
   );
 }
@@ -746,8 +934,8 @@ function RowItem({
             <Icon name="grip" />
           </button>
         }
-        onEdit={() => actions.open({ kind: "edit-row", rowId: row.id, fromColumn: false })}
-        editLabel="Change the layout"
+        onEdit={() => actions.open({ kind: "edit-row", rowId: row.id, columnId: null })}
+        editLabel="Settings"
         onDuplicate={() => actions.onRows((rows) => duplicateRow(rows, row.id, newId))}
         onDelete={() => (rowHasText(row) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and everything in it`, run: remove }) : remove())}
       />
@@ -835,8 +1023,8 @@ function ColumnItem({
             <Icon name="grip" />
           </button>
         }
-        onEdit={() => actions.open({ kind: "edit-row", rowId, fromColumn: true })}
-        editLabel="Change the row's layout"
+        onEdit={() => actions.open({ kind: "edit-row", rowId, columnId: column.id })}
+        editLabel="Settings"
         onDuplicate={() => actions.onRows((rows) => duplicateColumn(rows, column.id, newId))}
         duplicateDisabled={count >= 6}
         onDelete={() =>
@@ -953,24 +1141,57 @@ function Dialogs({
   dialog,
   rows,
   onRows,
+  open,
   onClose,
+  parts,
+  onParts,
+  onUse,
 }: {
   dialog: Dialog | null;
   rows: PageRow[];
   onRows: Rows;
+  open: (dialog: Dialog) => void;
   onClose: () => void;
+  parts: SavedPart[];
+  /** New saved parts from the server; `savedId` when one was just saved. */
+  onParts: (parts: SavedPart[], savedId?: string) => void;
+  onUse: (part: SavedPart) => void;
 }) {
   const done = (
     <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
       Done
     </button>
   );
+  const saveAs = (part: SavedPartDraft) => (
+    <button
+      type="button"
+      onClick={() => open({ kind: "save-as", part, back: dialog })}
+      className="mr-auto min-h-10 rounded-md border border-border px-4 text-sm"
+    >
+      Save as…
+    </button>
+  );
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
   const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
+  const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
+  const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
 
   return (
     <>
-      <Modal open={Boolean(block)} onClose={onClose} title="Edit rich text" footer={done} wide>
+      <Modal
+        open={Boolean(block)}
+        onClose={onClose}
+        title="Edit rich text"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
         {block && (
           <RichTextEditor
             // A new block opens with nothing written; the editor starts from what is stored.
@@ -982,28 +1203,29 @@ function Dialogs({
         )}
       </Modal>
 
-      <Modal open={Boolean(row)} onClose={onClose} title="Row layout" footer={done}>
+      <Modal
+        open={Boolean(row)}
+        onClose={onClose}
+        title={column ? "Column" : "Row"}
+        footer={
+          row && (
+            <>
+              {saveAs(column ? { kind: "column", content: column } : { kind: "row", content: row })}
+              {done}
+            </>
+          )
+        }
+      >
         {row && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted">
-              {dialog?.kind === "edit-row" && dialog.fromColumn ? "A column's width comes from its row's layout. " : ""}
+              {column ? "A column's width comes from its row's layout. " : ""}
               With fewer columns, the text of the columns that go moves to the last one.
             </p>
-            <div role="radiogroup" aria-label="Layout" className="grid grid-cols-3 gap-3">
-              {ROW_LAYOUT_KEYS.map((layout) => (
-                <button
-                  key={layout}
-                  type="button"
-                  role="radio"
-                  aria-checked={row.layout === layout}
-                  onClick={() => onRows((current) => setRowLayout(current, row.id, layout, newId))}
-                  className="flex flex-col gap-2 rounded-md border border-transparent p-2 text-left hover:bg-surface aria-checked:border-blue-600 aria-checked:bg-blue-50 dark:aria-checked:bg-blue-950"
-                >
-                  <LayoutPreview layout={layout} />
-                  <span className="text-xs">{ROW_LAYOUTS[layout].label}</span>
-                </button>
-              ))}
-            </div>
+            <LayoutChoice
+              value={row.layout}
+              onChange={(layout) => onRows((current) => setRowLayout(current, row.id, layout, newId))}
+            />
           </div>
         )}
       </Modal>
@@ -1034,7 +1256,292 @@ function Dialogs({
           Delete {dialog?.kind === "delete" ? dialog.what : ""}? Until you save the draft, the saved page keeps it.
         </p>
       </Modal>
+
+      {dialog?.kind === "save-as" && (
+        <SaveAsDialog
+          part={dialog.part}
+          onCancel={() => (dialog.back ? open(dialog.back) : onClose())}
+          onSaved={(next, id) => {
+            onParts(next, id);
+            onClose();
+          }}
+        />
+      )}
+
+      {savedPart && (
+        <SavedPartDialog
+          key={savedPart.id + savedPart.updatedAt}
+          part={savedPart}
+          onClose={onClose}
+          onParts={onParts}
+          onUse={() => {
+            onUse(savedPart);
+            onClose();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/** The nine layouts to choose from, as pictures. */
+function LayoutChoice({ value, onChange }: { value: RowLayout; onChange: (layout: RowLayout) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Layout" className="grid grid-cols-3 gap-3">
+      {ROW_LAYOUT_KEYS.map((layout) => (
+        <button
+          key={layout}
+          type="button"
+          role="radio"
+          aria-checked={value === layout}
+          onClick={() => onChange(layout)}
+          className="flex flex-col gap-2 rounded-md border border-transparent p-2 text-left hover:bg-surface aria-checked:border-blue-600 aria-checked:bg-blue-50 dark:aria-checked:bg-blue-950"
+        >
+          <LayoutPreview layout={layout} />
+          <span className="text-xs">{ROW_LAYOUTS[layout].label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+
+/** Names a row, column or component and saves it under Saved (D46). */
+function SaveAsDialog({
+  part,
+  onCancel,
+  onSaved,
+}: {
+  part: SavedPartDraft;
+  onCancel: () => void;
+  onSaved: (parts: SavedPart[], id: string) => void;
+}) {
+  const id = useId();
+  const [name, setName] = useState("");
+  const [problems, setProblems] = useState<string[]>([]);
+  const [busy, start] = useTransition();
+  const kind = SAVED_KIND_LABELS[part.kind].one.toLowerCase();
+  const submit = () =>
+    start(async () => {
+      const result = await createSavedPartAction({ ...part, name });
+      if (result.ok) onSaved(result.parts, result.id);
+      else setProblems(result.problems);
+    });
+  return (
+    <Modal
+      open
+      onClose={onCancel}
+      title={`Save this ${kind}`}
+      footer={
+        <>
+          <button type="button" onClick={onCancel} className="min-h-10 rounded-md border border-border px-4 text-sm">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form={`${id}-form`}
+            disabled={busy}
+            className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+          >
+            {busy ? "Saving …" : "Save"}
+          </button>
+        </>
+      }
+    >
+      <form
+        id={`${id}-form`}
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+        className="flex flex-col gap-3"
+      >
+        <label htmlFor={`${id}-name`} className="text-sm font-medium">
+          Name
+        </label>
+        <input
+          id={`${id}-name`}
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value);
+            setProblems([]);
+          }}
+          maxLength={SAVED_NAME_MAX}
+          required
+          autoFocus
+          placeholder={part.kind === "row" ? "Hero with picture" : part.kind === "column" ? "Contact details" : "Delivery promise"}
+          className={field}
+        />
+        <p className="text-xs text-muted">
+          It is added under Saved in the left sidebar, to drag onto any page. This page keeps its {kind} as it is.
+        </p>
+        {problems.length > 0 && (
+          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            {problems.join(" ")}
+          </p>
+        )}
+      </form>
+    </Modal>
+  );
+}
+
+/**
+ * A saved part, opened from Saved: its name and content to change, and ways
+ * to add it to the page or delete it. Changes reach pages that use it from
+ * then on, never the pages that already have it.
+ */
+function SavedPartDialog({
+  part,
+  onClose,
+  onParts,
+  onUse,
+}: {
+  part: SavedPart;
+  onClose: () => void;
+  onParts: (parts: SavedPart[]) => void;
+  onUse: () => void;
+}) {
+  const id = useId();
+  const [name, setName] = useState(part.name);
+  // The content as one row, whatever the kind, so the same edits apply.
+  const [rows, setRows] = useState<PageRow[]>(() =>
+    part.kind === "row"
+      ? [part.content]
+      : part.kind === "column"
+        ? [{ id: "saved-row", type: "row", layout: "1", columns: [part.content] }]
+        : [{ id: "saved-row", type: "row", layout: "1", columns: [{ id: "saved-column", blocks: [part.content] }] }],
+  );
+  const [dirty, setDirty] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [problems, setProblems] = useState<string[]>([]);
+  const [busy, start] = useTransition();
+  const change: Rows = (update) => {
+    setRows(update);
+    setDirty(true);
+  };
+  const content = (): SavedPartDraft =>
+    part.kind === "row"
+      ? { kind: "row", content: rows[0] }
+      : part.kind === "column"
+        ? { kind: "column", content: rows[0].columns[0] }
+        : { kind: "block", content: rows[0].columns[0].blocks[0] };
+  const save = () =>
+    start(async () => {
+      const result = await updateSavedPartAction(part.id, { ...content(), name });
+      if (!result.ok) return setProblems(result.problems);
+      onParts(result.parts);
+      onClose();
+    });
+  const remove = () =>
+    start(async () => {
+      const result = await deleteSavedPartAction(part.id);
+      if (result.ok) onParts(result.parts);
+      onClose();
+    });
+  const row = rows[0];
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Saved ${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}`}
+      wide
+      footer={
+        confirmDelete ? (
+          <>
+            <span className="mr-auto self-center text-sm">Delete “{part.name}” from Saved? Pages that use it keep their copy.</span>
+            <button type="button" onClick={() => setConfirmDelete(false)} className="min-h-10 rounded-md border border-border px-4 text-sm">
+              Keep it
+            </button>
+            <button type="button" onClick={remove} disabled={busy} className="min-h-10 rounded-md bg-red-700 px-4 text-sm font-medium text-white">
+              Delete
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => setConfirmDelete(true)} className="mr-auto min-h-10 px-2 text-sm text-red-700 underline dark:text-red-400">
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={onUse}
+              disabled={dirty}
+              title={dirty ? "Save your changes first" : undefined}
+              className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-40"
+            >
+              Add to page
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={busy || (!dirty && name === part.name)}
+              className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+            >
+              {busy ? "Saving …" : "Save changes"}
+            </button>
+          </>
+        )
+      }
+    >
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${id}-name`} className="text-sm font-medium">
+            Name
+          </label>
+          <input
+            id={`${id}-name`}
+            value={name}
+            maxLength={SAVED_NAME_MAX}
+            onChange={(event) => setName(event.target.value)}
+            className={field}
+          />
+        </div>
+        {part.kind === "row" && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium">Layout</p>
+            <LayoutChoice value={row.layout} onChange={(layout) => change((r) => setRowLayout(r, row.id, layout, newId))} />
+          </div>
+        )}
+        {row.columns.map((column, index) => (
+          <section key={column.id} className="flex flex-col gap-3" aria-label={part.kind === "row" ? `Column ${index + 1}` : "Content"}>
+            {part.kind === "row" && <h3 className="text-sm font-medium">Column {index + 1}</h3>}
+            {column.blocks.map((block, n) => (
+              <div key={block.id} className="flex flex-col gap-1">
+                <RichTextEditor
+                  value={block.doc}
+                  onChange={(doc) => change((r) => updateBlock(r, block.id, (b) => ({ ...b, doc })))}
+                  label={`${part.kind === "row" ? `Column ${index + 1}, text` : "Text"} ${n + 1}`}
+                />
+                {part.kind !== "block" && (
+                  <button
+                    type="button"
+                    onClick={() => change((r) => removeBlock(r, block.id))}
+                    className="w-fit text-xs text-muted underline hover:text-foreground"
+                  >
+                    Remove this text
+                  </button>
+                )}
+              </div>
+            ))}
+            {part.kind !== "block" && (
+              <button
+                type="button"
+                onClick={() => change((r) => insertBlock(r, column.id, newBlock("richText", newId), Number.MAX_SAFE_INTEGER))}
+                className="w-fit rounded-md border border-border px-3 py-1.5 text-xs"
+              >
+                + Rich text
+              </button>
+            )}
+          </section>
+        ))}
+        {problems.length > 0 && (
+          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            {problems.join(" ")}
+          </p>
+        )}
+      </div>
+    </Modal>
   );
 }
 

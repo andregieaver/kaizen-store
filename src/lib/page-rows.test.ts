@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { PageRow } from "./page-content";
 import {
   canDuplicateColumn,
+  copyRow,
+  insertColumn,
   duplicateBlock,
   duplicateColumn,
   duplicateRow,
@@ -152,5 +154,22 @@ describe("moving a column to another row", () => {
     const moved = moveColumnTo(own, own[0].columns[1].id, own[0].id, 0);
     expect(moved[0].layout).toBe("left-sidebar");
     expect(text(moved[0])).toEqual([["a", "b"], []]);
+  });
+});
+
+describe("putting copies on the page", () => {
+  it("copies a row with new ids and puts a column into a row, dividing it evenly", () => {
+    const saved = newRow("both-sidebars", id);
+    const copy = copyRow(saved, id);
+    expect(copy.id).not.toBe(saved.id);
+    expect(copy.columns.map((c) => c.id)).not.toEqual(saved.columns.map((c) => c.id));
+    const rows = insertColumn([newRow("2", id)], "missing", { id: "x", blocks: [] }, 0);
+    expect(rows[0].columns).toHaveLength(2);
+    const row = newRow("2", id);
+    const three = insertColumn([row], row.id, { id: "x", blocks: [] }, 0);
+    expect(three[0].layout).toBe("3");
+    expect(three[0].columns[0].id).toBe("x");
+    const full = newRow("6", id);
+    expect(insertColumn([full], full.id, { id: "y", blocks: [] }, 0)[0].columns).toHaveLength(6);
   });
 });

@@ -117,18 +117,23 @@ export function equalLayout(count: number): RowLayout {
   return String(Math.max(1, Math.min(6, count))) as RowLayout;
 }
 
-const copyBlock = (block: PageBlock, id: NewId): PageBlock => ({ ...structuredClone(block), id: id() });
-const copyColumn = (column: PageColumn, id: NewId): PageColumn => ({
+/** Copies with new ids throughout: for duplicating, and for putting a saved part on the page (D46). */
+export const copyBlock = (block: PageBlock, id: NewId): PageBlock => ({ ...structuredClone(block), id: id() });
+export const copyColumn = (column: PageColumn, id: NewId): PageColumn => ({
   id: id(),
   blocks: column.blocks.map((b) => copyBlock(b, id)),
+});
+export const copyRow = (row: PageRow, id: NewId): PageRow => ({
+  ...row,
+  id: id(),
+  columns: row.columns.map((c) => copyColumn(c, id)),
 });
 
 /** A copy of the row, with new ids throughout, right after it. */
 export function duplicateRow(rows: PageRow[], rowId: string, id: NewId): PageRow[] {
   const index = rows.findIndex((r) => r.id === rowId);
   if (index < 0) return rows;
-  const row = rows[index];
-  return insertRow(rows, { ...row, id: id(), columns: row.columns.map((c) => copyColumn(c, id)) }, index + 1);
+  return insertRow(rows, copyRow(rows[index], id), index + 1);
 }
 
 /** A copy of the block right after it. */
@@ -206,5 +211,18 @@ export function moveColumnTo(rows: PageRow[], columnId: string, rowId: string, i
       return [{ ...row, layout: equalLayout(columns.length), columns }];
     }
     return [row];
+  });
+}
+
+/**
+ * Puts a column into a row at `index`; the row's columns become equal, one
+ * more of them. A row already holding six columns takes no more.
+ */
+export function insertColumn(rows: PageRow[], rowId: string, column: PageColumn, index: number): PageRow[] {
+  return rows.map((row) => {
+    if (row.id !== rowId || row.columns.length >= 6) return row;
+    const columns = [...row.columns];
+    columns.splice(clamp(index, columns.length), 0, column);
+    return { ...row, layout: equalLayout(columns.length), columns };
   });
 }

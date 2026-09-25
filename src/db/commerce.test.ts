@@ -994,6 +994,18 @@ describe("pages", () => {
   });
 });
 
+describe("saved parts", () => {
+  const save = (kind: string, name: string) =>
+    db.query("insert into commerce.saved_parts (kind, name, content) values ($1, $2, '{}')", [kind, name]);
+
+  it("keeps rows, columns and components with a name", async () => {
+    await expect(save("row", "Hero")).resolves.toBeDefined();
+    await expect(save("page", "Whole page")).rejects.toThrow(/saved_parts_kind/);
+    await expect(save("block", "  ")).rejects.toThrow(/saved_parts_name/);
+    await expect(save("block", "x".repeat(81))).rejects.toThrow(/saved_parts_name/);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

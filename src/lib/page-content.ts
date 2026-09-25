@@ -318,17 +318,20 @@ const richTextBlock = z.object({
   }),
 });
 
-const column = z.object({
+/** One block, as stored: for now rich text. */
+export const pageBlockSchema = z.discriminatedUnion("type", [richTextBlock]);
+
+export const pageColumnSchema = z.object({
   id: itemId,
-  blocks: z.array(z.discriminatedUnion("type", [richTextBlock])),
+  blocks: z.array(pageBlockSchema),
 });
 
-const row = z
+export const pageRowSchema = z
   .object({
     id: itemId,
     type: z.literal("row"),
     layout: z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout."),
-    columns: z.array(column),
+    columns: z.array(pageColumnSchema),
   })
   .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {
     message: "A row has the wrong number of columns for its layout. Reload the page and try again.",
@@ -378,7 +381,7 @@ export const pageInput = z.preprocess(
       }),
       searchEngines: z.boolean(),
       aiAssistants: z.boolean(),
-      rows: z.array(row).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
+      rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
     })
     .superRefine((page, ctx) => {
       if (pageBlocks(page).length > BLOCKS_MAX) {

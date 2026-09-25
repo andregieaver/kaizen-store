@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { requirePlatformAdmin } from "@/server/auth";
 import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage, type EditablePage } from "@/server/pages";
+import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 
 export type PageSaveState = { status: "saved"; page: EditablePage } | { status: "error"; problems: string[] };
 
@@ -51,4 +52,25 @@ export async function deletePageAction(id: string): Promise<{ problems: string[]
   await deletePage(admin, id);
   updateTag(PAGES_TAG);
   redirect("/admin/platform/pages?deleted=1");
+}
+
+// ---------------------------------------------------------------------------
+// Saved rows, columns and components (D46)
+// ---------------------------------------------------------------------------
+
+export async function createSavedPartAction(input: unknown): Promise<SavedResult> {
+  const admin = await requirePlatformAdmin();
+  return createSavedPart(admin, input);
+}
+
+export async function updateSavedPartAction(id: string, input: unknown): Promise<SavedResult> {
+  const admin = await requirePlatformAdmin();
+  if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
+  return updateSavedPart(admin, id, input);
+}
+
+export async function deleteSavedPartAction(id: string): Promise<SavedResult> {
+  const admin = await requirePlatformAdmin();
+  if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
+  return deleteSavedPart(admin, id);
 }

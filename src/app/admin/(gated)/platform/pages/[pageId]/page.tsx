@@ -8,6 +8,7 @@ import { siteUrl } from "@/lib/site";
 import { requirePlatformAdmin } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { getPageForEdit } from "@/server/pages";
+import { listSavedParts } from "@/server/saved-parts";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
 
 import { uploadPlatformImageAction } from "../../actions";
@@ -25,7 +26,7 @@ export const metadata: Metadata = { title: "Edit page" };
 export default async function EditPagePage({ params, searchParams }: Props) {
   await connection();
   await requirePlatformAdmin();
-  const [page, { saved }] = await Promise.all([load(params), searchParams]);
+  const [page, { saved: justSaved }, saved] = await Promise.all([load(params), searchParams, listSavedParts()]);
   if (!page) notFound();
   return (
     <>
@@ -34,9 +35,10 @@ export default async function EditPagePage({ params, searchParams }: Props) {
       <PageEditor
         key={page.id}
         page={page}
-        notice={saved === "draft" ? "Draft saved." : saved === "published" ? `Published at /${page.slug}.` : null}
+        notice={justSaved === "draft" ? "Draft saved." : justSaved === "published" ? `Published at /${page.slug}.` : null}
         origin={siteUrl()}
         defaultDescription={PLATFORM_DEFAULTS.description}
+        savedParts={saved}
         upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       />
     </>
