@@ -178,13 +178,18 @@ of running `playwright install`.
   checked by `savedPartInput`); the page gets copies (`copyRow()` etc.).
   Pages saved as a plain
   block list are read as one row (`upgradeLegacy`). Blocks are rich text
-  for now: Tiptap JSON, cleaned by `cleanRichText()` and rendered by
-  `<RichText>` as elements, never as HTML. `savePage()` keeps a draft
+  (Tiptap JSON, cleaned by `cleanRichText()` and rendered by `<RichText>`
+  as elements, never as HTML) or an image with a caption (D47, uploaded
+  with `ImageUploadButton`), both rendered by `<PageBlockView>`
+  (`src/components/page-block.tsx`) on the canvas and the site. Rows,
+  columns and blocks take an optional `style` (margin and padding in px,
+  set with `setSpacing()`, applied with `spacingStyle()`). `savePage()` keeps a draft
   (`pages.draft`); publishing copies it to `pages.published`. A published
   page's address moves only on publish, and the database leaves a redirect
   (`page_redirects`). Publishing, unpublishing and deleting call
   `updateTag(PAGES_TAG)`. New block kinds go in `PageBlock`, `pageInput`,
-  `newBlock()` and the builder's Components tab.
+  `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
+  builder's Components tab and its dialogs.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
   store's `NavigationEditor` with platform link kinds (`PlatformMenuLink`: a
   page by id, home, sign-up, sign-in, a web address) and business details;

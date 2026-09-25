@@ -33,19 +33,25 @@ import {
   updateSavedPartAction,
 } from "@/app/admin/(gated)/platform/pages/actions";
 
-import { hasContent, RichText } from "@/components/rich-text";
+import { PageBlockView } from "@/components/page-block";
 import {
   BLOCKS_MAX,
   ROW_LAYOUTS,
   ROW_LAYOUT_KEYS,
   ROWS_MAX,
+  SPACING_MAX,
+  blockHasContent,
+  blockText,
   pageBlocks,
-  richTextPlain,
+  spacingStyle,
   type BlockType,
   type PageBlock,
   type PageColumn,
+  type ImageBlock,
   type PageRow,
   type RowLayout,
+  type Sides,
+  type Spacing,
 } from "@/lib/page-content";
 import {
   copyBlock,
@@ -67,11 +73,15 @@ import {
   removeColumn,
   removeRow,
   setRowLayout,
+  setSpacing,
+  spacingOf,
   updateBlock,
+  type Styled,
 } from "@/lib/page-rows";
 
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 
+import { ImageUploadButton, type Upload } from "./image-upload";
 import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
 
@@ -159,11 +169,12 @@ function below({ active, activatorEvent, delta }: Move, over: Over, axis: "y" | 
   return axis === "y" ? point.y > over.rect.top + over.rect.height / 2 : point.x > over.rect.left + over.rect.width / 2;
 }
 
-const blockLabels: Record<BlockType, string> = { richText: "Rich text" };
+const blockLabels: Record<BlockType, string> = { richText: "Rich text", image: "Image" };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
 const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
-const blockHasText = (block: PageBlock) => richTextPlain(block.doc).trim() !== "";
+/** Worth asking before it is deleted: text written, or a picture chosen. */
+const blockHasText = (block: PageBlock) => blockHasContent(block);
 
 /** What a dialog is open for. */
 type Dialog =
@@ -189,10 +200,13 @@ export function PageBuilder({
   rows,
   onRows,
   saved,
+  upload,
   aside,
 }: {
   rows: PageRow[];
   onRows: Rows;
+  /** Uploads a picture, shrunk in the browser first; null where uploads are not set up. */
+  upload: Upload | null;
   /** Kaizen's saved rows, columns and components (D46). */
   saved: SavedPart[];
   aside: ReactNode;
@@ -421,7 +435,7 @@ export function PageBuilder({
         {dragging?.kind === "palette-row" ? (
           <Tile label={ROW_LAYOUTS[dragging.layout].label} preview={<LayoutPreview layout={dragging.layout} />} lifted />
         ) : dragging?.kind === "palette-block" ? (
-          <Tile label={blockLabels[dragging.type]} preview={<TextIcon />} lifted />
+          <Tile label={blockLabels[dragging.type]} preview={<BlockIcon type={dragging.type} />} lifted />
         ) : dragging?.kind === "block" ? (
           <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
         ) : dragging?.kind === "saved" ? (
@@ -443,6 +457,7 @@ export function PageBuilder({
           if (savedId) setTab("saved");
         }}
         onUse={(part) => placeSaved(part)}
+        upload={upload}
       />
     </DndContext>
   );
@@ -526,14 +541,17 @@ function Sidebar({
                 Drag a component into a column, or press it to add it to the column you last worked in.
               </p>
               <div className="grid grid-cols-2 gap-3">
-                <PaletteTile
-                  id="palette:block:richText"
-                  data={{ kind: "palette-block", type: "richText" }}
-                  label={blockLabels.richText}
-                  preview={<TextIcon />}
-                  onAdd={() => onAddBlock("richText")}
-                  disabled={blocksFull}
-                />
+                {(["richText", "image"] as const).map((type) => (
+                  <PaletteTile
+                    key={type}
+                    id={`palette:block:${type}`}
+                    data={{ kind: "palette-block", type }}
+                    label={blockLabels[type]}
+                    preview={<BlockIcon type={type} />}
+                    onAdd={() => onAddBlock(type)}
+                    disabled={blocksFull}
+                  />
+                ))}
               </div>
             </>
           )}
@@ -710,7 +728,7 @@ function SavedTile({ part, lifted = false }: { part: SavedPart | null; lifted?: 
 /** A block on its way to another place: its kind and the start of its text. */
 function BlockPreview({ block }: { block: PageBlock | null }) {
   if (!block) return null;
-  const text = richTextPlain(block.doc).replace(/\s+/g, " ").trim();
+  const text = blockText(block).replace(/\s+/g, " ").trim();
   return (
     <div className="w-64 rounded-md border border-foreground bg-background p-3 shadow-xl">
       <p className="text-xs text-muted">{blockLabels[block.type]}</p>
@@ -722,7 +740,7 @@ function BlockPreview({ block }: { block: PageBlock | null }) {
 /** A column on its way to another place: how many blocks it takes, and the start of its text. */
 function ColumnPreview({ column }: { column: PageColumn | null }) {
   if (!column) return null;
-  const text = column.blocks.map((b) => richTextPlain(b.doc)).join(" ").replace(/\s+/g, " ").trim();
+  const text = column.blocks.map(blockText).join(" ").replace(/\s+/g, " ").trim();
   const count = column.blocks.length;
   return (
     <div className="w-64 rounded-md border-2 border-dashed border-blue-600 bg-background p-3 shadow-xl">
@@ -731,6 +749,22 @@ function ColumnPreview({ column }: { column: PageColumn | null }) {
       </p>
       <p className="truncate text-sm">{text || "Empty"}</p>
     </div>
+  );
+}
+
+function BlockIcon({ type }: { type: BlockType }) {
+  return type === "image" ? <ImageIcon /> : <TextIcon />;
+}
+
+function ImageIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <circle cx="9" cy="10" r="1.5" />
+        <path d="M21 16l-5-5-8 8" />
+      </svg>
+    </span>
   );
 }
 
@@ -942,7 +976,7 @@ function RowItem({
       <Line at={line} />
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
         <div
-          style={{ "--columns": widths.map((w) => `minmax(0, ${w}fr)`).join(" ") } as CSSProperties}
+          style={{ ...spacingStyle(row.style), "--columns": widths.map((w) => `minmax(0, ${w}fr)`).join(" ") } as CSSProperties}
           className="grid gap-8 md:[grid-template-columns:var(--columns)]"
         >
           {row.columns.map((column, index) => (
@@ -1033,6 +1067,8 @@ function ColumnItem({
         deleteDisabled={count <= 1}
       />
       <Line at={columnLine} vertical />
+      {/* The column's own margin and padding, inside its band for pointing. */}
+      <div style={spacingStyle(column.style)} className="flex flex-col gap-6">
       <SortableContext items={column.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
         {column.blocks.map((block, index) => (
           <BlockItem
@@ -1063,6 +1099,7 @@ function ColumnItem({
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 }
@@ -1121,14 +1158,24 @@ function BlockItem({
         onEdit={edit}
         editLabel="Edit"
         onDuplicate={() => actions.onRows((rows) => duplicateBlock(rows, block.id, newId))}
-        onDelete={() => (blockHasText(block) ? actions.open({ kind: "delete", what: "this text", run: remove }) : remove())}
+        onDelete={() =>
+          blockHasText(block)
+            ? actions.open({ kind: "delete", what: block.type === "image" ? "this picture" : "this text", run: remove })
+            : remove()
+        }
       />
       <Line at={line} />
-      {hasContent(block.doc) ? (
-        <RichText doc={block.doc} />
-      ) : (
-        <p className="rounded-md bg-surface p-3 text-sm text-muted">Empty text. Double-click or use the wrench to write.</p>
-      )}
+      <div style={spacingStyle(block.style)}>
+        {blockHasContent(block) ? (
+          <PageBlockView block={block} />
+        ) : (
+          <p className="rounded-md bg-surface p-3 text-sm text-muted">
+            {block.type === "image"
+              ? "No picture yet. Double-click or use the wrench to choose one."
+              : "Empty text. Double-click or use the wrench to write."}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1146,6 +1193,7 @@ function Dialogs({
   parts,
   onParts,
   onUse,
+  upload,
 }: {
   dialog: Dialog | null;
   rows: PageRow[];
@@ -1156,6 +1204,7 @@ function Dialogs({
   /** New saved parts from the server; `savedId` when one was just saved. */
   onParts: (parts: SavedPart[], savedId?: string) => void;
   onUse: (part: SavedPart) => void;
+  upload: Upload | null;
 }) {
   const done = (
     <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
@@ -1175,11 +1224,18 @@ function Dialogs({
   const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
   const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
+  /** Margin and padding of the row, column or block a dialog is for (D47). */
+  const spacingFields = (target: Styled) => (
+    <SpacingFields
+      value={spacingOf(rows, target)}
+      onChange={(style) => onRows((current) => setSpacing(current, target, style))}
+    />
+  );
 
   return (
     <>
       <Modal
-        open={Boolean(block)}
+        open={block?.type === "richText"}
         onClose={onClose}
         title="Edit rich text"
         footer={
@@ -1192,14 +1248,45 @@ function Dialogs({
         }
         wide
       >
-        {block && (
-          <RichTextEditor
-            // A new block opens with nothing written; the editor starts from what is stored.
-            key={block.id}
-            value={block.doc}
-            onChange={(doc) => onRows((current) => updateBlock(current, block.id, (b) => ({ ...b, doc })))}
-            label="Text"
-          />
+        {block?.type === "richText" && (
+          <div className="flex flex-col gap-5">
+            <RichTextEditor
+              // A new block opens with nothing written; the editor starts from what is stored.
+              key={block.id}
+              value={block.doc}
+              onChange={(doc) =>
+                onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
+              }
+              label="Text"
+            />
+            {spacingFields({ kind: "block", id: block.id })}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "image"}
+        onClose={onClose}
+        title="Image"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "image" && (
+          <div className="flex flex-col gap-5">
+            <ImageFields
+              block={block}
+              upload={upload}
+              onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
+            />
+            {spacingFields({ kind: "block", id: block.id })}
+          </div>
         )}
       </Modal>
 
@@ -1226,6 +1313,7 @@ function Dialogs({
               value={row.layout}
               onChange={(layout) => onRows((current) => setRowLayout(current, row.id, layout, newId))}
             />
+            {spacingFields(column ? { kind: "column", id: column.id } : { kind: "row", id: row.id })}
           </div>
         )}
       </Modal>
@@ -1278,9 +1366,126 @@ function Dialogs({
             onUse(savedPart);
             onClose();
           }}
+          upload={upload}
         />
       )}
     </>
+  );
+}
+
+const SIDES = ["top", "right", "bottom", "left"] as const;
+const NO_SIDES: Sides = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/**
+ * Margin (space outside) and padding (space inside), each for the top,
+ * right, bottom and left, in pixels (D47). Changes show on the canvas at once.
+ */
+function SpacingFields({ value, onChange }: { value: Spacing | undefined; onChange: (value: Spacing) => void }) {
+  const id = useId();
+  const set = (kind: "margin" | "padding", side: (typeof SIDES)[number], text: string) => {
+    const number = Math.max(0, Math.min(SPACING_MAX, Math.round(Number(text) || 0)));
+    const sides = { ...NO_SIDES, ...value?.[kind], [side]: number };
+    const empty = SIDES.every((s) => sides[s] === 0);
+    const next: Spacing = { ...value };
+    if (empty) delete next[kind];
+    else next[kind] = sides;
+    onChange(next);
+  };
+  return (
+    <div className="flex flex-col gap-4 border-t border-border pt-4">
+      {(["margin", "padding"] as const).map((kind) => (
+        <fieldset key={kind} className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">
+            {kind === "margin" ? "Margin" : "Padding"}{" "}
+            <span className="font-normal text-muted">
+              ({kind === "margin" ? "space outside" : "space inside"}, in pixels)
+            </span>
+          </legend>
+          <div className="grid grid-cols-4 gap-2">
+            {SIDES.map((side) => (
+              <label key={side} htmlFor={`${id}-${kind}-${side}`} className="flex flex-col gap-1 text-xs text-muted">
+                {side[0].toUpperCase() + side.slice(1)}
+                <input
+                  id={`${id}-${kind}-${side}`}
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={SPACING_MAX}
+                  step={4}
+                  value={value?.[kind]?.[side] ?? 0}
+                  onChange={(event) => set(kind, side, event.target.value)}
+                  className="min-h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
+                />
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ))}
+    </div>
+  );
+}
+
+/** A picture block's picture, description and caption (D47). */
+function ImageFields({
+  block,
+  upload,
+  onChange,
+}: {
+  block: ImageBlock;
+  upload: Upload | null;
+  onChange: (block: ImageBlock) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-4">
+      {block.image ? (
+        // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
+        <img src={block.image.url} alt="" className="max-h-72 w-full rounded-md border border-border bg-surface object-contain" />
+      ) : (
+        <div className="flex h-40 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
+          No picture yet
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <ImageUploadButton
+          upload={upload}
+          label={block.image ? "Replace picture" : "Upload picture"}
+          onUploaded={(image) => onChange({ ...block, image: { ...image, alt: block.image?.alt ?? "" } })}
+        />
+        {block.image && (
+          <button type="button" onClick={() => onChange({ ...block, image: null })} className="px-2 py-2 text-sm underline">
+            Remove
+          </button>
+        )}
+      </div>
+      {block.image && (
+        <label htmlFor={`${id}-alt`} className="flex flex-col gap-1 text-sm font-medium">
+          Description
+          <textarea
+            id={`${id}-alt`}
+            rows={2}
+            maxLength={300}
+            value={block.image.alt}
+            onChange={(event) => block.image && onChange({ ...block, image: { ...block.image, alt: event.target.value } })}
+            placeholder="What the picture shows, for people who cannot see it"
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-normal"
+          />
+          <span className="text-xs font-normal text-muted">Leave it empty only if the picture is decoration.</span>
+        </label>
+      )}
+      <label htmlFor={`${id}-caption`} className="flex flex-col gap-1 text-sm font-medium">
+        <span>
+          Caption <span className="font-normal text-muted">(optional, shown under the picture)</span>
+        </span>
+        <input
+          id={`${id}-caption`}
+          value={block.caption}
+          maxLength={300}
+          onChange={(event) => onChange({ ...block, caption: event.target.value })}
+          className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
+        />
+      </label>
+    </div>
   );
 }
 
@@ -1396,11 +1601,13 @@ function SavedPartDialog({
   onClose,
   onParts,
   onUse,
+  upload,
 }: {
   part: SavedPart;
   onClose: () => void;
   onParts: (parts: SavedPart[]) => void;
   onUse: () => void;
+  upload: Upload | null;
 }) {
   const id = useId();
   const [name, setName] = useState(part.name);
@@ -1508,18 +1715,26 @@ function SavedPartDialog({
             {part.kind === "row" && <h3 className="text-sm font-medium">Column {index + 1}</h3>}
             {column.blocks.map((block, n) => (
               <div key={block.id} className="flex flex-col gap-1">
-                <RichTextEditor
-                  value={block.doc}
-                  onChange={(doc) => change((r) => updateBlock(r, block.id, (b) => ({ ...b, doc })))}
-                  label={`${part.kind === "row" ? `Column ${index + 1}, text` : "Text"} ${n + 1}`}
-                />
+                {block.type === "richText" ? (
+                  <RichTextEditor
+                    value={block.doc}
+                    onChange={(doc) =>
+                      change((r) => updateBlock(r, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
+                    }
+                    label={`${part.kind === "row" ? `Column ${index + 1}, text` : "Text"} ${n + 1}`}
+                  />
+                ) : (
+                  <div className="rounded-md border border-border p-3">
+                    <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                  </div>
+                )}
                 {part.kind !== "block" && (
                   <button
                     type="button"
                     onClick={() => change((r) => removeBlock(r, block.id))}
                     className="w-fit text-xs text-muted underline hover:text-foreground"
                   >
-                    Remove this text
+                    {block.type === "image" ? "Remove this picture" : "Remove this text"}
                   </button>
                 )}
               </div>

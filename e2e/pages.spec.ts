@@ -136,3 +136,63 @@ test("a page kept from search engines asks not to be indexed", async ({ page }) 
   await page.goto(`/${slug}`);
   await expect(page.locator('head meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
+
+test("a picture block shows with its caption, and rows, columns and blocks keep their spacing (D47)", async ({ page }) => {
+  const slug = `picture-${run}`;
+  const sides = (top: number) => ({ top, right: 0, bottom: 0, left: 0 });
+  const published = {
+    ...content("Pictures", slug, "Text beside. "),
+    blocks: undefined,
+    rows: [
+      {
+        id: "r1",
+        type: "row",
+        layout: "2",
+        style: { margin: sides(40) },
+        columns: [
+          {
+            id: "c1",
+            style: { padding: sides(24) },
+            blocks: [
+              {
+                id: "i1",
+                type: "image",
+                image: { url: "https://example.com/lamp.webp", width: 1600, height: 900, alt: "A desk lamp" },
+                caption: "Our lamp",
+                style: { margin: sides(16) },
+              },
+            ],
+          },
+          {
+            id: "c2",
+            blocks: [
+              {
+                id: "t1",
+                type: "richText",
+                doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Text beside." }] }] },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.pages (slug, draft, published, published_at)
+      values (${slug}, ${sql.json(published)}, ${sql.json(published)}, now())
+    `;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/${slug}`);
+  const figure = page.getByRole("figure");
+  await expect(figure.getByRole("img", { name: "A desk lamp" })).toBeAttached();
+  await expect(figure.locator("figcaption")).toHaveText("Our lamp");
+  const px = (locator: import("@playwright/test").Locator, property: string) =>
+    locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), property);
+  expect(await px(figure.locator(".."), "margin-top")).toBe("16px");
+  expect(await px(figure.locator("../.."), "padding-top")).toBe("24px");
+  expect(await px(figure.locator("../../.."), "margin-top")).toBe("40px");
+});

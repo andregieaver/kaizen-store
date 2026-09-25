@@ -254,13 +254,57 @@ export const ROW_LAYOUT_KEYS = Object.keys(ROW_LAYOUTS) as [RowLayout, ...RowLay
 // Pages
 // ---------------------------------------------------------------------------
 
-export type RichTextBlock = { id: string; type: "richText"; doc: RichTextDoc };
-/** One piece of a page's content. More kinds (pictures, products, …) come later. */
-export type PageBlock = RichTextBlock;
+/** Space on each side, in pixels (D47). */
+export type Sides = { top: number; right: number; bottom: number; left: number };
+/** A row's, column's or block's margin (outside) and padding (inside); none when left out. */
+export type Spacing = { margin?: Sides; padding?: Sides };
+export const SPACING_MAX = 240;
+
+export type RichTextBlock = { id: string; type: "richText"; doc: RichTextDoc; style?: Spacing };
+/** A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. */
+export type ImageBlock = {
+  id: string;
+  type: "image";
+  image: { url: string; width: number; height: number; alt: string } | null;
+  caption: string;
+  style?: Spacing;
+};
+/** One piece of a page's content. More kinds (products, buttons, …) come later. */
+export type PageBlock = RichTextBlock | ImageBlock;
 export type BlockType = PageBlock["type"];
 
-export type PageColumn = { id: string; blocks: PageBlock[] };
-export type PageRow = { id: string; type: "row"; layout: RowLayout; columns: PageColumn[] };
+export type PageColumn = { id: string; blocks: PageBlock[]; style?: Spacing };
+export type PageRow = { id: string; type: "row"; layout: RowLayout; columns: PageColumn[]; style?: Spacing };
+
+/** Whether a rich-text document holds nothing but empty paragraphs. */
+export function richTextIsEmpty(doc: RichTextDoc): boolean {
+  return doc.content.every((node) => node.type === "paragraph" && !node.content?.length);
+}
+
+/** Whether a block shows anything; empty ones are left out of the page. */
+export function blockHasContent(block: PageBlock): boolean {
+  return block.type === "richText" ? !richTextIsEmpty(block.doc) : block.image !== null;
+}
+
+/** A block's words: its text, or a picture's description and caption. */
+export function blockText(block: PageBlock): string {
+  return block.type === "richText"
+    ? richTextPlain(block.doc)
+    : [block.image?.alt, block.caption].filter(Boolean).join(" ");
+}
+
+/** CSS for a spacing: only the sides that have some. */
+export function spacingStyle(style: Spacing | undefined): Record<string, string> {
+  const css: Record<string, string> = {};
+  for (const kind of ["margin", "padding"] as const) {
+    const sides = style?.[kind];
+    if (!sides) continue;
+    for (const side of ["top", "right", "bottom", "left"] as const) {
+      if (sides[side] > 0) css[`${kind}${side[0].toUpperCase()}${side.slice(1)}`] = `${sides[side]}px`;
+    }
+  }
+  return css;
+}
 
 export const ROWS_MAX = 50;
 
@@ -307,6 +351,14 @@ const itemId = z
   .string()
   .regex(/^[A-Za-z0-9_-]{1,64}$/, "Part of the page could not be read. Reload the page and try again.");
 
+const side = z
+  .number()
+  .int("Spacing is whole pixels.")
+  .min(0, "Spacing cannot be below 0.")
+  .max(SPACING_MAX, `Keep spacing at ${SPACING_MAX} pixels or less.`);
+const sides = z.object({ top: side, right: side, bottom: side, left: side });
+const spacing = z.object({ margin: sides.optional(), padding: sides.optional() }).optional();
+
 const richTextBlock = z.object({
   id: itemId,
   type: z.literal("richText"),
@@ -316,14 +368,31 @@ const richTextBlock = z.object({
     ctx.addIssue({ code: "custom", message: cleaned.problem });
     return z.NEVER;
   }),
+  style: spacing,
 });
 
-/** One block, as stored: for now rich text. */
-export const pageBlockSchema = z.discriminatedUnion("type", [richTextBlock]);
+const imageBlock = z.object({
+  id: itemId,
+  type: z.literal("image"),
+  image: z
+    .object({
+      url: z.url({ protocol: /^https?$/, error: "A picture has an invalid address." }).max(1000),
+      width: z.number().int().min(1).max(10_000),
+      height: z.number().int().min(1).max(10_000),
+      alt: z.string().trim().max(ALT_MAX, `Keep a picture's description under ${ALT_MAX} characters.`),
+    })
+    .nullable(),
+  caption: z.string().trim().max(ALT_MAX, `Keep a caption under ${ALT_MAX} characters.`).default(""),
+  style: spacing,
+});
+
+/** One block, as stored: rich text or a picture. */
+export const pageBlockSchema = z.discriminatedUnion("type", [richTextBlock, imageBlock]);
 
 export const pageColumnSchema = z.object({
   id: itemId,
   blocks: z.array(pageBlockSchema),
+  style: spacing,
 });
 
 export const pageRowSchema = z
@@ -332,6 +401,7 @@ export const pageRowSchema = z
     type: z.literal("row"),
     layout: z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout."),
     columns: z.array(pageColumnSchema),
+    style: spacing,
   })
   .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {
     message: "A row has the wrong number of columns for its layout. Reload the page and try again.",
@@ -415,7 +485,7 @@ export function parsePageContent(value: unknown): PageContent | null {
 
 /** The page's words, for the description when none is written. */
 export function pageExcerpt(content: Pick<PageContent, "rows">, max?: number): string {
-  return summarize(pageBlocks(content).map((block) => richTextPlain(block.doc)).join(" "), max);
+  return summarize(pageBlocks(content).map(blockText).join(" "), max);
 }
 
 /** Whether two versions of a page say the same (the draft and what is published). */

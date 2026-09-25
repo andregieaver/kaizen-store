@@ -167,6 +167,7 @@ export function PageEditor({
         rows={content.rows}
         onRows={changeRows}
         saved={savedParts}
+        upload={upload}
         aside={
           <>
             <section aria-label="Title and address" className={card}>

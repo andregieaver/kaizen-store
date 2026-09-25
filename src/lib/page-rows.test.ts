@@ -20,6 +20,8 @@ import {
   removeColumn,
   removeRow,
   setRowLayout,
+  setSpacing,
+  spacingOf,
 } from "./page-rows";
 
 let n = 0;
@@ -88,7 +90,7 @@ describe("duplicating and columns", () => {
     const ids = next.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]);
     expect(new Set(ids).size).toBe(ids.length);
     // A copy, not the same objects: changing one leaves the other.
-    expect(next[1].columns[0].blocks[0].doc).not.toBe(next[0].columns[0].blocks[0].doc);
+    expect(next[1].columns[0].blocks[0]).not.toBe(next[0].columns[0].blocks[0]);
   });
 
   it("copies a block right after it", () => {
@@ -171,5 +173,26 @@ describe("putting copies on the page", () => {
     expect(three[0].columns[0].id).toBe("x");
     const full = newRow("6", id);
     expect(insertColumn([full], full.id, { id: "y", blocks: [] }, 0)[0].columns).toHaveLength(6);
+  });
+});
+
+describe("spacing and pictures", () => {
+  it("sets margin and padding on a row, a column or a block", () => {
+    let rows = [newRow("2", id)];
+    const column = rows[0].columns[1].id;
+    rows = insertBlock(rows, column, newBlock("image", id), 0);
+    const block = rows[0].columns[1].blocks[0].id;
+    const sides = { top: 8, right: 0, bottom: 16, left: 0 };
+    rows = setSpacing(rows, { kind: "row", id: rows[0].id }, { margin: sides });
+    rows = setSpacing(rows, { kind: "column", id: column }, { padding: sides });
+    rows = setSpacing(rows, { kind: "block", id: block }, { margin: sides, padding: sides });
+    expect(spacingOf(rows, { kind: "row", id: rows[0].id })).toEqual({ margin: sides });
+    expect(spacingOf(rows, { kind: "column", id: column })).toEqual({ padding: sides });
+    expect(spacingOf(rows, { kind: "block", id: block })).toEqual({ margin: sides, padding: sides });
+    expect(rows[0].columns[0].style).toBeUndefined();
+  });
+
+  it("starts a picture block without a picture", () => {
+    expect(newBlock("image", id)).toMatchObject({ type: "image", image: null, caption: "" });
   });
 });

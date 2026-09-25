@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   RESERVED_PAGE_SLUGS,
+  blockHasContent,
+  spacingStyle,
   cleanRichText,
   isLinkAddress,
   newPageContent,
@@ -159,5 +161,44 @@ describe("page input", () => {
       { id: "legacy-row", type: "row", layout: "1", columns: [{ id: "legacy-column", blocks: [expect.objectContaining({ id: "b1" })] }] },
     ]);
     expect(pageExcerpt(parsed)).toBe("Old");
+  });
+});
+
+describe("pictures and spacing (D47)", () => {
+  const page = (blocks: unknown[], extra: Record<string, unknown> = {}) => ({
+    ...newPageContent(),
+    title: "Pictures",
+    slug: "pictures",
+    rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks, ...extra }] }],
+  });
+  const picture = { url: "https://example.com/a.webp", width: 1600, height: 900, alt: "A lamp" };
+
+  it("keeps a picture block, with or without a picture yet", () => {
+    const parsed = pageInput.parse(
+      page([
+        { id: "i1", type: "image", image: picture, caption: " On the desk " },
+        { id: "i2", type: "image", image: null },
+      ]),
+    );
+    const blocks = parsed.rows[0].columns[0].blocks;
+    expect(blocks[0]).toMatchObject({ type: "image", caption: "On the desk" });
+    expect(blocks[1]).toMatchObject({ type: "image", image: null, caption: "" });
+    expect(blocks.map(blockHasContent)).toEqual([true, false]);
+    expect(pageExcerpt(parsed)).toBe("A lamp On the desk");
+  });
+
+  it("refuses a picture that is not on the web", () => {
+    expect(pageInput.safeParse(page([{ id: "i", type: "image", image: { ...picture, url: "javascript:alert(1)" } }])).success).toBe(false);
+  });
+
+  it("keeps margin and padding in whole pixels from 0 to 240, and turns them into CSS", () => {
+    const sides = { top: 8, right: 0, bottom: 24, left: 0 };
+    const parsed = pageInput.parse(page([], { style: { margin: sides, padding: sides } }));
+    expect(parsed.rows[0].columns[0].style).toEqual({ margin: sides, padding: sides });
+    expect(spacingStyle({ margin: sides })).toEqual({ marginTop: "8px", marginBottom: "24px" });
+    expect(spacingStyle(undefined)).toEqual({});
+    for (const bad of [-4, 241, 2.5]) {
+      expect(pageInput.safeParse(page([], { style: { margin: { ...sides, top: bad } } })).success).toBe(false);
+    }
   });
 });

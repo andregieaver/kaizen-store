@@ -1,4 +1,13 @@
-import { EMPTY_DOC, ROW_LAYOUTS, type BlockType, type PageBlock, type PageColumn, type PageRow, type RowLayout } from "./page-content";
+import {
+  EMPTY_DOC,
+  ROW_LAYOUTS,
+  type BlockType,
+  type PageBlock,
+  type PageColumn,
+  type PageRow,
+  type RowLayout,
+  type Spacing,
+} from "./page-content";
 
 /**
  * The page builder's edits (D43), as pure functions on a page's rows: each
@@ -24,6 +33,8 @@ export function newBlock(type: BlockType, id: NewId): PageBlock {
   switch (type) {
     case "richText":
       return { id: id(), type, doc: EMPTY_DOC };
+    case "image":
+      return { id: id(), type, image: null, caption: "" };
   }
 }
 
@@ -225,4 +236,25 @@ export function insertColumn(rows: PageRow[], rowId: string, column: PageColumn,
     columns.splice(clamp(index, columns.length), 0, column);
     return { ...row, layout: equalLayout(columns.length), columns };
   });
+}
+
+/** Where spacing is set: a row, a column or a block, by id. */
+export type Styled = { kind: "row" | "column" | "block"; id: string };
+
+/** Gives a row, column or block its margin and padding (D47). */
+export function setSpacing(rows: PageRow[], target: Styled, style: Spacing): PageRow[] {
+  if (target.kind === "block") return updateBlock(rows, target.id, (b) => ({ ...b, style }));
+  return rows.map((row) => {
+    if (target.kind === "row") return row.id === target.id ? { ...row, style } : row;
+    return row.columns.some((c) => c.id === target.id)
+      ? { ...row, columns: row.columns.map((c) => (c.id === target.id ? { ...c, style } : c)) }
+      : row;
+  });
+}
+
+/** The spacing a row, column or block has now. */
+export function spacingOf(rows: PageRow[], target: Styled): Spacing | undefined {
+  if (target.kind === "block") return findBlock(rows, target.id)?.block.style;
+  if (target.kind === "row") return rows.find((r) => r.id === target.id)?.style;
+  return rows.flatMap((r) => r.columns).find((c) => c.id === target.id)?.style;
 }

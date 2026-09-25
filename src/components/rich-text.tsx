@@ -14,9 +14,6 @@ export function RichText({ doc }: { doc: RichTextDoc }) {
 
 const isEmpty = (node: BlockNode) => node.type === "paragraph" && !node.content?.length;
 
-/** Whether a block shows anything; empty ones are left out of the page. */
-export const hasContent = (doc: RichTextDoc) => !doc.content.every(isEmpty);
-
 /** Without the empty paragraphs the editor keeps at the start and end of a block (to type after a list). */
 function trimmed(nodes: BlockNode[]): BlockNode[] {
   let start = 0;
