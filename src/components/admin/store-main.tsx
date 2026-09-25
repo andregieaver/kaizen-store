@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 /** The page editor (a page's own address, or a new page) uses the whole width, without the settings sidebar (D53). */
-const FULL_WIDTH = /^\/admin\/[^/]+\/pages\/(new|[0-9a-f-]{36})$/;
+const FULL_WIDTH = /^\/admin\/[^/]+\/(pages|articles)\/(new|[0-9a-f-]{36})$/;
 
 /**
  * A store admin's main area beside its settings sidebar; decided from the

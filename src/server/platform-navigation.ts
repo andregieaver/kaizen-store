@@ -79,7 +79,7 @@ export async function savePlatformNavigation(account: Account, input: unknown): 
   if (ids.length > 0) {
     const rows = await db().execute<Row>(sql`
       select id from commerce.pages
-      where store_id is null and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
+      where store_id is null and type = 'page' and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
     `);
     for (const row of rows) existing.add(String(row.id));
   }

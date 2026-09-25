@@ -15,6 +15,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
     { href: "/admin/platform/plan-reminders", label: "Plan reminders" },
     { href: "/admin/platform/stripe", label: "Stripe" },
     { href: "/admin/platform/pages", label: "Pages" },
+    { href: "/admin/platform/articles", label: "Blog" },
     { href: "/admin/platform/navigation", label: "Header and footer" },
     { href: "/admin/platform/seo", label: "Search" },
     { href: "/admin/platform/emails", label: "Emails" },

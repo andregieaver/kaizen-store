@@ -1,4 +1,5 @@
 import type { GridData } from "@/lib/content-grid";
+import type { PageType } from "@/lib/page-content";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
@@ -19,9 +20,13 @@ export type PageSaveState = { status: "saved"; page: EditablePage } | { status: 
 export type PageOwnerContext = {
   /** Null for Kaizen, else the store's id. */
   owner: string | null;
+  /** A page, or an article in the blog (D57). */
+  type: PageType;
+  /** A new article's author: the signed-in person's name (D57). */
+  defaultAuthor: string;
   /** Where the owner's pages are edited: `/admin/platform/pages` or `/admin/{store}/pages`. */
   adminBase: string;
-  /** What comes before a page's address on the site: "" for Kaizen's, `/s/{store}/{market}` for a store's. */
+  /** What comes before a page's address on the site: "" for Kaizen's, `/s/{store}/{market}` for a store's; `/blog` after it for articles. */
   siteBase: string;
   /** The site's origin, for showing a page's full address. */
   origin: string;

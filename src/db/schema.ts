@@ -2374,18 +2374,23 @@ export const pages = commerce.table(
     id: uuid("id").primaryKey().defaultRandom(),
     /** Null for Kaizen's own pages. */
     storeId: uuid("store_id").references(() => stores.id),
+    /** A page, or an article (D57, at `/blog/{slug}`): the same builder, each with its own addresses. */
+    type: text("type").notNull().default("page"),
     slug: text("slug").notNull(),
     draft: jsonb("draft").notNull(),
     published: jsonb("published"),
     /** When it was last published; null while it is not public. */
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    /** When it was first published, kept when it is published again or taken off: an article's date (D57). */
+    firstPublishedAt: timestamp("first_published_at", { withTimezone: true }),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
   (t) => [
-    unique("pages_store_slug_key").on(t.storeId, t.slug).nullsNotDistinct(),
+    unique("pages_store_slug_key").on(t.storeId, t.type, t.slug).nullsNotDistinct(),
+    check("pages_type", sql`${t.type} in ('page', 'article')`),
     // For stores' front pages (D54): a store can only choose a page of its own.
     unique("pages_store_id_key").on(t.storeId, t.id),
     index("pages_created_by_idx").on(t.createdBy),
@@ -2394,13 +2399,15 @@ export const pages = commerce.table(
     // The platform's own routes at the root of the site (category and tag listings: D50).
     check(
       "pages_slug_not_reserved",
-      sql`${t.storeId} is not null or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'category', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
+      sql`${t.storeId} is not null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'blog', 'category', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
     ),
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.slug} not in ('account', 'cart', 'category', 'checkout', 'download', 'order', 'p', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'download', 'order', 'p', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
     ),
+    // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
+    check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),
     check("pages_published_together", sql`(${t.published} is null) = (${t.publishedAt} is null)`),
   ],
 );
@@ -2415,6 +2422,8 @@ export const pageRedirects = commerce.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: uuid("store_id").references(() => stores.id),
+    /** The page's type (D57): pages and articles have addresses of their own. Set from the page. */
+    type: text("type").notNull().default("page"),
     slug: text("slug").notNull(),
     pageId: uuid("page_id")
       .notNull()
@@ -2422,7 +2431,7 @@ export const pageRedirects = commerce.table(
     createdAt: createdAt(),
   },
   (t) => [
-    unique("page_redirects_store_slug_key").on(t.storeId, t.slug).nullsNotDistinct(),
+    unique("page_redirects_store_slug_key").on(t.storeId, t.type, t.slug).nullsNotDistinct(),
     index("page_redirects_page_idx").on(t.pageId),
   ],
 );

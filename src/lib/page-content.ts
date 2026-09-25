@@ -16,6 +16,7 @@ import { termIdsSchema } from "./taxonomy";
 export const PAGE_TITLE_MAX = 200;
 export const PAGE_SLUG_MAX = 80;
 export const ALT_MAX = 300;
+export const AUTHOR_MAX = 100;
 export const BLOCKS_MAX = 100;
 /** Characters of text in one rich-text block. */
 export const RICH_TEXT_MAX = 50_000;
@@ -27,6 +28,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   "api",
   "app",
   "auth",
+  "blog",
   "category",
   "forgot-password",
   "help",
@@ -569,6 +571,8 @@ export type PageContent = {
   /** Its categories and tags, by id (D50); published with the page. */
   categories: string[];
   tags: string[];
+  /** An article's author, by name (D57); empty shows the store or Kaizen. Pages have none. */
+  author?: string;
   /** The content: rows of columns of blocks. */
   rows: PageRow[];
   /**
@@ -611,6 +615,7 @@ export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
  */
 export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "account",
+  "blog",
   "cart",
   "category",
   "checkout",
@@ -623,9 +628,19 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "wishlist",
 ];
 
-/** The addresses an owner's pages cannot take: Kaizen's (null) or a store's. */
-export const reservedPageSlugs = (storeId: string | null): readonly string[] =>
-  storeId === null ? RESERVED_PAGE_SLUGS : RESERVED_STORE_PAGE_SLUGS;
+/**
+ * Kept in step with the `pages_article_slug_not_reserved` check: the blog's
+ * own routes under `/blog/` (D57), Kaizen's and every store's.
+ */
+export const RESERVED_ARTICLE_SLUGS: readonly string[] = ["category", "page", "tag"];
+
+/** What is built in the page builder: pages, and articles in the blog (D57). */
+export const PAGE_TYPES = ["page", "article"] as const;
+export type PageType = (typeof PAGE_TYPES)[number];
+
+/** The addresses an owner's pages (Kaizen's with null, or a store's) or articles cannot take. */
+export const reservedPageSlugs = (storeId: string | null, type: PageType = "page"): readonly string[] =>
+  type === "article" ? RESERVED_ARTICLE_SLUGS : storeId === null ? RESERVED_PAGE_SLUGS : RESERVED_STORE_PAGE_SLUGS;
 
 /** Why an address is not well formed, or null. */
 function slugFormatProblem(slug: string): string | null {
@@ -644,7 +659,9 @@ export function pageSlugProblem(slug: string, reserved: readonly string[] = RESE
   if (reserved.includes(slug)) {
     return reserved === RESERVED_PAGE_SLUGS
       ? `The address /${slug} is used by Kaizen itself. Choose another.`
-      : `The address ${slug} is used by the store itself. Choose another.`;
+      : reserved === RESERVED_ARTICLE_SLUGS
+        ? `The address blog/${slug} is used by the blog itself. Choose another.`
+        : `The address ${slug} is used by the store itself. Choose another.`;
   }
   return null;
 }
@@ -968,6 +985,7 @@ export const pageInput = z.preprocess(
       searchEngines: z.boolean(),
       aiAssistants: z.boolean(),
       ...termIdsSchema.shape,
+      author: z.string().trim().max(AUTHOR_MAX, `Keep the author's name under ${AUTHOR_MAX} characters.`).optional(),
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
       // Checked against the page and its owner's languages when saved (`cleanTranslations`).
       translations: z

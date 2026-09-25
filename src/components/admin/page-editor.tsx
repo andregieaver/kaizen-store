@@ -8,6 +8,7 @@ import { TermPicker } from "@/components/admin/terms";
 import { shrinkImage } from "@/lib/image-resize";
 import {
   ALT_MAX,
+  AUTHOR_MAX,
   PAGE_SLUG_MAX,
   PAGE_TITLE_MAX,
   newPageContent,
@@ -83,8 +84,14 @@ export function PageEditor({
   const [terms, setTerms] = useState(initialTerms);
   const router = useRouter();
   const [saved, setSaved] = useState<EditablePage | null>(page);
+  // What is being edited: a page, or an article in the blog (D57), which starts with its writer as author.
+  const noun = context.type === "article" ? "article" : "page";
   const [content, setContent] = useState<PageContent>(
-    page?.draft ?? { ...newPageContent(), rows: startingRows() },
+    page?.draft ?? {
+      ...newPageContent(),
+      rows: startingRows(),
+      ...(context.type === "article" && context.defaultAuthor ? { author: context.defaultAuthor } : {}),
+    },
   );
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
@@ -164,7 +171,7 @@ export function PageEditor({
       if (outcome.status === "error") setProblems(outcome.problems);
       else {
         setSaved(outcome.page);
-        setMessage("Taken off the site. The page is a draft again.");
+        setMessage(`Taken off the site. The ${noun} is a draft again.`);
       }
     });
 
@@ -215,7 +222,7 @@ export function PageEditor({
                     // The address is one for all languages, made from the main title.
                     change(slugFollows && !translating ? { title, slug: pageSlugFromTitle(title, reserved) } : { title });
                   }}
-                  placeholder="About Kaizen"
+                  placeholder={context.type === "article" ? "What we learned this spring" : "About us"}
                   className={`${input} min-h-12 text-xl font-semibold`}
                 />
               </label>
@@ -242,13 +249,34 @@ export function PageEditor({
               )}
               {moving && !translating && (
                 <p className="rounded-md bg-surface p-3 text-sm">
-                  When you publish, <strong>/{liveSlug}</strong> will lead to <strong>/{content.slug}</strong> for good
+                  When you publish, <strong>{siteBase}/{liveSlug}</strong> will lead to <strong>{siteBase}/{content.slug}</strong> for good
                   (a permanent redirect), so links and search results keep working.
                 </p>
               )}
             </section>
             {!translating && (
             <>
+            {context.type === "article" && (
+              <section aria-labelledby="author-heading" className={card}>
+                <h2 id="author-heading" className="font-medium">
+                  Author
+                </h2>
+                <label className={label}>
+                  Written by
+                  <input
+                    value={content.author ?? ""}
+                    maxLength={AUTHOR_MAX}
+                    onChange={(event) => change({ author: event.target.value })}
+                    placeholder="Name"
+                    className={input}
+                  />
+                  <span className={hint}>
+                    Shown under the title with the date, and told to search engines. Empty shows{" "}
+                    {context.owner === null ? "Kaizen" : "the store"} as the author.
+                  </span>
+                </label>
+              </section>
+            )}
             <section aria-labelledby="terms-heading" className={card}>
               <h2 id="terms-heading" className="font-medium">
                 Categories and tags
@@ -312,7 +340,7 @@ export function PageEditor({
                 value={view.seo}
                 onChange={(seo) => change({ seo })}
                 fallback={{
-                  title: view.title || "The page's title",
+                  title: view.title || `The ${noun}'s title`,
                   description: excerpt || defaultDescription,
                 }}
                 url={`${origin}${siteBase}/${content.slug}`}
@@ -366,7 +394,7 @@ export function PageEditor({
             )}
             {liveSlug && (
               <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
-                View page
+                View {noun}
               </a>
             )}
             {saved?.published && (
@@ -384,7 +412,7 @@ export function PageEditor({
                     disabled={busy}
                     className="min-h-9 rounded-md bg-red-700 px-3 text-white disabled:opacity-50"
                   >
-                    Delete page
+                    Delete {noun}
                   </button>
                   <button type="button" onClick={() => setConfirmDelete(false)} className="underline">
                     Keep it

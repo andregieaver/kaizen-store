@@ -58,9 +58,9 @@ export async function saveNavigation({ account, store }: Membership, input: unkn
   if (slugs.length > 0) {
     const list = sql.join(slugs.map((slug) => sql`${slug}`), sql`, `);
     const rows = await db().execute<Row>(sql`
-      select slug from commerce.pages where store_id = ${store.id}::uuid and slug in (${list})
+      select slug from commerce.pages where store_id = ${store.id}::uuid and type = 'page' and slug in (${list})
       union
-      select slug from commerce.page_redirects where store_id = ${store.id}::uuid and slug in (${list})
+      select slug from commerce.page_redirects where store_id = ${store.id}::uuid and type = 'page' and slug in (${list})
     `);
     for (const row of rows) known.add(String(row.slug));
   }

@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 /** The page editor (a page's own address, or a new page) uses the whole width; the rest of the platform admin does not. */
-const FULL_WIDTH = /^\/admin\/platform\/pages\/(new|[0-9a-f-]{36})$/;
+const FULL_WIDTH = /^\/admin\/platform\/(pages|articles)\/(new|[0-9a-f-]{36})$/;
 
 /**
  * The platform admin's main area. Decided from the address rather than

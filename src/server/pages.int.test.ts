@@ -389,3 +389,42 @@ describe("a store's page in its languages (D55)", () => {
     expect((await pages.getPageForEdit(null, kaizen))?.draft.translations).toBeUndefined();
   });
 });
+
+describe("articles (D57)", () => {
+  const article = (slug: string, overrides: Partial<PageContent> = {}) => content(slug, { title: `Article ${slug}`, ...overrides });
+
+  it("keeps articles apart from pages, with their own addresses, author and first date", async () => {
+    const slug = `news-${run}`;
+    const page = await saved(await pages.savePage(admin, null, null, content(slug, { author: "Kari" }), { publish: true }));
+    const id = await saved(await pages.savePage(admin, null, null, article(slug, { author: "Kari" }), { publish: true, type: "article" }));
+    // Pages have no author; articles keep theirs.
+    expect((await pages.getPageForEdit(null, page))?.draft.author).toBeUndefined();
+    expect((await pages.getPageForEdit(null, id, "article"))?.draft.author).toBe("Kari");
+    // Each is found only as what it is.
+    expect(await pages.getPageForEdit(null, id)).toBeNull();
+    expect(await pages.findPublishedPage(null, slug, "article")).toMatchObject({ page: { id } });
+    expect(await pages.findPublishedPage(null, slug)).toMatchObject({ page: { id: page } });
+    expect((await pages.listPublishedPages(null)).map((p) => p.id)).not.toContain(id);
+    expect((await pages.listPublishedPages(null, "article")).map((p) => p.id)).toContain(id);
+    expect(await pages.unpublishPage(admin, null, id)).toBe(false);
+
+    // Published again under a new address: the first date stays, the old address redirects.
+    const first = (await pages.findPublishedPage(null, slug, "article")) as { page: { firstPublishedAt: string } };
+    await saved(await pages.savePage(admin, null, id, article(`${slug}-2`), { publish: true, type: "article" }));
+    expect(await pages.findPublishedPage(null, slug, "article")).toEqual({ redirect: `${slug}-2` });
+    const again = (await pages.findPublishedPage(null, `${slug}-2`, "article")) as { page: { firstPublishedAt: string; publishedAt: string } };
+    expect(again.page.firstPublishedAt).toBe(first.page.firstPublishedAt);
+    expect(again.page.publishedAt >= again.page.firstPublishedAt).toBe(true);
+    // The page at the old address is untouched.
+    expect(await pages.findPublishedPage(null, slug)).toMatchObject({ page: { id: page } });
+
+    expect(await pages.savePage(admin, null, null, article("category"), { publish: false, type: "article" })).toEqual({
+      ok: false,
+      problems: ["The address blog/category is used by the blog itself. Choose another."],
+    });
+    expect(await pages.savePage(admin, null, null, article(`${slug}-2`), { publish: false, type: "article" })).toEqual({
+      ok: false,
+      problems: [`Another article already has the address blog/${slug}-2. Choose another.`],
+    });
+  });
+});

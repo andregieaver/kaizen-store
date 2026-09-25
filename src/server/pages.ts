@@ -11,6 +11,7 @@ import {
   reservedPageSlugs,
   samePageContent,
   type PageContent,
+  type PageType,
 } from "@/lib/page-content";
 
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
@@ -23,7 +24,9 @@ import { scopedTermIds } from "./taxonomy";
  * at `/{slug}`) and each store's (D53, at `/s/{store}/{market}/{slug}`), in
  * one table. The editor saves a draft; publishing copies it to what
  * visitors see, so a published page can be worked on without changing it.
- * Every function takes the owner, so a page is only ever found by its own.
+ * Articles (D57, at `/blog/{slug}`) are kept the same way, with a type of
+ * their own: every function takes the owner and the type (a page unless
+ * said), so a page is only ever found by its own, and never as an article.
  */
 
 type Row = Record<string, unknown>;
@@ -36,7 +39,7 @@ export const PAGES_TAG = "platform-pages";
 /** The same for an owner: Kaizen's, or a store's. */
 export const pagesTag = (owner: PageOwner) => (owner === null ? PAGES_TAG : `pages:${owner}`);
 
-const ownedBy = (owner: PageOwner) => sql`store_id is not distinct from ${owner}::uuid`;
+const ownedBy = (owner: PageOwner, type: PageType) => sql`store_id is not distinct from ${owner}::uuid and type = ${type}`;
 
 export type PageState = "draft" | "published" | "changed";
 
@@ -91,11 +94,11 @@ function readDraft(value: unknown, slug: string): PageContent {
   );
 }
 
-/** Every page of an owner's, newest change first, for the Pages list. */
-export async function listPages(owner: PageOwner): Promise<PageSummary[]> {
+/** Every page (or article) of an owner's, newest change first, for the Pages list. */
+export async function listPages(owner: PageOwner, type: PageType = "page"): Promise<PageSummary[]> {
   const rows = await db().execute<Row>(sql`
     select id, slug, draft, published, published_at, updated_at from commerce.pages
-    where ${ownedBy(owner)}
+    where ${ownedBy(owner, type)}
     order by updated_at desc
   `);
   return rows.map((row) => {
@@ -115,10 +118,10 @@ export async function listPages(owner: PageOwner): Promise<PageSummary[]> {
   });
 }
 
-export async function getPageForEdit(owner: PageOwner, id: string): Promise<EditablePage | null> {
+export async function getPageForEdit(owner: PageOwner, id: string, type: PageType = "page"): Promise<EditablePage | null> {
   const [row] = await db().execute<Row>(sql`
     select id, slug, draft, published, published_at, updated_at from commerce.pages
-    where id = ${id}::uuid and ${ownedBy(owner)}
+    where id = ${id}::uuid and ${ownedBy(owner, type)}
   `);
   if (!row) return null;
   const draft = readDraft(row.draft, String(row.slug));
@@ -138,12 +141,13 @@ export async function getPageForEdit(owner: PageOwner, id: string): Promise<Edit
 async function slugTaken(
   tx: Pick<ReturnType<typeof db>, "execute">,
   owner: PageOwner,
+  type: PageType,
   slug: string,
   id: string | null,
 ): Promise<boolean> {
   const [row] = await tx.execute<Row>(sql`
     select 1 from commerce.pages
-    where ${ownedBy(owner)} and slug = ${slug} and (${id}::uuid is null or id <> ${id}::uuid)
+    where ${ownedBy(owner, type)} and slug = ${slug} and (${id}::uuid is null or id <> ${id}::uuid)
   `);
   return Boolean(row);
 }
@@ -155,7 +159,10 @@ function isUniqueViolation(error: unknown): boolean {
   return false;
 }
 
-const takenProblem = (slug: string) => `Another page already has the address /${slug}. Choose another.`;
+const takenProblem = (slug: string, type: PageType) =>
+  type === "article"
+    ? `Another article already has the address blog/${slug}. Choose another.`
+    : `Another page already has the address /${slug}. Choose another.`;
 
 /**
  * Saves the editor's page as the draft, and with `publish` also as what
@@ -169,36 +176,39 @@ export async function savePage(
   owner: PageOwner,
   id: string | null,
   input: unknown,
-  { publish }: { publish: boolean },
+  { publish, type = "page" }: { publish: boolean; type?: PageType },
 ): Promise<PageResult> {
   const parsed = pageInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
-  const slugProblem = pageSlugProblem(parsed.data.slug, reservedPageSlugs(owner));
+  const slugProblem = pageSlugProblem(parsed.data.slug, reservedPageSlugs(owner, type));
   if (slugProblem) return { ok: false, problems: [slugProblem] };
   const gridProblem = ownerGridProblem(owner, parsed.data.rows);
   if (gridProblem) return { ok: false, problems: [gridProblem] };
-  // Only the owner's page categories and tags; one deleted meanwhile is left out.
-  const scope = { storeId: owner, contentType: "page" } as const;
+  // Only the owner's page (or article) categories and tags; one deleted meanwhile is left out.
+  const scope = { storeId: owner, contentType: type } as const;
   // Texts in the owner's other languages (D55); Kaizen's pages are in English only.
   const translated = cleanTranslations(parsed.data, (await ownerLanguages(owner)).slice(1));
   if (!translated.ok) return { ok: false, problems: translated.problems };
-  const content = {
-    ...translated.content,
+  const { author, ...rest } = translated.content;
+  const content: PageContent = {
+    ...rest,
     categories: await scopedTermIds(scope, "category", parsed.data.categories),
     tags: await scopedTermIds(scope, "tag", parsed.data.tags),
+    // Only articles have an author (D57).
+    ...(type === "article" && author ? { author } : {}),
   };
   const json = JSON.stringify(content);
 
   let result: PageResult;
   try {
     result = await db().transaction(async (tx): Promise<PageResult> => {
-      if (await slugTaken(tx, owner, content.slug, id)) return { ok: false, problems: [takenProblem(content.slug)] };
+      if (await slugTaken(tx, owner, type, content.slug, id)) return { ok: false, problems: [takenProblem(content.slug, type)] };
 
       if (id === null) {
         const [row] = await tx.execute<Row>(sql`
-          insert into commerce.pages (store_id, slug, draft, published, published_at, created_by, updated_by)
-          values (${owner}::uuid, ${content.slug}, ${json}::jsonb,
-            case when ${publish} then ${json}::jsonb end, case when ${publish} then now() end,
+          insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at, created_by, updated_by)
+          values (${owner}::uuid, ${type}, ${content.slug}, ${json}::jsonb,
+            case when ${publish} then ${json}::jsonb end, case when ${publish} then now() end, case when ${publish} then now() end,
             ${account.id}::uuid, ${account.id}::uuid)
           returning id
         `);
@@ -207,7 +217,7 @@ export async function savePage(
 
       const [row] = await tx.execute<Row>(sql`
         select published_at is not null as live from commerce.pages
-        where id = ${id}::uuid and ${ownedBy(owner)}
+        where id = ${id}::uuid and ${ownedBy(owner, type)}
         for update
       `);
       if (!row) return { ok: false, problems: ["This page no longer exists. It may have been deleted."] };
@@ -219,6 +229,7 @@ export async function savePage(
           slug = case when ${moveAddress} then ${content.slug} else slug end,
           published = case when ${publish} then ${json}::jsonb else published end,
           published_at = case when ${publish} then now() else published_at end,
+          first_published_at = case when ${publish} then coalesce(first_published_at, now()) else first_published_at end,
           updated_at = now(), updated_by = ${account.id}::uuid
         where id = ${id}::uuid
       `);
@@ -227,11 +238,11 @@ export async function savePage(
   } catch (error) {
     // Another save took the address between the check and the write.
     if (!isUniqueViolation(error)) throw error;
-    result = { ok: false, problems: [takenProblem(content.slug)] };
+    result = { ok: false, problems: [takenProblem(content.slug, type)] };
   }
 
   if (result.ok) {
-    await audit(account.id, owner, publish ? `${auditPrefix(owner)}.page_published` : `${auditPrefix(owner)}.page_saved`, {
+    await audit(account.id, owner, `${auditPrefix(owner)}.${type}_${publish ? "published" : "saved"}`, {
       page: result.id,
       slug: content.slug,
     });
@@ -240,23 +251,23 @@ export async function savePage(
 }
 
 /** Takes a page off the site; its draft stays, and so do its redirects. */
-export async function unpublishPage(account: Account, owner: PageOwner, id: string): Promise<boolean> {
+export async function unpublishPage(account: Account, owner: PageOwner, id: string, type: PageType = "page"): Promise<boolean> {
   const rows = await db().execute<Row>(sql`
     update commerce.pages set published = null, published_at = null, updated_at = now(), updated_by = ${account.id}::uuid
-    where id = ${id}::uuid and ${ownedBy(owner)} and published_at is not null
+    where id = ${id}::uuid and ${ownedBy(owner, type)} and published_at is not null
     returning slug
   `);
-  if (rows.length > 0) await audit(account.id, owner, `${auditPrefix(owner)}.page_unpublished`, { page: id, slug: rows[0].slug });
+  if (rows.length > 0) await audit(account.id, owner, `${auditPrefix(owner)}.${type}_unpublished`, { page: id, slug: rows[0].slug });
   return rows.length > 0;
 }
 
 /** Deletes a page for good, with its redirects. Menu links to it disappear from the site. */
-export async function deletePage(account: Account, owner: PageOwner, id: string): Promise<boolean> {
+export async function deletePage(account: Account, owner: PageOwner, id: string, type: PageType = "page"): Promise<boolean> {
   const rows = await db().execute<Row>(sql`
-    delete from commerce.pages where id = ${id}::uuid and ${ownedBy(owner)} returning slug, draft ->> 'title' as title
+    delete from commerce.pages where id = ${id}::uuid and ${ownedBy(owner, type)} returning slug, draft ->> 'title' as title
   `);
   if (rows.length > 0) {
-    await audit(account.id, owner, `${auditPrefix(owner)}.page_deleted`, { page: id, slug: rows[0].slug, title: rows[0].title });
+    await audit(account.id, owner, `${auditPrefix(owner)}.${type}_deleted`, { page: id, slug: rows[0].slug, title: rows[0].title });
   }
   return rows.length > 0;
 }
@@ -299,23 +310,40 @@ function ownerGridProblem(owner: PageOwner, rows: PageContent["rows"]): string |
 // The site
 // ---------------------------------------------------------------------------
 
-export type PublishedPage = { id: string; slug: string; content: PageContent; publishedAt: string };
+export type PublishedPage = {
+  id: string;
+  slug: string;
+  content: PageContent;
+  /** When it was last published (its last change on the site). */
+  publishedAt: string;
+  /** When it was first published: an article's date (D57). */
+  firstPublishedAt: string;
+};
 
-/** Every published page of an owner's, oldest first: for its routes, menus, sitemap and llms.txt. */
-export async function listPublishedPages(owner: PageOwner = null): Promise<PublishedPage[]> {
+const published = (row: Row, content: PageContent): PublishedPage => ({
+  id: String(row.id),
+  slug: String(row.slug),
+  content,
+  publishedAt: iso(row.published_at)!,
+  firstPublishedAt: iso(row.first_published_at ?? row.published_at)!,
+});
+
+/**
+ * Every published page of an owner's, oldest first, for its routes, menus,
+ * sitemap and llms.txt; or its articles (D57), newest first.
+ */
+export async function listPublishedPages(owner: PageOwner = null, type: PageType = "page"): Promise<PublishedPage[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(owner));
   const rows = await readDb().execute<Row>(sql`
-    select id, slug, published, published_at from commerce.pages
-    where ${ownedBy(owner)} and published_at is not null
-    order by created_at
+    select id, slug, published, published_at, first_published_at from commerce.pages
+    where ${ownedBy(owner, type)} and published_at is not null
+    order by ${type === "article" ? sql`coalesce(first_published_at, published_at) desc, slug` : sql`created_at`}
   `);
   return rows.flatMap((row) => {
     const content = parsePageContent(row.published);
-    return content
-      ? [{ id: String(row.id), slug: String(row.slug), content, publishedAt: iso(row.published_at)! }]
-      : [];
+    return content ? [published(row, content)] : [];
   });
 }
 
@@ -323,17 +351,18 @@ export async function listPublishedPages(owner: PageOwner = null): Promise<Publi
 export async function findPublishedPage(
   owner: PageOwner,
   slug: string,
+  type: PageType = "page",
 ): Promise<{ page: PublishedPage } | { redirect: string } | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(owner));
   const [row] = await readDb().execute<Row>(sql`
-    select p.id, p.slug, p.published, p.published_at, p.slug <> ${slug} as moved
+    select p.id, p.slug, p.published, p.published_at, p.first_published_at, p.slug <> ${slug} as moved
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.published_at is not null
+    where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
       and (p.slug = ${slug} or p.id = (
         select r.page_id from commerce.page_redirects r
-        where r.store_id is not distinct from ${owner}::uuid and r.slug = ${slug}
+        where r.store_id is not distinct from ${owner}::uuid and r.type = ${type} and r.slug = ${slug}
       ))
     order by moved
     limit 1
@@ -341,9 +370,7 @@ export async function findPublishedPage(
   if (!row) return null;
   if (row.moved) return { redirect: String(row.slug) };
   const content = parsePageContent(row.published);
-  return content
-    ? { page: { id: String(row.id), slug: String(row.slug), content, publishedAt: iso(row.published_at)! } }
-    : null;
+  return content ? { page: published(row, content) } : null;
 }
 
 /**
@@ -363,12 +390,12 @@ export async function publishedPageNames(
   const rows = await readDb().execute<Row>(sql`
     select p.slug as address, p.slug, ${title} as title
     from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.published_at is not null
+    where p.store_id is not distinct from ${owner}::uuid and p.type = 'page' and p.published_at is not null
     union all
     select r.slug, p.slug, ${title}
     from commerce.page_redirects r
     join commerce.pages p on p.id = r.page_id and p.published_at is not null
-    where r.store_id is not distinct from ${owner}::uuid
+    where r.store_id is not distinct from ${owner}::uuid and r.type = 'page'
   `);
   return rows.map((row) => [String(row.address), { slug: String(row.slug), title: String(row.title ?? row.slug) }]);
 }
@@ -386,7 +413,7 @@ export async function setFrontPage(
   if (pageId !== null) {
     const [page] = await db().execute<Row>(sql`
       select published_at is not null as published from commerce.pages
-      where id = ${pageId}::uuid and store_id = ${storeId}::uuid
+      where id = ${pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
     `);
     if (!page) return { ok: false, problems: ["That page no longer exists."] };
     if (!page.published) return { ok: false, problems: ["Publish the page before making it the front page."] };
@@ -396,13 +423,14 @@ export async function setFrontPage(
   return { ok: true };
 }
 
-/** An owner's pages for the menu editor to link to: published or not, by title. */
+/** An owner's pages (or articles) for the menu editor to link to: published or not, by title. */
 export async function listMenuPages(
   owner: PageOwner,
+  type: PageType = "page",
 ): Promise<{ id: string; slug: string; title: string; published: boolean }[]> {
   const rows = await db().execute<Row>(sql`
     select id, slug, coalesce(nullif(published ->> 'title', ''), draft ->> 'title', slug) as title, published_at is not null as published
-    from commerce.pages where ${ownedBy(owner)}
+    from commerce.pages where ${ownedBy(owner, type)}
     order by 3
   `);
   return rows.map((row) => ({

@@ -81,7 +81,7 @@ async function gridPages(owner: string | null, marketCode: string | null, filter
         : sql`p.published_at desc, p.slug`;
   const rows = await readDb().execute<Row>(sql`
     select p.id, p.slug, p.published from commerce.pages p
-    where p.store_id is not distinct from ${owner}::uuid and p.published_at is not null
+    where p.store_id is not distinct from ${owner}::uuid and p.type = 'page' and p.published_at is not null
       and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
       and ${matches("categories", categories)}
       and ${matches("tags", tags)}

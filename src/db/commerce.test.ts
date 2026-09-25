@@ -1031,14 +1031,22 @@ describe("pages", () => {
     const front = await insert("front", true);
     await insert("about", true);
     await insert("draft-only", false);
+    await db.query(
+      "insert into commerce.pages (store_id, type, slug, draft, published, published_at) values ($1, 'article', 'hello', '{}', '{}', now())",
+      [template],
+    );
     await db.query("update commerce.stores set front_page_id = $1 where id = $2", [front.id, template]);
     const owner = await createAccount("pages-owner@example.com");
     const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'pages-copy', 'Copy', $2) as id", [template, owner]);
 
     const { rows } = await db.query<{ id: string; slug: string; published: { categories: string[]; rows: unknown[]; translations: unknown } }>(
-      "select id, slug, published from commerce.pages where store_id = $1 order by slug",
+      "select id, slug, published from commerce.pages where store_id = $1 and type = 'page' order by slug",
       [copy],
     );
+    // Articles stay articles (D57).
+    expect((await db.query("select slug from commerce.pages where store_id = $1 and type = 'article'", [copy])).rows).toEqual([
+      { slug: "hello" },
+    ]);
     // Published pages only, published in the copy.
     expect(rows.map((r) => r.slug)).toEqual(["about", "front"]);
     const { id: copiedCategory } = await one<{ id: string }>(
@@ -1054,6 +1062,38 @@ describe("pages", () => {
     expect((await one<{ front_page_id: string }>("select front_page_id from commerce.stores where id = $1", [copy])).front_page_id).toBe(
       rows[1].id,
     );
+  });
+
+  it("gives articles addresses of their own, beside pages, with their own reserved routes and redirects (D57)", async () => {
+    const article = (slug: string, storeId: string | null = null) =>
+      one<{ id: string }>(
+        "insert into commerce.pages (store_id, type, slug, draft) values ($1, 'article', $2, $3) returning id",
+        [storeId, slug, draft],
+      );
+    await page("news");
+    // A page and an article may share an address: /news and /blog/news.
+    const { id } = await article("news");
+    await expect(article("news")).rejects.toThrow(/pages_store_slug_key/);
+    for (const slug of ["category", "tag", "page"]) await expect(article(slug)).rejects.toThrow(/pages_article_slug_not_reserved/);
+    // The blog's address is not a page's, on Kaizen's site or in a store.
+    await expect(page("blog")).rejects.toThrow(/pages_slug_not_reserved/);
+    await expect(page("blog", store)).rejects.toThrow(/pages_store_slug_not_reserved/);
+    await expect(article("blog")).resolves.toBeDefined();
+    await expect(
+      db.query("insert into commerce.pages (type, slug, draft) values ('post', 'x', '{}')"),
+    ).rejects.toThrow(/pages_type/);
+
+    // An article moving leaves an article's redirect, beside the page at that address.
+    await publish(id);
+    await db.query("update commerce.pages set slug = 'news-moved' where id = $1", [id]);
+    const moved = await db.query<{ type: string }>("select type from commerce.page_redirects where slug = 'news' and store_id is null");
+    expect(moved.rows).toEqual([{ type: "article" }]);
+
+    // A store's front page is a page, not an article.
+    const { id: storeArticle } = await article("launch", store);
+    await expect(
+      db.query("update commerce.stores set front_page_id = $1 where id = $2", [storeArticle, store]),
+    ).rejects.toThrow(/front page must be a page/);
   });
 
   it("removes a page's redirects with the page", async () => {

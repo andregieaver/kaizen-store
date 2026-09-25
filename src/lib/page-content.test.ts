@@ -406,6 +406,22 @@ describe("addresses by owner (D53)", () => {
   });
 });
 
+describe("article addresses (D57)", () => {
+  it("keep the blog's own routes from articles, and the blog's address from pages", () => {
+    expect(pageSlugProblem("blog")).toMatch(/used by Kaizen/);
+    expect(pageSlugProblem("blog", reservedPageSlugs("store-id"))).toMatch(/used by the store/);
+    for (const owner of [null, "store-id"]) {
+      expect(pageSlugProblem("tag", reservedPageSlugs(owner, "article"))).toBe(
+        "The address blog/tag is used by the blog itself. Choose another.",
+      );
+      // An article may be called what a page may not.
+      expect(pageSlugProblem("sign-up", reservedPageSlugs(owner, "article"))).toBeNull();
+    }
+    expect(pageInput.safeParse({ ...newPageContent(), title: "News", slug: "news", author: "Kari" }).success).toBe(true);
+    expect(pageInput.safeParse({ ...newPageContent(), title: "News", slug: "news", author: "x".repeat(101) }).success).toBe(false);
+  });
+});
+
 describe("a store's reserved addresses (D53)", () => {
   it("cover every route inside a store's market", async () => {
     const { readdir } = await import("node:fs/promises");

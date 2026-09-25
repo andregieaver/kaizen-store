@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import type { PageSaveState } from "@/components/admin/page-context";
 import type { GridData } from "@/lib/content-grid";
-import { pageBlockSchema } from "@/lib/page-content";
+import { PAGE_TYPES, pageBlockSchema, type PageType } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
@@ -23,6 +23,8 @@ import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResu
  */
 
 const isId = (id: string) => z.uuid().safeParse(id).success;
+/** Pages or articles (D57): bound after the store's slug in the actions below. */
+const isType = (type: unknown): type is PageType => PAGE_TYPES.includes(type as PageType);
 
 /** A store's page changes show on its storefront, its menus and grids. */
 function pagesChanged(member: Membership) {
@@ -31,45 +33,46 @@ function pagesChanged(member: Membership) {
 
 export async function saveStorePageAction(
   storeSlug: string,
+  type: PageType,
   id: string | null,
   payload: string,
   publish: boolean,
 ): Promise<PageSaveState> {
   const member = await requireMember(storeSlug);
-  if (id !== null && !isId(id)) return { status: "error", problems: ["Unknown page."] };
+  if (!isType(type) || (id !== null && !isId(id))) return { status: "error", problems: ["Unknown page."] };
   let json: unknown;
   try {
     json = JSON.parse(payload);
   } catch {
     return { status: "error", problems: ["The page could not be read. Reload and try again."] };
   }
-  const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true });
+  const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type });
   if (!result.ok) return { status: "error", problems: result.problems };
   if (publish) pagesChanged(member);
-  const page = await getPageForEdit(member.store.id, result.id);
+  const page = await getPageForEdit(member.store.id, result.id, type);
   if (!page) return { status: "error", problems: ["The page was saved but could not be read back."] };
   return { status: "saved", page };
 }
 
-export async function unpublishStorePageAction(storeSlug: string, id: string): Promise<PageSaveState> {
+export async function unpublishStorePageAction(storeSlug: string, type: PageType, id: string): Promise<PageSaveState> {
   const member = await requireMember(storeSlug);
-  if (!isId(id)) return { status: "error", problems: ["Unknown page."] };
-  await unpublishPage(member.account, member.store.id, id);
+  if (!isType(type) || !isId(id)) return { status: "error", problems: ["Unknown page."] };
+  await unpublishPage(member.account, member.store.id, id, type);
   pagesChanged(member);
-  const page = await getPageForEdit(member.store.id, id);
+  const page = await getPageForEdit(member.store.id, id, type);
   if (!page) return { status: "error", problems: ["This page no longer exists."] };
   return { status: "saved", page };
 }
 
 /** Deletes the page and goes back to the list; returns only when it could not. */
-export async function deleteStorePageAction(storeSlug: string, id: string): Promise<{ problems: string[] } | void> {
+export async function deleteStorePageAction(storeSlug: string, type: PageType, id: string): Promise<{ problems: string[] } | void> {
   const member = await requireMember(storeSlug);
-  if (!isId(id)) return { problems: ["Unknown page."] };
-  await deletePage(member.account, member.store.id, id);
+  if (!isType(type) || !isId(id)) return { problems: ["Unknown page."] };
+  await deletePage(member.account, member.store.id, id, type);
   pagesChanged(member);
   // A deleted front page (D54) gives the store its product list back.
   if (member.store.frontPageId === id) updateTag(storeTag(member.store.slug));
-  redirect(`/admin/${member.store.slug}/pages?deleted=1`);
+  redirect(`/admin/${member.store.slug}/${type === "article" ? "articles" : "pages"}?deleted=1`);
 }
 
 /** Chooses the page shown as the store's front page (D54), or the product list. */
@@ -105,33 +108,36 @@ export async function deleteStorePartAction(storeSlug: string, id: string): Prom
   return deleteSavedPart(member.account, member.store.id, id);
 }
 
-// The store's page categories and tags (D50).
+// The store's page and article categories and tags (D50, D57).
 
-const pageTerms = (member: Membership) => ({ storeId: member.store.id, contentType: "page" }) as const;
+const termScope = (member: Membership, type: PageType) => ({ storeId: member.store.id, contentType: type }) as const;
 
-function termsChanged(member: Membership, result: TermsResult): TermsResult {
+function termsChanged(member: Membership, type: PageType, result: TermsResult): TermsResult {
   if (result.ok) {
-    updateTag(termsTag(pageTerms(member)));
+    updateTag(termsTag(termScope(member, type)));
     pagesChanged(member);
   }
   return result;
 }
 
-export async function createStorePageTermAction(storeSlug: string, input: unknown): Promise<TermsResult> {
+const unknownTerm: TermsResult = { ok: false, problems: ["Unknown category or tag."] };
+
+export async function createStorePageTermAction(storeSlug: string, type: PageType, input: unknown): Promise<TermsResult> {
   const member = await requireMember(storeSlug);
-  return termsChanged(member, await createTerm(member.account, pageTerms(member), input));
+  if (!isType(type)) return unknownTerm;
+  return termsChanged(member, type, await createTerm(member.account, termScope(member, type), input));
 }
 
-export async function updateStorePageTermAction(storeSlug: string, id: string, input: unknown): Promise<TermsResult> {
+export async function updateStorePageTermAction(storeSlug: string, type: PageType, id: string, input: unknown): Promise<TermsResult> {
   const member = await requireMember(storeSlug);
-  if (!isId(id)) return { ok: false, problems: ["Unknown category or tag."] };
-  return termsChanged(member, await updateTerm(member.account, pageTerms(member), id, input));
+  if (!isType(type) || !isId(id)) return unknownTerm;
+  return termsChanged(member, type, await updateTerm(member.account, termScope(member, type), id, input));
 }
 
-export async function deleteStorePageTermAction(storeSlug: string, id: string): Promise<TermsResult> {
+export async function deleteStorePageTermAction(storeSlug: string, type: PageType, id: string): Promise<TermsResult> {
   const member = await requireMember(storeSlug);
-  if (!isId(id)) return { ok: false, problems: ["Unknown category or tag."] };
-  return termsChanged(member, await deleteTerm(member.account, pageTerms(member), id));
+  if (!isType(type) || !isId(id)) return unknownTerm;
+  return termsChanged(member, type, await deleteTerm(member.account, termScope(member, type), id));
 }
 
 // Content grids (D51): the store's own pages and products, in its first market in the editor.

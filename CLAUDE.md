@@ -211,7 +211,10 @@ of running `playwright install`.
   new block's texts go there too; `localizePage()` on the site; the builder's
   `translate` mode). New stores get the template's published pages and front
   page (`clone_store()`, D56); store builders also offer Kaizen's saved parts
-  as a read-only library (`library`). New block kinds go in `PageBlock`, `pageInput`,
+  as a read-only library (`library`). Articles (D57) are pages of type
+  `article` at `/blog/{slug}`, edited under Blog with the same editor: the
+  page functions, actions and `PageOwnerContext` take the type (a page
+  unless said); the routes share views in each `pages/views.tsx`. New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
 - Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):

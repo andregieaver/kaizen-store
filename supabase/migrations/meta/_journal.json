@@ -463,6 +463,20 @@
       "when": 1790373344591,
       "tag": "20260925215544_store_pages_copy",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1790375658375,
+      "tag": "20260925223418_articles",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790375659588,
+      "tag": "20260925223419_articles_rules",
+      "breakpoints": true
     }
   ]
 }
