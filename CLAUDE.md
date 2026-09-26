@@ -91,6 +91,10 @@ of running `playwright install`.
 - The cart (`src/server/cart.ts`) is per store and market, identified by an httpOnly
   cookie. Adding checks live stock and caps the quantity; stock is only held
   once checkout starts. Mutations are server actions that call `refresh()`.
+  Its contents (`cart/cart-contents.tsx`) are the cart page and, on phones,
+  the slide-out cart (D64): the market layout's `@drawer` slot intercepts
+  `/cart` on client navigation (`(.)cart`, `CartDrawer`); `[...rest]` closes
+  it on any other page, and larger screens load the cart page instead.
 - Payment credentials and payment-method switches are store settings edited in
   the admin, never environment variables (decision D15).
 - Cookie consent (D58, `src/lib/cookie-consent.ts`): every cookie or storage

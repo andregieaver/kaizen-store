@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function MarketLayout({ children, params }: Props) {
+export default async function MarketLayout({ children, drawer, params }: Props) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
@@ -125,6 +125,8 @@ export default async function MarketLayout({ children, params }: Props) {
         <Suspense fallback={null}>
           <StoreMenu store={store} market={market} />
         </Suspense>
+        {/* The slide-out cart on phones, when the cart is opened from a page of the store. */}
+        {drawer}
         {store.businessPopup && <BuyerQuestion storeId={store.id} labels={m.buyer} />}
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* Asks about the store's optional tools and code, if it has any, in the market's language (D58, D61). */}

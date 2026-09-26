@@ -34,6 +34,37 @@ test("add to cart, change quantity within stock, and remove", async ({ page }) =
   await expect(page.getByText("Handlekurven er tom.")).toBeVisible();
 });
 
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 390, height: 800 }, hasTouch: true });
+
+  test("the cart slides out over the page, changes there, and closes back to it", async ({ page }) => {
+    await page.goto("/s/demo/se/p/demo-notatbok");
+    await page.getByRole("button", { name: "Lägg i varukorgen", disabled: false }).first().click();
+    await expect(page.getByRole("status").filter({ hasText: "Tillagd i varukorgen." }).first()).toBeVisible();
+
+    await page.locator("header").getByRole("link", { name: /Varukorg/ }).click();
+    const drawer = page.getByRole("dialog", { name: "Varukorg" });
+    await expect(drawer).toBeVisible();
+    await expect(page).toHaveURL("/s/demo/se/cart");
+    // The product page stays under it.
+    await expect(page.getByRole("heading", { level: 1, name: "Demo: Anteckningsbok A5" })).toBeAttached();
+
+    await drawer.getByLabel("Antal").fill("2");
+    await drawer.getByRole("button", { name: "Uppdatera" }).click();
+    await expect(drawer.getByLabel("Antal")).toHaveValue("2");
+    await expect(drawer).toBeVisible();
+
+    await drawer.getByRole("button", { name: "Stäng varukorgen" }).click();
+    await expect(drawer).toBeHidden();
+    await expect(page).toHaveURL("/s/demo/se/p/demo-notatbok");
+
+    // Opened by its address, the cart is its own page.
+    await page.goto("/s/demo/se/cart");
+    await expect(page.getByRole("heading", { level: 1, name: "Varukorg" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Varukorg" })).toHaveCount(0);
+  });
+});
+
 test("out-of-stock variants cannot be added", async ({ page }) => {
   await page.goto("/s/demo/se/p/demo-bordlampe");
   await expect(page.getByRole("button", { name: "Lägg i varukorgen" })).toBeDisabled();
