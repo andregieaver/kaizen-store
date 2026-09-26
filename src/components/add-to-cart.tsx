@@ -5,6 +5,7 @@ import { useActionState } from "react";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 
+import { useOpenCartAfterAdd } from "./cart-drawer";
 import { useChosenPlan } from "./purchase-options";
 
 export type AddToCartLabels = {
@@ -28,6 +29,7 @@ export function AddToCart({
   variantId,
   disabled,
   labels,
+  openCart = false,
 }: {
   store: string;
   market: string;
@@ -35,8 +37,11 @@ export function AddToCart({
   variantId: string;
   disabled: boolean;
   labels: AddToCartLabels;
+  /** Open the slide-out cart on phones once added (D64). */
+  openCart?: boolean;
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
+  useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
   const message =
     state.outcome === "added"

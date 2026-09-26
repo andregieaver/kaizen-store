@@ -11,6 +11,7 @@ import { planPrice } from "@/lib/subscriptions";
 
 import type { AddToCartLabels } from "./add-to-cart";
 import { useBuyer } from "./buyer";
+import { useOpenCartAfterAdd } from "./cart-drawer";
 import { useChosenPlan } from "./purchase-options";
 import { HidingBottomBar } from "./store-chrome";
 
@@ -33,6 +34,7 @@ export function ProductBar({
   storeAudience,
   variants,
   labels,
+  openCart = false,
 }: {
   store: string;
   market: string;
@@ -43,9 +45,12 @@ export function ProductBar({
   vat: PriceVat;
   storeAudience: StoreAudience;
   variants: BarVariant[];
+  /** Open the slide-out cart once added (D64). */
+  openCart?: boolean;
   labels: AddToCartLabels & { chooseVariant: string; soldOut: string; goCart: string };
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
+  useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
   const buyer = useBuyer(storeAudience);
   const [chosen, setChosen] = useState(() => (variants.find((v) => v.available) ?? variants[0])?.id ?? "");

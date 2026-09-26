@@ -29,10 +29,13 @@ export async function CartContents({
   store,
   market,
   m,
+  drawer = false,
 }: {
   store: Store;
   market: Market;
   m: Messages;
+  /** In the slide-out cart (D64): narrower, so smaller pictures and the summary without a frame. */
+  drawer?: boolean;
 }) {
   const [cart, buyer] = await Promise.all([getCart({ storeId: store.id, market }), getBuyer(store)]);
   const home = marketPath(store.slug, market.slug);
@@ -133,10 +136,11 @@ export async function CartContents({
     : null;
 
   return (
-    <div className="grid gap-8 md:grid-cols-[1fr_18rem]">
-      <ul className="divide-y divide-border border-y border-border">
+    // minmax(0, …): nothing inside may make a column wider than the screen.
+    <div className={`grid grid-cols-[minmax(0,1fr)] ${drawer ? "gap-4" : "gap-8 md:grid-cols-[minmax(0,1fr)_18rem]"}`}>
+      <ul className={`divide-y divide-border border-border ${drawer ? "border-b" : "border-y"}`}>
         {cart.lines.map((line) => (
-          <li key={`${line.variantId}:${line.plan?.id ?? ""}`} className="flex gap-4 py-4">
+          <li key={`${line.variantId}:${line.plan?.id ?? ""}`} className={`flex py-4 ${drawer ? "gap-3" : "gap-4"}`}>
             {line.image && (
               <Image
                 src={line.image.url}
@@ -144,12 +148,12 @@ export async function CartContents({
                 width={96}
                 height={96}
                 unoptimized
-                className="size-24 shrink-0 rounded-md bg-surface object-cover"
+                className={`${drawer ? "size-16" : "size-24"} shrink-0 rounded-md bg-surface object-cover`}
               />
             )}
-            <div className="flex flex-1 flex-col gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
               <div className="flex justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <Link href={`${home}/p/${line.handle}`} className="font-medium underline-offset-2 hover:underline">
                     {line.title}
                   </Link>
@@ -165,7 +169,7 @@ export async function CartContents({
                   )}
                 </div>
                 {line.unitPriceMinor !== null && line.status !== "unavailable" && (
-                  <p className="text-right font-medium">
+                  <p className="shrink-0 text-right font-medium whitespace-nowrap">
                     {trial && line.plan ? (
                       <>
                         {money(0)}
@@ -202,7 +206,7 @@ export async function CartContents({
                         min={0}
                         max={MAX_LINE_QUANTITY}
                         defaultValue={line.quantity}
-                        className="min-h-11 w-20 rounded-md border border-border bg-background px-2"
+                        className={`min-h-11 ${drawer ? "w-16" : "w-20"} rounded-md border border-border bg-background px-2`}
                       />
                     </label>
                     <button type="submit" className="min-h-11 rounded-md border border-border px-3 text-sm">
@@ -216,7 +220,8 @@ export async function CartContents({
                   <input type="hidden" name="variantId" value={line.variantId} />
                   {line.plan && <input type="hidden" name="sellingPlanId" value={line.plan.id} />}
                   <input type="hidden" name="quantity" value="0" />
-                  <button type="submit" className="min-h-11 px-3 text-sm underline">
+                  {/* In the drawer it lines up with the quantity when it wraps under it. */}
+                  <button type="submit" className={`min-h-11 text-sm underline ${drawer ? "px-1" : "px-3"}`}>
                     {m.remove}
                     <span className="sr-only">: {line.title}</span>
                   </button>
@@ -227,20 +232,23 @@ export async function CartContents({
         ))}
       </ul>
 
-      <aside aria-label={m.subtotal} className="flex h-fit flex-col gap-3 rounded-lg border border-border p-4">
+      <aside
+        aria-label={m.subtotal}
+        className={`flex h-fit min-w-0 flex-col gap-3 ${drawer ? "" : "rounded-lg border border-border p-4"}`}
+      >
         <dl className="flex flex-col gap-2">
-          <div className="flex justify-between">
+          <div className="flex justify-between gap-4">
             <dt>{m.subtotal}</dt>
             <dd>{net(subtotal)}</dd>
           </div>
           {feeMinor > 0 && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <dt>{m.signupFee}</dt>
               <dd>{net(feeMinor)}</dd>
             </div>
           )}
           {shipping !== null && ships && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <dt>
                 {m.shipping}
                 {basket.renewal > 0 && <span className="text-sm text-muted"> {m.perDelivery}</span>}
@@ -249,7 +257,7 @@ export async function CartContents({
             </div>
           )}
           {discountMinor > 0 && code && (
-            <div className="flex justify-between">
+            <div className="flex justify-between gap-4">
               <dt>
                 {m.discount} <span className="text-sm text-muted">({code.code})</span>
               </dt>
@@ -258,17 +266,17 @@ export async function CartContents({
           )}
           {business && (
             <>
-              <div className="flex justify-between border-t border-border pt-2">
+              <div className="flex justify-between gap-4 border-t border-border pt-2">
                 <dt>{m.totalExclVat}</dt>
                 <dd>{money(withoutVat(total, checkout.vatRate))}</dd>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-4">
                 <dt>{m.vatLine}</dt>
                 <dd>{money(vatIncluded(total, checkout.vatRate))}</dd>
               </div>
             </>
           )}
-          <div className="flex justify-between border-t border-border pt-2 font-semibold">
+          <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold">
             <dt>{business ? m.toPay : m.total}</dt>
             <dd>{money(total)}</dd>
           </div>

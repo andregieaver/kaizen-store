@@ -73,7 +73,7 @@ export function CheckoutButton({
   return (
     <form action={action} className="flex flex-col gap-3">
       {company?.ask && (
-        <fieldset className="flex flex-col gap-2 text-sm">
+        <fieldset className="flex min-w-0 flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">{company.labels.legend}</legend>
           <p className="text-muted">{company.required ? company.labels.required : company.labels.optional}</p>
           <label className="flex flex-col gap-1">

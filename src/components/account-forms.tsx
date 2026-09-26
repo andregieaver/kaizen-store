@@ -57,7 +57,7 @@ export function DetailsForm({
         {field("city", labels.city, { autoComplete: "address-level2" })}
       </div>
       {company && (
-        <fieldset className="flex flex-col gap-3">
+        <fieldset className="flex min-w-0 flex-col gap-3">
           <legend className="mb-1 text-sm font-medium">{company.labels.legend}</legend>
           <label className={label}>
             {company.labels.name}

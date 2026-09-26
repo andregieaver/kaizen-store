@@ -47,6 +47,7 @@ async function createStore(slug: string): Promise<Store> {
     details: { legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: "NO" },
     audience: "consumers",
     businessPopup: false,
+    openCartOnAdd: false,
     markets: [
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),

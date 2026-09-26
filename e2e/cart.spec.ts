@@ -65,6 +65,50 @@ test.describe("on a phone", () => {
   });
 });
 
+test.describe("on a phone, in a store that opens the cart on adding", () => {
+  test.use({ viewport: { width: 360, height: 760 }, hasTouch: true });
+
+  test("adding opens the cart over everything, and it stays on top when the shopper comes back to it", async ({ page }) => {
+    const slug = `open-cart-${Date.now()}`;
+    const sql = testDb();
+    try {
+      const [request] = await sql`
+        insert into commerce.access_requests (email, name, store_name)
+        values (${`${slug}@example.com`}, 'Kari', 'Kari') returning id`;
+      await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Kopper', null)`;
+      await sql`update commerce.stores set open_cart_on_add = true where slug = ${slug}`;
+    } finally {
+      await sql.end();
+    }
+    const drawer = page.getByRole("dialog", { name: "Handlekurv" });
+    /** The drawer is in the top layer: what is at its top is its own, not the store's header. */
+    const onTop = () =>
+      page.evaluate(() => {
+        const dialog = document.querySelector("dialog[open]");
+        return Boolean(dialog?.matches(":modal") && dialog.contains(document.elementFromPoint(window.innerWidth - 20, 20)));
+      });
+    /** Nothing in it reaches past the screen's right edge. */
+    const overflowing = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll("dialog[open] *")].filter((e) => e.getBoundingClientRect().right > window.innerWidth + 1).length,
+      );
+
+    await page.goto(`/s/${slug}/no/p/demo-handlenett`);
+    await page.getByRole("button", { name: "Legg i handlekurven", disabled: false }).first().click();
+    await expect(drawer).toBeVisible();
+    await expect(page).toHaveURL(`/s/${slug}/no/cart`);
+    await expect.poll(onTop).toBe(true);
+    await expect.poll(overflowing).toBe(0);
+
+    // Out through a link in it and back again: still on top.
+    await drawer.getByRole("link", { name: "Demo: Handlenett i lerret" }).click();
+    await expect(page).toHaveURL(`/s/${slug}/no/p/demo-handlenett`);
+    await page.goBack();
+    await expect(drawer).toBeVisible();
+    await expect.poll(onTop).toBe(true);
+  });
+});
+
 test("out-of-stock variants cannot be added", async ({ page }) => {
   await page.goto("/s/demo/se/p/demo-bordlampe");
   await expect(page.getByRole("button", { name: "Lägg i varukorgen" })).toBeDisabled();

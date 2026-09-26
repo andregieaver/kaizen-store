@@ -276,6 +276,8 @@ export const stores = commerce.table(
     audience: text("audience").notNull().default("consumers"),
     /** Stores selling to both: ask first-time visitors whether they buy privately or for a business. */
     businessPopup: boolean("business_popup").notNull().default(false),
+    /** On phones, open the slide-out cart (D64) once something is added to it. */
+    openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
     /**
      * One of the store's own pages shown as its front page in every market
      * (D54), instead of the product list. Null for the product list. The

@@ -296,6 +296,7 @@ async function VariantsWithStock({
                   cartHref={marketPath(store.slug, market.slug, "/cart")}
                   variantId={variant.id}
                   disabled={available <= 0}
+                  openCart={store.openCartOnAdd}
                   labels={{
                     addToCart: m.addToCart,
                     adding: m.adding,
@@ -320,6 +321,7 @@ async function VariantsWithStock({
         locale={market.locale}
         vat={product.variants[0].price.vat}
         storeAudience={store.audience}
+        openCart={store.openCartOnAdd}
         variants={product.variants.map((variant) => ({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,

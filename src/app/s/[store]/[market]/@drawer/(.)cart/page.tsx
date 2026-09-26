@@ -18,7 +18,7 @@ export default async function CartDrawerPage({ params }: { params: Promise<{ sto
   return (
     <CartDrawer title={m.cart} labels={{ close: m.closeCart }}>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface" />}>
-        <CartContents store={store} market={market} m={m} />
+        <CartContents store={store} market={market} m={m} drawer />
       </Suspense>
     </CartDrawer>
   );

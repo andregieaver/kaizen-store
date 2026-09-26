@@ -10,6 +10,8 @@ import type { Market } from "@/lib/markets";
 import type { Delivery } from "@/lib/product-input";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 
+import { audit, type Membership } from "./auth";
+
 /** Where a cart belongs: one market of one store. */
 export type Shop = { storeId: string; market: Market };
 
@@ -335,4 +337,10 @@ async function otherRhythm(tx: Tx, cartId: string, sellingPlanId: string): Promi
     trialDays: Number(r.trial_days),
   });
   return rows.some((r) => !r.chosen && !sameRhythm(terms(r), terms(chosen)));
+}
+
+/** Whether phones open the slide-out cart once something is added (D64): the store's choice. */
+export async function setOpenCartOnAdd({ account, store }: Membership, enabled: boolean): Promise<void> {
+  await db().execute(sql`update commerce.stores set open_cart_on_add = ${enabled} where id = ${store.id}::uuid`);
+  await audit(account.id, store.id, "store.open_cart_on_add", { enabled });
 }

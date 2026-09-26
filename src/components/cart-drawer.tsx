@@ -37,13 +37,20 @@ export function CartDrawer({
     // Turned into a larger screen while open: show the cart's page instead.
     const onChange = () => wide.matches && window.location.reload();
     wide.addEventListener("change", onChange);
+    // Always as a modal, in the top layer over the header and bars. Next.js keeps a page
+    // left by a link hidden, which takes the dialog out of the top layer; coming back
+    // (the browser's back button) runs this again.
     const d = dialog.current;
+    if (d?.open && !d.matches(":modal")) d.close();
     if (d && !d.open) d.showModal();
+    closing.current = false;
     document.documentElement.style.overflow = "hidden";
     const frame = requestAnimationFrame(() => setOpen(true));
     return () => {
       wide.removeEventListener("change", onChange);
       cancelAnimationFrame(frame);
+      setOpen(false);
+      d?.close();
       // Left by a link inside (a product, checkout): the page it leads to has no drawer.
       document.documentElement.style.overflow = "";
     };
@@ -66,7 +73,7 @@ export function CartDrawer({
         event.preventDefault();
         close();
       }}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent md:hidden"
+      className="fixed inset-0 z-[100] m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent md:hidden"
     >
       <div
         aria-hidden="true"
@@ -118,4 +125,22 @@ export function CartDrawer({
       </div>
     </dialog>
   );
+}
+
+/**
+ * Opens the slide-out cart once something was added, on phones, when the
+ * store has chosen so (`stores.open_cart_on_add`). `state` is the add
+ * action's latest outcome; each new one is looked at once.
+ */
+export function useOpenCartAfterAdd(enabled: boolean, cartHref: string, outcome: { outcome: string }) {
+  const router = useRouter();
+  // Coming back to the page later runs effects again: the same outcome opens nothing.
+  const seen = useRef(outcome);
+  useEffect(() => {
+    if (seen.current === outcome) return;
+    seen.current = outcome;
+    if (!enabled || (outcome.outcome !== "added" && outcome.outcome !== "capped")) return;
+    if (window.matchMedia(DESKTOP).matches) return;
+    router.push(cartHref);
+  }, [enabled, cartHref, outcome, router]);
 }

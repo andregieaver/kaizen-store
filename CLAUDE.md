@@ -95,6 +95,7 @@ of running `playwright install`.
   the slide-out cart (D64): the market layout's `@drawer` slot intercepts
   `/cart` on client navigation (`(.)cart`, `CartDrawer`); `[...rest]` closes
   it on any other page, and larger screens load the cart page instead.
+  Stores can open it on adding (`stores.open_cart_on_add`, `useOpenCartAfterAdd()`).
 - Payment credentials and payment-method switches are store settings edited in
   the admin, never environment variables (decision D15).
 - Cookie consent (D58, `src/lib/cookie-consent.ts`): every cookie or storage

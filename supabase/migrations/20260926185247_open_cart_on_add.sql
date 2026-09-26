@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "open_cart_on_add" boolean DEFAULT false NOT NULL;
