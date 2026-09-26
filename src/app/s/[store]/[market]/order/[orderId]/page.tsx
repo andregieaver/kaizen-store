@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
 import { PasswordReset } from "@/components/account-sign-in";
+import { LineThumbnail } from "@/components/line-thumbnail";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
@@ -85,11 +86,12 @@ async function OrderDetails({
       <section aria-label={m.cart} className="rounded-lg border border-border p-4">
         <ul className="divide-y divide-border">
           {order.lines.map((line) => (
-            <li key={line.sku} className="flex justify-between gap-4 py-2">
-              <span>
+            <li key={line.sku} className="flex items-center gap-3 py-2">
+              <LineThumbnail src={line.image} />
+              <span className="min-w-0 flex-1">
                 {line.quantity} × {line.title}
               </span>
-              <span>{money(line.unitPriceMinor * line.quantity)}</span>
+              <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
             </li>
           ))}
         </ul>

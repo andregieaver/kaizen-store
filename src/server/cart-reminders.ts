@@ -18,6 +18,7 @@ import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import type { Market } from "@/lib/markets";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { absoluteUrl } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 
 import { audit, type Membership } from "./auth";
@@ -376,6 +377,28 @@ export async function sendDueCartReminders(): Promise<ReminderRun> {
   return { sent, failed, erased: erased.length };
 }
 
+/**
+ * The lines with their products' pictures (full addresses on the store's
+ * site), looked up now: what was left in the cart keeps only the variant.
+ */
+async function withPictures(storeId: string, storeSlug: string, lines: ReminderLine[]): Promise<ReminderLine[]> {
+  const ids = lines.map((line) => line.variantId).filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  if (ids.length === 0) return lines;
+  const rows = await db().execute<Row>(sql`
+    select v.id,
+      (select coalesce(m.thumbnail_url, m.url) from commerce.product_media m
+        where m.product_id = v.product_id order by m.position limit 1) as image
+    from commerce.product_variants v
+    where v.store_id = ${storeId}::uuid and v.id = any(${`{${ids.join(",")}}`}::uuid[])
+  `);
+  const pictures = new Map(rows.map((row) => [String(row.id), row.image ? String(row.image) : null]));
+  const origin = storeSiteUrl(storeSlug);
+  return lines.map((line) => {
+    const image = pictures.get(line.variantId);
+    return { ...line, image: image ? absoluteUrl(image, origin) : null };
+  });
+}
+
 /** The links in a reminder: back to the cart (with the step's code), and to stop reminders. */
 export function reminderLinks(storeSlug: string, marketSlug: string, token: string, code: string | null) {
   const base = `${storeSiteUrl(storeSlug)}${marketPath(storeSlug, marketSlug)}`;
@@ -418,7 +441,7 @@ async function sendReminder(input: {
     currency: input.currency,
     storeName: store.name,
     footer: emailFooter(store, emailText(input.locale.split("-")[0])),
-    lines: input.lines,
+    lines: await withPictures(input.storeId, store.slug, input.lines),
     code: discount,
     restoreUrl: links.restoreUrl,
     unsubscribeUrl: links.unsubscribeUrl,
@@ -627,13 +650,17 @@ export async function reminderLanguages(storeId: string): Promise<
         label: `${market.name} (${market.locale})`,
         currency: market.currency,
         footer: emailFooter(store, emailText(market.lang)),
-        sample: products.map((p, i) => ({
-          variantId: String(p.id),
-          sellingPlanId: null,
-          title: String(p.title),
-          quantity: i === 0 ? 1 : 2,
-          unitPriceMinor: Number(p.amount_minor),
-        })),
+        sample: await withPictures(
+          storeId,
+          store.slug,
+          products.map((p, i) => ({
+            variantId: String(p.id),
+            sellingPlanId: null,
+            title: String(p.title),
+            quantity: i === 0 ? 1 : 2,
+            unitPriceMinor: Number(p.amount_minor),
+          })),
+        ),
       };
     }),
   );

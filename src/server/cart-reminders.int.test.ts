@@ -154,6 +154,8 @@ describe("a cart left at checkout (D33)", () => {
     expect(String(first[0].html)).toContain(`/s/${slug}/no/cart/restore/${row.token}`);
     expect(String(first[0].html)).toContain(`/s/${slug}/no/unsubscribe/${row.token}`);
     expect(String(first[0].text)).toContain("2 × ");
+    // The product's picture, by its full address on the store's site.
+    expect(String(first[0].html)).toMatch(/<img src="http:\/\/localhost:3000\/demo\/[a-z]+\.svg" alt=""/);
 
     // Days late: only the latest reminder due goes, not every one missed.
     await typedAgo(cartId, "5 days");

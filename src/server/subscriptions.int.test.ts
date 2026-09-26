@@ -235,6 +235,8 @@ describe("a subscription's life", () => {
     // The renewal's receipt names it as such.
     expect(await sendOrderConfirmation(storeId, renewal!)).toBe("logged");
     expect(await sendOrderConfirmation(storeId, renewal!)).toBe("duplicate");
+    const [receipt] = await db().execute<Row>(sql`select html from commerce.email_messages where order_id = ${renewal}::uuid`);
+    expect(String(receipt.html)).toMatch(/<img src="http:\/\/localhost:3000\/demo\/[a-z]+\.svg" alt=""/);
 
     const [order] = await db().execute<Row>(sql`select * from commerce.orders where id = ${renewal}::uuid`);
     expect(order).toMatchObject({

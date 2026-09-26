@@ -53,6 +53,8 @@ export type OrderView = {
     unitPriceMinor: number;
     totalMinor: number;
     delivery: Delivery;
+    /** The product's first picture, small, as it is now: a path on the store's host or a full address; null for fees. */
+    image: string | null;
   }[];
   /** Something to ship (false when the order is downloads only). */
   ships: boolean;
@@ -106,6 +108,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     unitPriceMinor: Number(line.unit_price_minor),
     totalMinor: Number(line.total_minor),
     delivery: line.delivery === "digital" ? "digital" : "physical",
+    image: line.image ? String(line.image) : null,
   })),
   ships: lines.some((line) => line.delivery !== "digital"),
   digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
@@ -122,8 +125,14 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
       select * from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
-      select id, variant_id, title, sku, quantity, unit_price_minor, total_minor, delivery, tax_rate from commerce.order_lines
-      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by title
+      select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate,
+        (select coalesce(m.thumbnail_url, m.url)
+          from commerce.product_variants v
+          join commerce.product_media m on m.product_id = v.product_id
+          where v.store_id = ol.store_id and v.id = ol.variant_id
+          order by m.position limit 1) as image
+      from commerce.order_lines ol
+      where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid order by ol.title
     `),
   ]);
   return order ? toOrder(order, lines) : null;

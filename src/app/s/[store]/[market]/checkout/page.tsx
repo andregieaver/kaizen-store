@@ -6,6 +6,7 @@ import { Suspense, type ReactNode } from "react";
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
+import { LineThumbnail } from "@/components/line-thumbnail";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { checkoutLabels } from "@/lib/checkout-labels";
@@ -213,8 +214,9 @@ function Summary({
       </h2>
       <ul className="divide-y divide-border">
         {order.lines.map((line) => (
-          <li key={line.sku} className="flex justify-between gap-4 py-2 text-sm">
-            <span>
+          <li key={line.sku} className="flex items-center gap-3 py-2 text-sm">
+            <LineThumbnail src={line.image} size={40} />
+            <span className="min-w-0 flex-1">
               {line.quantity} × {line.title}
             </span>
             <span className="whitespace-nowrap">{net(line.unitPriceMinor * line.quantity)}</span>

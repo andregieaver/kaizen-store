@@ -26,6 +26,8 @@ export type ReminderLine = {
   title: string;
   quantity: number;
   unitPriceMinor: number;
+  /** The product's picture as a full address, looked up when sending (not kept with the cart). */
+  image?: string | null;
 };
 
 export const MIN_DELAY_MINUTES = 30;
@@ -239,7 +241,11 @@ export function buildReminderEmail(input: {
     {
       type: "lines",
       rows: [
-        ...input.lines.map((line) => ({ label: `${line.quantity} × ${line.title}`, value: money(line.unitPriceMinor * line.quantity) })),
+        ...input.lines.map((line) => ({
+          label: `${line.quantity} × ${line.title}`,
+          value: money(line.unitPriceMinor * line.quantity),
+          image: line.image ?? null,
+        })),
         { label: words.total, value: money(total), strong: true },
       ],
     },

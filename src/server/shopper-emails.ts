@@ -9,6 +9,7 @@ import { t, type Messages } from "@/lib/i18n";
 import { toMarket, type Market, type MarketRow } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { absoluteUrl } from "@/lib/seo";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { getOrder, type OrderView } from "./orders";
@@ -84,13 +85,21 @@ async function orderUrl(storeId: string, store: EmailStore, market: Market, orde
   return `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
 }
 
-function orderLines(order: OrderView, text: EmailText, m: Messages, money: (minor: number) => string): EmailBlock {
+function orderLines(
+  order: OrderView,
+  text: EmailText,
+  m: Messages,
+  money: (minor: number) => string,
+  /** The store's own address, for its pictures' full addresses. */
+  origin: string,
+): EmailBlock {
   return {
     type: "lines",
     rows: [
       ...order.lines.map((line) => ({
         label: `${line.quantity} × ${line.title}`,
         value: money(line.unitPriceMinor * line.quantity),
+        image: line.image ? absoluteUrl(line.image, origin) : null,
       })),
       { label: text.subtotal, value: money(order.subtotalMinor), muted: true },
       ...(order.ships ? [{ label: text.shipping, value: money(order.shippingMinor), muted: true }] : []),
@@ -143,7 +152,7 @@ export async function sendOrderConfirmation(
   const blocks: EmailBlock[] = [
     { type: "heading", text: text.orderHeading },
     { type: "paragraph", text: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number) },
-    orderLines(order, text, m, money),
+    orderLines(order, text, m, money, storeSiteUrl(store.slug)),
     ...[companyText(order, m)].flatMap((company) => (company ? [{ type: "paragraph" as const, text: company }] : [])),
     ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
     ...(digital ? [{ type: "paragraph" as const, text: text.downloadsReady }] : []),

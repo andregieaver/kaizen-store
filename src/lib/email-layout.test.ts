@@ -33,6 +33,29 @@ describe("renderEmail", () => {
     expect(email.text.trimEnd().endsWith("Storgata 1")).toBe(true);
   });
 
+  it("shows lines' pictures in a column of their own, and leaves them out of the text", () => {
+    const withPictures = renderEmail({
+      subject: "Ordre",
+      preview: "",
+      lang: "nb",
+      footer: [],
+      blocks: [
+        {
+          type: "lines",
+          rows: [
+            { label: "1 × Kopp", value: "249,00 kr", image: 'https://butikk.test/kopp.webp?a=1&b="2"' },
+            { label: "Totalt", value: "249,00 kr", strong: true },
+          ],
+        },
+      ],
+    });
+    expect(withPictures.html).toContain('<img src="https://butikk.test/kopp.webp?a=1&amp;b=&quot;2&quot;" alt=""');
+    expect(withPictures.html.match(/<td width="56"/g)).toHaveLength(2);
+    expect(withPictures.text).not.toContain("kopp.webp");
+    // Lines without pictures keep two columns.
+    expect(email.html).not.toContain('<td width="56"');
+  });
+
   it("escapes quotes", () => {
     expect(escapeHtml(`"a" 'b'`)).toBe("&quot;a&quot; &#39;b&#39;");
   });
