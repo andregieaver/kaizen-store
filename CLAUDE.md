@@ -296,6 +296,17 @@ of running `playwright install`.
   with `for-business`/`for-private` (`audienceClass()` for products). The
   cart refuses business-only products to private buyers and `placeOrder`
   needs the company (`companyRequired()`).
+- Bookings (D65, `docs/bookings.md`): a module stores switch on under
+  Features (`stores.modules`, `store.bookingsOn`, `stores.time_zone`).
+  Appointments are products of `kind` `appointment` whose variants are
+  delivered as `service` (no stock, shipping or files; withdrawal
+  `dated_service`), with `appointment_settings` and the staff who do them
+  (`product_resources` → `booking_resources`, each with `OpeningHours` and a
+  capacity; `src/server/bookings.ts`). Free times come from
+  `slotsOn()` (`src/lib/booking-slots.ts`, pure, in the store's time zone);
+  a time is only ever taken through `commerce.hold_booking()`, which checks
+  capacity with buffers under a lock; bookings follow their order's status
+  (trigger `orders_bookings_follow`).
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

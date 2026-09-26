@@ -67,9 +67,13 @@ export const PRODUCER_SCHEMES = [
   { id: "tyres", label: "Tyres" },
 ] as const;
 
-/** Shipped, or downloaded after payment (D24). */
-export const DELIVERIES = ["physical", "digital"] as const;
+/** Shipped, downloaded after payment (D24), or an appointment booked for a time (D65). */
+export const DELIVERIES = ["physical", "digital", "service"] as const;
 export type Delivery = (typeof DELIVERIES)[number];
+
+/** A delivery as stored; anything unknown is shipped. */
+export const parseDelivery = (value: unknown): Delivery =>
+  DELIVERIES.includes(value as Delivery) ? (value as Delivery) : "physical";
 
 export const MAX_FILES = 20;
 
@@ -101,6 +105,33 @@ const operatorSchema = z.union([
 ]);
 
 export type OperatorChoice = z.infer<typeof operatorSchema>;
+
+/** What a product is (D65): goods (shipped or downloaded) or an appointment. */
+export const PRODUCT_KINDS = ["goods", "appointment"] as const;
+export type ProductKind = (typeof PRODUCT_KINDS)[number];
+
+/** How an appointment is booked (D65); kept in `appointment_settings` and `product_resources`. */
+export const appointmentInput = z.object({
+  durationMinutes: z.number().int().min(5, "An appointment lasts at least 5 minutes.").max(720, "An appointment lasts at most 12 hours."),
+  bufferBeforeMinutes: z.number().int().min(0).max(240, "Keep at most 4 hours free before."),
+  bufferAfterMinutes: z.number().int().min(0).max(240, "Keep at most 4 hours free after."),
+  stepMinutes: z.union([z.literal(5), z.literal(10), z.literal(15), z.literal(20), z.literal(30), z.literal(60)]),
+  minNoticeMinutes: z.number().int().min(0).max(43200, "Ask for at most 30 days' notice."),
+  maxDaysAhead: z.number().int().min(1, "Take bookings at least a day ahead.").max(730, "Take bookings at most two years ahead."),
+  locationId: z.uuid().nullable(),
+  resourceIds: z.array(z.uuid()).max(200),
+});
+
+export const DEFAULT_APPOINTMENT: z.infer<typeof appointmentInput> = {
+  durationMinutes: 60,
+  bufferBeforeMinutes: 0,
+  bufferAfterMinutes: 0,
+  stepMinutes: 15,
+  minNoticeMinutes: 60,
+  maxDaysAhead: 60,
+  locationId: null,
+  resourceIds: [],
+};
 
 export const productInput = z.object({
   handle: z
@@ -212,6 +243,9 @@ export const productInput = z.object({
   audience: z.enum(PRODUCT_AUDIENCES).default("all"),
   /** Which VAT rate it takes (D65). */
   vatCategory: z.enum(VAT_CATEGORIES).default("standard"),
+  /** Goods, or an appointment booked for a time (D65), with how it is booked. */
+  kind: z.enum(PRODUCT_KINDS).default("goods"),
+  appointment: appointmentInput.nullable().default(null),
   taxCode: z.string().trim().regex(/^txcd_[0-9]{8}$/, "A Stripe tax code looks like txcd_99999999."),
   withdrawalExclusion: z.enum(WITHDRAWAL_EXCLUSIONS.map((w) => w.id) as [string, ...string[]]),
   schemes: z.array(z.enum(PRODUCER_SCHEMES.map((s) => s.id) as [string, ...string[]])),
@@ -222,6 +256,7 @@ export const productInput = z.object({
 });
 
 export type ProductInput = z.infer<typeof productInput>;
+export type AppointmentInput = z.infer<typeof appointmentInput>;
 export type VariantInput = ProductInput["variants"][number];
 
 /**
@@ -324,6 +359,15 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   }
   if (input.subscriptionOnly && input.plans.length === 0) {
     problems.push("Add a purchase option, or let shoppers also buy the product once.");
+  }
+
+  // Appointments (D65): booked one at a time, never subscribed to.
+  if (input.kind === "appointment") {
+    if (!input.appointment) problems.push("Say how the appointment is booked.");
+    if (input.plans.length > 0) problems.push("Appointments cannot be subscribed to: take the purchase options away.");
+    if (input.status === "active" && input.appointment && input.appointment.resourceIds.length === 0) {
+      problems.push("Choose who does the appointment before publishing it.");
+    }
   }
 
   if (input.status !== "active") return problems;

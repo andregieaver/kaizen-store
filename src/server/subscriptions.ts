@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { vatIncluded } from "@/lib/checkout";
 import { t } from "@/lib/i18n";
-import { variantLabel, type Delivery } from "@/lib/product-input";
+import { parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import {
   MAX_PAUSE_PERIODS,
@@ -161,7 +161,7 @@ async function view(storeId: string, where: ReturnType<typeof sql>): Promise<Sub
       quantity: Number(l.quantity),
       unitPriceMinor: Number(l.unit_price_minor),
       totalMinor: Number(l.total_minor),
-      delivery: l.delivery === "digital" ? "digital" : "physical",
+      delivery: parseDelivery(l.delivery),
       taxRate: Number(l.tax_rate ?? 0),
     })),
     orders: orders.map((o) => ({

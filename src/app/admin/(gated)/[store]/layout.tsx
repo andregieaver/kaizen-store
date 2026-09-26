@@ -42,6 +42,18 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
     { href: `${base}/wishlists`, label: "Wishlists" },
   ];
   const groups: NavGroup[] = [
+    // Appointments (D65), once the store has switched bookings on.
+    ...(store.bookingsOn
+      ? [
+          {
+            heading: "Bookings",
+            items: [
+              { href: `${base}/bookings`, label: "Calendar", exact: true },
+              { href: `${base}/bookings/staff`, label: "Staff and hours" },
+            ],
+          },
+        ]
+      : []),
     {
       heading: "Sales",
       items: [
@@ -60,6 +72,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         { href: `${base}/settings/domains`, label: "Domains" },
         { href: `${base}/settings/company`, label: "Company" },
         { href: `${base}/integrations`, label: "Integrations" },
+        { href: `${base}/settings/features`, label: "Features" },
         { href: `${base}/settings/cookies`, label: "Cookies and tracking" },
       ],
     },

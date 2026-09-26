@@ -238,7 +238,7 @@ export async function refundOrder(
   for (const item of input.restock) {
     const line = order.lines.find((l) => l.id === item.lineId);
     if (!line || item.quantity <= 0) continue;
-    if (!line.variantId || line.delivery === "digital") continue;
+    if (!line.variantId || line.delivery !== "physical") continue;
     if (item.quantity > line.quantity - line.restocked) {
       return { ok: false, problem: `Only ${line.quantity - line.restocked} of ${line.title} can go back in stock.` };
     }

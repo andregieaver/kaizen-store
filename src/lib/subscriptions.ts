@@ -143,7 +143,7 @@ export function renewalState(
 
 export type BasketLine = {
   totalMinor: number;
-  delivery: "physical" | "digital";
+  delivery: "physical" | "digital" | "service";
   /** Renews with the subscription. */
   recurring: boolean;
 };

@@ -1334,6 +1334,49 @@ describe("VAT per product (D65)", () => {
   });
 });
 
+describe("bookings (D65)", () => {
+  it("books a resource only while it has room, counting buffers and live holds, and follows the order", async () => {
+    const { productId, variantId } = await createProduct();
+    const { id: staff } = await one<{ id: string }>(
+      "insert into commerce.booking_resources (store_id, name, hours) values ($1, 'Kari', '{}') returning id",
+      [store],
+    );
+    const hold = (from: string, to: string, blockedTo = to, until = "now() + interval '15 minutes'", order: string | null = null) =>
+      one<{ id: string | null }>(
+        `select commerce.hold_booking($1, $2, $3, $4, $5::timestamptz, $6::timestamptz, $5::timestamptz, $7::timestamptz, ${until}, $8) as id`,
+        [store, productId, variantId, staff, from, to, blockedTo, order],
+      );
+    const first = await hold("2030-01-07T09:00Z", "2030-01-07T10:00Z", "2030-01-07T10:15Z");
+    expect(first.id).not.toBeNull();
+    // The buffer after it is taken too; right after the buffer is free.
+    expect((await hold("2030-01-07T10:00Z", "2030-01-07T11:00Z")).id).toBeNull();
+    expect((await hold("2030-01-07T10:15Z", "2030-01-07T11:15Z")).id).not.toBeNull();
+    // A hold that has run out frees its time.
+    expect((await hold("2030-01-07T12:00Z", "2030-01-07T13:00Z", "2030-01-07T13:00Z", "now() - interval '1 minute'")).id).not.toBeNull();
+    expect((await hold("2030-01-07T12:00Z", "2030-01-07T13:00Z")).id).not.toBeNull();
+    // A class of two takes two at once.
+    await db.query("update commerce.booking_resources set capacity = 2 where id = $1", [staff]);
+    expect((await hold("2030-01-07T09:30Z", "2030-01-07T10:00Z")).id).not.toBeNull();
+    expect((await hold("2030-01-07T09:30Z", "2030-01-07T10:00Z")).id).toBeNull();
+
+    // Paying confirms an order's held bookings; cancelling releases them.
+    const paid = await createOrder("B-1");
+    const { id: booked } = await hold("2030-01-08T09:00Z", "2030-01-08T10:00Z", "2030-01-08T10:00Z", "now() + interval '15 minutes'", paid);
+    await db.query("update commerce.orders set status = 'paid' where id = $1", [paid]);
+    expect(await one("select status, hold_expires_at from commerce.bookings where id = $1", [booked])).toEqual({
+      status: "confirmed",
+      hold_expires_at: null,
+    });
+    const dropped = await createOrder("B-2");
+    const { id: released } = await hold("2030-01-09T09:00Z", "2030-01-09T10:00Z", "2030-01-09T10:00Z", "now() + interval '15 minutes'", dropped);
+    await db.query("update commerce.orders set status = 'cancelled' where id = $1", [dropped]);
+    expect((await one<{ status: string }>("select status from commerce.bookings where id = $1", [released])).status).toBe("cancelled");
+    await expect(
+      db.query("update commerce.stores set modules = '{bookings,parking}' where id = $1", [store]),
+    ).rejects.toThrow(/stores_modules/);
+  });
+});
+
 describe("selling to businesses (B2B)", () => {
   it("keeps stores and products to the audiences the storefront knows", async () => {
     const store = await createStore("b2b-kari", ["NO"]);

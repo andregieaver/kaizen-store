@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { buyerCookie, parseBuyer, parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { CART_TTL_DAYS, MAX_LINE_QUANTITY, settleQuantity, type LineOutcome } from "@/lib/cart";
 import type { Market } from "@/lib/markets";
-import type { Delivery } from "@/lib/product-input";
+import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 
 import { audit, type Membership } from "./auth";
@@ -99,7 +99,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
     left join commerce.current_prices cp
       on cp.variant_id = v.id and cp.market_code = c.market_code
     left join lateral (
-      select case when v.delivery = 'digital' then ${MAX_LINE_QUANTITY} else coalesce(sum(s.available), 0) end::int
+      select case when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce(sum(s.available), 0) end::int
         as available
       from commerce.available_stock s
       join commerce.inventory_locations l
@@ -156,7 +156,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
         unitPriceMinor,
         available,
         status,
-        delivery: row.delivery === "digital" ? "digital" : "physical",
+        delivery: parseDelivery(row.delivery),
         audience: parseProductAudience(row.audience),
         vatRate: Number(row.vat_rate ?? 0),
         plan,
@@ -207,7 +207,7 @@ async function sellableQuantity(
   sellingPlanId: string | null,
 ) {
   const [row] = await tx.execute<Row>(sql`
-    select case when v.delivery = 'digital' then ${MAX_LINE_QUANTITY} else coalesce((
+    select case when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce((
       select sum(s.available)
       from commerce.available_stock s
       join commerce.inventory_locations l
@@ -220,6 +220,8 @@ async function sellableQuantity(
     join commerce.prices pr
       on pr.variant_id = v.id and pr.market_code = ${market.code} and pr.valid_to is null
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
+      -- Appointments are booked for a time (D65), not added as goods.
+      and p.kind = 'goods'
       -- Business-only products (B2B) are sold to businesses, where the store sells to both.
       and (p.audience <> 'businesses' or ${await buysForBusiness(storeId)}
         or (select s.audience from commerce.stores s where s.id = v.store_id) <> 'both')

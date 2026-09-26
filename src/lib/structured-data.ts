@@ -158,7 +158,7 @@ export type ProductFacts = {
     options: Record<string, string>;
     price: { amountMinor: number; currency: string };
     /** Downloads have no shipping and no withdrawal (D24); shipped when left out. */
-    delivery?: "physical" | "digital";
+    delivery?: "physical" | "digital" | "service";
   }[];
 };
 
@@ -192,7 +192,8 @@ export function productJsonLd({
 
   const offer = (variant: ProductFacts["variants"][number]): JsonLd => {
     const digits = minorUnitDigits(variant.price.currency);
-    const digital = variant.delivery === "digital";
+    // Nothing to ship for a download or an appointment.
+    const digital = variant.delivery === "digital" || variant.delivery === "service";
     const free =
       shipping !== null && shipping.freeOverMinor !== null && variant.price.amountMinor >= shipping.freeOverMinor;
     return {

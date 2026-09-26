@@ -27,6 +27,7 @@ import { shrinkImage } from "@/lib/image-resize";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
   combineOptions,
+  DEFAULT_APPOINTMENT,
   GENERAL_TAX_CODE,
   MAX_FILES,
   MAX_MEDIA,
@@ -35,6 +36,7 @@ import {
   WITHDRAWAL_EXCLUSIONS,
   variantLabel,
   type Delivery,
+  type AppointmentInput,
   type OperatorChoice,
   type ProductInput,
   type VariantInput,
@@ -252,17 +254,20 @@ export function ProductEditor(props: Props) {
         />
       </section>
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
+      {(context.bookingsOn || product.kind === "appointment") && <KindSection product={product} update={update} />}
+      {product.kind === "appointment" && product.appointment && (
+        <AppointmentSection storeSlug={storeSlug} product={product} update={update} context={context} />
+      )}
       <VariantsSection product={product} update={update} context={context} countries={props.countries} />
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
-      <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
-      <SafetySection
-        product={product}
-        update={update}
-        operators={context.operators}
-        countries={props.countries}
-      />
+      {product.kind !== "appointment" && (
+        <>
+          <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
+          <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
+        </>
+      )}
       <LegalSection product={product} update={update} markets={context.markets} />
 
       <div className="flex justify-end">
@@ -645,7 +650,9 @@ function VariantsSection({
   const [optionsOn, setOptionsOn] = useState(product.options.length > 0);
   const [drafts, setDrafts] = useState(() => product.options.map((o) => o.values.join(", ")));
   const [mixed, setMixed] = useState(() => new Set(product.variants.map((v) => v.delivery)).size > 1);
-  const allDigital = product.variants.every((v) => v.delivery === "digital");
+  // Downloads and appointments (D65) have no stock.
+  const allDigital = product.variants.every((v) => v.delivery !== "physical");
+  const service = product.kind === "appointment";
 
   const setOptions = (options: ProductInput["options"]) =>
     update((p) => ({ ...p, options, variants: variantsFor(options, p.variants, p.delivery) }));
@@ -680,7 +687,7 @@ function VariantsSection({
         {allDigital ? "Price" : "Price and stock"}
       </h2>
 
-      <fieldset className="mb-4 flex flex-col gap-2 text-sm">
+      <fieldset className="mb-4 flex flex-col gap-2 text-sm" hidden={service}>
         <legend className="mb-1 font-medium">How is it delivered?</legend>
         <div className="flex flex-wrap gap-2">
           {(
@@ -896,7 +903,8 @@ function VariantRow({
   onChange: (change: Partial<VariantInput>) => void;
 }) {
   const cell = "min-h-9 w-full rounded-md border border-border bg-background px-2 text-sm";
-  const digital = variant.delivery === "digital";
+  // Nothing to weigh or send through customs for a download or an appointment.
+  const digital = variant.delivery !== "physical";
   const columns = 3 + Number(showDelivery) + Number(showStock) + markets.length;
   return (
     <>
@@ -1454,6 +1462,194 @@ function AudienceSection({ product, update }: SectionProps) {
             </label>
           ))}
         </div>
+      </fieldset>
+    </section>
+  );
+}
+
+/** Goods, or an appointment booked for a time (D65). */
+function KindSection({ product, update }: SectionProps) {
+  const choose = (kind: ProductInput["kind"]) =>
+    update((p) => {
+      const appointment = kind === "appointment";
+      const delivery = (d: Delivery): Delivery => (appointment ? "service" : d === "service" ? "physical" : d);
+      return {
+        ...p,
+        kind,
+        appointment: appointment ? (p.appointment ?? DEFAULT_APPOINTMENT) : null,
+        delivery: delivery(p.delivery),
+        variants: p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })),
+        plans: appointment ? [] : p.plans,
+        subscriptionOnly: appointment ? false : p.subscriptionOnly,
+      };
+    });
+  return (
+    <section aria-labelledby="kind-heading" className={card}>
+      <fieldset>
+        <legend id="kind-heading" className="mb-3 font-medium">
+          What is it?
+        </legend>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {(
+            [
+              ["goods", "Goods", "Shipped or downloaded"],
+              ["appointment", "An appointment", "Booked for a time with your staff"],
+            ] as const
+          ).map(([value, name, note]) => (
+            <label
+              key={value}
+              className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-border p-3 has-checked:border-foreground sm:flex-none"
+            >
+              <input
+                type="radio"
+                name="kind"
+                checked={product.kind === value}
+                onChange={() => choose(value)}
+                className="mt-0.5 size-4"
+              />
+              <span>
+                <span className="block font-medium">{name}</span>
+                <span className="text-muted">{note}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+    </section>
+  );
+}
+
+/** How an appointment is booked (D65): how long, what is kept free around it, when, where and with whom. */
+function AppointmentSection({
+  storeSlug,
+  product,
+  update,
+  context,
+}: SectionProps & { storeSlug: string; context: EditorContext }) {
+  const a = product.appointment ?? DEFAULT_APPOINTMENT;
+  const set = (change: Partial<AppointmentInput>) => update((p) => ({ ...p, appointment: { ...a, ...change } }));
+  const minutes = (text: string, max: number) => Math.max(0, Math.min(max, Math.round(Number(text) || 0)));
+  const toggleStaff = (id: string, on: boolean) =>
+    set({ resourceIds: on ? [...a.resourceIds, id] : a.resourceIds.filter((r) => r !== id) });
+  return (
+    <section aria-labelledby="appointment-heading" className={card}>
+      <h2 id="appointment-heading" className="mb-1 font-medium">
+        Appointment
+      </h2>
+      <p className="mb-4 text-sm text-muted">
+        Shoppers choose a day and a time within the hours of the staff below; each booking takes one of them.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className={label}>
+          Length <span className={hint}>(minutes)</span>
+          <input
+            type="number"
+            min={5}
+            max={720}
+            step={5}
+            value={a.durationMinutes}
+            onChange={(e) => set({ durationMinutes: Math.max(5, minutes(e.target.value, 720)) })}
+            className={input}
+          />
+        </label>
+        <label className={label}>
+          Free before <span className={hint}>(minutes)</span>
+          <input
+            type="number"
+            min={0}
+            max={240}
+            step={5}
+            value={a.bufferBeforeMinutes}
+            onChange={(e) => set({ bufferBeforeMinutes: minutes(e.target.value, 240) })}
+            className={input}
+          />
+        </label>
+        <label className={label}>
+          Free after <span className={hint}>(minutes)</span>
+          <input
+            type="number"
+            min={0}
+            max={240}
+            step={5}
+            value={a.bufferAfterMinutes}
+            onChange={(e) => set({ bufferAfterMinutes: minutes(e.target.value, 240) })}
+            className={input}
+          />
+        </label>
+        <label className={label}>
+          Times offered
+          <select
+            value={a.stepMinutes}
+            onChange={(e) => set({ stepMinutes: Number(e.target.value) as AppointmentInput["stepMinutes"] })}
+            className={input}
+          >
+            {[5, 10, 15, 20, 30, 60].map((step) => (
+              <option key={step} value={step}>
+                {step === 60 ? "Every hour" : `Every ${step} minutes`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={label}>
+          Notice <span className={hint}>(hours)</span>
+          <input
+            type="number"
+            min={0}
+            max={720}
+            value={Math.round(a.minNoticeMinutes / 60)}
+            onChange={(e) => set({ minNoticeMinutes: minutes(e.target.value, 720) * 60 })}
+            className={input}
+          />
+        </label>
+        <label className={label}>
+          Booked up to <span className={hint}>(days ahead)</span>
+          <input
+            type="number"
+            min={1}
+            max={730}
+            value={a.maxDaysAhead}
+            onChange={(e) => set({ maxDaysAhead: Math.max(1, minutes(e.target.value, 730)) })}
+            className={input}
+          />
+        </label>
+      </div>
+      {context.places.length > 0 && (
+        <label className={`${label} mt-4 max-w-sm`}>
+          Where
+          <select value={a.locationId ?? ""} onChange={(e) => set({ locationId: e.target.value || null })} className={input}>
+            <option value="">Not said</option>
+            {context.places.map((place) => (
+              <option key={place.id} value={place.id}>
+                {place.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <fieldset className="mt-4 flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-medium">Who does it</legend>
+        {context.staff.length === 0 ? (
+          <p className="text-muted">
+            No staff yet.{" "}
+            <Link href={`/admin/${storeSlug}/bookings/staff/new`} className="underline" target="_blank">
+              Add the people who take appointments
+            </Link>
+            , then come back.
+          </p>
+        ) : (
+          context.staff.map((s) => (
+            <label key={s.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={a.resourceIds.includes(s.id)}
+                onChange={(e) => toggleStaff(s.id, e.target.checked)}
+                className="size-4"
+              />
+              {s.name}
+              {!s.active && <span className="text-muted">(not taking bookings)</span>}
+            </label>
+          ))
+        )}
       </fieldset>
     </section>
   );

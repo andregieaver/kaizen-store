@@ -5,7 +5,7 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 
-import type { Delivery } from "@/lib/product-input";
+import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { getStripeSecrets } from "./settings";
@@ -109,11 +109,11 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     quantity: Number(line.quantity),
     unitPriceMinor: Number(line.unit_price_minor),
     totalMinor: Number(line.total_minor),
-    delivery: line.delivery === "digital" ? "digital" : "physical",
+    delivery: parseDelivery(line.delivery),
     image: line.image ? String(line.image) : null,
     taxRate: Number(line.tax_rate ?? 0),
   })),
-  ships: lines.some((line) => line.delivery !== "digital"),
+  ships: lines.some((line) => line.delivery === "physical"),
   digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
   subscriptionId: row.subscription_id ? String(row.subscription_id) : null,
   company: row.company_name

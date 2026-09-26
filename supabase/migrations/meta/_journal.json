@@ -589,6 +589,27 @@
       "when": 1790455972256,
       "tag": "20260926205252_vat_categories_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1790459554600,
+      "tag": "20260926215234_bookings",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1790459573267,
+      "tag": "20260926215253_bookings_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1790461135529,
+      "tag": "20260926221855_bookings_indexes",
+      "breakpoints": true
     }
   ]
 }

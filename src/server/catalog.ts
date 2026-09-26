@@ -7,7 +7,7 @@ import { connection } from "next/server";
 import { db, readDb } from "@/db/client";
 import { parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { priceVat, priceView, type PriceView } from "@/lib/pricing";
-import type { Delivery } from "@/lib/product-input";
+import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
 
 /**
@@ -259,7 +259,7 @@ export async function getProduct(
       gtin: v.gtin ? str(v.gtin) : null,
       options: (v.options ?? {}) as Record<string, string>,
       price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor), vat),
-      delivery: v.delivery === "digital" ? "digital" : "physical",
+      delivery: parseDelivery(v.delivery),
     })),
     plans: plans.map((plan) => ({
       id: str(plan.id),

@@ -35,6 +35,10 @@ export type Store = {
   businessPopup: boolean;
   /** On phones, open the slide-out cart once something is added to it (D64). */
   openCartOnAdd: boolean;
+  /** Appointments and bookings are switched on (D65). */
+  bookingsOn: boolean;
+  /** Where the store's times are, e.g. appointments' (D65). */
+  timeZone: string;
   /** Active markets, the store's own country first. */
   markets: Market[];
   /** Search and sharing settings. */
@@ -88,7 +92,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking, s.custom_code, s.theme,
-      s.audience, s.business_popup, s.open_cart_on_add,
+      s.audience, s.business_popup, s.open_cart_on_add, s.modules, s.time_zone,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -137,6 +141,8 @@ async function loadStore(slug: string): Promise<Store | null> {
     audience: parseStoreAudience(row.audience),
     businessPopup: Boolean(row.business_popup) && row.audience === "both",
     openCartOnAdd: Boolean(row.open_cart_on_add),
+    bookingsOn: ((row.modules ?? []) as string[]).includes("bookings"),
+    timeZone: String(row.time_zone ?? "Europe/Oslo"),
     markets: (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(
       toMarket,
     ),

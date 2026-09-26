@@ -48,6 +48,8 @@ async function createStore(slug: string): Promise<Store> {
     audience: "consumers",
     businessPopup: false,
     openCartOnAdd: false,
+    bookingsOn: false,
+    timeZone: "Europe/Oslo",
     markets: [
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
@@ -417,5 +419,60 @@ describe("purchase options (D25)", () => {
       select count(*)::int as n from commerce.selling_plans where product_id = ${result.productId}::uuid and not active
     `);
     expect(off.n).toBe(1);
+  });
+});
+
+describe("appointments (D65)", () => {
+  it("saves how an appointment is booked and who does it, as services with no stock, and clears it all for goods", async () => {
+    const [staff] = await db().execute<Row>(sql`
+      insert into commerce.booking_resources (store_id, name, hours) values (${store.id}::uuid, 'Kari', '{}') returning id
+    `);
+    const [elsewhere] = await db().execute<Row>(sql`
+      insert into commerce.booking_resources (store_id, name, hours) values (${other.id}::uuid, 'Ola', '{}') returning id
+    `);
+    const appointment = mug({
+      handle: "massasje",
+      kind: "appointment",
+      appointment: {
+        durationMinutes: 45,
+        bufferBeforeMinutes: 0,
+        bufferAfterMinutes: 15,
+        stepMinutes: 15,
+        minNoticeMinutes: 120,
+        maxDaysAhead: 30,
+        locationId: null,
+        // Another store's staff are left out.
+        resourceIds: [String(staff.id), String(elsewhere.id)],
+      },
+      manufacturer: null,
+      responsiblePerson: null,
+    });
+    appointment.variants = [{ ...appointment.variants[0], options: {}, sku: `MASSASJE-${run}`, prices: { NO: "890" } }];
+    appointment.options = [];
+    const result = await saveProduct(store, context, null, appointment);
+    expect(result).toMatchObject({ ok: true });
+    const productId = (result as { productId: string }).productId;
+
+    const saved = await getProductForEdit(store, context, productId);
+    expect(saved).toMatchObject({ kind: "appointment", appointment: { durationMinutes: 45, bufferAfterMinutes: 15, resourceIds: [String(staff.id)] } });
+    expect(saved?.variants.map((v) => v.delivery)).toEqual(["service"]);
+    const [stock] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.inventory_levels l
+      join commerce.product_variants v on v.id = l.variant_id where v.product_id = ${productId}::uuid
+    `);
+    expect(stock.n).toBe(0);
+
+    // Back to goods: shipped again, and nothing of the appointment kept.
+    const { archived, ...input } = saved!;
+    expect(archived).toBe(false);
+    expect(await saveProduct(store, context, productId, productInput.parse({ ...input, kind: "goods", status: "draft" }))).toMatchObject({ ok: true });
+    const goods = await getProductForEdit(store, context, productId);
+    expect(goods).toMatchObject({ kind: "goods", appointment: null });
+    expect(goods?.variants.map((v) => v.delivery)).toEqual(["physical"]);
+    const [left] = await db().execute<Row>(sql`
+      select (select count(*) from commerce.appointment_settings where product_id = ${productId}::uuid)::int
+           + (select count(*) from commerce.product_resources where product_id = ${productId}::uuid)::int as n
+    `);
+    expect(left.n).toBe(0);
   });
 });

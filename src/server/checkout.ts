@@ -11,7 +11,7 @@ import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeOrigin } from "@/lib/paths";
 import { t } from "@/lib/i18n";
-import { GENERAL_TAX_CODE, variantLabel, type Delivery } from "@/lib/product-input";
+import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
@@ -159,7 +159,7 @@ export async function placeOrder(
     const minCycles = Math.max(0, ...planned.map((l) => Number(l.min_cycles)));
     if (rhythm && !consent.subscription) return { ok: false, problem: "subscription_consent" };
     const physical = lines.filter((l) => l.delivery === "physical");
-    const digital = physical.length < lines.length;
+    const digital = lines.some((l) => l.delivery === "digital");
     if (digital && !consent.digital) return { ok: false, problem: "consent" };
 
     // Lock the stock rows, then count what is free: on hand minus live holds.
@@ -226,7 +226,7 @@ export async function placeOrder(
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
-      const delivery: Delivery = line.delivery === "digital" ? "digital" : "physical";
+      const delivery: Delivery = parseDelivery(line.delivery);
       const rate = Number(line.vat_rate ?? vatRate);
       return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate };
     });

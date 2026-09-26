@@ -32,9 +32,10 @@ export const CHECKOUT_MINUTES = 30;
 /**
  * The withdrawal exclusion an order line records (D24): a download,
  * delivered at once with the shopper's consent, is digital content; a
- * shipped item never is.
+ * shipped item never is; an appointment is a service on a set date (D65).
  */
-export function lineWithdrawal(delivery: "physical" | "digital", productExclusion: string): string {
+export function lineWithdrawal(delivery: "physical" | "digital" | "service", productExclusion: string): string {
   if (delivery === "digital") return "digital_content";
+  if (delivery === "service") return "dated_service";
   return productExclusion === "digital_content" ? "none" : productExclusion;
 }

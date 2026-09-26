@@ -8,9 +8,12 @@ import { parseVatCategory, type VatCategory } from "@/lib/vat";
 import {
   combineOptions,
   formatPriceInput,
+  DEFAULT_APPOINTMENT,
   GENERAL_TAX_CODE,
+  parseDelivery,
   parsePrice,
   productProblems,
+  type AppointmentInput,
   type OperatorChoice,
   type ProductInput,
 } from "@/lib/product-input";
@@ -46,10 +49,14 @@ export type EditorContext = {
   locationName: string | null;
   /** The store's product categories and tags (D50). */
   terms: Term[];
+  /** Appointments are switched on (D65), with the staff who do them and the places they can be at. */
+  bookingsOn: boolean;
+  staff: { id: string; name: string; active: boolean }[];
+  places: { id: string; name: string }[];
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location], terms, rates] = await Promise.all([
+  const [operators, [location], terms, rates, staff, places] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -67,6 +74,15 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
         'exempt', commerce.vat_rate(code, 'exempt')
       ) as rates
       from commerce.countries
+    `),
+    db().execute<Row>(sql`
+      select id, name, active from commerce.booking_resources
+      where store_id = ${store.id}::uuid order by active desc, position, name
+    `),
+    db().execute<Row>(sql`
+      select id, case when kind = 'office' and name = '' then 'Office' else name end as name
+      from commerce.store_locations where store_id = ${store.id}::uuid and kind in ('office', 'shop')
+      order by kind = 'office' desc, position, name
     `),
   ]);
   const noVat: Record<VatCategory, number> = { standard: 0, accommodation: 0, exempt: 0 };
@@ -91,6 +107,9 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       country: String(row.country),
     })),
     locationName: location ? String(location.name) : null,
+    bookingsOn: store.bookingsOn,
+    staff: staff.map((row) => ({ id: String(row.id), name: String(row.name), active: Boolean(row.active) })),
+    places: places.map((row) => ({ id: String(row.id), name: String(row.name) })),
   };
 }
 
@@ -132,6 +151,8 @@ export function emptyProduct(context: EditorContext): ProductInput {
     subscriptionOnly: false,
     audience: "all",
     vatCategory: "standard",
+    kind: "goods",
+    appointment: null,
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
@@ -221,14 +242,14 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only, audience, vat_category
+           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
   // Prices are typed without VAT at this product's rate in stores selling only to businesses.
   const category = parseVatCategory(product.vat_category);
 
-  const [translations, media, schemes, variants, prices, files, plans, termRows] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -273,6 +294,14 @@ export async function getProductForEdit(
       select t.id, t.kind from commerce.product_terms pt
       join commerce.terms t on t.id = pt.term_id
       where pt.store_id = ${store.id}::uuid and pt.product_id = ${productId}::uuid
+    `),
+    db().execute<Row>(sql`
+      select duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes, min_notice_minutes,
+        max_days_ahead, location_id
+      from commerce.appointment_settings where store_id = ${store.id}::uuid and product_id = ${productId}::uuid
+    `),
+    db().execute<Row>(sql`
+      select resource_id from commerce.product_resources where store_id = ${store.id}::uuid and product_id = ${productId}::uuid
     `),
   ]);
 
@@ -340,9 +369,9 @@ export async function getProductForEdit(
       weightGrams: v.weight_grams === null ? null : Number(v.weight_grams),
       hsCode: v.hs_code ? String(v.hs_code) : null,
       originCountry: v.origin_country ? String(v.origin_country) : null,
-      delivery: v.delivery === "digital" ? ("digital" as const) : ("physical" as const),
+      delivery: parseDelivery(v.delivery),
     })),
-    delivery: product.delivery === "digital" ? "digital" : "physical",
+    delivery: parseDelivery(product.delivery),
     files: files.map((f) => ({
       id: String(f.id),
       name: String(f.name),
@@ -374,6 +403,20 @@ export async function getProductForEdit(
     subscriptionOnly: Boolean(product.subscription_only),
     audience: parseProductAudience(product.audience),
     vatCategory: category,
+    kind: product.kind === "appointment" ? "appointment" : "goods",
+    appointment:
+      product.kind === "appointment"
+        ? {
+            durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
+            bufferBeforeMinutes: Number(appointment?.buffer_before_minutes ?? 0),
+            bufferAfterMinutes: Number(appointment?.buffer_after_minutes ?? 0),
+            stepMinutes: Number(appointment?.step_minutes ?? DEFAULT_APPOINTMENT.stepMinutes) as AppointmentInput["stepMinutes"],
+            minNoticeMinutes: Number(appointment?.min_notice_minutes ?? DEFAULT_APPOINTMENT.minNoticeMinutes),
+            maxDaysAhead: Number(appointment?.max_days_ahead ?? DEFAULT_APPOINTMENT.maxDaysAhead),
+            locationId: appointment?.location_id ? String(appointment.location_id) : null,
+            resourceIds: resources.map((row) => String(row.resource_id)),
+          }
+        : null,
     taxCode: String(product.tax_code),
     withdrawalExclusion: String(product.withdrawal_exclusion),
     schemes: schemes.map((s) => String(s.scheme)),
@@ -403,6 +446,54 @@ function keptAmount(
   return typedMinor !== null && context.audience === "businesses" ? withVat(typedMinor, market.vatRates[category]) : typedMinor;
 }
 
+/**
+ * The product as its kind needs it (D65): an appointment's variants are
+ * services, booked for a time; goods are shipped or downloaded.
+ */
+function asKind(input: ProductInput): ProductInput {
+  const appointment = input.kind === "appointment";
+  const delivery = (d: ProductInput["delivery"]) => (appointment ? "service" : d === "service" ? "physical" : d);
+  return {
+    ...input,
+    delivery: delivery(input.delivery),
+    variants: input.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })),
+    subscriptionOnly: appointment ? false : input.subscriptionOnly,
+    appointment: appointment ? (input.appointment ?? DEFAULT_APPOINTMENT) : null,
+  };
+}
+
+/** An appointment's settings and who does it (D65); only the store's own staff and places. Goods keep none. */
+async function saveAppointment(tx: Tx, storeId: string, productId: string, input: ProductInput) {
+  await tx.execute(sql`delete from commerce.product_resources where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
+  const a = input.appointment;
+  if (input.kind !== "appointment" || !a) {
+    await tx.execute(sql`delete from commerce.appointment_settings where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
+    return;
+  }
+  await tx.execute(sql`
+    insert into commerce.appointment_settings (
+      product_id, store_id, duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes,
+      min_notice_minutes, max_days_ahead, location_id
+    ) values (
+      ${productId}::uuid, ${storeId}::uuid, ${a.durationMinutes}, ${a.bufferBeforeMinutes}, ${a.bufferAfterMinutes},
+      ${a.stepMinutes}, ${a.minNoticeMinutes}, ${a.maxDaysAhead},
+      (select id from commerce.store_locations where store_id = ${storeId}::uuid and id = ${a.locationId}::uuid)
+    )
+    on conflict (product_id) do update set
+      duration_minutes = excluded.duration_minutes, buffer_before_minutes = excluded.buffer_before_minutes,
+      buffer_after_minutes = excluded.buffer_after_minutes, step_minutes = excluded.step_minutes,
+      min_notice_minutes = excluded.min_notice_minutes, max_days_ahead = excluded.max_days_ahead,
+      location_id = excluded.location_id
+  `);
+  if (a.resourceIds.length > 0) {
+    await tx.execute(sql`
+      insert into commerce.product_resources (store_id, product_id, resource_id)
+      select ${storeId}::uuid, ${productId}::uuid, r.id from commerce.booking_resources r
+      where r.store_id = ${storeId}::uuid and r.id = any(${`{${a.resourceIds.join(",")}}`}::uuid[])
+    `);
+  }
+}
+
 export type SaveProductResult = { ok: true; productId: string } | { ok: false; problems: string[] };
 
 /**
@@ -414,8 +505,9 @@ export async function saveProduct(
   store: Store,
   context: EditorContext,
   productId: string | null,
-  input: ProductInput,
+  given: ProductInput,
 ): Promise<SaveProductResult> {
+  const input = asKind(given);
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
   const problems = productProblems(input, {
     markets: context.markets,
@@ -469,6 +561,7 @@ export async function saveProduct(
       }
       const locationId = await stockLocation(tx, store);
       await saveVariants(tx, store.id, saved, context, input, locationId);
+      await saveAppointment(tx, store.id, saved, input);
       await saveFiles(tx, store.id, saved, input);
       await savePlans(tx, store.id, saved, input, context.markets, context.audience);
       await tx.execute(sql`delete from commerce.product_terms where store_id = ${store.id}::uuid and product_id = ${saved}::uuid`);
@@ -525,7 +618,7 @@ async function upsertProduct(
         tax_code = ${input.taxCode}, withdrawal_exclusion = ${input.withdrawalExclusion},
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
         subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
-        vat_category = ${input.vatCategory}, updated_at = now()
+        vat_category = ${input.vatCategory}, kind = ${input.kind}, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -535,11 +628,11 @@ async function upsertProduct(
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
-      delivery, download_limit, download_days, subscription_only, audience, vat_category
+      delivery, download_limit, download_days, subscription_only, audience, vat_category, kind
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
-      ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}
+      ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}
     )
     returning id
   `);

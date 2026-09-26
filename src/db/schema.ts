@@ -88,14 +88,17 @@ export const withdrawalExclusion = commerce.enum("withdrawal_exclusion", [
   "alcohol_future_delivery",
   "periodicals",
   "digital_content",
+  /** Accommodation, transport, catering or leisure on a set date (CRD Art. 16(l)): appointments and stays (D65). */
+  "dated_service",
 ]);
 
 /**
  * How a product variant reaches the shopper: `physical`, shipped (stock,
- * weight, shipping), or `digital`, downloaded after payment (files, no stock,
- * no shipping). Decision D24.
+ * weight, shipping), `digital`, downloaded after payment (files, no stock,
+ * no shipping), decision D24, or `service`, an appointment (D65): booked
+ * for a time, with no stock, shipping or files.
  */
-export const delivery = commerce.enum("delivery", ["physical", "digital"]);
+export const delivery = commerce.enum("delivery", ["physical", "digital", "service"]);
 
 /** How often a subscription renews: every `interval_count` weeks, months or years (D25). */
 export const planInterval = commerce.enum("plan_interval", ["week", "month", "year"]);
@@ -302,6 +305,10 @@ export const stores = commerce.table(
     businessPopup: boolean("business_popup").notNull().default(false),
     /** On phones, open the slide-out cart (D64) once something is added to it. */
     openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
+    /** Modules the store has switched on (D65): `bookings` for appointments. */
+    modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
+    /** Where the store's times are, e.g. appointments' (D65): an IANA time zone. */
+    timeZone: text("time_zone").notNull().default("Europe/Oslo"),
     /**
      * One of the store's own pages shown as its front page in every market
      * (D54), instead of the product list. Null for the product list. The
@@ -322,6 +329,7 @@ export const stores = commerce.table(
   },
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
+    check("stores_modules", sql`${t.modules} <@ array['bookings']::text[]`),
     check(
       "stores_slug_format",
       sql`${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$'`,
@@ -704,6 +712,8 @@ export const products = commerce.table(
     audience: text("audience").notNull().default("all"),
     /** Which VAT rate it takes (D65): the market's standard rate, accommodation's, or none (exempt, such as health care). */
     vatCategory: text("vat_category").notNull().default("standard"),
+    /** What it is (D65): goods (physical or digital), or an appointment booked for a time. */
+    kind: text("kind").notNull().default("goods"),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
     createdAt: createdAt(),
@@ -727,6 +737,7 @@ export const products = commerce.table(
     index("products_store_status_idx").on(t.storeId, t.status),
     check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
     check("products_vat_category", sql`${t.vatCategory} in ('standard', 'accommodation', 'exempt')`),
+    check("products_kind", sql`${t.kind} in ('goods', 'appointment')`),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
@@ -1230,9 +1241,14 @@ export const cartLines = commerce.table(
     quantity: integer("quantity").notNull(),
     /** Bought as a subscription with this purchase option; null for once (D25). */
     sellingPlanId: uuid("selling_plan_id"),
+    /** An appointment (D65): when it starts, and with whom (null: whoever is free). */
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    resourceId: uuid("resource_id"),
   },
   (t) => [
-    unique("cart_lines_cart_variant_plan_key").on(t.cartId, t.variantId, t.sellingPlanId).nullsNotDistinct(),
+    unique("cart_lines_cart_variant_plan_key")
+      .on(t.cartId, t.variantId, t.sellingPlanId, t.startsAt)
+      .nullsNotDistinct(),
     sellingPlanRef("cart_lines_selling_plan_fk", t),
     index("cart_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
     cartRef("cart_lines_cart_fk", t).onDelete("cascade"),
@@ -2802,5 +2818,144 @@ export const storeDomains = commerce.table(
       "store_domains_hostname",
       sql`${t.hostname} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$' and length(${t.hostname}) <= 253`,
     ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Bookings (D65)
+// ---------------------------------------------------------------------------
+
+/**
+ * What is booked (D65): for appointments, the staff who do them. Each has
+ * its hours (`OpeningHours` in lib/opening-hours) and a capacity: how many
+ * bookings it takes at once (1 for a person, more for a class).
+ */
+export const bookingResources = commerce.table(
+  "booking_resources",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("staff"),
+    name: text("name").notNull(),
+    /** Told about their bookings; not shown to shoppers. */
+    email: text("email").notNull().default(""),
+    hours: jsonb("hours").notNull(),
+    capacity: integer("capacity").notNull().default(1),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("booking_resources_store_id_key").on(t.storeId, t.id),
+    index("booking_resources_store_idx").on(t.storeId, t.position),
+    check("booking_resources_kind", sql`${t.kind} in ('staff')`),
+    check("booking_resources_capacity", sql`${t.capacity} between 1 and 500`),
+    check("booking_resources_name", sql`length(${t.name}) between 1 and 120`),
+  ],
+);
+
+/** How an appointment is booked (D65): its length, the time kept free around it, and how far ahead. */
+export const appointmentSettings = commerce.table(
+  "appointment_settings",
+  {
+    productId: uuid("product_id").primaryKey(),
+    storeId: storeId(),
+    durationMinutes: integer("duration_minutes").notNull().default(60),
+    bufferBeforeMinutes: integer("buffer_before_minutes").notNull().default(0),
+    bufferAfterMinutes: integer("buffer_after_minutes").notNull().default(0),
+    /** Times offered start on these steps from the hour: every 15 minutes, say. */
+    stepMinutes: integer("step_minutes").notNull().default(15),
+    minNoticeMinutes: integer("min_notice_minutes").notNull().default(60),
+    maxDaysAhead: integer("max_days_ahead").notNull().default(60),
+    /** Where it takes place: one of the store's places (D40), or none said. */
+    locationId: uuid("location_id"),
+  },
+  (t) => [
+    productRef("appointment_settings_product_fk", t),
+    index("appointment_settings_product_idx").on(t.storeId, t.productId),
+    foreignKey({
+      name: "appointment_settings_location_fk",
+      columns: [t.storeId, t.locationId],
+      foreignColumns: [storeLocations.storeId, storeLocations.id],
+    }),
+    index("appointment_settings_location_idx").on(t.storeId, t.locationId),
+    check("appointment_settings_duration", sql`${t.durationMinutes} between 5 and 720`),
+    check(
+      "appointment_settings_buffers",
+      sql`${t.bufferBeforeMinutes} between 0 and 240 and ${t.bufferAfterMinutes} between 0 and 240`,
+    ),
+    check("appointment_settings_step", sql`${t.stepMinutes} in (5, 10, 15, 20, 30, 60)`),
+    check("appointment_settings_notice", sql`${t.minNoticeMinutes} between 0 and 43200`),
+    check("appointment_settings_ahead", sql`${t.maxDaysAhead} between 1 and 730`),
+  ],
+);
+
+/** Who can do an appointment (D65). */
+export const productResources = commerce.table(
+  "product_resources",
+  {
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    resourceId: uuid("resource_id").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.productId, t.resourceId] }),
+    productRef("product_resources_product_fk", t),
+    index("product_resources_product_idx").on(t.storeId, t.productId),
+    foreignKey({
+      name: "product_resources_resource_fk",
+      columns: [t.storeId, t.resourceId],
+      foreignColumns: [bookingResources.storeId, bookingResources.id],
+    }).onDelete("cascade"),
+    index("product_resources_resource_idx").on(t.storeId, t.resourceId),
+  ],
+);
+
+/**
+ * A time taken with a resource (D65). Held while the shopper pays (until
+ * `hold_expires_at`), confirmed once paid, cancelled when not. `blocked_*`
+ * add the appointment's buffers: that is what no other booking may overlap.
+ * Booked only through `commerce.hold_booking`, which checks under a lock.
+ */
+export const bookings = commerce.table(
+  "bookings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").notNull(),
+    variantId: uuid("variant_id"),
+    resourceId: uuid("resource_id").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    blockedFrom: timestamp("blocked_from", { withTimezone: true }).notNull(),
+    blockedTo: timestamp("blocked_to", { withTimezone: true }).notNull(),
+    status: text("status").notNull().default("held"),
+    holdExpiresAt: timestamp("hold_expires_at", { withTimezone: true }),
+    orderId: uuid("order_id"),
+    orderLineId: uuid("order_line_id"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("bookings_store_id_key").on(t.storeId, t.id),
+    productRef("bookings_product_fk", t),
+    variantRef("bookings_variant_fk", t),
+    foreignKey({
+      name: "bookings_resource_fk",
+      columns: [t.storeId, t.resourceId],
+      foreignColumns: [bookingResources.storeId, bookingResources.id],
+    }),
+    orderRef("bookings_order_fk", t),
+    index("bookings_resource_time_idx").on(t.storeId, t.resourceId, t.blockedFrom),
+    index("bookings_product_idx").on(t.storeId, t.productId),
+    index("bookings_variant_idx").on(t.storeId, t.variantId),
+    index("bookings_order_idx").on(t.storeId, t.orderId),
+    index("bookings_store_starts_idx").on(t.storeId, t.startsAt),
+    check("bookings_status", sql`${t.status} in ('held', 'confirmed', 'cancelled')`),
+    check("bookings_times", sql`${t.startsAt} < ${t.endsAt}`),
+    check("bookings_blocked", sql`${t.blockedFrom} <= ${t.startsAt} and ${t.blockedTo} >= ${t.endsAt}`),
+    check("bookings_held_expires", sql`${t.status} <> 'held' or ${t.holdExpiresAt} is not null`),
   ],
 );

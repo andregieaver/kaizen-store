@@ -1,0 +1,2 @@
+CREATE INDEX "appointment_settings_product_idx" ON "commerce"."appointment_settings" USING btree ("store_id","product_id");--> statement-breakpoint
+CREATE INDEX "product_resources_product_idx" ON "commerce"."product_resources" USING btree ("store_id","product_id");

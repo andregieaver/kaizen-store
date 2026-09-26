@@ -69,7 +69,7 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
           id: v.id,
           label: optionLabel(m, v.options) || product.title,
           price: formatMoney(shownAmount(v.price.amountMinor, v.price.vat, buyer), v.price.currency, market.locale),
-          available: v.delivery === "digital" || (stock.get(v.id) ?? 0) > 0,
+          available: v.delivery !== "physical" || (stock.get(v.id) ?? 0) > 0,
         })),
       },
     ];
