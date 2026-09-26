@@ -306,7 +306,17 @@ of running `playwright install`.
   `slotsOn()` (`src/lib/booking-slots.ts`, pure, in the store's time zone);
   a time is only ever taken through `commerce.hold_booking()`, which checks
   capacity with buffers under a lock; bookings follow their order's status
-  (trigger `orders_bookings_follow`).
+  (trigger `orders_bookings_follow`; paid after its hold ran out, a time is
+  kept only if still free, else `booking.lost`). Shoppers choose a time on
+  the product page (`AppointmentPicker`, weeks from `appointmentSlots()` in
+  `src/server/appointments.ts`, per request); a cart line then carries
+  `starts_at` and an optional `resource_id`, always quantity 1, and must be
+  a time the page would offer (`freeResourcesAt()`; the `bookable` SQL keeps
+  goods without a time and appointments with one). `placeOrder` holds each
+  time with `holdAppointment()` (the chosen person, or the first free) and
+  undoes the whole order as `slot_taken` if one is gone. Order lines find
+  their time through `bookings.order_line_id` (`OrderView` lines' `booking`);
+  show times with `formatBookingTime()` in the store's time zone.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

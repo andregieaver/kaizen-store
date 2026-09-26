@@ -8,6 +8,7 @@ import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
+import { formatBookingTime } from "@/lib/booking-slots";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -86,10 +87,16 @@ async function OrderDetails({
       <section aria-label={m.cart} className="rounded-lg border border-border p-4">
         <ul className="divide-y divide-border">
           {order.lines.map((line) => (
-            <li key={line.sku} className="flex items-center gap-3 py-2">
+            <li key={line.id} className="flex items-center gap-3 py-2">
               <LineThumbnail src={line.image} />
               <span className="min-w-0 flex-1">
                 {line.quantity} × {line.title}
+                {line.booking && (
+                  <span className="block text-sm">
+                    {formatBookingTime(line.booking.startsAt, market.locale, line.booking.timeZone)},{" "}
+                    {m.booking.withStaff(line.booking.staff)}
+                  </span>
+                )}
               </span>
               <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
             </li>

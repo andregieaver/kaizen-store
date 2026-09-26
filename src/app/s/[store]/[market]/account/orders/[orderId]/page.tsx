@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { formatBookingTime } from "@/lib/booking-slots";
 import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
@@ -86,6 +87,12 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
               <span>
                 {line.quantity} × {line.title}
                 {line.delivery === "digital" && line.variantId && <span className="block text-sm text-muted">{m.digitalDelivery}</span>}
+                {line.booking && (
+                  <span className="block text-sm">
+                    {formatBookingTime(line.booking.startsAt, market.locale, line.booking.timeZone)},{" "}
+                    {m.booking.withStaff(line.booking.staff)}
+                  </span>
+                )}
               </span>
               <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
             </li>

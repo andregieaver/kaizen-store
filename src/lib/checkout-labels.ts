@@ -22,6 +22,7 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       discount: m.problemDiscount,
       company: m.problemCompany,
       company_number: m.problemCompanyNumber,
+      slot_taken: m.booking.problem,
     },
   };
 }

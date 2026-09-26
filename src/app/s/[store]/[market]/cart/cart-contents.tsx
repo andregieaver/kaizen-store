@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
 import { companyRequired, withoutVat } from "@/lib/b2b";
+import { formatBookingTime } from "@/lib/booking-slots";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
 import { vatIncluded } from "@/lib/checkout";
 import { basketShipping } from "@/lib/subscriptions";
@@ -154,7 +155,7 @@ export async function CartContents({
     <div className={`grid grid-cols-[minmax(0,1fr)] ${drawer ? "gap-4" : "gap-8 md:grid-cols-[minmax(0,1fr)_18rem]"}`}>
       <ul className={`divide-y divide-border border-border ${drawer ? "border-b" : "border-y"}`}>
         {cart.lines.map((line) => (
-          <li key={`${line.variantId}:${line.plan?.id ?? ""}`} className={`flex py-4 ${drawer ? "gap-3" : "gap-4"}`}>
+          <li key={`${line.variantId}:${line.plan?.id ?? ""}:${line.booking?.startsAt ?? ""}`} className={`flex py-4 ${drawer ? "gap-3" : "gap-4"}`}>
             {line.image && (
               <Image
                 src={line.image.url}
@@ -175,6 +176,13 @@ export async function CartContents({
                     <p className="text-sm text-muted">{optionLabel(m, line.options)}</p>
                   )}
                   {line.delivery === "digital" && <p className="text-sm text-muted">{m.digitalDelivery}</p>}
+                  {line.booking && (
+                    <p className="text-sm">
+                      <span className="sr-only">{m.booking.time}: </span>
+                      {formatBookingTime(line.booking.startsAt, market.locale, line.booking.timeZone)}
+                      {line.booking.staff && `, ${m.booking.withStaff(line.booking.staff)}`}
+                    </p>
+                  )}
                   {line.plan && (
                     <p className="text-sm text-muted">
                       {m.subscription}: {m.planEvery(line.plan.interval, line.plan.intervalCount).toLowerCase()}
@@ -206,7 +214,8 @@ export async function CartContents({
               )}
 
               <div className="flex flex-wrap items-end gap-2">
-                {line.status !== "unavailable" && (
+                {/* An appointment is one place at one time (D65): nothing to count. */}
+                {line.status !== "unavailable" && !line.booking && (
                   <form action={updateCartLine} className="flex items-end gap-2">
                     <input type="hidden" name="store" value={store.slug} />
                   <input type="hidden" name="market" value={market.slug} />
@@ -233,6 +242,7 @@ export async function CartContents({
                   <input type="hidden" name="market" value={market.slug} />
                   <input type="hidden" name="variantId" value={line.variantId} />
                   {line.plan && <input type="hidden" name="sellingPlanId" value={line.plan.id} />}
+                  {line.booking && <input type="hidden" name="startsAt" value={line.booking.startsAt} />}
                   <input type="hidden" name="quantity" value="0" />
                   {/* In the drawer it lines up with the quantity when it wraps under it. */}
                   <button type="submit" className={`min-h-11 text-sm underline ${drawer ? "px-1" : "px-3"}`}>

@@ -319,7 +319,8 @@ export async function setWishlistItem(
 // To the cart
 // ---------------------------------------------------------------------------
 
-export type CartOutcome = "added" | "capped" | "unavailable" | "needs_variant" | "subscription";
+/** `booking`: an appointment, whose time is chosen on its page (D65). */
+export type CartOutcome = "added" | "capped" | "unavailable" | "needs_variant" | "subscription" | "booking";
 
 /**
  * Adds items (all of the list's when `itemIds` is null) to the cart, each
@@ -336,7 +337,7 @@ export async function addWishlistToCart(
   const owner = await currentOwner(storeId);
   if (!owner) return { outcomes: {} };
   const rows = await db().execute<Row>(sql`
-    select i.id, i.quantity, p.subscription_only,
+    select i.id, i.quantity, p.subscription_only, p.kind,
       coalesce(i.variant_id, (
         select case when count(*) = 1 then min(v.id::text)::uuid end from commerce.product_variants v
         where v.product_id = p.id and v.active
@@ -355,6 +356,10 @@ export async function addWishlistToCart(
     const id = String(row.id);
     if (row.subscription_only) {
       outcomes[id] = "subscription";
+      continue;
+    }
+    if (row.kind === "appointment") {
+      outcomes[id] = "booking";
       continue;
     }
     if (!row.variant_id) {

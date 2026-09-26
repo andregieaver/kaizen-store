@@ -1,0 +1,1 @@
+CREATE INDEX "bookings_order_line_idx" ON "commerce"."bookings" USING btree ("store_id","order_line_id");

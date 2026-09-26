@@ -23,6 +23,8 @@ export type WishlistItemView = {
   variantId: string | null;
   quantity: number;
   subscriptionOnly: boolean;
+  /** An appointment (D65): its time is chosen on its page. */
+  booking: boolean;
   variants: { id: string; label: string; price: string; available: boolean }[];
   /** "Fra 129,00 kr", shown until a variant is chosen. */
   fromPrice: string;
@@ -54,6 +56,7 @@ type Labels = {
   chooseVariant: string;
   needsVariant: string;
   subscription: string;
+  booking: string;
   capped: string;
   quantity: string;
   soldOut: string;
@@ -64,7 +67,7 @@ type Labels = {
   selectedCounts: string[];
 };
 
-type Outcome = "added" | "capped" | "unavailable" | "needs_variant" | "subscription";
+type Outcome = "added" | "capped" | "unavailable" | "needs_variant" | "subscription" | "booking";
 
 const button = "min-h-11 rounded-button px-4 text-sm font-medium disabled:opacity-40";
 const primary = `${button} button-primary`;
@@ -421,12 +424,16 @@ function Item({
   const [quantity, setQuantity] = useState(String(item.quantity));
   const variant = item.variants.find((v) => v.id === variantId);
   const soldOut = variant ? !variant.available : false;
+  // Chosen on the product page: how often to subscribe, or when to come.
+  const pageOnly = item.subscriptionOnly || item.booking;
   const note =
     outcome === "needs_variant"
       ? labels.needsVariant
       : outcome === "subscription"
         ? labels.subscription
-        : outcome === "unavailable"
+        : outcome === "booking"
+          ? labels.booking
+          : outcome === "unavailable"
           ? labels.soldOut
           : outcome === "capped"
             ? labels.capped
@@ -463,7 +470,7 @@ function Item({
             {labels.remove}
           </button>
         </div>
-        {!item.subscriptionOnly && (
+        {!pageOnly && (
           <div className="flex flex-wrap items-end gap-2">
             {item.variants.length > 1 && (
               <label className="flex flex-col gap-1 text-xs font-medium">
@@ -506,10 +513,12 @@ function Item({
             </label>
           </div>
         )}
-        {(note || soldOut || item.subscriptionOnly) && (
-          <p className="text-sm text-muted">{note ?? (item.subscriptionOnly ? labels.subscription : labels.soldOut)}</p>
+        {(note || soldOut || pageOnly) && (
+          <p className="text-sm text-muted">
+            {note ?? (item.booking ? labels.booking : item.subscriptionOnly ? labels.subscription : labels.soldOut)}
+          </p>
         )}
-        {!item.subscriptionOnly && (
+        {!pageOnly && (
           <button type="button" disabled={busy || soldOut || !variantId} onClick={onAdd} className={`${secondary} self-start`}>
             {labels.addToCart}
           </button>

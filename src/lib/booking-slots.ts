@@ -133,3 +133,53 @@ export function bookingSpan(startsAt: number, rules: AppointmentRules) {
     blockedTo: endsAt + rules.bufferAfterMinutes * MINUTE,
   };
 }
+
+/** A booking's time as shoppers read it ("tir. 6. okt., 10:00"), in the store's time zone. */
+export function formatBookingTime(iso: string, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** Just the clock time of a slot ("10:00"), in the store's time zone. */
+export function formatSlotTime(iso: string, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(locale, { timeZone, hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+}
+
+/** A week of an appointment's free times as the product page's picker shows them. */
+export type SlotWeek = {
+  from: string;
+  /** Today in the store's time zone, and the last date that can be booked. */
+  today: string;
+  last: string;
+  days: { date: string; weekday: string; day: string; month: string; slots: { startsAt: string; time: string }[] }[];
+};
+
+/** Free times for the picker, with dates and times written in the market's language. */
+export function slotWeek(
+  week: { from: string; today: string; last: string; days: { date: string; slots: Slot[] }[] },
+  locale: string,
+  timeZone: string,
+): SlotWeek {
+  const noon = (date: string) => new Date(`${date}T12:00:00Z`);
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" });
+  const dayOf = new Intl.DateTimeFormat(locale, { day: "numeric", timeZone: "UTC" });
+  const month = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+  return {
+    from: week.from,
+    today: week.today,
+    last: week.last,
+    days: week.days.map((day) => ({
+      date: day.date,
+      weekday: weekday.format(noon(day.date)),
+      day: dayOf.format(noon(day.date)),
+      month: month.format(noon(day.date)),
+      slots: day.slots.map((slot) => ({ startsAt: slot.startsAt, time: formatSlotTime(slot.startsAt, locale, timeZone) })),
+    })),
+  };
+}

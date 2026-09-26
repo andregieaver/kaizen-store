@@ -13,6 +13,7 @@ import {
   SendForm,
 } from "@/components/admin/order-actions";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
+import { formatBookingTime } from "@/lib/booking-slots";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { requireMember } from "@/server/auth";
@@ -159,6 +160,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       <td className="py-2">
                         {line.title}
                         {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">Digital download</span>}
+                        {line.booking && (
+                          <span className="block text-xs">
+                            {formatBookingTime(line.booking.startsAt, "en-GB", line.booking.timeZone)} with {line.booking.staff}
+                            {line.booking.status !== "confirmed" && ` · ${line.booking.status === "held" ? "held until paid" : "not booked"}`}
+                          </span>
+                        )}
                         {line.restocked > 0 && <span className="block text-xs text-muted">{line.restocked} put back in stock</span>}
                         {fromWishlists
                           .filter((add) => line.variantId && add.variantId === line.variantId)

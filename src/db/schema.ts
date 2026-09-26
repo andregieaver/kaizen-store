@@ -2952,6 +2952,7 @@ export const bookings = commerce.table(
     index("bookings_product_idx").on(t.storeId, t.productId),
     index("bookings_variant_idx").on(t.storeId, t.variantId),
     index("bookings_order_idx").on(t.storeId, t.orderId),
+    index("bookings_order_line_idx").on(t.storeId, t.orderLineId),
     index("bookings_store_starts_idx").on(t.storeId, t.startsAt),
     check("bookings_status", sql`${t.status} in ('held', 'confirmed', 'cancelled')`),
     check("bookings_times", sql`${t.startsAt} < ${t.endsAt}`),

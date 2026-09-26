@@ -80,6 +80,8 @@ export type ProductDetail = {
   subscriptionOnly: boolean;
   /** Who it is for (B2B); always `all` unless the store sells to both. */
   audience: ProductAudience;
+  /** Goods, or an appointment booked for a time (D65). */
+  kind: "goods" | "appointment";
 };
 
 type Row = Record<string, unknown>;
@@ -179,7 +181,7 @@ export async function getProduct(
 
   const [product] = await readDb().execute<Row>(sql`
     select
-      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only,
+      p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind,
       p.audience, s.audience as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       coalesce(tl.description, tf.description, '') as description,
@@ -273,6 +275,7 @@ export async function getProduct(
     // Without an option to subscribe to, it can only be bought once.
     subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,
     audience: productAudience(product),
+    kind: product.kind === "appointment" ? "appointment" : "goods",
   };
 }
 

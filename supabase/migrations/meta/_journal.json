@@ -610,6 +610,20 @@
       "when": 1790461135529,
       "tag": "20260926221855_bookings_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1790462221932,
+      "tag": "20260926223701_bookings_expired_holds",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1790462648060,
+      "tag": "20260926224408_bookings_order_line_idx",
+      "breakpoints": true
     }
   ]
 }

@@ -97,5 +97,10 @@ moves like this (**to confirm before building**):
 | **B3 Stays and rentals** | Date ranges over units; nightly and seasonal prices; minimum stay, cleaning fee, deposits; calendar sync with Airbnb and Booking.com (iCal in and out) | Stores sell rooms, homes and rentals |
 | **B4 Hosts** | Hosts, their Stripe accounts and area; commission; payouts; DAC7 data and yearly report | Stores run marketplaces |
 
+B1 is built in parts: B1a (the module, staff and their hours, appointment
+products) and B1b (free times on the product page, times in the cart, held
+at checkout and confirmed on payment) are done; B1c (the admin calendar,
+confirmation emails with .ics, reminders) is next.
+
 Each phase ends with its migrations applied, tests and a decision entry, as
 before.

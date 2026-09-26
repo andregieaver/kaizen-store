@@ -57,6 +57,8 @@ export type OrderView = {
     image: string | null;
     /** The VAT rate it was sold at (D65). */
     taxRate: number;
+    /** An appointment's time (D65), who with, and where it stands, shown in the store's time zone. */
+    booking: OrderBooking | null;
   }[];
   /** Something to ship (false when the order is downloads only). */
   ships: boolean;
@@ -68,6 +70,14 @@ export type OrderView = {
   company: { name: string; number: string } | null;
   /** The market's standard VAT rate, which shipping takes, for showing businesses amounts without VAT. */
   shippingVatRate: number;
+};
+
+export type OrderBooking = {
+  startsAt: string;
+  endsAt: string;
+  staff: string;
+  status: "held" | "confirmed" | "cancelled";
+  timeZone: string;
 };
 
 /** A file the shopper can download from a paid order (D24). */
@@ -112,6 +122,15 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     delivery: parseDelivery(line.delivery),
     image: line.image ? String(line.image) : null,
     taxRate: Number(line.tax_rate ?? 0),
+    booking: line.starts_at
+      ? {
+          startsAt: new Date(String(line.starts_at)).toISOString(),
+          endsAt: new Date(String(line.ends_at)).toISOString(),
+          staff: String(line.staff ?? ""),
+          status: line.booking_status as OrderBooking["status"],
+          timeZone: String(line.time_zone),
+        }
+      : null,
   })),
   ships: lines.some((line) => line.delivery === "physical"),
   digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
@@ -134,9 +153,18 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
           from commerce.product_variants v
           join commerce.product_media m on m.product_id = v.product_id
           where v.store_id = ol.store_id and v.id = ol.variant_id
-          order by m.position limit 1) as image
+          order by m.position limit 1) as image,
+        b.starts_at, b.ends_at, b.status as booking_status, b.staff, s.time_zone
       from commerce.order_lines ol
-      where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid order by ol.title
+      join commerce.stores s on s.id = ol.store_id
+      left join lateral (
+        select b.starts_at, b.ends_at, b.status, r.name as staff
+        from commerce.bookings b
+        join commerce.booking_resources r on r.store_id = b.store_id and r.id = b.resource_id
+        where b.store_id = ol.store_id and b.order_line_id = ol.id
+        order by b.created_at desc limit 1
+      ) b on true
+      where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid order by ol.title, b.starts_at
     `),
   ]);
   return order ? toOrder(order, lines) : null;

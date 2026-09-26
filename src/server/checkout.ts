@@ -5,6 +5,7 @@ import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
+import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
 import type { Market } from "@/lib/markets";
@@ -17,7 +18,9 @@ import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/
 
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
+import { holdAppointment } from "./appointments";
 import { storeFeeBps } from "./billing";
+import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { findUsableDiscount } from "./discounts";
 import { getCheckoutAccount } from "./settings";
@@ -25,6 +28,7 @@ import { ensureSubscriptionEvents } from "./subscriptions";
 import { platformStripe } from "./stripe";
 
 type Row = Record<string, unknown>;
+type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
 export type CheckoutShop = { storeId: string; storeSlug: string; market: Market };
 
@@ -70,7 +74,8 @@ export type CheckoutProblem =
   | "discount"
   | "plans"
   | "company"
-  | "company_number";
+  | "company_number"
+  | "slot_taken";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -95,9 +100,9 @@ export async function placeOrder(
   { customerId = null }: { customerId?: string | null } = {},
 ): Promise<PlaceResult> {
   const { storeId, market } = shop;
-  return db().transaction(async (tx): Promise<PlaceResult> => {
+  return inTransaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
-      select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience
+      select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience, s.time_zone
       from commerce.carts c
       join commerce.stores s on s.id = c.store_id
       where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.market_code = ${market.code}
@@ -115,8 +120,8 @@ export async function placeOrder(
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
-        cp.amount_minor,
-        (p.status = 'active' and v.active) as sellable
+        cp.amount_minor, cl.starts_at, cl.resource_id,
+        (p.status = 'active' and v.active and ${bookable}) as sellable
       from commerce.cart_lines cl
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -127,8 +132,9 @@ export async function placeOrder(
       left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
       left join commerce.selling_plans sp
         on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
+      left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id
       where cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid
-      order by p.handle, v.sku, cl.selling_plan_id nulls first
+      order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at
     `);
     if (lines.length === 0) return { ok: false, problem: "empty" };
     if (lines.some((l) => !l.sellable || !l.plan_ok || l.amount_minor === null)) {
@@ -226,9 +232,12 @@ export async function placeOrder(
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
+      // An appointment's time goes with it to Stripe, in the store's time zone (D65).
+      const startsAt = line.starts_at ? new Date(String(line.starts_at)).toISOString() : null;
+      const when = startsAt ? formatBookingTime(startsAt, market.locale, String(cart.time_zone)) : null;
       const delivery: Delivery = parseDelivery(line.delivery);
       const rate = Number(line.vat_rate ?? vatRate);
-      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate };
+      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when };
     });
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
@@ -332,7 +341,7 @@ export async function placeOrder(
     const orderId = String(order.id);
 
     for (const p of priced) {
-      await tx.execute(sql`
+      const [orderLine] = await tx.execute<Row>(sql`
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
@@ -346,7 +355,21 @@ export async function placeOrder(
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
           ${p.recurring ? Number(p.line.interval_count) : null}
         )
+        returning id
       `);
+      // The appointment's time is held as long as its stock would be; taken meanwhile, nothing is placed.
+      if (p.startsAt) {
+        const held = await holdAppointment(tx, storeId, {
+          productId: String(p.line.product_id),
+          variantId: String(p.line.variant_id),
+          startsAt: p.startsAt,
+          resourceId: p.line.resource_id ? String(p.line.resource_id) : null,
+          orderId,
+          orderLineId: String(orderLine.id),
+          holdMinutes: CHECKOUT_MINUTES + 5,
+        });
+        if (!held) throw new SlotTaken();
+      }
     }
 
     const feeTitle = t(market.lang).signupFee;
@@ -424,7 +447,7 @@ export async function placeOrder(
         currency: market.currency,
         lines: [
           ...priced.map((p) => ({
-            title: p.title,
+            title: p.when ? `${p.title}, ${p.when}` : p.title,
             // What renews is charged at its full price by Stripe, after any free trial.
             unitPriceMinor: p.recurring ? p.renewUnit : p.unit,
             quantity: p.quantity,
@@ -456,6 +479,19 @@ export async function placeOrder(
       },
     };
   });
+}
+
+/** An appointment's time was taken meanwhile (D65): everything placed so far is undone. */
+class SlotTaken extends Error {}
+
+/** Places an order in one transaction, undone as a whole when a time was taken. */
+async function inTransaction(work: (tx: Tx) => Promise<PlaceResult>): Promise<PlaceResult> {
+  try {
+    return await db().transaction(work);
+  } catch (error) {
+    if (error instanceof SlotTaken) return { ok: false, problem: "slot_taken" };
+    throw error;
+  }
 }
 
 /** How often a subscription's lines renew, as Stripe takes it. */
@@ -774,13 +810,16 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
   const [row] = await db().execute<Row>(sql`
     select o.id, pay.provider_reference, pay.provider_account, pay.client_secret, a.mode,
       o.placed_at < now() - make_interval(mins => ${CHECKOUT_MINUTES}) as expired,
-      (select coalesce(jsonb_agg(jsonb_build_array(cl.variant_id, cl.selling_plan_id, cl.quantity)
-                                 order by cl.variant_id, cl.selling_plan_id), '[]'::jsonb)
+      (select coalesce(jsonb_agg(jsonb_build_array(cl.variant_id, cl.selling_plan_id, cl.quantity, cl.starts_at)
+                                 order by cl.variant_id, cl.selling_plan_id, cl.starts_at), '[]'::jsonb)
          from commerce.cart_lines cl where cl.store_id = o.store_id and cl.cart_id = o.cart_id)
       is distinct from
-      (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.selling_plan_id, ol.quantity)
-                                 order by ol.variant_id, ol.selling_plan_id), '[]'::jsonb)
-         from commerce.order_lines ol where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null)
+      (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.selling_plan_id, ol.quantity, b.starts_at)
+                                 order by ol.variant_id, ol.selling_plan_id, b.starts_at), '[]'::jsonb)
+         from commerce.order_lines ol
+         -- An appointment's time is on its booking (D65).
+         left join commerce.bookings b on b.store_id = ol.store_id and b.order_line_id = ol.id
+         where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null)
       -- A code put on or taken off the cart changes the price too (D31).
       or (select c.discount_code from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
          is distinct from o.discount_code as changed,

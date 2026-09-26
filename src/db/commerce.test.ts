@@ -1371,6 +1371,22 @@ describe("bookings (D65)", () => {
     const { id: released } = await hold("2030-01-09T09:00Z", "2030-01-09T10:00Z", "2030-01-09T10:00Z", "now() + interval '15 minutes'", dropped);
     await db.query("update commerce.orders set status = 'cancelled' where id = $1", [dropped]);
     expect((await one<{ status: string }>("select status from commerce.bookings where id = $1", [released])).status).toBe("cancelled");
+
+    // Paid after the hold ran out: kept if the time is still free, lost if someone took it meanwhile.
+    await db.query("update commerce.booking_resources set capacity = 1 where id = $1", [staff]);
+    const late = await createOrder("B-3");
+    const expired = "now() - interval '1 minute'";
+    const { id: kept } = await hold("2030-01-10T09:00Z", "2030-01-10T10:00Z", "2030-01-10T10:00Z", expired, late);
+    const { id: lost } = await hold("2030-01-10T12:00Z", "2030-01-10T13:00Z", "2030-01-10T13:00Z", expired, late);
+    expect((await hold("2030-01-10T12:00Z", "2030-01-10T13:00Z")).id).not.toBeNull();
+    await db.query("update commerce.orders set status = 'paid' where id = $1", [late]);
+    const status = async (id: string | null) =>
+      (await one<{ status: string }>("select status from commerce.bookings where id = $1", [id])).status;
+    expect(await status(kept)).toBe("confirmed");
+    expect(await status(lost)).toBe("cancelled");
+    expect(await one("select count(*)::int as n from commerce.order_events where order_id = $1 and type = 'booking.lost'", [late])).toEqual({
+      n: 1,
+    });
     await expect(
       db.query("update commerce.stores set modules = '{bookings,parking}' where id = $1", [store]),
     ).rejects.toThrow(/stores_modules/);

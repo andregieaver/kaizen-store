@@ -21,10 +21,13 @@ const lineInput = z.object({
   variantId: z.uuid(),
   quantity: z.coerce.number().int().min(0).max(MAX_LINE_QUANTITY),
   sellingPlanId: z.uuid().nullable(),
+  /** An appointment's time and who with (D65). */
+  startsAt: z.iso.datetime({ offset: true }).nullable(),
+  resourceId: z.uuid().nullable(),
 });
 
 export type AddToCartState = {
-  outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "error";
+  outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error";
   quantity: number;
 };
 
@@ -35,6 +38,8 @@ async function parse(formData: FormData) {
     variantId: formData.get("variantId"),
     quantity: formData.get("quantity") ?? 1,
     sellingPlanId: formData.get("sellingPlanId") || null,
+    startsAt: formData.get("startsAt") || null,
+    resourceId: formData.get("resourceId") || null,
   });
   if (!parsed.success) return null;
   const shop = await resolveShop(parsed.data.store, parsed.data.market);
@@ -44,6 +49,9 @@ async function parse(formData: FormData) {
         variantId: parsed.data.variantId,
         quantity: parsed.data.quantity,
         sellingPlanId: parsed.data.sellingPlanId,
+        booking: parsed.data.startsAt
+          ? { startsAt: new Date(parsed.data.startsAt).toISOString(), resourceId: parsed.data.resourceId }
+          : null,
       }
     : null;
 }
@@ -55,7 +63,15 @@ export async function addToCart(
 ): Promise<AddToCartState> {
   const input = await parse(formData);
   if (!input || input.quantity < 1) return { outcome: "error", quantity: 0 };
-  const result = await changeLine(input.shop, input.variantId, input.quantity, "add", input.sellingPlanId);
+  const result = await changeLine(
+    input.shop,
+    input.variantId,
+    input.quantity,
+    "add",
+    input.sellingPlanId,
+    undefined,
+    input.booking,
+  );
   refresh();
   return result.outcome === "removed"
     ? { outcome: "error", quantity: 0 }
@@ -66,7 +82,7 @@ export async function addToCart(
 export async function updateCartLine(formData: FormData): Promise<void> {
   const input = await parse(formData);
   if (!input) return;
-  await changeLine(input.shop, input.variantId, input.quantity, "set", input.sellingPlanId);
+  await changeLine(input.shop, input.variantId, input.quantity, "set", input.sellingPlanId, undefined, input.booking);
   refresh();
 }
 

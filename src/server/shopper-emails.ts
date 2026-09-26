@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { formatBookingTime } from "@/lib/booking-slots";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
 import { t, type Messages } from "@/lib/i18n";
@@ -97,7 +98,9 @@ function orderLines(
     type: "lines",
     rows: [
       ...order.lines.map((line) => ({
-        label: `${line.quantity} × ${line.title}`,
+        label: line.booking
+          ? `${line.quantity} × ${line.title}, ${formatBookingTime(line.booking.startsAt, order.locale, line.booking.timeZone)}, ${m.booking.withStaff(line.booking.staff)}`
+          : `${line.quantity} × ${line.title}`,
         value: money(line.unitPriceMinor * line.quantity),
         image: line.image ? absoluteUrl(line.image, origin) : null,
       })),

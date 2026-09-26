@@ -60,6 +60,7 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
         variantId: row.variantId,
         quantity: row.quantity,
         subscriptionOnly: product.subscriptionOnly,
+        booking: product.kind === "appointment",
         fromPrice: `${product.variants.length > 1 ? `${m.fromPrice} ` : ""}${formatMoney(
           Math.min(...product.variants.map((v) => shownAmount(v.price.amountMinor, v.price.vat, buyer))),
           product.variants[0]?.price.currency ?? market.currency,
@@ -119,6 +120,7 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
           chooseVariant: w.chooseVariant,
           needsVariant: w.needsVariant,
           subscription: w.subscription,
+          booking: w.booking,
           capped: w.capped,
           quantity: m.quantity,
           soldOut: m.soldOut,
