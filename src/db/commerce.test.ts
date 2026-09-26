@@ -1317,6 +1317,24 @@ describe("stores' own domains (P8)", () => {
   });
 });
 
+describe("selling to businesses (B2B)", () => {
+  it("keeps stores and products to the audiences the storefront knows", async () => {
+    const store = await createStore("b2b-kari", ["NO"]);
+    const [row] = (await db.query("select audience, business_popup from commerce.stores where id = $1", [store])).rows;
+    expect(row).toEqual({ audience: "consumers", business_popup: false });
+    await db.query("update commerce.stores set audience = 'both', business_popup = true where id = $1", [store]);
+    await expect(db.query("update commerce.stores set audience = 'b2b' where id = $1", [store])).rejects.toThrow(
+      /stores_audience/,
+    );
+    await db.query("insert into commerce.products (store_id, handle, tax_code, audience) values ($1, 'firma', 't', 'businesses')", [
+      store,
+    ]);
+    await expect(
+      db.query("insert into commerce.products (store_id, handle, tax_code, audience) values ($1, 'alle', 't', 'everyone')", [store]),
+    ).rejects.toThrow(/products_audience/);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

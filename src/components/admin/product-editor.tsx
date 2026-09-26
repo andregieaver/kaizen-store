@@ -20,6 +20,7 @@ import {
 } from "@/app/admin/(gated)/[store]/products/actions";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
+import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
 import { fileSize } from "@/lib/file-size";
 import { shrinkImage } from "@/lib/image-resize";
 import type { CountryOption } from "@/lib/iso-countries";
@@ -249,11 +250,12 @@ export function ProductEditor(props: Props) {
           manageHref={`/admin/${storeSlug}/products/categories`}
         />
       </section>
+      {context.audience === "both" && <AudienceSection product={product} update={update} />}
       <VariantsSection product={product} update={update} context={context} countries={props.countries} />
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
-      <SubscriptionSection product={product} update={update} markets={context.markets} />
+      <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
       <SafetySection
         product={product}
         update={update}
@@ -833,7 +835,9 @@ function VariantsSection({
               {context.markets.map((market) => (
                 <th key={market.code} scope="col" className="py-2 pr-3 font-medium">
                   {market.name}
-                  <span className="block font-normal text-muted">{market.currency}, incl. VAT</span>
+                  <span className="block font-normal text-muted">
+                    {market.currency}, {context.audience === "businesses" ? "excl." : "incl."} VAT
+                  </span>
                 </th>
               ))}
               <th scope="col" className="py-2 font-medium">
@@ -1198,7 +1202,12 @@ const INTERVAL_NAMES: Record<PlanInterval, [string, string]> = {
 };
 
 /** Purchase options for subscribing (D25), like Shopify's selling plans. */
-function SubscriptionSection({ product, update, markets }: SectionProps & { markets: EditorContext["markets"] }) {
+function SubscriptionSection({
+  product,
+  update,
+  markets,
+  netPrices,
+}: SectionProps & { markets: EditorContext["markets"]; netPrices: boolean }) {
   const setPlan = (index: number, change: Partial<ProductInput["plans"][number]>) =>
     update((p) => ({ ...p, plans: p.plans.map((plan, i) => (i === index ? { ...plan, ...change } : plan)) }));
   const count = (text: string, interval: PlanInterval) =>
@@ -1346,7 +1355,8 @@ function SubscriptionSection({ product, update, markets }: SectionProps & { mark
                     </label>
                     <fieldset className="flex flex-col gap-1 text-xs">
                       <legend className="mb-1 font-medium">
-                        Sign-up fee <span className="font-normal text-muted">(once, empty for none)</span>
+                        Sign-up fee{" "}
+                        <span className="font-normal text-muted">({netPrices ? "excl. VAT, " : ""}once, empty for none)</span>
                       </legend>
                       {markets.map((market) => (
                         <label key={market.code} className="flex items-center gap-2">
@@ -1404,6 +1414,46 @@ function SubscriptionSection({ product, update, markets }: SectionProps & { mark
           new subscribers only.
         </p>
       )}
+    </section>
+  );
+}
+
+const PRODUCT_AUDIENCE_LABELS: Record<ProductAudience, { label: string; hint: string }> = {
+  all: { label: "Everyone", hint: "Private shoppers and businesses." },
+  consumers: { label: "Private shoppers only", hint: "Hidden from shoppers buying for a business." },
+  businesses: {
+    label: "Businesses only",
+    hint: "Shown only to shoppers buying for a business, who give their company's name and organisation number at checkout.",
+  },
+};
+
+/** Stores selling to both (B2B): whom the product is for. */
+function AudienceSection({ product, update }: SectionProps) {
+  return (
+    <section aria-labelledby="audience-heading" className={card}>
+      <fieldset>
+        <legend id="audience-heading" className="mb-1 font-medium">
+          Customers
+        </legend>
+        <p className="mb-4 text-sm text-muted">Who sees and can buy the product. Businesses see its prices without VAT.</p>
+        <div className="flex flex-col gap-2 text-sm">
+          {PRODUCT_AUDIENCES.map((value) => (
+            <label key={value} className="flex items-start gap-2">
+              <input
+                type="radio"
+                name="product-audience"
+                checked={product.audience === value}
+                onChange={() => update((p) => ({ ...p, audience: value }))}
+                className="mt-0.5 size-4"
+              />
+              <span>
+                {PRODUCT_AUDIENCE_LABELS[value].label}
+                <span className="block text-muted">{PRODUCT_AUDIENCE_LABELS[value].hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
     </section>
   );
 }

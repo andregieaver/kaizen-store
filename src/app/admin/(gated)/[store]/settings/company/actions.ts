@@ -7,6 +7,8 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { storeDetailsInput } from "@/lib/store-details";
 import { requireMember } from "@/server/auth";
+import { audienceInput, saveStoreAudience } from "@/server/b2b";
+import { catalogTag } from "@/server/catalog";
 import { deleteLocation, saveLocation } from "@/server/company";
 import { STORES_TAG } from "@/server/seo";
 import { saveStoreDetails } from "@/server/setup";
@@ -25,6 +27,21 @@ export async function saveBusinessAction(storeSlug: string, _state: FormState, f
   updateTag(storeTag(member.store.slug));
   updateTag(STORES_TAG);
   return { status: "ok", messages: ["Business details saved."] };
+}
+
+/** Who the store sells to (B2B): how prices show on every page, so the catalogue is drawn again. */
+export async function saveAudienceAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  if (member.role !== "owner") return problems(["Only an owner can change who the store sells to."]);
+  const parsed = audienceInput.safeParse({
+    audience: formData.get("audience"),
+    businessPopup: formData.get("businessPopup") === "on",
+  });
+  if (!parsed.success) return problems([...new Set(parsed.error.issues.map((issue) => issue.message))]);
+  await saveStoreAudience(member, parsed.data);
+  updateTag(storeTag(member.store.slug));
+  updateTag(catalogTag(member.store.id));
+  return { status: "ok", messages: ["Saved."] };
 }
 
 /** The office's address and hours. */

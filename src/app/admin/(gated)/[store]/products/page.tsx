@@ -88,7 +88,7 @@ async function ProductList({
                 Stock
               </th>
               <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
-                Price{store.markets[0] && ` (${store.markets[0].name})`}
+                Price{store.markets[0] && ` (${store.markets[0].name}${store.audience === "businesses" ? ", excl. VAT" : ""})`}
               </th>
             </tr>
           </thead>

@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
+import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
 import { toMarket, type Market } from "@/lib/markets";
 import { isStoreSlug } from "@/lib/paths";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
@@ -28,6 +29,10 @@ export type Store = {
   paymentsTest: boolean;
   /** The business behind the store, shown to shoppers. */
   details: StoreDetails;
+  /** Who the store sells to (B2B): consumers, businesses or both. */
+  audience: StoreAudience;
+  /** Selling to both: ask first-time visitors whether they buy privately or for a business. */
+  businessPopup: boolean;
   /** Active markets, the store's own country first. */
   markets: Market[];
   /** Search and sharing settings. */
@@ -81,6 +86,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking, s.custom_code, s.theme,
+      s.audience, s.business_popup,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -126,6 +132,8 @@ async function loadStore(slug: string): Promise<Store | null> {
       postalAddress: text(row.postal_address),
       country: text(row.country),
     },
+    audience: parseStoreAudience(row.audience),
+    businessPopup: Boolean(row.business_popup) && row.audience === "both",
     markets: (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(
       toMarket,
     ),

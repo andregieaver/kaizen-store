@@ -269,6 +269,14 @@ export const stores = commerce.table(
     /** Reminder emails about carts left at checkout (D33), on only when the store turns them on. */
     cartReminders: boolean("cart_reminders").notNull().default(false),
     /**
+     * Who the store sells to (B2B): `consumers` (prices with VAT), `businesses`
+     * (prices shown and entered without VAT, company details at checkout) or
+     * `both` (the shopper chooses, and products can be for one or the other).
+     */
+    audience: text("audience").notNull().default("consumers"),
+    /** Stores selling to both: ask first-time visitors whether they buy privately or for a business. */
+    businessPopup: boolean("business_popup").notNull().default(false),
+    /**
      * One of the store's own pages shown as its front page in every market
      * (D54), instead of the product list. Null for the product list. The
      * foreign key to `pages (store_id, id)` is in the `store_front_page_rules`
@@ -287,6 +295,7 @@ export const stores = commerce.table(
     createdAt: createdAt(),
   },
   (t) => [
+    check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check(
       "stores_slug_format",
       sql`${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$'`,
@@ -665,6 +674,8 @@ export const products = commerce.table(
     downloadDays: integer("download_days"),
     /** Sold only through its purchase options (selling plans), never once (D25). */
     subscriptionOnly: boolean("subscription_only").notNull().default(false),
+    /** In stores selling to both (B2B): shown to everyone, only to private shoppers or only to businesses. */
+    audience: text("audience").notNull().default("all"),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
     createdAt: createdAt(),
@@ -686,6 +697,7 @@ export const products = commerce.table(
     index("products_manufacturer_idx").on(t.storeId, t.manufacturerId),
     index("products_responsible_person_idx").on(t.storeId, t.responsiblePersonId),
     index("products_store_status_idx").on(t.storeId, t.status),
+    check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
@@ -1065,6 +1077,9 @@ export const customers = commerce.table(
     name: text("name").notNull().default(""),
     phone: text("phone").notNull().default(""),
     address: jsonb("address").notNull().default({}),
+    /** Business customers (B2B): the company they buy for, filled in at checkout or in My account. */
+    companyName: text("company_name").notNull().default(""),
+    organisationNumber: text("organisation_number").notNull().default(""),
     /** scrypt hash, when the customer has chosen a password; sign-in by emailed code always works. */
     passwordHash: text("password_hash"),
     failedSignIns: integer("failed_sign_ins").notNull().default(0),
@@ -1152,6 +1167,9 @@ export const carts = commerce.table(
     customerId: uuid("customer_id"),
     /** The discount code the shopper entered (D31), checked again at checkout. */
     discountCode: text("discount_code"),
+    /** The company the shopper buys for (B2B), entered in the cart and copied to the order. */
+    companyName: text("company_name"),
+    organisationNumber: text("organisation_number"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1236,6 +1254,9 @@ export const orders = commerce.table(
     /** The discount code used, and its text as the shopper saw it (D31). */
     discountCodeId: uuid("discount_code_id"),
     discountCode: text("discount_code"),
+    /** The company the order was placed for (B2B), shown on the order and its invoice. */
+    companyName: text("company_name"),
+    organisationNumber: text("organisation_number"),
     createdAt: createdAt(),
   },
   (t) => [

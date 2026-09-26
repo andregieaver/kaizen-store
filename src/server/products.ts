@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { parseProductAudience, withVat, withoutVat, type StoreAudience } from "@/lib/b2b";
 import {
   combineOptions,
   formatPriceInput,
@@ -35,7 +36,10 @@ export type EditorContext = {
   /** The store's languages, primary first. */
   locales: string[];
   primaryLocale: string;
-  markets: { code: string; currency: string; name: string }[];
+  /** Each market's standard VAT rate, e.g. 0.25. */
+  markets: { code: string; currency: string; name: string; vatRate: number }[];
+  /** Who the store sells to (B2B): a store selling only to businesses enters its prices without VAT. */
+  audience: StoreAudience;
   operators: Operator[];
   /** Where stock is counted; null until the first product is saved. */
   locationName: string | null;
@@ -44,7 +48,7 @@ export type EditorContext = {
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location], terms] = await Promise.all([
+  const [operators, [location], terms, rates] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -55,13 +59,16 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       where store_id = ${store.id}::uuid and active order by created_at limit 1
     `),
     listTerms({ storeId: store.id, contentType: "product" }),
+    db().execute<Row>(sql`select code, standard_vat_rate from commerce.countries`),
   ]);
+  const vatRates = new Map(rates.map((row) => [String(row.code), Number(row.standard_vat_rate ?? 0)]));
   const locales = [...new Set(store.markets.map((m) => m.locale))];
   return {
     locales,
     primaryLocale: locales[0] ?? "en",
     terms,
-    markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name })),
+    markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name, vatRate: vatRates.get(m.code) ?? 0 })),
+    audience: store.audience,
     operators: operators.map((row) => ({
       id: String(row.id),
       name: String(row.name),
@@ -109,6 +116,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     downloadDays: 30,
     plans: [],
     subscriptionOnly: false,
+    audience: "all",
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
@@ -154,7 +162,8 @@ export async function listAdminProducts(
          from commerce.inventory_levels l
          join commerce.product_variants v on v.id = l.variant_id
         where v.product_id = p.id and v.active) as stock,
-      pr.min_amount, pr.max_amount, pr.currency
+      pr.min_amount, pr.max_amount, pr.currency,
+      (select standard_vat_rate from commerce.countries where code = ${market?.code ?? ""}) as vat_rate
     from commerce.products p
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -170,6 +179,9 @@ export async function listAdminProducts(
       and ${archived ? sql`p.status = 'archived'` : sql`p.status <> 'archived'`}
     order by p.updated_at desc, p.handle
   `);
+  // A store selling only to businesses sees its prices as it types them: without VAT (B2B).
+  const shown = (amount: unknown, rate: unknown) =>
+    store.audience === "businesses" ? withoutVat(Number(amount), Number(rate ?? 0)) : Number(amount);
   return rows.map((row) => ({
     id: String(row.id),
     handle: String(row.handle),
@@ -182,7 +194,7 @@ export async function listAdminProducts(
     price:
       row.min_amount === null
         ? null
-        : { min: Number(row.min_amount), max: Number(row.max_amount), currency: String(row.currency) },
+        : { min: shown(row.min_amount, row.vat_rate), max: shown(row.max_amount, row.vat_rate), currency: String(row.currency) },
   }));
 }
 
@@ -194,7 +206,7 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only
+           delivery, download_limit, download_days, subscription_only, audience
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -301,7 +313,10 @@ export async function getProductForEdit(
       prices: Object.fromEntries(
         prices
           .filter((p) => String(p.variant_id) === String(v.id))
-          .map((p) => [String(p.market_code), formatPriceInput(Number(p.amount_minor), String(p.currency))]),
+          .map((p) => [
+            String(p.market_code),
+            formatPriceInput(typedAmount(context, String(p.market_code), Number(p.amount_minor)), String(p.currency)),
+          ]),
       ),
       stock: Number(v.stock),
       active: Boolean(v.active),
@@ -332,11 +347,15 @@ export async function getProductForEdit(
       signupFee: Object.fromEntries(
         context.markets
           .filter((m) => (p.signup_fee as Record<string, number>)?.[m.code])
-          .map((m) => [m.code, formatPriceInput((p.signup_fee as Record<string, number>)[m.code], m.currency)]),
+          .map((m) => [
+            m.code,
+            formatPriceInput(typedAmount(context, m.code, (p.signup_fee as Record<string, number>)[m.code]), m.currency),
+          ]),
       ),
       minCycles: Number(p.min_cycles),
     })),
     subscriptionOnly: Boolean(product.subscription_only),
+    audience: parseProductAudience(product.audience),
     taxCode: String(product.tax_code),
     withdrawalExclusion: String(product.withdrawal_exclusion),
     schemes: schemes.map((s) => String(s.scheme)),
@@ -345,6 +364,24 @@ export async function getProductForEdit(
     categories: termRows.filter((t) => t.kind === "category").map((t) => String(t.id)),
     tags: termRows.filter((t) => t.kind === "tag").map((t) => String(t.id)),
   };
+}
+
+/**
+ * Prices are kept with VAT (B2B). A store selling only to businesses types
+ * them without: shown to it that way, and kept as the price with VAT that
+ * gives back exactly what was typed.
+ */
+function typedAmount(context: EditorContext, marketCode: string, keptMinor: number): number {
+  const market = context.markets.find((m) => m.code === marketCode);
+  return context.audience === "businesses" && market ? withoutVat(keptMinor, market.vatRate) : keptMinor;
+}
+
+function keptAmount(
+  context: Pick<EditorContext, "audience">,
+  market: EditorContext["markets"][number],
+  typedMinor: number | null,
+): number | null {
+  return typedMinor !== null && context.audience === "businesses" ? withVat(typedMinor, market.vatRate) : typedMinor;
 }
 
 export type SaveProductResult = { ok: true; productId: string } | { ok: false; problems: string[] };
@@ -414,7 +451,7 @@ export async function saveProduct(
       const locationId = await stockLocation(tx, store);
       await saveVariants(tx, store.id, saved, context, input, locationId);
       await saveFiles(tx, store.id, saved, input);
-      await savePlans(tx, store.id, saved, input, context.markets);
+      await savePlans(tx, store.id, saved, input, context.markets, context.audience);
       await tx.execute(sql`delete from commerce.product_terms where store_id = ${store.id}::uuid and product_id = ${saved}::uuid`);
       for (const termId of termIds) {
         await tx.execute(sql`
@@ -468,7 +505,7 @@ async function upsertProduct(
         manufacturer_id = ${manufacturerId}::uuid, responsible_person_id = ${responsibleId}::uuid,
         tax_code = ${input.taxCode}, withdrawal_exclusion = ${input.withdrawalExclusion},
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
-        subscription_only = ${input.subscriptionOnly}, updated_at = now()
+        subscription_only = ${input.subscriptionOnly}, audience = ${input.audience}, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -478,11 +515,11 @@ async function upsertProduct(
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
-      delivery, download_limit, download_days, subscription_only
+      delivery, download_limit, download_days, subscription_only, audience
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
-      ${input.subscriptionOnly}
+      ${input.subscriptionOnly}, ${input.audience}
     )
     returning id
   `);
@@ -606,7 +643,7 @@ async function saveVariants(
     kept.add(id);
 
     for (const market of context.markets) {
-      const amount = parsePrice(variant.prices[market.code] ?? "", market.currency);
+      const amount = keptAmount(context, market, parsePrice(variant.prices[market.code] ?? "", market.currency));
       const [current] = await tx.execute<Row>(sql`
         select amount_minor from commerce.prices
         where variant_id = ${id}::uuid and market_code = ${market.code} and valid_to is null
@@ -651,13 +688,14 @@ async function savePlans(
   productId: string,
   input: ProductInput,
   markets: EditorContext["markets"],
+  audience: StoreAudience,
 ) {
   const kept: string[] = [];
   for (const [position, plan] of input.plans.entries()) {
     // Sign-up fees in minor units per market; empty or zero means none (D29).
     const fees: Record<string, number> = {};
     for (const market of markets) {
-      const amount = parsePrice(plan.signupFee[market.code] ?? "", market.currency);
+      const amount = keptAmount({ audience }, market, parsePrice(plan.signupFee[market.code] ?? "", market.currency));
       if (amount) fees[market.code] = amount;
     }
     const [row] = plan.id

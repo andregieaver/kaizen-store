@@ -203,6 +203,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20260926123242_store_custom_code.sql` | `20260926124343` |
 | `20260926135358_store_domains.sql` | `20260926140916` |
 | `20260926135430_store_domains_rules.sql` | `20260926140920` |
+| `20260926171929_b2b.sql` | `20260926172750` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

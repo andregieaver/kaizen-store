@@ -45,6 +45,8 @@ async function createStore(slug: string): Promise<Store> {
     paymentsOn: false,
     paymentsTest: false,
     details: { legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: "NO" },
+    audience: "consumers",
+    businessPopup: false,
     markets: [
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
@@ -226,6 +228,34 @@ describe("saving a product", () => {
     expect((await listAdminProducts(store, { archived: true }))[0]?.id).toBe(productId);
     await setArchived(store, productId, false);
     expect((await getProductForEdit(store, context, productId))?.status).toBe("draft");
+  });
+});
+
+describe("selling to businesses (B2B)", () => {
+  it("lets a store selling only to businesses type prices without VAT, and keeps them with it", async () => {
+    const b2b: Store = { ...other, audience: "businesses" };
+    const b2bContext = await getEditorContext(b2b);
+    expect(b2bContext.markets.map((m) => [m.code, m.vatRate])).toEqual([
+      ["NO", 0.25],
+      ["SE", 0.25],
+    ]);
+    const product = mug({ handle: "firmakopp", audience: "businesses", manufacturer: null, responsiblePerson: null, status: "draft" });
+    product.variants = product.variants.map((v, i) => ({ ...v, sku: `B2B-${i}-${run}`, prices: { NO: "199,20", SE: "" } }));
+    const result = await saveProduct(b2b, b2bContext, null, product);
+    expect(result).toMatchObject({ ok: true });
+    const productId = (result as { productId: string }).productId;
+
+    const [row] = await db().execute<Row>(sql`
+      select p.audience, min(pr.amount_minor)::int as amount
+      from commerce.products p
+      join commerce.product_variants v on v.product_id = p.id
+      join commerce.current_prices pr on pr.variant_id = v.id and pr.market_code = 'NO'
+      where p.id = ${productId}::uuid group by p.audience
+    `);
+    expect(row).toEqual({ audience: "businesses", amount: 24900 });
+    const saved = await getProductForEdit(b2b, b2bContext, productId);
+    expect(saved?.audience).toBe("businesses");
+    expect(saved?.variants.map((v) => v.prices)).toEqual([{ NO: "199,20" }, { NO: "199,20" }]);
   });
 });
 

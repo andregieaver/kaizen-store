@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { AUDIENCE_LABELS, AudienceFields } from "@/components/admin/audience-fields";
 import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
@@ -10,7 +11,7 @@ import { requireMember } from "@/server/auth";
 import { getCompany, KIND_LABELS, type StoreLocation } from "@/server/company";
 import { listCountries } from "@/server/stores";
 
-import { saveBusinessAction, saveOfficeAction } from "./actions";
+import { saveAudienceAction, saveBusinessAction, saveOfficeAction } from "./actions";
 
 export const metadata: Metadata = { title: "Company" };
 
@@ -51,6 +52,27 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
             {store.details.legalName ?? store.name}
             {store.details.organisationNumber && ` · ${store.details.organisationNumber}`}
             <span className="block text-muted">Only an owner can change the business details.</span>
+          </p>
+        )}
+      </section>
+
+      <section aria-labelledby="customers" className={card}>
+        <h2 id="customers" className="mb-1 font-medium">Customers</h2>
+        <p className="mb-4 text-sm text-muted">
+          Who you sell to. Prices are always charged with VAT; businesses see them without it, and give their company&apos;s name and
+          organisation number at checkout.
+        </p>
+        {role === "owner" ? (
+          <ActionForm action={saveAudienceAction.bind(null, store.slug)} className="flex flex-col gap-4">
+            <AudienceFields audience={store.audience} businessPopup={store.businessPopup} />
+            <div>
+              <SubmitButton>Save customers</SubmitButton>
+            </div>
+          </ActionForm>
+        ) : (
+          <p className="text-sm">
+            {AUDIENCE_LABELS[store.audience]}
+            <span className="block text-muted">Only an owner can change who the store sells to.</span>
           </p>
         )}
       </section>
