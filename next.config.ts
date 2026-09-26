@@ -1,17 +1,14 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants";
 
-import { storeDomain } from "./src/lib/paths";
+import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
 import { storeHostRoutes } from "./src/lib/store-hosts";
-
-// Stores on their own hosts once the store domain is set (P7).
-const hostRoutes = storeHostRoutes(storeDomain(), siteUrl());
+import { readStoreHosts } from "./src/lib/store-hosts-build";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
   poweredByHeader: false,
-  redirects: async () => hostRoutes.redirects,
-  rewrites: async () => ({ beforeFiles: hostRoutes.rewrites, afterFiles: [], fallback: [] }),
   // The cookie scan's Chromium (D58) is read from disk, not imported, so the
   // trace needs telling; only the scan's route carries it.
   outputFileTracingIncludes: {
@@ -31,4 +28,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default async function config(phase: string): Promise<NextConfig> {
+  // Stores on their own hosts once the store domain is set (P7), and on domains of their own (P8):
+  // read when building, and built into the deployment's routing and its code together.
+  const building = phase === PHASE_PRODUCTION_BUILD || phase === PHASE_DEVELOPMENT_SERVER;
+  const hosts = storeDomain() && building ? await readStoreHosts() : storeHosts();
+  const routes = storeHostRoutes(storeDomain(), siteUrl(), hosts);
+  return {
+    ...nextConfig,
+    ...(building ? { env: { NEXT_PUBLIC_STORE_HOSTS: JSON.stringify(hosts) } } : {}),
+    redirects: async () => routes.redirects,
+    rewrites: async () => ({ beforeFiles: routes.rewrites, afterFiles: [], fallback: [] }),
+  };
+}

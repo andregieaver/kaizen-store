@@ -6,13 +6,18 @@ import { testDb } from "./db";
  * Stores on their own hosts (P7) and their own code (D61). Needs a build
  * with the store domain set, as CI's `hosts` job makes:
  *
+ *   node e2e/hosts-seed.mjs   # a store on a domain of its own, read when building
  *   NEXT_PUBLIC_STORE_DOMAIN=localhost:3000 pnpm build
- *   NEXT_PUBLIC_STORE_DOMAIN=localhost:3000 pnpm exec playwright test e2e/store-hosts.spec.ts
+ *   E2E_CUSTOM_HOSTS=1 NEXT_PUBLIC_STORE_DOMAIN=localhost:3000 pnpm exec playwright test e2e/store-hosts.spec.ts
  *
  * Chromium sends every `*.localhost` to this machine.
  */
 const domain = process.env.NEXT_PUBLIC_STORE_DOMAIN;
 test.skip(!domain, "needs a build with NEXT_PUBLIC_STORE_DOMAIN set");
+
+/** The store `e2e/hosts-seed.mjs` puts on a domain of its own: kept in step with it. */
+const CUSTOM_STORE = "kari-domene";
+const CUSTOM_HOST = "butikk.kari.localhost";
 
 const storeUrl = (slug: string, path = "") => `http://${slug}.${domain}${path}`;
 
@@ -94,4 +99,18 @@ test("the store's own code is added as far as the shopper allows", async ({ page
   // A later visit adds what was allowed straight away, still once each.
   await page.goto(storeUrl(slug, "/no"));
   await expect.poll(() => ran(page)).toEqual(["head", "statistics"]);
+});
+
+test("a store on a domain of its own is served there, and its other addresses lead there (P8)", async ({ page }) => {
+  test.skip(!process.env.E2E_CUSTOM_HOSTS, "needs e2e/hosts-seed.mjs before the build");
+  const own = `http://${CUSTOM_HOST}:${new URL(storeUrl("x")).port}`;
+  const response = await page.goto(`${own}/no`);
+  expect(response?.status()).toBe(200);
+  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(`${own}/no`);
+  await expect(page.getByRole("link", { name: /Handlekurv/ }).first()).toHaveAttribute("href", "/no/cart");
+
+  await page.goto(storeUrl(CUSTOM_STORE, "/no/cart"));
+  await expect(page).toHaveURL(`${own}/no/cart`);
+  await page.goto(`/s/${CUSTOM_STORE}/no`);
+  await expect(page).toHaveURL(`${own}/no`);
 });

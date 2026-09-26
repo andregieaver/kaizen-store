@@ -18,12 +18,39 @@ export function storeDomain(): string | null {
   return value;
 }
 
-/** The store's own address, e.g. `https://demo.kaizenstores.com`; null while stores are under Kaizen's. */
+/** Each store's own domains this deployment routes (P8): its primary, if any, and every active one. */
+export type StoreHosts = Record<string, { primary: string | null; hosts: string[] }>;
+
+/**
+ * The stores' custom domains as they were when this deployment was built
+ * (`next.config.ts` reads them into `NEXT_PUBLIC_STORE_HOSTS`), so links
+ * and routing always agree. A change takes a new deployment.
+ */
+export function storeHosts(): StoreHosts {
+  try {
+    const parsed: unknown = JSON.parse(process.env.NEXT_PUBLIC_STORE_HOSTS || "{}");
+    return parsed && typeof parsed === "object" ? (parsed as StoreHosts) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A host's origin: plain http with the local port when trying hosts on localhost. */
+export function hostOrigin(host: string): string {
+  const local = storeDomain()?.match(/^localhost(:\d+)?$/);
+  return local ? `http://${host}${local[1] ?? ""}` : `https://${host}`;
+}
+
+/**
+ * The store's own address: its primary custom domain (P8), else
+ * `{slug}.{store domain}`, e.g. `https://demo.kaizenstore.site`; null while
+ * stores are under Kaizen's.
+ */
 export function storeOrigin(storeSlug: string): string | null {
   const domain = storeDomain();
   if (!domain) return null;
-  const local = /^localhost(?::\d+)?$/.test(domain);
-  return `${local ? "http" : "https"}://${storeSlug}.${domain}`;
+  const primary = storeHosts()[storeSlug]?.primary;
+  return hostOrigin(primary ?? `${storeSlug}.${domain.split(":")[0]}`);
 }
 
 /**

@@ -365,6 +365,11 @@ export const platformSettings = commerce.table(
     tracking: jsonb("tracking").notNull().default({}),
     /** Heading and body fonts from Google Fonts, self-hosted (D59). */
     fonts: jsonb("fonts").notNull().default({}),
+    /**
+     * When stores' domains last asked for a new deployment (P8): routing to
+     * custom domains is built into each deployment, so a change needs one.
+     */
+    domainsDeployRequestedAt: timestamp("domains_deploy_requested_at", { withTimezone: true }),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -2707,5 +2712,45 @@ export const storeThemes = commerce.table(
     index("store_themes_created_by_idx").on(t.createdBy),
     check("store_themes_name_length", sql`length(${t.name}) between 1 and 60`),
     check("store_themes_base", sql`${t.base} in ('minimal', 'warm', 'bold')`),
+  ],
+);
+
+/**
+ * Custom domains of stores (P8): `pending` until the owner's DNS proves the
+ * domain is theirs (our TXT record with `token`) and points it at Vercel,
+ * then `active`. A host is active for one store at most; claims still
+ * pending do not block another store's. One active domain per store can be
+ * its primary address, where its other addresses lead. `checks` is the
+ * latest check's findings for the admin: `DomainChecks` in lib/custom-domains.
+ */
+export const storeDomains = commerce.table(
+  "store_domains",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    hostname: text("hostname").notNull(),
+    token: text("token").notNull(),
+    status: text("status").notNull().default("pending"),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    checks: jsonb("checks").notNull().default({}),
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("store_domains_store_hostname_idx").on(t.storeId, t.hostname),
+    uniqueIndex("store_domains_active_hostname_idx").on(t.hostname).where(sql`${t.status} = 'active'`),
+    uniqueIndex("store_domains_primary_idx").on(t.storeId).where(sql`${t.isPrimary}`),
+    index("store_domains_hostname_idx").on(t.hostname),
+    index("store_domains_created_by_idx").on(t.createdBy),
+    check("store_domains_status", sql`${t.status} in ('pending', 'active')`),
+    check("store_domains_primary_active", sql`not ${t.isPrimary} or ${t.status} = 'active'`),
+    check(
+      "store_domains_hostname",
+      sql`${t.hostname} ~ '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$' and length(${t.hostname}) <= 253`,
+    ),
   ],
 );

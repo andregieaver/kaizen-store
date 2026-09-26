@@ -1293,6 +1293,30 @@ describe("design themes (D60)", () => {
   });
 });
 
+describe("stores' own domains (P8)", () => {
+  it("keep an active domain to one store, one primary per store, and only active ones as primary", async () => {
+    const kari = await createStore("domains-kari", ["NO"]);
+    const ola = await createStore("domains-ola", ["NO"]);
+    const add = (store: string, hostname: string, status = "pending", primary = false) =>
+      db.query(
+        "insert into commerce.store_domains (store_id, hostname, token, status, is_primary) values ($1, $2, 'token', $3, $4)",
+        [store, hostname, status, primary],
+      );
+    await add(kari, "butikk.example.no", "active", true);
+    // Another store may claim it while it waits, but not have it active; nor add a second primary.
+    await add(ola, "butikk.example.no");
+    await expect(add(kari, "butikk.example.no")).rejects.toThrow(/store_domains_store_hostname_idx/);
+    await expect(db.query("update commerce.store_domains set status = 'active' where store_id = $1", [ola])).rejects.toThrow(
+      /store_domains_active_hostname_idx/,
+    );
+    await expect(add(kari, "example.no", "active", true)).rejects.toThrow(/store_domains_primary_idx/);
+    await expect(add(kari, "example.no", "pending", true)).rejects.toThrow(/store_domains_primary_active/);
+    await expect(add(kari, "Example.no")).rejects.toThrow(/store_domains_hostname/);
+    await expect(add(kari, "example")).rejects.toThrow(/store_domains_hostname/);
+    await add(kari, "xn--blbr-roah.no");
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

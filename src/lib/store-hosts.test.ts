@@ -107,4 +107,32 @@ describe("stores on their own hosts (P7)", () => {
     expect(route(routes, "localhost:3000", "/s/demo/no")).toEqual({ redirect: "http://demo.localhost:3000/no" });
     expect(route(routes, "demo.localhost:3000", "/no")).toEqual({ rewrite: "/s/demo/no" });
   });
+
+  it("serves a store on its primary domain, and leads its other addresses there (P8)", () => {
+    const hosts = { kari: { primary: "butikk.example.no", hosts: ["butikk.example.no", "example.no"] }, ola: { primary: null, hosts: ["ola.no"] } };
+    const routes = storeHostRoutes("kaizenstore.site", "https://kaizenstore.cloud", hosts);
+    expect(route(routes, "butikk.example.no", "/")).toEqual({ rewrite: "/s/kari" });
+    expect(route(routes, "butikk.example.no", "/no/p/kopp")).toEqual({ rewrite: "/s/kari/no/p/kopp" });
+    expect(route(routes, "butikk.example.no", "/api/consent")).toEqual({});
+    expect(route(routes, "butikk.example.no", "/admin")).toEqual({ rewrite: "/s/kari/admin" });
+    // Its other domain, its host on the store domain and its old address all lead to the primary.
+    expect(route(routes, "example.no", "/no")).toEqual({ redirect: "https://butikk.example.no/no" });
+    expect(route(routes, "kari.kaizenstore.site", "/no")).toEqual({ redirect: "https://butikk.example.no/no" });
+    expect(route(routes, "kaizenstore.cloud", "/s/kari/no")).toEqual({ redirect: "https://butikk.example.no/no" });
+    // Without a primary, the store stays on its host and its domain leads there.
+    expect(route(routes, "ola.no", "/no")).toEqual({ redirect: "https://ola.kaizenstore.site/no" });
+    expect(route(routes, "ola.kaizenstore.site", "/no")).toEqual({ rewrite: "/s/ola/no" });
+    // Other stores as before; an unknown domain is nobody's.
+    expect(route(routes, "demo.kaizenstore.site", "/no")).toEqual({ rewrite: "/s/demo/no" });
+    expect(route(routes, "notbutikk.example.no", "/no")).toEqual({});
+
+    vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "kaizenstore.site");
+    vi.stubEnv("NEXT_PUBLIC_STORE_HOSTS", JSON.stringify(hosts));
+    expect(storeOrigin("kari")).toBe("https://butikk.example.no");
+    expect(storeOrigin("ola")).toBe("https://ola.kaizenstore.site");
+    vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "localhost:3000");
+    expect(storeOrigin("kari")).toBe("http://butikk.example.no:3000");
+    const local = storeHostRoutes("localhost:3000", "http://localhost:3000", hosts);
+    expect(route(local, "kari.localhost:3000", "/no")).toEqual({ redirect: "http://butikk.example.no:3000/no" });
+  });
 });

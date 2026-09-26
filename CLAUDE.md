@@ -72,6 +72,9 @@ of running `playwright install`.
   store (empty base on its own host; `storeHome()` where a URL can't be
   empty), `storeHref()` to a store from the admin or Kaizen's pages, and
   `storeSiteUrl()` for full addresses (emails, Stripe, search engines).
+  A store's primary domain of its own (P8, `src/server/domains.ts`) is read
+  from the database when building, so routing and `storeOrigin()` follow
+  it; a change to domains deploys again.
 - Stores and their markets come from the database (`getStore()`, cached per
   store; `resolveShop()` for URL params). Every catalogue, cart and settings
   query takes a store id; never query a store-owned table without it.

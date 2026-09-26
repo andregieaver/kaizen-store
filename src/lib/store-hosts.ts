@@ -9,7 +9,12 @@
  * - `/s/{store}/…` anywhere else moves to the store's host, so the store's
  *   pages, and what the store adds to them, only run there.
  * - The domain itself and `www.` go to Kaizen.
+ * - A store's primary custom domain (P8) serves its pages as its host does;
+ *   its `{store}.{domain}` host and its other domains move there. The
+ *   domains come from the database when the deployment is built.
  */
+
+import type { StoreHosts } from "./paths";
 
 type Match = { type: "host"; value: string };
 export type HostRedirect = { source: string; destination: string; permanent: boolean; has?: Match[]; missing?: Match[] };
@@ -23,14 +28,34 @@ const SHARED = "_next/|api/|demo/|favicon\\.ico$";
 export function storeHostRoutes(
   domain: string | null,
   platformUrl: string,
+  customHosts: StoreHosts = {},
 ): { redirects: HostRedirect[]; rewrites: HostRewrite[] } {
   if (!domain) return { redirects: [], rewrites: [] };
-  const [hostname] = domain.split(":");
+  const [hostname, port] = domain.split(":");
   const host = escape(hostname);
   const scheme = /^localhost$/.test(hostname) ? "http" : "https";
+  const origin = (name: string) => `${scheme}://${name}${port ? `:${port}` : ""}`;
   const storeHost: Match = { type: "host", value: `(?<store>[a-z0-9-]+)\\.${host}` };
+  const exactly = (name: string): Match => ({ type: "host", value: escape(name) });
+
+  // Stores with a primary domain of their own: every other address of theirs leads there.
+  const custom = Object.entries(customHosts).map(([slug, { primary, hosts }]) => ({
+    slug,
+    primary,
+    canonical: origin(primary ?? `${slug}.${hostname}`),
+    others: [...(primary ? [`${slug}.${hostname}`] : []), ...hosts.filter((name) => name !== primary)],
+  }));
+  const everywhere = (destination: string) => `${destination}/:path*`;
   return {
     redirects: [
+      ...custom.flatMap(({ canonical, others }) =>
+        others.map((name) => ({ source: "/:path*", has: [exactly(name)], destination: everywhere(canonical), permanent: false })),
+      ),
+      ...custom.map(({ slug, canonical }) => ({
+        source: `/s/${slug}/:path*`,
+        destination: everywhere(canonical),
+        permanent: false,
+      })),
       {
         source: "/:path*",
         // Kaizen itself on the domain (trying it on localhost) keeps it; `www.` still goes.
@@ -49,7 +74,11 @@ export function storeHostRoutes(
     // comes last, so its `/s/{store}` is not rewritten again.
     rewrites: [
       { source: `/:path((?!${SHARED}).+)`, has: [storeHost], destination: "/s/:store/:path" },
+      ...custom.flatMap(({ slug, primary }) =>
+        primary ? [{ source: `/:path((?!${SHARED}).+)`, has: [exactly(primary)], destination: `/s/${slug}/:path` }] : [],
+      ),
       { source: "/", has: [storeHost], destination: "/s/:store" },
+      ...custom.flatMap(({ slug, primary }) => (primary ? [{ source: "/", has: [exactly(primary)], destination: `/s/${slug}` }] : [])),
     ],
   };
 }

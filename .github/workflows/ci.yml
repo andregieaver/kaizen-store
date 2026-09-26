@@ -76,8 +76,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Create the database with the demo catalogue
-        run: node scripts/db-setup.mjs --seed
+      - name: Create the database with the demo catalogue and a store on a domain of its own
+        run: node scripts/db-setup.mjs --seed && node e2e/hosts-seed.mjs
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test e2e/store-hosts.spec.ts
+        env:
+          E2E_CUSTOM_HOSTS: "1"

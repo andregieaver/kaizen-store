@@ -547,6 +547,20 @@
       "when": 1790425962931,
       "tag": "20260926123242_store_custom_code",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1790430838273,
+      "tag": "20260926135358_store_domains",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1790430871002,
+      "tag": "20260926135430_store_domains_rules",
+      "breakpoints": true
     }
   ]
 }
