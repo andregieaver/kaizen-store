@@ -56,7 +56,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         {a.backToAccount}
       </Link>
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">{a.order(order.number)}</h1>
+        <h1 className="text-3xl font-heading tracking-tight">{a.order(order.number)}</h1>
         <p className="text-muted">
           {date(order.placedAt)} · {a.status[order.status] ?? order.status}
         </p>
@@ -143,7 +143,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                 ) : (
                   <a
                     href={`${base}/download/${file.token}`}
-                    className="inline-flex min-h-11 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background"
+                    className="inline-flex min-h-11 items-center button-primary px-5 text-sm font-medium"
                   >
                     {m.download}
                     <span className="sr-only">: {file.name}</span>

@@ -75,7 +75,7 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
 
   return (
     <>
-      <h1 className="text-3xl font-semibold tracking-tight">{w.title}</h1>
+      <h1 className="text-3xl font-heading tracking-tight">{w.title}</h1>
       {!customer && (
         <p className="text-sm text-muted">
           {w.signIn}{" "}

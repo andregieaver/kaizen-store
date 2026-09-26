@@ -61,7 +61,7 @@ export async function TermProducts({ kind, params }: { kind: TermKind; params: P
 
   return (
     <>
-      <h1 className="mb-4 text-3xl font-semibold tracking-tight">{term.name}</h1>
+      <h1 className="mb-4 text-3xl font-heading tracking-tight">{term.name}</h1>
       {subcategories.length > 0 && (
         <nav aria-label={term.name} className="mb-6">
           <ul className="flex flex-wrap gap-2">
@@ -69,7 +69,7 @@ export async function TermProducts({ kind, params }: { kind: TermKind; params: P
               <li key={sub.id}>
                 <Link
                   href={`${base}/category/${sub.slug}`}
-                  className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-sm hover:bg-surface"
+                  className="inline-flex min-h-10 items-center rounded-button border border-border px-4 text-sm hover:bg-surface"
                 >
                   {sub.name}
                 </Link>

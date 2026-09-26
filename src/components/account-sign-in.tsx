@@ -55,7 +55,7 @@ export type AccessLabels = SignInLabels &
   };
 
 const input = "min-h-11 w-full rounded-md border border-border bg-background px-3";
-const button = "min-h-11 rounded-full bg-foreground px-5 font-medium text-background disabled:opacity-40";
+const button = "min-h-11 button-primary px-5 font-medium disabled:opacity-40";
 const link = "self-start text-sm underline";
 const hint = "text-sm font-normal text-muted";
 
@@ -106,7 +106,7 @@ export function AccountAccess({
       <div
         role="tablist"
         onKeyDown={onKeyDown}
-        className="grid grid-cols-2 gap-1 rounded-full bg-surface p-1"
+        className="grid grid-cols-2 gap-1 rounded-button bg-surface p-1"
       >
         {TABS.map((value) => (
           <button
@@ -121,7 +121,7 @@ export function AccountAccess({
             aria-controls={`${id}-${value}-panel`}
             tabIndex={tab === value ? 0 : -1}
             onClick={() => setTab(value)}
-            className={`min-h-11 rounded-full px-4 font-medium transition-colors ${
+            className={`min-h-11 rounded-button px-4 font-medium transition-colors ${
               tab === value ? "bg-background shadow-sm" : "text-muted hover:text-foreground"
             }`}
           >

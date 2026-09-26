@@ -24,7 +24,8 @@ export function ProductCard({
   base: string;
 }) {
   return (
-    <li className="group relative flex flex-col gap-3">
+    // The theme draws the card (D60): its picture's shape, and plain, bordered or raised, left or centred.
+    <li className="product-card group relative flex flex-col gap-3">
       <WishlistHeart
         store={store}
         market={market.slug}
@@ -39,7 +40,7 @@ export function ProductCard({
           width={400}
           height={400}
           unoptimized
-          className="aspect-square w-full rounded-lg bg-surface object-cover"
+          className="product-card-image w-full rounded-lg bg-surface object-cover"
         />
       )}
       <h2 className="font-medium">

@@ -42,7 +42,7 @@ export function CartLinkShell({
   const badge = count > 0 && (
     <span
       aria-hidden="true"
-      className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-xs font-semibold text-background"
+      className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-foreground"
     >
       {count}
     </span>
@@ -63,7 +63,7 @@ export function CartLinkShell({
   return (
     <Link
       href={marketPath(storeSlug, market.slug, "/cart")}
-      className="relative flex size-11 items-center justify-center rounded-full hover:bg-surface"
+      className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5"
     >
       <Icon name="bag" />
       {badge}

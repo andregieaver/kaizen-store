@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import type { GridData } from "@/lib/content-grid";
 import { fontClass } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
-import { frameStyle, type ContentGridBlock } from "@/lib/page-content";
+import { frameStyle, gridImageShape, type ContentGridBlock } from "@/lib/page-content";
 
 import { HEADING_SIZES, SHAPES, buttonLook } from "./page-block";
 import { Price } from "./price";
@@ -19,7 +19,9 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
     return block.emptyText ? <p className="text-muted">{block.emptyText}</p> : null;
   }
   const m = t(data.lang);
-  const shape = block.imageShape ?? "landscape";
+  const shape = gridImageShape(block);
+  // Product tiles drawn as the theme's cards (D60), unless the grid styles its tiles itself.
+  const themed = shape === "theme" && block.source.type === "products";
   const Heading = `h${block.headingLevel}` as const;
   const label = block.buttonLabel || (block.source.type === "products" ? m.viewProduct : m.readMore);
   const button = buttonLook(block.button);
@@ -47,7 +49,7 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
         <li
           key={item.id}
           style={tileStyle}
-          className={`flex min-w-0 flex-col gap-3 ${tile?.radius ? "overflow-hidden" : ""}`}
+          className={`flex min-w-0 flex-col gap-3 ${tile?.radius ? "overflow-hidden" : ""} ${themed && !tile ? "product-card relative" : ""}`}
         >
           {block.show.image && item.image && (
             // The heading and button are the links for keyboards and screen readers; the picture is for pointing.
@@ -58,13 +60,15 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
                 width={800}
                 height={600}
                 unoptimized
-                className={`h-auto w-full bg-surface ${shape === "original" ? "rounded-lg" : SHAPES[shape]}`}
+                className={`h-auto w-full bg-surface ${
+                  shape === "original" ? "rounded-lg" : shape === "theme" ? "product-card-image rounded-lg object-cover" : SHAPES[shape]
+                }`}
               />
             </a>
           )}
           {block.show.heading && (
             <Heading
-              className={`leading-snug font-semibold text-balance ${HEADING_SIZES[block.headingSize ?? "sm"]} ${
+              className={`leading-snug font-heading text-balance ${HEADING_SIZES[block.headingSize ?? "sm"]} ${
                 block.headingFont ? fontClass(block.headingFont) : ""
               }`}
             >

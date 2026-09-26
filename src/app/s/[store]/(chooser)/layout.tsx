@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BackToAdmin } from "@/components/back-to-admin";
+import { StoreThemeStyles } from "@/components/store-theme";
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { themeAttributes } from "@/lib/theme";
+import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { templateStoreSlug, getOpenStore } from "@/server/stores";
 
@@ -50,8 +53,10 @@ export default async function ChooserLayout({ children, params }: Props) {
   const store = await getOpenStore((await params).store);
   if (!store) notFound();
   return (
-    <html lang={store.markets[0]?.lang ?? "en"} className="h-full antialiased">
-      <body className="flex min-h-full flex-col font-sans">
+    <html lang={store.markets[0]?.lang ?? "en"} className="h-full antialiased" {...themeAttributes(store.theme.settings)}>
+      <body className="flex min-h-full flex-col font-sans" style={siteFontStyle(store.fonts)}>
+        {/* The store's own fonts (D59) and theme (D60), as in its markets. */}
+        <StoreThemeStyles store={store} />
         {children}
         <BackToAdmin storeSlug={store.slug} />
       </body>

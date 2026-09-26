@@ -20,7 +20,7 @@ export default async function Chooser({ params }: PageProps<"/s/[store]">) {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">
-      <h1 className="text-4xl font-semibold tracking-tight">{store.name}</h1>
+      <h1 className="text-4xl font-heading tracking-tight">{store.name}</h1>
       <p className="text-lg text-muted">
         {store.markets.map((market, index) => (
           <span key={market.slug}>

@@ -33,8 +33,8 @@ export function ArticleView({
   const day = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
   return (
     <article className="flex flex-col gap-8">
-      <header className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4">
-        <h1 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">{content.title}</h1>
+      <header className="mx-auto flex w-full max-w-(--content-width) flex-col gap-4 px-4">
+        <h1 className="text-3xl font-heading tracking-tight text-balance md:text-4xl">{content.title}</h1>
         <p className="text-sm text-muted">
           {date && (
             <>

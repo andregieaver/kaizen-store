@@ -57,7 +57,7 @@ async function Details({ params }: { params: Props["params"] }) {
 
   return (
     <>
-      <h1 className="text-3xl font-semibold tracking-tight">{m.subscription}</h1>
+      <h1 className="text-3xl font-heading tracking-tight">{m.subscription}</h1>
       <div role="status" className="flex flex-col gap-1">
         <p>
           <strong>{m.subscriptionStatus[subscription.status]}</strong> · {every} · {m.orderNumber} {subscription.number}
@@ -106,7 +106,7 @@ async function Details({ params }: { params: Props["params"] }) {
 
       {(allowed.pause || allowed.skip || allowed.unpause) && (
         <section aria-labelledby="pause-heading" className="flex flex-col gap-3">
-          <h2 id="pause-heading" className="text-xl font-semibold">
+          <h2 id="pause-heading" className="text-xl font-heading">
             {m.pauseTitle}
           </h2>
           <div className="flex flex-wrap gap-3">
@@ -130,7 +130,7 @@ async function Details({ params }: { params: Props["params"] }) {
 
       {allowed.contents && (
         <section aria-labelledby="change-heading" className="flex flex-col gap-3">
-          <h2 id="change-heading" className="text-xl font-semibold">
+          <h2 id="change-heading" className="text-xl font-heading">
             {m.changeTitle}
           </h2>
           <p className="text-sm text-muted">{m.changeHelp}</p>

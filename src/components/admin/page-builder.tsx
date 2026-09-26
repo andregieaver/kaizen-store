@@ -74,6 +74,7 @@ import {
   classNameProblem,
   htmlIdProblem,
   isLinkAddress,
+  gridImageShape,
   pageBlocks,
   pageParts,
   richTextPlain,
@@ -311,7 +312,13 @@ type Actions = {
 };
 
 /** The site's own fonts for the canvas, and installing a family a block chooses (D59). */
-export type BuilderFonts = { site: SiteFonts; style: CSSProperties | undefined; install: InstallFont };
+export type BuilderFonts = {
+  site: SiteFonts;
+  style: CSSProperties | undefined;
+  install: InstallFont;
+  /** A store's theme (D60), so the canvas shows its colours and shapes. */
+  theme: { css: string; attributes: Record<string, string> } | null;
+};
 
 export function PageBuilder({
   rows,
@@ -565,9 +572,14 @@ export function PageBuilder({
         />
         )}
 
-        {/* The canvas draws with the site's own fonts, as the site does (D59). */}
-        <div style={fonts.style} className="min-w-0">
+        {/* The canvas draws with the site's own fonts (D59) and a store's theme (D60), as the site does. */}
+        <div
+          style={fonts.style}
+          className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""}`}
+          {...(fonts.theme && { ...fonts.theme.attributes, "data-theme-canvas": "" })}
+        >
           <FontLinks families={siteFontFamilies(fonts.site)} />
+          {fonts.theme && <style>{fonts.theme.css}</style>}
           <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
         </div>
 
@@ -2937,9 +2949,13 @@ function HeadingStyleFields({ block, onChange }: { block: HeadingBlock; onChange
       />
       <Choices
         legend="Weight"
-        options={(Object.keys(FONT_WEIGHTS) as FontWeight[]).map((weight) => ({ value: weight, label: FONT_WEIGHTS[weight] }))}
-        value={block.weight ?? "semibold"}
-        onChange={(weight) => onChange({ weight: weight === "semibold" ? undefined : weight })}
+        hint="the theme's unless chosen"
+        options={[
+          { value: "theme" as const, label: "Theme's" },
+          ...(Object.keys(FONT_WEIGHTS) as FontWeight[]).map((weight) => ({ value: weight, label: FONT_WEIGHTS[weight] })),
+        ]}
+        value={block.weight ?? "theme"}
+        onChange={(weight) => onChange({ weight: weight === "theme" ? undefined : weight })}
       />
       <TextAlignFields value={block.align} onChange={(align) => onChange({ align })} />
       <OptionalColor
@@ -3385,13 +3401,17 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
       <Choices
         legend="Pictures"
         hint="cropped alike, so tiles line up"
-        options={(["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({
-          value: shape,
-          label: shape === "original" ? "Original" : IMAGE_SHAPES[shape],
-          picture: <span aria-hidden className={`inline-block border-2 border-current ${SHAPE_PICTURES[shape]}`} />,
-        }))}
-        value={block.imageShape ?? "landscape"}
-        onChange={(shape) => onChange({ imageShape: shape === "landscape" ? undefined : shape })}
+        options={[
+          // Products can follow the store theme's product cards (D60), their default.
+          ...(block.source.type === "products" ? [{ value: "theme" as const, label: "Theme's product cards" }] : []),
+          ...(["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({
+            value: shape,
+            label: shape === "original" ? "Original" : IMAGE_SHAPES[shape],
+            picture: <span aria-hidden className={`inline-block border-2 border-current ${SHAPE_PICTURES[shape]}`} />,
+          })),
+        ]}
+        value={gridImageShape(block) === "theme" && block.source.type !== "products" ? "landscape" : gridImageShape(block)}
+        onChange={(shape) => onChange({ imageShape: shape === gridImageShape({ source: block.source }) ? undefined : shape })}
       />
       <Choices
         legend="Heading level"

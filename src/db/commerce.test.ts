@@ -1265,6 +1265,33 @@ describe("fonts (D59)", () => {
   });
 });
 
+describe("design themes (D60)", () => {
+  it("keep a store's saved themes by unique name, and give new stores the template's theme", async () => {
+    const template = await createStore("themes-template", ["NO"]);
+    const save = (name: string, base = "warm") =>
+      db.query("insert into commerce.store_themes (store_id, name, base, settings) values ($1, $2, $3, '{}') returning id", [
+        template,
+        name,
+        base,
+      ]);
+    const { rows } = await save("Autumn") as { rows: { id: string }[] };
+    await expect(save("autumn")).rejects.toThrow(/store_themes_name_idx/);
+    await expect(save("")).rejects.toThrow(/store_themes_name_length/);
+    await expect(save("Gothic", "gothic")).rejects.toThrow(/store_themes_base/);
+
+    const theme = { base: "warm", savedId: rows[0].id, settings: { mode: "light" } };
+    await db.query("update commerce.stores set theme = $1 where id = $2", [JSON.stringify(theme), template]);
+    const owner = await createAccount("themes-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'themes-copy', 'Copy', $2) as id", [template, owner]);
+    // The look comes along; the template's saved themes stay its own.
+    expect((await one<{ theme: unknown }>("select theme from commerce.stores where id = $1", [copy])).theme).toEqual({
+      base: "warm",
+      settings: { mode: "light" },
+    });
+    expect((await db.query("select 1 from commerce.store_themes where store_id = $1", [copy])).rows).toEqual([]);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

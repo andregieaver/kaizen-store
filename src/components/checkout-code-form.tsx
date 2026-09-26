@@ -30,7 +30,7 @@ export function CheckoutCodeForm({
     return (
       <form action={action} className="flex items-center justify-between gap-2">
         <input type="hidden" name="intent" value="remove" />
-        <span className="rounded-full border border-border px-3 py-1 text-sm font-medium">
+        <span className="rounded-button border border-border px-3 py-1 text-sm font-medium">
           <span className="sr-only">{labels.code}: </span>
           {code}
         </span>

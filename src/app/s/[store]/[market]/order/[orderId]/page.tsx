@@ -62,7 +62,7 @@ async function OrderDetails({
       {/* The paid order has emptied the cart; show the header without it. */}
       {order.status !== "pending_payment" && <RefreshOnce id={`order:${order.id}:${order.status}`} />}
       <div role="status" aria-live="polite">
-        <h1 className="text-3xl font-semibold tracking-tight">
+        <h1 className="text-3xl font-heading tracking-tight">
           {order.status === "cancelled" ? m.orderCancelled : m.thanks}
         </h1>
         {order.status === "pending_payment" && <p className="mt-2">{m.paymentPending}</p>}
@@ -207,7 +207,7 @@ function Downloads({
           ) : (
             <a
               href={`${base}/${file.token}`}
-              className="inline-flex min-h-11 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background"
+              className="inline-flex min-h-11 items-center button-primary px-5 text-sm font-medium"
             >
               {m.download}
               <span className="sr-only">: {file.name}</span>
@@ -245,7 +245,7 @@ function AccountOutcome({
         <p>{a.accountCreatedIntro(account.email)}</p>
         {account.canSignIn ? (
           <form action={signIn}>
-            <button type="submit" className="min-h-11 rounded-full bg-foreground px-5 font-medium text-background">
+            <button type="submit" className="min-h-11 button-primary px-5 font-medium">
               {a.goToAccount}
             </button>
           </form>

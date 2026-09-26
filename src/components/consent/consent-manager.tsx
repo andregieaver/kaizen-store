@@ -243,7 +243,7 @@ export function ConsentManager({ storeId, tracking, categories, texts, cookiePag
 
   if (categories.length === 0) return null;
   const button =
-    "min-h-11 flex-1 rounded-md px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
+    "min-h-11 flex-1 rounded-button px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
 
   return (
     <>
@@ -263,10 +263,10 @@ export function ConsentManager({ storeId, tracking, categories, texts, cookiePag
           </p>
           {/* Rejecting is as easy as accepting: the same look, side by side. */}
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => decide(NO_CONSENT)} className={`${button} bg-foreground text-background`}>
+            <button type="button" onClick={() => decide(NO_CONSENT)} className={`${button} button-primary`}>
               {texts.rejectAll}
             </button>
-            <button type="button" onClick={() => decide(FULL_CONSENT)} className={`${button} bg-foreground text-background`}>
+            <button type="button" onClick={() => decide(FULL_CONSENT)} className={`${button} button-primary`}>
               {texts.acceptAll}
             </button>
           </div>
@@ -330,7 +330,7 @@ export function ConsentManager({ storeId, tracking, categories, texts, cookiePag
               <button type="button" onClick={() => decide(FULL_CONSENT)} className={`${button} border border-border`}>
                 {texts.acceptAll}
               </button>
-              <button type="submit" className={`${button} bg-foreground text-background`}>
+              <button type="submit" className={`${button} button-primary`}>
                 {texts.save}
               </button>
             </div>

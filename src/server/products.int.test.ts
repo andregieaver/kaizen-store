@@ -6,6 +6,7 @@ import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
 import { productInput, type ProductInput } from "@/lib/product-input";
 import { parseStoreSeo } from "@/lib/seo";
+import { templateSettings } from "@/lib/theme";
 
 import {
   emptyProduct,
@@ -53,6 +54,7 @@ async function createStore(slug: string): Promise<Store> {
     frontPageId: null,
     tracking: {},
     fonts: {},
+    theme: { base: "minimal", savedId: null, settings: templateSettings("minimal") },
   };
 }
 

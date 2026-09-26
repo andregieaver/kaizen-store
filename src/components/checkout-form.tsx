@@ -333,7 +333,7 @@ function Form({
         <button
           type="submit"
           disabled={busy}
-          className="min-h-12 rounded-full bg-foreground px-4 font-medium text-background disabled:opacity-40"
+          className="min-h-12 button-primary px-4 font-medium disabled:opacity-40"
         >
           {busy ? labels.paying : labels.pay}
         </button>

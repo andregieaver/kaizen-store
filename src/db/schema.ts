@@ -277,8 +277,10 @@ export const stores = commerce.table(
     frontPageId: uuid("front_page_id"),
     /** The store's analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
-    /** Heading and body fonts from Google Fonts, self-hosted (D59). */
+    /** Before themes (D60), the store's fonts (D59); now in `theme`. Kept until the code no longer reads it. */
     fonts: jsonb("fonts").notNull().default({}),
+    /** The storefront's design (D60): `StoreTheme` in lib/theme, its template, the saved theme it came from and every setting. */
+    theme: jsonb("theme").notNull().default({}),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -2676,5 +2678,32 @@ export const fontFiles = commerce.table(
   (t) => [
     check("font_files_name", sql`${t.name} ~ '^[0-9a-f]{32}\\.woff2$'`),
     check("font_files_size", sql`octet_length(${t.data}) between 1 and 2000000`),
+  ],
+);
+
+/**
+ * A store's own saved themes (D60): its settings under a name, kept to
+ * switch back to or share between its looks. `base` is the template it
+ * started from, which Reset goes back to.
+ */
+export const storeThemes = commerce.table(
+  "store_themes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    base: text("base").notNull(),
+    settings: jsonb("settings").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("store_themes_name_idx").on(t.storeId, sql`lower(${t.name})`),
+    index("store_themes_created_by_idx").on(t.createdBy),
+    check("store_themes_name_length", sql`length(${t.name}) between 1 and 60`),
+    check("store_themes_base", sql`${t.base} in ('minimal', 'warm')`),
   ],
 );

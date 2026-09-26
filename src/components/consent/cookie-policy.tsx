@@ -47,7 +47,7 @@ export function CookiePolicy({
         ) : (
           <CookieSettingsButton
             label={m.cookieSettings}
-            className="w-fit min-h-11 rounded-md bg-foreground px-4 text-sm font-medium text-background"
+            className="w-fit min-h-11 button-primary px-4 text-sm font-medium"
           />
         )}
       </div>

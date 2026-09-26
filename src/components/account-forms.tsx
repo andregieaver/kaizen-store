@@ -12,7 +12,7 @@ import {
 
 const input = "min-h-11 w-full rounded-md border border-border bg-background px-3";
 const label = "flex flex-col gap-1 text-sm font-medium";
-const secondary = "min-h-11 rounded-full border border-border px-5 disabled:opacity-40";
+const secondary = "min-h-11 rounded-button border border-border px-5 disabled:opacity-40";
 const initial: AccountFormState = { ok: false, message: null };
 
 type Shop = { store: string; market: string };

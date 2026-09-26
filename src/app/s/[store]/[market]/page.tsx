@@ -90,7 +90,7 @@ export default async function MarketHome({ params }: Props) {
   return (
     <>
       {jsonLd}
-      <h1 className="mb-6 text-3xl font-semibold tracking-tight">{m.products}</h1>
+      <h1 className="mb-6 text-3xl font-heading tracking-tight">{m.products}</h1>
       {products.length === 0 ? (
         <p>{m.noProducts}</p>
       ) : (

@@ -66,8 +66,8 @@ type Labels = {
 
 type Outcome = "added" | "capped" | "unavailable" | "needs_variant" | "subscription";
 
-const button = "min-h-11 rounded-full px-4 text-sm font-medium disabled:opacity-40";
-const primary = `${button} bg-foreground text-background`;
+const button = "min-h-11 rounded-button px-4 text-sm font-medium disabled:opacity-40";
+const primary = `${button} button-primary`;
 const secondary = `${button} border border-border hover:bg-surface`;
 const input = "min-h-11 rounded-md border border-border bg-background px-3 text-sm";
 
@@ -192,8 +192,8 @@ export function WishlistView({
               <Link
                 href={`${base}/wishlist?list=${list.id}`}
                 aria-current={list.id === current.id ? "page" : undefined}
-                className={`flex min-h-11 items-center gap-2 rounded-full px-4 text-sm ${
-                  list.id === current.id ? "bg-foreground text-background" : "border border-border hover:bg-surface"
+                className={`flex min-h-11 items-center gap-2 rounded-button px-4 text-sm ${
+                  list.id === current.id ? "button-primary" : "border border-border hover:bg-surface"
                 }`}
               >
                 <span className="font-medium">{list.name}</span>
@@ -240,7 +240,7 @@ export function WishlistView({
               </button>
             </form>
           ) : (
-            <h2 id={`${id}-list`} className="text-xl font-semibold">
+            <h2 id={`${id}-list`} className="text-xl font-heading">
               {current.name}
             </h2>
           )}

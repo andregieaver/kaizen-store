@@ -45,6 +45,8 @@ export type PageOwnerContext = {
   gridStores: GridStore[];
   /** The owner's own fonts, and the style that sets them, for the canvas (D59). */
   fonts: { site: SiteFonts; style: CSSProperties | undefined };
+  /** A store's theme for the canvas (D60): CSS for `[data-theme-canvas]` and its attributes; null for Kaizen. */
+  theme: { css: string; attributes: Record<string, string> } | null;
   actions: {
     save: (id: string | null, payload: string, publish: boolean) => Promise<PageSaveState>;
     unpublish: (id: string) => Promise<PageSaveState>;

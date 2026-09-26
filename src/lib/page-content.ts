@@ -361,7 +361,7 @@ export type HeadingBlock = PartBase & BlockFont & {
   text: string;
   level: HeadingLevel;
   size?: HeadingSize;
-  /** Semibold unless chosen. */
+  /** The theme's heading weight unless chosen (D60). */
   weight?: FontWeight;
   align?: TextAlignments;
   textColor?: Color;
@@ -453,7 +453,12 @@ export type ContentGridBlock = PartBase & {
   /** Shown when nothing matches; empty shows nothing. */
   emptyText: string;
   /** Pictures cropped alike keep the tiles even; landscape unless chosen. */
-  imageShape?: ImageShape | "original";
+  /**
+   * `theme` draws product tiles as the store theme's product cards (D60):
+   * their picture shape, card style and alignment. The default for
+   * products; landscape for pages and articles.
+   */
+  imageShape?: ImageShape | "original" | "theme";
   headingLevel: Exclude<HeadingLevel, 1>;
   headingSize?: HeadingSize;
   /** Lines of excerpt at most. */
@@ -619,6 +624,10 @@ export function repeatedHtmlId(rows: PageRow[]): string | null {
   }
   return null;
 }
+
+/** How a grid's pictures are cropped: its own choice, else the theme's cards for products (D60) and landscape for the rest. */
+export const gridImageShape = (block: Pick<ContentGridBlock, "imageShape" | "source">) =>
+  block.imageShape ?? (block.source.type === "products" ? "theme" : "landscape");
 
 /** The Google Fonts families a block uses (D59). */
 export function blockFonts(block: PageBlock): string[] {
@@ -907,7 +916,7 @@ const contentGridBlock = z.object({
   }),
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
   emptyText: z.string().trim().max(300, "Keep the text for an empty grid under 300 characters.").default(""),
-  imageShape: z.enum(["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
+  imageShape: z.enum(["original", "theme", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
   headingLevel: z.literal([2, 3, 4, 5, 6], "A tile's heading has an unknown level."),
   headingSize: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
   excerptLines: z.number().int().min(1).max(6),

@@ -204,7 +204,7 @@ export function PageEditor({
         saved={savedParts}
         library={library}
         upload={upload}
-        fonts={{ ...context.fonts, install: context.actions.installFont }}
+        fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
         grid={{
           pageId: saved?.id ?? null,
           owner: context.owner,

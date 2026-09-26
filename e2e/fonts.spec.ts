@@ -29,7 +29,9 @@ test("a store's fonts and a component's own font load from Kaizen, never from Go
       insert into commerce.access_requests (email, name, store_name)
       values (${`${slug}@example.com`}, 'Kari', 'Karis Kopper') returning id`;
     await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Kopper', null)`;
-    const [store] = await sql`update commerce.stores set fonts = '{"heading": "Lato"}'::jsonb where slug = ${slug} returning id`;
+    // A store's fonts are part of its theme (D60).
+    const [store] = await sql`
+      update commerce.stores set theme = '{"settings": {"fonts": {"heading": "Lato"}}}'::jsonb where slug = ${slug} returning id`;
     // The page copied from the template gets a heading in a font of its own.
     const rows = [
       {

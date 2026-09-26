@@ -232,7 +232,12 @@ export async function saveSiteFonts(
       update commerce.platform_settings set fonts = ${json}::jsonb, updated_at = now(), updated_by = ${account.id}::uuid
     `);
   } else {
-    await db().execute(sql`update commerce.stores set fonts = ${json}::jsonb where id = ${storeId}::uuid`);
+    // A store's fonts are part of its theme (D60).
+    await db().execute(sql`
+      update commerce.stores
+      set theme = jsonb_set(theme || jsonb_build_object('settings', coalesce(theme -> 'settings', '{}'::jsonb)), '{settings,fonts}', ${json}::jsonb)
+      where id = ${storeId}::uuid
+    `);
   }
   await audit(account.id, storeId, `${storeId === null ? "platform" : "store"}.fonts_updated`, fonts);
   return { ok: true, fonts };

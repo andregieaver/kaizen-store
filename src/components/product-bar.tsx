@@ -89,7 +89,7 @@ export function ProductBar({
               value={chosen}
               onChange={(event) => setChosen(event.target.value)}
               aria-label={labels.chooseVariant}
-              className="min-h-11 w-full truncate rounded-full border border-border bg-background px-3 text-sm"
+              className="min-h-11 w-full truncate rounded-button border border-border bg-background px-3 text-sm"
             >
               {variants.map((v) => (
                 <option key={v.id} value={v.id} disabled={!v.available}>
@@ -104,7 +104,7 @@ export function ProductBar({
         <button
           type="submit"
           disabled={!variant.available || pending}
-          className="min-h-11 shrink-0 rounded-full bg-foreground px-5 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-11 shrink-0 button-primary px-5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
         >
           {!variant.available ? labels.soldOut : pending ? labels.adding : labels.addToCart}
         </button>

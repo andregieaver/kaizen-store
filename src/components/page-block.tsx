@@ -84,7 +84,7 @@ function Heading({ block }: { block: HeadingBlock }) {
   const Tag = `h${block.level}` as const;
   return (
     <Tag
-      className={`leading-tight text-balance ${HEADING_SIZES[block.size ?? HEADING_DEFAULT_SIZE[block.level]]} ${WEIGHTS[block.weight ?? "semibold"]}`}
+      className={`leading-tight text-balance ${HEADING_SIZES[block.size ?? HEADING_DEFAULT_SIZE[block.level]]} ${block.weight ? WEIGHTS[block.weight] : "font-heading"}`}
       style={block.textColor ? { color: block.textColor } : undefined}
     >
       {block.text}
@@ -105,7 +105,7 @@ export function buttonLook(
   const size = look?.size ?? "md";
   const colors =
     variant === "filled"
-      ? "border-2 border-transparent bg-foreground text-background hover:opacity-90"
+      ? "border-2 border-transparent bg-accent text-accent-foreground hover:opacity-90"
       : variant === "outline"
         ? "border-2 border-current text-foreground hover:bg-foreground/5"
         : "text-foreground underline underline-offset-4 hover:no-underline";

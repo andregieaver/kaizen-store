@@ -33,7 +33,7 @@ async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "sea
   const query = await searchParams;
   return (
     <>
-      <h1 className="text-3xl font-semibold tracking-tight">{m.unsubscribeTitle}</h1>
+      <h1 className="text-3xl font-heading tracking-tight">{m.unsubscribeTitle}</h1>
       {query.done ? (
         <p role="status">{m.unsubscribed}</p>
       ) : query.unknown ? (
@@ -41,7 +41,7 @@ async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "sea
       ) : (
         <form action={unsubscribeAction.bind(null, shop.store.slug, shop.market.slug, token)} className="flex flex-col gap-4">
           <p>{m.unsubscribeIntro}</p>
-          <button type="submit" className="min-h-11 self-start rounded-full bg-foreground px-5 font-medium text-background">
+          <button type="submit" className="min-h-11 self-start button-primary px-5 font-medium">
             {m.unsubscribeButton}
           </button>
         </form>

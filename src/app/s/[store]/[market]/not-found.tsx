@@ -11,7 +11,7 @@ export default async function MarketNotFound() {
   const m = t(shop?.market.lang ?? "en");
   return (
     <div className="flex flex-col gap-4 py-16">
-      <h1 className="text-2xl font-semibold">{m.notFound}</h1>
+      <h1 className="text-2xl font-heading">{m.notFound}</h1>
       <Link
         href={shop ? marketPath(shop.store.slug, shop.market.slug) : "/"}
         className="underline"

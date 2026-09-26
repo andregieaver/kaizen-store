@@ -50,7 +50,7 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
     const register = (await searchParams).tab === "register";
     return (
       <>
-        <h1 className="text-3xl font-semibold tracking-tight">{a.title}</h1>
+        <h1 className="text-3xl font-heading tracking-tight">{a.title}</h1>
         <AccountAccess
           store={store.slug}
           market={market.slug}
@@ -100,14 +100,14 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{a.hello(customer.name.split(" ")[0] ?? "")}</h1>
+          <h1 className="text-3xl font-heading tracking-tight">{a.hello(customer.name.split(" ")[0] ?? "")}</h1>
           <p className="text-sm text-muted">{a.signedInAs(customer.email)}</p>
         </div>
         <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
       </div>
 
       <section aria-labelledby="orders-heading" className="flex flex-col gap-3">
-        <h2 id="orders-heading" className="text-xl font-semibold">{a.orders}</h2>
+        <h2 id="orders-heading" className="text-xl font-heading">{a.orders}</h2>
         {orders.length === 0 ? (
           <p className="text-muted">{a.noOrders}</p>
         ) : (
@@ -136,7 +136,7 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
       </section>
 
       <section aria-labelledby="subscriptions-heading" className="flex flex-col gap-3">
-        <h2 id="subscriptions-heading" className="text-xl font-semibold">{a.subscriptions}</h2>
+        <h2 id="subscriptions-heading" className="text-xl font-heading">{a.subscriptions}</h2>
         {subscriptions.length === 0 ? (
           <p className="text-muted">{a.noSubscriptions}</p>
         ) : (
@@ -153,7 +153,7 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
                 </span>
                 <Link
                   href={`${base}/subscription/${s.manageToken}`}
-                  className="inline-flex min-h-11 items-center rounded-full border border-border px-5"
+                  className="inline-flex min-h-11 items-center rounded-button border border-border px-5"
                 >
                   {a.manage}
                 </Link>
@@ -164,7 +164,7 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
       </section>
 
       <section aria-labelledby="details-heading" className="flex flex-col gap-3">
-        <h2 id="details-heading" className="text-xl font-semibold">{a.details}</h2>
+        <h2 id="details-heading" className="text-xl font-heading">{a.details}</h2>
         <DetailsForm
           store={store.slug}
           market={market.slug}
@@ -190,7 +190,7 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
       </section>
 
       <section aria-labelledby="password-heading" className="flex flex-col gap-3">
-        <h2 id="password-heading" className="text-xl font-semibold">{a.security}</h2>
+        <h2 id="password-heading" className="text-xl font-heading">{a.security}</h2>
         <p className="text-sm text-muted">{customer.hasPassword ? a.passwordSet : a.passwordNone}</p>
         <PasswordForm
           store={store.slug}
@@ -202,7 +202,7 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
       </section>
 
       <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-border pt-6">
-        <h2 id="delete-heading" className="font-semibold">{a.deleteTitle}</h2>
+        <h2 id="delete-heading" className="font-heading">{a.deleteTitle}</h2>
         <p className="text-sm text-muted">{a.deleteIntro}</p>
         <DeleteAccountButton store={store.slug} market={market.slug} labels={{ button: a.deleteButton, confirm: a.deleteConfirm }} />
       </section>

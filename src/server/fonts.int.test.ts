@@ -100,8 +100,9 @@ describe("self-hosted Google Fonts (D59)", () => {
 
     // Lora is installed by the test above, so nothing is fetched.
     expect(await saveSiteFonts(owner, storeId, { heading: "Lora" })).toEqual({ ok: true, fonts: { heading: "Lora" } });
-    const [saved] = await db().execute<Record<string, unknown>>(sql`select fonts from commerce.stores where id = ${storeId}::uuid`);
-    expect(saved.fonts).toEqual({ heading: "Lora" });
+    // A store's fonts live in its theme (D60).
+    const [saved] = await db().execute<Record<string, unknown>>(sql`select theme from commerce.stores where id = ${storeId}::uuid`);
+    expect(saved.theme).toEqual({ settings: { fonts: { heading: "Lora" } } });
     expect(await saveSiteFonts(owner, storeId, { body: "Comic Sans MS" })).toEqual({
       ok: false,
       problems: ["Comic Sans MS is not in Google Fonts."],

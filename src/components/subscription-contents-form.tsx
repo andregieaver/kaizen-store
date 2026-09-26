@@ -94,7 +94,7 @@ export function SubscriptionContentsForm({
         <button
           type="submit"
           disabled={pending}
-          className="min-h-11 rounded-full bg-foreground px-5 font-medium text-background disabled:opacity-40"
+          className="min-h-11 button-primary px-5 font-medium disabled:opacity-40"
         >
           {pending ? labels.saving : labels.save}
         </button>

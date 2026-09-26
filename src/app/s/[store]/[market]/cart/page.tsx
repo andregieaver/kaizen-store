@@ -41,7 +41,7 @@ export default async function CartPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="mb-6 text-3xl font-semibold tracking-tight">{m.cart}</h1>
+      <h1 className="mb-6 text-3xl font-heading tracking-tight">{m.cart}</h1>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-surface" />}>
         <CartContents store={store} market={market} m={m} />
       </Suspense>

@@ -39,8 +39,8 @@ export function SubscriptionButton({
         disabled={pending}
         className={
           primary
-            ? "min-h-11 rounded-full bg-foreground px-5 font-medium text-background disabled:opacity-40"
-            : "min-h-11 rounded-full border border-foreground px-5 font-medium disabled:opacity-40"
+            ? "min-h-11 button-primary px-5 font-medium disabled:opacity-40"
+            : "min-h-11 rounded-button border border-foreground px-5 font-medium disabled:opacity-40"
         }
       >
         {pending ? labels.busy : labels.action}

@@ -43,7 +43,7 @@ export default async function CheckoutPage({ params }: Props) {
   const m = t(shop.market.lang);
   return (
     <>
-      <h1 className="mb-6 text-3xl font-semibold tracking-tight">{m.checkoutTitle}</h1>
+      <h1 className="mb-6 text-3xl font-heading tracking-tight">{m.checkoutTitle}</h1>
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-surface" />}>
         <Checkout store={shop.store} market={shop.market} m={m} />
       </Suspense>

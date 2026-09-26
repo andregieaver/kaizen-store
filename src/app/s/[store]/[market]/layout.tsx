@@ -4,12 +4,12 @@ import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
 import { SiteConsent } from "@/components/consent/site-consent";
-import { FontLinks } from "@/components/font-links";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
+import { StoreThemeStyles } from "@/components/store-theme";
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
-import { siteFontFamilies } from "@/lib/fonts";
+import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
@@ -63,14 +63,15 @@ export default async function MarketLayout({ children, params }: Props) {
   const m = t(market.lang);
 
   return (
-    <html lang={market.lang} className="h-full antialiased">
+    // The store's theme (D60): its choices as attributes, its colours and sizes as variables.
+    <html lang={market.lang} className="h-full antialiased" {...themeAttributes(store.theme.settings)}>
       {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
       <body
         className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
         style={siteFontStyle(store.fonts)}
       >
-        {/* The store's own fonts, from Kaizen's copies (D59). */}
-        <FontLinks families={siteFontFamilies(store.fonts)} />
+        {/* The store's own fonts (D59) and theme (D60). */}
+        <StoreThemeStyles store={store} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
@@ -94,7 +95,7 @@ export default async function MarketLayout({ children, params }: Props) {
         {/* A store's page (D54) spans the window: its rows keep to this width themselves. */}
         <main
           id="main"
-          className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0"
+          className="mx-auto w-full max-w-(--content-width) flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0"
         >
           {children}
         </main>

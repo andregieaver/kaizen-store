@@ -46,7 +46,7 @@ function CategoryLinks({ label, terms, href }: { label: string; terms: Term[]; h
           <li key={term.id}>
             <Link
               href={href(term.slug)}
-              className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-sm hover:bg-surface"
+              className="inline-flex min-h-10 items-center rounded-button border border-border px-4 text-sm hover:bg-surface"
             >
               {term.name}
             </Link>
@@ -80,7 +80,7 @@ export async function StoreBlog({ params }: { params: ShopParams }) {
   const top = terms.filter((t) => t.kind === "category" && t.parentId === null).sort(byName);
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-semibold tracking-tight">{m.blog}</h1>
+      <h1 className="text-3xl font-heading tracking-tight">{m.blog}</h1>
       <CategoryLinks label={m.blog} terms={top} href={(slug) => blogPath(store, market.slug, `/category/${slug}`)} />
       <ContentGridView block={{ ...grid, emptyText: m.noArticles }} data={data} />
     </div>
@@ -124,7 +124,7 @@ export async function StoreBlogTerm({ kind, params }: { kind: TermKind; params: 
       <Link href={blogPath(store, market.slug)} className="w-fit text-sm underline">
         {m.blog}
       </Link>
-      <h1 className="text-3xl font-semibold tracking-tight">{term.name}</h1>
+      <h1 className="text-3xl font-heading tracking-tight">{term.name}</h1>
       <CategoryLinks label={term.name} terms={subcategories} href={(slug) => blogPath(store, market.slug, `/category/${slug}`)} />
       <ContentGridView block={{ ...grid, emptyText: m.noArticles }} data={data} />
     </div>

@@ -117,7 +117,7 @@ export function WishlistCount({ base }: { base: string }) {
   return (
     <span
       aria-hidden="true"
-      className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-foreground px-1 text-xs font-semibold text-background"
+      className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-foreground"
     >
       {count}
     </span>

@@ -42,6 +42,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     upload: uploadsEnabled() ? uploadPlatformImageAction : null,
     gridStores,
     fonts: { site: fonts, style: siteFontStyle(fonts) },
+    theme: null,
     actions: {
       save: savePageAction.bind(null, type),
       unpublish: unpublishPageAction.bind(null, type),

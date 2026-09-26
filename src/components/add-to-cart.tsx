@@ -61,7 +61,7 @@ export function AddToCart({
       <button
         type="submit"
         disabled={disabled || pending}
-        className="min-h-11 rounded-full bg-foreground px-4 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-40"
+        className="min-h-11 button-primary px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
       >
         {pending ? labels.adding : labels.addToCart}
       </button>

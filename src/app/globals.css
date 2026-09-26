@@ -6,6 +6,16 @@
   --muted: #525252;
   --surface: #f5f5f4;
   --border: #e5e5e5;
+  /*
+   * What a store's theme (D60) sets on its <html> (`themeCss()`), with
+   * Minimal's values here for everything else (the admin, Kaizen's site).
+   */
+  --accent: var(--foreground);
+  --accent-foreground: var(--background);
+  --button-radius: 9999px;
+  --content-width: 64rem;
+  --card-aspect: 1 / 1;
+  --heading-weight: 600;
 }
 
 @theme inline {
@@ -14,6 +24,9 @@
   --color-muted: var(--muted);
   --color-surface: var(--surface);
   --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --radius-button: var(--button-radius);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 }
@@ -44,6 +57,52 @@ body {
   font-synthesis-weight: none;
 }
 
+/*
+ * A store's theme (D60): headings in the storefront take its weight
+ * (`font-heading`; 600 elsewhere), and its capitals when chosen.
+ */
+@utility font-heading {
+  font-weight: var(--heading-weight);
+}
+:where([data-heading-case="upper"]) :where(h1, h2, h3, h4, h5, h6) {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* The main action's button: the theme's accent, filled or outlined, with its corners (D60). */
+@layer components {
+  .button-primary {
+    border: 2px solid var(--accent);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    border-radius: var(--button-radius);
+  }
+  :where([data-button-style="outline"]) .button-primary {
+    background-color: transparent;
+    color: var(--accent);
+  }
+}
+
+/* Product cards (D60): the picture's shape, and plain, bordered or raised, left or centred. */
+.product-card-image {
+  aspect-ratio: var(--card-aspect);
+}
+:where([data-card-style="bordered"]) .product-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem;
+}
+:where([data-card-style="raised"]) .product-card {
+  border-radius: var(--radius-lg);
+  padding: 0.75rem;
+  background-color: var(--background);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 6px 16px rgb(0 0 0 / 0.08);
+}
+:where([data-card-align="center"]) .product-card {
+  align-items: center;
+  text-align: center;
+}
+
 /* A product page's add-to-cart bar takes the place of the phone's bottom bar (D30). */
 body:has([data-product-bar]) [data-default-bar] {
   display: none;
@@ -64,17 +123,17 @@ body:has([data-product-bar]) [data-default-bar] {
   margin-top: 1.75em;
   font-size: 1.5rem;
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: var(--heading-weight);
 }
 .rich-text h3 {
   margin-top: 1.5em;
   font-size: 1.25rem;
   line-height: 1.35;
-  font-weight: 600;
+  font-weight: var(--heading-weight);
 }
 .rich-text h4 {
   margin-top: 1.25em;
-  font-weight: 600;
+  font-weight: var(--heading-weight);
 }
 .rich-text > :first-child {
   margin-top: 0;

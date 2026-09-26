@@ -5,6 +5,7 @@ import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, termNames, type MenuItem } from "@/lib/navigation";
 import { marketPath } from "@/lib/paths";
+import type { HeaderBackground } from "@/lib/theme";
 import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
@@ -94,13 +95,13 @@ function MarketChoice({ store, market, m }: Props & { m: Messages }) {
   if (store.markets.length < 2) return null;
   return (
     <details className="group relative hidden md:block">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-full px-3 text-sm hover:bg-surface [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-button px-3 text-sm hover:bg-current/5 [&::-webkit-details-marker]:hidden">
         <Icon name="globe" className="size-5" />
         {market.name}
         <Icon name="chevron" className="size-4 transition-transform group-open:rotate-180" />
         <span className="sr-only">· {m.chooseMarket}</span>
       </summary>
-      <ul className="absolute right-0 mt-2 min-w-44 rounded-lg border border-border bg-background p-1 shadow-lg">
+      <ul className="absolute right-0 z-10 mt-2 min-w-44 rounded-lg border border-border bg-background p-1 text-foreground shadow-lg">
         {store.markets.map((other) => (
           <li key={other.slug}>
             <Link
@@ -120,59 +121,87 @@ function MarketChoice({ store, market, m }: Props & { m: Messages }) {
 }
 
 /** The store's notice (preview, demo or test payments), then its header; both slide away together. */
+/** The header's background by the theme (D60); hovers use the text's own colour, so they suit each. */
+const HEADER_BACKGROUND: Record<HeaderBackground, string> = {
+  page: "bg-background/95 backdrop-blur",
+  surface: "bg-surface",
+  accent: "bg-accent text-accent-foreground",
+};
+
 export function StoreHeader({ store, market, notice }: Props & { notice: string | null }) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
   const header = store.navigation.header;
+  const layout = store.theme.settings.layout;
+  // The logo on the left with the menu beside it, or in the middle with the menu below (D60).
+  const centred = layout.headerAlign === "center";
+
+  const menuButton = (
+    <button
+      type="button"
+      data-open-menu
+      aria-haspopup="dialog"
+      aria-controls="store-menu"
+      className="-ml-2 flex size-11 items-center justify-center rounded-full md:hidden"
+    >
+      <Icon name="menu" />
+      <span className="sr-only">{m.openMenu}</span>
+    </button>
+  );
+  const menu = (className: string) =>
+    header.length > 0 && (
+      <nav aria-label={m.mainMenu} className={className}>
+        <MenuLinks
+          items={header}
+          store={store}
+          market={market}
+          className={`flex flex-wrap items-center gap-1 ${centred ? "justify-center" : ""}`}
+          linkClassName="flex min-h-11 items-center rounded-button px-3 text-sm font-medium hover:bg-current/5"
+        />
+      </nav>
+    );
+  const tools = (
+    <div className={`flex items-center gap-1 ${centred ? "justify-end" : "ml-auto"}`}>
+      <MarketChoice store={store} market={market} m={m} />
+      <Link
+        href={`${base}/account`}
+        className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex"
+      >
+        <Icon name="user" />
+        <span className="sr-only">{m.account.title}</span>
+      </Link>
+      <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
+        <Icon name="heart" />
+        <WishlistCount base={base} />
+        <span className="sr-only">{m.wishlist.title}</span>
+      </Link>
+      <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>
+        <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
+      </Suspense>
+    </div>
+  );
+
   return (
     <HidingHeader>
       {notice && <p className="bg-foreground px-4 py-2 text-center text-sm text-background">{notice}</p>}
-      <header className="border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-5xl items-center gap-2 px-4 md:gap-6">
-          <button
-            type="button"
-            data-open-menu
-            aria-haspopup="dialog"
-            aria-controls="store-menu"
-            className="-ml-2 flex size-11 items-center justify-center rounded-full md:hidden"
-          >
-            <Icon name="menu" />
-            <span className="sr-only">{m.openMenu}</span>
-          </button>
-
-          <Brand store={store} market={market} size="header" />
-
-          {header.length > 0 && (
-            <nav aria-label={m.mainMenu} className="hidden min-w-0 flex-1 md:block">
-              <MenuLinks
-                items={header}
-                store={store}
-                market={market}
-                className="flex flex-wrap items-center gap-1"
-                linkClassName="flex min-h-11 items-center rounded-full px-3 text-sm font-medium hover:bg-surface"
-              />
-            </nav>
-          )}
-
-          <div className="ml-auto flex items-center gap-1">
-            <MarketChoice store={store} market={market} m={m} />
-            <Link
-              href={`${base}/account`}
-              className="hidden size-11 items-center justify-center rounded-full hover:bg-surface md:flex"
-            >
-              <Icon name="user" />
-              <span className="sr-only">{m.account.title}</span>
-            </Link>
-            <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-surface">
-              <Icon name="heart" />
-              <WishlistCount base={base} />
-              <span className="sr-only">{m.wishlist.title}</span>
-            </Link>
-            <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>
-              <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
-            </Suspense>
+      <header className={`border-b border-border ${HEADER_BACKGROUND[layout.headerBackground]}`}>
+        {centred ? (
+          <>
+            <div className="mx-auto grid h-16 max-w-(--content-width) grid-cols-[1fr_auto_1fr] items-center gap-2 px-4">
+              <div className="flex items-center">{menuButton}</div>
+              <Brand store={store} market={market} size="header" />
+              {tools}
+            </div>
+            {menu("mx-auto hidden max-w-(--content-width) px-4 pb-2 md:block")}
+          </>
+        ) : (
+          <div className="mx-auto flex h-16 max-w-(--content-width) items-center gap-2 px-4 md:gap-6">
+            {menuButton}
+            <Brand store={store} market={market} size="header" />
+            {menu("hidden min-w-0 flex-1 md:block")}
+            {tools}
           </div>
-        </div>
+        )}
       </header>
     </HidingHeader>
   );
@@ -222,7 +251,7 @@ export function StoreMenu({ store, market }: Props) {
                   hrefLang={other.lang}
                   lang={other.lang}
                   aria-current={other.slug === market.slug ? "page" : undefined}
-                  className="flex min-h-11 items-center rounded-full border border-border px-4 text-sm aria-[current=page]:border-foreground aria-[current=page]:font-semibold"
+                  className="flex min-h-11 items-center rounded-button border border-border px-4 text-sm aria-[current=page]:border-foreground aria-[current=page]:font-semibold"
                 >
                   {other.name}
                 </Link>
@@ -248,7 +277,7 @@ export function StoreFooter({ store, market }: Props) {
     .join(" · ");
   return (
     <footer className="mt-auto border-t border-border bg-surface/40">
-      <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 text-sm sm:grid-cols-2 md:grid-cols-4">
+      <div className="mx-auto grid max-w-(--content-width) gap-8 px-4 py-10 text-sm sm:grid-cols-2 md:grid-cols-4">
         <div className="flex flex-col gap-3 sm:col-span-2">
           <Brand store={store} market={market} size="footer" />
           <address className="flex flex-col gap-1 not-italic text-muted">

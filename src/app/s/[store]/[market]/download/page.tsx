@@ -19,7 +19,7 @@ export default async function DownloadNotice({ params, searchParams }: Props) {
   const m = t(shop.market.lang);
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 py-8">
-      <h1 className="text-2xl font-semibold">{m.downloads}</h1>
+      <h1 className="text-2xl font-heading">{m.downloads}</h1>
       <Suspense fallback={<p>{m.downloadGone}</p>}>
         <Problem searchParams={searchParams} m={m} />
       </Suspense>
