@@ -2,9 +2,9 @@ import { storeRobots } from "@/server/seo";
 import { getOpenStore } from "@/server/stores";
 
 /**
- * The store's robots.txt. Crawlers read only the site's own /robots.txt,
- * which includes these rules; this one is for the owner to check, and
- * becomes the store's real one once stores have their own addresses (P2).
+ * The store's robots.txt: the real one at `/robots.txt` on its own host (P7).
+ * Until stores have hosts, crawlers read only the site's own /robots.txt,
+ * which includes these rules, and this one is for the owner to check.
  */
 export async function GET(_request: Request, { params }: RouteContext<"/s/[store]/robots.txt">) {
   const store = await getOpenStore((await params).store);

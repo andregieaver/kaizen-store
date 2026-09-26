@@ -6,7 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
 import { SetupFrame } from "@/components/admin/setup-frame";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
-import { storeBase } from "@/lib/paths";
+import { storeBase, storeHref } from "@/lib/paths";
 import { requireMember, type Membership } from "@/server/auth";
 import { getPaymentSettings } from "@/server/settings";
 import {
@@ -276,7 +276,7 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
         <div role="status" className="flex flex-col gap-3 rounded-md border border-foreground p-4 text-sm">
           <p className="font-medium">Your store is open. Share its address with your first customers.</p>
           <div className="flex flex-wrap gap-4">
-            <Link href={storeBase(store.slug)} className="underline">
+            <Link href={storeHref(store.slug, storeBase(store.slug))} className="underline">
               View your store
             </Link>
             <Link href={`/admin/${store.slug}`} className="underline">
@@ -288,7 +288,7 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
         <ActionForm action={openStoreAction.bind(null, store.slug)} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
             <SubmitButton disabled={!progress.readyToOpen}>Open my store</SubmitButton>
-            <Link href={storeBase(store.slug)} className="text-sm underline" target="_blank">
+            <Link href={storeHref(store.slug, storeBase(store.slug))} className="text-sm underline" target="_blank">
               Preview the storefront
             </Link>
           </div>

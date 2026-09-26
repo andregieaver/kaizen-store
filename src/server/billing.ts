@@ -6,7 +6,7 @@ import Stripe from "stripe";
 import { db } from "@/db/client";
 import type { PlatformDiscount } from "@/lib/discounts";
 import { effectiveFeeBps, isOnPlan, type PlanInterval } from "@/lib/plans";
-import { storeBase } from "@/lib/paths";
+import { storeBase, storeOrigin } from "@/lib/paths";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Account } from "./auth";
@@ -598,7 +598,7 @@ async function prepare(
   }
   if (!stripePrice) return { ok: false, problems: ["The plan is not in Stripe yet. Try again shortly."] };
 
-  const created = await createStripeAccount({ account: actor, store }, mode, `${origin}${storeBase(store.slug)}`);
+  const created = await createStripeAccount({ account: actor, store }, mode, storeOrigin(store.slug) ?? `${origin}${storeBase(store.slug)}`);
   if (!created.ok) return created;
   const account = (await getStripeAccounts(store.id))[mode];
   if (!account) return { ok: false, problems: ["The store's Stripe account could not be created."] };

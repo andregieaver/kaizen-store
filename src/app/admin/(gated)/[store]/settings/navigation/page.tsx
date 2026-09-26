@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { NavigationEditor } from "@/components/admin/navigation-editor";
 import { t } from "@/lib/i18n";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeHref } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { termTargets } from "@/lib/taxonomy";
@@ -62,7 +62,7 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
         }}
         upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
         save={saveNavigationAction.bind(null, store.slug)}
-        previewHref={home ? marketPath(store.slug, home.slug) : "/"}
+        previewHref={home ? storeHref(store.slug, marketPath(store.slug, home.slug)) : "/"}
       />
     </div>
   );

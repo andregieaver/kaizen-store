@@ -9,7 +9,7 @@ import { db, readDb } from "@/db/client";
 import { t } from "@/lib/i18n";
 import { toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { marketPath, storeBase } from "@/lib/paths";
+import { marketPath, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
 import { pageExcerpt } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import {
@@ -228,7 +228,7 @@ export async function altTextGaps(storeId: string): Promise<{ pictures: number; 
 export function storeFacts(store: Store): StoreFacts {
   return {
     name: store.name,
-    url: `${siteUrl()}${storeBase(store.slug)}`,
+    url: `${storeSiteUrl(store.slug)}${storeBase(store.slug)}`,
     seo: store.seo,
     details: store.details,
     countries: store.markets.map((market) => market.code),
@@ -330,7 +330,8 @@ export async function siteRobots(): Promise<string> {
     ...articles.filter((a) => !a.content.aiAssistants).map((a) => ({ allow: false, path: `/blog/${a.slug}$` })),
   ];
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
-  for (const store of stores) mergeGroups(groups, await storeGroups(store));
+  // Stores on their own hosts (P7) have their own robots.txt there.
+  if (!storeDomain()) for (const store of stores) mergeGroups(groups, await storeGroups(store));
   return renderRobots(groups, [`${siteUrl()}/sitemap.xml`, ...parsed.sitemaps]);
 }
 
@@ -347,9 +348,9 @@ async function storeGroups(store: Pick<Store, "id" | "slug" | "seo">) {
   return groups;
 }
 
-/** The robots.txt a store would have on its own address (and a preview of its part of the site's). */
+/** A store's robots.txt: its own on its host (P7); until then a preview of its part of the site's. */
 export async function storeRobots(store: Pick<Store, "id" | "slug" | "seo">): Promise<string> {
-  return renderRobots(await storeGroups(store), [`${siteUrl()}${storeSitemapPath(store.slug)}`]);
+  return renderRobots(await storeGroups(store), [`${storeSiteUrl(store.slug)}${storeSitemapPath(store.slug)}`]);
 }
 
 const xml = (value: string) =>
@@ -358,7 +359,8 @@ const xml = (value: string) =>
 /** The sitemap index: Kaizen's pages and one sitemap per open store. */
 export async function sitemapIndex(): Promise<string> {
   const origin = siteUrl();
-  const stores = (await listPublicStores()).filter((store) => store.indexable);
+  // A sitemap index only lists sitemaps on its own host: stores on theirs (P7) list their own in their robots.txt.
+  const stores = storeDomain() ? [] : (await listPublicStores()).filter((store) => store.indexable);
   const entries = [
     `<sitemap><loc>${origin}/sitemap-kaizen.xml</loc></sitemap>`,
     ...stores.map(
@@ -399,7 +401,7 @@ export async function platformSitemap(): Promise<string> {
 export async function storeSitemap(slug: string): Promise<string | null> {
   const store = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   if (!store) return null;
-  const origin = siteUrl();
+  const origin = storeSiteUrl(store.slug);
   const [products, pages, articles] = await Promise.all([
     listIndexedProducts(store.id),
     listPublishedPages(store.id),
@@ -487,7 +489,7 @@ export async function platformLlms(): Promise<string> {
           .filter((store) => store.indexable)
           .map((store) => ({
             title: store.name,
-            url: `${origin}${storeBase(store.slug)}/llms.txt`,
+            url: `${storeSiteUrl(store.slug)}${storeBase(store.slug)}/llms.txt`,
             note: `sells to ${store.markets.map((m) => m.name).join(", ")}`,
           })),
       },
@@ -533,7 +535,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
   const listed = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   const market = store?.markets[0];
   if (!store || !listed || !market) return null;
-  const origin = siteUrl();
+  const origin = storeSiteUrl(store.slug);
   const m = t(market.lang);
   const home = (code: string) => `${origin}${marketPath(store.slug, code.toLowerCase())}`;
   const [products, indexed, shipping, pages, articles] = await Promise.all([

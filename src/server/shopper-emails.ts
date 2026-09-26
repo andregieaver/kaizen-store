@@ -8,8 +8,7 @@ import { emailText, type EmailText } from "@/lib/email-text";
 import { t } from "@/lib/i18n";
 import { toMarket, type Market, type MarketRow } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { marketPath } from "@/lib/paths";
-import { siteUrl } from "@/lib/site";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
 
 import { sendEmail, type SendOutcome } from "./email";
 import { getOrder, type OrderView } from "./orders";
@@ -82,7 +81,7 @@ async function orderUrl(storeId: string, store: EmailStore, market: Market, orde
     order by created_at limit 1
   `);
   if (!payment) return null;
-  return `${siteUrl()}${marketPath(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
+  return `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
 }
 
 function orderLines(order: OrderView, text: EmailText, money: (minor: number) => string): EmailBlock {
@@ -151,7 +150,7 @@ export async function sendOrderConfirmation(
           {
             type: "button" as const,
             text: text.manageSubscription,
-            url: `${siteUrl()}${marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
+            url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
           },
         ]
       : []),
@@ -331,7 +330,7 @@ export async function sendWelcome(
     blocks: [
       { type: "heading", text: text.welcomeHeading },
       { type: "paragraph", text: text.welcomeIntro(to) },
-      { type: "button", text: text.welcomeButton, url: `${siteUrl()}${marketPath(store.slug, market.slug, "/account")}` },
+      { type: "button", text: text.welcomeButton, url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/account")}` },
       { type: "paragraph", text: text.welcomeIgnore },
     ],
   });
@@ -382,7 +381,7 @@ function subscriptionBlocks(
     {
       type: "button",
       text: text.manageSubscription,
-      url: `${siteUrl()}${marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
+      url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/subscription/${subscription.manageToken}`)}`,
     },
   ];
 }

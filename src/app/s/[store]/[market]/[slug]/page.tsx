@@ -8,8 +8,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
-import { marketPath } from "@/lib/paths";
-import { siteUrl } from "@/lib/site";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
@@ -81,7 +80,7 @@ export default async function StorePage({ params }: Props) {
   // The front page (D54) has one address: the market's own.
   if (page.id === store.frontPageId) permanentRedirect(home);
   const c = localizePage(page.content, market.locale);
-  const origin = siteUrl();
+  const origin = storeSiteUrl(store.slug);
 
   return (
     <>

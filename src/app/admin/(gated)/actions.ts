@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { storeBase } from "@/lib/paths";
+import { storeBase, storeOrigin } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { seoFromForm } from "@/lib/seo";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
@@ -61,7 +61,7 @@ export async function createStripeAccountAction(
   if (!("store" in owner)) return owner;
   const parsedMode = mode.safeParse(formData.get("mode"));
   if (!parsedMode.success) return { status: "error", messages: ["Unknown mode."] };
-  const storeUrl = `${await origin()}${storeBase(owner.store.slug)}`;
+  const storeUrl = storeOrigin(owner.store.slug) ?? `${await origin()}${storeBase(owner.store.slug)}`;
   return toState(await createStripeAccount(owner, parsedMode.data, storeUrl));
 }
 

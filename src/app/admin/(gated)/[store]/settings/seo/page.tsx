@@ -4,9 +4,8 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields";
 import { t } from "@/lib/i18n";
-import { marketPath, storeBase } from "@/lib/paths";
+import { marketPath, storeBase, storeSiteUrl } from "@/lib/paths";
 import { AI_ASSISTANT_BOTS, AI_TRAINING_BOTS, LLMS_MAX, RULES_MAX } from "@/lib/seo";
-import { siteUrl } from "@/lib/site";
 import { requireMember } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { altTextGaps, storeSitemapPath } from "@/server/seo";
@@ -29,8 +28,9 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   const names = new Intl.DisplayNames(["en"], { type: "language" });
   const locales = [...new Set(store.markets.map((m) => m.locale))];
   const languageNames = Object.fromEntries(locales.map((l) => [l, names.of(l) ?? l]));
-  const origin = siteUrl();
-  const base = storeBase(store.slug);
+  // The store's full address: its own host once it has one (P7).
+  const origin = storeSiteUrl(store.slug);
+  const base = `${origin}${storeBase(store.slug)}`;
   const open = Boolean(store.setupCompletedAt || store.isTemplate);
   const findable = open && !seo.hidden;
 
@@ -251,8 +251,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             </label>
           </div>
           <p className={hint}>
-            In Search Console, add the address {origin}
-            {base}/ as a URL-prefix property and paste the code or the whole tag here. Then submit the
+            In Search Console, add the address {base}/ as a URL-prefix property and paste the code or the whole tag here. Then submit the
             sitemap: {origin}
             {storeSitemapPath(store.slug)}.
           </p>

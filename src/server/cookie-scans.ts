@@ -14,7 +14,7 @@ import {
 } from "@/lib/cookie-consent";
 import { parseScannedItems, type ScannedItem, type ScanTarget } from "@/lib/cookie-scan";
 import { toMarket } from "@/lib/markets";
-import { marketPath, storeBase } from "@/lib/paths";
+import { marketPath, storeBase, storeSiteUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
 import { audit, type Account } from "./auth";
@@ -119,6 +119,7 @@ export async function scanTarget(storeId: string | null): Promise<ScanTarget | n
   let starts: string[];
   let within: (path: string) => boolean;
   let tracking;
+  let origin = siteUrl();
   if (storeId === null) {
     const [row] = await db().execute<Row>(sql`select tracking from commerce.platform_settings`);
     tracking = parseTracking(row?.tracking);
@@ -139,11 +140,13 @@ export async function scanTarget(storeId: string | null): Promise<ScanTarget | n
     const slug = String(row.slug);
     tracking = parseTracking(row.tracking);
     starts = markets.slice(0, 3).map((market) => marketPath(slug, market.slug));
+    // On its own host once it has one (P7), where every path is the store's.
+    origin = storeSiteUrl(slug);
     within = (path) => path.startsWith(`${storeBase(slug)}/`);
   }
   const { categories } = await siteCookies(storeId, tracking);
   return {
-    origin: siteUrl(),
+    origin,
     starts,
     within,
     consent:

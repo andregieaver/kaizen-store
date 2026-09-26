@@ -29,9 +29,12 @@ export type PageOwnerContext = {
   defaultAuthor: string;
   /** Where the owner's pages are edited: `/admin/platform/pages` or `/admin/{store}/pages`. */
   adminBase: string;
-  /** What comes before a page's address on the site: "" for Kaizen's, `/s/{store}/{market}` for a store's; `/blog` after it for articles. */
+  /**
+   * What comes before a page's address on the site: "" for Kaizen's, `/s/{store}/{market}` for a store's,
+   * or the full `https://{store}.{domain}/{market}` once it has its own host (P7); `/blog` after it for articles.
+   */
   siteBase: string;
-  /** The site's origin, for showing a page's full address. */
+  /** The site's origin, for showing a page's full address; empty when `siteBase` is one. */
   origin: string;
   /** The languages the owner's pages are written in, the main one first (D55); Kaizen's are English only. */
   languages: PageLanguage[];

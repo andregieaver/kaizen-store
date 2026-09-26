@@ -17,7 +17,7 @@ import {
 import { renderEmail } from "@/lib/email-layout";
 import { emailText } from "@/lib/email-text";
 import type { Market } from "@/lib/markets";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
 import { audit, type Membership } from "./auth";
@@ -378,7 +378,7 @@ export async function sendDueCartReminders(): Promise<ReminderRun> {
 
 /** The links in a reminder: back to the cart (with the step's code), and to stop reminders. */
 export function reminderLinks(storeSlug: string, marketSlug: string, token: string, code: string | null) {
-  const base = `${siteUrl()}${marketPath(storeSlug, marketSlug)}`;
+  const base = `${storeSiteUrl(storeSlug)}${marketPath(storeSlug, marketSlug)}`;
   return {
     restoreUrl: `${base}/cart/restore/${token}${code ? `?code=${encodeURIComponent(code)}` : ""}`,
     unsubscribeUrl: `${base}/unsubscribe/${token}`,

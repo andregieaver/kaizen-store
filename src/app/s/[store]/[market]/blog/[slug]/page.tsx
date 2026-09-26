@@ -8,8 +8,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
-import { marketPath } from "@/lib/paths";
-import { siteUrl } from "@/lib/site";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { articleJsonLd } from "@/lib/structured-data";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
@@ -84,7 +83,7 @@ export default async function StoreArticlePage({ params }: Props) {
   if ("redirect" in found) permanentRedirect(`${blog}/${found.redirect}`);
   const { page } = found;
   const c = localizePage(page.content, market.locale);
-  const origin = siteUrl();
+  const origin = storeSiteUrl(store.slug);
 
   return (
     // Spans the window like a store's page (D54); its rows keep to the width themselves.

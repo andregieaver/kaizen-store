@@ -1,5 +1,6 @@
 "use server";
 
+import { storeBase, storeHref } from "@/lib/paths";
 import { refresh, updateTag } from "next/cache";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -77,8 +78,8 @@ export async function decideAction(
     status: "ok",
     messages: [
       result.invited
-        ? `Store created at /s/${result.slug}. A sign-in link is on its way to ${result.email}.`
-        : `Store created at /s/${result.slug}, but the sign-in email could not be sent. Ask ${result.email} to sign in at ${site}/admin/sign-in.`,
+        ? `Store created at ${storeHref(result.slug, storeBase(result.slug))}. A sign-in link is on its way to ${result.email}.`
+        : `Store created at ${storeHref(result.slug, storeBase(result.slug))}, but the sign-in email could not be sent. Ask ${result.email} to sign in at ${site}/admin/sign-in.`,
     ],
   };
 }

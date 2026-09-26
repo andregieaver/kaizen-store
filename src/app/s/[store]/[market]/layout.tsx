@@ -7,8 +7,7 @@ import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { t } from "@/lib/i18n";
-import { marketPath, storeBase } from "@/lib/paths";
-import { siteUrl } from "@/lib/site";
+import { marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
@@ -32,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
   const home = marketPath(store.slug, market.slug);
   return {
-    metadataBase: new URL(siteUrl()),
+    metadataBase: new URL(storeSiteUrl(store.slug)),
     title: { default: title, template: `%s · ${store.name}` },
     description,
     // A store is not for search engines until its owner opens it, or while they hide it.
@@ -42,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         ...Object.fromEntries(store.markets.map((m) => [m.locale, marketPath(store.slug, m.slug)])),
         // With several markets the store's front door lets visitors choose.
-        "x-default": store.markets.length > 1 ? storeBase(store.slug) : home,
+        "x-default": store.markets.length > 1 ? storeHome(store.slug) : home,
       },
     },
     ...storeShareTags(store, market, {

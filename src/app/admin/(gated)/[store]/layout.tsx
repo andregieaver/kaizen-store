@@ -5,7 +5,7 @@ import { AdminTrail, SignOutForm } from "@/components/admin/admin-trail";
 import { StoreSidebar, StoreTabs, type NavGroup, type NavItem } from "@/components/admin/store-admin-nav";
 import { StoreMain } from "@/components/admin/store-main";
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
-import { storeBase } from "@/lib/paths";
+import { storeBase, storeHref } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 import { countPendingRequests } from "@/server/platform";
@@ -105,7 +105,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             </Link>
             <div className="ml-auto flex shrink-0 items-center gap-3 text-sm">
               <Link
-                href={storeBase(store.slug)}
+                href={storeHref(store.slug, storeBase(store.slug))}
                 className="flex min-h-10 items-center gap-1.5 rounded-md border border-border px-3 hover:bg-surface"
               >
                 View store

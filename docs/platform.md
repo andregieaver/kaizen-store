@@ -15,6 +15,7 @@ otherwise.
 | P4 | **The original store is the demo template.** Its catalogue is what every new store starts with, copied inside the database in one transaction. | 2026-09-24 |
 | P5 | **Accounts are platform-wide; roles are per store.** One sign-in (Supabase Auth: password or magic link) per person; `store_members` gives them `owner` or `admin` in each store. | 2026-09-24 |
 | P6 | **Routing by host happens in Vercel's routing layer, and only reads the host name.** Host-based rewrites from `{store}.{domain}` to `/s/{store}` are configuration, not code, so they add no function call to a page view and never touch cookies or personal data. They are added once the platform domain exists; until then `storeBase()` in `src/lib/paths.ts` returns `/s/{store}`. | 2026-09-24 |
+| P7 | **Stores live on a domain of their own, separate from Kaizen's.** Stores are at `{store}.{store domain}` (`NEXT_PUBLIC_STORE_DOMAIN`, e.g. `kaizenstores.com`), not under `kaizenstore.cloud`, as Shopify's are under myshopify.com: a store's pages, and code its owner adds to them, are then a different site from the admin, so they can neither read nor overwrite its session cookies, nor send requests the browser would sign in. `src/lib/store-hosts.ts` builds the routing from the domain at build time (P6): a store's host serves its pages and nothing else of Kaizen's but Next.js's files, the API and `public`; `/s/{store}/…` elsewhere redirects (308) to the store's host; the bare domain and `www.` go to Kaizen. Inside a store, links stay paths (`storeBase()` is empty there); links from anywhere else use `storeHref()`, and full addresses (emails, Stripe, search engines) `storeSiteUrl()`. Without the domain, everything is as before. Custom domains per store come next. | 2026-09-26 |
 
 ## How it fits together
 
@@ -25,7 +26,8 @@ otherwise.
 - Creating a store runs `commerce.initialise_store()`, which adds its invoice
   and credit-note series and Stripe (disabled, test mode).
 - `supabase/seed.sql` creates the template store, slug `demo`.
-- Storefront: `/s/{store}` (country chooser) and `/s/{store}/{market}/…`.
+- Storefront: `/s/{store}` (country chooser) and `/s/{store}/{market}/…`,
+  served at `{store}.{store domain}/` and `…/{market}/…` once the domain is set (P7).
   `src/server/stores.ts` loads a store and its markets (cached per store);
   `src/server/shop.ts` resolves URL params to a store and market.
 - Admin: `/admin` lists the account's stores; `/admin/{store}/…` is one store,

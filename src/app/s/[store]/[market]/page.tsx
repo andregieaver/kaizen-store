@@ -7,8 +7,7 @@ import { ProductCard } from "@/components/product-card";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
-import { marketPath } from "@/lib/paths";
-import { siteUrl } from "@/lib/site";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { storeHomeJsonLd } from "@/lib/structured-data";
 import { listProducts } from "@/server/catalog";
 import { listPublishedPages } from "@/server/pages";
@@ -59,7 +58,7 @@ export default async function MarketHome({ params }: Props) {
   const { store, market, frontPage } = loaded;
   const m = t(market.lang);
   const products = await listProducts(store.id, market.code, market.locale);
-  const origin = siteUrl();
+  const origin = storeSiteUrl(store.slug);
   const productUrl = (handle: string) => marketPath(store.slug, market.slug, `/p/${handle}`);
   const jsonLd = (
     <JsonLdScript

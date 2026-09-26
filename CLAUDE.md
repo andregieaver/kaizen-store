@@ -65,8 +65,13 @@ of running `playwright install`.
   page, and Kaizen's own pages (D42) live at `/{page}`; each store lives at `/s/{store}`, a country chooser that suggests but
   never redirects (unless the store has one market), and `/s/{store}/{market}`
   (`no`, `se`, `dk`, …), each market its own root layout with its own
-  `<html lang>`. Build links with `marketPath()` / `storeBase()` from
-  `src/lib/paths.ts`, never by hand: stores move to subdomains later.
+  `<html lang>`. With `NEXT_PUBLIC_STORE_DOMAIN` set (P7), stores are at
+  `{store}.{domain}` on a domain of their own, routed by `src/lib/store-hosts.ts`
+  in `next.config.ts`, and `/s/{store}/…` redirects there. Build links with
+  `src/lib/paths.ts`, never by hand: `marketPath()` / `storeBase()` inside a
+  store (empty base on its own host; `storeHome()` where a URL can't be
+  empty), `storeHref()` to a store from the admin or Kaizen's pages, and
+  `storeSiteUrl()` for full addresses (emails, Stripe, search engines).
 - Stores and their markets come from the database (`getStore()`, cached per
   store; `resolveShop()` for URL params). Every catalogue, cart and settings
   query takes a store id; never query a store-owned table without it.

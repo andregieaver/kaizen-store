@@ -1,3 +1,4 @@
+import { storeBase, storeHref } from "@/lib/paths";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
@@ -56,7 +57,7 @@ export default async function PlatformPage() {
                 </span>
                 <span className="text-muted">
                   {request.status === "approved" && request.storeSlug ? (
-                    <Link href={`/s/${request.storeSlug}`} className="underline">
+                    <Link href={storeHref(request.storeSlug, storeBase(request.storeSlug))} className="underline">
                       approved: {request.storeSlug}
                     </Link>
                   ) : (

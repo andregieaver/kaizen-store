@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { JsonLdScript } from "@/components/json-ld";
-import { storeBase } from "@/lib/paths";
+import { storeBase, storeHref } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { platformJsonLd } from "@/lib/structured-data";
 import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
@@ -38,7 +38,7 @@ export default async function Home() {
           Start your store
         </Link>
         {demo && (
-          <Link href={storeBase(demo)} className="rounded-full border border-border px-5 py-2.5 font-medium">
+          <Link href={storeHref(demo, storeBase(demo))} className="rounded-full border border-border px-5 py-2.5 font-medium">
             See the demo store
           </Link>
         )}

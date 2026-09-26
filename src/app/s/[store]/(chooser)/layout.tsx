@@ -4,8 +4,7 @@ import { notFound } from "next/navigation";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { t } from "@/lib/i18n";
-import { marketPath, storeBase } from "@/lib/paths";
-import { siteUrl } from "@/lib/site";
+import { marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
@@ -24,11 +23,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const store = await getOpenStore((await params).store);
   const market = store?.markets[0];
   if (!store || !market) return {};
-  const base = storeBase(store.slug);
+  const base = storeHome(store.slug);
   const description =
     store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, store.markets.map((m) => m.name).join(", "));
   return {
-    metadataBase: new URL(siteUrl()),
+    metadataBase: new URL(storeSiteUrl(store.slug)),
     title: store.name,
     description,
     ...(!(store.setupCompletedAt || store.isTemplate) || store.seo.hidden ? { robots: { index: false } } : {}),

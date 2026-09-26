@@ -5,7 +5,7 @@ import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { t } from "@/lib/i18n";
 import { reservedPageSlugs, type PageType } from "@/lib/page-content";
 import { pageLanguages } from "@/lib/page-translation";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeBase, storeHref, storeOrigin } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
@@ -46,8 +46,9 @@ export function storePageContext(store: Store, type: PageType = "page", author =
     type,
     defaultAuthor: author,
     adminBase: storePagesBase(store, type),
-    siteBase: (market ? marketPath(store.slug, market.slug) : `/s/${store.slug}`) + PAGE_TYPE_COPY[type].sitePrefix,
-    origin: siteUrl(),
+    // A full address once the store has its own host (P7), and origin then empty.
+    siteBase: storeHref(store.slug, market ? marketPath(store.slug, market.slug) : storeBase(store.slug)) + PAGE_TYPE_COPY[type].sitePrefix,
+    origin: storeOrigin(store.slug) ? "" : siteUrl(),
     // One page in every language the store sells in, its own country's first (D55).
     languages: pageLanguages(store.markets.map((m) => m.locale)),
     reserved: reservedPageSlugs(store.id, type),

@@ -1,8 +1,17 @@
 import type { NextConfig } from "next";
 
+import { storeDomain } from "./src/lib/paths";
+import { siteUrl } from "./src/lib/site";
+import { storeHostRoutes } from "./src/lib/store-hosts";
+
+// Stores on their own hosts once the store domain is set (P7).
+const hostRoutes = storeHostRoutes(storeDomain(), siteUrl());
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   poweredByHeader: false,
+  redirects: async () => hostRoutes.redirects,
+  rewrites: async () => ({ beforeFiles: hostRoutes.rewrites, afterFiles: [], fallback: [] }),
   // The cookie scan's Chromium (D58) is read from disk, not imported, so the
   // trace needs telling; only the scan's route carries it.
   outputFileTracingIncludes: {

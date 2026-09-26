@@ -8,7 +8,7 @@ import { db } from "@/db/client";
 import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeOrigin } from "@/lib/paths";
 import { t } from "@/lib/i18n";
 import { GENERAL_TAX_CODE, variantLabel, type Delivery } from "@/lib/product-input";
 import { applyDiscount } from "@/lib/discounts";
@@ -563,7 +563,8 @@ export async function startCheckout(
   `);
   const feeBps = await storeFeeBps(shop.storeId);
   const fee = saleFee(order.totalMinor, feeBps);
-  const base = `${origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
+  // Back to the store's own host once it has one (P7), whichever host the request came from.
+  const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
   const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId };
   const seller = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]

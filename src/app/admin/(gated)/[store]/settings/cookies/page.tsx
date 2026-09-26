@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
 import { reviewFindings } from "@/lib/cookie-scan";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeHref } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { listConsents } from "@/server/consents";
 import { latestFindings, listScans } from "@/server/cookie-scans";
@@ -35,7 +35,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
       <TrackingForm
         tracking={store.tracking}
         action={saveStoreTrackingAction.bind(null, store.slug)}
-        cookiePage={market ? marketPath(store.slug, market.slug, "/cookies") : "/"}
+        cookiePage={market ? storeHref(store.slug, marketPath(store.slug, market.slug, "/cookies")) : "/"}
       />
       <CookieScanPanel
         scans={scans}

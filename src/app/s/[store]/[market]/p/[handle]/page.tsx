@@ -14,9 +14,8 @@ import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { stockLevel } from "@/lib/pricing";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { schemaPrice, summarize } from "@/lib/seo";
-import { siteUrl } from "@/lib/site";
 import { productJsonLd } from "@/lib/structured-data";
 import { planPrice } from "@/lib/subscriptions";
 import {
@@ -348,7 +347,7 @@ async function ProductJsonLd({
   product: ProductDetail;
   availability: Map<string, number>;
 }) {
-  const origin = siteUrl();
+  const origin = storeSiteUrl(store.slug);
   const m = t(market.lang);
   const labels = m.options as Record<string, string>;
   const shipping = await getShippingFacts(store.id, market.code);
