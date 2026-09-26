@@ -52,7 +52,12 @@ export const CONTENT_WIDTHS = { narrow: "Narrow", normal: "Normal", wide: "Wide"
 export type ContentWidth = keyof typeof CONTENT_WIDTHS;
 export const HEADER_ALIGNS = { left: "Logo on the left", center: "Logo in the middle" } as const;
 export type HeaderAlign = keyof typeof HEADER_ALIGNS;
-export const HEADER_BACKGROUNDS = { page: "Like the page", surface: "Surface colour", accent: "Accent colour" } as const;
+export const HEADER_BACKGROUNDS = {
+  page: "Like the page",
+  surface: "Surface colour",
+  accent: "Accent colour",
+  inverse: "Inverted (text colour)",
+} as const;
 export type HeaderBackground = keyof typeof HEADER_BACKGROUNDS;
 
 export const CARD_IMAGES = { square: "Square", portrait: "Portrait", landscape: "Landscape" } as const;
@@ -106,7 +111,7 @@ export const themeSettingsSchema = z.object({
 /**
  * The built-in themes. Minimal is the demo store's own look, collected
  * from what the storefront drew before themes; Warm classic is its first
- * variation. Bold modern is the next one planned (D60).
+ * variation, and Bold modern its second (D60).
  */
 export const THEME_TEMPLATES = {
   minimal: {
@@ -169,6 +174,37 @@ export const THEME_TEMPLATES = {
       corners: { cards: "small", fields: "small" },
       layout: { width: "normal", headerAlign: "center", headerBackground: "page" },
       productCards: { image: "portrait", style: "bordered", align: "center" },
+    },
+  },
+  bold: {
+    name: "Bold modern",
+    description: "High contrast: a black header, square corners, a bright orange accent, Archivo headings in spaced capitals and edge-to-edge product pictures.",
+    settings: {
+      mode: "auto",
+      light: {
+        background: "#ffffff",
+        surface: "#f0f0f0",
+        text: "#0a0a0a",
+        muted: "#525252",
+        border: "#0a0a0a",
+        accent: "#ff4f00",
+        accentText: "#0a0a0a",
+      },
+      dark: {
+        background: "#0a0a0a",
+        surface: "#1a1a1a",
+        text: "#f5f5f5",
+        muted: "#a3a3a3",
+        border: "#f5f5f5",
+        accent: "#ff5c1a",
+        accentText: "#0a0a0a",
+      },
+      fonts: { heading: "Archivo", body: "Inter" },
+      headings: { weight: "bold", case: "upper" },
+      buttons: { style: "filled", corners: "square" },
+      corners: { cards: "none", fields: "none" },
+      layout: { width: "wide", headerAlign: "left", headerBackground: "inverse" },
+      productCards: { image: "portrait", style: "plain", align: "left" },
     },
   },
 } as const satisfies Record<string, { name: string; description: string; settings: ThemeSettings }>;

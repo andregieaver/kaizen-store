@@ -2704,6 +2704,6 @@ export const storeThemes = commerce.table(
     uniqueIndex("store_themes_name_idx").on(t.storeId, sql`lower(${t.name})`),
     index("store_themes_created_by_idx").on(t.createdBy),
     check("store_themes_name_length", sql`length(${t.name}) between 1 and 60`),
-    check("store_themes_base", sql`${t.base} in ('minimal', 'warm')`),
+    check("store_themes_base", sql`${t.base} in ('minimal', 'warm', 'bold')`),
   ],
 );

@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."store_themes" DROP CONSTRAINT "store_themes_base";--> statement-breakpoint
+ALTER TABLE "commerce"."store_themes" ADD CONSTRAINT "store_themes_base" CHECK ("commerce"."store_themes"."base" in ('minimal', 'warm', 'bold'));

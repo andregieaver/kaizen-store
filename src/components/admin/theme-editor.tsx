@@ -54,16 +54,23 @@ function Choice<T extends string>({
   options,
   value,
   onChange,
+  hint,
 }: {
   legend: string;
   options: Record<T, string>;
   value: T;
   onChange: (value: T) => void;
+  hint?: string;
 }) {
   const name = useId();
   return (
-    <fieldset className="flex flex-col gap-2">
+    <fieldset className="flex flex-col gap-2" aria-describedby={hint ? `${name}-hint` : undefined}>
       <legend className="float-left mb-2 w-full text-sm font-medium">{legend}</legend>
+      {hint && (
+        <p id={`${name}-hint`} className="-mt-1 text-sm text-muted">
+          {hint}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {(Object.keys(options) as T[]).map((key) => (
           <label
@@ -159,7 +166,9 @@ function Preview({ settings, storeName, mode }: { settings: ThemeSettings; store
         className={`flex items-center gap-3 border-b border-border px-4 py-3 ${
           settings.layout.headerBackground === "accent"
             ? "bg-accent text-accent-foreground"
-            : settings.layout.headerBackground === "surface"
+            : settings.layout.headerBackground === "inverse"
+              ? "bg-foreground text-background"
+              : settings.layout.headerBackground === "surface"
               ? "bg-surface"
               : ""
         } ${settings.layout.headerAlign === "center" ? "justify-center" : ""}`}
@@ -468,7 +477,17 @@ export function ThemeEditor({
           <Section title="Layout">
             <Choice legend="Page width" options={CONTENT_WIDTHS} value={settings.layout.width} onChange={(width) => set({ layout: { ...settings.layout, width } })} />
             <Choice legend="Header" options={HEADER_ALIGNS} value={settings.layout.headerAlign} onChange={(headerAlign) => set({ layout: { ...settings.layout, headerAlign } })} />
-            <Choice legend="Header background" options={HEADER_BACKGROUNDS} value={settings.layout.headerBackground} onChange={(headerBackground) => set({ layout: { ...settings.layout, headerBackground } })} />
+            <Choice
+              legend="Header background"
+              options={HEADER_BACKGROUNDS}
+              value={settings.layout.headerBackground}
+              onChange={(headerBackground) => set({ layout: { ...settings.layout, headerBackground } })}
+              hint={
+                settings.layout.headerBackground === "inverse" || settings.layout.headerBackground === "accent"
+                  ? "Your logo sits on this colour: a dark logo may be hard to see on it. Check the store after saving."
+                  : undefined
+              }
+            />
           </Section>
 
           <Section title="Product cards">

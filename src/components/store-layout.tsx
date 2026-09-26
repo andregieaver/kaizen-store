@@ -126,6 +126,7 @@ const HEADER_BACKGROUND: Record<HeaderBackground, string> = {
   page: "bg-background/95 backdrop-blur",
   surface: "bg-surface",
   accent: "bg-accent text-accent-foreground",
+  inverse: "bg-foreground text-background",
 };
 
 export function StoreHeader({ store, market, notice }: Props & { notice: string | null }) {

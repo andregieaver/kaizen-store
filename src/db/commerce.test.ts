@@ -1278,6 +1278,7 @@ describe("design themes (D60)", () => {
     await expect(save("autumn")).rejects.toThrow(/store_themes_name_idx/);
     await expect(save("")).rejects.toThrow(/store_themes_name_length/);
     await expect(save("Gothic", "gothic")).rejects.toThrow(/store_themes_base/);
+    await save("Street", "bold");
 
     const theme = { base: "warm", savedId: rows[0].id, settings: { mode: "light" } };
     await db.query("update commerce.stores set theme = $1 where id = $2", [JSON.stringify(theme), template]);

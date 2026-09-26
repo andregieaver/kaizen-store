@@ -80,3 +80,33 @@ test("a store's theme settings reach its colours, header, buttons and product ca
     }),
   ).toEqual(["1px", "center", "3 / 4"]);
 });
+
+test("Bold modern draws a black header, spaced capitals and square buttons", async ({ page }) => {
+  const slug = `bold-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${slug}@example.com`}, 'Kari', 'Karis Klær') returning id`;
+    await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Klær', null)`;
+    // Only the template: every setting comes from Bold modern.
+    await sql`update commerce.stores set theme = ${sql.json({ base: "bold" })} where slug = ${slug}`;
+  } finally {
+    await sql.end();
+  }
+
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto(`/s/${slug}/no/p/demo-keramikkopp`);
+  await expect(page.locator("html")).toHaveAttribute("data-heading-case", "upper");
+  expect(await page.locator("header").first().evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(10, 10, 10)");
+  const title = page.getByRole("heading", { level: 1 });
+  expect(await title.evaluate((el) => [getComputedStyle(el).textTransform, getComputedStyle(el).fontWeight])).toEqual([
+    "uppercase",
+    "700",
+  ]);
+  const add = page.getByRole("button", { name: /Legg i handlekurven/ }).first();
+  expect(await add.evaluate((el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).borderTopLeftRadius])).toEqual([
+    "rgb(255, 79, 0)",
+    "0px",
+  ]);
+});

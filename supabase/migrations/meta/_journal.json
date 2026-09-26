@@ -533,6 +533,13 @@
       "when": 1790421587774,
       "tag": "20260926111947_themes_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1790423362923,
+      "tag": "20260926114922_bold_theme",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,19 @@ describe("design themes (D60)", () => {
     expect(minimal.buttons).toEqual({ style: "filled", corners: "pill" });
   });
 
+  it("has Bold modern: a black header, square corners, spaced capitals and a bright accent", () => {
+    const bold = templateSettings("bold");
+    expect(bold.layout).toMatchObject({ headerBackground: "inverse", width: "wide" });
+    expect(bold.buttons.corners).toBe("square");
+    expect(bold.corners).toEqual({ cards: "none", fields: "none" });
+    expect(bold.headings).toEqual({ weight: "bold", case: "upper" });
+    expect(bold.fonts).toEqual({ heading: "Archivo", body: "Inter" });
+    const css = themeCss(bold, "x");
+    expect(css).toContain("--button-radius: 0; --radius-lg: 0; --radius-md: 0; --content-width: 80rem");
+    expect(css).toContain("--heading-weight: 700");
+    expect(themeAttributes(bold)["data-heading-case"]).toBe("upper");
+  });
+
   it("reads a stored theme over its template, and falls back when it is damaged", () => {
     expect(parseStoreTheme(null)).toEqual({ base: "minimal", savedId: null, settings: templateSettings("minimal") });
     // Fonts saved before themes (D59) are kept; the rest comes from Minimal.
