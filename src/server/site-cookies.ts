@@ -1,33 +1,121 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 
 import type { ListedCookie } from "@/components/consent/cookie-policy";
-import { db } from "@/db/client";
+import { db, readDb } from "@/db/client";
 import {
   declaredCookies,
+  OPTIONAL_CATEGORIES,
   toolCategories,
   trackingSchema,
+  type KnownCookie,
   type OptionalCategory,
   type TrackingSettings,
 } from "@/lib/cookie-consent";
+import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 
 import { audit, type Account } from "./auth";
+
+type Row = Record<string, unknown>;
+
+/** Revalidate after a site's scan finishes or its notes change. */
+export const cookiesTag = (storeId: string | null) => `cookies:${storeId ?? "kaizen"}`;
+
+/** A site's latest finished scan and the owner's notes, cached until either changes. */
+async function siteFindings(storeId: string | null): Promise<{ items: ScannedItem[]; notes: CookieNote[] }> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(cookiesTag(storeId));
+  const [scan] = await readDb().execute<Row>(sql`
+    select items from commerce.cookie_scans
+    where store_id is not distinct from ${storeId}::uuid and status = 'done'
+    order by finished_at desc limit 1
+  `);
+  return { items: parseScannedItems(scan?.items), notes: await readNotes(storeId) };
+}
+
+async function readNotes(storeId: string | null): Promise<CookieNote[]> {
+  const rows = await readDb().execute<Row>(sql`
+    select kind, name, domain, category, provider, purpose from commerce.cookie_notes
+    where store_id is not distinct from ${storeId}::uuid
+    order by name
+  `);
+  return rows.flatMap((row) => {
+    const parsed = cookieNoteInput.safeParse(row);
+    return parsed.success ? [parsed.data] : [];
+  });
+}
+
+/** The owner's notes on what scans found, for the admin. */
+export const listCookieNotes = readNotes;
 
 /**
  * What a site stores in the browser (D58), for its cookie page and consent:
  * Kaizen's own cookies for that kind of site and those of the tools it has
- * switched on; the optional categories are what visitors are asked about.
+ * switched on, plus what its latest scan found that Kaizen knows or the
+ * owner has described. The optional categories among them are what
+ * visitors are asked about, so a scan that finds a marketing cookie brings
+ * the banner by itself.
  */
 export async function siteCookies(
   storeId: string | null,
   tracking: TrackingSettings,
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[] }> {
-  void storeId;
-  const cookies = declaredCookies(storeId === null ? "platform" : "store", tracking).map(
-    ({ name, provider, category, days, purpose }): ListedCookie => ({ name, provider, category, days, purpose }),
-  );
-  return { cookies, categories: toolCategories(tracking) };
+  const listed = new Map<string, ListedCookie>();
+  const list = ({ name, provider, category, days, purpose }: KnownCookie) =>
+    listed.has(name) || listed.set(name, { name, provider, category, days, purpose });
+  declaredCookies(storeId === null ? "platform" : "store", tracking).forEach(list);
+
+  const { items, notes } = await siteFindings(storeId);
+  for (const item of reviewFindings(items, notes)) {
+    if (item.note) {
+      const key = `${item.kind}|${item.name}`;
+      if (!listed.has(key)) {
+        listed.set(key, {
+          name: item.name,
+          kind: item.kind,
+          provider: item.note.provider,
+          category: item.note.category,
+          days: item.days,
+          purpose: { en: item.note.purpose },
+        });
+      }
+    } else if (item.known) {
+      list(item.known);
+    }
+  }
+  const cookies = [...listed.values()];
+  const used = new Set<OptionalCategory>([
+    ...toolCategories(tracking),
+    ...cookies.flatMap((cookie) => (cookie.category === "necessary" ? [] : [cookie.category])),
+  ]);
+  return { cookies, categories: OPTIONAL_CATEGORIES.filter((c) => used.has(c)) };
+}
+
+/**
+ * Saves what an owner says about an item a scan found (D58): Kaizen's
+ * with a null store. It goes on the cookie page, and an optional category
+ * brings the banner.
+ */
+export async function saveCookieNote(
+  account: Account,
+  storeId: string | null,
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const parsed = cookieNoteInput.safeParse(input);
+  if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+  const note = parsed.data;
+  await db().execute(sql`
+    insert into commerce.cookie_notes (store_id, kind, name, domain, category, provider, purpose, updated_by)
+    values (${storeId}::uuid, ${note.kind}, ${note.name}, ${note.domain}, ${note.category}, ${note.provider}, ${note.purpose}, ${account.id}::uuid)
+    on conflict (coalesce(store_id, '00000000-0000-0000-0000-000000000000'::uuid), kind, name, domain)
+    do update set category = excluded.category, provider = excluded.provider, purpose = excluded.purpose,
+      updated_by = excluded.updated_by, updated_at = now()
+  `);
+  await audit(account.id, storeId, "cookies.note_saved", { kind: note.kind, name: note.name, domain: note.domain, category: note.category });
+  return { ok: true };
 }
 
 /**

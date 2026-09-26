@@ -27,5 +27,7 @@ export default defineConfig({
     command: `pnpm start --port ${port}`,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
+    // The scheduler's routes answer to this in tests (e2e/cookie-scan.spec.ts).
+    env: { CRON_SECRET: process.env.CRON_SECRET ?? "e2e-cron-secret" },
   },
 });

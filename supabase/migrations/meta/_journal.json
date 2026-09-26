@@ -491,6 +491,20 @@
       "when": 1790380543975,
       "tag": "20260925235543_cookie_consent_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1790416946751,
+      "tag": "20260926100226_cookie_scans",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1790416948387,
+      "tag": "20260926100228_cookie_scans_rules",
+      "breakpoints": true
     }
   ]
 }

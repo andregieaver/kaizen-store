@@ -93,6 +93,11 @@ of running `playwright install`.
   Third-party scripts load only from `ConsentManager` after consent, never
   directly in a layout. Choices are logged in `commerce.consents` (12 months)
   through `/api/consent`; the Cookies page lists what the site sets.
+  `siteCookies()` adds what the latest scan found that Kaizen knows or the
+  owner described (`cookie_notes`), so the banner follows the scan. The scan
+  (`src/lib/cookie-scan.ts`, no database, tested in e2e against a small
+  site) runs from `/api/cron/cookie-scan` via `cookie-scan-runner.ts`, the
+  only module that loads Chromium; keep it out of other routes' imports.
 
 ## Admin
 

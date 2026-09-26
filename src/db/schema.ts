@@ -2560,3 +2560,76 @@ export const consents = commerce.table(
     check("consents_version_length", sql`length(${t.version}) <= 100`),
   ],
 );
+
+/**
+ * Cookie scans (D58): a real browser opens Kaizen's site (null store) or a
+ * store's, first without consent and then with everything allowed, and
+ * records what it finds in the browser. Queued by an owner's Scan now or by
+ * the schedule; at most one queued or running per site.
+ */
+export const cookieScans = commerce.table(
+  "cookie_scans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    /** Who asked for it; null for the weekly schedule. */
+    requestedBy: uuid("requested_by").references(() => accounts.id, { onDelete: "set null" }),
+    /** The site's addresses the browser opened. */
+    pages: jsonb("pages").notNull().default([]),
+    /** What was found: `ScannedItem[]` (`src/lib/cookie-scan.ts`). */
+    items: jsonb("items").notNull().default([]),
+    error: text("error"),
+    createdAt: createdAt(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("cookie_scans_store_created_idx").on(t.storeId, t.createdAt),
+    index("cookie_scans_requested_by_idx").on(t.requestedBy),
+    uniqueIndex("cookie_scans_one_active_idx")
+      .on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`)
+      .where(sql`${t.status} in ('queued', 'running')`),
+    check("cookie_scans_status", sql`${t.status} in ('queued', 'running', 'done', 'failed')`),
+    check("cookie_scans_items_array", sql`jsonb_typeof(${t.items}) = 'array' and jsonb_typeof(${t.pages}) = 'array'`),
+  ],
+);
+
+/**
+ * What an owner says about a cookie a scan found that Kaizen does not know
+ * (D58): its category and purpose, shown on the site's cookie page and
+ * deciding whether visitors are asked about it.
+ */
+export const cookieNotes = commerce.table(
+  "cookie_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `cookie`, `localStorage` or `sessionStorage`. */
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    /** The host that set it, without a leading dot. */
+    domain: text("domain").notNull(),
+    category: text("category").notNull(),
+    provider: text("provider").notNull(),
+    purpose: text("purpose").notNull(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    uniqueIndex("cookie_notes_item_idx").on(
+      sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+      t.kind,
+      t.name,
+      t.domain,
+    ),
+    index("cookie_notes_store_idx").on(t.storeId),
+    index("cookie_notes_updated_by_idx").on(t.updatedBy),
+    check("cookie_notes_kind", sql`${t.kind} in ('cookie', 'localStorage', 'sessionStorage')`),
+    check("cookie_notes_category", sql`${t.category} in ('necessary', 'preferences', 'statistics', 'marketing')`),
+    check(
+      "cookie_notes_lengths",
+      sql`length(${t.name}) between 1 and 200 and length(${t.domain}) between 1 and 253 and length(${t.provider}) between 1 and 100 and length(${t.purpose}) between 1 and 500`,
+    ),
+  ],
+);

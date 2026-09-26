@@ -1209,6 +1209,35 @@ describe("consents (D58)", () => {
   });
 });
 
+describe("cookie scans and notes (D58)", () => {
+  it("allow one waiting or running scan per site, and one note per item a site found", async () => {
+    const storeId = await createStore("scan-store", ["NO"]);
+    await db.query("insert into commerce.cookie_scans (store_id) values ($1), (null)", [storeId]);
+    await expect(db.query("insert into commerce.cookie_scans (store_id) values ($1)", [storeId])).rejects.toThrow(
+      /cookie_scans_one_active_idx/,
+    );
+    await expect(db.query("insert into commerce.cookie_scans (store_id) values (null)")).rejects.toThrow(
+      /cookie_scans_one_active_idx/,
+    );
+    await db.query("update commerce.cookie_scans set status = 'done' where store_id = $1", [storeId]);
+    await db.query("insert into commerce.cookie_scans (store_id) values ($1)", [storeId]);
+    await expect(db.query("insert into commerce.cookie_scans (store_id, status) values ($1, 'lost')", [storeId])).rejects.toThrow(
+      /cookie_scans_status/,
+    );
+    await expect(db.query("insert into commerce.cookie_scans (store_id, status, items) values ($1, 'done', '{}')", [storeId])).rejects.toThrow(
+      /cookie_scans_items_array/,
+    );
+
+    const note = "insert into commerce.cookie_notes (store_id, kind, name, domain, category, provider, purpose) values ($1, $2, '_x', 'example.com', $3, 'X', 'Y')";
+    await db.query(note, [storeId, "cookie", "statistics"]);
+    await db.query(note, [null, "cookie", "statistics"]);
+    await db.query(note, [storeId, "localStorage", "statistics"]);
+    await expect(db.query(note, [storeId, "cookie", "marketing"])).rejects.toThrow(/cookie_notes_item_idx/);
+    await expect(db.query(note, [null, "cookie", "marketing"])).rejects.toThrow(/cookie_notes_item_idx/);
+    await expect(db.query(note, [storeId, "sessionStorage", "tasty"])).rejects.toThrow(/cookie_notes_category/);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

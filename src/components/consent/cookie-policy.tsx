@@ -6,6 +6,8 @@ import { CookieSettingsButton } from "./consent-manager";
 /** A cookie as a site's cookie page lists it (D58). */
 export type ListedCookie = {
   name: string;
+  /** Storage items are listed with the cookies; a missing kind is a cookie. */
+  kind?: "cookie" | "localStorage" | "sessionStorage";
   provider: string;
   category: ConsentCategory;
   /** Days it lasts; null until the browser closes. */
@@ -33,7 +35,8 @@ export function CookiePolicy({
   const shown = CONSENT_CATEGORIES.filter(
     (c) => c === "necessary" || categories.includes(c as OptionalCategory) || cookies.some((k) => k.category === c),
   );
-  const lasts = (days: number | null) => (days === null ? m.untilClosed : m.days(days));
+  const lasts = ({ kind, days }: ListedCookie) =>
+    kind === "localStorage" ? m.untilCleared : days === null ? m.untilClosed : m.days(days);
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-3">
@@ -80,11 +83,16 @@ export function CookiePolicy({
                   </thead>
                   <tbody>
                     {list.map((cookie) => (
-                      <tr key={cookie.name} className="border-b border-border last:border-0 align-top">
-                        <td className="px-4 py-2 font-mono text-xs break-all">{cookie.name}</td>
+                      <tr key={`${cookie.kind ?? "cookie"}|${cookie.name}`} className="border-b border-border last:border-0 align-top">
+                        <td className="px-4 py-2">
+                          <span className="font-mono text-xs break-all">{cookie.name}</span>
+                          {cookie.kind && cookie.kind !== "cookie" && (
+                            <span className="block text-xs text-muted">{m.storageKinds[cookie.kind]}</span>
+                          )}
+                        </td>
                         <td className="px-4 py-2">{cookie.provider}</td>
                         <td className="px-4 py-2">{cookie.purpose[lang] || cookie.purpose.en}</td>
-                        <td className="px-4 py-2 whitespace-nowrap">{lasts(cookie.days)}</td>
+                        <td className="px-4 py-2 whitespace-nowrap">{lasts(cookie)}</td>
                       </tr>
                     ))}
                   </tbody>

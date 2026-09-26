@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
+import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
+import { reviewFindings } from "@/lib/cookie-scan";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listConsents } from "@/server/consents";
+import { latestFindings, listScans } from "@/server/cookie-scans";
 import { getPlatformChrome } from "@/server/platform-navigation";
+import { listCookieNotes } from "@/server/site-cookies";
 
-import { savePlatformTrackingAction } from "./actions";
+import { requestPlatformScanAction, savePlatformCookieNoteAction, savePlatformTrackingAction } from "./actions";
 
 export const metadata: Metadata = { title: "Cookies and tracking" };
 
@@ -14,7 +18,13 @@ export const metadata: Metadata = { title: "Cookies and tracking" };
 export default async function PlatformCookiesPage() {
   await connection();
   await requirePlatformAdmin();
-  const [chrome, consents] = await Promise.all([getPlatformChrome(), listConsents(null)]);
+  const [chrome, consents, scans, lastDone, notes] = await Promise.all([
+    getPlatformChrome(),
+    listConsents(null),
+    listScans(null),
+    latestFindings(null),
+    listCookieNotes(null),
+  ]);
   return (
     <>
       <div>
@@ -25,6 +35,13 @@ export default async function PlatformCookiesPage() {
         </p>
       </div>
       <TrackingForm tracking={chrome.tracking} action={savePlatformTrackingAction} cookiePage="/cookies" />
+      <CookieScanPanel
+        scans={scans}
+        lastDone={lastDone}
+        findings={lastDone ? reviewFindings(lastDone.items, notes) : []}
+        scanAction={requestPlatformScanAction}
+        noteAction={savePlatformCookieNoteAction}
+      />
       <ConsentLog consents={consents} />
     </>
   );

@@ -1,19 +1,28 @@
 import type { Metadata } from "next";
 
+import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
+import { reviewFindings } from "@/lib/cookie-scan";
 import { marketPath } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { listConsents } from "@/server/consents";
+import { latestFindings, listScans } from "@/server/cookie-scans";
+import { listCookieNotes } from "@/server/site-cookies";
 
-import { saveStoreTrackingAction } from "./actions";
+import { requestStoreScanAction, saveStoreCookieNoteAction, saveStoreTrackingAction } from "./actions";
 
 export const metadata: Metadata = { title: "Cookies and tracking" };
 
 /** The store's cookies, tools and consents (D58). */
 export default async function StoreCookiesPage({ params }: PageProps<"/admin/[store]/settings/cookies">) {
-  const { store } = await requireMember((await params).store);
+  const { store, role } = await requireMember((await params).store);
   const market = store.markets[0];
-  const consents = await listConsents(store.id);
+  const [consents, scans, lastDone, notes] = await Promise.all([
+    listConsents(store.id),
+    listScans(store.id),
+    latestFindings(store.id),
+    listCookieNotes(store.id),
+  ]);
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -27,6 +36,13 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
         tracking={store.tracking}
         action={saveStoreTrackingAction.bind(null, store.slug)}
         cookiePage={market ? marketPath(store.slug, market.slug, "/cookies") : "/"}
+      />
+      <CookieScanPanel
+        scans={scans}
+        lastDone={lastDone}
+        findings={lastDone ? reviewFindings(lastDone.items, notes) : []}
+        scanAction={requestStoreScanAction.bind(null, store.slug)}
+        noteAction={role === "owner" ? saveStoreCookieNoteAction.bind(null, store.slug) : null}
       />
       <ConsentLog consents={consents} />
     </div>

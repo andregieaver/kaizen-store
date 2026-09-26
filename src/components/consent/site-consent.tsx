@@ -1,5 +1,6 @@
-import { toolCategories, type OptionalCategory, type TrackingSettings } from "@/lib/cookie-consent";
+import type { OptionalCategory, TrackingSettings } from "@/lib/cookie-consent";
 import { t } from "@/lib/i18n";
+import { siteCookies } from "@/server/site-cookies";
 
 import { ConsentManager, type ConsentTexts } from "./consent-manager";
 
@@ -25,10 +26,11 @@ export function consentTexts(lang: string, locale: string, categories: OptionalC
 
 /**
  * A site's cookie consent (D58): Kaizen's (`storeId` null) or a store's,
- * asking only about the optional categories its tools use. With none, it
- * shows nothing: necessary cookies need no consent.
+ * asking only about the optional categories its tools and its scan's
+ * findings use. With none, it shows nothing: necessary cookies need no
+ * consent.
  */
-export function SiteConsent({
+export async function SiteConsent({
   storeId,
   tracking,
   lang,
@@ -41,7 +43,7 @@ export function SiteConsent({
   locale: string;
   cookiePage: string;
 }) {
-  const categories = toolCategories(tracking);
+  const { categories } = await siteCookies(storeId, tracking);
   if (categories.length === 0) return null;
   return (
     <ConsentManager
