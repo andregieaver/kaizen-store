@@ -8,7 +8,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
@@ -96,7 +96,7 @@ export default async function StorePage({ params }: Props) {
         })}
       />
       <StorePageArticle content={c} place={{ pageId: page.id, owner: store.id, market: market.code }} />
-      <PageEditLink pageId={page.id} store={store.slug} />
+      <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
     </>
   );
 }

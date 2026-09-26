@@ -8,7 +8,7 @@ import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/component
 import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
-import { marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
@@ -112,7 +112,7 @@ export default async function MarketLayout({ children, params }: Props) {
         <Suspense fallback={null}>
           <StoreMenu store={store} market={market} />
         </Suspense>
-        <BackToAdmin storeSlug={store.slug} />
+        <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* Asks about the store's optional tools and code, if it has any, in the market's language (D58, D61). */}
         <Suspense fallback={null}>
           <SiteConsent

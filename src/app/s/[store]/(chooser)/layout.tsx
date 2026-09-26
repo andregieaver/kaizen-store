@@ -7,7 +7,7 @@ import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
-import { marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
@@ -61,7 +61,7 @@ export default async function ChooserLayout({ children, params }: Props) {
         {/* The store's own fonts (D59) and theme (D60), as in its markets. */}
         <StoreThemeStyles store={store} />
         {children}
-        <BackToAdmin storeSlug={store.slug} />
+        <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* The front door asks and loads as the store's markets do (D58, D61), in its first market's language. */}
         {market && (
           <Suspense fallback={null}>

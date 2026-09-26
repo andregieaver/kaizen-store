@@ -114,3 +114,20 @@ test("a store on a domain of its own is served there, and its other addresses le
   await page.goto(`/s/${CUSTOM_STORE}/no`);
   await expect(page).toHaveURL(`${own}/no`);
 });
+
+test("staff who came from the admin get their way back, and the page's editor, on the store's own host", async ({ page }) => {
+  await page.goto(storeUrl("demo", "/no/cart"));
+  await expect(page.getByRole("link", { name: "← Back to admin" })).toHaveCount(0);
+
+  // The admin hands its page over in the link; the store keeps it and takes it out of the address.
+  await page.goto(storeUrl("demo", `/no#kaizen-admin=${encodeURIComponent("/admin/demo/pages")}`));
+  const back = page.getByRole("link", { name: "← Back to admin" });
+  await expect(back).toHaveAttribute("href", "http://localhost:3000/admin/demo/pages");
+  await expect(page).toHaveURL(storeUrl("demo", "/no"));
+  await expect(page.getByRole("link", { name: "Edit page" })).toHaveAttribute(
+    "href",
+    /^http:\/\/localhost:3000\/admin\/demo\/pages\/[0-9a-f-]{36}$/,
+  );
+  await page.goto(storeUrl("demo", "/no/p/demo-keramikkopp"));
+  await expect(back).toBeVisible();
+});

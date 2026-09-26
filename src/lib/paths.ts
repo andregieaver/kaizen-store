@@ -81,6 +81,21 @@ export function storeHref(storeSlug: string, path: string): string {
   return `${storeOrigin(storeSlug) ?? ""}${path}` || "/";
 }
 
+/** Every origin the store answers on in this deployment: its host on the store domain and its own domains (P7, P8). */
+export function storeOrigins(storeSlug: string): string[] {
+  const domain = storeDomain();
+  if (!domain) return [];
+  return [`${storeSlug}.${domain.split(":")[0]}`, ...(storeHosts()[storeSlug]?.hosts ?? [])].map(hostOrigin);
+}
+
+/**
+ * Where the admin is, for links to it from a store's pages: nothing while
+ * stores are on Kaizen's host, Kaizen's own address once they have theirs.
+ */
+export function adminOrigin(storeSlug: string): string {
+  return storeOrigin(storeSlug) ? siteUrl() : "";
+}
+
 /**
  * The origin a store's paths are under, for full addresses (emails, Stripe,
  * search engines): the store's host, or Kaizen's until stores have them.

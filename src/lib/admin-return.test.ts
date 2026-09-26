@@ -1,6 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { adminReturnPath, forgetAdminPages, hasSessionCookie, isAdminPath, rememberAdminPage } from "./admin-return";
+import {
+  adminReturnPath,
+  forgetAdminPages,
+  handedOffPath,
+  handoffHash,
+  hasSessionCookie,
+  isAdminPath,
+  rememberAdminPage,
+  takeHandoff,
+} from "./admin-return";
 
 const signedIn = "theme=dark; sb-abcd-auth-token.0=base64-xyz";
 
@@ -53,3 +62,22 @@ describe("the way back to the admin", () => {
     expect(adminReturnPath("kopp", signedIn)).toBeNull();
   });
 });
+
+describe("the way back from a store on its own domain (P7)", () => {
+  it("keeps the store's own admin page the admin hands over, for 12 hours", () => {
+    fakeStorage();
+    const now = Date.UTC(2026, 8, 26, 12);
+    expect(takeHandoff("kopp", "#main", now)).toBe(false);
+    expect(takeHandoff("kopp", handoffHash("/admin/kopp/products?status=draft"), now)).toBe(true);
+    expect(handedOffPath("kopp", now + 3600_000)).toBe("/admin/kopp/products?status=draft");
+    expect(handedOffPath("kopp", now + 13 * 3600_000)).toBeNull();
+    expect(handedOffPath("lampe", now)).toBeNull();
+
+    // Another store's admin, another site or junk: taken out of the address, never kept.
+    expect(takeHandoff("lampe", handoffHash("/admin/kopp"), now)).toBe(true);
+    expect(takeHandoff("lampe", handoffHash("https://evil.test/admin/lampe"), now)).toBe(true);
+    expect(takeHandoff("lampe", "#kaizen-admin=%E0%A4%A", now)).toBe(true);
+    expect(handedOffPath("lampe", now)).toBeNull();
+  });
+});
+

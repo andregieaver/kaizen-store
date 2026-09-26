@@ -5,7 +5,7 @@ import { AdminTrail, SignOutForm } from "@/components/admin/admin-trail";
 import { StoreSidebar, StoreTabs, type NavGroup, type NavItem } from "@/components/admin/store-admin-nav";
 import { StoreMain } from "@/components/admin/store-main";
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
-import { storeBase, storeHref } from "@/lib/paths";
+import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 import { countPendingRequests } from "@/server/platform";
@@ -79,7 +79,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
 
   return (
     <>
-      <AdminTrail storeSlug={store.slug} />
+      <AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />
       <HidingHeader>
         <header className="border-b border-border bg-background">
           <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4">

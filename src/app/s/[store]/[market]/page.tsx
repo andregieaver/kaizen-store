@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/product-card";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
-import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { storeHomeJsonLd } from "@/lib/structured-data";
 import { listProducts } from "@/server/catalog";
 import { listPublishedPages } from "@/server/pages";
@@ -81,7 +81,7 @@ export default async function MarketHome({ params }: Props) {
           content={localizePage(frontPage.content, market.locale)}
           place={{ pageId: frontPage.id, owner: store.id, market: market.code }}
         />
-        <PageEditLink pageId={frontPage.id} store={store.slug} />
+        <PageEditLink pageId={frontPage.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
       </>
     );
   }
