@@ -34,6 +34,8 @@ const NO_STORE = "00000000-0000-0000-0000-000000000000";
 
 /** How often each open site is scanned without being asked. */
 const SCAN_EVERY = "7 days";
+/** How long after a failed scan the schedule tries the site again. */
+const RETRY_AFTER = "1 hour";
 
 export type ScanStatus = "queued" | "running" | "done" | "failed";
 
@@ -66,7 +68,8 @@ export async function requestScan(account: Account, storeId: string | null): Pro
 
 /**
  * Takes the next scan to run: one an owner asked for, else the open site
- * whose last scan is oldest, once that is a week old. Scans left running by
+ * whose last finished scan is oldest, once that is a week old (a failed
+ * one is tried again after an hour). Scans left running by
  * a stopped function count as failed after ten minutes.
  */
 export async function claimScan(): Promise<{ id: string; storeId: string | null } | null> {
@@ -93,13 +96,17 @@ export async function claimScan(): Promise<{ id: string; storeId: string | null 
             and exists (select 1 from commerce.markets m where m.store_id = s.id and m.active)
         ), last as (
           select sites.store_id,
-            (select max(c.created_at) from commerce.cookie_scans c where c.store_id is not distinct from sites.store_id) as at
+            (select max(c.finished_at) from commerce.cookie_scans c
+              where c.store_id is not distinct from sites.store_id and c.status = 'done') as done_at,
+            (select max(c.created_at) from commerce.cookie_scans c where c.store_id is not distinct from sites.store_id) as tried_at
           from sites
         )
         insert into commerce.cookie_scans (store_id, status, started_at)
         select store_id, 'running', now() from last
-        where at is null or at < now() - ${SCAN_EVERY}::interval
-        order by at nulls first
+        where (done_at is null or done_at < now() - ${SCAN_EVERY}::interval)
+          -- A scan that failed is tried again after an hour, not every minute.
+          and (tried_at is null or tried_at < now() - ${RETRY_AFTER}::interval)
+        order by done_at nulls first, tried_at nulls first
         limit 1
         on conflict (coalesce(store_id, ${NO_STORE}::uuid)) where status in ('queued', 'running') do nothing
         returning id, store_id

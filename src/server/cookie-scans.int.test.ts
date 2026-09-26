@@ -71,6 +71,19 @@ describe("cookie scans (D58)", () => {
     const [scan] = await listScans(storeId, 1);
     expect(scan).toMatchObject({ status: "failed", error: "The scan stopped before it finished.", requestedBy: "Owner" });
     expect(await requestScan(owner, storeId)).toBe(true);
+
+    // A site whose scan failed is tried again after an hour, not at once.
+    await db().execute(sql`update commerce.cookie_scans set status = 'failed', finished_at = now() where store_id is null`);
+    expect((await claimScan())?.storeId).toBe(storeId);
+    expect(await claimScan()).toBeNull();
+    await db().execute(sql`update commerce.cookie_scans set created_at = now() - interval '2 hours' where store_id is null`);
+    const retried = await claimScan();
+    expect(retried?.storeId).toBeNull();
+    await db().execute(sql`update commerce.cookie_scans set status = 'failed' where id = ${retried!.id}::uuid`);
+    await db().execute(sql`
+      update commerce.cookie_scans set status = 'running', started_at = now()
+      where store_id = ${storeId}::uuid and status = 'queued'
+    `);
   });
 
   it("opens a store's markets, with a consent cookie allowing what the store asks about", async () => {
