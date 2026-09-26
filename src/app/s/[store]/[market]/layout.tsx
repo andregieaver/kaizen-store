@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
+import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase } from "@/lib/paths";
@@ -103,6 +104,16 @@ export default async function MarketLayout({ children, params }: Props) {
           <StoreMenu store={store} market={market} />
         </Suspense>
         <BackToAdmin storeSlug={store.slug} />
+        {/* Asks about the store's optional tools, if it has any, in the market's language (D58). */}
+        <Suspense fallback={null}>
+          <SiteConsent
+            storeId={store.id}
+            tracking={store.tracking}
+            lang={market.lang}
+            locale={market.locale}
+            cookiePage={marketPath(store.slug, market.slug, "/cookies")}
+          />
+        </Suspense>
       </body>
     </html>
   );

@@ -51,6 +51,7 @@ async function createStore(slug: string): Promise<Store> {
     seo: parseStoreSeo({}),
     navigation: EMPTY_NAVIGATION,
     frontPageId: null,
+    tracking: {},
   };
 }
 

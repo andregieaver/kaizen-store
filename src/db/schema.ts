@@ -274,6 +274,8 @@ export const stores = commerce.table(
      * migration: deleting the page sets only this column back to null.
      */
     frontPageId: uuid("front_page_id"),
+    /** The store's analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
+    tracking: jsonb("tracking").notNull().default({}),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -352,6 +354,8 @@ export const platformSettings = commerce.table(
     navigation: jsonb("navigation").notNull().default({}),
     /** Who runs Kaizen, shown in the footer of its pages (D42): `BusinessDetails` in lib/navigation. */
     business: jsonb("business").notNull().default({}),
+    /** Kaizen's own analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
+    tracking: jsonb("tracking").notNull().default({}),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -2399,12 +2403,12 @@ export const pages = commerce.table(
     // The platform's own routes at the root of the site (category and tag listings: D50).
     check(
       "pages_slug_not_reserved",
-      sql`${t.storeId} is not null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'blog', 'category', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
+      sql`${t.storeId} is not null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'blog', 'category', 'cookies', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
     ),
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'download', 'order', 'p', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'download', 'order', 'p', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
     ),
     // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
     check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),
@@ -2529,5 +2533,30 @@ export const productTerms = commerce.table(
       columns: [t.storeId, t.contentType, t.termId],
       foreignColumns: [terms.storeId, terms.contentType, terms.id],
     }).onDelete("cascade"),
+  ],
+);
+
+/**
+ * A visitor's cookie choices (D58), kept as proof of consent for 12 months:
+ * which optional categories they allowed, on Kaizen's site (`store_id` null)
+ * or a store's, against which list of categories. `visitor` is the random
+ * id in their consent cookie; nothing else identifies them.
+ */
+export const consents = commerce.table(
+  "consents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    visitor: uuid("visitor").notNull(),
+    /** `{ preferences, statistics, marketing }`, each true or false. */
+    choices: jsonb("choices").notNull(),
+    /** The optional categories the site used when asked, e.g. `statistics+marketing`. */
+    version: text("version").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("consents_store_created_idx").on(t.storeId, t.createdAt),
+    index("consents_visitor_idx").on(t.visitor),
+    check("consents_version_length", sql`length(${t.version}) <= 100`),
   ],
 );

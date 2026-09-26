@@ -166,6 +166,10 @@ export function PlatformFooter({ chrome }: Props) {
               </a>
             )}
           </address>
+          {/* What the site stores in the browser, and the choice about it (D58). */}
+          <Link href="/cookies" className="w-fit text-muted underline">
+            {m.cookies}
+          </Link>
         </div>
         {chrome.navigation.footer.length > 0 && (
           <nav aria-label={m.footerMenu} className="sm:col-span-2">

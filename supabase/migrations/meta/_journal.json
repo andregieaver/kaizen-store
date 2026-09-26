@@ -477,6 +477,20 @@
       "when": 1790375659588,
       "tag": "20260925223419_articles_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790380530335,
+      "tag": "20260925235530_cookie_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1790380543975,
+      "tag": "20260925235543_cookie_consent_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { SiteConsent } from "@/components/consent/site-consent";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
@@ -48,6 +49,10 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
         </Suspense>
         <Suspense fallback={null}>
           <PlatformMenu chrome={chrome} />
+        </Suspense>
+        {/* Asks about Kaizen's optional tools, if it has any (D58). */}
+        <Suspense fallback={null}>
+          <SiteConsent storeId={null} tracking={chrome.tracking} lang="en" locale="en-GB" cookiePage="/cookies" />
         </Suspense>
       </body>
     </html>

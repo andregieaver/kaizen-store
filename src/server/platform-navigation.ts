@@ -16,6 +16,7 @@ import {
   termNames,
   type TermNames,
 } from "@/lib/navigation";
+import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
 
 import { audit, type Account } from "./auth";
 import { listPublishedPages } from "./pages";
@@ -37,14 +38,20 @@ export type PlatformChrome = {
   terms: TermNames;
   /** Published articles by id, and blog category names by address (D57). */
   blog: { articles: Map<string, MenuPage>; categories: ReadonlyMap<string, string> };
+  /** Kaizen's analytics and marketing tools, loaded only with consent (D58). */
+  tracking: TrackingSettings;
 };
 
-async function loadSettings(): Promise<{ navigation: PlatformNavigation; business: BusinessDetails }> {
+async function loadSettings(): Promise<{ navigation: PlatformNavigation; business: BusinessDetails; tracking: TrackingSettings }> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLATFORM_NAVIGATION_TAG);
-  const [row] = await readDb().execute<Row>(sql`select navigation, business from commerce.platform_settings`);
-  return { navigation: parsePlatformNavigation(row?.navigation), business: parseBusinessDetails(row?.business) };
+  const [row] = await readDb().execute<Row>(sql`select navigation, business, tracking from commerce.platform_settings`);
+  return {
+    navigation: parsePlatformNavigation(row?.navigation),
+    business: parseBusinessDetails(row?.business),
+    tracking: parseTracking(row?.tracking),
+  };
 }
 
 /** Kaizen's logo, menus and business details, and the pages its menus can link to. */

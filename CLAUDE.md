@@ -85,6 +85,14 @@ of running `playwright install`.
   once checkout starts. Mutations are server actions that call `refresh()`.
 - Payment credentials and payment-method switches are store settings edited in
   the admin, never environment variables (decision D15).
+- Cookie consent (D58, `src/lib/cookie-consent.ts`): every cookie or storage
+  item the site sets is listed in `KNOWN_COOKIES` with its category and
+  purpose, so a new one goes there too. Only necessary ones need no consent;
+  `<SiteConsent>` shows the banner only when the site uses an optional
+  category (a tracking tool in `stores.tracking` / `platform_settings.tracking`).
+  Third-party scripts load only from `ConsentManager` after consent, never
+  directly in a layout. Choices are logged in `commerce.consents` (12 months)
+  through `/api/consent`; the Cookies page lists what the site sets.
 
 ## Admin
 

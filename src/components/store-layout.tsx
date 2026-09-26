@@ -260,6 +260,10 @@ export function StoreFooter({ store, market }: Props) {
               </a>
             )}
           </address>
+          {/* What the store stores in the browser, and the choice about it (D58). */}
+          <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
+            {m.cookies}
+          </Link>
         </div>
         {d.footer.length > 0 && (
           <nav aria-label={m.footerMenu}>

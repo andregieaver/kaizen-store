@@ -18,6 +18,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
     { href: "/admin/platform/articles", label: "Blog" },
     { href: "/admin/platform/navigation", label: "Header and footer" },
     { href: "/admin/platform/seo", label: "Search" },
+    { href: "/admin/platform/cookies", label: "Cookies" },
     { href: "/admin/platform/emails", label: "Emails" },
   ];
   return (

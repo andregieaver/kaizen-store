@@ -1188,6 +1188,27 @@ describe("categories and tags (D50)", () => {
   });
 });
 
+describe("consents (D58)", () => {
+  it("keep a visitor's choices per site, and keep the cookie page's address free", async () => {
+    const storeId = await createStore("consent-store", ["NO"]);
+    const visitor = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
+    await db.query(
+      "insert into commerce.consents (store_id, visitor, choices, version) values ($1, $2, $3, 'marketing'), (null, $2, $3, 'statistics')",
+      [storeId, visitor, JSON.stringify({ preferences: false, statistics: false, marketing: true })],
+    );
+    await expect(
+      db.query("insert into commerce.consents (visitor, choices, version) values ($1, '{}', $2)", [visitor, "x".repeat(101)]),
+    ).rejects.toThrow(/consents_version_length/);
+    expect((await db.query("select version from commerce.consents where visitor = $1 order by version", [visitor])).rows).toEqual([
+      { version: "marketing" },
+      { version: "statistics" },
+    ]);
+    await expect(
+      db.query("insert into commerce.pages (slug, draft) values ('cookies', '{}')"),
+    ).rejects.toThrow(/pages_slug_not_reserved/);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(
