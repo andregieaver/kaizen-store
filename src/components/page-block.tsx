@@ -96,7 +96,11 @@ function Heading({ block }: { block: HeadingBlock }) {
 export type ButtonLook = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor">;
 
 /** The classes and colours of a link that looks like a button. */
-export function buttonLook(look: ButtonLook | undefined, fullWidth = false): { className: string; style: CSSProperties } {
+export function buttonLook(
+  look: ButtonLook | undefined,
+  fullWidth = false,
+  weight: FontWeight = "medium",
+): { className: string; style: CSSProperties } {
   const variant = look?.variant ?? "filled";
   const size = look?.size ?? "md";
   const colors =
@@ -106,7 +110,7 @@ export function buttonLook(look: ButtonLook | undefined, fullWidth = false): { c
         ? "border-2 border-current text-foreground hover:bg-foreground/5"
         : "text-foreground underline underline-offset-4 hover:no-underline";
   return {
-    className: `relative z-[2] inline-flex items-center justify-center text-center font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
+    className: `relative z-[2] inline-flex items-center justify-center text-center ${WEIGHTS[weight]} transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
       BUTTON_SIZES[size]
     } ${variant === "text" ? "" : `${BUTTON_PADDING[size]} ${BUTTON_SHAPES[look?.shape ?? "rounded"]}`} ${fullWidth ? "w-full" : ""} ${colors}`,
     style:
@@ -122,7 +126,7 @@ export function buttonLook(look: ButtonLook | undefined, fullWidth = false): { c
  * a filled button. It stays usable above a column's own link.
  */
 function Button({ block }: { block: ButtonBlock }) {
-  const look = buttonLook(block, block.fullWidth);
+  const look = buttonLook(block, block.fullWidth, block.weight);
   return (
     <a
       href={block.href}

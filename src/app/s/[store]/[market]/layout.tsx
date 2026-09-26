@@ -4,10 +4,13 @@ import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { FontLinks } from "@/components/font-links";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { siteFontFamilies } from "@/lib/fonts";
+import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
 
@@ -62,7 +65,12 @@ export default async function MarketLayout({ children, params }: Props) {
   return (
     <html lang={market.lang} className="h-full antialiased">
       {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
-      <body className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0">
+      <body
+        className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
+        style={siteFontStyle(store.fonts)}
+      >
+        {/* The store's own fonts, from Kaizen's copies (D59). */}
+        <FontLinks families={siteFontFamilies(store.fonts)} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"

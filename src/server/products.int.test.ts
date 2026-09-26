@@ -52,6 +52,7 @@ async function createStore(slug: string): Promise<Store> {
     navigation: EMPTY_NAVIGATION,
     frontPageId: null,
     tracking: {},
+    fonts: {},
   };
 }
 

@@ -7,6 +7,7 @@ import { readDb } from "@/db/client";
 import { toMarket, type Market } from "@/lib/markets";
 import { isStoreSlug } from "@/lib/paths";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
+import { parseSiteFonts, type SiteFonts } from "@/lib/fonts";
 import { parseNavigation, type StoreNavigation } from "@/lib/navigation";
 import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
 
@@ -35,6 +36,8 @@ export type Store = {
   frontPageId: string | null;
   /** Analytics and marketing tools, loaded only with the shopper's consent (D58). */
   tracking: TrackingSettings;
+  /** Heading and body fonts from Google Fonts, self-hosted (D59). */
+  fonts: SiteFonts;
 };
 
 export type StoreDetails = {
@@ -71,7 +74,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking, s.fonts,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -124,6 +127,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     navigation: parseNavigation(row.navigation),
     frontPageId: text(row.front_page_id),
     tracking: parseTracking(row.tracking),
+    fonts: parseSiteFonts(row.fonts),
   };
 }
 

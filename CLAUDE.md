@@ -233,6 +233,16 @@ of running `playwright install`.
   a store's in `blog/blog-listing.tsx`) are content grids of articles. New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
+- Fonts (D59, `src/lib/fonts.ts`, `src/server/fonts.ts`): Google Fonts,
+  always self-hosted. A family is installed (`installFont()`: downloaded once
+  into `commerce.fonts`/`font_files`) before anything uses it, from the
+  picker (`FontPicker`, through the owner's `installFont` action) and again
+  when a page or a site's fonts are saved; sites load `/api/fonts/css/{slug}`
+  (`<FontLinks>`), never Google. A site's fonts are `stores.fonts` /
+  `platform_settings.fonts` (heading and body; `siteFontStyle()` on the
+  layout's body); a block's is `font` (a grid also `headingFont`), drawn as
+  the family's `kf-{slug}` class by `blockBox()`. A new text block kind takes
+  `font` too and goes in `blockFonts()`.
 - Categories and tags (D50, `src/lib/taxonomy.ts`, `src/server/taxonomy.ts`):
   `commerce.terms` per owner (`store_id`, null for Kaizen) and kind of
   content (`page`, `article`, `product`); categories nest, tags are flat.

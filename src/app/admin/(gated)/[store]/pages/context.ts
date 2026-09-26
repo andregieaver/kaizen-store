@@ -7,10 +7,12 @@ import { reservedPageSlugs, type PageType } from "@/lib/page-content";
 import { pageLanguages } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
 import type { Store } from "@/server/stores";
 
 import { uploadImageAction } from "../products/actions";
+import { installStoreFontAction } from "../settings/fonts/actions";
 import {
   createStorePageTermAction,
   createStorePartAction,
@@ -53,6 +55,7 @@ export function storePageContext(store: Store, type: PageType = "page", author =
     upload: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,
     // A store's grids show its own products.
     gridStores: [],
+    fonts: { site: store.fonts, style: siteFontStyle(store.fonts) },
     actions: {
       save: typed(saveStorePageAction),
       unpublish: typed(unpublishStorePageAction),
@@ -63,6 +66,7 @@ export function storePageContext(store: Store, type: PageType = "page", author =
       deletePart: bind(deleteStorePartAction),
       gridPreview: bind(storeGridPreviewAction),
       gridTerms: bind(storeGridTermsAction),
+      installFont: bind(installStoreFontAction),
     },
   };
 }

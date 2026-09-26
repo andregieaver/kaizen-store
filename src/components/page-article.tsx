@@ -1,8 +1,9 @@
-import { blockHasContent, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockHasContent, type PageContent, type PageRow } from "@/lib/page-content";
 
 import type { GridPlace } from "@/server/content-grid";
 
 import { ContentGridSection } from "./content-grid-section";
+import { FontLinks } from "./font-links";
 import { PageBlockView } from "./page-block";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 
@@ -63,6 +64,7 @@ function Row({ row, place }: { row: PageRow; place: GridPlace }) {
                     const b = blockBox(block, "site");
                     return (
                       <div key={block.id} id={b.id} className={b.className || undefined} style={b.style}>
+                        <FontLinks families={blockFonts(block)} />
                         {block.type === "contentGrid" ? (
                           <ContentGridSection block={block} place={place} />
                         ) : (

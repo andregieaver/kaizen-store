@@ -1238,6 +1238,33 @@ describe("cookie scans and notes (D58)", () => {
   });
 });
 
+describe("fonts (D59)", () => {
+  it("keep each family and file once, and give new stores the template's fonts", async () => {
+    const file = "0123456789abcdef0123456789abcdef.woff2";
+    await db.query("insert into commerce.font_files (name, data) values ($1, '\\x774f4632')", [file]);
+    await expect(db.query("insert into commerce.font_files (name, data) values ('../x.woff2', '\\x00')")).rejects.toThrow(/font_files_name/);
+    await expect(db.query("insert into commerce.font_files (name, data) values ($1, '')", [file.replace("0", "f")])).rejects.toThrow(
+      /font_files_size/,
+    );
+    await db.query("insert into commerce.fonts (family, slug, category, css, bytes) values ('Lora', 'lora', 'serif', '', 4)");
+    await expect(
+      db.query("insert into commerce.fonts (family, slug, category, css, bytes) values ('Lora 2', 'Lora 2', 'serif', '', 4)"),
+    ).rejects.toThrow(/fonts_slug/);
+    await expect(
+      db.query("insert into commerce.fonts (family, slug, category, css, bytes) values ('Comic', 'comic', 'comic', '', 4)"),
+    ).rejects.toThrow(/fonts_category/);
+
+    const template = await createStore("fonts-template", ["NO"]);
+    await db.query(`update commerce.stores set fonts = '{"heading": "Lora", "body": "Inter"}' where id = $1`, [template]);
+    const owner = await createAccount("fonts-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'fonts-copy', 'Copy', $2) as id", [template, owner]);
+    expect((await one<{ fonts: unknown }>("select fonts from commerce.stores where id = $1", [copy])).fonts).toEqual({
+      heading: "Lora",
+      body: "Inter",
+    });
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

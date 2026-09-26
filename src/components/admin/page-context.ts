@@ -1,4 +1,7 @@
+import type { CSSProperties } from "react";
+
 import type { GridData } from "@/lib/content-grid";
+import type { SiteFonts } from "@/lib/fonts";
 import type { PageType } from "@/lib/page-content";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { Term, TermKind } from "@/lib/taxonomy";
@@ -40,6 +43,8 @@ export type PageOwnerContext = {
   upload: Upload | null;
   /** Stores whose products a content grid can show; empty on a store's pages, which show their own. */
   gridStores: GridStore[];
+  /** The owner's own fonts, and the style that sets them, for the canvas (D59). */
+  fonts: { site: SiteFonts; style: CSSProperties | undefined };
   actions: {
     save: (id: string | null, payload: string, publish: boolean) => Promise<PageSaveState>;
     unpublish: (id: string) => Promise<PageSaveState>;
@@ -51,5 +56,7 @@ export type PageOwnerContext = {
     gridPreview: (block: unknown, pageId: string | null) => Promise<GridData | { problem: string }>;
     /** A store's product categories and tags, for a grid of its products. */
     gridTerms: (storeId: string) => Promise<Term[]>;
+    /** Copies a Google Fonts family to Kaizen before a block uses it (D59). */
+    installFont: (family: string) => Promise<{ ok: true } | { ok: false; problem: string }>;
   };
 };

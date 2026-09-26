@@ -505,6 +505,20 @@
       "when": 1790416948387,
       "tag": "20260926100228_cookie_scans_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1790418789321,
+      "tag": "20260926103309_fonts",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1790418791141,
+      "tag": "20260926103311_fonts_rules",
+      "breakpoints": true
     }
   ]
 }

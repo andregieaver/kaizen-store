@@ -17,6 +17,7 @@ import {
   type TermNames,
 } from "@/lib/navigation";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
+import { parseSiteFonts, type SiteFonts } from "@/lib/fonts";
 
 import { audit, type Account } from "./auth";
 import { listPublishedPages } from "./pages";
@@ -40,18 +41,31 @@ export type PlatformChrome = {
   blog: { articles: Map<string, MenuPage>; categories: ReadonlyMap<string, string> };
   /** Kaizen's analytics and marketing tools, loaded only with consent (D58). */
   tracking: TrackingSettings;
+  /** Kaizen's heading and body fonts (D59). */
+  fonts: SiteFonts;
 };
 
-async function loadSettings(): Promise<{ navigation: PlatformNavigation; business: BusinessDetails; tracking: TrackingSettings }> {
+async function loadSettings(): Promise<{
+  navigation: PlatformNavigation;
+  business: BusinessDetails;
+  tracking: TrackingSettings;
+  fonts: SiteFonts;
+}> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLATFORM_NAVIGATION_TAG);
-  const [row] = await readDb().execute<Row>(sql`select navigation, business, tracking from commerce.platform_settings`);
+  const [row] = await readDb().execute<Row>(sql`select navigation, business, tracking, fonts from commerce.platform_settings`);
   return {
     navigation: parsePlatformNavigation(row?.navigation),
     business: parseBusinessDetails(row?.business),
     tracking: parseTracking(row?.tracking),
+    fonts: parseSiteFonts(row?.fonts),
   };
+}
+
+/** Kaizen's own heading and body fonts (D59). */
+export async function getPlatformFonts(): Promise<SiteFonts> {
+  return (await loadSettings()).fonts;
 }
 
 /** Kaizen's logo, menus and business details, and the pages its menus can link to. */

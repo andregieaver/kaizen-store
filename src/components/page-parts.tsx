@@ -13,6 +13,7 @@ import {
   type TextAlignments,
   type VerticalAlign,
 } from "@/lib/page-content";
+import { fontClass } from "@/lib/fonts";
 import { summarize } from "@/lib/seo";
 
 /**
@@ -120,6 +121,8 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
     id: mode === "site" ? block.htmlId : undefined,
     className: cx(
       "align" in block && alignClasses(block.align),
+      // Its own font (D59) for all its text; the stylesheet comes with `FontLinks`.
+      "font" in block && block.font && fontClass(block.font),
       block.type !== "button" && Boolean(block.radius) && "overflow-hidden",
       mode === "site" && block.className,
     ),

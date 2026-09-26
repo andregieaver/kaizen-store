@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 
 import type { GridData } from "@/lib/content-grid";
+import { fontClass } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
 import { frameStyle, type ContentGridBlock } from "@/lib/page-content";
 
@@ -62,7 +63,11 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
             </a>
           )}
           {block.show.heading && (
-            <Heading className={`leading-snug font-semibold text-balance ${HEADING_SIZES[block.headingSize ?? "sm"]}`}>
+            <Heading
+              className={`leading-snug font-semibold text-balance ${HEADING_SIZES[block.headingSize ?? "sm"]} ${
+                block.headingFont ? fontClass(block.headingFont) : ""
+              }`}
+            >
               <a href={item.href} className="relative z-[2] hover:underline focus-visible:outline-2">
                 {item.title}
               </a>

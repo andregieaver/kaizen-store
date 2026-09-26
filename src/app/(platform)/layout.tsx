@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { SiteConsent } from "@/components/consent/site-consent";
+import { FontLinks } from "@/components/font-links";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { t } from "@/lib/i18n";
+import { siteFontFamilies } from "@/lib/fonts";
 import { siteUrl } from "@/lib/site";
+import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { getPlatformSeo, PLATFORM_DEFAULTS, verificationTags } from "@/server/seo";
 
@@ -33,7 +36,12 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
-      <body className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0">
+      <body
+        className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
+        style={siteFontStyle(chrome.fonts)}
+      >
+        {/* Kaizen's own fonts, from its copies (D59). */}
+        <FontLinks families={siteFontFamilies(chrome.fonts)} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"

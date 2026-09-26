@@ -22,6 +22,7 @@ import {
   boolean,
   char,
   check,
+  customType,
   date,
   foreignKey,
   index,
@@ -276,6 +277,8 @@ export const stores = commerce.table(
     frontPageId: uuid("front_page_id"),
     /** The store's analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
+    /** Heading and body fonts from Google Fonts, self-hosted (D59). */
+    fonts: jsonb("fonts").notNull().default({}),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -356,6 +359,8 @@ export const platformSettings = commerce.table(
     business: jsonb("business").notNull().default({}),
     /** Kaizen's own analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
+    /** Heading and body fonts from Google Fonts, self-hosted (D59). */
+    fonts: jsonb("fonts").notNull().default({}),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -2631,5 +2636,45 @@ export const cookieNotes = commerce.table(
       "cookie_notes_lengths",
       sql`length(${t.name}) between 1 and 200 and length(${t.domain}) between 1 and 253 and length(${t.provider}) between 1 and 100 and length(${t.purpose}) between 1 and 500`,
     ),
+  ],
+);
+
+/** Raw bytes, for font files (D59). */
+const bytea = customType<{ data: Buffer }>({ dataType: () => "bytea" });
+
+/**
+ * Google Fonts families installed on Kaizen (D59): downloaded once from
+ * Google, when a site first uses one, and served from Kaizen's own address
+ * so visitors' browsers never contact Google. Shared by every site.
+ */
+export const fonts = commerce.table(
+  "fonts",
+  {
+    family: text("family").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    category: text("category").notNull(),
+    /** The `@font-face` rules, pointing at `font_files`, and the family's class. */
+    css: text("css").notNull(),
+    /** The size of its files together. */
+    bytes: integer("bytes").notNull(),
+    installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("fonts_slug", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
+    check("fonts_category", sql`${t.category} in ('sans-serif', 'serif', 'display', 'handwriting', 'monospace')`),
+  ],
+);
+
+/** A font file, named by a hash of its bytes so families that share one store it once. */
+export const fontFiles = commerce.table(
+  "font_files",
+  {
+    name: text("name").primaryKey(),
+    data: bytea("data").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check("font_files_name", sql`${t.name} ~ '^[0-9a-f]{32}\\.woff2$'`),
+    check("font_files_size", sql`octet_length(${t.data}) between 1 and 2000000`),
   ],
 );

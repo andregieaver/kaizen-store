@@ -55,7 +55,31 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db().execute(sql`delete from commerce.pages where slug like ${`%-${run}`}`);
+  await db().execute(sql`delete from commerce.fonts where family = 'Lato' and css = '.kf-lato {}'`);
   await closeDb();
+});
+
+describe("fonts per component (D59)", () => {
+  it("saves a page whose blocks use installed fonts, and refuses families outside Google Fonts", async () => {
+    // Installed as `installFont` leaves it, so nothing is fetched from Google here.
+    await db().execute(sql`
+      insert into commerce.fonts (family, slug, category, css, bytes) values ('Lato', 'lato', 'sans-serif', '.kf-lato {}', 1)
+      on conflict do nothing
+    `);
+    const block = (font: string) => ({
+      id: "block-1",
+      type: "heading",
+      text: "Hello",
+      level: 2,
+      font,
+    });
+    const slug = `fonts-${run}`;
+    await saved(await pages.savePage(admin, null, null, content(slug, { rows: oneRow([block("Lato")]) }), { publish: false }));
+    expect(await pages.savePage(admin, null, null, content(`${slug}-2`, { rows: oneRow([block("Comic Sans MS")]) }), { publish: false })).toEqual({
+      ok: false,
+      problems: ["Comic Sans MS is not in Google Fonts."],
+    });
+  });
 });
 
 describe("saving and publishing", () => {

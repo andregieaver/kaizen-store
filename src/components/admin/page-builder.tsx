@@ -31,11 +31,13 @@ import {
   useId,
   useState,
   useTransition,
+  type CSSProperties,
   type PointerEventHandler,
   type ReactNode,
 } from "react";
 
 import { ContentGridView } from "@/components/content-grid";
+import { FontLinks } from "@/components/font-links";
 
 import { PageBlockView, type ButtonLook } from "@/components/page-block";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
@@ -66,6 +68,7 @@ import {
   RADIUS_MAX,
   SHADOWS,
   SPACING_MAX,
+  blockFonts,
   blockHasContent,
   blockText,
   classNameProblem,
@@ -142,10 +145,12 @@ import {
 } from "@/lib/page-rows";
 
 import type { GridData } from "@/lib/content-grid";
+import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 
+import { FontPicker, type InstallFont } from "./font-picker";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import type { PageOwnerContext } from "./page-context";
 import { Modal } from "./modal";
@@ -305,6 +310,9 @@ type Actions = {
   blocksFull: boolean;
 };
 
+/** The site's own fonts for the canvas, and installing a family a block chooses (D59). */
+export type BuilderFonts = { site: SiteFonts; style: CSSProperties | undefined; install: InstallFont };
+
 export function PageBuilder({
   rows,
   onRows,
@@ -312,12 +320,14 @@ export function PageBuilder({
   upload,
   aside,
   grid,
+  fonts,
   translate = null,
   library = [],
 }: {
   rows: PageRow[];
   onRows: Rows;
   grid: GridContext;
+  fonts: BuilderFonts;
   /** Kaizen's saved parts, for a store's pages: a starter library to copy from, not to change (D56). */
   library?: SavedPart[];
   /** Set while the page's texts are translated (D55). */
@@ -555,7 +565,11 @@ export function PageBuilder({
         />
         )}
 
-        <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
+        {/* The canvas draws with the site's own fonts, as the site does (D59). */}
+        <div style={fonts.style} className="min-w-0">
+          <FontLinks families={siteFontFamilies(fonts.site)} />
+          <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
+        </div>
 
         {/* On phones the title and settings come first. */}
         <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">{aside}</div>
@@ -589,6 +603,7 @@ export function PageBuilder({
         onUse={(part) => placeSaved(part)}
         upload={upload}
         grid={grid}
+        fonts={fonts}
         translate={translate}
       />
     </DndContext>
@@ -1425,6 +1440,7 @@ function BlockItem({
       )}
       <Line at={line} />
       <div className={blockBox(block, "canvas").className || undefined} style={blockBox(block, "canvas").style}>
+        <FontLinks families={blockFonts(block)} />
         {block.type === "contentGrid" ? (
           <GridPreview block={block} grid={actions.grid} />
         ) : blockHasContent(block) ? (
@@ -1461,9 +1477,11 @@ function Dialogs({
   onUse,
   upload,
   grid,
+  fonts,
   translate,
 }: {
   grid: GridContext;
+  fonts: BuilderFonts;
   translate: Translating | null;
   dialog: Dialog | null;
   rows: PageRow[];
@@ -1516,6 +1534,10 @@ function Dialogs({
       onChange={(patch) => onRows((current) => patchPart(current, target, patch))}
     />
   );
+  /** A block's own font (D59), over the site's; `fallback` says what none means. */
+  const fontField = (label: string, value: string | undefined, fallback: string, onChange: (font: string | undefined) => void) => (
+    <FontPicker label={label} value={value} defaultLabel={fallback} install={fonts.install} onChange={onChange} />
+  );
   /** Margin and padding of the row, column or block a dialog is for (D47). */
   const spacingFields = (target: Styled) => (
     <SpacingFields
@@ -1556,6 +1578,9 @@ function Dialogs({
             }
             style={
               <>
+                {fontField("Font", block.font, "The site's body font", (font) =>
+                  onRows((current) => patchBlock<RichTextBlock>(current, block.id, { font })),
+                )}
                 <TextAlignFields
                   value={block.align}
                   onChange={(align) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, { align }))}
@@ -1599,6 +1624,9 @@ function Dialogs({
                   value={block.shape}
                   onChange={(shape) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { shape }))}
                 />
+                {fontField("Caption font", block.font, "The site's body font", (font) =>
+                  onRows((current) => patchBlock<ImageBlock>(current, block.id, { font })),
+                )}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -1634,6 +1662,9 @@ function Dialogs({
             }
             style={
               <>
+                {fontField("Font", block.font, "The site's heading font", (font) =>
+                  onRows((current) => patchBlock<HeadingBlock>(current, block.id, { font })),
+                )}
                 <HeadingStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<HeadingBlock>(current, block.id, patch))}
@@ -1669,6 +1700,9 @@ function Dialogs({
             }
             style={
               <>
+                {fontField("Font", block.font, "The site's body font", (font) =>
+                  onRows((current) => patchBlock<ButtonBlock>(current, block.id, { font })),
+                )}
                 <ButtonStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
@@ -1708,6 +1742,15 @@ function Dialogs({
             }
             style={
               <>
+                {fontField("Font of the tiles", block.font, "The site's body font", (font) =>
+                  onRows((current) => patchBlock<ContentGridBlock>(current, block.id, { font })),
+                )}
+                {fontField(
+                  "Font of the tiles' headings",
+                  block.headingFont,
+                  block.font ? "The tiles' font" : "The site's heading font",
+                  (headingFont) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, { headingFont })),
+                )}
                 <GridStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
@@ -2972,6 +3015,12 @@ function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: 
   return (
     <div className="flex flex-col gap-4">
       <ButtonLookFields look={block} onChange={onChange} />
+      <Choices
+        legend="Weight"
+        options={(Object.keys(FONT_WEIGHTS) as FontWeight[]).map((weight) => ({ value: weight, label: FONT_WEIGHTS[weight] }))}
+        value={block.weight ?? "medium"}
+        onChange={(weight) => onChange({ weight: weight === "medium" ? undefined : weight })}
+      />
       <Check
         label="Full width"
         hint="As wide as its column."

@@ -6,6 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, readDb } from "@/db/client";
 import {
   pageInput,
+  pageFonts,
   pageSlugProblem,
   parsePageContent,
   reservedPageSlugs,
@@ -17,6 +18,7 @@ import {
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
 
 import { audit, type Account } from "./auth";
+import { findFont, installFonts } from "./fonts";
 import { scopedTermIds } from "./taxonomy";
 
 /**
@@ -184,6 +186,12 @@ export async function savePage(
   if (slugProblem) return { ok: false, problems: [slugProblem] };
   const gridProblem = ownerGridProblem(owner, parsed.data.rows);
   if (gridProblem) return { ok: false, problems: [gridProblem] };
+  // Blocks' own fonts (D59) come from Google Fonts and must be on Kaizen before the page shows them.
+  const families = pageFonts(parsed.data);
+  const unknown = families.filter((family) => !findFont(family));
+  if (unknown.length > 0) return { ok: false, problems: unknown.map((family) => `${family} is not in Google Fonts.`) };
+  const installed = await installFonts(families);
+  if (!installed.ok) return { ok: false, problems: [installed.problem] };
   // Only the owner's page (or article) categories and tags; one deleted meanwhile is left out.
   const scope = { storeId: owner, contentType: type } as const;
   // Texts in the owner's other languages (D55); Kaizen's pages are in English only.

@@ -33,6 +33,17 @@ body {
   color: var(--foreground);
 }
 
+/*
+ * A site's heading font (D59), set on its body as --site-heading-font.
+ * Without one, headings keep their parent's font; a block's own font
+ * (a `kf-…` class from its stylesheet) wins over both.
+ */
+:where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--site-heading-font, inherit);
+  /* A weight the font lacks shows as its nearest real one, not thickened. */
+  font-synthesis-weight: none;
+}
+
 /* A product page's add-to-cart bar takes the place of the phone's bottom bar (D30). */
 body:has([data-product-bar]) [data-default-bar] {
   display: none;

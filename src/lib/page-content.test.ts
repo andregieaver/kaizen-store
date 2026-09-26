@@ -4,6 +4,7 @@ import {
   RESERVED_PAGE_SLUGS,
   RESERVED_STORE_PAGE_SLUGS,
   reservedPageSlugs,
+  blockFonts,
   blockHasContent,
   frameStyle,
   spacingStyle,
@@ -11,6 +12,7 @@ import {
   isLinkAddress,
   newPageContent,
   pageExcerpt,
+  pageFonts,
   pageInput,
   pageSlugFromTitle,
   pageSlugProblem,
@@ -429,5 +431,39 @@ describe("a store's reserved addresses (D53)", () => {
     const routes = entries.filter((e) => e.isDirectory() && !e.name.startsWith("[") && !e.name.startsWith("(")).map((e) => e.name);
     expect(routes.length).toBeGreaterThan(5);
     for (const route of routes) expect(RESERVED_STORE_PAGE_SLUGS, route).toContain(route);
+  });
+});
+
+describe("fonts per component (D59)", () => {
+  const page = (blocks: unknown[]) => ({
+    ...newPageContent(),
+    title: "Fonts",
+    slug: "fonts",
+    rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks }] }],
+  });
+
+  it("keeps each text component's font and a button's weight, dropping empty ones", () => {
+    const blocks = [
+      { id: "t", type: "richText", doc: doc(p("Hi")), font: "Lora" },
+      { id: "h", type: "heading", text: "Prices", level: 2, font: "Playfair Display" },
+      { id: "b", type: "button", label: "Start", href: "/sign-up", font: "Inter", weight: "bold" },
+      { id: "i", type: "image", image: null, caption: "", font: "" },
+      { ...newBlock("contentGrid", () => "g"), font: "Inter", headingFont: "Lora" },
+    ];
+    const parsed = pageInput.parse(page(blocks));
+    const [text, heading, button, image, grid] = parsed.rows[0].columns[0].blocks;
+    expect(text).toMatchObject({ font: "Lora" });
+    expect(heading).toMatchObject({ font: "Playfair Display" });
+    expect(button).toMatchObject({ font: "Inter", weight: "bold" });
+    expect(JSON.parse(JSON.stringify(image))).not.toHaveProperty("font");
+    expect(grid).toMatchObject({ font: "Inter", headingFont: "Lora" });
+    expect(parsed.rows[0].columns[0].blocks.flatMap(blockFonts)).toEqual(["Lora", "Playfair Display", "Inter", "Inter", "Lora"]);
+    expect(pageFonts(parsed)).toEqual(["Lora", "Playfair Display", "Inter"]);
+  });
+
+  it("refuses what is not a family name", () => {
+    const parsed = pageInput.safeParse(page([{ id: "t", type: "richText", doc: doc(p("Hi")), font: 'Lora"; } body { color: red' }]));
+    expect(parsed.success).toBe(false);
+    expect(parsed.error?.issues.map((i) => i.message)).toContain("Choose a font from the list.");
   });
 });

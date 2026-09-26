@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { fontFamily } from "./fonts";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { termIdsSchema } from "./taxonomy";
@@ -325,11 +326,19 @@ export const IMAGE_SHAPES = {
 } as const;
 export type ImageShape = keyof typeof IMAGE_SHAPES;
 
-export type RichTextBlock = PartBase & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
+/**
+ * A Google Fonts family a block's text uses (D59), over the site's own;
+ * self-hosted, so it must be installed (`installFont`) before it shows.
+ */
+export type BlockFont = { font?: string };
+
+export type RichTextBlock = PartBase & BlockFont & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
 /** A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. */
 export type ImageBlock = PartBase & {
   id: string;
   type: "image";
+  /** The caption's font. */
+  font?: string;
   image: { url: string; width: number; height: number; alt: string } | null;
   caption: string;
   shape?: ImageShape;
@@ -346,7 +355,7 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
 export const HEADING_MAX = 300;
 
 /** A heading (D49): one line of text at a level, with its look. */
-export type HeadingBlock = PartBase & {
+export type HeadingBlock = PartBase & BlockFont & {
   id: string;
   type: "heading";
   text: string;
@@ -370,10 +379,12 @@ export const BUTTON_LABEL_MAX = 100;
  * A button (D49): a link that looks like a button. Shown once it has both
  * its text and its address; the defaults are filled, medium and rounded.
  */
-export type ButtonBlock = PartBase & {
+export type ButtonBlock = PartBase & BlockFont & {
   id: string;
   type: "button";
   label: string;
+  /** Medium unless chosen. */
+  weight?: FontWeight;
   href: string;
   newTab?: boolean;
   variant?: ButtonVariant;
@@ -426,6 +437,10 @@ export type GridTile = { background?: Color; padding?: number; border?: Border; 
 export type ContentGridBlock = PartBase & {
   id: string;
   type: "contentGrid";
+  /** The tiles' text: excerpt, price and button (D59). */
+  font?: string;
+  /** The tiles' headings, over `font`. */
+  headingFont?: string;
   source: GridSource;
   categories: string[];
   tags: string[];
@@ -605,6 +620,18 @@ export function repeatedHtmlId(rows: PageRow[]): string | null {
   return null;
 }
 
+/** The Google Fonts families a block uses (D59). */
+export function blockFonts(block: PageBlock): string[] {
+  const fonts = [
+    "font" in block ? block.font : undefined,
+    block.type === "contentGrid" ? block.headingFont : undefined,
+  ];
+  return fonts.filter((font): font is string => Boolean(font));
+}
+
+/** Every family a page's blocks use, once each. */
+export const pageFonts = (content: Pick<PageContent, "rows">) => [...new Set(pageBlocks(content).flatMap(blockFonts))];
+
 /** Every block on the page, row by row and column by column. */
 export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
   return content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks));
@@ -774,6 +801,9 @@ const background = z
   ])
   .optional();
 
+/** A block's own font (D59): a Google Fonts family, or none for the site's. */
+const blockFont = optionalText(fontFamily);
+
 const textAlign = z.enum(["left", "center", "right"]).optional();
 const textAlignments = z.object({ mobile: textAlign, tablet: textAlign, desktop: textAlign }).optional();
 
@@ -787,6 +817,7 @@ const richTextBlock = z.object({
     return z.NEVER;
   }),
   align: textAlignments,
+  font: blockFont,
   ...partBase,
 });
 
@@ -803,6 +834,7 @@ const imageBlock = z.object({
     .nullable(),
   caption: z.string().trim().max(ALT_MAX, `Keep a caption under ${ALT_MAX} characters.`).default(""),
   shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
+  font: blockFont,
   ...partBase,
 });
 
@@ -815,6 +847,7 @@ const headingBlock = z.object({
   weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
   align: textAlignments,
   textColor: color.optional(),
+  font: blockFont,
   ...partBase,
 });
 
@@ -834,6 +867,8 @@ const buttonBlock = z.object({
   align: textAlignments,
   fill: color.optional(),
   textColor: color.optional(),
+  weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
+  font: blockFont,
   ...partBase,
 });
 
@@ -895,6 +930,8 @@ const contentGridBlock = z.object({
     })
     .optional(),
   gap: z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space between tiles at ${GRID_GAP_MAX} pixels or less.`),
+  font: blockFont,
+  headingFont: blockFont,
   ...partBase,
 });
 
