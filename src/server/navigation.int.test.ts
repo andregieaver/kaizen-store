@@ -95,7 +95,11 @@ describe("a store's header and footer (D30)", () => {
     const logo = { url: "/demo/logo.svg", width: 120, height: 32 };
     const logoDark = { url: "https://example.no/logo-light.png", width: 240, height: 64 };
     expect(await saveNavigation(member, { logo, logoDark, header: [], footer: [] })).toEqual({ ok: true });
-    expect(await stored()).toMatchObject({ logo, logoDark });
+    expect(await stored()).toMatchObject({ logo, logoDark, favicon: null });
+    // And an icon (D62), in its two sizes.
+    const favicon = { url: "https://example.no/icon.png", smallUrl: "https://example.no/icon-480.png" };
+    expect(await saveNavigation(member, { logo, logoDark, favicon, header: [], footer: [] })).toEqual({ ok: true });
+    expect((await stored()).favicon).toEqual(favicon);
   });
 
   it("refuses links to missing products, web links without text, and unsafe addresses", async () => {

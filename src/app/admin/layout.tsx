@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 
+import { siteIcons } from "@/lib/site-icons";
+import { getPlatformFavicon } from "@/server/platform-navigation";
+
 import "../globals.css";
 
-export const metadata: Metadata = {
-  title: { default: "Kaizen admin", template: "%s · Kaizen admin" },
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { default: "Kaizen admin", template: "%s · Kaizen admin" },
+    robots: { index: false, follow: false },
+    // Kaizen's icon (D62).
+    icons: siteIcons(await getPlatformFavicon()),
+  };
+}
 
 export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
   return (

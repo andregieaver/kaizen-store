@@ -2,7 +2,7 @@
 
 import { useId, useState, useTransition } from "react";
 
-import { shrinkImage } from "@/lib/image-resize";
+import { shrinkImage, squareIcon } from "@/lib/image-resize";
 import {
   LABEL_MAX,
   MENU_LIMITS,
@@ -10,12 +10,19 @@ import {
   type AnyMenuItem,
   type AnyMenuLink,
   type BusinessDetails,
+  type Favicon,
   type Logo,
   type MenuName,
 } from "@/lib/navigation";
 
-type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
-type Navigation = { logo: Logo | null; logoDark: Logo | null; header: AnyMenuItem[]; footer: AnyMenuItem[] };
+type Upload = (data: FormData) => Promise<{ ok: true; url: string; thumbnailUrl?: string } | { ok: false; problem: string }>;
+type Navigation = {
+  logo: Logo | null;
+  logoDark: Logo | null;
+  favicon: Favicon | null;
+  header: AnyMenuItem[];
+  footer: AnyMenuItem[];
+};
 type Save = (
   input: Navigation & { business?: BusinessDetails },
 ) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
@@ -159,6 +166,7 @@ export function NavigationEditor({
 }) {
   const [logo, setLogo] = useState<Logo | null>(initial.logo);
   const [logoDark, setLogoDark] = useState<Logo | null>(initial.logoDark);
+  const [favicon, setFavicon] = useState<Favicon | null>(initial.favicon);
   const [details, setDetails] = useState<BusinessDetails | undefined>(business);
   const [menus, setMenus] = useState<Record<MenuName, Row[]>>({
     header: initial.header.map(keyed),
@@ -180,6 +188,7 @@ export function NavigationEditor({
       const outcome = await save({
         logo,
         logoDark,
+        favicon,
         header: strip(menus.header),
         footer: strip(menus.footer),
         ...(details && { business: details }),
@@ -209,6 +218,15 @@ export function NavigationEditor({
         dark
         onChange={(next) => {
           setLogoDark(next);
+          setDirty(true);
+          setResult(null);
+        }}
+      />
+      <FaviconField
+        favicon={favicon}
+        upload={upload}
+        onChange={(next) => {
+          setFavicon(next);
           setDirty(true);
           setResult(null);
         }}
@@ -279,6 +297,103 @@ export function NavigationEditor({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The site's icon (D62): any picture, made square in the browser as a 512 and
+ * a 64 pixel PNG, shown as it will look in a browser tab.
+ */
+function FaviconField({
+  favicon,
+  upload,
+  onChange,
+}: {
+  favicon: Favicon | null;
+  upload: Upload | null;
+  onChange: (favicon: Favicon | null) => void;
+}) {
+  const id = useId();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+
+  const choose = async (file: File | undefined) => {
+    if (!file || !upload) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      const [big, small] = await Promise.all([squareIcon(file, 512), squareIcon(file, 64)]);
+      const data = new FormData();
+      data.set("image", new File([big], "icon.png", { type: "image/png" }));
+      data.set("thumbnail", new File([small], "icon-64.png", { type: "image/png" }));
+      const outcome = await upload(data);
+      if (outcome.ok) onChange({ url: outcome.url, smallUrl: outcome.thumbnailUrl ?? outcome.url });
+      else setProblem(outcome.problem);
+    } catch {
+      setProblem(`${file.name} could not be read as a picture. Use a PNG, JPEG, WebP or SVG.`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby={`${id}-heading`} className={card}>
+      <div>
+        <h2 id={`${id}-heading`} className="font-medium">
+          Icon (favicon)
+        </h2>
+        <p className="text-sm text-muted">
+          Shown in browser tabs and bookmarks, and on phones&apos; home screens. A square picture of at least 512 pixels
+          works best: a simple mark rather than the whole logo, as it is shown as small as 16 pixels. Without one,
+          Kaizen&apos;s icon is shown.
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        {/* As in a browser tab, at the sizes it is shown. */}
+        <div className="flex min-w-56 items-center gap-2 rounded-t-lg border border-b-0 border-border bg-surface px-3 py-2 text-sm">
+          {favicon ? (
+            // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded icon
+            <img src={favicon.smallUrl} alt="" width={16} height={16} className="size-4" />
+          ) : (
+            <span aria-hidden className="size-4 rounded-sm bg-border" />
+          )}
+          <span className="truncate text-muted">Your site</span>
+        </div>
+        {favicon && (
+          // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded icon
+          <img src={favicon.url} alt="Your icon" width={64} height={64} className="size-16 rounded-xl border border-border" />
+        )}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {upload ? (
+            <label className="cursor-pointer rounded-md border border-border px-3 py-2 focus-within:outline-2">
+              {busy ? "Uploading …" : favicon ? "Replace icon" : "Upload icon"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                className="sr-only"
+                disabled={busy}
+                onChange={(event) => {
+                  void choose(event.target.files?.[0]);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+          ) : (
+            <p className="text-muted">Uploads are not set up on this server.</p>
+          )}
+          {favicon && (
+            <button type="button" onClick={() => onChange(null)} className="rounded-md px-3 py-2 underline">
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+      {problem && (
+        <p role="alert" className="text-sm text-red-700">
+          {problem}
+        </p>
+      )}
+    </section>
   );
 }
 

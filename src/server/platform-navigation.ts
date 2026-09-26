@@ -11,6 +11,7 @@ import {
   parsePlatformNavigation,
   platformNavigationSchema,
   type BusinessDetails,
+  type Favicon,
   type MenuPage,
   type PlatformNavigation,
   termNames,
@@ -61,6 +62,11 @@ async function loadSettings(): Promise<{
     tracking: parseTracking(row?.tracking),
     fonts: parseSiteFonts(row?.fonts),
   };
+}
+
+/** Kaizen's own icon (D62), or none for the default. */
+export async function getPlatformFavicon(): Promise<Favicon | null> {
+  return (await loadSettings()).navigation.favicon;
 }
 
 /** Kaizen's own heading and body fonts (D59). */
@@ -131,6 +137,7 @@ export async function savePlatformNavigation(account: Account, input: unknown): 
   const navigation: PlatformNavigation = {
     logo: parsed.data.logo,
     logoDark: parsed.data.logoDark,
+    favicon: parsed.data.favicon,
     header: parsed.data.header.map(clean),
     footer: parsed.data.footer.map(clean),
   };
@@ -145,6 +152,7 @@ export async function savePlatformNavigation(account: Account, input: unknown): 
   await audit(account.id, null, "platform.navigation_updated", {
     logo: navigation.logo !== null,
     logoDark: navigation.logoDark !== null,
+    favicon: navigation.favicon !== null,
     header: navigation.header.length,
     footer: navigation.footer.length,
   });

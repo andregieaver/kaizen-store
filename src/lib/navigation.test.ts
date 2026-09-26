@@ -61,10 +61,17 @@ describe("addresses and stored values", () => {
 
   it("reads menus saved before the logo for dark backgrounds as having none (D60)", () => {
     const logo = { url: "/demo/logo.svg", width: 120, height: 32 };
-    expect(parseNavigation({ logo, header: [], footer: [] })).toEqual({ logo, logoDark: null, header: [], footer: [] });
+    expect(parseNavigation({ logo, header: [], footer: [] })).toEqual({ logo, logoDark: null, favicon: null, header: [], footer: [] });
     const logoDark = { ...logo, url: "/demo/logo-light.svg" };
     expect(parseNavigation({ logo, logoDark, header: [], footer: [] }).logoDark).toEqual(logoDark);
     expect(navigationSchema.safeParse({ logo, logoDark: { ...logoDark, url: "javascript:alert(1)" }, header: [], footer: [] }).success).toBe(false);
+  });
+
+  it("reads menus saved before icons as having none, and takes an icon's two sizes (D62)", () => {
+    expect(parseNavigation({ logo: null, header: [], footer: [] }).favicon).toBeNull();
+    const favicon = { url: "https://cdn.example/icon.png", smallUrl: "https://cdn.example/icon-480.png" };
+    expect(parseNavigation({ logo: null, favicon, header: [], footer: [] }).favicon).toEqual(favicon);
+    expect(navigationSchema.safeParse({ logo: null, favicon: { ...favicon, smallUrl: "javascript:alert(1)" }, header: [], footer: [] }).success).toBe(false);
   });
 });
 

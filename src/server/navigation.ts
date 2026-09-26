@@ -87,6 +87,7 @@ export async function saveNavigation({ account, store }: Membership, input: unkn
   const navigation: StoreNavigation = {
     logo: parsed.data.logo,
     logoDark: parsed.data.logoDark,
+    favicon: parsed.data.favicon,
     header: parsed.data.header.map(clean),
     footer: parsed.data.footer.map(clean),
   };
@@ -98,6 +99,7 @@ export async function saveNavigation({ account, store }: Membership, input: unkn
   await audit(account.id, store.id, "store.navigation_updated", {
     logo: navigation.logo !== null,
     logoDark: navigation.logoDark !== null,
+    favicon: navigation.favicon !== null,
     header: navigation.header.length,
     footer: navigation.footer.length,
   });

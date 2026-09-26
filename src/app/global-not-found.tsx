@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { KAIZEN_ICON } from "@/lib/site-icons";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "404 · Kaizen",
+  icons: { icon: KAIZEN_ICON },
 };
 
 export default function GlobalNotFound() {

@@ -83,7 +83,9 @@ describe("stores on their own hosts (P7)", () => {
     expect(store("/api/consent")).toEqual({});
     expect(store("/api/fonts/css/lora")).toEqual({});
     expect(store("/demo/logo.svg")).toEqual({});
-    expect(store("/favicon.ico")).toEqual({});
+    expect(store("/kaizen/favicon.ico")).toEqual({});
+    // A store's icon is its own (D62).
+    expect(store("/favicon.ico")).toEqual({ rewrite: "/s/demo/favicon.ico" });
     // A path that only starts like a shared one is the store's.
     expect(store("/apis")).toEqual({ rewrite: "/s/demo/apis" });
   });

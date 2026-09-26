@@ -7,14 +7,15 @@ import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from 
 import { t } from "@/lib/i18n";
 import { siteFontFamilies } from "@/lib/fonts";
 import { siteUrl } from "@/lib/site";
+import { siteIcons } from "@/lib/site-icons";
 import { siteFontStyle } from "@/server/fonts";
-import { getPlatformChrome } from "@/server/platform-navigation";
+import { getPlatformChrome, getPlatformFavicon } from "@/server/platform-navigation";
 import { getPlatformSeo, PLATFORM_DEFAULTS, verificationTags } from "@/server/seo";
 
 import "../globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const seo = await getPlatformSeo();
+  const [seo, favicon] = await Promise.all([getPlatformSeo(), getPlatformFavicon()]);
   const title = seo.title.en || PLATFORM_DEFAULTS.title;
   const description = seo.description.en || PLATFORM_DEFAULTS.description;
   const image = seo.image
@@ -27,6 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: { type: "website", siteName: title, locale: "en_GB", title, description, images: [image] },
     twitter: { card: "summary_large_image", title, description, images: [image] },
     verification: verificationTags(seo),
+    icons: siteIcons(favicon),
   };
 }
 

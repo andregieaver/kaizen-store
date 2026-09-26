@@ -276,6 +276,10 @@ of running `playwright install`.
   (`src/components/admin/terms.tsx`) manage and choose them; changes
   `updateTag(termsTag(scope))`. Menus link to them by address (D52), to
   `/s/{store}/{market}/category|tag/{slug}` and Kaizen's `/category|tag/{slug}`.
+- Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
+  in the browser by `squareIcon()`), linked by `siteIcons()` in every root
+  layout's metadata; `/favicon.ico` redirects to the site's icon, and
+  Kaizen's default is `public/kaizen/favicon.ico`.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
   store's `NavigationEditor` with platform link kinds (`PlatformMenuLink`: a
   page by id, home, sign-up, sign-in, a web address) and business details;

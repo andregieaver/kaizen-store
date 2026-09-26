@@ -22,8 +22,12 @@ export type HostRewrite = { source: string; destination: string; has: Match[] };
 
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Served from the platform on every host: Next.js's files, the API, and `public` (its only folder is `demo`). */
-const SHARED = "_next/|api/|demo/|favicon\\.ico$";
+/**
+ * Served from the platform on every host: Next.js's files, the API, and
+ * `public` (its folders `demo` and `kaizen`, with Kaizen's own icon). A
+ * store's `/favicon.ico` is its own (D62).
+ */
+const SHARED = "_next/|api/|demo/|kaizen/";
 
 export function storeHostRoutes(
   domain: string | null,

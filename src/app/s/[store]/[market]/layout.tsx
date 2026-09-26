@@ -9,6 +9,7 @@ import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
+import { siteIcons } from "@/lib/site-icons";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
@@ -52,6 +53,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [storeShareImage(store, market.locale)],
     }),
     verification: verificationTags(store.seo),
+    // The store's icon (D62), or Kaizen's.
+    icons: siteIcons(store.navigation.favicon),
   };
 }
 
