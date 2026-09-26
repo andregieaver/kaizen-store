@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { t } from "@/lib/i18n";
 import { passwordProblem } from "@/lib/password";
 import { marketPath } from "@/lib/paths";
+import { chooseBusinessBuyer } from "@/server/b2b";
 import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
 import {
@@ -121,6 +123,17 @@ export async function saveDetailsAction(
   const found = await signedIn(storeSlug, marketSlug);
   if (!found) return { ok: false, message: null };
   const field = (name: string, max = 200) => String(form.get(name) ?? "").trim().slice(0, max);
+  // The company they buy for (B2B), in stores that sell to businesses: both or neither.
+  let company: { name: string; number: string } | undefined;
+  if (form.has("organisationNumber")) {
+    const name = field("companyName", COMPANY_NAME_MAX);
+    const typed = field("organisationNumber", 40);
+    const number = typed ? organisationNumber(found.shop.market.code, typed) : "";
+    const texts = t(found.shop.market.lang);
+    if (number === null) return { ok: false, message: texts.problemCompanyNumber };
+    if (Boolean(name) !== Boolean(number)) return { ok: false, message: texts.problemCompany };
+    company = { name, number };
+  }
   await updateCustomerDetails(found.shop.store.id, found.customer.id, {
     name: field("name"),
     phone: field("phone", 40),
@@ -132,7 +145,10 @@ export async function saveDetailsAction(
       city: field("city", 100),
       country: found.shop.market.code,
     },
+    company,
   });
+  // Saving a company makes them a business buyer where the store sells to both.
+  if (company?.number && found.shop.store.audience === "both") await chooseBusinessBuyer(found.shop.store.id);
   refresh();
   return { ok: true, message: found.m.saved };
 }

@@ -186,6 +186,11 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
             save: a.save,
             saving: a.saving,
           }}
+          company={
+            store.audience === "consumers"
+              ? undefined
+              : { name: customer.companyName, number: customer.organisationNumber, labels: m.company }
+          }
         />
       </section>
 

@@ -5,7 +5,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { connection } from "next/server";
 
 import { db, readDb } from "@/db/client";
-import { priceView, type PriceView } from "@/lib/pricing";
+import { parseProductAudience, type ProductAudience } from "@/lib/b2b";
+import { priceVat, priceView, type PriceView } from "@/lib/pricing";
 import type { Delivery } from "@/lib/product-input";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
 
@@ -24,6 +25,8 @@ export type ProductSummary = {
   price: PriceView;
   /** True when variants differ in price, so the price shown is a minimum. */
   priceVaries: boolean;
+  /** Who it is for (B2B); always `all` unless the store sells to both. */
+  audience: ProductAudience;
 };
 
 export type EconomicOperator = {
@@ -75,6 +78,8 @@ export type ProductDetail = {
   plans: SellingPlan[];
   /** Sold only through its purchase options. */
   subscriptionOnly: boolean;
+  /** Who it is for (B2B); always `all` unless the store sells to both. */
+  audience: ProductAudience;
 };
 
 type Row = Record<string, unknown>;
@@ -84,6 +89,10 @@ const num = (value: unknown): number => Number(value);
 const numOrNull = (value: unknown): number | null =>
   value === null || value === undefined ? null : Number(value);
 const str = (value: unknown): string => (value === null ? "" : String(value));
+
+/** Who a product is for (B2B): only in stores selling to both does it matter. */
+const productAudience = (row: Row): ProductAudience =>
+  row.store_audience === "both" ? parseProductAudience(row.audience) : "all";
 
 /** Active products with a price in the market, cheapest variant first. */
 export async function listProducts(
@@ -108,8 +117,13 @@ export async function listProducts(
       pr.prior_30d,
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
-      ) end as subscriber_discount
+      ) end as subscriber_discount,
+      p.audience,
+      s.audience as store_audience,
+      c.standard_vat_rate as vat_rate
     from commerce.products p
+    join commerce.stores s on s.id = p.store_id
+    left join commerce.countries c on c.code = ${marketCode}
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -137,6 +151,7 @@ export async function listProducts(
   return rows.map((row) => {
     // Sold only by subscription: the best subscriber's price, as "from".
     const discount = numOrNull(row.subscriber_discount);
+    const vat = priceVat(row.store_audience, row.vat_rate);
     return {
       id: str(row.id),
       handle: str(row.handle),
@@ -144,9 +159,10 @@ export async function listProducts(
       image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
       price:
         discount === null
-          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d))
-          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null),
+          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d), vat)
+          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null, vat),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
+      audience: productAudience(row),
     };
   });
 }
@@ -165,6 +181,7 @@ export async function getProduct(
   const [product] = await readDb().execute<Row>(sql`
     select
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only,
+      p.audience, s.audience as store_audience, c.standard_vat_rate as vat_rate,
       coalesce(tl.title, tf.title) as title,
       coalesce(tl.description, tf.description, '') as description,
       coalesce(tl.safety_information, tf.safety_information, '') as safety_information,
@@ -174,6 +191,8 @@ export async function getProduct(
       mf.name as mf_name, mf.postal_address as mf_postal, mf.electronic_address as mf_electronic,
       rp.name as rp_name, rp.postal_address as rp_postal, rp.electronic_address as rp_electronic
     from commerce.products p
+    join commerce.stores s on s.id = p.store_id
+    left join commerce.countries c on c.code = ${marketCode}
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -213,6 +232,7 @@ export async function getProduct(
     `),
   ]);
   if (variants.length === 0) return null;
+  const vat = priceVat(product.store_audience, product.vat_rate);
 
   const operator = (prefix: "mf" | "rp"): EconomicOperator | null =>
     product[`${prefix}_name`]
@@ -240,7 +260,7 @@ export async function getProduct(
       sku: str(v.sku),
       gtin: v.gtin ? str(v.gtin) : null,
       options: (v.options ?? {}) as Record<string, string>,
-      price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor)),
+      price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor), vat),
       delivery: v.delivery === "digital" ? "digital" : "physical",
     })),
     plans: plans.map((plan) => ({
@@ -254,6 +274,7 @@ export async function getProduct(
     })),
     // Without an option to subscribe to, it can only be bought once.
     subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,
+    audience: productAudience(product),
   };
 }
 
@@ -331,8 +352,13 @@ export async function listGridProducts(
       pr.prior_30d,
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
-      ) end as subscriber_discount
+      ) end as subscriber_discount,
+      p.audience,
+      s.audience as store_audience,
+      c.standard_vat_rate as vat_rate
     from commerce.products p
+    join commerce.stores s on s.id = p.store_id
+    left join commerce.countries c on c.code = ${marketCode}
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -362,6 +388,7 @@ export async function listGridProducts(
 
   return rows.map((row) => {
     const discount = numOrNull(row.subscriber_discount);
+    const vat = priceVat(row.store_audience, row.vat_rate);
     return {
       id: str(row.id),
       handle: str(row.handle),
@@ -370,9 +397,10 @@ export async function listGridProducts(
       image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
       price:
         discount === null
-          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d))
-          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null),
+          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d), vat)
+          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null, vat),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
+      audience: productAudience(row),
     };
   });
 }

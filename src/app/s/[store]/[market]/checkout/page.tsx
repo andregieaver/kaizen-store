@@ -6,6 +6,7 @@ import { Suspense, type ReactNode } from "react";
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
+import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { t, type Messages } from "@/lib/i18n";
@@ -202,6 +203,9 @@ function Summary({
   /** The field for a discount code (D38). */
   code: ReactNode;
 }) {
+  // A business sees amounts without VAT, and the VAT on its own line (B2B).
+  const business = order.company !== null;
+  const net = (minor: number) => money(business ? withoutVat(minor, order.vatRate) : minor);
   return (
     <section aria-labelledby="summary-heading" className="rounded-lg border border-border p-4 md:sticky md:top-4">
       <h2 id="summary-heading" className="mb-3 font-medium">
@@ -213,7 +217,7 @@ function Summary({
             <span>
               {line.quantity} × {line.title}
             </span>
-            <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
+            <span className="whitespace-nowrap">{net(line.unitPriceMinor * line.quantity)}</span>
           </li>
         ))}
       </ul>
@@ -221,12 +225,12 @@ function Summary({
       <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-sm">
         <div className="flex justify-between">
           <dt>{m.subtotal}</dt>
-          <dd>{money(order.subtotalMinor)}</dd>
+          <dd>{net(order.subtotalMinor)}</dd>
         </div>
         {order.ships && (
           <div className="flex justify-between">
             <dt>{m.shipping}</dt>
-            <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
+            <dd>{order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor)}</dd>
           </div>
         )}
         {order.discountMinor > 0 && (
@@ -235,18 +239,45 @@ function Summary({
               {m.discount}
               {order.discountCode && <span className="text-sm text-muted"> ({order.discountCode})</span>}
             </dt>
-            <dd>−{money(order.discountMinor)}</dd>
+            <dd>−{net(order.discountMinor)}</dd>
           </div>
         )}
-        <div className="flex justify-between text-base font-semibold">
-          <dt>{m.total}</dt>
-          <dd>{money(order.totalMinor)}</dd>
-        </div>
-        <div className="flex justify-between text-muted">
-          <dt>{m.vatAmount}</dt>
-          <dd>{money(order.taxMinor)}</dd>
-        </div>
+        {business ? (
+          <>
+            <div className="flex justify-between border-t border-border pt-1">
+              <dt>{m.totalExclVat}</dt>
+              <dd>{money(order.totalMinor - order.taxMinor)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>{m.vatLine}</dt>
+              <dd>{money(order.taxMinor)}</dd>
+            </div>
+            <div className="flex justify-between text-base font-semibold">
+              <dt>{m.toPay}</dt>
+              <dd>{money(order.totalMinor)}</dd>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex justify-between text-base font-semibold">
+              <dt>{m.total}</dt>
+              <dd>{money(order.totalMinor)}</dd>
+            </div>
+            <div className="flex justify-between text-muted">
+              <dt>{m.vatAmount}</dt>
+              <dd>{money(order.taxMinor)}</dd>
+            </div>
+          </>
+        )}
       </dl>
+      {order.company && (
+        <p className="mt-3 border-t border-border pt-3 text-sm">
+          {order.company.name}
+          <span className="block text-muted">
+            {m.company.number}: {order.company.number}
+          </span>
+        </p>
+      )}
       {renewal && <p className="mt-3 border-t border-border pt-3 text-sm">{renewal}</p>}
     </section>
   );

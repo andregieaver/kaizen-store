@@ -60,6 +60,10 @@ export type OrderView = {
   digitalConsentAt: string | null;
   /** The subscription this order started or renewed (D25). */
   subscriptionId: string | null;
+  /** The company it was bought for (B2B), shown with the order and on its invoice. */
+  company: { name: string; number: string } | null;
+  /** The VAT rate charged, for showing businesses amounts without it. */
+  vatRate: number;
 };
 
 /** A file the shopper can download from a paid order (D24). */
@@ -106,6 +110,10 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   ships: lines.some((line) => line.delivery !== "digital"),
   digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
   subscriptionId: row.subscription_id ? String(row.subscription_id) : null,
+  company: row.company_name
+    ? { name: String(row.company_name), number: String(row.organisation_number ?? "") }
+    : null,
+  vatRate: Math.max(0, ...lines.map((line) => Number(line.tax_rate ?? 0))),
 });
 
 export async function getOrder(storeId: string, orderId: string): Promise<OrderView | null> {
@@ -114,7 +122,7 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
       select * from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
-      select id, variant_id, title, sku, quantity, unit_price_minor, total_minor, delivery from commerce.order_lines
+      select id, variant_id, title, sku, quantity, unit_price_minor, total_minor, delivery, tax_rate from commerce.order_lines
       where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by title
     `),
   ]);
@@ -220,7 +228,7 @@ export async function getShopperOrder(
   return order;
 }
 
-/** Whether checkout can start in a market, and its shipping rate. */
+/** Whether checkout can start in a market, its shipping rate and VAT rate. */
 export async function getCheckoutInfo(storeId: string, marketCode: string) {
   const [row] = await db().execute<Row>(sql`
     select
@@ -237,9 +245,12 @@ export async function getCheckoutInfo(storeId: string, marketCode: string) {
       (select amount_minor from commerce.shipping_rates
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as amount_minor,
       (select free_over_minor from commerce.shipping_rates
-        where store_id = ${storeId}::uuid and market_code = ${marketCode}) as free_over_minor
+        where store_id = ${storeId}::uuid and market_code = ${marketCode}) as free_over_minor,
+      (select standard_vat_rate from commerce.countries where code = ${marketCode}) as vat_rate
   `);
   return {
+    /** The market's VAT rate, for showing businesses amounts without it (B2B). */
+    vatRate: Number(row?.vat_rate ?? 0),
     // Test payments also need Kaizen's own test keys to be set.
     paymentsOn: Boolean(row?.payments_on) && (row?.active_mode !== "test" || platformModes().includes("test")),
     shipping:

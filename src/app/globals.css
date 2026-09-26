@@ -103,6 +103,22 @@ body {
   text-align: center;
 }
 
+/*
+ * Private and business shoppers (B2B): the page's first script marks
+ * `<html data-buyer>`; each sees their own prices (with or without VAT) and
+ * products. Private until chosen.
+ */
+html:not([data-buyer="business"]) .for-business,
+html[data-buyer="business"] .for-private {
+  display: none !important;
+}
+/* The switch shows the choice before the page's code runs. */
+html:not([data-buyer="business"]) [data-buyer-choice="private"],
+html[data-buyer="business"] [data-buyer-choice="business"] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
 /* A product page's add-to-cart bar takes the place of the phone's bottom bar (D30). */
 body:has([data-product-bar]) [data-default-bar] {
   display: none;

@@ -55,6 +55,8 @@ describe("cookie consent (D58)", () => {
     expect(knownCookie("mystery")).toBeNull();
     const store = declaredCookies("store", {}).map((c) => c.name);
     expect(store).toEqual(["cart_…", "account_…", "wishlist_…", "consent_…"]);
+    expect(declaredCookies("store", {}, { buyers: true }).map((c) => c.name)).toContain("buyer_…");
+    expect(knownCookie("buyer_3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c")?.category).toBe("necessary");
     expect(declaredCookies("store", { metaPixel: "123456" }).map((c) => c.name)).toContain("_fbp");
     expect(declaredCookies("platform", {}).map((c) => c.name)).toEqual(["consent_…", "sb-…-auth-token"]);
   });

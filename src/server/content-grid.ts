@@ -157,6 +157,7 @@ async function gridProducts(storeId: string, marketCode: string | null, filter: 
       excerpt: summarize(product.description, EXCERPT_MAX),
       image: product.image,
       price: { view: product.price, from: product.priceVaries },
+      audience: product.audience,
     })),
   };
 }

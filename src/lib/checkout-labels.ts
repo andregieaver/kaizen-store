@@ -20,6 +20,8 @@ export function checkoutLabels(m: Messages, action: string = m.checkout): Checko
       subscription_consent: m.problemSubscriptionConsent,
       plans: m.problemPlans,
       discount: m.problemDiscount,
+      company: m.problemCompany,
+      company_number: m.problemCompanyNumber,
     },
   };
 }

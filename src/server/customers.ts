@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
+import { chooseBusinessBuyer } from "./b2b";
 import type { Address } from "./orders";
 
 type Row = Record<string, unknown>;
@@ -372,8 +373,11 @@ export async function startSession(storeId: string, customerId: string): Promise
     insert into commerce.customer_sessions (store_id, customer_id, token_hash, expires_at)
     values (${storeId}::uuid, ${customerId}::uuid, ${sha256(token)}, now() + make_interval(days => ${SESSION_DAYS}))
   `);
-  await db().execute(sql`
-    update commerce.customers set last_sign_in_at = now() where id = ${customerId}::uuid
+  const [signedIn] = await db().execute<Row>(sql`
+    update commerce.customers c set last_sign_in_at = now()
+    from commerce.stores s
+    where c.id = ${customerId}::uuid and s.id = c.store_id
+    returning c.organisation_number, s.audience
   `);
   (await cookies()).set(cookieName(storeId), token, {
     httpOnly: true,
@@ -382,6 +386,8 @@ export async function startSession(storeId: string, customerId: string): Promise
     path: "/",
     maxAge: SESSION_DAYS * 24 * 60 * 60,
   });
+  // A customer who saved their company buys as a business from here on (B2B).
+  if (signedIn?.audience === "both" && signedIn.organisation_number) await chooseBusinessBuyer(storeId);
   // Wishlists kept in this browser join the account (D34).
   const { claimBrowserWishlists } = await import("./wishlists");
   await claimBrowserWishlists(storeId, customerId);
@@ -403,6 +409,9 @@ export type Customer = {
   phone: string;
   address: Address;
   hasPassword: boolean;
+  /** The company they buy for (B2B), empty unless saved; with a number, they buy as a business. */
+  companyName: string;
+  organisationNumber: string;
 };
 
 /** The signed-in customer in this store, or null. */
@@ -410,7 +419,8 @@ export async function getCustomer(storeId: string): Promise<Customer | null> {
   const token = (await cookies()).get(cookieName(storeId))?.value;
   if (!token || token.length > 100) return null;
   const [row] = await db().execute<Row>(sql`
-    select c.id, c.email, c.name, c.phone, c.address, c.password_hash is not null as has_password
+    select c.id, c.email, c.name, c.phone, c.address, c.password_hash is not null as has_password,
+      c.company_name, c.organisation_number
     from commerce.customer_sessions s
     join commerce.customers c on c.store_id = s.store_id and c.id = s.customer_id
     where s.store_id = ${storeId}::uuid and s.token_hash = ${sha256(token)} and s.expires_at > now()
@@ -423,17 +433,21 @@ export async function getCustomer(storeId: string): Promise<Customer | null> {
     phone: String(row.phone),
     address: (row.address ?? {}) as Address,
     hasPassword: Boolean(row.has_password),
+    companyName: String(row.company_name ?? ""),
+    organisationNumber: String(row.organisation_number ?? ""),
   };
 }
 
 export async function updateCustomerDetails(
   storeId: string,
   customerId: string,
-  details: { name: string; phone: string; address: Address },
+  details: { name: string; phone: string; address: Address; company?: { name: string; number: string } },
 ): Promise<void> {
   await db().execute(sql`
     update commerce.customers set name = ${details.name}, phone = ${details.phone},
-      address = ${JSON.stringify(details.address)}::jsonb, updated_at = now()
+      address = ${JSON.stringify(details.address)}::jsonb,
+      ${details.company ? sql`company_name = ${details.company.name}, organisation_number = ${details.company.number},` : sql``}
+      updated_at = now()
     where store_id = ${storeId}::uuid and id = ${customerId}::uuid
   `);
 }

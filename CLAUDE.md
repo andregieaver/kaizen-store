@@ -276,6 +276,17 @@ of running `playwright install`.
   (`src/components/admin/terms.tsx`) manage and choose them; changes
   `updateTag(termsTag(scope))`. Menus link to them by address (D52), to
   `/s/{store}/{market}/category|tag/{slug}` and Kaizen's `/category|tag/{slug}`.
+- Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
+  sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
+  always kept and charged with VAT; businesses see them without it. Draw
+  prices with `<Price>`/`VatAmount` (the catalogue's `PriceView` carries
+  `vat`), never `formatMoney` of a price alone in the storefront; server-rendered
+  per-request pages use `getBuyer()` and `shownAmount()`. In stores selling to
+  both, the shopper's kind is the `buyer_{storeId}` cookie, marked on
+  `<html data-buyer>` by the layout's first script; show things to one kind
+  with `for-business`/`for-private` (`audienceClass()` for products). The
+  cart refuses business-only products to private buyers and `placeOrder`
+  needs the company (`companyRequired()`).
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

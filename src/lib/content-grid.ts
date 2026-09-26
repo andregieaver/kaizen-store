@@ -1,3 +1,4 @@
+import type { ProductAudience } from "./b2b";
 import type { PriceView } from "./pricing";
 
 /**
@@ -14,6 +15,8 @@ export type GridItem = {
   image: { url: string; alt: string } | null;
   /** Products only: the cheapest price in the market, and whether others cost more. */
   price: { view: PriceView; from: boolean } | null;
+  /** Products only (B2B): who it is for, when the store sells to both. */
+  audience?: ProductAudience;
   /** Articles only (D57): when it was first published, shown on its tile. */
   date?: string;
 };

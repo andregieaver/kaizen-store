@@ -145,3 +145,18 @@ export function organisationNumber(country: string | null, value: string): strin
 
 /** The longest company name kept. */
 export const COMPANY_NAME_MAX = 120;
+
+/**
+ * The page's first script in a store selling to both: marks the page with
+ * the shopper's kind (`<html data-buyer>`) before anything is drawn, so
+ * prices and products show for it at once on pages built ahead of time.
+ */
+export function buyerScript(storeId: string): string {
+  const name = buyerCookie(storeId).replace(/[^a-z0-9_-]/gi, "");
+  return `try{var b=document.cookie.match(/(?:^|; )${name}=(business|private)(?:;|$)/);if(b)document.documentElement.dataset.buyer=b[1]}catch(e){}`;
+}
+
+/** The class that shows a product only to the shoppers it is for (see `productShownTo`). */
+export function audienceClass(audience: ProductAudience): string {
+  return audience === "businesses" ? "for-business" : audience === "consumers" ? "for-private" : "";
+}

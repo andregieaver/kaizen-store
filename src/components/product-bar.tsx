@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
+import { withoutVat, type StoreAudience } from "@/lib/b2b";
 import { formatMoney } from "@/lib/money";
+import type { PriceVat } from "@/lib/pricing";
 import { planPrice } from "@/lib/subscriptions";
 
 import type { AddToCartLabels } from "./add-to-cart";
+import { useBuyer } from "./buyer";
 import { useChosenPlan } from "./purchase-options";
 import { HidingBottomBar } from "./store-chrome";
 
@@ -26,6 +29,8 @@ export function ProductBar({
   cartHref,
   currency,
   locale,
+  vat,
+  storeAudience,
   variants,
   labels,
 }: {
@@ -34,11 +39,15 @@ export function ProductBar({
   cartHref: string;
   currency: string;
   locale: string;
+  /** Prices as the store shows them (B2B): businesses see them without VAT. */
+  vat: PriceVat;
+  storeAudience: StoreAudience;
   variants: BarVariant[];
   labels: AddToCartLabels & { chooseVariant: string; soldOut: string; goCart: string };
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
   const plan = useChosenPlan();
+  const buyer = useBuyer(storeAudience);
   const [chosen, setChosen] = useState(() => (variants.find((v) => v.available) ?? variants[0])?.id ?? "");
   // The outcome shows for a few seconds, then the price again.
   const [expired, setExpired] = useState<AddToCartState | null>(null);
@@ -52,7 +61,10 @@ export function ProductBar({
   }, [state]);
 
   if (!variant) return null;
-  const money = (v: BarVariant) => formatMoney(plan ? planPrice(v.amountMinor, plan.discountPercent) : v.amountMinor, currency, locale);
+  const money = (v: BarVariant) => {
+    const amount = plan ? planPrice(v.amountMinor, plan.discountPercent) : v.amountMinor;
+    return formatMoney(vat.shown !== "incl" && buyer === "business" ? withoutVat(amount, vat.rate) : amount, currency, locale);
+  };
   const message =
     state.outcome === "added"
       ? labels.added

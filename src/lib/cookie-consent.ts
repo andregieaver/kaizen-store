@@ -124,6 +124,8 @@ export type KnownCookie = {
   on: "platform" | "store" | "both";
   /** Set only by this tool, when switched on. */
   tool?: keyof TrackingSettings;
+  /** Set only in stores selling to both private shoppers and businesses (D63). */
+  buyers?: boolean;
 };
 
 /**
@@ -172,6 +174,21 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker produktene du lagrer i ønskelisten.",
       sv: "Kommer ihåg produkterna du sparar i önskelistan.",
       da: "Husker de produkter, du gemmer på ønskelisten.",
+    },
+  },
+  {
+    name: "buyer_…",
+    pattern: /^buyer_[0-9a-f-]{36}$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: 365,
+    on: "store",
+    buyers: true,
+    purpose: {
+      en: "Remembers whether you shop privately or for a business, to show the right prices and products.",
+      nb: "Husker om du handler privat eller for en bedrift, for å vise riktige priser og varer.",
+      sv: "Kommer ihåg om du handlar privat eller för ett företag, för att visa rätt priser och varor.",
+      da: "Husker, om du handler privat eller for en virksomhed, for at vise de rigtige priser og varer.",
     },
   },
   {
@@ -304,10 +321,15 @@ export const cookiePurpose = (cookie: Pick<KnownCookie, "purpose">, lang: string
  * The cookies a site's cookie page lists before any scan (D58): Kaizen's
  * own for that kind of site, and those of the tools switched on.
  */
-export function declaredCookies(site: "platform" | "store", tracking: TrackingSettings): KnownCookie[] {
+export function declaredCookies(
+  site: "platform" | "store",
+  tracking: TrackingSettings,
+  { buyers = false }: { buyers?: boolean } = {},
+): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
       (cookie.on === site || cookie.on === "both") &&
+      (!cookie.buyers || buyers) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );
 }

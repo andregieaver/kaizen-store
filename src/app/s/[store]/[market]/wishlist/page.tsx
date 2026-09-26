@@ -6,6 +6,8 @@ import { Suspense } from "react";
 import { WishlistView, type WishlistItemView } from "@/components/wishlist-view";
 import { optionLabel, t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
+import { shownAmount } from "@/lib/pricing";
+import { getBuyer } from "@/server/b2b";
 import { marketPath } from "@/lib/paths";
 import { getAvailability, getProduct } from "@/server/catalog";
 import { getCustomer } from "@/server/customers";
@@ -38,7 +40,7 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
   const m = t(market.lang);
   const w = m.wishlist;
   const base = marketPath(store.slug, market.slug);
-  const [lists, customer] = await Promise.all([listWishlists(store.id), getCustomer(store.id)]);
+  const [lists, customer, buyer] = await Promise.all([listWishlists(store.id), getCustomer(store.id), getBuyer(store)]);
   const wanted = (await searchParams).list;
   const current = lists.find((l) => l.id === wanted) ?? lists[0] ?? null;
 
@@ -59,14 +61,14 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
         quantity: row.quantity,
         subscriptionOnly: product.subscriptionOnly,
         fromPrice: `${product.variants.length > 1 ? `${m.fromPrice} ` : ""}${formatMoney(
-          Math.min(...product.variants.map((v) => v.price.amountMinor)),
+          Math.min(...product.variants.map((v) => shownAmount(v.price.amountMinor, v.price.vat, buyer))),
           product.variants[0]?.price.currency ?? market.currency,
           market.locale,
         )}`,
         variants: product.variants.map((v) => ({
           id: v.id,
           label: optionLabel(m, v.options) || product.title,
-          price: formatMoney(v.price.amountMinor, v.price.currency, market.locale),
+          price: formatMoney(shownAmount(v.price.amountMinor, v.price.vat, buyer), v.price.currency, market.locale),
           available: v.delivery === "digital" || (stock.get(v.id) ?? 0) > 0,
         })),
       },

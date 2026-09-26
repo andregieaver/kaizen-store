@@ -1,6 +1,7 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 
+import { audienceClass } from "@/lib/b2b";
 import type { GridData } from "@/lib/content-grid";
 import { fontClass } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
@@ -49,7 +50,9 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
         <li
           key={item.id}
           style={tileStyle}
-          className={`flex min-w-0 flex-col gap-3 ${tile?.radius ? "overflow-hidden" : ""} ${themed && !tile ? "product-card relative" : ""}`}
+          className={`flex min-w-0 flex-col gap-3 ${tile?.radius ? "overflow-hidden" : ""} ${themed && !tile ? "product-card relative" : ""} ${
+            item.audience ? audienceClass(item.audience) : ""
+          }`}
         >
           {block.show.image && item.image && (
             // The heading and button are the links for keyboards and screen readers; the picture is for pointing.

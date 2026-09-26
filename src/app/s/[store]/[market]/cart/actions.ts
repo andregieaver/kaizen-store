@@ -5,10 +5,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
-import { changeLine, readCartId } from "@/server/cart";
+import { changeLine, readCartId, setCartCompany } from "@/server/cart";
 import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
@@ -80,12 +81,26 @@ export async function checkoutAction(
   storeSlug: string,
   marketSlug: string,
   consent: CheckoutConsent = {},
+  /** The company typed on the cart page (B2B), null for a private shopper, left out to keep the cart's. */
+  company?: { name: string; number: string } | null,
 ): Promise<CheckoutState> {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
   const cartShop = { storeId: shop.store.id, market: shop.market };
   const cartId = await readCartId(cartShop);
   if (!cartId) return { problem: "empty" };
+  if (company !== undefined) {
+    const name = company?.name.trim().slice(0, COMPANY_NAME_MAX) ?? "";
+    const typed = company?.number.trim().slice(0, 40) ?? "";
+    if (!name && !typed) {
+      await setCartCompany(cartShop, null);
+    } else {
+      if (!name || !typed) return { problem: "company" };
+      const number = organisationNumber(shop.market.code, typed);
+      if (!number) return { problem: "company_number" };
+      await setCartCompany(cartShop, { name, number });
+    }
+  }
 
   const header = (await headers()).get("origin");
   const origin = header ? new URL(header).origin : siteUrl();

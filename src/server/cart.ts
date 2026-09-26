@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
+import { buyerCookie, parseBuyer, parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { CART_TTL_DAYS, MAX_LINE_QUANTITY, settleQuantity, type LineOutcome } from "@/lib/cart";
 import type { Market } from "@/lib/markets";
 import type { Delivery } from "@/lib/product-input";
@@ -38,11 +39,16 @@ export type CartLine = {
   available: number;
   status: CartLineStatus;
   delivery: Delivery;
+  /** Who the product is for (B2B), as kept; `companyRequired()` reads it with the store's audience. */
+  audience: ProductAudience;
   /** Bought as a subscription: the purchase option, with the price already reduced (D25). */
   plan: (PlanTerms & { id: string; trialDays: number; minCycles: number; signupFeeMinor: number }) | null;
 };
 
-export type Cart = { lines: CartLine[]; currency: string };
+/** The company the shopper buys for (B2B), as entered at checkout. */
+export type CartCompany = { name: string; number: string };
+
+export type Cart = { lines: CartLine[]; currency: string; company: CartCompany | null };
 
 /** The shopper's cart id for this store and market, from the cookie. */
 export async function readCartId(shop: Shop): Promise<string | null> {
@@ -54,11 +60,12 @@ export async function readCartId(shop: Shop): Promise<string | null> {
 export async function getCart(shop: Shop): Promise<Cart> {
   const { storeId, market } = shop;
   const cartId = await readCartId(shop);
-  if (!cartId) return { lines: [], currency: market.currency };
+  if (!cartId) return { lines: [], currency: market.currency, company: null };
 
   const rows = await db().execute<Row>(sql`
     select
-      cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id,
+      cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
+      c.company_name, c.organisation_number,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
       -- A purchase option still offered, or buying once where that is allowed.
@@ -102,8 +109,13 @@ export async function getCart(shop: Shop): Promise<Cart> {
     order by p.handle, v.sku, cl.selling_plan_id nulls first
   `);
 
+  const first = rows[0];
   return {
     currency: market.currency,
+    company:
+      first?.company_name && first.organisation_number
+        ? { name: String(first.company_name), number: String(first.organisation_number) }
+        : null,
     lines: rows.map((row) => {
       const quantity = Number(row.quantity);
       const available = Number(row.available);
@@ -140,10 +152,22 @@ export async function getCart(shop: Shop): Promise<Cart> {
         available,
         status,
         delivery: row.delivery === "digital" ? "digital" : "physical",
+        audience: parseProductAudience(row.audience),
         plan,
       };
     }),
   };
+}
+
+/** The company the shopper buys for (B2B), or null to buy privately: kept on the cart for the order. */
+export async function setCartCompany(shop: Shop, company: CartCompany | null): Promise<void> {
+  const cartId = await readCartId(shop);
+  if (!cartId) return;
+  await db().execute(sql`
+    update commerce.carts set company_name = ${company?.name ?? null}, organisation_number = ${company?.number ?? null},
+      updated_at = now()
+    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
+  `);
 }
 
 /** Units in the cart, for the header. */
@@ -159,6 +183,11 @@ export async function getCartCount(shop: Shop): Promise<number> {
       and c.status = 'open' and c.expires_at > now()
   `);
   return Number(row?.count ?? 0);
+}
+
+/** Whether the shopper has chosen to buy for a business (B2B). */
+async function buysForBusiness(storeId: string): Promise<boolean> {
+  return parseBuyer((await cookies()).get(buyerCookie(storeId))?.value) === "business";
 }
 
 /**
@@ -185,6 +214,9 @@ async function sellableQuantity(
     join commerce.prices pr
       on pr.variant_id = v.id and pr.market_code = ${market.code} and pr.valid_to is null
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
+      -- Business-only products (B2B) are sold to businesses, where the store sells to both.
+      and (p.audience <> 'businesses' or ${await buysForBusiness(storeId)}
+        or (select s.audience from commerce.stores s where s.id = v.store_id) <> 'both')
       and ${
         sellingPlanId
           ? sql`exists (

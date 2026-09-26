@@ -10,6 +10,7 @@ import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 
+import { BuyerSwitch } from "./buyer";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
@@ -188,6 +189,13 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
   return (
     <HidingHeader>
       {notice && <p className="bg-foreground px-4 py-2 text-center text-sm text-background">{notice}</p>}
+      {store.audience === "both" && (
+        <div className={`border-b border-border ${HEADER_BACKGROUND[layout.headerBackground]}`}>
+          <div className="mx-auto flex max-w-(--content-width) justify-end px-4 py-1">
+            <BuyerSwitch storeId={store.id} labels={m.buyer} />
+          </div>
+        </div>
+      )}
       <header className={`border-b border-border ${HEADER_BACKGROUND[layout.headerBackground]}`}>
         {centred ? (
           <>

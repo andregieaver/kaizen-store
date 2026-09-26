@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
+import { BuyerQuestion } from "@/components/buyer";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { StoreThemeStyles } from "@/components/store-theme";
+import { buyerScript } from "@/lib/b2b";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
@@ -67,12 +69,20 @@ export default async function MarketLayout({ children, params }: Props) {
 
   return (
     // The store's theme (D60): its choices as attributes, its colours and sizes as variables.
-    <html lang={market.lang} className="h-full antialiased" {...themeAttributes(store.theme.settings)}>
+    // Stores selling to businesses show their prices without VAT (B2B); selling to both, the first script marks the shopper's kind.
+    <html
+      lang={market.lang}
+      className="h-full antialiased"
+      {...themeAttributes(store.theme.settings)}
+      data-buyer={store.audience === "businesses" ? "business" : undefined}
+      suppressHydrationWarning={store.audience === "both"}
+    >
       {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
       <body
         className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
         style={siteFontStyle(store.fonts)}
       >
+        {store.audience === "both" && <script dangerouslySetInnerHTML={{ __html: buyerScript(store.id) }} />}
         {/* The store's own fonts (D59) and theme (D60). */}
         <StoreThemeStyles store={store} />
         <a
@@ -115,6 +125,7 @@ export default async function MarketLayout({ children, params }: Props) {
         <Suspense fallback={null}>
           <StoreMenu store={store} market={market} />
         </Suspense>
+        {store.businessPopup && <BuyerQuestion storeId={store.id} labels={m.buyer} />}
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* Asks about the store's optional tools and code, if it has any, in the market's language (D58, D61). */}
         <Suspense fallback={null}>

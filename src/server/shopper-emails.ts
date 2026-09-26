@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
-import { t } from "@/lib/i18n";
+import { t, type Messages } from "@/lib/i18n";
 import { toMarket, type Market, type MarketRow } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
@@ -84,7 +84,7 @@ async function orderUrl(storeId: string, store: EmailStore, market: Market, orde
   return `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/order/${orderId}`)}?session_id=${encodeURIComponent(String(payment.provider_reference))}`;
 }
 
-function orderLines(order: OrderView, text: EmailText, money: (minor: number) => string): EmailBlock {
+function orderLines(order: OrderView, text: EmailText, m: Messages, money: (minor: number) => string): EmailBlock {
   return {
     type: "lines",
     rows: [
@@ -105,8 +105,15 @@ function orderLines(order: OrderView, text: EmailText, money: (minor: number) =>
         : []),
       { label: text.total, value: money(order.totalMinor), strong: true },
       { label: text.vat, value: money(order.taxMinor), muted: true },
+      // Bought for a business (B2B): the total without VAT too.
+      ...(order.company ? [{ label: m.totalExclVat, value: money(order.totalMinor - order.taxMinor), muted: true }] : []),
     ],
   };
+}
+
+/** The company an order was bought for (B2B), as on its invoice. */
+function companyText(order: OrderView, m: Messages): string | null {
+  return order.company ? `${order.company.name}\n${m.company.number}: ${order.company.number}` : null;
 }
 
 function addressText(order: OrderView): string | null {
@@ -136,7 +143,8 @@ export async function sendOrderConfirmation(
   const blocks: EmailBlock[] = [
     { type: "heading", text: text.orderHeading },
     { type: "paragraph", text: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number) },
-    orderLines(order, text, money),
+    orderLines(order, text, m, money),
+    ...[companyText(order, m)].flatMap((company) => (company ? [{ type: "paragraph" as const, text: company }] : [])),
     ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
     ...(digital ? [{ type: "paragraph" as const, text: text.downloadsReady }] : []),
     ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),

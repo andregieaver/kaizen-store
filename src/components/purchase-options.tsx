@@ -2,8 +2,10 @@
 
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 
-import { formatMoney } from "@/lib/money";
+import type { PriceVat } from "@/lib/pricing";
 import { planPrice } from "@/lib/subscriptions";
+
+import { VatAmount, type VatLabels } from "./price";
 
 /** A purchase option as the product page shows it, with its text in the shopper's language. */
 export type PlanChoice = { id: string; discountPercent: number; label: string; note: string };
@@ -72,13 +74,15 @@ export function PlanPrice({
   amountMinor,
   currency,
   locale,
-  vatIncluded,
+  vat,
+  labels,
   children,
 }: {
   amountMinor: number;
   currency: string;
   locale: string;
-  vatIncluded: string;
+  vat: PriceVat;
+  labels: VatLabels;
   children: ReactNode;
 }) {
   const plan = useChosenPlan();
@@ -86,8 +90,13 @@ export function PlanPrice({
   return (
     <div>
       <p className="font-semibold">
-        {formatMoney(planPrice(amountMinor, plan.discountPercent), currency, locale)}{" "}
-        <span className="text-sm font-normal text-muted">{vatIncluded}</span>
+        <VatAmount
+          amountMinor={planPrice(amountMinor, plan.discountPercent)}
+          currency={currency}
+          locale={locale}
+          vat={vat}
+          labels={labels}
+        />
       </p>
       <p className="text-sm text-muted">{plan.label}</p>
     </div>

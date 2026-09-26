@@ -416,3 +416,36 @@ describe("downloads (D24)", () => {
     expect(rows).toHaveLength(0);
   });
 });
+
+describe("buying for a business (B2B)", () => {
+  it("needs the company for business-only products, and keeps it on the order", async () => {
+    await db().execute(sql`update commerce.stores set audience = 'both' where id = ${storeId}::uuid`);
+    await db().execute(sql`
+      update commerce.products set audience = 'businesses'
+      where store_id = ${storeId}::uuid and id = (select product_id from commerce.product_variants where id = ${await variant("DEMO-TOTE")}::uuid)
+    `);
+    try {
+      const without = await cart(no, [["DEMO-TOTE", 1]]);
+      expect(await placeOrder({ storeId, market: no }, without)).toEqual({ ok: false, problem: "company" });
+
+      await db().execute(sql`
+        update commerce.carts set company_name = 'Kaizen AS', organisation_number = '923609016' where id = ${without}::uuid
+      `);
+      const result = await placeOrder({ storeId, market: no }, without);
+      if (!result.ok) throw new Error(result.problem);
+      expect(result.order.company).toEqual({ name: "Kaizen AS", number: "923609016" });
+      expect(await orderRow(result.order.orderId)).toMatchObject({ company_name: "Kaizen AS", organisation_number: "923609016" });
+
+      // Products for everyone need no company, unless the store sells only to businesses.
+      expect((await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-MUG-WHITE", 1]]))).ok).toBe(true);
+      await db().execute(sql`update commerce.stores set audience = 'businesses' where id = ${storeId}::uuid`);
+      expect(await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-MUG-WHITE", 1]]))).toEqual({
+        ok: false,
+        problem: "company",
+      });
+    } finally {
+      await db().execute(sql`update commerce.stores set audience = 'consumers' where id = ${storeId}::uuid`);
+      await db().execute(sql`update commerce.products set audience = 'all' where store_id = ${storeId}::uuid`);
+    }
+  });
+});

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AddToCart } from "@/components/add-to-cart";
+import { SwitchToBusiness } from "@/components/buyer";
 import { JsonLdScript } from "@/components/json-ld";
 import { Price } from "@/components/price";
 import { ProductBar } from "@/components/product-bar";
@@ -159,7 +160,14 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
           large
         />
 
-        <section aria-labelledby="variants-heading">
+        {product.audience === "businesses" && (
+          // Sold only to businesses (B2B): a private shopper is told so, and can switch.
+          <div className="for-private flex flex-col items-start gap-3 rounded-lg border border-border p-4">
+            <p>{m.buyer.businessOnly}</p>
+            <SwitchToBusiness storeId={store.id} label={m.buyer.switchToBusiness} />
+          </div>
+        )}
+        <section aria-labelledby="variants-heading" className={product.audience === "businesses" ? "for-business" : ""}>
           <h2 id="variants-heading" className="mb-2 font-medium">
             {m.variants}
           </h2>
@@ -277,7 +285,8 @@ async function VariantsWithStock({
                   amountMinor={variant.price.amountMinor}
                   currency={variant.price.currency}
                   locale={market.locale}
-                  vatIncluded={m.vatIncluded}
+                  vat={variant.price.vat}
+                  labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
                 >
                   <Price price={variant.price} locale={market.locale} m={m} />
                 </PlanPrice>
@@ -309,6 +318,8 @@ async function VariantsWithStock({
         cartHref={marketPath(store.slug, market.slug, "/cart")}
         currency={market.currency}
         locale={market.locale}
+        vat={product.variants[0].price.vat}
+        storeAudience={store.audience}
         variants={product.variants.map((variant) => ({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,

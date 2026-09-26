@@ -117,6 +117,21 @@ async function OrderDetails({
             <dt>{m.vatAmount}</dt>
             <dd>{money(order.taxMinor)}</dd>
           </div>
+          {order.company && (
+            // Bought for a business (B2B): the total without VAT, and whom for.
+            <>
+              <div className="flex justify-between text-sm text-muted">
+                <dt>{m.totalExclVat}</dt>
+                <dd>{money(order.totalMinor - order.taxMinor)}</dd>
+              </div>
+              <div className="flex justify-between border-t border-border pt-2 text-sm">
+                <dt>{order.company.name}</dt>
+                <dd>
+                  {m.company.number}: {order.company.number}
+                </dd>
+              </div>
+            </>
+          )}
         </dl>
       </section>
 

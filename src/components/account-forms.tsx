@@ -32,9 +32,12 @@ export function DetailsForm({
   market,
   values,
   labels,
+  company,
 }: Shop & {
   values: DetailsValues;
   labels: { name: string; phone: string; address: string; addressLine2: string; postalCode: string; city: string; save: string; saving: string };
+  /** In stores selling to businesses (B2B): the company the customer buys for. */
+  company?: { name: string; number: string; labels: { legend: string; name: string; number: string } };
 }) {
   const [state, action, pending] = useActionState(saveDetailsAction.bind(null, store, market), initial);
   const field = (name: keyof DetailsValues, text: string, extra: Record<string, string> = {}) => (
@@ -53,6 +56,19 @@ export function DetailsForm({
         {field("postalCode", labels.postalCode, { autoComplete: "postal-code", inputMode: "numeric" })}
         {field("city", labels.city, { autoComplete: "address-level2" })}
       </div>
+      {company && (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 text-sm font-medium">{company.labels.legend}</legend>
+          <label className={label}>
+            {company.labels.name}
+            <input name="companyName" defaultValue={company.name} maxLength={120} autoComplete="organization" className={input} />
+          </label>
+          <label className={label}>
+            {company.labels.number}
+            <input name="organisationNumber" defaultValue={company.number} maxLength={40} className={input} />
+          </label>
+        </fieldset>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending} className={secondary}>
           {pending ? labels.saving : labels.save}

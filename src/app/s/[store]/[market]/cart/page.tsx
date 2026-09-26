@@ -6,14 +6,18 @@ import { Suspense } from "react";
 
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
+import { companyRequired, withoutVat } from "@/lib/b2b";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
+import { vatIncluded } from "@/lib/checkout";
 import { basketShipping } from "@/lib/subscriptions";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { formatMoney } from "@/lib/money";
+import { getBuyer } from "@/server/b2b";
 import { getCart, type CartLine } from "@/server/cart";
+import { getCustomer } from "@/server/customers";
 import { previewCartDiscount } from "@/server/discounts";
 import { getCheckoutInfo } from "@/server/orders";
 import { resolveShop } from "@/server/shop";
@@ -58,7 +62,7 @@ async function CartContents({
   market: Market;
   m: Messages;
 }) {
-  const cart = await getCart({ storeId: store.id, market });
+  const [cart, buyer] = await Promise.all([getCart({ storeId: store.id, market }), getBuyer(store)]);
   const home = marketPath(store.slug, market.slug);
 
   if (cart.lines.length === 0) {
@@ -136,7 +140,15 @@ async function CartContents({
       : basket.renewal;
   const renewal = plan ? renewing + renewalShipping : null;
   const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
+  // Businesses see amounts without VAT, and the VAT on its own line (B2B); they pay the total with it.
+  const business = buyer === "business";
   const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
+  const net = (minor: number) => money(business ? withoutVat(minor, checkout.vatRate) : minor);
+  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor;
+  // A signed-in business customer's saved company fills the fields in.
+  const saved = business && !cart.company ? await getCustomer(store.id) : null;
+  const companyNeeded = companyRequired(store.audience, cart.lines.map((line) => line.audience));
+  const company = cart.company ?? { name: saved?.companyName ?? "", number: saved?.organisationNumber ?? "" };
   // The subscription's terms, said the same way in the summary and the consent (D29).
   const terms = plan
     ? [
@@ -186,11 +198,11 @@ async function CartContents({
                       <>
                         {money(0)}
                         <span className="block text-sm font-normal text-muted">
-                          {m.planTrial(line.plan.trialDays)}, {money(line.unitPriceMinor * line.quantity)}
+                          {m.planTrial(line.plan.trialDays)}, {net(line.unitPriceMinor * line.quantity)}
                         </span>
                       </>
                     ) : (
-                      money(line.unitPriceMinor * line.quantity)
+                      net(line.unitPriceMinor * line.quantity)
                     )}
                   </p>
                 )}
@@ -247,12 +259,12 @@ async function CartContents({
         <dl className="flex flex-col gap-2">
           <div className="flex justify-between">
             <dt>{m.subtotal}</dt>
-            <dd>{money(subtotal)}</dd>
+            <dd>{net(subtotal)}</dd>
           </div>
           {feeMinor > 0 && (
             <div className="flex justify-between">
               <dt>{m.signupFee}</dt>
-              <dd>{money(feeMinor)}</dd>
+              <dd>{net(feeMinor)}</dd>
             </div>
           )}
           {shipping !== null && ships && (
@@ -261,7 +273,7 @@ async function CartContents({
                 {m.shipping}
                 {basket.renewal > 0 && <span className="text-sm text-muted"> {m.perDelivery}</span>}
               </dt>
-              <dd>{shipping === 0 ? m.freeShipping : money(shipping)}</dd>
+              <dd>{shipping === 0 ? m.freeShipping : net(shipping)}</dd>
             </div>
           )}
           {discountMinor > 0 && code && (
@@ -269,18 +281,31 @@ async function CartContents({
               <dt>
                 {m.discount} <span className="text-sm text-muted">({code.code})</span>
               </dt>
-              <dd>−{money(discountMinor)}</dd>
+              <dd>−{net(discountMinor)}</dd>
             </div>
           )}
+          {business && (
+            <>
+              <div className="flex justify-between border-t border-border pt-2">
+                <dt>{m.totalExclVat}</dt>
+                <dd>{money(withoutVat(total, checkout.vatRate))}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>{m.vatLine}</dt>
+                <dd>{money(vatIncluded(total, checkout.vatRate))}</dd>
+              </div>
+            </>
+          )}
           <div className="flex justify-between border-t border-border pt-2 font-semibold">
-            <dt>{m.total}</dt>
-            <dd>{money(subtotal + feeMinor + (shipping ?? 0) - discountMinor)}</dd>
+            <dt>{business ? m.toPay : m.total}</dt>
+            <dd>{money(total)}</dd>
           </div>
         </dl>
-        <p className="text-sm text-muted">
-          {m.vatIncluded}
-          {shipping === null && ` · ${m.shippingAtCheckout}`}
-        </p>
+        {(!business || shipping === null) && (
+          <p className="text-sm text-muted">
+            {[!business && m.vatIncluded, shipping === null && m.shippingAtCheckout].filter(Boolean).join(" · ")}
+          </p>
+        )}
         {terms && <p className="text-sm">{terms}</p>}
         {applied && Object.keys(applied.renewalUnits).length > 0 && <p className="text-sm">{m.discountRenews}</p>}
         <DiscountCodeForm
@@ -302,6 +327,14 @@ async function CartContents({
             market={market.slug}
             disabled={blocked}
             labels={checkoutLabels(m)}
+            company={{
+              // Asked of businesses, and of anyone whose order needs it.
+              ask: business || companyNeeded,
+              required: companyNeeded,
+              name: company.name,
+              number: company.number,
+              labels: m.company,
+            }}
             consents={{
               digital: digital ? m.digitalConsent : undefined,
               subscription:

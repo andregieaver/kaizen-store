@@ -5,6 +5,7 @@ import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
+import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -49,6 +50,8 @@ export type PlacedOrder = {
   /** The VAT included in the total. */
   taxMinor: number;
   totalMinor: number;
+  /** The company it is bought for (B2B), put on the invoice. */
+  company: { name: string; number: string } | null;
   /** The discount code, and what Stripe takes off as a one-time coupon. */
   discount: { code: string; couponMinor: number } | null;
 };
@@ -65,7 +68,9 @@ export type CheckoutProblem =
   | "consent"
   | "subscription_consent"
   | "discount"
-  | "plans";
+  | "plans"
+  | "company"
+  | "company_number";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -92,16 +97,18 @@ export async function placeOrder(
   const { storeId, market } = shop;
   return db().transaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
-      select id, discount_code from commerce.carts
-      where store_id = ${storeId}::uuid and id = ${cartId}::uuid and market_code = ${market.code}
-        and status = 'open' and expires_at > now()
-      for update
+      select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience
+      from commerce.carts c
+      join commerce.stores s on s.id = c.store_id
+      where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.market_code = ${market.code}
+        and c.status = 'open' and c.expires_at > now()
+      for update of c
     `);
     if (!cart) return { ok: false, problem: "empty" };
 
     const lines = await tx.execute<Row>(sql`
       select
-        cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id,
+        cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id, p.audience,
         cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
         coalesce((sp.signup_fee ->> ${market.code})::bigint, 0) as signup_fee,
         (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
@@ -125,6 +132,15 @@ export async function placeOrder(
     if (lines.length === 0) return { ok: false, problem: "empty" };
     if (lines.some((l) => !l.sellable || !l.plan_ok || l.amount_minor === null)) {
       return { ok: false, problem: "unavailable" };
+    }
+    // Businesses buy with their company's name and organisation number (B2B): in a store
+    // selling only to them, and for business-only products in one selling to both.
+    const company = cart.company_name && cart.organisation_number
+      ? { name: String(cart.company_name), number: String(cart.organisation_number) }
+      : null;
+    const products = lines.map((l) => parseProductAudience(l.audience));
+    if (!company && companyRequired(parseStoreAudience(cart.store_audience), products)) {
+      return { ok: false, problem: "company" };
     }
     // One checkout starts at most one subscription, renewing on one schedule (D25).
     const planned = lines.filter((l) => l.selling_plan_id !== null);
@@ -296,12 +312,14 @@ export async function placeOrder(
       insert into commerce.orders (
         store_id, number, market_code, currency, locale, cart_id, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-        billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code
+        billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
+        company_name, organisation_number
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
         ${subtotal}, ${shipping}, ${discountTotal}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
-        ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null}
+        ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
+        ${company?.name ?? null}, ${company?.number ?? null}
       )
       returning id
     `);
@@ -419,6 +437,7 @@ export async function placeOrder(
         shippingDiscountMinor: shippingDiscount,
         taxMinor: tax,
         totalMinor: total,
+        company,
         // Stripe takes it as a one-time coupon: everything off today that is
         // not already in a lowered subscriber's price. In a subscription,
         // shipping is a line, so free shipping is in the coupon too.
@@ -492,6 +511,12 @@ const INTEGRATION_IDENTIFIER = "kaizen-storefront-qhwmzrtd";
 
 /** "Of which VAT" on the order invoice, in the shopper's language. */
 const VAT_LABELS: Record<string, string> = { nb: "Herav mva", sv: "Varav moms", da: "Heraf moms" };
+const COMPANY_LABELS: Record<string, { name: string; number: string }> = {
+  nb: { name: "Kjøper", number: "Org.nr." },
+  sv: { name: "Köpare", number: "Org.nr" },
+  da: { name: "Køber", number: "CVR-nr." },
+  en: { name: "Buyer", number: "Organisation number" },
+};
 
 /**
  * From cart to payment: closes any earlier unpaid checkout for the same
@@ -668,6 +693,13 @@ export async function startCheckout(
                   name: VAT_LABELS[shop.market.lang] ?? "Incl. VAT",
                   value: formatMoney(order.taxMinor, order.currency, shop.market.locale),
                 },
+                // Bought for a business (B2B): whom for, as the invoice must say.
+                ...(order.company
+                  ? [
+                      { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).name, value: order.company.name.slice(0, 140) },
+                      { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).number, value: order.company.number },
+                    ]
+                  : []),
               ],
             },
           },

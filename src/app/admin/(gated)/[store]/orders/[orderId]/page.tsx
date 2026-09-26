@@ -205,6 +205,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
               <div className="flex justify-between text-muted"><dt>VAT included (standard rate)</dt><dd>{money(order.taxMinor)}</dd></div>
+              {order.company && (
+                <div className="flex justify-between text-muted"><dt>Total excl. VAT</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
+              )}
               {order.refundedMinor > 0 && (
                 <>
                   <div className="flex justify-between border-t border-border pt-1"><dt>Refunded</dt><dd>−{money(order.refundedMinor)}</dd></div>
@@ -323,6 +326,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <p className="text-muted">Not known until payment.</p>
             )}
             {(address.phone || order.billingAddress.phone) && <p>{address.phone || order.billingAddress.phone}</p>}
+            {order.company && (
+              <p className="mt-2">
+                {order.company.name}
+                <span className="block text-muted">Organisation number {order.company.number}</span>
+              </p>
+            )}
             {order.ships && (
               <>
                 <h3 className="mt-3 mb-1 font-medium">Ship to</h3>
