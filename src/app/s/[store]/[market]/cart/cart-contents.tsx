@@ -62,8 +62,14 @@ export async function CartContents({
   const trial = (plan?.trialDays ?? 0) > 0;
   const today = (line: CartLine & { unitPriceMinor: number }) => (trial && line.plan ? 0 : line.unitPriceMinor * line.quantity);
   // One sign-up fee per purchase option (D29).
-  const fees = [...new Map(payable.filter((l) => l.plan && l.plan.signupFeeMinor > 0).map((l) => [l.plan!.id, l.plan!.signupFeeMinor])).values()];
-  const feeMinor = fees.reduce((sum, fee) => sum + fee, 0);
+  const fees = [
+    ...new Map(
+      payable
+        .filter((l) => l.plan && l.plan.signupFeeMinor > 0)
+        .map((l) => [l.plan!.id, { amount: l.plan!.signupFeeMinor, rate: l.vatRate }]),
+    ).values(),
+  ];
+  const feeMinor = fees.reduce((sum, fee) => sum + fee.amount, 0);
   const subtotal = cartSubtotal(payable.map((line) => ({ unitPriceMinor: today(line), quantity: 1 })));
   // Downloads alone need no shipping (D24); a subscription pays it per delivery (D25).
   const ships = cart.lines.some((line) => line.delivery === "physical");
@@ -118,8 +124,16 @@ export async function CartContents({
   // Businesses see amounts without VAT, and the VAT on its own line (B2B); they pay the total with it.
   const business = buyer === "business";
   const money = (minor: number) => formatMoney(minor, cart.currency, market.locale);
-  const net = (minor: number) => money(business ? withoutVat(minor, checkout.vatRate) : minor);
+  // Each line at its product's VAT rate, shipping at the standard one, as checkout works it out (D65).
+  const net = (minor: number, rate = checkout.vatRate) => money(business ? withoutVat(minor, rate) : minor);
+  const sumNet = (parts: { minor: number; rate: number }[]) =>
+    money(parts.reduce((sum, part) => sum + (business ? withoutVat(part.minor, part.rate) : part.minor), 0));
+  const lineDiscount = (i: number) => applied?.lines[String(i)] ?? 0;
   const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor;
+  const vat =
+    payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i), line.vatRate), 0) +
+    fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
+    vatIncluded((shipping ?? 0) - (applied?.shippingMinor ?? 0), checkout.vatRate);
   // A signed-in business customer's saved company fills the fields in.
   const saved = business && !cart.company ? await getCustomer(store.id) : null;
   const companyNeeded = companyRequired(store.audience, cart.lines.map((line) => line.audience));
@@ -174,11 +188,11 @@ export async function CartContents({
                       <>
                         {money(0)}
                         <span className="block text-sm font-normal text-muted">
-                          {m.planTrial(line.plan.trialDays)}, {net(line.unitPriceMinor * line.quantity)}
+                          {m.planTrial(line.plan.trialDays)}, {net(line.unitPriceMinor * line.quantity, line.vatRate)}
                         </span>
                       </>
                     ) : (
-                      net(line.unitPriceMinor * line.quantity)
+                      net(line.unitPriceMinor * line.quantity, line.vatRate)
                     )}
                   </p>
                 )}
@@ -239,12 +253,12 @@ export async function CartContents({
         <dl className="flex flex-col gap-2">
           <div className="flex justify-between gap-4">
             <dt>{m.subtotal}</dt>
-            <dd>{net(subtotal)}</dd>
+            <dd>{sumNet(payable.map((line) => ({ minor: today(line), rate: line.vatRate })))}</dd>
           </div>
           {feeMinor > 0 && (
             <div className="flex justify-between gap-4">
               <dt>{m.signupFee}</dt>
-              <dd>{net(feeMinor)}</dd>
+              <dd>{sumNet(fees.map((fee) => ({ minor: fee.amount, rate: fee.rate })))}</dd>
             </div>
           )}
           {shipping !== null && ships && (
@@ -261,18 +275,24 @@ export async function CartContents({
               <dt>
                 {m.discount} <span className="text-sm text-muted">({code.code})</span>
               </dt>
-              <dd>−{net(discountMinor)}</dd>
+              <dd>
+                −
+                {sumNet([
+                  ...payable.map((line, i) => ({ minor: lineDiscount(i), rate: line.vatRate })),
+                  { minor: applied?.shippingMinor ?? 0, rate: checkout.vatRate },
+                ])}
+              </dd>
             </div>
           )}
           {business && (
             <>
               <div className="flex justify-between gap-4 border-t border-border pt-2">
                 <dt>{m.totalExclVat}</dt>
-                <dd>{money(withoutVat(total, checkout.vatRate))}</dd>
+                <dd>{money(total - vat)}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>{m.vatLine}</dt>
-                <dd>{money(vatIncluded(total, checkout.vatRate))}</dd>
+                <dd>{money(vat)}</dd>
               </div>
             </>
           )}

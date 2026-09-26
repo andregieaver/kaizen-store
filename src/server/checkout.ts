@@ -113,6 +113,7 @@ export async function placeOrder(
         coalesce((sp.signup_fee ->> ${market.code})::bigint, 0) as signup_fee,
         (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
+        commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor,
         (p.status = 'active' and v.active) as sellable
@@ -213,6 +214,7 @@ export async function placeOrder(
     const [country] = await tx.execute<Row>(sql`
       select standard_vat_rate from commerce.countries where code = ${market.code}
     `);
+    // Shipping takes the standard rate; each line its product's (D65).
     const vatRate = Number(country?.standard_vat_rate ?? 0);
 
     const priced = lines.map((line) => {
@@ -225,14 +227,18 @@ export async function placeOrder(
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
       const delivery: Delivery = line.delivery === "digital" ? "digital" : "physical";
-      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery };
+      const rate = Number(line.vat_rate ?? vatRate);
+      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate };
     });
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
       ...new Map(
         planned
           .filter((l) => Number(l.signup_fee) > 0)
-          .map((l) => [String(l.selling_plan_id), { planId: String(l.selling_plan_id), amount: Number(l.signup_fee), title: String(l.title) }]),
+          .map((l) => [
+            String(l.selling_plan_id),
+            { planId: String(l.selling_plan_id), amount: Number(l.signup_fee), title: String(l.title), rate: Number(l.vat_rate ?? vatRate) },
+          ]),
       ).values(),
     ];
     const feeTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
@@ -298,8 +304,8 @@ export async function placeOrder(
     const shipping = basket.first;
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
     const tax =
-      priced.reduce((sum, p) => sum + vatIncluded(p.total, vatRate), 0) +
-      fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, vatRate), 0) +
+      priced.reduce((sum, p) => sum + vatIncluded(p.total, p.rate), 0) +
+      fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
       vatIncluded(shipping - shippingDiscount, vatRate);
     const total = subtotal + shipping - discountTotal;
 
@@ -333,8 +339,8 @@ export async function placeOrder(
           selling_plan_id, plan_interval, plan_interval_count
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
-          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.total}, ${vatIncluded(p.total, vatRate)},
-          ${vatRate}, ${String(p.line.tax_code)},
+          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.total}, ${vatIncluded(p.total, p.rate)},
+          ${p.rate}, ${String(p.line.tax_code)},
           ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
           ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
@@ -351,7 +357,7 @@ export async function placeOrder(
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery, selling_plan_id
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, null, 'SIGNUP-FEE', ${`${feeTitle}: ${fee.title}`}, 1, ${fee.amount}, 0,
-          ${fee.amount}, ${vatIncluded(fee.amount, vatRate)}, ${vatRate}, ${GENERAL_TAX_CODE}, 'none', 'digital',
+          ${fee.amount}, ${vatIncluded(fee.amount, fee.rate)}, ${fee.rate}, ${GENERAL_TAX_CODE}, 'none', 'digital',
           ${fee.planId}::uuid
         )
       `);
@@ -363,7 +369,7 @@ export async function placeOrder(
       const renewing = priced.filter((p) => p.recurring);
       const renewalSubtotal = renewing.reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
       const renewalTax =
-        renewing.reduce((sum, p) => sum + vatIncluded(p.renewUnit * p.quantity, vatRate), 0) + vatIncluded(basket.renewal, vatRate);
+        renewing.reduce((sum, p) => sum + vatIncluded(p.renewUnit * p.quantity, p.rate), 0) + vatIncluded(basket.renewal, vatRate);
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.subscriptions (
           store_id, number, market_code, currency, locale, interval, interval_count, min_cycles,
@@ -385,7 +391,7 @@ export async function placeOrder(
           ) values (
             ${storeId}::uuid, ${subscriptionId}::uuid, ${String(p.line.variant_id)}::uuid,
             ${String(p.line.selling_plan_id)}::uuid, ${String(p.line.sku)}, ${p.title}, ${p.quantity},
-            ${p.renewUnit}, ${p.renewUnit * p.quantity}, ${vatRate}, ${String(p.line.tax_code)}, ${p.delivery}
+            ${p.renewUnit}, ${p.renewUnit * p.quantity}, ${p.rate}, ${String(p.line.tax_code)}, ${p.delivery}
           )
         `);
       }

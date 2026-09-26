@@ -22,6 +22,7 @@ import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
 import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
 import { fileSize } from "@/lib/file-size";
+import { ratePercent, VAT_CATEGORIES, VAT_CATEGORY_LABELS } from "@/lib/vat";
 import { shrinkImage } from "@/lib/image-resize";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
@@ -262,7 +263,7 @@ export function ProductEditor(props: Props) {
         operators={context.operators}
         countries={props.countries}
       />
-      <LegalSection product={product} update={update} />
+      <LegalSection product={product} update={update} markets={context.markets} />
 
       <div className="flex justify-end">
         <button
@@ -1575,7 +1576,7 @@ function OperatorPicker({
   );
 }
 
-function LegalSection({ product, update }: SectionProps) {
+function LegalSection({ product, update, markets }: SectionProps & { markets: EditorContext["markets"] }) {
   const general = product.taxCode === GENERAL_TAX_CODE;
   return (
     <section aria-labelledby="legal-heading" className={card}>
@@ -1584,7 +1585,30 @@ function LegalSection({ product, update }: SectionProps) {
       </h2>
       <div className="flex flex-col gap-5">
         <fieldset className="flex flex-col gap-2 text-sm">
-          <legend className="mb-1 font-medium">VAT category</legend>
+          <legend className="mb-1 font-medium">VAT rate</legend>
+          {VAT_CATEGORIES.map((category) => (
+            <label key={category} className="flex items-start gap-2">
+              <input
+                type="radio"
+                name="vat-category"
+                checked={product.vatCategory === category}
+                onChange={() => update((p) => ({ ...p, vatCategory: category }))}
+                className="mt-0.5"
+              />
+              <span>
+                {VAT_CATEGORY_LABELS[category].label}
+                <span className="block text-muted">
+                  {VAT_CATEGORY_LABELS[category].hint}{" "}
+                  {category !== "exempt" &&
+                    markets.map((m) => `${m.name} ${ratePercent(m.vatRates[category])}`).join(", ")}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-2 text-sm">
+          <legend className="mb-1 font-medium">Tax code for Stripe</legend>
           <label className="flex items-center gap-2">
             <input
               type="radio"

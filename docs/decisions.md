@@ -208,6 +208,8 @@ history therefore still lists the nine single-store migrations, then:
 | `20260926135430_store_domains_rules.sql` | `20260926140920` |
 | `20260926171929_b2b.sql` | `20260926172750` |
 | `20260926185247_open_cart_on_add.sql` | `20260926190122` |
+| `20260926205250_vat_categories.sql` | `20260926214426` |
+| `20260926205252_vat_categories_rules.sql` | `20260926215009` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

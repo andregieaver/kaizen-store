@@ -42,6 +42,8 @@ export type SubscriptionLine = {
   unitPriceMinor: number;
   totalMinor: number;
   delivery: Delivery;
+  /** The VAT rate it was sold at (D65): its product's, kept when swapped for another variant of it. */
+  taxRate: number;
 };
 
 export type SubscriptionView = {
@@ -99,7 +101,7 @@ async function view(storeId: string, where: ReturnType<typeof sql>): Promise<Sub
   if (!row) return null;
   const [lines, orders] = await Promise.all([
     db().execute<Row>(sql`
-      select l.id, l.variant_id, v.product_id, l.title, l.sku, l.quantity, l.unit_price_minor, l.total_minor, l.delivery
+      select l.id, l.variant_id, v.product_id, l.title, l.sku, l.quantity, l.unit_price_minor, l.total_minor, l.delivery, l.tax_rate
       from commerce.subscription_lines l
       left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
       where l.store_id = ${storeId}::uuid and l.subscription_id = ${row.id} order by l.title
@@ -160,6 +162,7 @@ async function view(storeId: string, where: ReturnType<typeof sql>): Promise<Sub
       unitPriceMinor: Number(l.unit_price_minor),
       totalMinor: Number(l.total_minor),
       delivery: l.delivery === "digital" ? "digital" : "physical",
+      taxRate: Number(l.tax_rate ?? 0),
     })),
     orders: orders.map((o) => ({
       id: String(o.id),
@@ -655,7 +658,8 @@ export async function changeSubscriptionContents(
   ).renewal;
   const vatRate = Number(country?.standard_vat_rate ?? 0);
   const subtotal = lines.reduce((sum, line) => sum + line.totalMinor, 0);
-  const tax = lines.reduce((sum, line) => sum + vatIncluded(line.totalMinor, vatRate), 0) + vatIncluded(shipping, vatRate);
+  // Each line keeps its rate (a swap stays within one product, D65); shipping takes the standard rate.
+  const tax = lines.reduce((sum, line) => sum + vatIncluded(line.totalMinor, line.taxRate), 0) + vatIncluded(shipping, vatRate);
 
   try {
     // Stripe's items are replaced: one per line, and one for shipping.

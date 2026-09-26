@@ -236,9 +236,9 @@ describe("selling to businesses (B2B)", () => {
   it("lets a store selling only to businesses type prices without VAT, and keeps them with it", async () => {
     const b2b: Store = { ...other, audience: "businesses" };
     const b2bContext = await getEditorContext(b2b);
-    expect(b2bContext.markets.map((m) => [m.code, m.vatRate])).toEqual([
-      ["NO", 0.25],
-      ["SE", 0.25],
+    expect(b2bContext.markets.map((m) => [m.code, m.vatRates])).toEqual([
+      ["NO", { standard: 0.25, accommodation: 0.12, exempt: 0 }],
+      ["SE", { standard: 0.25, accommodation: 0.12, exempt: 0 }],
     ]);
     const product = mug({ handle: "firmakopp", audience: "businesses", manufacturer: null, responsiblePerson: null, status: "draft" });
     product.variants = product.variants.map((v, i) => ({ ...v, sku: `B2B-${i}-${run}`, prices: { NO: "199,20", SE: "" } }));

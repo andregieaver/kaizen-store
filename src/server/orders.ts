@@ -55,6 +55,8 @@ export type OrderView = {
     delivery: Delivery;
     /** The product's first picture, small, as it is now: a path on the store's host or a full address; null for fees. */
     image: string | null;
+    /** The VAT rate it was sold at (D65). */
+    taxRate: number;
   }[];
   /** Something to ship (false when the order is downloads only). */
   ships: boolean;
@@ -64,8 +66,8 @@ export type OrderView = {
   subscriptionId: string | null;
   /** The company it was bought for (B2B), shown with the order and on its invoice. */
   company: { name: string; number: string } | null;
-  /** The VAT rate charged, for showing businesses amounts without it. */
-  vatRate: number;
+  /** The market's standard VAT rate, which shipping takes, for showing businesses amounts without VAT. */
+  shippingVatRate: number;
 };
 
 /** A file the shopper can download from a paid order (D24). */
@@ -109,6 +111,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     totalMinor: Number(line.total_minor),
     delivery: line.delivery === "digital" ? "digital" : "physical",
     image: line.image ? String(line.image) : null,
+    taxRate: Number(line.tax_rate ?? 0),
   })),
   ships: lines.some((line) => line.delivery !== "digital"),
   digitalConsentAt: row.digital_consent_at ? new Date(String(row.digital_consent_at)).toISOString() : null,
@@ -116,13 +119,14 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   company: row.company_name
     ? { name: String(row.company_name), number: String(row.organisation_number ?? "") }
     : null,
-  vatRate: Math.max(0, ...lines.map((line) => Number(line.tax_rate ?? 0))),
+  shippingVatRate: Number(row.shipping_vat_rate ?? 0),
 });
 
 export async function getOrder(storeId: string, orderId: string): Promise<OrderView | null> {
   const [[order], lines] = await Promise.all([
     db().execute<Row>(sql`
-      select * from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+      select o.*, (select c.standard_vat_rate from commerce.countries c where c.code = o.market_code) as shipping_vat_rate
+      from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
       select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate,

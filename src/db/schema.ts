@@ -188,6 +188,30 @@ export const countries = commerce.table(
 );
 
 /**
+ * VAT rates other than the standard one (D65): a country's rate for a kind
+ * of sale, e.g. accommodation. A category without a row here takes the
+ * country's standard rate, which never charges too little; `exempt` is
+ * always 0. Read through `commerce.vat_rate(country, category)`. Reference
+ * data kept by Kaizen, to be checked with an accountant like the standard
+ * rates.
+ */
+export const vatRates = commerce.table(
+  "vat_rates",
+  {
+    countryCode: char("country_code", { length: 2 })
+      .notNull()
+      .references(() => countries.code),
+    category: text("category").notNull(),
+    rate: numeric("rate", { precision: 5, scale: 4 }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.countryCode, t.category] }),
+    check("vat_rates_category", sql`${t.category} in ('accommodation')`),
+    check("vat_rates_rate", sql`${t.rate} >= 0 and ${t.rate} < 1`),
+  ],
+);
+
+/**
  * A person who can sign in. Created when they are invited or approved;
  * `auth_user_id` links the Supabase Auth user on first sign-in.
  */
@@ -678,6 +702,8 @@ export const products = commerce.table(
     subscriptionOnly: boolean("subscription_only").notNull().default(false),
     /** In stores selling to both (B2B): shown to everyone, only to private shoppers or only to businesses. */
     audience: text("audience").notNull().default("all"),
+    /** Which VAT rate it takes (D65): the market's standard rate, accommodation's, or none (exempt, such as health care). */
+    vatCategory: text("vat_category").notNull().default("standard"),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
     createdAt: createdAt(),
@@ -700,6 +726,7 @@ export const products = commerce.table(
     index("products_responsible_person_idx").on(t.storeId, t.responsiblePersonId),
     index("products_store_status_idx").on(t.storeId, t.status),
     check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
+    check("products_vat_category", sql`${t.vatCategory} in ('standard', 'accommodation', 'exempt')`),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),

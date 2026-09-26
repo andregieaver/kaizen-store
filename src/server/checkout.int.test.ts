@@ -449,3 +449,22 @@ describe("buying for a business (B2B)", () => {
     }
   });
 });
+
+describe("VAT per product (D65)", () => {
+  it("taxes each line at its product's rate, and shipping at the standard rate", async () => {
+    const product = sql`(select product_id from commerce.product_variants where id = ${await variant("DEMO-TOTE")}::uuid)`;
+    await db().execute(sql`update commerce.products set vat_category = 'accommodation' where id = ${product}`);
+    try {
+      const result = await placeOrder({ storeId, market: no }, await cart(no, [["DEMO-TOTE", 1]]));
+      if (!result.ok) throw new Error(result.problem);
+      // 199,00 at 12 % and 99,00 shipping at 25 %.
+      expect(result.order.taxMinor).toBe(2132 + 1980);
+      const [line] = await db().execute<Row>(sql`
+        select tax_minor::int as tax, tax_rate::float as rate from commerce.order_lines where order_id = ${result.order.orderId}::uuid
+      `);
+      expect(line).toEqual({ tax: 2132, rate: 0.12 });
+    } finally {
+      await db().execute(sql`update commerce.products set vat_category = 'standard' where id = ${product}`);
+    }
+  });
+});

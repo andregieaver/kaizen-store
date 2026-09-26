@@ -57,7 +57,11 @@ of running `playwright install`.
 - Money is integer minor units plus an ISO 4217 code (`src/lib/money.ts`).
   Prices are VAT-inclusive per market and only change through
   `commerce.set_price`; advertised reductions use `prior_30d_minor` from
-  `commerce.current_prices`.
+  `commerce.current_prices`. A product's VAT rate is
+  `commerce.vat_rate(country, products.vat_category)` (D65: `standard`,
+  `accommodation`, `exempt`; reduced rates in `commerce.vat_rates`, falling
+  back to the standard rate); shipping takes the standard rate. Never read
+  `countries.standard_vat_rate` for a product.
 
 ## Storefront
 

@@ -206,7 +206,11 @@ function Summary({
 }) {
   // A business sees amounts without VAT, and the VAT on its own line (B2B).
   const business = order.company !== null;
-  const net = (minor: number) => money(business ? withoutVat(minor, order.vatRate) : minor);
+  // Each line at its own VAT rate, shipping at the standard one (D65); the discount is what makes them add up.
+  const net = (minor: number, rate: number) => money(business ? withoutVat(minor, rate) : minor);
+  const linesNet = order.lines.reduce((sum, line) => sum + withoutVat(line.unitPriceMinor * line.quantity, line.taxRate), 0);
+  const shippingNet = withoutVat(order.shippingMinor, order.shippingVatRate);
+  const discountNet = linesNet + shippingNet - (order.totalMinor - order.taxMinor);
   return (
     <section aria-labelledby="summary-heading" className="rounded-lg border border-border p-4 md:sticky md:top-4">
       <h2 id="summary-heading" className="mb-3 font-medium">
@@ -219,7 +223,7 @@ function Summary({
             <span className="min-w-0 flex-1">
               {line.quantity} × {line.title}
             </span>
-            <span className="whitespace-nowrap">{net(line.unitPriceMinor * line.quantity)}</span>
+            <span className="whitespace-nowrap">{net(line.unitPriceMinor * line.quantity, line.taxRate)}</span>
           </li>
         ))}
       </ul>
@@ -227,12 +231,12 @@ function Summary({
       <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3 text-sm">
         <div className="flex justify-between">
           <dt>{m.subtotal}</dt>
-          <dd>{net(order.subtotalMinor)}</dd>
+          <dd>{money(business ? linesNet : order.subtotalMinor)}</dd>
         </div>
         {order.ships && (
           <div className="flex justify-between">
             <dt>{m.shipping}</dt>
-            <dd>{order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor)}</dd>
+            <dd>{order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor, order.shippingVatRate)}</dd>
           </div>
         )}
         {order.discountMinor > 0 && (
@@ -241,7 +245,7 @@ function Summary({
               {m.discount}
               {order.discountCode && <span className="text-sm text-muted"> ({order.discountCode})</span>}
             </dt>
-            <dd>−{net(order.discountMinor)}</dd>
+            <dd>−{money(business ? discountNet : order.discountMinor)}</dd>
           </div>
         )}
         {business ? (

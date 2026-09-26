@@ -575,6 +575,20 @@
       "when": 1790448767573,
       "tag": "20260926185247_open_cart_on_add",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1790455970381,
+      "tag": "20260926205250_vat_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1790455972256,
+      "tag": "20260926205252_vat_categories_rules",
+      "breakpoints": true
     }
   ]
 }

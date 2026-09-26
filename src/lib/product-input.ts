@@ -4,6 +4,7 @@ import { PRODUCT_AUDIENCES } from "./b2b";
 import { minorUnitDigits } from "./money";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
+import { VAT_CATEGORIES } from "./vat";
 import {
   MAX_DISCOUNT_PERCENT,
   MAX_INTERVAL_COUNT,
@@ -209,6 +210,8 @@ export const productInput = z.object({
   subscriptionOnly: z.boolean().default(false),
   /** In stores selling to both (B2B): for everyone, only private shoppers or only businesses. */
   audience: z.enum(PRODUCT_AUDIENCES).default("all"),
+  /** Which VAT rate it takes (D65). */
+  vatCategory: z.enum(VAT_CATEGORIES).default("standard"),
   taxCode: z.string().trim().regex(/^txcd_[0-9]{8}$/, "A Stripe tax code looks like txcd_99999999."),
   withdrawalExclusion: z.enum(WITHDRAWAL_EXCLUSIONS.map((w) => w.id) as [string, ...string[]]),
   schemes: z.array(z.enum(PRODUCER_SCHEMES.map((s) => s.id) as [string, ...string[]])),

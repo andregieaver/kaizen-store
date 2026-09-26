@@ -43,6 +43,8 @@ export type CartLine = {
   delivery: Delivery;
   /** Who the product is for (B2B), as kept; `companyRequired()` reads it with the store's audience. */
   audience: ProductAudience;
+  /** Its product's VAT rate in the market (D65). */
+  vatRate: number;
   /** Bought as a subscription: the purchase option, with the price already reduced (D25). */
   plan: (PlanTerms & { id: string; trialDays: number; minCycles: number; signupFeeMinor: number }) | null;
 };
@@ -67,6 +69,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
   const rows = await db().execute<Row>(sql`
     select
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
+      commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
       c.company_name, c.organisation_number,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
@@ -155,6 +158,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
         status,
         delivery: row.delivery === "digital" ? "digital" : "physical",
         audience: parseProductAudience(row.audience),
+        vatRate: Number(row.vat_rate ?? 0),
         plan,
       };
     }),

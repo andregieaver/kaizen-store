@@ -120,10 +120,9 @@ export async function listProducts(
       ) end as subscriber_discount,
       p.audience,
       s.audience as store_audience,
-      c.standard_vat_rate as vat_rate
+      commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
-    left join commerce.countries c on c.code = ${marketCode}
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -181,7 +180,7 @@ export async function getProduct(
   const [product] = await readDb().execute<Row>(sql`
     select
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only,
-      p.audience, s.audience as store_audience, c.standard_vat_rate as vat_rate,
+      p.audience, s.audience as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       coalesce(tl.description, tf.description, '') as description,
       coalesce(tl.safety_information, tf.safety_information, '') as safety_information,
@@ -192,7 +191,6 @@ export async function getProduct(
       rp.name as rp_name, rp.postal_address as rp_postal, rp.electronic_address as rp_electronic
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
-    left join commerce.countries c on c.code = ${marketCode}
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -355,10 +353,9 @@ export async function listGridProducts(
       ) end as subscriber_discount,
       p.audience,
       s.audience as store_audience,
-      c.standard_vat_rate as vat_rate
+      commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
-    left join commerce.countries c on c.code = ${marketCode}
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (

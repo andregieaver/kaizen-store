@@ -1317,6 +1317,23 @@ describe("stores' own domains (P8)", () => {
   });
 });
 
+describe("VAT per product (D65)", () => {
+  it("gives accommodation its reduced rate where there is one, the standard rate elsewhere, and none when exempt", async () => {
+    const rate = async (country: string, category: string) =>
+      Number((await db.query<{ rate: string }>("select commerce.vat_rate($1, $2) as rate", [country, category])).rows[0].rate);
+    expect(await rate("NO", "standard")).toBe(0.25);
+    expect(await rate("NO", "accommodation")).toBe(0.12);
+    expect(await rate("SE", "accommodation")).toBe(0.12);
+    expect(await rate("DK", "accommodation")).toBe(0.25);
+    expect(await rate("NO", "exempt")).toBe(0);
+    const store = await createStore("vat-kari", ["NO"]);
+    await expect(
+      db.query("insert into commerce.products (store_id, handle, tax_code, vat_category) values ($1, 'x', 't', 'food')", [store]),
+    ).rejects.toThrow(/products_vat_category/);
+    await expect(db.query("insert into commerce.vat_rates values ('NO', 'food', 0.15)")).rejects.toThrow(/vat_rates_category/);
+  });
+});
+
 describe("selling to businesses (B2B)", () => {
   it("keeps stores and products to the audiences the storefront knows", async () => {
     const store = await createStore("b2b-kari", ["NO"]);

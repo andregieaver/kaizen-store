@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { parseProductAudience, withVat, withoutVat, type StoreAudience } from "@/lib/b2b";
+import { parseVatCategory, type VatCategory } from "@/lib/vat";
 import {
   combineOptions,
   formatPriceInput,
@@ -36,8 +37,8 @@ export type EditorContext = {
   /** The store's languages, primary first. */
   locales: string[];
   primaryLocale: string;
-  /** Each market's standard VAT rate, e.g. 0.25. */
-  markets: { code: string; currency: string; name: string; vatRate: number }[];
+  /** Each market's VAT rate per category (D65), e.g. `{ standard: 0.25, accommodation: 0.12, exempt: 0 }`. */
+  markets: { code: string; currency: string; name: string; vatRates: Record<VatCategory, number> }[];
   /** Who the store sells to (B2B): a store selling only to businesses enters its prices without VAT. */
   audience: StoreAudience;
   operators: Operator[];
@@ -59,15 +60,28 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       where store_id = ${store.id}::uuid and active order by created_at limit 1
     `),
     listTerms({ storeId: store.id, contentType: "product" }),
-    db().execute<Row>(sql`select code, standard_vat_rate from commerce.countries`),
+    db().execute<Row>(sql`
+      select code, json_build_object(
+        'standard', commerce.vat_rate(code, 'standard'),
+        'accommodation', commerce.vat_rate(code, 'accommodation'),
+        'exempt', commerce.vat_rate(code, 'exempt')
+      ) as rates
+      from commerce.countries
+    `),
   ]);
-  const vatRates = new Map(rates.map((row) => [String(row.code), Number(row.standard_vat_rate ?? 0)]));
+  const noVat: Record<VatCategory, number> = { standard: 0, accommodation: 0, exempt: 0 };
+  const vatRates = new Map(
+    rates.map((row) => [
+      String(row.code),
+      Object.fromEntries(Object.entries(row.rates as Record<string, unknown>).map(([k, v]) => [k, Number(v ?? 0)])) as Record<VatCategory, number>,
+    ]),
+  );
   const locales = [...new Set(store.markets.map((m) => m.locale))];
   return {
     locales,
     primaryLocale: locales[0] ?? "en",
     terms,
-    markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name, vatRate: vatRates.get(m.code) ?? 0 })),
+    markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name, vatRates: vatRates.get(m.code) ?? noVat })),
     audience: store.audience,
     operators: operators.map((row) => ({
       id: String(row.id),
@@ -117,6 +131,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     plans: [],
     subscriptionOnly: false,
     audience: "all",
+    vatCategory: "standard",
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
     schemes: ["packaging"],
@@ -163,7 +178,7 @@ export async function listAdminProducts(
          join commerce.product_variants v on v.id = l.variant_id
         where v.product_id = p.id and v.active) as stock,
       pr.min_amount, pr.max_amount, pr.currency,
-      (select standard_vat_rate from commerce.countries where code = ${market?.code ?? ""}) as vat_rate
+      commerce.vat_rate(${market?.code ?? ""}, p.vat_category) as vat_rate
     from commerce.products p
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -206,10 +221,12 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only, audience
+           delivery, download_limit, download_days, subscription_only, audience, vat_category
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
+  // Prices are typed without VAT at this product's rate in stores selling only to businesses.
+  const category = parseVatCategory(product.vat_category);
 
   const [translations, media, schemes, variants, prices, files, plans, termRows] = await Promise.all([
     db().execute<Row>(sql`
@@ -315,7 +332,7 @@ export async function getProductForEdit(
           .filter((p) => String(p.variant_id) === String(v.id))
           .map((p) => [
             String(p.market_code),
-            formatPriceInput(typedAmount(context, String(p.market_code), Number(p.amount_minor)), String(p.currency)),
+            formatPriceInput(typedAmount(context, String(p.market_code), Number(p.amount_minor), category), String(p.currency)),
           ]),
       ),
       stock: Number(v.stock),
@@ -349,13 +366,14 @@ export async function getProductForEdit(
           .filter((m) => (p.signup_fee as Record<string, number>)?.[m.code])
           .map((m) => [
             m.code,
-            formatPriceInput(typedAmount(context, m.code, (p.signup_fee as Record<string, number>)[m.code]), m.currency),
+            formatPriceInput(typedAmount(context, m.code, (p.signup_fee as Record<string, number>)[m.code], category), m.currency),
           ]),
       ),
       minCycles: Number(p.min_cycles),
     })),
     subscriptionOnly: Boolean(product.subscription_only),
     audience: parseProductAudience(product.audience),
+    vatCategory: category,
     taxCode: String(product.tax_code),
     withdrawalExclusion: String(product.withdrawal_exclusion),
     schemes: schemes.map((s) => String(s.scheme)),
@@ -371,17 +389,18 @@ export async function getProductForEdit(
  * them without: shown to it that way, and kept as the price with VAT that
  * gives back exactly what was typed.
  */
-function typedAmount(context: EditorContext, marketCode: string, keptMinor: number): number {
+function typedAmount(context: EditorContext, marketCode: string, keptMinor: number, category: VatCategory): number {
   const market = context.markets.find((m) => m.code === marketCode);
-  return context.audience === "businesses" && market ? withoutVat(keptMinor, market.vatRate) : keptMinor;
+  return context.audience === "businesses" && market ? withoutVat(keptMinor, market.vatRates[category]) : keptMinor;
 }
 
 function keptAmount(
   context: Pick<EditorContext, "audience">,
   market: EditorContext["markets"][number],
   typedMinor: number | null,
+  category: VatCategory,
 ): number | null {
-  return typedMinor !== null && context.audience === "businesses" ? withVat(typedMinor, market.vatRate) : typedMinor;
+  return typedMinor !== null && context.audience === "businesses" ? withVat(typedMinor, market.vatRates[category]) : typedMinor;
 }
 
 export type SaveProductResult = { ok: true; productId: string } | { ok: false; problems: string[] };
@@ -505,7 +524,8 @@ async function upsertProduct(
         manufacturer_id = ${manufacturerId}::uuid, responsible_person_id = ${responsibleId}::uuid,
         tax_code = ${input.taxCode}, withdrawal_exclusion = ${input.withdrawalExclusion},
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
-        subscription_only = ${input.subscriptionOnly}, audience = ${input.audience}, updated_at = now()
+        subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
+        vat_category = ${input.vatCategory}, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -515,11 +535,11 @@ async function upsertProduct(
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
-      delivery, download_limit, download_days, subscription_only, audience
+      delivery, download_limit, download_days, subscription_only, audience, vat_category
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
-      ${input.subscriptionOnly}, ${input.audience}
+      ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}
     )
     returning id
   `);
@@ -643,7 +663,7 @@ async function saveVariants(
     kept.add(id);
 
     for (const market of context.markets) {
-      const amount = keptAmount(context, market, parsePrice(variant.prices[market.code] ?? "", market.currency));
+      const amount = keptAmount(context, market, parsePrice(variant.prices[market.code] ?? "", market.currency), input.vatCategory);
       const [current] = await tx.execute<Row>(sql`
         select amount_minor from commerce.prices
         where variant_id = ${id}::uuid and market_code = ${market.code} and valid_to is null
@@ -695,7 +715,7 @@ async function savePlans(
     // Sign-up fees in minor units per market; empty or zero means none (D29).
     const fees: Record<string, number> = {};
     for (const market of markets) {
-      const amount = keptAmount({ audience }, market, parsePrice(plan.signupFee[market.code] ?? "", market.currency));
+      const amount = keptAmount({ audience }, market, parsePrice(plan.signupFee[market.code] ?? "", market.currency), input.vatCategory);
       if (amount) fees[market.code] = amount;
     }
     const [row] = plan.id
