@@ -199,6 +199,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20260926111946_themes.sql` | `20260926113849` |
 | `20260926111947_themes_rules.sql` | `20260926114808` |
 | `20260926114922_bold_theme.sql` | `20260926115436` |
+| `20260926123242_store_custom_code.sql` | `20260926124343` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.
