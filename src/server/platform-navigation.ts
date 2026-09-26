@@ -130,6 +130,7 @@ export async function savePlatformNavigation(account: Account, input: unknown): 
   };
   const navigation: PlatformNavigation = {
     logo: parsed.data.logo,
+    logoDark: parsed.data.logoDark,
     header: parsed.data.header.map(clean),
     footer: parsed.data.footer.map(clean),
   };
@@ -143,6 +144,7 @@ export async function savePlatformNavigation(account: Account, input: unknown): 
   `);
   await audit(account.id, null, "platform.navigation_updated", {
     logo: navigation.logo !== null,
+    logoDark: navigation.logoDark !== null,
     header: navigation.header.length,
     footer: navigation.footer.length,
   });

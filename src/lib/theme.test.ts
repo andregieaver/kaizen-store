@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   THEME_TEMPLATE_KEYS,
   contrastRatio,
+  darkBehindLogo,
   parseStoreTheme,
   templateSettings,
   themeAttributes,
@@ -79,5 +80,17 @@ describe("design themes (D60)", () => {
     const pale = { ...templateSettings("minimal"), mode: "light" as const };
     pale.light = { ...pale.light, muted: "#cccccc" };
     expect(themeWarnings(pale)).toEqual([expect.stringMatching(/^Secondary text on the background in the light colours is hard to read/)]);
+  });
+
+  it("knows where a logo sits on a dark background, by device and theme", () => {
+    // Minimal follows the device: dark behind the logo only in dark mode.
+    expect(darkBehindLogo(templateSettings("minimal"), "header")).toEqual({ light: false, dark: true });
+    // Warm classic is always light.
+    expect(darkBehindLogo(templateSettings("warm"), "header")).toEqual({ light: false, dark: false });
+    // Bold modern's inverted header is black in light mode and light in dark mode; its page the other way round.
+    expect(darkBehindLogo(templateSettings("bold"), "header")).toEqual({ light: true, dark: false });
+    expect(darkBehindLogo(templateSettings("bold"), "page")).toEqual({ light: false, dark: true });
+    const accentHeader = { ...templateSettings("warm"), layout: { ...templateSettings("warm").layout, headerBackground: "accent" as const } };
+    expect(darkBehindLogo(accentHeader, "header")).toEqual({ light: true, dark: true });
   });
 });

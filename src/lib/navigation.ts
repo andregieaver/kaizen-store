@@ -41,9 +41,10 @@ export type MenuItem = { label: Record<string, string>; link: MenuLink };
 
 export type Logo = { url: string; width: number; height: number };
 
-export type StoreNavigation = { logo: Logo | null; header: MenuItem[]; footer: MenuItem[] };
+/** `logoDark` is shown where the background is dark (a dark theme or header), if given (D60). */
+export type StoreNavigation = { logo: Logo | null; logoDark: Logo | null; header: MenuItem[]; footer: MenuItem[] };
 
-export const EMPTY_NAVIGATION: StoreNavigation = { logo: null, header: [], footer: [] };
+export const EMPTY_NAVIGATION: StoreNavigation = { logo: null, logoDark: null, header: [], footer: [] };
 
 /**
  * A menu's web address: http(s), or a path in the store (`/p/notatbok`,
@@ -102,14 +103,16 @@ const link = z.discriminatedUnion("kind", [
 
 const item = z.object({ label, link });
 
+const logoSchema = z.object({
+  url: z.string().trim().max(1000).refine(isMenuAddress, "The logo has an invalid address."),
+  width: z.number().int().min(1).max(10_000),
+  height: z.number().int().min(1).max(10_000),
+});
+
 export const navigationSchema = z.object({
-  logo: z
-    .object({
-      url: z.string().trim().max(1000).refine(isMenuAddress, "The logo has an invalid address."),
-      width: z.number().int().min(1).max(10_000),
-      height: z.number().int().min(1).max(10_000),
-    })
-    .nullable(),
+  logo: logoSchema.nullable(),
+  /** Saved before there was one: none. */
+  logoDark: logoSchema.nullable().default(null),
   header: z.array(item).max(MENU_LIMITS.header, `The header menu takes at most ${MENU_LIMITS.header} links.`),
   footer: z.array(item).max(MENU_LIMITS.footer, `The footer menu takes at most ${MENU_LIMITS.footer} links.`),
 });
@@ -250,9 +253,9 @@ export type PlatformMenuLink =
 
 export type PlatformMenuItem = { label: Record<string, string>; link: PlatformMenuLink };
 
-export type PlatformNavigation = { logo: Logo | null; header: PlatformMenuItem[]; footer: PlatformMenuItem[] };
+export type PlatformNavigation = { logo: Logo | null; logoDark: Logo | null; header: PlatformMenuItem[]; footer: PlatformMenuItem[] };
 
-export const EMPTY_PLATFORM_NAVIGATION: PlatformNavigation = { logo: null, header: [], footer: [] };
+export const EMPTY_PLATFORM_NAVIGATION: PlatformNavigation = { logo: null, logoDark: null, header: [], footer: [] };
 
 /** Any menu link, store or platform: what the shared menu editor works with. */
 export type AnyMenuLink = MenuLink | PlatformMenuLink;

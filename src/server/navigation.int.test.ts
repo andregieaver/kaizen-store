@@ -88,6 +88,14 @@ describe("a store's header and footer (D30)", () => {
     expect(navigation.header[0].label).toEqual({ "nb-NO": "Kopp", "sv-SE": "Demo: Keramikmugg" });
     expect(navigation.header[1]).toEqual({ label: {}, link: { kind: "home" } });
     expect(navigation.footer[0].label).toEqual({ "nb-NO": "Om oss" });
+    expect(navigation.logoDark).toBeNull();
+  });
+
+  it("keeps a logo for dark backgrounds next to the logo (D60)", async () => {
+    const logo = { url: "/demo/logo.svg", width: 120, height: 32 };
+    const logoDark = { url: "https://example.no/logo-light.png", width: 240, height: 64 };
+    expect(await saveNavigation(member, { logo, logoDark, header: [], footer: [] })).toEqual({ ok: true });
+    expect(await stored()).toMatchObject({ logo, logoDark });
   });
 
   it("refuses links to missing products, web links without text, and unsafe addresses", async () => {

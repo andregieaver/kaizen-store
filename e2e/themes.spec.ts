@@ -110,3 +110,39 @@ test("Bold modern draws a black header, spaced capitals and square buttons", asy
     "0px",
   ]);
 });
+
+test("the logo for dark backgrounds is shown where the background is dark", async ({ browser }) => {
+  const slug = `logo-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${slug}@example.com`}, 'Kari', 'Karis Lamper') returning id`;
+    await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Lamper', null)`;
+    // Two files that exist, one standing in for the light version of the logo.
+    const navigation = {
+      logo: { url: "/demo/logo.svg", width: 120, height: 32 },
+      logoDark: { url: "/demo/lamp.svg", width: 120, height: 32 },
+      header: [],
+      footer: [],
+    };
+    await sql`update commerce.stores set theme = ${sql.json({ base: "bold" })}, navigation = ${sql.json(navigation)} where slug = ${slug}`;
+  } finally {
+    await sql.end();
+  }
+
+  // Bold modern: a black header in light mode, a black page in dark mode.
+  for (const [scheme, header, footer] of [
+    ["light", "lamp.svg", "logo.svg"],
+    ["dark", "logo.svg", "lamp.svg"],
+  ] as const) {
+    const context = await browser.newContext({ colorScheme: scheme });
+    const page = await context.newPage();
+    await page.goto(`/s/${slug}/no`);
+    const shown = (area: string) =>
+      page.locator(area).first().locator("img").first().evaluate((img: HTMLImageElement) => new URL(img.currentSrc).pathname);
+    await expect.poll(() => shown("header")).toBe(`/demo/${header}`);
+    await expect.poll(() => shown("footer")).toBe(`/demo/${footer}`);
+    await context.close();
+  }
+});

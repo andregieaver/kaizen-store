@@ -5,6 +5,7 @@ import { platformMenuLink, type PlatformMenuItem } from "@/lib/navigation";
 import type { PlatformChrome } from "@/server/platform-navigation";
 
 import { Icon } from "./icons";
+import { LogoPicture } from "./logo-picture";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 /**
@@ -52,13 +53,13 @@ function Brand({ chrome, size }: Props & { size: "header" | "footer" }) {
   return (
     <Link href="/" className="flex min-w-0 items-center">
       {logo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- a small logo of known size, not worth resizing
-        <img
-          src={logo.url}
+        // Kaizen's pages follow the device's light or dark mode, so its dark-background logo does too (D60).
+        <LogoPicture
+          logo={logo}
+          logoDark={chrome.navigation.logoDark}
+          darkBehind={{ light: false, dark: true }}
           alt="Kaizen"
-          width={logo.width}
-          height={logo.height}
-          fetchPriority={size === "header" ? "high" : undefined}
+          priority={size === "header"}
           className={`${size === "header" ? "h-8 md:h-10" : "h-8"} w-auto max-w-44 object-contain object-left md:max-w-56`}
         />
       ) : (

@@ -22,6 +22,7 @@ import {
   PALETTE_LABELS,
   THEME_TEMPLATES,
   THEME_TEMPLATE_KEYS,
+  darkBehindLogo,
   templateSettings,
   themeAttributes,
   themeCss,
@@ -214,11 +215,14 @@ export function ThemeEditor({
   current,
   saved: initialSaved,
   actions,
+  logos,
 }: {
   storeName: string;
   current: StoreTheme;
   saved: SavedTheme[];
   actions: ThemeActions;
+  /** Whether the store has a logo, and one for dark backgrounds (D60). */
+  logos: { logo: boolean; dark: boolean };
 }) {
   const [theme, setTheme] = useState<StoreTheme>(current);
   const [live, setLive] = useState<StoreTheme>(current);
@@ -235,6 +239,9 @@ export function ThemeEditor({
   const changedFromSource = !same(settings, sourceSettings);
   const unpublished = !same(theme, live);
   const warnings = themeWarnings(settings);
+  // A logo without a light version, on a background the theme makes dark somewhere.
+  const behind = [darkBehindLogo(settings, "header"), darkBehindLogo(settings, "page")];
+  const logoNeedsDarkVersion = logos.logo && !logos.dark && behind.some((b) => b.light || b.dark);
 
   const set = (patch: Partial<ThemeSettings>) => {
     setTheme((t) => ({ ...t, settings: { ...t.settings, ...patch } }));
@@ -483,8 +490,8 @@ export function ThemeEditor({
               value={settings.layout.headerBackground}
               onChange={(headerBackground) => set({ layout: { ...settings.layout, headerBackground } })}
               hint={
-                settings.layout.headerBackground === "inverse" || settings.layout.headerBackground === "accent"
-                  ? "Your logo sits on this colour: a dark logo may be hard to see on it. Check the store after saving."
+                logoNeedsDarkVersion
+                  ? "Your logo will sit on a dark background here. If it is dark, add a logo for dark backgrounds under Header and footer."
                   : undefined
               }
             />

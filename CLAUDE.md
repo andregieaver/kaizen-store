@@ -243,7 +243,9 @@ of running `playwright install`.
   cards `product-card`/`product-card-image`, highlights `bg-accent
   text-accent-foreground`. A new setting goes in `ThemeSettings`, both
   templates, `themeCss()`/`themeAttributes()` and the editor. Store fonts
-  are the theme's (`store.fonts` is derived from it).
+  are the theme's (`store.fonts` is derived from it). Logos are drawn with
+  `LogoPicture` and `darkBehindLogo()`, which swap in the logo for dark
+  backgrounds (`navigation.logoDark`) where the theme puts it on a dark one.
 - Fonts (D59, `src/lib/fonts.ts`, `src/server/fonts.ts`): Google Fonts,
   always self-hosted. A family is installed (`installFont()`: downloaded once
   into `commerce.fonts`/`font_files`) before anything uses it, from the

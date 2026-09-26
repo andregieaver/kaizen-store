@@ -25,6 +25,7 @@ export default async function StoreDesignPage({ params }: PageProps<"/admin/[sto
         storeName={store.name}
         current={store.theme}
         saved={saved}
+        logos={{ logo: store.navigation.logo !== null, dark: store.navigation.logoDark !== null }}
         actions={{
           save: saveThemeAction.bind(null, store.slug),
           saveSaved: saveSavedThemeAction.bind(null, store.slug),

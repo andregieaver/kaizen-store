@@ -15,7 +15,7 @@ import {
 } from "@/lib/navigation";
 
 type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
-type Navigation = { logo: Logo | null; header: AnyMenuItem[]; footer: AnyMenuItem[] };
+type Navigation = { logo: Logo | null; logoDark: Logo | null; header: AnyMenuItem[]; footer: AnyMenuItem[] };
 type Save = (
   input: Navigation & { business?: BusinessDetails },
 ) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
@@ -47,6 +47,8 @@ type Row = AnyMenuItem & { key: string };
 /** What the page says around the menus: the store's words, or Kaizen's. */
 export type NavigationCopy = {
   logo: string;
+  /** What the logo for dark backgrounds is for (D60). */
+  logoDark: string;
   header: string;
   footer: string;
   saved: string;
@@ -57,6 +59,8 @@ export type NavigationCopy = {
 
 export const STORE_COPY: NavigationCopy = {
   logo: "Shown in the header instead of the store's name, up to 40 pixels high. A wide PNG with a transparent background works best. Without a logo, the header shows the name.",
+  logoDark:
+    "Optional: a light version of the logo, shown instead where the background is dark, such as a black header or dark mode in your theme (under Design). Without it, the logo above is shown everywhere.",
   header:
     "Across the top on computers, and in the slide-out menu on phones. The cart, My account and the country choice are always there, so they need no link here.",
   footer: "At the bottom of every page, beside your business details, which the law requires and Kaizen always shows.",
@@ -154,6 +158,7 @@ export function NavigationEditor({
   previewHref: string;
 }) {
   const [logo, setLogo] = useState<Logo | null>(initial.logo);
+  const [logoDark, setLogoDark] = useState<Logo | null>(initial.logoDark);
   const [details, setDetails] = useState<BusinessDetails | undefined>(business);
   const [menus, setMenus] = useState<Record<MenuName, Row[]>>({
     header: initial.header.map(keyed),
@@ -174,6 +179,7 @@ export function NavigationEditor({
       const strip = (rows: Row[]): AnyMenuItem[] => rows.map(({ label, link }) => ({ label, link }));
       const outcome = await save({
         logo,
+        logoDark,
         header: strip(menus.header),
         footer: strip(menus.footer),
         ...(details && { business: details }),
@@ -185,11 +191,24 @@ export function NavigationEditor({
   return (
     <div className="flex flex-col gap-6 pb-24">
       <LogoField
+        title="Logo"
         help={copy.logo}
         logo={logo}
         upload={upload}
         onChange={(next) => {
           setLogo(next);
+          setDirty(true);
+          setResult(null);
+        }}
+      />
+      <LogoField
+        title="Logo for dark backgrounds"
+        help={copy.logoDark}
+        logo={logoDark}
+        upload={upload}
+        dark
+        onChange={(next) => {
+          setLogoDark(next);
           setDirty(true);
           setResult(null);
         }}
@@ -264,16 +283,22 @@ export function NavigationEditor({
 }
 
 function LogoField({
+  title,
   help,
   logo,
   upload,
   onChange,
+  dark = false,
 }: {
+  title: string;
   help: string;
   logo: Logo | null;
   upload: Upload | null;
   onChange: (logo: Logo | null) => void;
+  /** Shows the logo on a dark background, as it will be. */
+  dark?: boolean;
 }) {
+  const id = useId();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -300,26 +325,30 @@ function LogoField({
   };
 
   return (
-    <section aria-labelledby="logo-heading" className={card}>
+    <section aria-labelledby={`${id}-heading`} className={card}>
       <div>
-        <h2 id="logo-heading" className="font-medium">
-          Logo
+        <h2 id={`${id}-heading`} className="font-medium">
+          {title}
         </h2>
         <p className="text-sm text-muted">{help}</p>
       </div>
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex h-20 min-w-40 items-center justify-center rounded-md border border-dashed border-border bg-surface px-4">
+        <div
+          className={`flex h-20 min-w-40 items-center justify-center rounded-md border border-dashed border-border px-4 ${
+            dark ? "bg-neutral-900 text-neutral-300" : "bg-surface text-muted"
+          }`}
+        >
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded logo
-            <img src={logo.url} alt="Your logo" className="max-h-10 w-auto max-w-56 object-contain" />
+            <img src={logo.url} alt={`Your ${title.toLowerCase()}`} className="max-h-10 w-auto max-w-56 object-contain" />
           ) : (
-            <span className="text-sm text-muted">No logo</span>
+            <span className="text-sm">No logo</span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {upload ? (
             <label className="cursor-pointer rounded-md border border-border px-3 py-2 focus-within:outline-2">
-              {busy ? "Uploading …" : logo ? "Replace logo" : "Upload logo"}
+              {busy ? "Uploading …" : logo ? `Replace ${title.toLowerCase()}` : `Upload ${title.toLowerCase()}`}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"

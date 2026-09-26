@@ -5,7 +5,7 @@ import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, termNames, type MenuItem } from "@/lib/navigation";
 import { marketPath } from "@/lib/paths";
-import type { HeaderBackground } from "@/lib/theme";
+import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
 import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
@@ -13,6 +13,7 @@ import { siteTerms } from "@/server/taxonomy";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
+import { LogoPicture } from "./logo-picture";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 /**
@@ -69,19 +70,21 @@ async function MenuLinks({
   );
 }
 
-/** The logo, or the store's name without one. */
-function Brand({ store, market, size }: Props & { size: "header" | "footer" }) {
+/**
+ * The logo, or the store's name without one. Where the theme puts it on a
+ * dark background, the logo for dark backgrounds is shown instead (D60).
+ */
+function Brand({ store, market, size, place = size === "header" ? "header" : "page" }: Props & { size: "header" | "footer"; place?: LogoPlace }) {
   const logo = store.navigation.logo;
   return (
     <Link href={marketPath(store.slug, market.slug)} className="flex min-w-0 items-center">
       {logo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- a small logo of known size, not worth resizing
-        <img
-          src={logo.url}
+        <LogoPicture
+          logo={logo}
+          logoDark={store.navigation.logoDark}
+          darkBehind={darkBehindLogo(store.theme.settings, place)}
           alt={store.name}
-          width={logo.width}
-          height={logo.height}
-          fetchPriority={size === "header" ? "high" : undefined}
+          priority={size === "header"}
           className={`${size === "header" ? "h-8 md:h-10" : "h-8"} w-auto max-w-44 object-contain object-left md:max-w-56`}
         />
       ) : (
@@ -215,7 +218,7 @@ export function StoreMenu({ store, market }: Props) {
   const header = store.navigation.header;
   return (
     <MobileMenu
-      title={<Brand store={store} market={market} size="header" />}
+      title={<Brand store={store} market={market} size="header" place="page" />}
       labels={{ close: m.closeMenu, menu: m.menu }}
     >
       {header.length > 0 && (

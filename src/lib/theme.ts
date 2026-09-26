@@ -346,3 +346,41 @@ export function themeWarnings(settings: ThemeSettings): string[] {
     }),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Logos on dark backgrounds
+// ---------------------------------------------------------------------------
+
+/** Where a logo sits: the header, or on the page itself (the footer, the phone's menu). */
+export type LogoPlace = "header" | "page";
+
+/** Whether white text reads better on a colour than black does. */
+export const isDarkColor = (color: string) => contrastRatio(color, "#ffffff") > contrastRatio(color, "#000000");
+
+function behindLogo(settings: ThemeSettings, place: LogoPlace, set: Palette): string {
+  if (place === "page") return set.background;
+  switch (settings.layout.headerBackground) {
+    case "surface":
+      return set.surface;
+    case "accent":
+      return set.accent;
+    case "inverse":
+      return set.text;
+    default:
+      return set.background;
+  }
+}
+
+/**
+ * Whether the colour behind a logo is dark, for visitors whose device is
+ * light and for those whose device is dark: where it is, a store's logo for
+ * dark backgrounds takes the place of its logo (D60).
+ */
+export function darkBehindLogo(settings: ThemeSettings, place: LogoPlace): { light: boolean; dark: boolean } {
+  const shown = (scheme: "light" | "dark") =>
+    settings.mode === "auto" ? settings[scheme] : settings[settings.mode];
+  return {
+    light: isDarkColor(behindLogo(settings, place, shown("light"))),
+    dark: isDarkColor(behindLogo(settings, place, shown("dark"))),
+  };
+}

@@ -30,6 +30,8 @@ const KINDS: { kind: AnyLinkKind; label: string }[] = [
 
 const COPY: NavigationCopy = {
   logo: "Shown in the header instead of Kaizen's name, up to 40 pixels high. A wide PNG with a transparent background works best. Without a logo, the header shows the name.",
+  logoDark:
+    "Optional: a light version of the logo, shown instead to visitors in dark mode. Without it, the logo above is shown in both.",
   header:
     "Across the top on computers, and in the slide-out menu on phones. Sign in and Start your store are always there, so they need no link here.",
   footer: "At the bottom of every page, beside the business details below.",

@@ -58,6 +58,14 @@ describe("addresses and stored values", () => {
     expect(parseNavigation({ header: "nope" })).toEqual(EMPTY_NAVIGATION);
     expect(parseNavigation(null)).toEqual(EMPTY_NAVIGATION);
   });
+
+  it("reads menus saved before the logo for dark backgrounds as having none (D60)", () => {
+    const logo = { url: "/demo/logo.svg", width: 120, height: 32 };
+    expect(parseNavigation({ logo, header: [], footer: [] })).toEqual({ logo, logoDark: null, header: [], footer: [] });
+    const logoDark = { ...logo, url: "/demo/logo-light.svg" };
+    expect(parseNavigation({ logo, logoDark, header: [], footer: [] }).logoDark).toEqual(logoDark);
+    expect(navigationSchema.safeParse({ logo, logoDark: { ...logoDark, url: "javascript:alert(1)" }, header: [], footer: [] }).success).toBe(false);
+  });
 });
 
 describe("category and tag links (D50)", () => {
