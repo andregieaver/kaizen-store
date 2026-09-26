@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { decodeConsent } from "@/lib/cookie-consent";
+import { parseCustomCode } from "@/lib/custom-code";
 
 import type { Account } from "./auth";
 
@@ -10,7 +11,7 @@ vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTa
 
 const { claimScan, latestFindings, listScans, requestScan, scanTarget } = await import("./cookie-scans");
 const { runScan } = await import("./cookie-scan-runner");
-const { listCookieNotes, saveCookieNote, siteCookies } = await import("./site-cookies");
+const { listCookieNotes, saveCookieNote, saveCustomCode, siteCookies } = await import("./site-cookies");
 
 type Row = Record<string, unknown>;
 
@@ -162,5 +163,41 @@ describe("cookie scans (D58)", () => {
     });
     // Kaizen's own site has its own notes.
     expect(await listCookieNotes(null)).toEqual([]);
+  });
+
+  it("saves a store's own code, asked about and scanned where it is added (D61)", async () => {
+    expect(await saveCustomCode(owner, storeId, { head: { code: "<meta name=a>", category: "sometimes" } })).toMatchObject({ ok: false });
+    const saved = await saveCustomCode(owner, storeId, {
+      head: { code: " <meta name=a> ", category: "necessary" },
+      bodyStart: { code: "", category: "marketing" },
+      bodyEnd: { code: "<script>1</script>", category: "preferences" },
+    });
+    expect(saved).toEqual({
+      ok: true,
+      code: { head: { code: "<meta name=a>", category: "necessary" }, bodyEnd: { code: "<script>1</script>", category: "preferences" } },
+    });
+    const [row] = await db().execute<Row>(sql`select custom_code from commerce.stores where id = ${storeId}::uuid`);
+    expect(parseCustomCode(row.custom_code)).toEqual(saved.ok && saved.code);
+    expect((await siteCookies(storeId, {}, saved.ok ? saved.code : {})).categories).toContain("preferences");
+
+    // The demo with marketing code: scanned with consent for it only where the code is added, on its own host (P7).
+    await db().execute(sql`
+      update commerce.stores set custom_code = '{"bodyEnd":{"code":"<script>1</script>","category":"marketing"}}'::jsonb
+      where id = ${demoId}::uuid
+    `);
+    try {
+      // Earlier tests leave the demo findings of their own: the code adds marketing to what is asked.
+      const version = async () => decodeConsent((await scanTarget(demoId))?.consent?.value)?.version ?? "";
+      expect(await version()).not.toContain("marketing");
+      vi.stubEnv("NEXT_PUBLIC_STORE_DOMAIN", "kaizenstores.com");
+      const target = await scanTarget(demoId);
+      expect(target?.origin).toMatch(/^https:\/\/[a-z0-9-]+\.kaizenstores\.com$/);
+      expect(target?.starts[0]).toMatch(/^\/[a-z]{2}$/);
+      expect(target?.within("/no/p/mug")).toBe(true);
+      expect(await version()).toContain("marketing");
+    } finally {
+      vi.unstubAllEnvs();
+      await db().execute(sql`update commerce.stores set custom_code = '{}'::jsonb where id = ${demoId}::uuid`);
+    }
   });
 });

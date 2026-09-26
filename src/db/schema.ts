@@ -277,6 +277,8 @@ export const stores = commerce.table(
     frontPageId: uuid("front_page_id"),
     /** The store's analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
+    /** The owner's own code for the storefront's head and body (D61): `CustomCode` in lib/custom-code, added only on the store's own host. */
+    customCode: jsonb("custom_code").notNull().default({}),
     /** Before themes (D60), the store's fonts (D59); now in `theme`. Kept until the code no longer reads it. */
     fonts: jsonb("fonts").notNull().default({}),
     /** The storefront's design (D60): `StoreTheme` in lib/theme, its template, the saved theme it came from and every setting. */

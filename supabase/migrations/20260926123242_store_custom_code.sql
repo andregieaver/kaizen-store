@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "custom_code" jsonb DEFAULT '{}'::jsonb NOT NULL;

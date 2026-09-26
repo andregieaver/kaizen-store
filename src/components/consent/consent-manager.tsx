@@ -18,6 +18,7 @@ import {
   type OptionalCategory,
   type TrackingSettings,
 } from "@/lib/cookie-consent";
+import { addCustomCode, type CustomCode } from "@/lib/custom-code";
 
 /** The widget's words, in the site's language (from `i18n`, picked on the server). */
 export type ConsentTexts = {
@@ -40,6 +41,8 @@ type Props = {
   /** The store's id, or null on Kaizen's own site: each site asks for itself. */
   storeId: string | null;
   tracking: TrackingSettings;
+  /** The owner's own code (D61), added as far as the visitor allows. */
+  code?: CustomCode;
   /** The optional categories the site uses: its tools', and what its cookie scan found. */
   categories: OptionalCategory[];
   texts: ConsentTexts;
@@ -160,7 +163,7 @@ function newVisitor(): string {
  * Accepting and rejecting are equally easy, and the choices can be opened
  * again at any time from the cookie page or the footer.
  */
-export function ConsentManager({ storeId, tracking, categories, texts, cookiePage }: Props) {
+export function ConsentManager({ storeId, tracking, code = {}, categories, texts, cookiePage }: Props) {
   const version = consentVersion(categories);
   const name = consentCookieName(storeId);
   // Hidden once the visitor decides here; before that, shown when there is no current choice.
@@ -186,7 +189,10 @@ export function ConsentManager({ storeId, tracking, categories, texts, cookiePag
   // A choice already made loads what it allowed.
   const start = useEffectEvent(() => {
     const stored = read();
-    if (categories.length > 0 && consentIsCurrent(stored, version)) applyChoices(tracking, stored!.choices);
+    if (categories.length > 0 && consentIsCurrent(stored, version)) {
+      applyChoices(tracking, stored!.choices);
+      addCustomCode(code, stored!.choices);
+    }
   });
   useEffect(() => start(), []);
 
@@ -239,6 +245,7 @@ export function ConsentManager({ storeId, tracking, categories, texts, cookiePag
       return;
     }
     applyChoices(tracking, allowed);
+    addCustomCode(code, allowed);
   };
 
   if (categories.length === 0) return null;

@@ -15,6 +15,7 @@ import {
   type TrackingSettings,
 } from "@/lib/cookie-consent";
 import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
+import { codeCategories, customCodeInput, type CustomCode } from "@/lib/custom-code";
 
 import { audit, type Account } from "./auth";
 
@@ -57,11 +58,13 @@ export const listCookieNotes = readNotes;
  * switched on, plus what its latest scan found that Kaizen knows or the
  * owner has described. The optional categories among them are what
  * visitors are asked about, so a scan that finds a marketing cookie brings
- * the banner by itself.
+ * the banner by itself, as does the owner's own code in an optional
+ * category (D61, only where it is added: `liveCustomCode()`).
  */
 export async function siteCookies(
   storeId: string | null,
   tracking: TrackingSettings,
+  code: CustomCode = {},
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[] }> {
   const listed = new Map<string, ListedCookie>();
   const list = ({ name, provider, category, days, purpose }: KnownCookie) =>
@@ -89,6 +92,7 @@ export async function siteCookies(
   const cookies = [...listed.values()];
   const used = new Set<OptionalCategory>([
     ...toolCategories(tracking),
+    ...codeCategories(code),
     ...cookies.flatMap((cookie) => (cookie.category === "necessary" ? [] : [cookie.category])),
   ]);
   return { cookies, categories: OPTIONAL_CATEGORIES.filter((c) => used.has(c)) };
@@ -141,4 +145,22 @@ export async function saveTracking(
     tools: Object.keys(parsed.data),
   });
   return { ok: true, tracking: parsed.data };
+}
+
+/**
+ * Saves a store's own code (D61). Owners only, checked by the action: the
+ * code runs on the store's pages with full access to them.
+ */
+export async function saveCustomCode(
+  account: Account,
+  storeId: string,
+  input: unknown,
+): Promise<{ ok: true; code: CustomCode } | { ok: false; problems: string[] }> {
+  const parsed = customCodeInput.safeParse(input);
+  if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+  await db().execute(sql`update commerce.stores set custom_code = ${JSON.stringify(parsed.data)}::jsonb where id = ${storeId}::uuid`);
+  await audit(account.id, storeId, "store.custom_code_updated", {
+    places: Object.fromEntries(Object.entries(parsed.data).map(([place, snippet]) => [place, { category: snippet.category, length: snippet.code.length }])),
+  });
+  return { ok: true, code: parsed.data };
 }

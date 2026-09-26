@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 
 import { CookieScanPanel } from "@/components/admin/cookie-scan";
-import { ConsentLog, TrackingForm } from "@/components/admin/cookie-settings";
+import { ConsentLog, CustomCodeForm, TrackingForm } from "@/components/admin/cookie-settings";
 import { reviewFindings } from "@/lib/cookie-scan";
-import { marketPath, storeHref } from "@/lib/paths";
+import { marketPath, storeDomain, storeHref } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
 import { listConsents } from "@/server/consents";
 import { latestFindings, listScans } from "@/server/cookie-scans";
 import { listCookieNotes } from "@/server/site-cookies";
 
-import { requestStoreScanAction, saveStoreCookieNoteAction, saveStoreTrackingAction } from "./actions";
+import { requestStoreScanAction, saveStoreCookieNoteAction, saveStoreCustomCodeAction, saveStoreTrackingAction } from "./actions";
 
 export const metadata: Metadata = { title: "Cookies and tracking" };
 
@@ -28,14 +28,19 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
       <div>
         <h1 className="text-2xl font-semibold">Cookies and tracking</h1>
         <p className="max-w-2xl text-sm text-muted">
-          What your store stores in shoppers&apos; browsers, the tools you use to measure and market, and the choices
-          shoppers make about them. Your cookie page lists every cookie, in each of your languages.
+          What your store stores in shoppers&apos; browsers, the tools and code you use to measure and market, and the
+          choices shoppers make about them. Your cookie page lists every cookie, in each of your languages.
         </p>
       </div>
       <TrackingForm
         tracking={store.tracking}
         action={saveStoreTrackingAction.bind(null, store.slug)}
         cookiePage={market ? storeHref(store.slug, marketPath(store.slug, market.slug, "/cookies")) : "/"}
+      />
+      <CustomCodeForm
+        code={store.customCode}
+        live={storeDomain() !== null}
+        action={saveStoreCustomCodeAction.bind(null, store.slug)}
       />
       <CookieScanPanel
         scans={scans}

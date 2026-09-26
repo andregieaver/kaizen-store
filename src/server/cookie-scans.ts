@@ -13,6 +13,7 @@ import {
   parseTracking,
 } from "@/lib/cookie-consent";
 import { parseScannedItems, type ScannedItem, type ScanTarget } from "@/lib/cookie-scan";
+import { liveCustomCode, parseCustomCode, type CustomCode } from "@/lib/custom-code";
 import { toMarket } from "@/lib/markets";
 import { marketPath, storeBase, storeSiteUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
@@ -119,6 +120,7 @@ export async function scanTarget(storeId: string | null): Promise<ScanTarget | n
   let starts: string[];
   let within: (path: string) => boolean;
   let tracking;
+  let code: CustomCode = {};
   let origin = siteUrl();
   if (storeId === null) {
     const [row] = await db().execute<Row>(sql`select tracking from commerce.platform_settings`);
@@ -127,7 +129,7 @@ export async function scanTarget(storeId: string | null): Promise<ScanTarget | n
     within = (path) => !path.startsWith("/s/");
   } else {
     const [row] = await db().execute<Row>(sql`
-      select s.slug, s.tracking,
+      select s.slug, s.tracking, s.custom_code,
         coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
           order by (m.code = s.country) desc nulls last, m.created_at, m.code) filter (where m.code is not null), '[]') as markets
       from commerce.stores s
@@ -139,12 +141,13 @@ export async function scanTarget(storeId: string | null): Promise<ScanTarget | n
     if (!row || markets.length === 0) return null;
     const slug = String(row.slug);
     tracking = parseTracking(row.tracking);
+    code = liveCustomCode(parseCustomCode(row.custom_code));
     starts = markets.slice(0, 3).map((market) => marketPath(slug, market.slug));
     // On its own host once it has one (P7), where every path is the store's.
     origin = storeSiteUrl(slug);
     within = (path) => path.startsWith(`${storeBase(slug)}/`);
   }
-  const { categories } = await siteCookies(storeId, tracking);
+  const { categories } = await siteCookies(storeId, tracking, code);
   return {
     origin,
     starts,

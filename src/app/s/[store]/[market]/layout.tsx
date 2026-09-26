@@ -6,6 +6,7 @@ import { BackToAdmin } from "@/components/back-to-admin";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { StoreThemeStyles } from "@/components/store-theme";
+import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
 import { marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { themeAttributes } from "@/lib/theme";
@@ -112,11 +113,12 @@ export default async function MarketLayout({ children, params }: Props) {
           <StoreMenu store={store} market={market} />
         </Suspense>
         <BackToAdmin storeSlug={store.slug} />
-        {/* Asks about the store's optional tools, if it has any, in the market's language (D58). */}
+        {/* Asks about the store's optional tools and code, if it has any, in the market's language (D58, D61). */}
         <Suspense fallback={null}>
           <SiteConsent
             storeId={store.id}
             tracking={store.tracking}
+            code={liveCustomCode(store.customCode)}
             lang={market.lang}
             locale={market.locale}
             cookiePage={marketPath(store.slug, market.slug, "/cookies")}

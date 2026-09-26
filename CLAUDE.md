@@ -103,6 +103,10 @@ of running `playwright install`.
   (`src/lib/cookie-scan.ts`, no database, tested in e2e against a small
   site) runs from `/api/cron/cookie-scan` via `cookie-scan-runner.ts`, the
   only module that loads Chromium; keep it out of other routes' imports.
+  A store's own code (D61, `src/lib/custom-code.ts`, `stores.custom_code`)
+  is added in the browser: necessary code at once, the rest by
+  `ConsentManager` after consent. Pass it through `liveCustomCode()`, which
+  gives none until stores have their own hosts (P7).
 
 ## Admin
 

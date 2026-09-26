@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { toolCategories, type TrackingSettings } from "@/lib/cookie-consent";
+import { CODE_MAX_LENGTH, CODE_PLACE_LABELS, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -67,6 +68,92 @@ export function TrackingForm({
           See the cookie page
         </Link>
       </p>
+    </section>
+  );
+}
+
+const CODE_CATEGORY_CHOICES = [
+  ["necessary", "Necessary: added for everyone, no consent needed"],
+  ["preferences", "Preferences: added once a visitor allows preferences"],
+  ["statistics", "Statistics: added once a visitor allows statistics"],
+  ["marketing", "Marketing: added once a visitor allows marketing"],
+] as const;
+
+/**
+ * A store's own code (D61) for its pages' head and the start and end of
+ * their body, each with the cookie category it falls under. Only added on
+ * the store's own address (`live`).
+ */
+export function CustomCodeForm({
+  code,
+  live,
+  action,
+}: {
+  code: CustomCode;
+  /** Whether the store is on its own address, where the code is added (P7). */
+  live: boolean;
+  action: (state: FormState, form: FormData) => Promise<FormState>;
+}) {
+  const asked = codeCategories(code);
+  return (
+    <section aria-labelledby="code-heading" className={card}>
+      <div>
+        <h2 id="code-heading" className="font-medium">
+          Custom code
+        </h2>
+        <p className="text-sm text-muted">
+          Code from other services, such as a tag manager, a chat widget or a verification tag, added to every page of your
+          store. Choose what the code does, so it waits for the visitor&apos;s consent where it needs it: code that is not
+          necessary for the store to work is only added once a visitor allows its kind of cookies. Only paste code from
+          services you trust, as it runs on your store&apos;s pages with full access to them.
+        </p>
+      </div>
+      {!live && (
+        <p role="status" className="rounded-md border border-border bg-surface p-3 text-sm">
+          Your store is still at Kaizen&apos;s own address. The code is saved now and added once stores move to addresses
+          of their own.
+        </p>
+      )}
+      <ActionForm action={action} className="flex flex-col gap-5" successMessage="Saved. Your store adds the code accordingly now.">
+        {CODE_PLACES.map((place) => (
+          <fieldset key={place} className="flex flex-col gap-2">
+            <legend className="text-sm font-medium">{CODE_PLACE_LABELS[place].title}</legend>
+            <label className={label}>
+              <span className="sr-only">Code {CODE_PLACE_LABELS[place].title.toLowerCase()}</span>
+              <textarea
+                name={`${place}.code`}
+                defaultValue={code[place]?.code ?? ""}
+                rows={5}
+                maxLength={CODE_MAX_LENGTH}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                className={`${input} py-2`}
+              />
+              <span className={hint}>{CODE_PLACE_LABELS[place].hint} Leave it empty for none.</span>
+            </label>
+            <label className={label}>
+              What it does
+              <select name={`${place}.category`} defaultValue={code[place]?.category ?? "marketing"} className={input.replace("font-mono ", "")}>
+                {CODE_CATEGORY_CHOICES.map(([value, text]) => (
+                  <option key={value} value={value}>
+                    {text}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </fieldset>
+        ))}
+        <div>
+          <SubmitButton>Save custom code</SubmitButton>
+        </div>
+      </ActionForm>
+      {asked.length > 0 && (
+        <p className="text-sm">
+          Because of this code, visitors are asked about {asked.map((c) => CATEGORY_NAMES[c]).join(" and ")}. Run a cookie
+          scan after saving, and describe what it finds, so your cookie page lists what the code sets.
+        </p>
+      )}
     </section>
   );
 }

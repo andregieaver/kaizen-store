@@ -7,6 +7,7 @@ import { readDb } from "@/db/client";
 import { toMarket, type Market } from "@/lib/markets";
 import { isStoreSlug } from "@/lib/paths";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
+import { parseCustomCode, type CustomCode } from "@/lib/custom-code";
 import type { SiteFonts } from "@/lib/fonts";
 import { parseNavigation, type StoreNavigation } from "@/lib/navigation";
 import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
@@ -37,6 +38,8 @@ export type Store = {
   frontPageId: string | null;
   /** Analytics and marketing tools, loaded only with the shopper's consent (D58). */
   tracking: TrackingSettings;
+  /** The owner's own code for the head and body (D61), as saved; `liveCustomCode()` says whether it is added. */
+  customCode: CustomCode;
   /** The storefront's design (D60): colours, fonts and the rest, from a template. */
   theme: StoreTheme;
   /** The theme's heading and body fonts (D59), self-hosted. */
@@ -77,7 +80,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking, s.theme,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking, s.custom_code, s.theme,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -130,6 +133,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     navigation: parseNavigation(row.navigation),
     frontPageId: text(row.front_page_id),
     tracking: parseTracking(row.tracking),
+    customCode: parseCustomCode(row.custom_code),
     ...themed(row.theme),
   };
 }

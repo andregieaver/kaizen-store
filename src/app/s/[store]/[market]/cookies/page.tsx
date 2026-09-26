@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { CookiePolicy } from "@/components/consent/cookie-policy";
+import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { resolveShop } from "@/server/shop";
@@ -24,6 +25,6 @@ export default async function StoreCookiesPage({ params }: Props) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
-  const { cookies, categories } = await siteCookies(shop.store.id, shop.store.tracking);
+  const { cookies, categories } = await siteCookies(shop.store.id, shop.store.tracking, liveCustomCode(shop.store.customCode));
   return <CookiePolicy lang={shop.market.lang} cookies={cookies} categories={categories} />;
 }
