@@ -69,7 +69,7 @@ function Row({ row, place, renderBlock }: { row: PageRow; place: GridPlace; rend
   return (
     <div className={row.width === "full" ? undefined : "mx-auto w-full max-w-(--content-width)"}>
       <div id={box.id} className={box.className} style={box.style}>
-        <PartBackground background={row.background} />
+        <PartBackground background={row.background} controls />
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
             {row.columns.map((column) => {

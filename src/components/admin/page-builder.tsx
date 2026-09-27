@@ -81,7 +81,7 @@ import {
   pageParts,
   richTextPlain,
   ALT_MAX,
-  type Background,
+  type RowBackground,
   type BlockType,
   type BorderStyle,
   type ButtonBlock,
@@ -159,6 +159,7 @@ import type { GridStore } from "@/server/content-grid";
 
 import { FontPicker, type InstallFont } from "./font-picker";
 import { ImageUploadButton, type Upload } from "./image-upload";
+import { VideoUploadButton, type StartVideo } from "./video-upload";
 import type { PageOwnerContext } from "./page-context";
 import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
@@ -333,6 +334,7 @@ export function PageBuilder({
   onRows,
   saved,
   upload,
+  startVideo = null,
   aside,
   grid,
   fonts,
@@ -352,6 +354,8 @@ export function PageBuilder({
   translate?: Translating | null;
   /** Uploads a picture, shrunk in the browser first; null where uploads are not set up. */
   upload: Upload | null;
+  /** Starts a row's background video upload; null where uploads are not set up. */
+  startVideo?: StartVideo | null;
   /** Kaizen's saved rows, columns and components (D46). */
   saved: SavedPart[];
   aside: ReactNode;
@@ -630,6 +634,7 @@ export function PageBuilder({
         }}
         onUse={(part) => placeSaved(part)}
         upload={upload}
+        startVideo={startVideo}
         grid={grid}
         fonts={fonts}
         translate={translate}
@@ -1530,6 +1535,7 @@ function Dialogs({
   onParts,
   onUse,
   upload,
+  startVideo,
   grid,
   fonts,
   translate,
@@ -1547,6 +1553,7 @@ function Dialogs({
   onParts: (parts: SavedPart[], savedId?: string) => void;
   onUse: (part: SavedPart) => void;
   upload: Upload | null;
+  startVideo: StartVideo | null;
 }) {
   if (translate) return <TranslateDialogs dialog={dialog} rows={rows} onRows={onRows} onClose={onClose} translate={translate} />;
   const done = (
@@ -1894,7 +1901,10 @@ function Dialogs({
                 <BackgroundFields
                   value={column.background}
                   upload={upload}
-                  onChange={(background) => onRows((current) => patchColumn(current, column.id, { background }))}
+                  // Columns are offered no video (only rows take one).
+                  onChange={(background) =>
+                    onRows((current) => patchColumn(current, column.id, { background: background?.type === "video" ? undefined : background }))
+                  }
                 />
                 {spacingFields({ kind: "column", id: column.id })}
                 {frameFields({ kind: "column", id: column.id })}
@@ -1920,6 +1930,7 @@ function Dialogs({
                 <BackgroundFields
                   value={row.background}
                   upload={upload}
+                  startVideo={startVideo}
                   onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
                 />
                 {spacingFields({ kind: "row", id: row.id })}
@@ -2458,25 +2469,34 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
-/** A row's or column's background (D48): none, a colour, or a picture with an optional colour over it. */
+/**
+ * A row's or column's background (D48): none, a colour, or a picture (or,
+ * for rows, given `startVideo`, a video) with a colour and blur over it,
+ * previewed as the page draws it.
+ */
 function BackgroundFields({
   value,
   upload,
+  startVideo,
   onChange,
 }: {
-  value: Background | undefined;
+  value: RowBackground | undefined;
   upload: Upload | null;
-  onChange: (background: Background | undefined) => void;
+  /** Given for rows, which alone take a video; null where uploads are not set up. */
+  startVideo?: StartVideo | null;
+  onChange: (background: RowBackground | undefined) => void;
 }) {
-  // A picture chosen as the kind waits for its upload before it is kept.
-  const [kind, setKind] = useState<"none" | Background["type"]>(value?.type ?? "none");
+  // A picture or video chosen as the kind waits for its upload before it is kept.
+  const [kind, setKind] = useState<"none" | RowBackground["type"]>(value?.type ?? "none");
   const choose = (next: typeof kind) => {
     setKind(next);
     if (next === "none") onChange(undefined);
     if (next === "color") onChange({ type: "color", color: value?.type === "color" ? value.color : "#f3f4f6" });
     if (next === "image") onChange(value?.type === "image" ? value : undefined);
+    if (next === "video") onChange(value?.type === "video" ? value : undefined);
   };
-  const image = value?.type === "image" ? value : null;
+  const media = value?.type === "image" || value?.type === "video" ? value : null;
+  const kept = { overlay: media?.overlay ?? null, ...(media?.blur ? { blur: media.blur } : {}) };
   return (
     <div className="flex flex-col gap-4">
       <Choices
@@ -2485,6 +2505,7 @@ function BackgroundFields({
           { value: "none", label: "None" },
           { value: "color", label: "Colour" },
           { value: "image", label: "Picture" },
+          ...(startVideo !== undefined ? [{ value: "video" as const, label: "Video" }] : []),
         ]}
         value={kind}
         onChange={choose}
@@ -2492,53 +2513,59 @@ function BackgroundFields({
       {kind === "color" && value?.type === "color" && (
         <ColorField label="Background colour" value={value.color} onChange={(color) => onChange({ type: "color", color })} />
       )}
-      {kind === "image" && (
+      {(kind === "image" || kind === "video") && (
         <div className="flex flex-col gap-3">
-          {image ? (
-            // The picture as the page draws it, with its colour and blur, so changes show here at once.
+          {media?.type === kind ? (
+            // The picture or video as the page draws it, with its colour and blur, so changes show here at once.
             <div className="relative isolate h-48 w-full overflow-hidden rounded-md border border-border">
-              <PartBackground background={image} />
+              <PartBackground background={media} />
             </div>
           ) : (
             <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
-              No picture yet
+              {kind === "video" ? "No video yet" : "No picture yet"}
             </div>
           )}
-          <ImageUploadButton
-            upload={upload}
-            label={image ? "Replace picture" : "Upload picture"}
-            onUploaded={(uploaded) => onChange({ ...image, type: "image", image: uploaded, overlay: image?.overlay ?? null })}
-          />
-          {image && (
+          {kind === "image" ? (
+            <ImageUploadButton
+              upload={upload}
+              label={media?.type === "image" ? "Replace picture" : "Upload picture"}
+              onUploaded={(uploaded) => onChange({ type: "image", image: uploaded, ...kept })}
+            />
+          ) : (
+            <VideoUploadButton
+              startVideo={startVideo ?? null}
+              upload={upload}
+              label={media?.type === "video" ? "Replace video" : "Upload video"}
+              onUploaded={(uploaded) => onChange({ type: "video", ...uploaded, ...kept })}
+            />
+          )}
+          {media?.type === kind && (
             <>
               <Check
-                label="Colour over the picture"
-                hint="Makes text on the picture easier to read."
-                checked={Boolean(image.overlay)}
-                onChange={(on) => onChange({ ...image, overlay: on ? { color: "#000000", opacity: 40 } : null })}
+                label={kind === "video" ? "Colour over the video" : "Colour over the picture"}
+                hint="Makes text on it easier to read."
+                checked={Boolean(media.overlay)}
+                onChange={(on) => onChange({ ...media, overlay: on ? { color: "#000000", opacity: 40 } : null })}
               />
-              {image.overlay && (
-                <OverlayFields
-                  overlay={image.overlay}
-                  onChange={(overlay) => onChange({ ...image, overlay })}
-                />
+              {media.overlay && (
+                <OverlayFields overlay={media.overlay} onChange={(overlay) => onChange({ ...media, overlay })} />
               )}
               <Check
-                label="Blur the picture"
-                hint="Softens a busy picture behind text."
-                checked={Boolean(image.blur)}
-                onChange={(on) => onChange(withBlur(image, on ? 6 : 0))}
+                label={kind === "video" ? "Blur the video" : "Blur the picture"}
+                hint="Softens a busy background behind text."
+                checked={Boolean(media.blur)}
+                onChange={(on) => onChange(withBlur(media, on ? 6 : 0))}
               />
-              {image.blur ? (
+              {media.blur ? (
                 <div className="pl-7">
                   <RangeField
                     label="Blur"
                     min={1}
                     max={BLUR_MAX}
                     step={1}
-                    value={image.blur}
-                    shown={`${image.blur} px`}
-                    onChange={(blur) => onChange(withBlur(image, blur))}
+                    value={media.blur}
+                    shown={`${media.blur} px`}
+                    onChange={(blur) => onChange(withBlur(media, blur))}
                   />
                 </div>
               ) : null}
@@ -2550,11 +2577,11 @@ function BackgroundFields({
   );
 }
 
-type ImageBackground = Extract<Background, { type: "image" }>;
+type MediaBackground = Extract<RowBackground, { type: "image" | "video" }>;
 
-/** A picture background with this much blur; none is left out, so the page stays as small as it can. */
-const withBlur = (image: ImageBackground, blur: number): ImageBackground => {
-  const next = { ...image };
+/** A picture or video background with this much blur; none is left out, so the page stays as small as it can. */
+const withBlur = <T extends MediaBackground>(media: T, blur: number): T => {
+  const next = { ...media };
   if (blur > 0) next.blur = blur;
   else delete next.blur;
   return next;

@@ -11,7 +11,7 @@ import { uploadsEnabled } from "@/server/media";
 import { getPlatformFonts } from "@/server/platform-navigation";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
 
-import { uploadPlatformImageAction } from "../actions";
+import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../actions";
 import { installPlatformFontAction } from "../fonts/actions";
 import {
   createPageTermAction,
@@ -40,6 +40,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     reserved: reservedPageSlugs(null, type),
     defaultDescription: PLATFORM_DEFAULTS.description,
     upload: uploadsEnabled() ? uploadPlatformImageAction : null,
+    startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,
     gridStores,
     fonts: { site: fonts, style: siteFontStyle(fonts) },
     theme: null,

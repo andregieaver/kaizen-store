@@ -322,6 +322,20 @@ export type Background =
       blur?: number;
     };
 export const BLUR_MAX = 20;
+/**
+ * A row's background video: plays without sound, on a loop, with a colour
+ * and blur over it as a picture takes. `poster` is a still from it, shown
+ * until it plays and instead of it for people who prefer less motion.
+ */
+export type VideoBackground = {
+  type: "video";
+  video: { url: string };
+  poster: { url: string; width: number; height: number } | null;
+  overlay: { color: Color; opacity: number } | null;
+  blur?: number;
+};
+/** A row's background: a column's, or a video (rows only). */
+export type RowBackground = Background | VideoBackground;
 
 export type TextAlign = "left" | "center" | "right";
 /** Text alignment by screen (D48): phones, from tablets (768 px) and from computers (1024 px) up; each unset follows the smaller. */
@@ -564,7 +578,7 @@ export type PageRow = PartBase & {
   equalHeight?: boolean;
   /** Where columns' content sits, top (the default), middle or bottom. */
   align?: VerticalAlign;
-  background?: Background;
+  background?: RowBackground;
 };
 
 /** Whether a rich-text document holds nothing but empty paragraphs. */
@@ -879,21 +893,31 @@ const partBase = {
   ),
 };
 
+const picture = z.object({
+  url: z.url({ protocol: /^https?$/, error: "A background picture has an invalid address." }).max(1000),
+  width: z.number().int().min(1).max(10_000),
+  height: z.number().int().min(1).max(10_000),
+});
+const overlay = z.object({ color, opacity: z.number().int().min(0).max(100) }).nullable();
+const blur = z.number().int().min(1).max(BLUR_MAX).optional();
+const colorBackground = z.object({ type: z.literal("color"), color });
+const imageBackground = z.object({ type: z.literal("image"), image: picture, overlay, blur });
+const videoBackground = z.object({
+  type: z.literal("video"),
+  video: z.object({ url: z.url({ protocol: /^https?$/, error: "A background video has an invalid address." }).max(1000) }),
+  poster: picture.nullable(),
+  overlay,
+  blur,
+});
+
+/** A column's background: a colour or a picture; only rows take a video. */
 const background = z
-  .discriminatedUnion("type", [
-    z.object({ type: z.literal("color"), color }),
-    z.object({
-      type: z.literal("image"),
-      image: z.object({
-        url: z.url({ protocol: /^https?$/, error: "A background picture has an invalid address." }).max(1000),
-        width: z.number().int().min(1).max(10_000),
-        height: z.number().int().min(1).max(10_000),
-      }),
-      overlay: z.object({ color, opacity: z.number().int().min(0).max(100) }).nullable(),
-      blur: z.number().int().min(1).max(BLUR_MAX).optional(),
-    }),
-  ])
+  .discriminatedUnion("type", [colorBackground, imageBackground], {
+    error: (issue) =>
+      (issue.input as { type?: unknown } | undefined)?.type === "video" ? "Only rows can have a background video." : undefined,
+  })
   .optional();
+const rowBackground = z.discriminatedUnion("type", [colorBackground, imageBackground, videoBackground]).optional();
 
 /** A block's own font (D59): a Google Fonts family, or none for the site's. */
 const blockFont = optionalText(fontFamily);
@@ -1084,7 +1108,7 @@ export const pageRowSchema = z
     reverseOnMobile: z.boolean().optional(),
     equalHeight: z.boolean().optional(),
     align: z.enum(["top", "middle", "bottom"]).optional(),
-    background,
+    background: rowBackground,
     ...partBase,
   })
   .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {

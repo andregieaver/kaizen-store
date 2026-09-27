@@ -274,6 +274,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20260927202914_listing_filters.sql` | `20260927203910` |
 | `20260927210852_product_layouts.sql` | `20260927212011` |
 | `20260927210919_product_layouts_rules.sql` | `20260927212241` |
+| `20260927223709_page_videos_bucket.sql` | `20260927224859` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

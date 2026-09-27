@@ -23,7 +23,7 @@ import {
   type PlanInput,
 } from "@/server/billing";
 import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
-import { uploadProductImage, type UploadResult } from "@/server/media";
+import { startVideoUpload, uploadProductImage, type UploadResult, type VideoUpload } from "@/server/media";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import {
@@ -250,6 +250,14 @@ export async function uploadPlatformImageAction(formData: FormData): Promise<Upl
     return { ok: false, problem: "Choose a picture to upload." };
   }
   return uploadProductImage("platform", image, thumbnail);
+}
+
+/** Starts an upload of a row's background video on Kaizen's pages, straight from the browser to the public bucket. */
+export async function startPlatformVideoUploadAction(file: unknown): Promise<VideoUpload> {
+  await requirePlatformAdmin();
+  const parsed = z.object({ type: z.string().max(100), size: z.number().int().nonnegative() }).safeParse(file);
+  if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
+  return startVideoUpload("platform", parsed.data);
 }
 
 /** The platform discount form's fields, as the server checks them. */

@@ -12,7 +12,7 @@ import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
 import type { Store } from "@/server/stores";
 
-import { uploadImageAction } from "../products/actions";
+import { startVideoUploadAction, uploadImageAction } from "../products/actions";
 import { installStoreFontAction } from "../settings/design/actions";
 import {
   createStorePageTermAction,
@@ -55,6 +55,7 @@ export function storePageContext(store: Store, type: PageType = "page", author =
     defaultDescription:
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),
     upload: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,
+    startVideo: uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null,
     // A store's grids show its own products.
     gridStores: [],
     fonts: { site: store.fonts, style: siteFontStyle(store.fonts) },

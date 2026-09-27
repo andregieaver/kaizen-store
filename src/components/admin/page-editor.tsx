@@ -210,6 +210,7 @@ export function PageEditor({
         library={library}
         productParts={layout}
         upload={upload}
+        startVideo={context.startVideo}
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
         grid={{
           pageId: saved?.id ?? null,

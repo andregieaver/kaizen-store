@@ -7,15 +7,17 @@ import {
   frameStyle,
   rowSpacing,
   spacingStyle,
-  type Background,
   type PageBlock,
   type PageColumn,
   type PageRow,
+  type RowBackground,
   type TextAlignments,
   type VerticalAlign,
 } from "@/lib/page-content";
 import { fontClass } from "@/lib/fonts";
 import { summarize } from "@/lib/seo";
+
+import { BackgroundVideo } from "./background-video";
 
 /**
  * How a page's rows, columns and blocks are drawn with their settings (D47,
@@ -42,10 +44,11 @@ const TEXT_ALIGN = {
   desktop: { left: "lg:text-left", center: "lg:text-center", right: "lg:text-right" },
 } as const;
 
-/** Rounded corners over a background picture clip it. */
-const clips = (part: PageRow | PageColumn) => Boolean(part.radius) && part.background?.type === "image";
+/** Rounded corners over a background picture or video clip it. */
+const clips = (part: PageRow | PageColumn) =>
+  Boolean(part.radius) && (part.background?.type === "image" || part.background?.type === "video");
 
-const colorStyle = (background: Background | undefined): CSSProperties =>
+const colorStyle = (background: RowBackground | undefined): CSSProperties =>
   background?.type === "color" ? { backgroundColor: background.color } : {};
 
 /** The row itself: its background, height, margin and padding. */
@@ -132,37 +135,39 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
   };
 }
 
+/** A blurred picture or video reaches past the edges by twice its blur, cut off there, so its soft rim does not show. */
+const blurredMedia = (blur: number): CSSProperties | undefined =>
+  blur
+    ? { inset: -2 * blur, width: `calc(100% + ${4 * blur}px)`, height: `calc(100% + ${4 * blur}px)`, filter: `blur(${blur}px)` }
+    : undefined;
+
 /**
- * A background picture, softened if blurred, and the colour over it, behind
- * what the row or column holds. A blurred picture reaches past the edges,
- * cut off there, so its soft rim does not show.
+ * A background picture or video (rows only), softened if blurred, and the
+ * colour over it, behind what the row or column holds. A video shows its
+ * still until it plays, and instead of it for people who prefer less
+ * motion; `controls` adds its pause button (the site, not the builder).
  */
-export function PartBackground({ background }: { background: Background | undefined }) {
-  if (background?.type !== "image") return null;
+export function PartBackground({ background, controls = false }: { background: RowBackground | undefined; controls?: boolean }) {
+  if (background?.type !== "image" && background?.type !== "video") return null;
   const blur = background.blur ?? 0;
-  const picture = (
-    <Image
-      src={background.image.url}
-      alt=""
-      width={background.image.width}
-      height={background.image.height}
-      unoptimized
-      className={blur ? "absolute max-w-none object-cover" : "absolute inset-0 -z-10 size-full object-cover"}
-      style={
-        blur
-          ? { inset: -2 * blur, width: `calc(100% + ${4 * blur}px)`, height: `calc(100% + ${4 * blur}px)`, filter: `blur(${blur}px)` }
-          : undefined
-      }
-    />
+  const media = cx("absolute object-cover", blur ? "max-w-none" : "inset-0 size-full");
+  const still = background.type === "image" ? background.image : background.poster;
+  const picture = still && (
+    <Image src={still.url} alt="" width={still.width} height={still.height} unoptimized className={media} style={blurredMedia(blur)} />
   );
   return (
     <>
-      {blur ? (
-        <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]">
-          {picture}
-        </div>
-      ) : (
-        picture
+      <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]">
+        {picture}
+      </div>
+      {background.type === "video" && (
+        <BackgroundVideo
+          src={background.video.url}
+          poster={background.poster?.url}
+          className={media}
+          style={blurredMedia(blur)}
+          controls={controls}
+        />
       )}
       {background.overlay && (
         <div

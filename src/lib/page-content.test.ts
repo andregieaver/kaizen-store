@@ -253,6 +253,22 @@ describe("row, column and component settings (D48)", () => {
     expect(problems(page({ background: { type: "image", image: { url: "https://e.com/a", width: 1, height: 1 }, overlay: { color: "#000000", opacity: 101 } } }))).not.toEqual([]);
   });
 
+  it("keeps a row's background video, with its still, colour and blur, and gives columns none", () => {
+    const video = {
+      type: "video",
+      video: { url: "https://e.com/page-videos/a.mp4" },
+      poster: { url: "https://e.com/a.webp", width: 1280, height: 720 },
+      overlay: { color: "#000000", opacity: 30 },
+      blur: 4,
+    };
+    expect(pageInput.parse(page({ background: video })).rows[0].background).toEqual(video);
+    expect(pageInput.parse(page({ background: { ...video, poster: null } })).rows[0].background).toMatchObject({ poster: null });
+    expect(problems(page({}, { background: video }))).toContain("Only rows can have a background video.");
+    expect(problems(page({ background: { ...video, video: { url: "javascript:alert(1)" } } }))).toContain(
+      "A background video has an invalid address.",
+    );
+  });
+
   it("keeps a background picture's blur, in whole pixels from 1 to 20, on rows and columns", () => {
     const picture = { type: "image", image: { url: "https://e.com/a.webp", width: 800, height: 600 }, overlay: null };
     const parsed = pageInput.parse(page({ background: { ...picture, blur: 6 } }, { background: { ...picture, blur: 20 } }));

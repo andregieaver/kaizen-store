@@ -289,7 +289,10 @@ of running `playwright install`.
   `<PageBlockView>` (`src/components/page-block.tsx`) on the canvas and
   the site. Rows, columns and blocks take optional settings (D47–D49:
   spacing, border, corners, shadow, id and classes, backgrounds (a colour,
-  or a picture with a colour and blur over it, `PartBackground`), widths,
+  or a picture with a colour and blur over it, `PartBackground`; rows also
+  a video, uploaded from the browser to the `page-videos` bucket with a
+  still for its poster, `VideoUploadButton`, and drawn by `BackgroundVideo`
+  with a pause button, still for reduced motion), widths,
   column links, text alignment, picture shape; `frameStyle()`; a row's
   padding is 20 px until set, `ROW_PADDING`/`rowSpacing()`, and the page
   adds no room at the sides, nor above or below a row with a background,

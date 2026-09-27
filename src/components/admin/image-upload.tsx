@@ -9,6 +9,26 @@ export type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { o
 export type Uploaded = { url: string; width: number; height: number };
 
 /**
+ * Shrinks a picture in the browser (1600 px, with a 480 px thumbnail) and
+ * uploads it; also used for a background video's first picture.
+ */
+export async function uploadPicture(
+  upload: Upload,
+  file: File,
+): Promise<{ ok: true; image: Uploaded } | { ok: false; problem: string }> {
+  const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
+  const size = await createImageBitmap(image);
+  const ext = image.type === "image/webp" ? "webp" : "jpg";
+  const data = new FormData();
+  data.set("image", new File([image], `picture.${ext}`, { type: image.type }));
+  data.set("thumbnail", new File([thumbnail], `picture-480.${ext}`, { type: thumbnail.type }));
+  const outcome = await upload(data);
+  const dimensions = { width: size.width, height: size.height };
+  size.close();
+  return outcome.ok ? { ok: true, image: { url: outcome.url, ...dimensions } } : outcome;
+}
+
+/**
  * Chooses a picture, shrinks it in the browser (1600 px, with a 480 px
  * thumbnail) and uploads it, as product and page pictures are.
  */
@@ -29,16 +49,9 @@ export function ImageUploadButton({
     setBusy(true);
     setProblem(null);
     try {
-      const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
-      const size = await createImageBitmap(image);
-      const ext = image.type === "image/webp" ? "webp" : "jpg";
-      const data = new FormData();
-      data.set("image", new File([image], `picture.${ext}`, { type: image.type }));
-      data.set("thumbnail", new File([thumbnail], `picture-480.${ext}`, { type: thumbnail.type }));
-      const outcome = await upload(data);
-      if (outcome.ok) onUploaded({ url: outcome.url, width: size.width, height: size.height });
+      const outcome = await uploadPicture(upload, file);
+      if (outcome.ok) onUploaded(outcome.image);
       else setProblem(outcome.problem);
-      size.close();
     } catch {
       setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG or WebP.`);
     } finally {

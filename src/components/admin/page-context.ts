@@ -11,6 +11,7 @@ import type { SavedResult } from "@/server/saved-parts";
 import type { TermsResult } from "@/server/taxonomy";
 
 import type { Upload } from "./image-upload";
+import type { StartVideo } from "./video-upload";
 
 export type PageSaveState = { status: "saved"; page: EditablePage } | { status: "error"; problems: string[] };
 
@@ -44,6 +45,8 @@ export type PageOwnerContext = {
   defaultDescription: string;
   /** Uploads a picture; null where uploads are not set up. */
   upload: Upload | null;
+  /** Starts a row's background video upload from the browser; null where uploads are not set up. */
+  startVideo: StartVideo | null;
   /** Stores whose products a content grid can show; empty on a store's pages, which show their own. */
   gridStores: GridStore[];
   /** The owner's own fonts, and the style that sets them, for the canvas (D59). */

@@ -12,7 +12,14 @@ import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { suggestProductText } from "@/server/product-writer";
-import { startFileUpload, uploadProductImage, type FileUpload, type UploadResult } from "@/server/media";
+import {
+  startFileUpload,
+  startVideoUpload,
+  uploadProductImage,
+  type FileUpload,
+  type UploadResult,
+  type VideoUpload,
+} from "@/server/media";
 import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import {
   getEditorContext,
@@ -98,6 +105,17 @@ export async function archiveProductAction(storeSlug: string, productId: string,
   await setArchived(member.store, productId, archive);
   refreshCatalogue(member);
   redirect(`/admin/${storeSlug}/products${archive ? "" : `/${productId}`}`);
+}
+
+/** The video the browser means to upload: its type and size, checked again by the bucket. */
+const videoFile = z.object({ type: z.string().max(100), size: z.number().int().nonnegative() });
+
+/** Starts an upload of a row's background video straight from the browser to the public bucket. */
+export async function startVideoUploadAction(storeSlug: string, file: unknown): Promise<VideoUpload> {
+  const member = await requireMember(storeSlug);
+  const parsed = videoFile.safeParse(file);
+  if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
+  return startVideoUpload(member.store.id, parsed.data);
 }
 
 /** Starts an upload of a download file straight from the browser to the private bucket (D24). */

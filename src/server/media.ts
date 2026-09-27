@@ -91,6 +91,44 @@ export async function uploadProductImage(
 }
 
 // ---------------------------------------------------------------------------
+// Background videos for page rows
+// ---------------------------------------------------------------------------
+
+const VIDEOS_BUCKET = "page-videos";
+export const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
+const VIDEO_TYPES: Record<string, string> = { "video/mp4": "mp4", "video/webm": "webm" };
+
+export type VideoUpload =
+  | { ok: true; path: string; token: string; bucket: string; url: string }
+  | { ok: false; problem: string };
+
+/**
+ * Lets the owner's browser upload a row's background video straight to the
+ * public bucket (videos are far larger than a server request allows): a
+ * signed upload for one new path in the owner's folder, and the address the
+ * video will have. The bucket itself refuses other types and larger files.
+ */
+export async function startVideoUpload(folder: string, file: { type: string; size: number }): Promise<VideoUpload> {
+  const extension = VIDEO_TYPES[file.type];
+  if (!extension) return { ok: false, problem: "Use an MP4 or WebM video." };
+  if (!(file.size > 0) || file.size > VIDEO_MAX_BYTES) {
+    return { ok: false, problem: "That video is too large. Use one under 50 MB." };
+  }
+  const secret = secretKey();
+  if ("problem" in secret) return { ok: false, problem: secret.problem };
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(VIDEOS_BUCKET);
+  const path = `${folder}/${randomUUID()}.${extension}`;
+  const { data, error } = await storage.createSignedUploadUrl(path);
+  if (error || !data) {
+    console.error("[media] video upload could not start:", error?.message);
+    return { ok: false, problem: "The upload could not be started. Try again." };
+  }
+  return { ok: true, path, token: data.token, bucket: VIDEOS_BUCKET, url: storage.getPublicUrl(path).data.publicUrl };
+}
+
+// ---------------------------------------------------------------------------
 // Digital files (D24)
 // ---------------------------------------------------------------------------
 
