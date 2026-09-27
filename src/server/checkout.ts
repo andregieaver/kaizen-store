@@ -293,7 +293,26 @@ export async function placeOrder(
             : renewUnit;
       const delivery: Delivery = parseDelivery(line.delivery);
       const rate = Number(line.vat_rate ?? vatRate);
-      return { line, quantity, count, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when, range, period };
+      // A stay or rental is one line at its whole price (D70): its per-night price is only where the whole starts
+      // from, so discount codes and free shipping count the whole, as the cart page does.
+      const lineUnit = range && startsAt ? unit : renewUnit;
+      return {
+        line,
+        quantity,
+        count,
+        unit,
+        renewUnit: lineUnit,
+        discount: 0,
+        total: unit * quantity,
+        title,
+        recurring,
+        delivery,
+        rate,
+        startsAt,
+        when,
+        range,
+        period,
+      };
     });
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [

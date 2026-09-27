@@ -5,20 +5,16 @@ import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
 import { companyRequired, withoutVat } from "@/lib/b2b";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
-import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
-import { vatIncluded } from "@/lib/checkout";
-import { basketShipping } from "@/lib/subscriptions";
+import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, type Messages } from "@/lib/i18n";
-import { venuePart } from "@/lib/pay-later";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { formatMoney } from "@/lib/money";
 import { getBuyer } from "@/server/b2b";
-import { getCart, type CartLine } from "@/server/cart";
+import { getCart } from "@/server/cart";
+import { cartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
-import { previewCartDiscount } from "@/server/discounts";
-import { getCheckoutInfo } from "@/server/orders";
 import type { Store } from "@/server/stores";
 
 import { updateCartLine } from "./actions";
@@ -53,75 +49,29 @@ export async function CartContents({
     );
   }
 
-  const payable = cart.lines.filter(
-    (line): line is CartLine & { unitPriceMinor: number } =>
-      line.status !== "unavailable" && line.unitPriceMinor !== null,
-  );
-  const blocked = cart.lines.some((line) => line.status !== "ok");
-  const checkout = await getCheckoutInfo(store.id, market.code);
-  const plan = payable.find((line) => line.plan)?.plan ?? null;
-  // In a free trial, what renews costs nothing today (D29).
-  const trial = (plan?.trialDays ?? 0) > 0;
-  const today = (line: CartLine & { unitPriceMinor: number }) => (trial && line.plan ? 0 : line.unitPriceMinor * line.quantity);
-  // One sign-up fee per purchase option (D29).
-  const fees = [
-    ...new Map(
-      payable
-        .filter((l) => l.plan && l.plan.signupFeeMinor > 0)
-        .map((l) => [l.plan!.id, { amount: l.plan!.signupFeeMinor, rate: l.vatRate }]),
-    ).values(),
-  ];
-  const feeMinor = fees.reduce((sum, fee) => sum + fee.amount, 0);
-  const subtotal = cartSubtotal(payable.map((line) => ({ unitPriceMinor: today(line), quantity: 1 })));
-  // Downloads alone need no shipping (D24); a subscription pays it per delivery (D25).
-  const ships = cart.lines.some((line) => line.delivery === "physical");
-  const digital = cart.lines.some((line) => line.delivery === "digital");
-  const basket = basketShipping(
-    payable.map((line) => ({
-      totalMinor: line.unitPriceMinor * line.quantity,
-      delivery: line.delivery,
-      recurring: line.plan !== null,
-    })),
-    checkout.shipping,
-    { trial },
-  );
-  const shipping = !ships ? 0 : checkout.shipping ? basket.first : null;
-  // The discount code, checked against this basket as checkout will (D31).
-  const code = await previewCartDiscount(
-    { storeId: store.id, market },
-    {
-      lines: payable.map((line, i) => ({
-        key: String(i),
-        productId: line.productId,
-        unitMinor: line.unitPriceMinor,
-        quantity: line.quantity,
-        todayMinor: today(line),
-        recurring: line.plan !== null,
-      })),
-      shippingMinor: shipping ?? 0,
-    },
-  );
-  const applied = code?.ok ? code.applied : null;
-  const discountMinor = applied?.totalMinor ?? 0;
-  // A recurring percentage lowers what each renewal costs, and so its shipping.
-  const renewUnit = (line: (typeof payable)[number], i: number) => applied?.renewalUnits[String(i)] ?? line.unitPriceMinor;
-  const renewing = payable
-    .map((line, i) => ({ line, i }))
-    .filter(({ line }) => line.plan)
-    .reduce((sum, { line, i }) => sum + renewUnit(line, i) * line.quantity, 0);
-  const renewalShipping =
-    applied && Object.keys(applied.renewalUnits).length > 0
-      ? basketShipping(
-          payable.map((line, i) => ({
-            totalMinor: renewUnit(line, i) * line.quantity,
-            delivery: line.delivery,
-            recurring: line.plan !== null,
-          })),
-          checkout.shipping,
-          { trial },
-        ).renewal
-      : basket.renewal;
-  const renewal = plan ? renewing + renewalShipping : null;
+  const {
+    payable,
+    blocked,
+    checkout,
+    plan,
+    trial,
+    today,
+    fees,
+    feeMinor,
+    ships,
+    digital,
+    basket,
+    shipping,
+    code,
+    applied,
+    discountMinor,
+    renewal,
+    lineDiscount,
+    total,
+    vat,
+    balance,
+    atVenueOnly,
+  } = await cartSummary({ storeId: store.id, market }, cart);
   const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
   // Businesses see amounts without VAT, and the VAT on its own line (B2B); they pay the total with it.
   const business = buyer === "business";
@@ -130,16 +80,6 @@ export async function CartContents({
   const net = (minor: number, rate = checkout.vatRate) => money(business ? withoutVat(minor, rate) : minor);
   const sumNet = (parts: { minor: number; rate: number }[]) =>
     money(parts.reduce((sum, part) => sum + (business ? withoutVat(part.minor, part.rate) : part.minor), 0));
-  const lineDiscount = (i: number) => applied?.lines[String(i)] ?? 0;
-  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor;
-  const vat =
-    payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i), line.vatRate), 0) +
-    fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
-    vatIncluded((shipping ?? 0) - (applied?.shippingMinor ?? 0), checkout.vatRate);
-  // Appointments paid at the venue, or the rest after a deposit (D66), as checkout will work it out.
-  const balance = payable.reduce((sum, line, i) => sum + venuePart(today(line) - lineDiscount(i), line.payment), 0);
-  // Nothing to pay online: the shopper tells who books instead of Stripe asking.
-  const atVenueOnly = balance > 0 && balance === total;
   // A signed-in customer's saved company and details fill the fields in.
   const saved = (business && !cart.company) || atVenueOnly ? await getCustomer(store.id) : null;
   const companyNeeded = companyRequired(store.audience, cart.lines.map((line) => line.audience));

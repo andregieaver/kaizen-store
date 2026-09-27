@@ -100,6 +100,10 @@ of running `playwright install`.
   `/cart` on client navigation (`(.)cart`, `CartDrawer`); `[...rest]` closes
   it on any other page, and larger screens load the cart page instead.
   Stores can open it on adding (`stores.open_cart_on_add`, `useOpenCartAfterAdd()`).
+  Its totals come from `cartSummary()` (`src/server/cart-summary.ts`), which
+  must agree with what `placeOrder()` charges; `checkout-kinds.int.test.ts`
+  takes every kind of product from the cart to a paid order and holds the
+  two together, so a new kind of product gets a scenario there.
 - Payment credentials and payment-method switches are store settings edited in
   the admin, never environment variables (decision D15).
 - Cookie consent (D58, `src/lib/cookie-consent.ts`): every cookie or storage
