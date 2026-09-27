@@ -46,6 +46,7 @@ import {
   ROW_LAYOUTS,
   ROW_LAYOUT_KEYS,
   ROWS_MAX,
+  BLUR_MAX,
   BORDER_MAX,
   BORDER_STYLES,
   BUTTON_LABEL_MAX,
@@ -2494,8 +2495,10 @@ function BackgroundFields({
       {kind === "image" && (
         <div className="flex flex-col gap-3">
           {image ? (
-            // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
-            <img src={image.image.url} alt="" className="max-h-48 w-full rounded-md border border-border object-cover" />
+            // The picture as the page draws it, with its colour and blur, so changes show here at once.
+            <div className="relative isolate h-48 w-full overflow-hidden rounded-md border border-border">
+              <PartBackground background={image} />
+            </div>
           ) : (
             <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
               No picture yet
@@ -2504,7 +2507,7 @@ function BackgroundFields({
           <ImageUploadButton
             upload={upload}
             label={image ? "Replace picture" : "Upload picture"}
-            onUploaded={(uploaded) => onChange({ type: "image", image: uploaded, overlay: image?.overlay ?? null })}
+            onUploaded={(uploaded) => onChange({ ...image, type: "image", image: uploaded, overlay: image?.overlay ?? null })}
           />
           {image && (
             <>
@@ -2520,10 +2523,82 @@ function BackgroundFields({
                   onChange={(overlay) => onChange({ ...image, overlay })}
                 />
               )}
+              <Check
+                label="Blur the picture"
+                hint="Softens a busy picture behind text."
+                checked={Boolean(image.blur)}
+                onChange={(on) => onChange(withBlur(image, on ? 6 : 0))}
+              />
+              {image.blur ? (
+                <div className="pl-7">
+                  <RangeField
+                    label="Blur"
+                    min={1}
+                    max={BLUR_MAX}
+                    step={1}
+                    value={image.blur}
+                    shown={`${image.blur} px`}
+                    onChange={(blur) => onChange(withBlur(image, blur))}
+                  />
+                </div>
+              ) : null}
             </>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+type ImageBackground = Extract<Background, { type: "image" }>;
+
+/** A picture background with this much blur; none is left out, so the page stays as small as it can. */
+const withBlur = (image: ImageBackground, blur: number): ImageBackground => {
+  const next = { ...image };
+  if (blur > 0) next.blur = blur;
+  else delete next.blur;
+  return next;
+};
+
+/** A slider with its value shown beside it. */
+function RangeField({
+  label,
+  min,
+  max,
+  step,
+  value,
+  shown,
+  onChange,
+}: {
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  shown: string;
+  onChange: (value: number) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <div className="flex min-h-10 items-center gap-3">
+        <input
+          id={id}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="w-40"
+        />
+        <output htmlFor={id} className="w-12 text-sm tabular-nums">
+          {shown}
+        </output>
+      </div>
     </div>
   );
 }
@@ -2535,30 +2610,18 @@ function OverlayFields({
   overlay: { color: string; opacity: number };
   onChange: (overlay: { color: string; opacity: number }) => void;
 }) {
-  const id = useId();
   return (
     <div className="flex flex-wrap items-end gap-6 pl-7">
       <ColorField label="Overlay colour" value={overlay.color} onChange={(color) => onChange({ ...overlay, color })} />
-      <div className="flex flex-col gap-1">
-        <label htmlFor={id} className="text-sm font-medium">
-          Opacity
-        </label>
-        <div className="flex min-h-10 items-center gap-3">
-          <input
-            id={id}
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={overlay.opacity}
-            onChange={(event) => onChange({ ...overlay, opacity: Number(event.target.value) })}
-            className="w-40"
-          />
-          <output htmlFor={id} className="w-10 text-sm tabular-nums">
-            {overlay.opacity}%
-          </output>
-        </div>
-      </div>
+      <RangeField
+        label="Opacity"
+        min={0}
+        max={100}
+        step={5}
+        value={overlay.opacity}
+        shown={`${overlay.opacity}%`}
+        onChange={(opacity) => onChange({ ...overlay, opacity })}
+      />
     </div>
   );
 }

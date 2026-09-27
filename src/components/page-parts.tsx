@@ -132,19 +132,38 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
   };
 }
 
-/** A background picture, and the colour over it, behind what the row or column holds. */
+/**
+ * A background picture, softened if blurred, and the colour over it, behind
+ * what the row or column holds. A blurred picture reaches past the edges,
+ * cut off there, so its soft rim does not show.
+ */
 export function PartBackground({ background }: { background: Background | undefined }) {
   if (background?.type !== "image") return null;
+  const blur = background.blur ?? 0;
+  const picture = (
+    <Image
+      src={background.image.url}
+      alt=""
+      width={background.image.width}
+      height={background.image.height}
+      unoptimized
+      className={blur ? "absolute max-w-none object-cover" : "absolute inset-0 -z-10 size-full object-cover"}
+      style={
+        blur
+          ? { inset: -2 * blur, width: `calc(100% + ${4 * blur}px)`, height: `calc(100% + ${4 * blur}px)`, filter: `blur(${blur}px)` }
+          : undefined
+      }
+    />
+  );
   return (
     <>
-      <Image
-        src={background.image.url}
-        alt=""
-        width={background.image.width}
-        height={background.image.height}
-        unoptimized
-        className="absolute inset-0 -z-10 size-full object-cover"
-      />
+      {blur ? (
+        <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]">
+          {picture}
+        </div>
+      ) : (
+        picture
+      )}
       {background.overlay && (
         <div
           aria-hidden

@@ -318,7 +318,10 @@ export type Background =
       image: { url: string; width: number; height: number };
       /** A colour laid over the picture, `opacity` 0–100, so text on it can be read. */
       overlay: { color: Color; opacity: number } | null;
+      /** How soft the picture is drawn, in pixels (up to `BLUR_MAX`); none when left out. */
+      blur?: number;
     };
+export const BLUR_MAX = 20;
 
 export type TextAlign = "left" | "center" | "right";
 /** Text alignment by screen (D48): phones, from tablets (768 px) and from computers (1024 px) up; each unset follows the smaller. */
@@ -887,6 +890,7 @@ const background = z
         height: z.number().int().min(1).max(10_000),
       }),
       overlay: z.object({ color, opacity: z.number().int().min(0).max(100) }).nullable(),
+      blur: z.number().int().min(1).max(BLUR_MAX).optional(),
     }),
   ])
   .optional();

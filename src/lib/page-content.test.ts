@@ -253,6 +253,15 @@ describe("row, column and component settings (D48)", () => {
     expect(problems(page({ background: { type: "image", image: { url: "https://e.com/a", width: 1, height: 1 }, overlay: { color: "#000000", opacity: 101 } } }))).not.toEqual([]);
   });
 
+  it("keeps a background picture's blur, in whole pixels from 1 to 20, on rows and columns", () => {
+    const picture = { type: "image", image: { url: "https://e.com/a.webp", width: 800, height: 600 }, overlay: null };
+    const parsed = pageInput.parse(page({ background: { ...picture, blur: 6 } }, { background: { ...picture, blur: 20 } }));
+    expect(parsed.rows[0].background).toMatchObject({ blur: 6 });
+    expect(parsed.rows[0].columns[0].background).toMatchObject({ blur: 20 });
+    expect(pageInput.parse(page({ background: picture })).rows[0].background).not.toHaveProperty("blur");
+    for (const bad of [0, 21, 2.5, -1]) expect(problems(page({ background: { ...picture, blur: bad } }))).not.toEqual([]);
+  });
+
   it("keeps a column's link when its address is safe", () => {
     expect(pageInput.parse(page({}, { link: { href: " /sign-up " } })).rows[0].columns[0].link).toEqual({ href: "/sign-up", label: "" });
     for (const href of ["", "javascript:alert(1)", "//evil.example"]) {

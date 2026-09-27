@@ -288,7 +288,8 @@ of running `playwright install`.
   canvas through the grid preview action), all rendered by
   `<PageBlockView>` (`src/components/page-block.tsx`) on the canvas and
   the site. Rows, columns and blocks take optional settings (D47–D49:
-  spacing, border, corners, shadow, id and classes, backgrounds, widths,
+  spacing, border, corners, shadow, id and classes, backgrounds (a colour,
+  or a picture with a colour and blur over it, `PartBackground`), widths,
   column links, text alignment, picture shape; `frameStyle()`; a row's
   padding is 20 px until set, `ROW_PADDING`/`rowSpacing()`, and the page
   adds no room at the sides, nor above or below a row with a background,
