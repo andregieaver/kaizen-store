@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { sql } from "drizzle-orm";
+import { after } from "next/server";
 
 import { db } from "@/db/client";
 
@@ -24,21 +25,53 @@ export function cacheKey(...parts: string[]): string {
   return createHash("md5").update(parts.join("\u001f")).digest("hex");
 }
 
-/** The kept answer, or makes it with `make` and keeps it. */
-export async function cached<T>(storeId: string, kind: CacheKind, key: string, make: () => Promise<T>): Promise<T> {
+/**
+ * The kept answer, or makes it with `make` and keeps it. With `waitMs`, a
+ * search waits that long and goes on without the answer (throwing
+ * `CacheLate`), while `make` carries on after the response and keeps its
+ * answer for the next search.
+ */
+export async function cached<T>(storeId: string, kind: CacheKind, key: string, make: () => Promise<T>, waitMs?: number): Promise<T> {
   const [hit] = await db().execute<Row>(sql`
     select value from commerce.search_cache
     where store_id = ${storeId}::uuid and kind = ${kind} and key = ${key}
       and created_at > now() - make_interval(days => ${SEARCH_CACHE_DAYS})
   `);
   if (hit) return hit.value as T;
-  const value = await make();
-  await db().execute(sql`
-    insert into commerce.search_cache (store_id, kind, key, value)
-    values (${storeId}::uuid, ${kind}, ${key}, ${JSON.stringify(value)}::jsonb)
-    on conflict (store_id, kind, key) do update set value = excluded.value, created_at = now()
-  `);
-  return value;
+  const job = make().then(async (value) => {
+    await db().execute(sql`
+      insert into commerce.search_cache (store_id, kind, key, value)
+      values (${storeId}::uuid, ${kind}, ${key}, ${JSON.stringify(value)}::jsonb)
+      on conflict (store_id, kind, key) do update set value = excluded.value, created_at = now()
+    `);
+    return value;
+  });
+  if (waitMs === undefined) return job;
+  const settled = job.then(
+    () => undefined,
+    () => undefined,
+  );
+  try {
+    after(settled);
+  } catch {
+    // Not in a request (scripts, tests): the job runs on regardless.
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new CacheLate(waitMs)), waitMs);
+  });
+  try {
+    return await Promise.race([job, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The answer did not come within the wait; it is kept when it does. */
+export class CacheLate extends Error {
+  constructor(waitMs: number) {
+    super(`No answer within ${waitMs / 1000} seconds; it is kept for the next search.`);
+  }
 }
 
 /** Forgets answers older than `SEARCH_CACHE_DAYS`; from the five-minute cron. */

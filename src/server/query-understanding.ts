@@ -14,8 +14,10 @@ import { AiError, aiFor, completeText, type AiConnection } from "./ai";
 import { cached, cacheKey } from "./search-cache";
 import { siteTerms } from "./taxonomy";
 
-/** How long a search waits for its filters before running as typed; answers are cached, so a search waits once. */
-const UNDERSTAND_TIMEOUT_MS = 4000;
+/** How long a search waits for its filters before running as typed. */
+const UNDERSTAND_WAIT_MS = 4000;
+/** How long the model may take: a late answer is still kept for the next search. */
+const UNDERSTAND_TIMEOUT_MS = 20_000;
 
 /**
  * Asks the connection's text model what a search means as filters (D75),
@@ -42,7 +44,8 @@ export async function understandWith(
 
 /**
  * A search's filters from the store's text model, kept in the search cache,
- * as searches come again. The model, the market and the store's categories
+ * as searches come again. A search waits `UNDERSTAND_WAIT_MS`; a slower answer
+ * is still kept, for the next one. The model, the market and the store's categories
  * and tags are part of the key, so a new model or a changed category asks
  * again; a failure is not kept.
  */
@@ -65,7 +68,7 @@ export async function understandQuery(
     const ai = await aiFor(storeId);
     if (!ai?.textModel || ai.textModel !== textModel) throw new AiError("The store's text model changed.");
     return understandWith(ai, query, context);
-  });
+  }, UNDERSTAND_WAIT_MS);
 }
 
 export type EvalResult = {

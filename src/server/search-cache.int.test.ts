@@ -94,4 +94,17 @@ describe("search cache (D74, D75)", () => {
     const [left] = await db().execute<Row>(sql`select count(*)::int as n from commerce.search_cache where store_id = ${storeId}::uuid`);
     expect(left.n).toBe(1);
   });
+
+  it("goes on without an answer later than the search waits, and keeps it for the next search", async () => {
+    let finish: (value: { text: string }) => void = () => {};
+    const slow = new Promise<{ text: string }>((resolve) => (finish = resolve));
+    const key = cache.cacheKey("slow model");
+    await expect(cache.cached(storeId, "filters", key, () => slow, 50)).rejects.toThrow(/kept for the next search/);
+    finish({ text: "notatbok" });
+    await vi.waitFor(async () => {
+      expect(await cache.cached(storeId, "filters", key, async () => ({ text: "asked again" }))).toEqual({ text: "notatbok" });
+    });
+    // An answer within the wait is returned as before.
+    expect(await cache.cached(storeId, "filters", cache.cacheKey("quick"), async () => ({ text: "kopp" }), 1000)).toEqual({ text: "kopp" });
+  });
 });
