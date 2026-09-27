@@ -15,7 +15,7 @@ import { ProductGallery } from "@/components/product-gallery";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
-import { seasonPrice } from "@/lib/booking-prices";
+import { seasonName, seasonPrice } from "@/lib/booking-prices";
 import { rangeCalendar } from "@/lib/booking-ranges";
 import { slotWeek } from "@/lib/booking-slots";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
@@ -411,7 +411,7 @@ async function RangeBooking({
             {seasons.map((season, i) => (
               <li key={i} className="flex flex-wrap justify-between gap-x-4">
                 <span>
-                  {season.name}
+                  {seasonName(season, market.locale)}
                   <span className="text-muted">
                     {" "}
                     ({[season.fromDay && season.toDay ? `${yearDay(season.fromDay)}–${yearDay(season.toDay)}` : m.stay.allYear, weekdays(season.weekdays)]
@@ -439,7 +439,10 @@ async function RangeBooking({
           label: optionLabel(m, variant.options) || product.title,
           price: <Price price={variant.price} locale={market.locale} m={m} />,
           period: variant.rentalPeriod,
+          base: { amountMinor: variant.price.amountMinor, currency: variant.price.currency, vat: variant.price.vat },
         }))}
+        pricing={pricing}
+        locale={market.locale}
         initial={rangeCalendar(month, market.locale)}
         checkInTime={rules.checkInTime}
         timeZone={offer.timeZone}

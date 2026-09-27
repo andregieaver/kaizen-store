@@ -19,6 +19,8 @@ vi.mock("next/headers", () => ({
 
 const { changeLine, getCart, getCartCount } = await import("./cart");
 const { placeOrder } = await import("./checkout");
+const { getRangePricing } = await import("./ranges");
+const { seasonName } = await import("@/lib/booking-prices");
 
 const run = Date.now().toString(36);
 const no = toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" });
@@ -97,6 +99,15 @@ describe("seasons and the cleaning fee (D70)", () => {
       checkIn(thursday),
       690900,
       1,
+    ]);
+  });
+
+  it("gives the product page each season's name in the shopper's language", async () => {
+    const [cabin] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid and handle = 'demo-hytte'`);
+    const { seasons } = await getRangePricing(storeId, String(cabin.id), "SE");
+    expect(seasons.map((s) => [seasonName(s, "sv-SE"), seasonName(s, "da-DK"), seasonName(s, "nb-NO")])).toEqual([
+      ["Högsäsong", "Højsæson", "Høysesong"],
+      ["Helg", "Weekend", "Helg"],
     ]);
   });
 

@@ -136,9 +136,15 @@ export function exportDates(kind: "unit" | "item" | "staff", startsAt: number, e
   return { start, end: end > start ? end : addDays(start, 1) };
 }
 
-export type ExportEvent = { uid: string; start: string; end: string; summary: string };
+/**
+ * A taken time in a calendar file: whole days (`start`, `end` as dates), or,
+ * for an item rented by the half day or hour (D69), its times (`timed`,
+ * `start` and `end` as moments), so other calendars see the rest of the day
+ * as free.
+ */
+export type ExportEvent = { uid: string; start: string; end: string; summary: string; timed?: boolean };
 
-/** A room's or item's taken days as a calendar file other sites can read. */
+/** A room's or item's taken days (and hours) as a calendar file other sites can read. */
 export function exportFile(name: string, events: ExportEvent[], stamp = new Date().toISOString()): string {
   const day = (date: string) => date.replace(/-/g, "");
   const lines = [
@@ -152,8 +158,9 @@ export function exportFile(name: string, events: ExportEvent[], stamp = new Date
       "BEGIN:VEVENT",
       `UID:${event.uid}`,
       `DTSTAMP:${icsTime(stamp)}`,
-      `DTSTART;VALUE=DATE:${day(event.start)}`,
-      `DTEND;VALUE=DATE:${day(event.end)}`,
+      ...(event.timed
+        ? [`DTSTART:${icsTime(event.start)}`, `DTEND:${icsTime(event.end)}`]
+        : [`DTSTART;VALUE=DATE:${day(event.start)}`, `DTEND;VALUE=DATE:${day(event.end)}`]),
       `SUMMARY:${icsText(event.summary)}`,
       "TRANSP:OPAQUE",
       "END:VEVENT",

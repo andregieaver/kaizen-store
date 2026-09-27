@@ -138,7 +138,8 @@ export async function ResourceCalendar({
                   <input readOnly value={address} className={`${control} font-mono text-xs`} />
                 </label>
                 <p className="text-muted">
-                  Paste it where the other site imports a calendar. It shows only which days are taken, never who booked.
+                  Paste it where the other site imports a calendar. It shows only when it is taken (whole days, or the
+                  hours of rentals by the half day or hour), never who booked.
                 </p>
                 <form action={actions.resetCalendar}>
                   <button type="submit" className={small}>

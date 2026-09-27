@@ -125,6 +125,11 @@ const dayOfYear = z
 export const seasonInput = z
   .object({
     name: text(60).min(1, "Name each season, such as High season."),
+    /** The name in the store's other languages, by locale; blank ones are left out. */
+    names: z
+      .record(z.string().regex(/^[a-z]{2}-[A-Z]{2}$/), z.string().trim().max(60, "Keep season names to 60 characters."))
+      .default({})
+      .transform((names) => Object.fromEntries(Object.entries(names).filter(([, name]) => name !== ""))),
     fromDay: dayOfYear,
     toDay: dayOfYear,
     weekdays: z.array(z.number().int().min(1).max(7)).min(1, "Choose at least one weekday for each season.").max(7),

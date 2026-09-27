@@ -503,8 +503,9 @@ describe("appointments (D65)", () => {
         ...DEFAULT_STAY,
         bookingFee: { NO: "450", SE: "" },
         seasons: [
-          { name: "Sommer", fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 },
-          { name: "Helg", fromDay: null, toDay: null, weekdays: [6, 5], percent: 20 },
+          // Named in Swedish too; a blank Danish name is left out, so Danish shoppers see "Sommer".
+          { name: "Sommer", names: { "sv-SE": "Sommar", "da-DK": " " }, fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 },
+          { name: "Helg", names: {}, fromDay: null, toDay: null, weekdays: [6, 5], percent: 20 },
         ],
       },
       manufacturer: null,
@@ -521,10 +522,11 @@ describe("appointments (D65)", () => {
     expect(saved?.appointment).toMatchObject({
       bookingFee: { NO: "450,00" },
       seasons: [
-        { name: "Sommer", fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 },
-        { name: "Helg", fromDay: null, toDay: null, weekdays: [5, 6], percent: 20 },
+        { name: "Sommer", names: { "sv-SE": "Sommar" }, fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 },
+        { name: "Helg", names: {}, fromDay: null, toDay: null, weekdays: [5, 6], percent: 20 },
       ],
     });
+    expect(seasonInput.safeParse({ name: "X", names: { svensk: "Y" }, fromDay: null, toDay: null, weekdays: [1], percent: 10 }).success).toBe(false);
     expect(seasonInput.safeParse({ name: "X", fromDay: "06-15", toDay: null, weekdays: [1], percent: 10 }).success).toBe(false);
     expect(seasonInput.safeParse({ name: "X", fromDay: null, toDay: null, weekdays: [1], percent: 0 }).success).toBe(false);
   });

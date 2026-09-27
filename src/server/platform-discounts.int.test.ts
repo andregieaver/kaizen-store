@@ -11,6 +11,8 @@ type Row = Record<string, unknown>;
 /** Kaizen's own Stripe account, faked: coupons, promotion codes and a store's plan subscription. */
 const fake = vi.hoisted(() => {
   const calls: { method: string; params: Record<string, unknown> }[] = [];
+  // Stripe ids unique to this run: the database keeps earlier runs' codes, and a repeated id would find theirs.
+  const runId = Date.now().toString(36);
   let n = 0;
   const subscription = {
     id: `sub_plan_${Date.now().toString(36)}`,
@@ -24,7 +26,7 @@ const fake = vi.hoisted(() => {
     coupons: {
       create: async (params: Record<string, unknown>) => {
         calls.push({ method: "coupons.create", params });
-        return { id: `coupon_${++n}` };
+        return { id: `coupon_${runId}_${++n}` };
       },
       del: async (id: string) => {
         calls.push({ method: "coupons.del", params: { id } });
@@ -34,7 +36,7 @@ const fake = vi.hoisted(() => {
     promotionCodes: {
       create: async (params: Record<string, unknown>) => {
         calls.push({ method: "promotionCodes.create", params });
-        return { id: `promo_${++n}` };
+        return { id: `promo_${runId}_${++n}` };
       },
       update: async (id: string, params: Record<string, unknown>) => {
         calls.push({ method: "promotionCodes.update", params: { id, ...params } });
@@ -51,7 +53,7 @@ const fake = vi.hoisted(() => {
       },
     },
   };
-  return { client, calls, subscription };
+  return { client, calls, subscription, runId };
 });
 
 vi.mock("server-only", () => ({}));
@@ -101,7 +103,7 @@ describe("Kaizen's codes for plans (D31)", () => {
     expect(coupon.params).toMatchObject({ percent_off: 20, duration: "repeating", duration_in_months: 3, name: `START${run}` });
     const promotion = fake.calls.find((c) => c.method === "promotionCodes.create")!;
     expect(promotion.params).toMatchObject({
-      promotion: { type: "coupon", coupon: "coupon_1" },
+      promotion: { type: "coupon", coupon: `coupon_${fake.runId}_1` },
       code: `START${run}`,
       active: true,
       max_redemptions: 50,
@@ -144,7 +146,7 @@ describe("Kaizen's codes for plans (D31)", () => {
     const result = await applyPlanDiscount(admin, storeId, `start${run}`);
     expect(result).toMatchObject({ ok: true, note: "Applied. It shows on your next invoice." });
     const update = fake.calls.filter((c) => c.method === "subscriptions.update").at(-1)!;
-    expect(update.params.discounts).toEqual([{ promotion_code: "promo_2" }]);
+    expect(update.params.discounts).toEqual([{ promotion_code: `promo_${fake.runId}_2` }]);
     const applied = await getStoreBilling(storeId);
     expect(applied?.discount?.code).toBe(`START${run}`);
     expect(applied?.discount?.appliedAt).not.toBeNull();

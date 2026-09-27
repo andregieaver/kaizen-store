@@ -81,5 +81,9 @@ export function rangePickerLabels(m: Messages, stay: boolean, minNights: number,
     noTimes: m.stay.noTimes,
     hourOne: m.stay.hours(1),
     hourMany: m.stay.hours(2).replace("2", "#"),
+    total: m.total,
+    feeIncluded: m.stay.feeIncluded(stay),
+    vatIncluded: m.vatIncluded,
+    vatExcluded: m.vatExcluded,
   };
 }

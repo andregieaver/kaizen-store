@@ -333,7 +333,7 @@ export async function getProductForEdit(
       select resource_id from commerce.product_resources where store_id = ${store.id}::uuid and product_id = ${productId}::uuid
     `),
     db().execute<Row>(sql`
-      select name, from_day, to_day, weekdays, percent from commerce.booking_seasons
+      select name, names, from_day, to_day, weekdays, percent from commerce.booking_seasons
       where store_id = ${store.id}::uuid and product_id = ${productId}::uuid order by position, created_at
     `),
   ]);
@@ -529,8 +529,8 @@ async function saveAppointment(tx: Tx, storeId: string, productId: string, input
     }
     for (const [position, season] of a.seasons.entries()) {
       await tx.execute(sql`
-        insert into commerce.booking_seasons (store_id, product_id, name, from_day, to_day, weekdays, percent, position)
-        values (${storeId}::uuid, ${productId}::uuid, ${season.name}, ${season.fromDay}, ${season.toDay},
+        insert into commerce.booking_seasons (store_id, product_id, name, names, from_day, to_day, weekdays, percent, position)
+        values (${storeId}::uuid, ${productId}::uuid, ${season.name}, ${JSON.stringify(season.names)}::jsonb, ${season.fromDay}, ${season.toDay},
           ${`{${[...new Set(season.weekdays)].sort().join(",")}}`}::int[], ${season.percent}, ${position})
       `);
     }

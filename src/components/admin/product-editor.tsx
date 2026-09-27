@@ -1836,7 +1836,14 @@ function RangeSection({
           ))
         )}
       </fieldset>
-      <PricingFields a={a} set={set} stay={stay} markets={context.markets} businesses={context.audience === "businesses"} />
+      <PricingFields
+        a={a}
+        set={set}
+        stay={stay}
+        markets={context.markets}
+        businesses={context.audience === "businesses"}
+        otherLocales={context.locales.filter((l) => l !== context.primaryLocale)}
+      />
       <PaymentFields a={a} set={set} where={stay ? "check-in" : "pick-up"} />
     </section>
   );
@@ -1883,13 +1890,17 @@ function PricingFields({
   stay,
   markets,
   businesses,
+  otherLocales,
 }: {
   a: AppointmentInput;
   set: (change: Partial<AppointmentInput>) => void;
   stay: boolean;
   markets: EditorContext["markets"];
   businesses: boolean;
+  /** The store's languages besides its main one, for each season's name there. */
+  otherLocales: string[];
 }) {
+  const languageName = (locale: string) => new Intl.DisplayNames(["en"], { type: "language" }).of(locale.slice(0, 2)) ?? locale;
   const setSeason = (index: number, change: Partial<SeasonInput>) =>
     set({ seasons: a.seasons.map((season, i) => (i === index ? { ...season, ...change } : season)) });
   const small = "min-h-9 rounded-md border border-border bg-background px-2 text-sm";
@@ -1938,6 +1949,21 @@ function PricingFields({
                     className={`${input} w-44`}
                   />
                 </label>
+                {otherLocales.map((locale) => (
+                  <label key={locale} className={label}>
+                    <span>
+                      {languageName(locale)} <span className={hint}>(optional)</span>
+                    </span>
+                    <input
+                      value={season.names?.[locale] ?? ""}
+                      maxLength={60}
+                      lang={locale}
+                      placeholder={season.name}
+                      onChange={(e) => setSeason(index, { names: { ...season.names, [locale]: e.target.value } })}
+                      className={`${input} w-40`}
+                    />
+                  </label>
+                ))}
                 <label className={label}>
                   <span>
                     Change <span className={hint}>(%)</span>
@@ -2011,7 +2037,7 @@ function PricingFields({
                 set({
                   seasons: [
                     ...a.seasons,
-                    { name: "", fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 20 },
+                    { name: "", names: {}, fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 20 },
                   ],
                 })
               }

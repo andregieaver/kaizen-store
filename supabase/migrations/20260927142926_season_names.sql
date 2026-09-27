@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."booking_seasons" ADD COLUMN "names" jsonb DEFAULT '{}'::jsonb NOT NULL;

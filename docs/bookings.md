@@ -128,6 +128,10 @@ pure parts in `src/lib/calendar-sync.ts`). Rentals can also be offered by
 the half day or hour, per variant (D69). B3c is done (D70): seasons that
 raise or lower the price of the nights or days they cover, every year,
 and a fee per booking such as final cleaning (`src/lib/booking-prices.ts`).
+Seasons are named in each of the store's languages (`booking_seasons.names`,
+`seasonName()`), the date picker shows the total, seasons and fee included,
+before adding, and items rented by the half day or hour are published to
+other calendars with their times rather than as whole days.
 B3 is done. B4 (hosts, D71) is under way: B4a is done (hosts added by the
 store's owners with a commission, their own area at `/admin/hosting/{store}`
 with their listings, bookings and calendars, and no VAT for hosts not VAT

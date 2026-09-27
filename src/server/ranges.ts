@@ -287,7 +287,7 @@ export async function rangePricing(
       where store_id = ${storeId}::uuid and product_id in (${ids})
     `),
     q.execute<Row>(sql`
-      select product_id, name, from_day, to_day, weekdays, percent from commerce.booking_seasons
+      select product_id, name, names, from_day, to_day, weekdays, percent from commerce.booking_seasons
       where store_id = ${storeId}::uuid and product_id in (${ids})
       order by position, created_at
     `),

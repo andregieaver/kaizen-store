@@ -21,6 +21,18 @@ async function newStore(): Promise<string> {
   return slug;
 }
 
+test("Swedish and Danish shoppers see the seasons named in their language", async ({ page }) => {
+  const slug = await newStore();
+  await page.goto(`/s/${slug}/se/p/demo-hytte`);
+  const se = page.getByRole("region", { name: "Priser under året" });
+  await expect(se.getByRole("listitem").filter({ hasText: "Högsäsong" })).toBeVisible();
+  await expect(se.getByText("Høysesong")).toHaveCount(0);
+  await page.goto(`/s/${slug}/dk/p/demo-hytte`);
+  const dk = page.getByRole("region", { name: "Priser hen over året" });
+  await expect(dk.getByRole("listitem").filter({ hasText: "Højsæson" })).toBeVisible();
+  await expect(dk.getByRole("listitem").filter({ hasText: "Weekend" })).toBeVisible();
+});
+
 test("a shopper chooses arrival and departure and finds the nights in the cart", async ({ page }) => {
   const slug = await newStore();
   await page.goto(`/s/${slug}/no/p/demo-hytte`);
@@ -48,6 +60,11 @@ test("a shopper chooses arrival and departure and finds the nights in the cart",
   await free.nth(1).click();
   await free.nth(4).click();
   await expect(page.getByText("3 netter")).toBeVisible();
+  // The total before adding: the nights at their seasons' prices, with final cleaning.
+  const total = page.locator("[data-range-total]");
+  await expect(total).toContainText("Sluttrengjøring er med.");
+  const amount = (await total.textContent())?.match(/Totalt:\s*([\d\s\u00a0.,]+)/)?.[1].trim();
+  expect(amount).toBeTruthy();
   await add.click();
   await expect(page.getByText("Lagt i handlekurven.")).toBeVisible();
 
@@ -57,6 +74,8 @@ test("a shopper chooses arrival and departure and finds the nights in the cart",
   await expect(line).toContainText("3 netter");
   await expect(line.getByLabel("Antall")).toHaveCount(0);
   await expect(line).toContainText("Sluttrengjøring 500,00");
+  // What the picker said is what the cart charges.
+  await expect(line).toContainText(amount!);
   // A 30 % deposit now, the rest on arrival.
   const summary = page.locator("aside dl");
   await expect(summary.locator("div").filter({ hasText: /^Betales nå/ })).toBeVisible();
@@ -117,12 +136,14 @@ test("a shopper rents a bike by the hour, then for half a day", async ({ page })
   await times.getByRole("button", { name: /^10[:.]00$/ }).click();
   await page.getByLabel("Antall timer").selectOption("3");
   await expect(add).toBeEnabled();
+  await expect(page.locator("[data-range-total]")).toContainText(/Totalt:\s*360,00/);
   await add.click();
   await expect(page.getByText("Lagt i handlekurven.")).toBeVisible();
 
   await page.getByRole("radio", { name: "Leie: Halv dag" }).check();
   await days.getByRole("button", { name: /, ledig$/ }).nth(1).click();
   await times.getByRole("button", { name: /^13[:.]00–17[:.]00$/ }).click();
+  await expect(page.locator("[data-range-total]")).toContainText(/Totalt:\s*300,00/);
   await add.click();
   await expect(page.getByText("Lagt i handlekurven.")).toBeVisible();
 

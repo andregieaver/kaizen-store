@@ -115,6 +115,21 @@ describe("exportFile", () => {
   });
 });
 
+describe("exportFile with times", () => {
+  it("writes an hourly rental's times in UTC, which parseFeed reads back as times", () => {
+    const file = exportFile(
+      "Sykkel",
+      [{ uid: "booking-2@kaizen", start: "2026-10-01T08:00:00.000Z", end: "2026-10-01T11:00:00.000Z", summary: "Booked", timed: true }],
+      "2026-09-27T10:00:00Z",
+    );
+    expect(file).toContain("DTSTART:20261001T080000Z\r\nDTEND:20261001T110000Z\r\n");
+    expect(file).not.toContain("VALUE=DATE");
+    const [event] = parseFeed(file, OSLO);
+    expect(event).toMatchObject({ uid: "booking-2@kaizen", summary: "Booked" });
+    expect(event.start).not.toHaveProperty("date");
+  });
+});
+
 describe("feedUrlProblem", () => {
   it("takes https addresses of other sites only", () => {
     expect(feedUrlProblem("https://www.airbnb.com/calendar/ical/123.ics?s=abc")).toBeNull();

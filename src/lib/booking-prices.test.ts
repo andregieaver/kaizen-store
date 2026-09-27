@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { bookingPrice, datePrice, feeFor, pricedDates, seasonCovers, type Season } from "./booking-prices";
+import { bookingPrice, datePrice, feeFor, pricedDates, seasonCovers, seasonName, type Season } from "./booking-prices";
 
-const summer: Season = { name: "Høysesong", fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 };
-const weekend: Season = { name: "Helg", fromDay: null, toDay: null, weekdays: [5, 6], percent: 20 };
-const winter: Season = { name: "Jul", fromDay: "12-20", toDay: "01-05", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: -10 };
+const summer: Season = { name: "Høysesong", names: { "sv-SE": "Högsäsong" }, fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 };
+const weekend: Season = { name: "Helg", names: {}, fromDay: null, toDay: null, weekdays: [5, 6], percent: 20 };
+const winter: Season = { name: "Jul", names: {}, fromDay: "12-20", toDay: "01-05", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: -10 };
+
+describe("season names", () => {
+  it("are shown in the market's language where the store gave one, else in its own", () => {
+    expect(seasonName(summer, "sv-SE")).toBe("Högsäsong");
+    expect(seasonName(summer, "da-DK")).toBe("Høysesong");
+    expect(seasonName(summer, "nb-NO")).toBe("Høysesong");
+    expect(seasonName({ name: "Helg", names: { "da-DK": "  " } }, "da-DK")).toBe("Helg");
+  });
+});
 
 describe("seasons (D70)", () => {
   it("cover their days every year, across the new year too, and their weekdays", () => {

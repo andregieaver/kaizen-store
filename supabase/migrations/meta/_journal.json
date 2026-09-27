@@ -799,6 +799,20 @@
       "when": 1790517599723,
       "tag": "20260927135959_order_lines_booked_count",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1790519366120,
+      "tag": "20260927142926_season_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1790519368374,
+      "tag": "20260927142928_season_names_rules",
+      "breakpoints": true
     }
   ]
 }

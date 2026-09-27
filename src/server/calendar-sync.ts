@@ -186,7 +186,8 @@ export async function resetCalendarToken({ account, store }: Actor, resourceId: 
 /**
  * The calendar file at a secret address: the resource's confirmed bookings
  * and its blocks, from a month ago, as whole days marked only "Booked" or
- * "Blocked", so no guest's name or note leaves the store.
+ * "Blocked", so no guest's name or note leaves the store. An item rented by
+ * the half day or hour (D69) is marked for those hours only.
  */
 export async function calendarForToken(token: string): Promise<{ name: string; file: string } | null> {
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return null;
@@ -199,22 +200,30 @@ export async function calendarForToken(token: string): Promise<{ name: string; f
   const kind = asKind(resource.kind);
   const tz = String(resource.time_zone);
   const rows = await db().execute<Row>(sql`
-    select 'booking-' || b.id as uid, b.starts_at, b.ends_at, 'Booked' as summary
+    select 'booking-' || b.id as uid, b.starts_at, b.ends_at, 'Booked' as summary, v.rental_period
     from commerce.bookings b
+    left join commerce.product_variants v on v.store_id = b.store_id and v.id = b.variant_id
     where b.store_id = ${String(resource.store_id)}::uuid and b.resource_id = ${String(resource.id)}::uuid
       and b.status = 'confirmed' and b.ends_at > now() - interval '30 days'
     union all
-    select 'block-' || k.id, k.starts_at, k.ends_at, 'Blocked'
+    select 'block-' || k.id, k.starts_at, k.ends_at, 'Blocked', null
     from commerce.resource_blocks k
     where k.store_id = ${String(resource.store_id)}::uuid and k.resource_id = ${String(resource.id)}::uuid
       and k.ends_at > now() - interval '30 days'
     order by 2
   `);
-  const events: ExportEvent[] = rows.map((row) => ({
-    uid: `${String(row.uid)}@kaizen`,
-    summary: String(row.summary),
-    ...exportDates(kind, new Date(String(row.starts_at)).getTime(), new Date(String(row.ends_at)).getTime(), tz),
-  }));
+  const events: ExportEvent[] = rows.map((row) => {
+    const startsAt = new Date(String(row.starts_at));
+    const endsAt = new Date(String(row.ends_at));
+    const hours = kind === "item" && (row.rental_period === "half_day" || row.rental_period === "hour");
+    return {
+      uid: `${String(row.uid)}@kaizen`,
+      summary: String(row.summary),
+      ...(hours
+        ? { start: startsAt.toISOString(), end: endsAt.toISOString(), timed: true }
+        : exportDates(kind, startsAt.getTime(), endsAt.getTime(), tz)),
+    };
+  });
   return { name: String(resource.name), file: exportFile(String(resource.name), events) };
 }
 

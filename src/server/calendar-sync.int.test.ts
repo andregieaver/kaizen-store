@@ -175,6 +175,33 @@ describe("calendar sync (D67, B3b)", () => {
     expect(await sync.removeBlock(member, imported.id)).toBe(false);
   });
 
+  it("publishes a bike rented by the hour for those hours only, and one rented by the day for whole days (D69)", async () => {
+    const [bikes] = await db().execute<Row>(sql`
+      select p.id as product_id, pr.resource_id,
+        (select id from commerce.product_variants where product_id = p.id and rental_period = 'hour') as hourly,
+        (select id from commerce.product_variants where product_id = p.id and rental_period = 'day') as daily
+      from commerce.products p join commerce.product_resources pr on pr.product_id = p.id
+      where p.store_id = ${storeId}::uuid and p.handle = 'demo-sykkelutleie'
+    `);
+    const book = async (variant: unknown, from: string, to: string) => {
+      const [held] = await db().execute<Row>(sql`
+        select commerce.hold_booking(${storeId}::uuid, ${String(bikes.product_id)}::uuid, ${String(variant)}::uuid,
+          ${String(bikes.resource_id)}::uuid, ${from}::timestamptz, ${to}::timestamptz, ${from}::timestamptz, ${to}::timestamptz,
+          now() + interval '15 minutes', null) as id
+      `);
+      await db().execute(sql`update commerce.bookings set status = 'confirmed' where id = ${String(held.id)}::uuid`);
+    };
+    const at = (date: string, time: string) => new Date(zonedTime(date, time, tz)).toISOString();
+    await book(bikes.hourly, at(day(40), "10:00"), at(day(40), "13:00"));
+    await book(bikes.daily, at(day(42), "09:00"), at(day(43), "17:00"));
+    const token = await sync.resetCalendarToken(member, String(bikes.resource_id));
+    const file = (await sync.calendarForToken(token!))!.file;
+    const utc = (iso: string) => iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    expect(file).toContain(`DTSTART:${utc(at(day(40), "10:00"))}\r\nDTEND:${utc(at(day(40), "13:00"))}`);
+    expect(file).toContain(`DTSTART;VALUE=DATE:${ics(day(42))}\r\nDTEND;VALUE=DATE:${ics(day(44))}`);
+    expect(file).not.toContain(`VALUE=DATE:${ics(day(40))}`);
+  });
+
   it("reads feeds due from the cron, each at most every quarter of an hour", async () => {
     serve(calendar());
     const first = await sync.syncDueFeeds(fakeFetch);

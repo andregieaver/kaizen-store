@@ -3090,6 +3090,8 @@ export const bookingSeasons = commerce.table(
     storeId: storeId(),
     productId: uuid("product_id").notNull(),
     name: text("name").notNull(),
+    /** The name in the store's other languages, by locale (`sv-SE`: "Högsäsong"); `name` where one is missing. */
+    names: jsonb("names").notNull().default({}),
     fromDay: text("from_day"),
     toDay: text("to_day"),
     weekdays: integer("weekdays").array().notNull().default(sql`'{1,2,3,4,5,6,7}'`),

@@ -246,6 +246,8 @@ history therefore still lists the nine single-store migrations, then:
 | `20260927132621_host_commissions_per_payment.sql` | `20260927133331` |
 | `20260927133521_payments_kaizen_fee.sql` | `20260927133909` |
 | `20260927135959_order_lines_booked_count.sql` | `20260927140411` |
+| `20260927142926_season_names.sql` | `20260927144128` |
+| `20260927142928_season_names_rules.sql` | `20260927144312` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

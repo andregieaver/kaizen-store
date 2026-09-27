@@ -8,7 +8,10 @@ import { addDays } from "./booking-slots";
 import { minorUnitDigits } from "./money";
 
 export type Season = {
+  /** In the store's main language. */
   name: string;
+  /** In its other languages, by locale (`sv-SE`); `name` where one is missing. */
+  names: Record<string, string>;
   /** `MM-DD`, every year; both null for all year. The span crosses the new year when `toDay` comes first. */
   fromDay: string | null;
   toDay: string | null;
@@ -101,10 +104,26 @@ export function feeFor(fees: unknown, marketCode: string): number {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 0;
 }
 
+/** A season's names in other languages, as stored: text by locale, empty ones left out. */
+function seasonNames(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim() !== "",
+    ),
+  );
+}
+
+/** A season's name for shoppers in a locale: its name there, else the store's own. */
+export function seasonName(season: Pick<Season, "name" | "names">, locale: string): string {
+  return season.names[locale]?.trim() || season.name;
+}
+
 /** Seasons as stored, read back. */
 export function parseSeason(row: Record<string, unknown>): Season {
   return {
     name: String(row.name ?? ""),
+    names: seasonNames(row.names),
     fromDay: row.from_day ? String(row.from_day) : null,
     toDay: row.to_day ? String(row.to_day) : null,
     weekdays: Array.isArray(row.weekdays) ? row.weekdays.map(Number) : ALL_WEEKDAYS,

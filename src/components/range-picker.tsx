@@ -6,10 +6,14 @@ import { useActionState, useState, useTransition, type ReactNode } from "react";
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 import { rangeDatesAction, rentalTimesAction, type RentalTimeChoice } from "@/app/s/[store]/[market]/p/actions";
 import { rangeCount, rangeOpen, type RangeCalendar, type RangeKind, type RentalPeriod } from "@/lib/booking-ranges";
+import { bookingPrice, type Season } from "@/lib/booking-prices";
 import { addDays, zonedTime } from "@/lib/booking-slots";
+import { minorUnitDigits } from "@/lib/money";
+import type { PriceVat } from "@/lib/pricing";
 
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
+import { VatAmount } from "./price";
 
 export type RangePickerLabels = AddToCartLabels & {
   chooseDates: string;
@@ -38,6 +42,11 @@ export type RangePickerLabels = AddToCartLabels & {
   noTimes: string;
   hourOne: string;
   hourMany: string;
+  total: string;
+  /** Said under the total when a fee per booking is in it, such as final cleaning. */
+  feeIncluded: string;
+  vatIncluded: string;
+  vatExcluded: string;
 };
 
 const initialState: AddToCartState = { outcome: "idle", quantity: 0 };
@@ -56,6 +65,8 @@ export function RangePicker({
   productId,
   kind,
   variants,
+  pricing,
+  locale,
   initial,
   checkInTime,
   timeZone,
@@ -69,7 +80,17 @@ export function RangePicker({
   cartHref: string;
   productId: string;
   kind: RangeKind;
-  variants: { id: string; label: string; price: ReactNode; period: RentalPeriod }[];
+  variants: {
+    id: string;
+    label: string;
+    price: ReactNode;
+    period: RentalPeriod;
+    /** The price of a night, day, half day or hour before seasons (D70), kept with VAT, and how it is shown (B2B). */
+    base: { amountMinor: number; currency: string; vat: PriceVat };
+  }[];
+  /** The seasons and fee per booking (D70), for the total before adding. */
+  pricing: { seasons: Season[]; feeMinor: number };
+  locale: string;
   initial: RangeCalendar;
   checkInTime: string;
   timeZone: string;
@@ -191,6 +212,15 @@ export function RangePicker({
       ? time
       : null;
   const lengthLabel = (n: number, one: string, many: string) => (n === 1 ? one : many.replace("#", String(n)));
+  // What the chosen dates or hours cost, as the cart will price them: seasons night by night, and the fee.
+  const base = variants.find((v) => v.id === variantId)?.base ?? null;
+  const total =
+    ready && start && base
+      ? bookingPrice(
+          { kind, period, startDate: start, count, baseMinor: base.amountMinor, seasons: pricing.seasons, feeMinor: pricing.feeMinor },
+          10 ** minorUnitDigits(base.currency),
+        ).totalMinor
+      : null;
 
   return (
     <div className="flex flex-col gap-4" data-range-picker>
@@ -311,6 +341,16 @@ export function RangePicker({
             </label>
           )}
         </fieldset>
+      )}
+
+      {total !== null && base && (
+        <p className="text-sm" data-range-total>
+          <span className="font-medium">
+            {labels.total}:{" "}
+            <VatAmount amountMinor={total} currency={base.currency} locale={locale} vat={base.vat} labels={labels} />
+          </span>
+          {pricing.feeMinor > 0 && <span className="block text-muted">{labels.feeIncluded}</span>}
+        </p>
       )}
 
       <form action={action} className="flex flex-col items-start gap-1">

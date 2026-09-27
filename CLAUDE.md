@@ -345,7 +345,9 @@ of running `playwright install`.
   worked out (`checkRange()`, `holdRange()`, `rangeEndsAt()`).
   Stays and rentals are priced by `bookingPrice()` (D70,
   `src/lib/booking-prices.ts`): each night's or day's price changed by the
-  product's `booking_seasons`, plus `appointment_settings.booking_fee`.
+  product's `booking_seasons`, plus `appointment_settings.booking_fee`; the
+  date picker works out its total with the same function. Show a season's
+  name with `seasonName()` (its `names` by locale, else `name`).
   In the cart and orders such a booking is quantity 1 at its whole price;
   its nights, days or hours are `booking.count` (the cart line's own
   `quantity` column; the order line's `booked_count`), never the line's
