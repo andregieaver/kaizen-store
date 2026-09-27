@@ -34,6 +34,9 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   const stage = mode ? accountStage(accounts[mode] ?? null) : null;
   const locale = store.markets[0]?.locale ?? "en-GB";
   const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  // What the host got from the payments listed, per currency.
+  const netByCurrency = new Map<string, number>();
+  for (const e of earnings) netByCurrency.set(e.currency, (netByCurrency.get(e.currency) ?? 0) + e.netMinor);
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -86,12 +89,27 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
                 : "The host has not finished setting up Stripe in their area, so their listings cannot be paid for yet."}
         </p>
         {earnings.length > 0 && (
+          <p>
+            The host got{" "}
+            <span className="font-medium tabular-nums">
+              {[...netByCurrency].map(([currency, net]) => formatMoney(net, currency, locale)).join(" + ")}
+            </span>{" "}
+            from {earnings.length === 1 ? "this payment" : `these ${earnings.length} payments`}, after refunds, your commission and
+            Kaizen&apos;s fee (before Stripe&apos;s own fees).
+          </p>
+        )}
+        {earnings.length > 0 && (
           <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
             {earnings.map((e) => (
               <li key={e.paymentId} className="flex flex-wrap justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">
                   {e.number} · {date.format(new Date(e.paidAt))}
                   {e.kind === "no_show" && <span className="block text-xs text-muted">No-show fee</span>}
+                  <span className="block text-xs text-muted tabular-nums">
+                    Guest paid {formatMoney(e.paidMinor - e.refundedMinor, e.currency, locale)}
+                    {e.refundedMinor > 0 && " after refunds"} · Kaizen&apos;s fee {formatMoney(e.kaizenFeeMinor, e.currency, locale)} ·
+                    Host got {formatMoney(e.netMinor, e.currency, locale)}
+                  </span>
                 </Link>
                 <span className="text-right tabular-nums">
                   Commission {formatMoney(e.commissionMinor, e.currency, locale)}
