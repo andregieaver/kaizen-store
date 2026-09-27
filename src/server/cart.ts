@@ -14,7 +14,7 @@ import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/
 
 import { freeResourcesAt } from "./appointments";
 import { audit, type Membership } from "./auth";
-import { checkRange } from "./ranges";
+import { checkRange, linePrice, rangePricing } from "./ranges";
 
 /** Where a cart belongs: one market of one store. */
 export type Shop = { storeId: string; market: Market };
@@ -57,7 +57,17 @@ export type CartLine = {
    * the line's quantity being its nights or days.
    */
   booking:
-    | (LineBooking & { kind: BookedKind; period: RentalPeriod; endsAt: string | null; staff: string | null; timeZone: string })
+    | (LineBooking & {
+        kind: BookedKind;
+        period: RentalPeriod;
+        endsAt: string | null;
+        staff: string | null;
+        timeZone: string;
+        /** A stay's nights or a rental's days or hours (D67, D69): the line itself is one booking. */
+        count: number;
+        /** A stay's or rental's price in parts (D70): its nights, days or hours, and the fee; null for an appointment. */
+        price: { itemsMinor: number; feeMinor: number; seasonal: boolean; baseMinor: number } | null;
+      })
     | null;
   /** How an appointment is paid (D66): null for goods, which are paid now. */
   payment: AppointmentPayment | null;
@@ -152,6 +162,10 @@ export async function getCart(shop: Shop): Promise<Cart> {
     order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at
   `);
 
+  // Stays and rentals are priced by their nights' seasons, with a fee (D70).
+  const ranged = rows.filter((row) => row.starts_at && (row.kind === "stay" || row.kind === "rental"));
+  const pricing = await rangePricing(db(), storeId, ranged.map((row) => String(row.product_id)), market.code);
+
   const first = rows[0];
   return {
     currency: market.currency,
@@ -160,8 +174,11 @@ export async function getCart(shop: Shop): Promise<Cart> {
         ? { name: String(first.company_name), number: String(first.organisation_number) }
         : null,
     lines: rows.map((row) => {
-      const quantity = Number(row.quantity);
-      const available = Number(row.available);
+      // A stay or rental is one booking of so many nights, days or hours, at its whole price.
+      const count = Number(row.quantity);
+      const range = row.starts_at && (row.kind === "stay" || row.kind === "rental") ? (row.kind as "stay" | "rental") : null;
+      const quantity = range ? 1 : count;
+      const available = range ? 1 : Number(row.available);
       const plan = row.selling_plan_id
         ? {
             id: String(row.selling_plan_id),
@@ -173,8 +190,23 @@ export async function getCart(shop: Shop): Promise<Cart> {
             signupFeeMinor: Number(row.signup_fee),
           }
         : null;
-      const unitPriceMinor =
-        row.amount_minor === null ? null : planPrice(Number(row.amount_minor), plan?.discountPercent ?? 0);
+      const baseMinor = row.amount_minor === null ? null : planPrice(Number(row.amount_minor), plan?.discountPercent ?? 0);
+      const price =
+        range && baseMinor !== null
+          ? linePrice(
+              {
+                kind: range,
+                period: parseRentalPeriod(row.rental_period),
+                startsAt: new Date(String(row.starts_at)).toISOString(),
+                count,
+                baseMinor,
+                currency: market.currency,
+                timeZone: String(row.time_zone),
+              },
+              pricing.get(String(row.product_id)),
+            )
+          : null;
+      const unitPriceMinor = price ? price.totalMinor : baseMinor;
       const status: CartLineStatus =
         !row.sellable || !row.plan_ok || unitPriceMinor === null || available <= 0
           ? "unavailable"
@@ -203,10 +235,12 @@ export async function getCart(shop: Shop): Promise<Cart> {
               startsAt: new Date(String(row.starts_at)).toISOString(),
               kind: bookedKind(row.kind),
               period: parseRentalPeriod(row.rental_period),
-              endsAt: rangeEnd(row, quantity),
+              endsAt: rangeEnd(row, count),
               resourceId: row.resource_id ? String(row.resource_id) : null,
               staff: row.staff ? String(row.staff) : null,
               timeZone: String(row.time_zone),
+              count,
+              price: price && baseMinor !== null ? { itemsMinor: price.itemsMinor, feeMinor: price.feeMinor, seasonal: price.seasonal, baseMinor } : null,
             }
           : null,
         payment: row.payment
@@ -242,7 +276,7 @@ export async function getCartCount(shop: Shop): Promise<number> {
   const cartId = await readCartId(shop);
   if (!cartId) return 0;
   const [row] = await db().execute<Row>(sql`
-    select coalesce(sum(cl.quantity), 0)::int as count
+    select coalesce(sum(case when cl.starts_at is null then cl.quantity else 1 end), 0)::int as count
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
     where c.store_id = ${shop.storeId}::uuid and c.id = ${cartId}::uuid

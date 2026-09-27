@@ -116,6 +116,29 @@ export const BOOKED_KINDS = ["appointment", "stay", "rental"] as const;
 export const isBooked = (kind: ProductKind): kind is (typeof BOOKED_KINDS)[number] => kind !== "goods";
 
 /** How an appointment is booked (D65); kept in `appointment_settings` and `product_resources`. */
+const dayOfYear = z
+  .string()
+  .regex(/^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/, "Choose the day and month each season starts and ends.")
+  .nullable();
+
+/** A season of a stay's or rental's prices (D70): days of the year (or all year), weekdays, and a percentage. */
+export const seasonInput = z
+  .object({
+    name: text(60).min(1, "Name each season, such as High season."),
+    fromDay: dayOfYear,
+    toDay: dayOfYear,
+    weekdays: z.array(z.number().int().min(1).max(7)).min(1, "Choose at least one weekday for each season.").max(7),
+    percent: z
+      .number()
+      .int()
+      .min(-90, "A season lowers the price by at most 90 %.")
+      .max(500, "A season raises the price by at most 500 %.")
+      .refine((p) => p !== 0, "A season changes the price: give it a percentage."),
+  })
+  .refine((s) => (s.fromDay === null) === (s.toDay === null), "Give each season both a first and a last day, or neither.");
+
+export type SeasonInput = z.infer<typeof seasonInput>;
+
 export const appointmentInput = z.object({
   durationMinutes: z.number().int().min(5, "An appointment lasts at least 5 minutes.").max(720, "An appointment lasts at most 12 hours."),
   bufferBeforeMinutes: z.number().int().min(0).max(240, "Keep at most 4 hours free before."),
@@ -135,6 +158,10 @@ export const appointmentInput = z.object({
   checkOutTime: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, "Write times as HH:MM.").default("11:00"),
   minNights: z.number().int().min(1, "A booking is at least one night or day.").max(365).default(1),
   maxNights: z.number().int().min(1).max(365, "A booking is at most a year.").default(28),
+  /** A fee per booking (D70): a stay's cleaning, a rental's preparation; typed per market like prices. */
+  bookingFee: z.record(z.string(), z.string().trim().max(20)).default({}),
+  /** Seasons that change the price per night or day (D70), in order. */
+  seasons: z.array(seasonInput).max(20, "Use at most 20 seasons.").default([]),
 });
 
 export const DEFAULT_APPOINTMENT: z.infer<typeof appointmentInput> = {
@@ -154,6 +181,8 @@ export const DEFAULT_APPOINTMENT: z.infer<typeof appointmentInput> = {
   checkOutTime: "11:00",
   minNights: 1,
   maxNights: 28,
+  bookingFee: {},
+  seasons: [],
 };
 
 /** Where a stay or a rental starts from (D67): a year ahead, a day's notice for a stay, check-in 15–11, pick-up 9–17. */
@@ -377,6 +406,14 @@ export function productProblems(input: ProductInput, context: PublishContext): s
       if (typed && parsePrice(typed, market.currency) === null) {
         problems.push(`${variantLabel(variant.options)}: "${typed}" is not a price in ${market.currency}.`);
       }
+    }
+  }
+
+  // A stay's or rental's fee per booking (D70), typed like a price.
+  for (const market of context.markets) {
+    const typed = input.appointment?.bookingFee?.[market.code] ?? "";
+    if ((input.kind === "stay" || input.kind === "rental") && typed && parsePrice(typed, market.currency) === null) {
+      problems.push(`Fee per booking: "${typed}" is not a price in ${market.currency}.`);
     }
   }
 

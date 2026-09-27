@@ -23,7 +23,7 @@ import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { holdAppointment } from "./appointments";
-import { holdRange } from "./ranges";
+import { holdRange, linePrice, rangePricing } from "./ranges";
 import { storeFeeBps } from "./billing";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
 import { bookable } from "./cart";
@@ -244,12 +244,17 @@ export async function placeOrder(
     // Shipping takes the standard rate; each line its product's (D65).
     const vatRate = Number(country?.standard_vat_rate ?? 0);
 
+    // Stays and rentals are priced by their nights' seasons, with a fee (D70).
+    const ranged = lines.filter((l) => l.starts_at && (l.kind === "stay" || l.kind === "rental"));
+    const pricing = await rangePricing(tx, storeId, ranged.map((l) => String(l.product_id)), market.code);
     const priced = lines.map((line) => {
-      const quantity = Number(line.quantity);
+      // A stay or rental is one line at its whole price; `count` is its nights, days or hours.
+      const count = Number(line.quantity);
+      const isRange = Boolean(line.starts_at) && (line.kind === "stay" || line.kind === "rental");
+      const quantity = isRange ? 1 : count;
       const recurring = line.selling_plan_id !== null;
       // The subscriber's price on each renewal, and what is charged now.
       const renewUnit = planPrice(Number(line.amount_minor), recurring ? Number(line.discount_percent) : 0);
-      const unit = recurring && trial ? 0 : renewUnit;
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(shownOptions(t(market.lang), options))})` : String(line.title);
@@ -262,13 +267,22 @@ export async function placeOrder(
       const when = !startsAt
         ? null
         : range && (range === "stay" || period === "day")
-          ? formatRangeDates(startsAt, rangeEndsAt(range, startsAt, quantity, times, tz), market.locale, tz)
+          ? formatRangeDates(startsAt, rangeEndsAt(range, startsAt, count, times, tz), market.locale, tz)
           : range
-            ? `${formatBookingTime(startsAt, market.locale, tz)}–${formatClock(rangeEndsAt(range, startsAt, quantity, times, tz, period), market.locale, tz)}`
+            ? `${formatBookingTime(startsAt, market.locale, tz)}–${formatClock(rangeEndsAt(range, startsAt, count, times, tz, period), market.locale, tz)}`
             : formatBookingTime(startsAt, market.locale, tz);
+      const unit =
+        range && startsAt
+          ? linePrice(
+              { kind: range, period, startsAt, count, baseMinor: renewUnit, currency: market.currency, timeZone: tz },
+              pricing.get(String(line.product_id)),
+            ).totalMinor
+          : recurring && trial
+            ? 0
+            : renewUnit;
       const delivery: Delivery = parseDelivery(line.delivery);
       const rate = Number(line.vat_rate ?? vatRate);
-      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when, range, period };
+      return { line, quantity, count, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when, range, period };
     });
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
@@ -411,7 +425,7 @@ export async function placeOrder(
           holdMinutes: CHECKOUT_MINUTES + 5,
         };
         const held = p.range
-          ? await holdRange(tx, storeId, { ...hold, count: p.quantity, period: p.period })
+          ? await holdRange(tx, storeId, { ...hold, count: p.count, period: p.period })
           : await holdAppointment(tx, storeId, hold);
         if (!held) throw new SlotTaken();
       }

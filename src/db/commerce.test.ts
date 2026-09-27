@@ -869,6 +869,25 @@ describe("new stores from the template", () => {
     await one("select commerce.add_demo_rental($1) as id", [template]);
 
     const { store_id: store } = await approve(await request("siri@example.com"), "siris-hytter");
+    // The cabin's seasons and cleaning fee come along (D70).
+    expect(
+      (
+        await db.query(
+          `select s.name, s.from_day, s.weekdays, s.percent from commerce.booking_seasons s
+           join commerce.products p on p.id = s.product_id where s.store_id = $1 and p.handle = 'demo-hytte' order by s.position`,
+          [store],
+        )
+      ).rows,
+    ).toEqual([
+      { name: "Høysesong", from_day: "06-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 },
+      { name: "Helg", from_day: null, weekdays: [5, 6], percent: 20 },
+    ]);
+    const { booking_fee: fee } = await one<{ booking_fee: Record<string, number> }>(
+      `select a.booking_fee from commerce.appointment_settings a join commerce.products p on p.id = a.product_id
+       where a.store_id = $1 and p.handle = 'demo-hytte'`,
+      [store],
+    );
+    expect(Object.values(fee).every((amount) => amount === 50000 || amount === 37500)).toBe(true);
     const copied = await db.query(
       `select p.handle, p.kind, p.status, p.vat_category, a.check_in_time, a.check_out_time, a.min_nights, a.max_nights,
          a.payment, r.kind as resource_kind, r.capacity
@@ -923,6 +942,21 @@ describe("stays and rentals (D67)", () => {
     await expect(
       db.query("insert into commerce.booking_resources (store_id, kind, name, hours) values ($1, 'room', 'Rom 1', '{}')", [store]),
     ).rejects.toThrow(/booking_resources_kind/);
+  });
+
+  it("keeps seasons to days of the year, weekdays and a percentage (D70)", async () => {
+    const { productId } = await createProduct();
+    const season = (values: string) =>
+      db.query(`insert into commerce.booking_seasons (store_id, product_id, name, from_day, to_day, weekdays, percent) values ($1, $2, ${values})`, [
+        store,
+        productId,
+      ]);
+    await expect(season("'Sommer', '06-15', null, '{1}', 30")).rejects.toThrow(/booking_seasons_days/);
+    await expect(season("'Sommer', '13-01', '14-01', '{1}', 30")).rejects.toThrow(/booking_seasons_days/);
+    await expect(season("'Helg', null, null, '{8}', 30")).rejects.toThrow(/booking_seasons_weekdays/);
+    await expect(season("'Helg', null, null, '{5,6}', 0")).rejects.toThrow(/booking_seasons_percent/);
+    await expect(season("'Billig', null, null, '{1}', -95")).rejects.toThrow(/booking_seasons_percent/);
+    await season("'Jul', '12-20', '01-05', '{1,2,3,4,5,6,7}', -10");
   });
 
   it("books nothing over a blocked time, and a feed's blocks go with it (B3b)", async () => {

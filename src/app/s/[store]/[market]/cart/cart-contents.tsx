@@ -187,7 +187,15 @@ export async function CartContents({
                       {bookingWhen(line.booking, market.locale, m)}
                       {isRange(line.booking) && (
                         <span className="block text-muted">
-                          {rangeLength(line.booking.kind, line.booking.period, line.quantity, m)}
+                          {rangeLength(line.booking.kind, line.booking.period, line.booking.count, m)}
+                          {line.booking.price && line.booking.price.feeMinor > 0 && (
+                            <>
+                              {" "}
+                              {net(line.booking.price.itemsMinor, line.vatRate)} ·{" "}
+                              {line.booking.kind === "stay" ? m.stay.cleaningFee : m.stay.bookingFee}{" "}
+                              {net(line.booking.price.feeMinor, line.vatRate)}
+                            </>
+                          )}
                         </span>
                       )}
                     </p>

@@ -9,12 +9,13 @@ import { AppointmentPicker } from "@/components/appointment-picker";
 import { RangePicker } from "@/components/range-picker";
 import { SwitchToBusiness } from "@/components/buyer";
 import { JsonLdScript } from "@/components/json-ld";
-import { Price } from "@/components/price";
+import { Price, VatAmount } from "@/components/price";
 import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
+import { seasonPrice } from "@/lib/booking-prices";
 import { rangeCalendar } from "@/lib/booking-ranges";
 import { slotWeek } from "@/lib/booking-slots";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
@@ -26,7 +27,7 @@ import { schemaPrice, summarize } from "@/lib/seo";
 import { productJsonLd } from "@/lib/structured-data";
 import { planPrice } from "@/lib/subscriptions";
 import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
-import { getRangeOffer, rangeDates } from "@/server/ranges";
+import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import {
   getAvailability,
   getProduct,
@@ -339,13 +340,26 @@ async function RangeBooking({
   await connection();
   // The calendar opens for the first variant: by the day, or (a rental, D69) by the half day or hour.
   const firstPeriod = product.kind === "rental" ? (product.variants[0]?.rentalPeriod ?? "day") : "day";
-  const [offer, month] = await Promise.all([
+  const [offer, month, pricing] = await Promise.all([
     getRangeOffer(store.id, product.id),
     rangeDates(store.id, product.id, null, undefined, firstPeriod),
+    getRangePricing(store.id, product.id, market.code),
   ]);
   if (!store.bookingsOn || !offer || !month) return <p>{m.booking.notBookable}</p>;
   const stay = offer.kind === "stay";
   const { rules } = offer;
+  // The fee and the seasons' prices (D70), for the variant by the night or day (else the first).
+  const { seasons, feeMinor } = pricing;
+  const shown = product.variants.find((v) => v.rentalPeriod === "day") ?? product.variants[0];
+  const amount = (minor: number) => (
+    <VatAmount amountMinor={minor} currency={shown.price.currency} locale={market.locale} vat={shown.price.vat} labels={m} label={false} />
+  );
+  const dayMonth = new Intl.DateTimeFormat(market.locale, { day: "numeric", month: "long", timeZone: "UTC" });
+  const weekdayName = new Intl.DateTimeFormat(market.locale, { weekday: "short", timeZone: "UTC" });
+  // Any year's date will do for a day of the year: a leap year keeps 29 February.
+  const yearDay = (day: string) => dayMonth.format(new Date(`2028-${day}T12:00:00Z`));
+  const weekdays = (days: number[]) =>
+    days.length === 7 ? null : days.map((d) => weekdayName.format(new Date(Date.UTC(2028, 0, 2 + d, 12)))).join(", ");
   return (
     <div className="flex flex-col gap-4">
       <dl className="grid gap-1 text-sm">
@@ -378,7 +392,41 @@ async function RangeBooking({
             <dd>{[offer.place.name, offer.place.address].filter(Boolean).join(", ")}</dd>
           </div>
         )}
+        {feeMinor > 0 && (
+          <div className="flex gap-2">
+            <dt>{stay ? m.stay.cleaningFee : m.stay.bookingFee}</dt>
+            <dd>
+              {amount(feeMinor)} {m.stay.perBooking(stay)}
+            </dd>
+          </div>
+        )}
       </dl>
+      {seasons.length > 0 && shown && (
+        <section aria-labelledby="seasons-heading" className="text-sm">
+          <h3 id="seasons-heading" className="mb-1 font-medium">
+            {m.stay.seasonsHeading}
+          </h3>
+          <ul className="flex flex-col gap-1">
+            {seasons.map((season, i) => (
+              <li key={i} className="flex flex-wrap justify-between gap-x-4">
+                <span>
+                  {season.name}
+                  <span className="text-muted">
+                    {" "}
+                    ({[season.fromDay && season.toDay ? `${yearDay(season.fromDay)}–${yearDay(season.toDay)}` : m.stay.allYear, weekdays(season.weekdays)]
+                      .filter(Boolean)
+                      .join(", ")}
+                    )
+                  </span>
+                </span>
+                <span className="tabular-nums">
+                  {amount(seasonPrice(shown.price.amountMinor, season.percent, shown.price.currency))} {m.stay.perNight(stay)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <RangePicker
         store={store.slug}
         market={market.slug}

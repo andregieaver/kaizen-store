@@ -16,7 +16,9 @@ import {
   type RangeUnit,
   type RentalPeriod,
 } from "@/lib/booking-ranges";
+import { bookingPrice, feeFor, parseSeason, type BookingPrice, type Season } from "@/lib/booking-prices";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
+import { minorUnitDigits } from "@/lib/money";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 
 import { busyOn, type Queryable, type Tx } from "./appointments";
@@ -265,4 +267,60 @@ export async function holdRange(
     }
   }
   return null;
+}
+
+export type RangePricing = { seasons: Season[]; feeMinor: number };
+
+/** The seasons and the market's fee (D70) of these stays and rentals, by product. */
+export async function rangePricing(
+  q: Queryable,
+  storeId: string,
+  productIds: string[],
+  marketCode: string,
+): Promise<Map<string, RangePricing>> {
+  const pricing = new Map<string, RangePricing>();
+  if (productIds.length === 0) return pricing;
+  const ids = sql.join([...new Set(productIds)].map((id) => sql`${id}::uuid`), sql`, `);
+  const [fees, seasons] = await Promise.all([
+    q.execute<Row>(sql`
+      select product_id, booking_fee from commerce.appointment_settings
+      where store_id = ${storeId}::uuid and product_id in (${ids})
+    `),
+    q.execute<Row>(sql`
+      select product_id, name, from_day, to_day, weekdays, percent from commerce.booking_seasons
+      where store_id = ${storeId}::uuid and product_id in (${ids})
+      order by position, created_at
+    `),
+  ]);
+  for (const row of fees) pricing.set(String(row.product_id), { seasons: [], feeMinor: feeFor(row.booking_fee, marketCode) });
+  for (const row of seasons) pricing.get(String(row.product_id))?.seasons.push(parseSeason(row));
+  return pricing;
+}
+
+/**
+ * What a cart or order line of a stay or rental costs: its nights, days or
+ * hours at their seasons' prices, plus the fee (D70).
+ */
+export function linePrice(
+  line: { kind: RangeKind; period: RentalPeriod; startsAt: string; count: number; baseMinor: number; currency: string; timeZone: string },
+  pricing: RangePricing | undefined,
+): BookingPrice {
+  return bookingPrice(
+    {
+      kind: line.kind,
+      period: line.period,
+      startDate: zonedDate(Date.parse(line.startsAt), line.timeZone),
+      count: line.count,
+      baseMinor: line.baseMinor,
+      seasons: pricing?.seasons ?? [],
+      feeMinor: pricing?.feeMinor ?? 0,
+    },
+    10 ** minorUnitDigits(line.currency),
+  );
+}
+
+
+/** A stay's or rental's seasons and fee in a market (D70), for its page. */
+export async function getRangePricing(storeId: string, productId: string, marketCode: string): Promise<RangePricing> {
+  return (await rangePricing(db(), storeId, [productId], marketCode)).get(productId) ?? { seasons: [], feeMinor: 0 };
 }

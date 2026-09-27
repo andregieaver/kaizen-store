@@ -95,7 +95,7 @@ describe("renting by the half day or hour (D69)", () => {
 
     const cart = await getCart(shop());
     const lines = Object.fromEntries(cart.lines.map((l) => [l.booking?.period, l]));
-    expect(lines.hour).toMatchObject({ quantity: 3, unitPriceMinor: 12000, status: "ok", booking: { kind: "rental", endsAt: at("13:00") } });
+    expect(lines.hour).toMatchObject({ quantity: 1, unitPriceMinor: 36000, status: "ok", booking: { kind: "rental", count: 3, endsAt: at("13:00") } });
     expect(lines.half_day).toMatchObject({ quantity: 1, unitPriceMinor: 30000, booking: { endsAt: at("17:00") } });
   });
 

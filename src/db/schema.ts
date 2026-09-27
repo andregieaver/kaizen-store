@@ -2874,6 +2874,40 @@ export const bookingResources = commerce.table(
 );
 
 /**
+ * A season of a stay's or rental's prices (D70): every year from one day to
+ * another (`MM-DD`, across the new year if the end comes first; both null
+ * for all year), on some weekdays (1 Monday … 7 Sunday; a stay's night
+ * counts as the day it starts), the price changed by a percentage. Seasons
+ * that meet on a date multiply.
+ */
+export const bookingSeasons = commerce.table(
+  "booking_seasons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    productId: uuid("product_id").notNull(),
+    name: text("name").notNull(),
+    fromDay: text("from_day"),
+    toDay: text("to_day"),
+    weekdays: integer("weekdays").array().notNull().default(sql`'{1,2,3,4,5,6,7}'`),
+    percent: integer("percent").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    productRef("booking_seasons_product_fk", t),
+    index("booking_seasons_product_idx").on(t.storeId, t.productId, t.position),
+    check("booking_seasons_name", sql`length(${t.name}) between 1 and 60`),
+    check(
+      "booking_seasons_days",
+      sql`(${t.fromDay} is null) = (${t.toDay} is null) and (${t.fromDay} is null or (${t.fromDay} ~ '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$' and ${t.toDay} ~ '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'))`,
+    ),
+    check("booking_seasons_weekdays", sql`cardinality(${t.weekdays}) between 1 and 7 and ${t.weekdays} <@ '{1,2,3,4,5,6,7}'::int[]`),
+    check("booking_seasons_percent", sql`${t.percent} between -90 and 500 and ${t.percent} <> 0`),
+  ],
+);
+
+/**
  * Another calendar a room, item or member of staff is also booked in (D67):
  * an iCal address from Airbnb, Booking.com or the like, read every quarter
  * of an hour into `resource_blocks`.
@@ -2968,6 +3002,12 @@ export const appointmentSettings = commerce.table(
     checkOutTime: text("check_out_time").notNull().default("11:00"),
     minNights: integer("min_nights").notNull().default(1),
     maxNights: integer("max_nights").notNull().default(28),
+    /**
+     * A fee added once to each booking of a stay or rental (D70): a stay's
+     * final cleaning, a rental's preparation. VAT-inclusive, in minor units,
+     * per market: `{ "NO": 50000 }`. Taxed as the product is.
+     */
+    bookingFee: jsonb("booking_fee").notNull().default({}),
     /** Where it takes place: one of the store's places (D40), or none said. */
     /** How it is paid (D66): `now`, a `deposit` now and the rest at the venue, or all at the `venue`. */
     payment: text("payment").notNull().default("now"),

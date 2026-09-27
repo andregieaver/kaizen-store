@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
-import { productInput, type ProductInput } from "@/lib/product-input";
+import { DEFAULT_STAY, productInput, seasonInput, type ProductInput } from "@/lib/product-input";
 import { parseStoreSeo } from "@/lib/seo";
 import { templateSettings } from "@/lib/theme";
 
@@ -451,6 +451,8 @@ describe("appointments (D65)", () => {
         checkOutTime: "11:00",
         minNights: 1,
         maxNights: 28,
+        bookingFee: {},
+        seasons: [],
       },
       manufacturer: null,
       responsiblePerson: null,
@@ -490,5 +492,40 @@ describe("appointments (D65)", () => {
            + (select count(*) from commerce.product_resources where product_id = ${productId}::uuid)::int as n
     `);
     expect(left.n).toBe(0);
+  });
+
+  it("keeps a stay's seasons and cleaning fee, and refuses a fee that is not a price (D70)", async () => {
+    const stay = mug({
+      handle: `hytte-${run}`,
+      kind: "stay",
+      vatCategory: "accommodation",
+      appointment: {
+        ...DEFAULT_STAY,
+        bookingFee: { NO: "450", SE: "" },
+        seasons: [
+          { name: "Sommer", fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 },
+          { name: "Helg", fromDay: null, toDay: null, weekdays: [6, 5], percent: 20 },
+        ],
+      },
+      manufacturer: null,
+      responsiblePerson: null,
+    });
+    stay.variants = [{ ...stay.variants[0], options: {}, sku: `HYTTE-${run}`, prices: { NO: "1450" } }];
+    stay.options = [];
+    stay.status = "draft";
+    const bad = await saveProduct(store, context, null, { ...stay, appointment: { ...stay.appointment!, bookingFee: { NO: "mye" } } });
+    expect(bad).toEqual({ ok: false, problems: ['Fee per booking: "mye" is not a price in NOK.'] });
+    const result = await saveProduct(store, context, null, stay);
+    expect(result).toMatchObject({ ok: true });
+    const saved = await getProductForEdit(store, context, (result as { productId: string }).productId);
+    expect(saved?.appointment).toMatchObject({
+      bookingFee: { NO: "450,00" },
+      seasons: [
+        { name: "Sommer", fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 30 },
+        { name: "Helg", fromDay: null, toDay: null, weekdays: [5, 6], percent: 20 },
+      ],
+    });
+    expect(seasonInput.safeParse({ name: "X", fromDay: "06-15", toDay: null, weekdays: [1], percent: 10 }).success).toBe(false);
+    expect(seasonInput.safeParse({ name: "X", fromDay: null, toDay: null, weekdays: [1], percent: 0 }).success).toBe(false);
   });
 });

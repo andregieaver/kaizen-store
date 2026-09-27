@@ -39,6 +39,7 @@ import {
   variantLabel,
   type Delivery,
   type AppointmentInput,
+  type SeasonInput,
   type OperatorChoice,
   type ProductInput,
   type VariantInput,
@@ -1809,8 +1810,193 @@ function RangeSection({
           ))
         )}
       </fieldset>
+      <PricingFields a={a} set={set} stay={stay} markets={context.markets} businesses={context.audience === "businesses"} />
       <PaymentFields a={a} set={set} where={stay ? "check-in" : "pick-up"} />
     </section>
+  );
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** A day of the year as `MM-DD`, chosen as a month and a day. */
+function DayOfYear({ value, onChange, name }: { value: string; onChange: (value: string) => void; name: string }) {
+  const [month, day] = value.split("-").map(Number);
+  const set = (m: number, d: number) => onChange(`${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+  const cell = "min-h-9 rounded-md border border-border bg-background px-2 text-sm";
+  return (
+    <span className="flex gap-1">
+      <input
+        type="number"
+        min={1}
+        max={31}
+        value={day}
+        onChange={(e) => set(month, Math.max(1, Math.min(31, Math.round(Number(e.target.value) || 1))))}
+        aria-label={`${name}: day`}
+        className={`${cell} w-16`}
+      />
+      <select value={month} onChange={(e) => set(Number(e.target.value), day)} aria-label={`${name}: month`} className={cell}>
+        {MONTHS.map((label, i) => (
+          <option key={label} value={i + 1}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
+/**
+ * A stay's or rental's fee per booking and its seasons (D70): the fee per
+ * market, typed like a price, and seasons that raise or lower the price of
+ * the nights or days they cover, every year.
+ */
+function PricingFields({
+  a,
+  set,
+  stay,
+  markets,
+  businesses,
+}: {
+  a: AppointmentInput;
+  set: (change: Partial<AppointmentInput>) => void;
+  stay: boolean;
+  markets: EditorContext["markets"];
+  businesses: boolean;
+}) {
+  const setSeason = (index: number, change: Partial<SeasonInput>) =>
+    set({ seasons: a.seasons.map((season, i) => (i === index ? { ...season, ...change } : season)) });
+  const small = "min-h-9 rounded-md border border-border bg-background px-2 text-sm";
+  return (
+    <>
+      <fieldset className="mt-6 flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-medium">{stay ? "Final cleaning" : "Fee per rental"}</legend>
+        <p className="text-muted">
+          Added once to each booking, {businesses ? "without" : "with"} VAT at the product&apos;s rate. Leave empty for none.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {markets.map((market) => (
+            <label key={market.code} className={label}>
+              <span>
+                {market.name} <span className={hint}>({market.currency})</span>
+              </span>
+              <input
+                inputMode="decimal"
+                value={a.bookingFee[market.code] ?? ""}
+                onChange={(e) => set({ bookingFee: { ...a.bookingFee, [market.code]: e.target.value } })}
+                className={`${input} w-32`}
+              />
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="mt-6 flex flex-col gap-3 text-sm">
+        <legend className="mb-1 font-medium">Seasons</legend>
+        <p className="text-muted">
+          Raise or lower the price of the {stay ? "nights" : "days"} a season covers, every year. Where seasons meet, both apply,
+          one on top of the other (a summer weekend at +30 % and +20 % costs 56 % more). A {stay ? "night" : "day"} counts as the
+          weekday it starts.
+        </p>
+        {a.seasons.map((season, index) => {
+          const allYear = season.fromDay === null;
+          return (
+            <div key={index} className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <div className="flex flex-wrap items-end gap-3">
+                <label className={label}>
+                  Name
+                  <input
+                    value={season.name}
+                    maxLength={60}
+                    onChange={(e) => setSeason(index, { name: e.target.value })}
+                    className={`${input} w-44`}
+                  />
+                </label>
+                <label className={label}>
+                  <span>
+                    Change <span className={hint}>(%)</span>
+                  </span>
+                  <input
+                    type="number"
+                    min={-90}
+                    max={500}
+                    value={season.percent}
+                    onChange={(e) => setSeason(index, { percent: Math.round(Number(e.target.value) || 0) })}
+                    className={`${input} w-24`}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => set({ seasons: a.seasons.filter((_, i) => i !== index) })}
+                  className="min-h-9 rounded-md px-2 underline"
+                >
+                  Remove <span className="sr-only">{season.name || "season"}</span>
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={allYear}
+                    onChange={(e) =>
+                      setSeason(index, e.target.checked ? { fromDay: null, toDay: null } : { fromDay: "06-15", toDay: "08-15" })
+                    }
+                    className="size-4"
+                  />
+                  All year
+                </label>
+                {!allYear && (
+                  <>
+                    <span>From</span>
+                    <DayOfYear value={season.fromDay!} onChange={(fromDay) => setSeason(index, { fromDay })} name={`${season.name || "Season"} from`} />
+                    <span>to</span>
+                    <DayOfYear value={season.toDay!} onChange={(toDay) => setSeason(index, { toDay })} name={`${season.name || "Season"} to`} />
+                  </>
+                )}
+              </div>
+              <fieldset className="flex flex-wrap gap-2">
+                <legend className="sr-only">Weekdays</legend>
+                {WEEKDAYS.map((day, i) => (
+                  <label key={day} className={`${small} flex items-center gap-1`}>
+                    <input
+                      type="checkbox"
+                      checked={season.weekdays.includes(i + 1)}
+                      onChange={(e) =>
+                        setSeason(index, {
+                          weekdays: e.target.checked
+                            ? [...season.weekdays, i + 1].sort()
+                            : season.weekdays.filter((d) => d !== i + 1),
+                        })
+                      }
+                      className="size-4"
+                    />
+                    {day}
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+          );
+        })}
+        {a.seasons.length < 20 && (
+          <div>
+            <button
+              type="button"
+              onClick={() =>
+                set({
+                  seasons: [
+                    ...a.seasons,
+                    { name: "", fromDay: "06-15", toDay: "08-15", weekdays: [1, 2, 3, 4, 5, 6, 7], percent: 20 },
+                  ],
+                })
+              }
+              className="min-h-10 rounded-md border border-border px-3"
+            >
+              Add a season
+            </button>
+          </div>
+        )}
+      </fieldset>
+    </>
   );
 }
 

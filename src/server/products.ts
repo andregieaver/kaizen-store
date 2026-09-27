@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { parsePaymentMode } from "@/lib/pay-later";
 import { parseProductAudience, withVat, withoutVat, type StoreAudience } from "@/lib/b2b";
+import { feeFor, parseSeason } from "@/lib/booking-prices";
 import { parseRentalPeriod } from "@/lib/booking-ranges";
 import { parseVatCategory, type VatCategory } from "@/lib/vat";
 import {
@@ -262,7 +263,7 @@ export async function getProductForEdit(
   const category = parseVatCategory(product.vat_category);
   const kind = PRODUCT_KINDS.find((k) => k === product.kind) ?? "goods";
 
-  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources] = await Promise.all([
+  const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons] = await Promise.all([
     db().execute<Row>(sql`
       select locale, title, description, safety_information, seo_title, seo_description
       from commerce.product_translations where product_id = ${productId}::uuid
@@ -311,11 +312,15 @@ export async function getProductForEdit(
     db().execute<Row>(sql`
       select duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes, min_notice_minutes,
         max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent,
-        check_in_time, check_out_time, min_nights, max_nights
+        check_in_time, check_out_time, min_nights, max_nights, booking_fee
       from commerce.appointment_settings where store_id = ${store.id}::uuid and product_id = ${productId}::uuid
     `),
     db().execute<Row>(sql`
       select resource_id from commerce.product_resources where store_id = ${store.id}::uuid and product_id = ${productId}::uuid
+    `),
+    db().execute<Row>(sql`
+      select name, from_day, to_day, weekdays, percent from commerce.booking_seasons
+      where store_id = ${store.id}::uuid and product_id = ${productId}::uuid order by position, created_at
     `),
   ]);
 
@@ -437,6 +442,12 @@ export async function getProductForEdit(
             checkOutTime: String(appointment?.check_out_time ?? DEFAULT_APPOINTMENT.checkOutTime),
             minNights: Number(appointment?.min_nights ?? 1),
             maxNights: Number(appointment?.max_nights ?? 28),
+            bookingFee: Object.fromEntries(
+              context.markets
+                .filter((m) => feeFor(appointment?.booking_fee, m.code) > 0)
+                .map((m) => [m.code, formatPriceInput(typedAmount(context, m.code, feeFor(appointment?.booking_fee, m.code), category), m.currency)]),
+            ),
+            seasons: seasons.map(parseSeason),
           }
         : null,
     taxCode: String(product.tax_code),
@@ -485,24 +496,41 @@ function asKind(input: ProductInput): ProductInput {
 }
 
 /** An appointment's settings and who does it (D65); only the store's own staff and places. Goods keep none. */
-async function saveAppointment(tx: Tx, storeId: string, productId: string, input: ProductInput) {
+async function saveAppointment(tx: Tx, storeId: string, productId: string, input: ProductInput, context: EditorContext) {
   await tx.execute(sql`delete from commerce.product_resources where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
+  await tx.execute(sql`delete from commerce.booking_seasons where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
   const a = input.appointment;
   if (!isBooked(input.kind) || !a) {
     await tx.execute(sql`delete from commerce.appointment_settings where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
     return;
   }
+  // Stays and rentals (D70): a fee per booking, kept with VAT like prices, and seasons.
+  const ranged = input.kind === "stay" || input.kind === "rental";
+  const fee: Record<string, number> = {};
+  if (ranged) {
+    for (const market of context.markets) {
+      const amount = keptAmount(context, market, parsePrice(a.bookingFee[market.code] ?? "", market.currency), input.vatCategory);
+      if (amount !== null && amount > 0) fee[market.code] = amount;
+    }
+    for (const [position, season] of a.seasons.entries()) {
+      await tx.execute(sql`
+        insert into commerce.booking_seasons (store_id, product_id, name, from_day, to_day, weekdays, percent, position)
+        values (${storeId}::uuid, ${productId}::uuid, ${season.name}, ${season.fromDay}, ${season.toDay},
+          ${`{${[...new Set(season.weekdays)].sort().join(",")}}`}::int[], ${season.percent}, ${position})
+      `);
+    }
+  }
   await tx.execute(sql`
     insert into commerce.appointment_settings (
       product_id, store_id, duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes,
       min_notice_minutes, max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent,
-      check_in_time, check_out_time, min_nights, max_nights
+      check_in_time, check_out_time, min_nights, max_nights, booking_fee
     ) values (
       ${productId}::uuid, ${storeId}::uuid, ${a.durationMinutes}, ${a.bufferBeforeMinutes}, ${a.bufferAfterMinutes},
       ${a.stepMinutes}, ${a.minNoticeMinutes}, ${a.maxDaysAhead},
       (select id from commerce.store_locations where store_id = ${storeId}::uuid and id = ${a.locationId}::uuid),
       ${a.payment}, ${a.depositPercent}, ${a.cancelHours}, ${a.noShowPercent},
-      ${a.checkInTime}, ${a.checkOutTime}, ${a.minNights}, ${Math.max(a.minNights, a.maxNights)}
+      ${a.checkInTime}, ${a.checkOutTime}, ${a.minNights}, ${Math.max(a.minNights, a.maxNights)}, ${JSON.stringify(fee)}::jsonb
     )
     on conflict (product_id) do update set
       duration_minutes = excluded.duration_minutes, buffer_before_minutes = excluded.buffer_before_minutes,
@@ -511,7 +539,7 @@ async function saveAppointment(tx: Tx, storeId: string, productId: string, input
       location_id = excluded.location_id, payment = excluded.payment, deposit_percent = excluded.deposit_percent,
       cancel_hours = excluded.cancel_hours, no_show_percent = excluded.no_show_percent,
       check_in_time = excluded.check_in_time, check_out_time = excluded.check_out_time,
-      min_nights = excluded.min_nights, max_nights = excluded.max_nights
+      min_nights = excluded.min_nights, max_nights = excluded.max_nights, booking_fee = excluded.booking_fee
   `);
   if (a.resourceIds.length > 0) {
     await tx.execute(sql`
@@ -589,7 +617,7 @@ export async function saveProduct(
       }
       const locationId = await stockLocation(tx, store);
       await saveVariants(tx, store.id, saved, context, input, locationId);
-      await saveAppointment(tx, store.id, saved, input);
+      await saveAppointment(tx, store.id, saved, input, context);
       await saveFiles(tx, store.id, saved, input);
       await savePlans(tx, store.id, saved, input, context.markets, context.audience);
       await tx.execute(sql`delete from commerce.product_terms where store_id = ${store.id}::uuid and product_id = ${saved}::uuid`);

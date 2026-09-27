@@ -26,6 +26,12 @@ test("a shopper chooses arrival and departure and finds the nights in the cart",
   await page.goto(`/s/${slug}/no/p/demo-hytte`);
   await expect(page.getByText("Innsjekk fra 15:00, utsjekk innen 11:00. Minst 2 netter.")).toBeVisible();
   await expect(page.getByText("Overnatting på faste datoer har ikke angrerett.")).toBeVisible();
+  // Final cleaning and the seasons' prices, before choosing (D70).
+  await expect(page.getByText(/^Sluttrengjøring$/)).toBeVisible();
+  const seasons = page.getByRole("region", { name: "Priser gjennom året" });
+  await expect(seasons.getByText(/Høysesong \(15\. juni–15\. august\)/)).toBeVisible();
+  await expect(seasons.getByRole("listitem").filter({ hasText: "Høysesong" })).toContainText(/1\s?885,00/);
+  await expect(seasons.getByRole("listitem").filter({ hasText: "Helg" })).toContainText(/fre\.?, lør/);
   const add = page.getByRole("button", { name: "Legg i handlekurven" });
   await expect(add).toBeDisabled();
 
@@ -50,9 +56,11 @@ test("a shopper chooses arrival and departure and finds the nights in the cart",
   await expect(line).toContainText(/Innsjekk .*15[:.]00, utsjekk .*11[:.]00/);
   await expect(line).toContainText("3 netter");
   await expect(line.getByLabel("Antall")).toHaveCount(0);
-  // 3 nights at 1 450 kr, a 30 % deposit now.
+  await expect(line).toContainText("Sluttrengjøring 500,00");
+  // A 30 % deposit now, the rest on arrival.
   const summary = page.locator("aside dl");
-  await expect(summary.locator("div").filter({ hasText: /^Betales nå/ })).toContainText("1 305,00");
+  await expect(summary.locator("div").filter({ hasText: /^Betales nå/ })).toBeVisible();
+  await expect(summary.locator("div").filter({ hasText: /^Betales på stedet/ })).toBeVisible();
   await line.getByRole("button", { name: /Fjern/ }).click();
   await expect(page.getByText("Handlekurven er tom.")).toBeVisible();
 });

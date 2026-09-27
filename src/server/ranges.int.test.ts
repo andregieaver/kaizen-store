@@ -111,13 +111,16 @@ describe("booking a stay (D67)", () => {
 
     const cart = await getCart(shop);
     expect(cart.lines).toEqual([
+      // One booking of three nights, at their whole price.
       expect.objectContaining({
-        quantity: 3,
+        quantity: 1,
         status: "ok",
         vatRate: 0.12,
-        unitPriceMinor: 120000,
+        unitPriceMinor: 360000,
         booking: expect.objectContaining({
           kind: "stay",
+          count: 3,
+          price: { itemsMinor: 360000, feeMinor: 0, seasonal: false, baseMinor: 120000 },
           startsAt: checkIn(arrival),
           endsAt: new Date(zonedTime(addDays(arrival, 3), "11:00", TZ)).toISOString(),
         }),
@@ -149,7 +152,7 @@ describe("booking a stay (D67)", () => {
     expect([open(arrival), open(addDays(arrival, 2)), open(addDays(arrival, 3))]).toEqual([false, false, true]);
 
     const order = await getOrder(storeId, orderId);
-    expect(order?.lines[0]).toMatchObject({ quantity: 3, totalMinor: 360000, booking: { kind: "stay", staff: "Hytta" } });
+    expect(order?.lines[0]).toMatchObject({ quantity: 1, totalMinor: 360000, booking: { kind: "stay", staff: "Hytta" } });
     const listed = await listBookings(storeId, new Date(zonedTime(addDays(arrival, 1), "00:00", TZ)), new Date(zonedTime(addDays(arrival, 2), "00:00", TZ)), [
       "unit",
     ]);

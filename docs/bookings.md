@@ -124,13 +124,17 @@ blocked dates on each room, item or member of staff (time off), other
 sites' calendars read in every 15 minutes, and each room's or item's taken
 days published at a secret iCal address (`src/server/calendar-sync.ts`,
 pure parts in `src/lib/calendar-sync.ts`). Rentals can also be offered by
-the half day or hour, per variant (D69). B3c (seasonal prices, cleaning
-fee) is next.
+the half day or hour, per variant (D69). B3c is done (D70): seasons that
+raise or lower the price of the nights or days they cover, every year,
+and a fee per booking such as final cleaning (`src/lib/booking-prices.ts`).
+B3 is done; B4 (hosts) is next, once its payment model and DAC7 reporting
+are agreed.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`
 with a member of staff (`commerce.add_demo_appointment()`), stays have
-`Demo: Hytte ved vannet` (`commerce.add_demo_stay()`) and rentals
+`Demo: Hytte ved vannet`, dearer in summer and at weekends, with final
+cleaning (`commerce.add_demo_stay()`) and rentals
 `Demo: Leie av elsykkel` with three bikes, rented by the day, half day or
 hour (`commerce.add_demo_rental()`, D69).
 

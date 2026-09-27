@@ -715,6 +715,20 @@
       "when": 1790509155472,
       "tag": "20260927113915_rental_periods_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1790510669390,
+      "tag": "20260927120429_seasons_and_fees",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1790510671453,
+      "tag": "20260927120431_seasons_and_fees_rules",
+      "breakpoints": true
     }
   ]
 }
