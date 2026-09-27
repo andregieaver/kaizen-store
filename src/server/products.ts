@@ -60,10 +60,12 @@ export type EditorContext = {
   /** The store's staff, rooms and homes, and items to rent (D65, D67); each kind of product picks from its own. */
   staff: { id: string; name: string; active: boolean; kind: "staff" | "unit" | "item" }[];
   places: { id: string; name: string }[];
+  /** The store's active hosts (D71), for its stays and rentals. */
+  hosts: { id: string; name: string; vatRegistered: boolean }[];
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location], terms, rates, staff, places] = await Promise.all([
+  const [operators, [location], terms, rates, staff, places, hosts] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -90,6 +92,10 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       select id, case when kind = 'office' and name = '' then 'Office' else name end as name
       from commerce.store_locations where store_id = ${store.id}::uuid and kind in ('office', 'shop')
       order by kind = 'office' desc, position, name
+    `),
+    db().execute<Row>(sql`
+      select id, name, vat_registered from commerce.hosts
+      where store_id = ${store.id}::uuid and disabled_at is null order by lower(name)
     `),
   ]);
   const noVat: Record<VatCategory, number> = { standard: 0, accommodation: 0, exempt: 0 };
@@ -122,7 +128,14 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       kind: row.kind === "unit" || row.kind === "item" ? row.kind : "staff",
     })),
     places: places.map((row) => ({ id: String(row.id), name: String(row.name) })),
+    hosts: hosts.map((row) => ({ id: String(row.id), name: String(row.name), vatRegistered: Boolean(row.vat_registered) })),
   };
+}
+
+/** A stay's or rental's host (D71), if one of the store's own; everything else is the store's. */
+function hostOf(storeId: string, input: ProductInput) {
+  if ((input.kind !== "stay" && input.kind !== "rental") || !input.hostId) return sql`null::uuid`;
+  return sql`(select id from commerce.hosts where store_id = ${storeId}::uuid and id = ${input.hostId}::uuid)`;
 }
 
 /** A blank product with one variant, ready for the editor. */
@@ -165,6 +178,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     audience: "all",
     vatCategory: "standard",
     kind: "goods",
+    hostId: null,
     appointment: null,
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
@@ -255,7 +269,7 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind
+           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -424,6 +438,7 @@ export async function getProductForEdit(
     audience: parseProductAudience(product.audience),
     vatCategory: category,
     kind,
+    hostId: product.host_id ? String(product.host_id) : null,
     appointment: isBooked(kind)
         ? {
             durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
@@ -674,7 +689,7 @@ async function upsertProduct(
         tax_code = ${input.taxCode}, withdrawal_exclusion = ${input.withdrawalExclusion},
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
         subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
-        vat_category = ${input.vatCategory}, kind = ${input.kind}, updated_at = now()
+        vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)}, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -684,11 +699,11 @@ async function upsertProduct(
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
-      delivery, download_limit, download_days, subscription_only, audience, vat_category, kind
+      delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
-      ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}
+      ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)}
     )
     returning id
   `);

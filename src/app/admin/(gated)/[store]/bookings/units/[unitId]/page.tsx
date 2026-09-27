@@ -5,10 +5,12 @@ import { z } from "zod";
 
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requireMember } from "@/server/auth";
+import { hostChoices } from "@/server/hosts";
 import { getResource } from "@/server/bookings";
 
 import { removeUnitAction, saveUnitAction } from "../../actions";
 import { ResourceCalendar } from "../../resource-calendar";
+import { storeCalendarActions } from "../../store-calendar-actions";
 import { UnitForm } from "../unit-form";
 
 export const metadata: Metadata = { title: "Room or item" };
@@ -29,8 +31,8 @@ export default async function UnitPage({ params }: PageProps<"/admin/[store]/boo
         </Link>
         <h1 className="text-2xl font-semibold">{unit.name}</h1>
       </div>
-      <UnitForm kind={kind} unit={unit} action={saveUnitAction.bind(null, store.slug, kind, unit.id)} />
-      <ResourceCalendar storeSlug={store.slug} storeId={store.id} timeZone={store.timeZone} resource={unit} />
+      <UnitForm kind={kind} unit={unit} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, unit.id)} />
+      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={storeCalendarActions(store.slug, unit.id)} />
       <DeleteDiscountButton
         action={removeUnitAction.bind(null, store.slug, unit.id)}
         code={unit.name}

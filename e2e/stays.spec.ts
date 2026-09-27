@@ -134,3 +134,23 @@ test("a shopper rents a bike by the hour, then for half a day", async ({ page })
   await expect(half).toContainText(/Henting .*13[:.]00, levering .*17[:.]00/);
   await expect(half).toContainText("300,00");
 });
+
+test("a host's listing names its host (D71)", async ({ page }) => {
+  const slug = await newStore();
+  const sql = testDb();
+  try {
+    const [account] = await sql`insert into commerce.accounts (email) values (${`host-${slug}@example.com`}) returning id`;
+    await sql`
+      with host as (
+        insert into commerce.hosts (store_id, account_id, name)
+        select id, ${account.id}, 'Karis hytter' from commerce.stores where slug = ${slug}
+        returning id, store_id
+      )
+      update commerce.products p set host_id = host.id from host
+      where p.store_id = host.store_id and p.handle = 'demo-hytte'`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/s/${slug}/no/p/demo-hytte`);
+  await expect(page.getByText("Utleier: Karis hytter")).toBeVisible();
+});

@@ -1027,6 +1027,45 @@ describe("stays and rentals (D67)", () => {
   });
 });
 
+describe("hosts (D71)", () => {
+  it("sells an unregistered host's listings without VAT, and follows the host when that changes", async () => {
+    const { id: accountId } = await one<{ id: string }>("insert into commerce.accounts (email) values ('kari-host@example.com') returning id");
+    const { id: host } = await one<{ id: string }>(
+      "insert into commerce.hosts (store_id, account_id, name, vat_registered) values ($1, $2, 'Karis hytter', true) returning id",
+      [store, accountId],
+    );
+    await expect(
+      db.query("insert into commerce.hosts (store_id, account_id, name) values ($1, $2, 'Twice')", [store, accountId]),
+    ).rejects.toThrow(/hosts_store_account_key/);
+    await expect(
+      db.query("insert into commerce.hosts (store_id, account_id, name, commission_bps) values ($1, $2, 'Greedy', 10001)", [
+        store,
+        (await one<{ id: string }>("insert into commerce.accounts (email) values ('greedy@example.com') returning id")).id,
+      ]),
+    ).rejects.toThrow(/hosts_commission/);
+
+    const { productId } = await createProduct();
+    await db.query("update commerce.products set kind = 'stay', vat_category = 'accommodation', host_id = $2 where id = $1", [productId, host]);
+    const category = async () => (await one<{ vat_category: string }>("select vat_category from commerce.products where id = $1", [productId])).vat_category;
+    expect(await category()).toBe("accommodation");
+    await db.query("update commerce.hosts set vat_registered = false where id = $1", [host]);
+    expect(await category()).toBe("exempt");
+    // Kept at no VAT while the host is not registered, whatever the listing is given.
+    await db.query("update commerce.products set vat_category = 'standard' where id = $1", [productId]);
+    expect(await category()).toBe("exempt");
+    // Another store's host cannot be given.
+    const otherStore = await createStore("hosts-other", ["DE"]);
+    const { productId: other } = await createProduct({ storeId: otherStore });
+    await expect(db.query("update commerce.products set host_id = $2 where id = $1", [other, host])).rejects.toThrow(/products_host_fk/);
+  });
+
+  it("keeps 'hosting' free of store addresses", async () => {
+    await expect(
+      db.query("insert into commerce.stores (slug, name) values ('hosting', 'Hosting')"),
+    ).rejects.toThrow(/stores_slug_not_reserved/);
+  });
+});
+
 describe("paying for an order", () => {
   /** An order for 2 of a variant with 3 on hand, 2 of them held for the order. */
   async function orderWithHold(onHand = 3) {

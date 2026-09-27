@@ -120,7 +120,7 @@ export async function requireMember(storeSlug: string): Promise<Membership> {
 
 /**
  * Whether a sign-in link may be sent to this email: an active account that
- * works in at least one store or runs the platform.
+ * works in at least one store, hosts for one (D71), or runs the platform.
  */
 export async function canSignIn(email: string): Promise<boolean> {
   return (await signInAccount(email)) !== null;
@@ -137,6 +137,10 @@ export async function signInAccount(email: string): Promise<{ linked: boolean } 
       and (a.platform_admin or exists (
         select 1 from commerce.store_members m
         where m.account_id = a.id and m.disabled_at is null
+      ) or exists (
+        -- Outside hosts (D71) sign in to their own area.
+        select 1 from commerce.hosts h
+        where h.account_id = a.id and h.disabled_at is null
       ))
   `);
   return row ? { linked: Boolean(row.linked) } : null;

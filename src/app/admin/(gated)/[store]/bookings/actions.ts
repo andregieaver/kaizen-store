@@ -54,7 +54,13 @@ export async function saveUnitAction(
   const result = await saveResource(
     member,
     unitId,
-    { name: formData.get("name"), email: "", capacity: formData.get("capacity"), active: formData.get("active") === "on" },
+    {
+      name: formData.get("name"),
+      email: "",
+      capacity: formData.get("capacity"),
+      active: formData.get("active") === "on",
+      hostId: formData.get("hostId") || null,
+    },
     kind,
   );
   const words: Record<string, string> = { "They are no longer in the store.": gone, "Give them a name.": "Give it a name." };

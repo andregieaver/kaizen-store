@@ -268,6 +268,8 @@ export const productInput = z.object({
     )
     .min(1, "A product needs at least one variant.")
     .max(MAX_VARIANTS, `Use at most ${MAX_VARIANTS} variants.`),
+  /** A stay's or rental's outside host (D71); null for the store's own. */
+  hostId: z.uuid().nullable().default(null),
   /** How new variants are delivered; each variant can differ. */
   delivery: z.enum(DELIVERIES).default("physical"),
   /** Files for digital variants: already uploaded to the store's folder. */

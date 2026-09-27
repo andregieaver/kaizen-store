@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireMember } from "@/server/auth";
+import { hostChoices } from "@/server/hosts";
 
 import { saveUnitAction } from "../../actions";
 import { UnitForm } from "../unit-form";
@@ -19,7 +20,7 @@ export default async function NewUnitPage({ params, searchParams }: PageProps<"/
         </Link>
         <h1 className="text-2xl font-semibold">{kind === "unit" ? "Add a room or home" : "Add a rental item"}</h1>
       </div>
-      <UnitForm kind={kind} unit={null} action={saveUnitAction.bind(null, store.slug, kind, null)} />
+      <UnitForm kind={kind} unit={null} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, null)} />
     </div>
   );
 }

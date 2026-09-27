@@ -19,6 +19,9 @@ import {
 
 import { audit, type Membership } from "./auth";
 
+/** Who changes a calendar: a store member, or a host in their own area (D71). */
+type Actor = Pick<Membership, "account" | "store">;
+
 /**
  * Blocked dates and calendar sync (D67, B3b). A resource (a room, an item,
  * a member of staff) is closed by blocks: ones the store sets, and ones read
@@ -128,7 +131,7 @@ export type BlockResult = { ok: true; clashes: number } | { ok: false; problems:
  * a room, the days of anything else. Bookings already there stay; the
  * result says how many there are.
  */
-export async function addBlock({ account, store }: Membership, resourceId: string, values: Record<string, unknown>): Promise<BlockResult> {
+export async function addBlock({ account, store }: Actor, resourceId: string, values: Record<string, unknown>): Promise<BlockResult> {
   const parsed = blockInput.safeParse(values);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const resource = await resourceOf(store.id, resourceId);
@@ -150,7 +153,7 @@ export async function addBlock({ account, store }: Membership, resourceId: strin
 }
 
 /** Opens a block the store set again; imported ones go when their calendar drops them. */
-export async function removeBlock({ account, store }: Membership, blockId: string): Promise<boolean> {
+export async function removeBlock({ account, store }: Actor, blockId: string): Promise<boolean> {
   const rows = await db().execute<Row>(sql`
     delete from commerce.resource_blocks
     where store_id = ${store.id}::uuid and id = ${blockId}::uuid and feed_id is null
@@ -169,7 +172,7 @@ export async function removeBlock({ account, store }: Membership, blockId: strin
 export const calendarPath = (token: string) => `/api/calendar/${token}.ics`;
 
 /** Gives the resource a (new) secret address; the old one stops working. */
-export async function resetCalendarToken({ account, store }: Membership, resourceId: string): Promise<string | null> {
+export async function resetCalendarToken({ account, store }: Actor, resourceId: string): Promise<string | null> {
   const token = randomBytes(24).toString("base64url");
   const rows = await db().execute<Row>(sql`
     update commerce.booking_resources set calendar_token = ${token}, updated_at = now()
@@ -259,7 +262,7 @@ export type FeedResult = { ok: true; id: string; sync: SyncOutcome } | { ok: fal
 
 /** Adds another calendar the resource is booked in, and reads it at once. */
 export async function addFeed(
-  member: Membership,
+  member: Actor,
   resourceId: string,
   values: Record<string, unknown>,
   fetcher: typeof fetch = fetch,
@@ -279,7 +282,7 @@ export async function addFeed(
 }
 
 /** Stops reading a calendar; the times it blocked open again. */
-export async function removeFeed({ account, store }: Membership, feedId: string): Promise<boolean> {
+export async function removeFeed({ account, store }: Actor, feedId: string): Promise<boolean> {
   const rows = await db().execute<Row>(sql`
     delete from commerce.calendar_feeds where store_id = ${store.id}::uuid and id = ${feedId}::uuid returning id
   `);
@@ -411,4 +414,19 @@ export async function syncDueFeeds(fetcher: typeof fetch = fetch): Promise<{ syn
   `);
   const outcomes = await Promise.all(due.map((row) => syncFeed(String(row.store_id), String(row.id), fetcher)));
   return { synced: outcomes.filter((o) => o.ok).length, failed: outcomes.filter((o) => !o.ok).length };
+}
+
+/** The resource a block or a feed belongs to, for checking a host's own (D71). */
+export async function resourceOfBlock(storeId: string, blockId: string): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select resource_id from commerce.resource_blocks where store_id = ${storeId}::uuid and id = ${blockId}::uuid
+  `);
+  return row ? String(row.resource_id) : null;
+}
+
+export async function resourceOfFeed(storeId: string, feedId: string): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select resource_id from commerce.calendar_feeds where store_id = ${storeId}::uuid and id = ${feedId}::uuid
+  `);
+  return row ? String(row.resource_id) : null;
 }

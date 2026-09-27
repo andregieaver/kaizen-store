@@ -176,6 +176,7 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
             <SwitchToBusiness storeId={store.id} label={m.buyer.switchToBusiness} />
           </div>
         )}
+        {product.hostName && <p className="text-sm">{m.stay.hostedBy(product.hostName)}</p>}
         {product.kind === "appointment" ? (
           // Booked for a time (D65): free times are read per request, like stock.
           <section aria-label={m.booking.chooseTime} className={product.audience === "businesses" ? "for-business" : ""}>

@@ -9,10 +9,13 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 export function UnitForm({
   kind,
   unit,
+  hosts = [],
   action,
 }: {
   kind: "unit" | "item";
   unit: BookingResource | null;
+  /** The store's hosts (D71): a room or item may be one of theirs. */
+  hosts?: { id: string; name: string }[];
   action: (state: FormState, formData: FormData) => Promise<FormState>;
 }) {
   const stay = kind === "unit";
@@ -32,6 +35,20 @@ export function UnitForm({
           {stay ? "1 for a room or a home; more for beds in a dormitory." : "Each booking takes one of them."}
         </span>
       </label>
+      {hosts.length > 0 && (
+        <label className={`${field} max-w-xs`}>
+          Host
+          <select name="hostId" defaultValue={unit?.hostId ?? ""} className={control}>
+            <option value="">The store itself</option>
+            {hosts.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name}
+              </option>
+            ))}
+          </select>
+          <span className="font-normal text-muted">A host keeps the calendar of their own rooms and items.</span>
+        </label>
+      )}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="active" defaultChecked={unit?.active ?? true} className="size-4" />
         Takes bookings

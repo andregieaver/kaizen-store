@@ -85,6 +85,8 @@ export type ProductDetail = {
   audience: ProductAudience;
   /** Goods, or an appointment booked for a time (D65). */
   kind: "goods" | "appointment" | "stay" | "rental";
+  /** The outside host who lists it, when the store is a marketplace (D71). */
+  hostName: string | null;
 };
 
 type Row = Record<string, unknown>;
@@ -193,7 +195,8 @@ export async function getProduct(
       coalesce(case when tl.product_id is null then tf.seo_title else tl.seo_title end, '') as seo_title,
       coalesce(case when tl.product_id is null then tf.seo_description else tl.seo_description end, '') as seo_description,
       mf.name as mf_name, mf.postal_address as mf_postal, mf.electronic_address as mf_electronic,
-      rp.name as rp_name, rp.postal_address as rp_postal, rp.electronic_address as rp_electronic
+      rp.name as rp_name, rp.postal_address as rp_postal, rp.electronic_address as rp_electronic,
+      (select h.name from commerce.hosts h where h.store_id = p.store_id and h.id = p.host_id) as host_name
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
     left join commerce.product_translations tl
@@ -278,6 +281,7 @@ export async function getProduct(
     })),
     // Without an option to subscribe to, it can only be bought once.
     subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,
+    hostName: product.host_name ? String(product.host_name) : null,
     audience: productAudience(product),
     kind: product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" ? product.kind : "goods",
   };

@@ -340,7 +340,7 @@ export const stores = commerce.table(
     // Names the platform needs for its own routes and subdomains.
     check(
       "stores_slug_not_reserved",
-      sql`${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'www')`,
+      sql`${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'www')`,
     ),
     uniqueIndex("stores_one_template_idx").on(t.isTemplate).where(sql`${t.isTemplate}`),
     index("stores_created_by_idx").on(t.createdBy),
@@ -717,12 +717,20 @@ export const products = commerce.table(
     vatCategory: text("vat_category").notNull().default("standard"),
     /** What it is (D65, D67): goods (physical or digital), an appointment, a stay (nights) or a rental (days). */
     kind: text("kind").notNull().default("goods"),
+    /** The outside host who lists it, when the store is a marketplace (D71); null for the store's own. */
+    hostId: uuid("host_id"),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    foreignKey({
+      name: "products_host_fk",
+      columns: [t.storeId, t.hostId],
+      foreignColumns: [hosts.storeId, hosts.id],
+    }),
+    index("products_host_idx").on(t.storeId, t.hostId),
     unique("products_store_id_key").on(t.storeId, t.id),
     unique("products_store_handle_key").on(t.storeId, t.handle),
     foreignKey({
@@ -2842,6 +2850,41 @@ export const storeDomains = commerce.table(
 // ---------------------------------------------------------------------------
 
 /**
+ * An outside host a store lists stays or rentals for, when it runs a
+ * marketplace (D71). A host signs in with their own account and sees only
+ * their own listings, bookings and calendars; the store keeps its
+ * commission of each booking. A host who is not VAT registered charges no
+ * VAT on their listings.
+ */
+export const hosts = commerce.table(
+  "hosts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    /** Shown to shoppers on the host's listings. */
+    name: text("name").notNull(),
+    /** The store's share of each booking, in basis points (1500 = 15 %). */
+    commissionBps: integer("commission_bps").notNull().default(1500),
+    vatRegistered: boolean("vat_registered").notNull().default(false),
+    invitedBy: uuid("invited_by").references(() => accounts.id),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("hosts_store_id_key").on(t.storeId, t.id),
+    unique("hosts_store_account_key").on(t.storeId, t.accountId),
+    index("hosts_account_idx").on(t.accountId),
+    index("hosts_invited_by_idx").on(t.invitedBy),
+    check("hosts_name", sql`length(${t.name}) between 1 and 120`),
+    check("hosts_commission", sql`${t.commissionBps} between 0 and 10000`),
+  ],
+);
+
+/**
  * What is booked (D65): for appointments, the staff who do them. Each has
  * its hours (`OpeningHours` in lib/opening-hours) and a capacity: how many
  * bookings it takes at once (1 for a person, more for a class).
@@ -2861,11 +2904,19 @@ export const bookingResources = commerce.table(
     position: integer("position").notNull().default(0),
     /** The secret in its calendar's address (D67), for Airbnb, Booking.com and the like to read; null until asked for. */
     calendarToken: text("calendar_token").unique("booking_resources_calendar_token_key"),
+    /** The host whose room or item it is (D71), who keeps its calendar; null for the store's own. */
+    hostId: uuid("host_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("booking_resources_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "booking_resources_host_fk",
+      columns: [t.storeId, t.hostId],
+      foreignColumns: [hosts.storeId, hosts.id],
+    }),
+    index("booking_resources_host_idx").on(t.storeId, t.hostId),
     index("booking_resources_store_idx").on(t.storeId, t.position),
     check("booking_resources_kind", sql`${t.kind} in ('staff', 'unit', 'item')`),
     check("booking_resources_capacity", sql`${t.capacity} between 1 and 500`),

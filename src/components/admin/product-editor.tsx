@@ -1717,6 +1717,32 @@ function RangeSection({
           ? "Guests choose their arrival and departure dates. The price is per night, and each booking takes one of the rooms or homes below."
           : "Shoppers choose the first and last day, or, for a variant rented by the half day or hour (set under Variants), a day and a time. Each variant's price is per day, half day or hour, and each booking takes one of the items below. Half days split the day between pick-up and return; hours start on the hour from pick-up."}
       </p>
+      {context.hosts.length > 0 && (
+        <label className={`${label} mb-4 max-w-sm`}>
+          Host
+          <select
+            value={product.hostId ?? ""}
+            onChange={(e) => update((p) => ({ ...p, hostId: e.target.value || null }))}
+            className={input}
+          >
+            <option value="">The store itself</option>
+            {context.hosts.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name}
+              </option>
+            ))}
+          </select>
+          <span className={hint}>
+            {(() => {
+              const chosen = context.hosts.find((h) => h.id === product.hostId);
+              if (!chosen) return "Listed for someone else? Choose their host; they then see its bookings and keep its calendar.";
+              return chosen.vatRegistered
+                ? "Their bookings are paid to them, less your commission. The VAT category above applies."
+                : "Their bookings are paid to them, less your commission. They are not VAT registered, so it is sold without VAT.";
+            })()}
+          </span>
+        </label>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={label}>
           {stay ? "Check-in" : "Pick-up"}

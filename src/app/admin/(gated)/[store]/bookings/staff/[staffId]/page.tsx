@@ -9,6 +9,7 @@ import { getResource } from "@/server/bookings";
 
 import { removeStaffAction, saveStaffAction } from "../../actions";
 import { ResourceCalendar } from "../../resource-calendar";
+import { storeCalendarActions } from "../../store-calendar-actions";
 import { StaffForm } from "../staff-form";
 
 export const metadata: Metadata = { title: "Staff" };
@@ -29,7 +30,7 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
         <h1 className="text-2xl font-semibold">{staff.name}</h1>
       </div>
       <StaffForm staff={staff} action={saveStaffAction.bind(null, store.slug, staff.id)} />
-      <ResourceCalendar storeSlug={store.slug} storeId={store.id} timeZone={store.timeZone} resource={staff} />
+      <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={staff} actions={storeCalendarActions(store.slug, staff.id)} />
       <DeleteDiscountButton
         action={removeStaffAction.bind(null, store.slug, staff.id)}
         code={staff.name}

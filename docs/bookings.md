@@ -127,8 +127,10 @@ pure parts in `src/lib/calendar-sync.ts`). Rentals can also be offered by
 the half day or hour, per variant (D69). B3c is done (D70): seasons that
 raise or lower the price of the nights or days they cover, every year,
 and a fee per booking such as final cleaning (`src/lib/booking-prices.ts`).
-B3 is done; B4 (hosts) is next, once its payment model and DAC7 reporting
-are agreed.
+B3 is done. B4 (hosts, D71) is under way: B4a is done (hosts added by the
+store's owners with a commission, their own area at `/admin/hosting/{store}`
+with their listings, bookings and calendars, and no VAT for hosts not VAT
+registered); B4b (payments to hosts) and B4c (DAC7) are next.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`

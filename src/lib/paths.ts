@@ -120,6 +120,7 @@ export const RESERVED_STORE_SLUGS: readonly string[] = [
   "auth",
   "forgot-password",
   "help",
+  "hosting",
   "mail",
   "platform",
   "setup",

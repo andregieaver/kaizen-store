@@ -372,6 +372,16 @@ of running `playwright install`.
   bookings as no-shows from the calendar (`markNoShow()` in
   `src/server/no-show.ts`, `bookings.no_show_at`), charging the fee off
   session to the card saved with the deposit only when they tick it.
+- Hosts (D71, `src/server/hosts.ts`): a store lists stays and rentals for
+  outside hosts (`commerce.hosts`, added by owners at `/admin/{store}/hosts`
+  with a commission). Hosts are never store members: store pages keep
+  `requireMember()`, and the host area `/admin/hosting/{store}` uses
+  `requireHost()` and shows only the host's listings (`products.host_id`),
+  rooms and items (`booking_resources.host_id`) and their bookings
+  (`listBookings(..., hostId)`). Host actions check the resource is the
+  host's (`hostOwnsResource()`). Shared panels such as `ResourceCalendar`
+  take their actions as props (`CalendarActions`). A host not VAT
+  registered sells without VAT (trigger `products_host_vat`).
 - Demo products: the template store has a clearly labelled demo product
   (`Demo: …`) of every kind, and new stores are copied with them
   (`clone_store()`). A new kind of product gets one in the same change: a

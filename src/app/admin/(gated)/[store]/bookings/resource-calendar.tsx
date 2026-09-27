@@ -1,18 +1,23 @@
-import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { addDays } from "@/lib/booking-slots";
 import { exportDates } from "@/lib/calendar-sync";
 import { siteUrl } from "@/lib/site";
 import type { ResourceKind } from "@/server/bookings";
 import { calendarPath, listBlocks, listFeeds } from "@/server/calendar-sync";
 
-import {
-  addBlockAction,
-  addFeedAction,
-  removeBlockAction,
-  removeFeedAction,
-  resetCalendarAction,
-  syncFeedAction,
-} from "./actions";
+/**
+ * What the panel does, as server actions already bound to the store and
+ * resource: the store's own (`storeCalendarActions()`), or a host's, which
+ * check the resource is theirs (D71).
+ */
+export type CalendarActions = {
+  addBlock: (state: FormState, formData: FormData) => Promise<FormState>;
+  removeBlock: (blockId: string) => Promise<void>;
+  resetCalendar: () => Promise<void>;
+  addFeed: (state: FormState, formData: FormData) => Promise<FormState>;
+  syncFeed: (feedId: string) => Promise<void>;
+  removeFeed: (feedId: string) => Promise<void>;
+};
 
 const field = "flex flex-col gap-1 text-sm font-medium";
 const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
@@ -24,15 +29,15 @@ const small = "min-h-10 rounded-md border border-border px-3 text-sm";
  * its own calendar for those sites to read.
  */
 export async function ResourceCalendar({
-  storeSlug,
   storeId,
   timeZone,
   resource,
+  actions,
 }: {
-  storeSlug: string;
   storeId: string;
   timeZone: string;
   resource: { id: string; kind: ResourceKind; name: string; calendarToken: string | null };
+  actions: CalendarActions;
 }) {
   const [blocks, feeds] = await Promise.all([listBlocks(storeId, resource.id), listFeeds(storeId, resource.id)]);
   const unit = resource.kind === "unit";
@@ -80,7 +85,7 @@ export async function ResourceCalendar({
                 {b.feed ? (
                   <span className="text-xs text-muted">Goes when {b.feed} drops it</span>
                 ) : (
-                  <form action={removeBlockAction.bind(null, storeSlug, b.id)}>
+                  <form action={actions.removeBlock.bind(null, b.id)}>
                     <button type="submit" className={small}>
                       Open again <span className="sr-only">{span(b.startsAt, b.endsAt)}</span>
                     </button>
@@ -90,7 +95,7 @@ export async function ResourceCalendar({
             ))}
           </ul>
         )}
-        <ActionForm action={addBlockAction.bind(null, storeSlug, resource.id)} className="flex flex-col gap-3">
+        <ActionForm action={actions.addBlock} className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-3">
             <label className={field}>
               {unit ? "First night" : "First day"}
@@ -135,14 +140,14 @@ export async function ResourceCalendar({
                 <p className="text-muted">
                   Paste it where the other site imports a calendar. It shows only which days are taken, never who booked.
                 </p>
-                <form action={resetCalendarAction.bind(null, storeSlug, resource.id)}>
+                <form action={actions.resetCalendar}>
                   <button type="submit" className={small}>
                     Make a new address (the old one stops working)
                   </button>
                 </form>
               </>
             ) : (
-              <form action={resetCalendarAction.bind(null, storeSlug, resource.id)}>
+              <form action={actions.resetCalendar}>
                 <button type="submit" className={small}>
                   Make a calendar address
                 </button>
@@ -170,12 +175,12 @@ export async function ResourceCalendar({
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <form action={syncFeedAction.bind(null, storeSlug, f.id)}>
+                      <form action={actions.syncFeed.bind(null, f.id)}>
                         <button type="submit" className={small}>
                           Read now <span className="sr-only">{f.name}</span>
                         </button>
                       </form>
-                      <form action={removeFeedAction.bind(null, storeSlug, f.id)}>
+                      <form action={actions.removeFeed.bind(null, f.id)}>
                         <button type="submit" className={small}>
                           Remove <span className="sr-only">{f.name}</span>
                         </button>
@@ -185,7 +190,7 @@ export async function ResourceCalendar({
                 ))}
               </ul>
             )}
-            <ActionForm action={addFeedAction.bind(null, storeSlug, resource.id)} className="flex flex-col gap-3">
+            <ActionForm action={actions.addFeed} className="flex flex-col gap-3">
               <div className="flex flex-wrap gap-3">
                 <label className={`${field} w-40`}>
                   Site

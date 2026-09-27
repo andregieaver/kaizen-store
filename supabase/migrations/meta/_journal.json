@@ -729,6 +729,20 @@
       "when": 1790510671453,
       "tag": "20260927120431_seasons_and_fees_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1790511976407,
+      "tag": "20260927122616_hosts",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1790511978497,
+      "tag": "20260927122618_hosts_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -73,6 +73,8 @@ export type BookingResource = {
   upcoming: number;
   /** The secret in its calendar's address for other sites (D67), once made. */
   calendarToken: string | null;
+  /** The host whose room or item it is (D71); null for the store's own. */
+  hostId: string | null;
 };
 
 const toResource = (row: Row): BookingResource => ({
@@ -86,10 +88,11 @@ const toResource = (row: Row): BookingResource => ({
   services: Number(row.services ?? 0),
   upcoming: Number(row.upcoming ?? 0),
   calendarToken: row.calendar_token ? String(row.calendar_token) : null,
+  hostId: row.host_id ? String(row.host_id) : null,
 });
 
 const resourceColumns = sql`
-  r.id, r.kind, r.name, r.email, r.hours, r.capacity, r.active, r.calendar_token,
+  r.id, r.kind, r.name, r.email, r.hours, r.capacity, r.active, r.calendar_token, r.host_id,
   (select count(*)::int from commerce.product_resources pr where pr.store_id = r.store_id and pr.resource_id = r.id) as services,
   (select count(*)::int from commerce.bookings b
     where b.store_id = r.store_id and b.resource_id = r.id and b.status = 'confirmed' and b.starts_at > now()) as upcoming
@@ -135,8 +138,8 @@ export const resourceInput = z.object({
 
 export type SaveResourceResult = { ok: true; id: string } | { ok: false; problems: string[] };
 
-/** A unit or an item (D67) has no hours: it is booked by the day. */
-const unitInput = resourceInput.omit({ hours: true });
+/** A unit or an item (D67) has no hours: it is booked by the day. It may be a host's (D71). */
+const unitInput = resourceInput.omit({ hours: true }).extend({ hostId: z.uuid().nullable().default(null) });
 
 /** Adds a member of staff (or a unit or an item), or changes one of the store's of that kind. */
 export async function saveResource(
@@ -149,18 +152,23 @@ export async function saveResource(
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const r = parsed.data;
   const hours = JSON.stringify("hours" in r ? r.hours : defaultHours());
+  // Only the store's own hosts; staff are never a host's.
+  const host =
+    "hostId" in r && r.hostId
+      ? sql`(select id from commerce.hosts where store_id = ${store.id}::uuid and id = ${r.hostId}::uuid)`
+      : sql`null::uuid`;
   const [row] = id
     ? await db().execute<Row>(sql`
         update commerce.booking_resources set
           name = ${r.name}, email = ${r.email}, capacity = ${r.capacity}, active = ${r.active},
-          hours = ${kind === "staff" ? sql`${hours}::jsonb` : sql`hours`}, updated_at = now()
+          hours = ${kind === "staff" ? sql`${hours}::jsonb` : sql`hours`}, host_id = ${host}, updated_at = now()
         where store_id = ${store.id}::uuid and id = ${id}::uuid and kind = ${kind}
         returning id
       `)
     : await db().execute<Row>(sql`
-        insert into commerce.booking_resources (store_id, kind, name, email, capacity, active, hours, position)
+        insert into commerce.booking_resources (store_id, kind, name, email, capacity, active, hours, host_id, position)
         values (
-          ${store.id}::uuid, ${kind}, ${r.name}, ${r.email}, ${r.capacity}, ${r.active}, ${hours}::jsonb,
+          ${store.id}::uuid, ${kind}, ${r.name}, ${r.email}, ${r.capacity}, ${r.active}, ${hours}::jsonb, ${host},
           (select coalesce(max(position), -1) + 1 from commerce.booking_resources where store_id = ${store.id}::uuid)
         )
         returning id
@@ -224,6 +232,8 @@ export async function listBookings(
   from: Date,
   to: Date,
   kinds: readonly ResourceKind[] = ["staff"],
+  /** Only a host's own rooms and items (D71). */
+  hostId: string | null = null,
 ): Promise<StoreBooking[]> {
   const ranges = !kinds.includes("staff");
   const rows = await db().execute<Row>(sql`
@@ -239,6 +249,7 @@ export async function listBookings(
     left join commerce.order_lines ol on ol.store_id = b.store_id and ol.id = b.order_line_id
     left join commerce.appointment_settings a on a.store_id = b.store_id and a.product_id = b.product_id
     where b.store_id = ${storeId}::uuid and r.kind in (${sql.join(kinds.map((k) => sql`${k}`), sql`, `)})
+      ${hostId ? sql`and (r.host_id = ${hostId}::uuid or p.host_id = ${hostId}::uuid)` : sql``}
       and ${
         ranges
           ? sql`b.starts_at < ${to.toISOString()}::timestamptz and b.ends_at > ${from.toISOString()}::timestamptz`
