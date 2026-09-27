@@ -9,9 +9,11 @@ import type { Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
+import { headerOverlays } from "@/lib/site-layout";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
 import { productLayoutFor } from "@/server/product-layouts";
+import { siteLayoutFor } from "@/server/site-layouts";
 import { listIndexedProducts, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 
@@ -100,10 +102,15 @@ export default async function ProductPage({ params }: Props) {
   const { store, market, product } = loaded;
   const ctx: ProductPageContext = { store, market, product, m: t(market.lang) };
 
-  const layout = (await productLayoutFor(store.id, product.id)) ?? DEFAULT_PRODUCT_LAYOUT;
+  const [layout, header] = await Promise.all([
+    productLayoutFor(store.id, product.id).then((own) => own ?? DEFAULT_PRODUCT_LAYOUT),
+    siteLayoutFor(store.id, "header"),
+  ]);
+  // A header over every page (D80) lies over a product page whose layout starts with a background.
+  const over = headerOverlays(header?.content.overlay, { front: false, categories: [], tags: [], rows: layout.rows });
 
   return (
-    <div className={`store-page ${pageRoomClass(layout, "pt-8", "pb-8")}`}>
+    <div className={`store-page ${pageRoomClass(layout, "pt-8", "pb-8")}`} data-header-overlay={over ? "" : undefined}>
       <ProductLayoutView layout={layout} ctx={ctx} />
       <Suspense fallback={null}>
         <ProductJsonLdSection store={store} market={market} product={product} />

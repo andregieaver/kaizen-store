@@ -18,6 +18,7 @@ import {
 
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
 import { productBlocks } from "@/lib/product-layout";
+import { siteLayoutProblem } from "@/lib/site-layout";
 
 import { audit, type Account } from "./auth";
 import { findFont, installFonts } from "./fonts";
@@ -200,7 +201,7 @@ export async function savePage(
   if (slugProblem) return { ok: false, problems: [slugProblem] };
   const gridProblem = ownerGridProblem(owner, parsed.data.rows);
   if (gridProblem) return { ok: false, problems: [gridProblem] };
-  const layoutProblem = productLayoutProblem(owner, type, parsed.data);
+  const layoutProblem = productLayoutProblem(owner, type, parsed.data) ?? siteLayoutProblem(owner, type, parsed.data);
   if (layoutProblem) return { ok: false, problems: [layoutProblem] };
   // Blocks' own fonts (D59) come from Google Fonts and must be on Kaizen before the page shows them.
   const families = pageFonts(parsed.data);
@@ -218,6 +219,16 @@ export async function savePage(
     ...rest,
     categories: await scopedTermIds(scope, "category", parsed.data.categories),
     tags: await scopedTermIds(scope, "tag", parsed.data.tags),
+    // A header's place over the page (D80), with only the owner's page categories and tags.
+    ...(type === "header" && parsed.data.overlay
+      ? {
+          overlay: {
+            ...parsed.data.overlay,
+            categories: await scopedTermIds(scope, "category", parsed.data.overlay.categories),
+            tags: await scopedTermIds(scope, "tag", parsed.data.overlay.tags),
+          },
+        }
+      : { overlay: undefined }),
     // Only articles have an author (D57).
     ...(type === "article" && author ? { author } : {}),
   };

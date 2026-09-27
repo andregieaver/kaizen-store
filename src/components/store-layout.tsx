@@ -25,7 +25,7 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 type Props = { store: Store; market: Market };
 
-async function MenuLinks({
+export async function MenuLinks({
   items,
   store,
   market,
@@ -75,7 +75,13 @@ async function MenuLinks({
  * The logo, or the store's name without one. Where the theme puts it on a
  * dark background, the logo for dark backgrounds is shown instead (D60).
  */
-function Brand({ store, market, size, place = size === "header" ? "header" : "page" }: Props & { size: "header" | "footer"; place?: LogoPlace }) {
+export function Brand({
+  store,
+  market,
+  size,
+  place = size === "header" ? "header" : "page",
+  height,
+}: Props & { size: "header" | "footer"; place?: LogoPlace; height?: number }) {
   const logo = store.navigation.logo;
   return (
     <Link href={marketPath(store.slug, market.slug)} className="flex min-w-0 items-center">
@@ -86,7 +92,9 @@ function Brand({ store, market, size, place = size === "header" ? "header" : "pa
           darkBehind={darkBehindLogo(store.theme.settings, place)}
           alt={store.name}
           priority={size === "header"}
-          className={`${size === "header" ? "h-8 md:h-10" : "h-8"} w-auto max-w-44 object-contain object-left md:max-w-56`}
+          // A height set in a header or footer layout (D80), else the usual one.
+          style={height ? { height } : undefined}
+          className={`${height ? "max-w-none" : `${size === "header" ? "h-8 md:h-10" : "h-8"} max-w-44 md:max-w-56`} w-auto min-w-0 object-contain object-left`}
         />
       ) : (
         <span className="truncate text-lg font-semibold">{store.name}</span>
@@ -95,10 +103,10 @@ function Brand({ store, market, size, place = size === "header" ? "header" : "pa
   );
 }
 
-function MarketChoice({ store, market, m }: Props & { m: Messages }) {
+export function MarketChoice({ store, market, m, className = "hidden md:block" }: Props & { m: Messages; className?: string }) {
   if (store.markets.length < 2) return null;
   return (
-    <details className="group relative hidden md:block">
+    <details className={`group relative ${className}`}>
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-button px-3 text-sm hover:bg-current/5 [&::-webkit-details-marker]:hidden">
         <Icon name="globe" className="size-5" />
         {market.name}
@@ -126,7 +134,7 @@ function MarketChoice({ store, market, m }: Props & { m: Messages }) {
 
 /** The store's notice (preview, demo or test payments), then its header; both slide away together. */
 /** The header's background by the theme (D60); hovers use the text's own colour, so they suit each. */
-const HEADER_BACKGROUND: Record<HeaderBackground, string> = {
+export const HEADER_BACKGROUND: Record<HeaderBackground, string> = {
   page: "bg-background/95 backdrop-blur",
   surface: "bg-surface",
   accent: "bg-accent text-accent-foreground",

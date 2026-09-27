@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { BuyerQuestion } from "@/components/buyer";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
@@ -16,6 +17,7 @@ import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
+import { siteLayoutFor } from "@/server/site-layouts";
 
 import "../../../globals.css";
 
@@ -66,6 +68,16 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
   if (!shop) notFound();
   const { store, market } = shop;
   const m = t(market.lang);
+  // The store's own header and footer built in the page builder (D80), else the standard ones.
+  const [headerLayout, footerLayout] = await Promise.all([siteLayoutFor(store.id, "header"), siteLayoutFor(store.id, "footer")]);
+  const notice =
+    [
+      !(store.setupCompletedAt || store.isTemplate) && m.previewNotice,
+      !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
+      store.paymentsOn && store.paymentsTest && m.testNotice,
+    ]
+      .filter(Boolean)
+      .join(" ") || null;
 
   return (
     // The store's theme (D60): its choices as attributes, its colours and sizes as variables.
@@ -92,19 +104,11 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
           {m.skipToContent}
         </a>
         {/* Shoppers are told when a store is a preview, cannot take payment yet, or takes test payments only. */}
-        <StoreHeader
-          store={store}
-          market={market}
-          notice={
-            [
-              !(store.setupCompletedAt || store.isTemplate) && m.previewNotice,
-              !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
-              store.paymentsOn && store.paymentsTest && m.testNotice,
-            ]
-              .filter(Boolean)
-              .join(" ") || null
-          }
-        />
+        {headerLayout ? (
+          <StoreSiteHeader store={store} market={market} notice={notice} layout={headerLayout} />
+        ) : (
+          <StoreHeader store={store} market={market} notice={notice} />
+        )}
         {/* A store's page (D54) spans the window: its rows keep to this width themselves. */}
         <main
           id="main"
@@ -112,7 +116,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         >
           {children}
         </main>
-        <StoreFooter store={store} market={market} />
+        {footerLayout ? <StoreSiteFooter store={store} market={market} layout={footerLayout} /> : <StoreFooter store={store} market={market} />}
         {/*
           Phone enhancements, each in its own boundary: React counts
           everything outside boundaries towards a 12.8 kB budget, past which

@@ -9,9 +9,11 @@ import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { ArticleView } from "@/components/article-view";
 import { PageArticle } from "@/components/page-article";
+import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { ProductLayoutView } from "@/components/product-parts";
+import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
-import { termContentOf, type PageContent, type PageType } from "@/lib/page-content";
+import { LAYOUT_TYPES, termContentOf, type PageContent, type PageType } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember } from "@/server/auth";
 import { getProduct, listProducts } from "@/server/catalog";
@@ -19,9 +21,16 @@ import { getPageForEdit, listPages, type PageSummary } from "@/server/pages";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import type { Store } from "@/server/stores";
 import { listSavedParts } from "@/server/saved-parts";
+import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 
-import { createStorePageTermAction, deleteStorePageTermAction, setFrontPageAction, updateStorePageTermAction } from "./actions";
+import {
+  chooseStoreSiteLayoutAction,
+  createStorePageTermAction,
+  deleteStorePageTermAction,
+  setFrontPageAction,
+  updateStorePageTermAction,
+} from "./actions";
 import { storePageContext, storePagesBase } from "./context";
 
 /**
@@ -39,6 +48,10 @@ const INTRO: Record<PageType, string> = {
     "Your blog: articles at /blog/{address} in every country your store sells to, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
   product_layout:
     "How your product pages are laid out: rows and columns of product components (pictures, title, price, buy, description …) with any other components around them. Publish a layout, then choose where it is used: for the whole store, for categories or tags, or for single products. Products without one use the standard layout.",
+  header:
+    "The top of every page in your store, built from components: your logo, menus, search, account, wishlist, cart, countries and anything else. Publish a header, then choose it as the store's header; until you do, the standard one is shown. Its logo and menus are the ones under Header and footer.",
+  footer:
+    "The bottom of every page in your store, built from components: your logo, menus, business details, countries, the cookies link and anything else. Publish a footer, then choose it as the store's footer; until you do, the standard one is shown. A footer shows your business details and the cookies link, as the law asks.",
 };
 
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
@@ -55,7 +68,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           <p className="max-w-2xl text-sm text-muted">{INTRO[type]}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {type !== "product_layout" && (
+          {!LAYOUT_TYPES.includes(type) && (
             <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
               Categories and tags
             </Link>
@@ -84,12 +97,23 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           uses={await layoutUses(store.id)}
           terms={await listTerms({ storeId: store.id, contentType: "product" })}
         />
+      ) : type === "header" || type === "footer" ? (
+        <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(store.id))[type]} />
       ) : (
         <PagesTable
           pages={pages}
           adminBase={base}
           siteBase={context.siteBase}
           frontPageId={type === "page" ? store.frontPageId : null}
+        />
+      )}
+      {(type === "header" || type === "footer") && (
+        <SiteLayoutChoice
+          type={type}
+          layouts={pages}
+          current={(await siteLayoutChoice(store.id))[type]}
+          siteName="Your store"
+          action={chooseStoreSiteLayoutAction.bind(null, store.slug, type)}
         />
       )}
       {type === "page" && (
@@ -183,7 +207,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
           justSaved === "draft"
             ? "Draft saved."
             : justSaved === "published"
-              ? type === "product_layout"
+              ? LAYOUT_TYPES.includes(type)
                 ? "Published."
                 : `Published at ${context.siteBase}/${page.slug}.`
               : null
@@ -231,6 +255,15 @@ export async function StorePreviewPageView({
       </p>
       {type === "product_layout" ? (
         <LayoutPreview store={store} layout={page.draft} asked={(await searchParams)?.product} />
+      ) : (type === "header" || type === "footer") && store.markets[0] ? (
+        // As the store draws it (D80), in its first country, with its own logo, menus and details.
+        <div className="overflow-hidden rounded-lg border border-border">
+          {type === "header" ? (
+            <StoreSiteHeader store={store} market={store.markets[0]} notice={null} layout={{ id: page.id, content: page.draft }} />
+          ) : (
+            <StoreSiteFooter store={store} market={store.markets[0]} layout={{ id: page.id, content: page.draft }} />
+          )}
+        </div>
       ) : type === "article" ? (
         // As the blog will show it (D57), in the store's main language.
         <ArticleView

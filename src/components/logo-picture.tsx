@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import type { Logo } from "@/lib/navigation";
 
 /**
@@ -12,6 +14,7 @@ export function LogoPicture({
   darkBehind,
   alt,
   className,
+  style,
   priority = false,
 }: {
   logo: Logo;
@@ -20,6 +23,7 @@ export function LogoPicture({
   darkBehind: { light: boolean; dark: boolean };
   alt: string;
   className: string;
+  style?: CSSProperties;
   priority?: boolean;
 }) {
   const pick = (dark: boolean) => (dark && logoDark ? logoDark : logo);
@@ -37,6 +41,7 @@ export function LogoPicture({
         height={light.height}
         fetchPriority={priority ? "high" : undefined}
         className={className}
+        style={style}
       />
     </picture>
   );

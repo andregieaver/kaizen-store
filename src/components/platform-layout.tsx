@@ -18,9 +18,9 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 type Props = { chrome: PlatformChrome };
 
 const m = t("en");
-const BUILT_IN = { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" };
+export const BUILT_IN = { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" };
 
-function MenuLinks({
+export function MenuLinks({
   items,
   chrome,
   className,
@@ -47,8 +47,8 @@ function MenuLinks({
   );
 }
 
-/** The logo, or Kaizen's name without one. */
-function Brand({ chrome, size }: Props & { size: "header" | "footer" }) {
+/** The logo, or Kaizen's name without one; `height` is one set in a header or footer layout (D80). */
+export function Brand({ chrome, size, height }: Props & { size: "header" | "footer"; height?: number }) {
   const logo = chrome.navigation.logo;
   return (
     <Link href="/" className="flex min-w-0 items-center">
@@ -60,7 +60,8 @@ function Brand({ chrome, size }: Props & { size: "header" | "footer" }) {
           darkBehind={{ light: false, dark: true }}
           alt="Kaizen"
           priority={size === "header"}
-          className={`${size === "header" ? "h-8 md:h-10" : "h-8"} w-auto max-w-44 object-contain object-left md:max-w-56`}
+          style={height ? { height } : undefined}
+          className={`${height ? "max-w-none" : `${size === "header" ? "h-8 md:h-10" : "h-8"} max-w-44 md:max-w-56`} w-auto min-w-0 object-contain object-left`}
         />
       ) : (
         <span className="truncate text-lg font-semibold">Kaizen</span>

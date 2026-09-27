@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { NavigationEditor } from "@/components/admin/navigation-editor";
 import { t } from "@/lib/i18n";
@@ -41,7 +42,16 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
       <div>
         <h1 className="text-2xl font-semibold">Header and footer</h1>
         <p className="text-sm text-muted">
-          Your logo and the links shoppers use to find their way around {store.name}, in each of your languages.
+          Your logo and the links shoppers use to find their way around {store.name}, in each of your languages. To
+          lay out the header and footer themselves, build them under{" "}
+          <Link href={`/admin/${store.slug}/headers`} className="underline">
+            Headers
+          </Link>{" "}
+          and{" "}
+          <Link href={`/admin/${store.slug}/footers`} className="underline">
+            Footers
+          </Link>
+          .
         </p>
       </div>
       <NavigationEditor

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 
 import { NavigationEditor, type NavigationCopy } from "@/components/admin/navigation-editor";
@@ -59,7 +60,16 @@ export default async function PlatformNavigationPage() {
         <h1 className="text-2xl font-semibold">Header and footer</h1>
         <p className="max-w-2xl text-sm text-muted">
           Kaizen&apos;s logo, its menus and who runs it, on the front page, sign-up and every page. A link to a page
-          follows it to a new address, and shows once the page is published.
+          follows it to a new address, and shows once the page is published. To lay out the header and footer
+          themselves, build them under{" "}
+          <Link href="/admin/platform/headers" className="underline">
+            Headers
+          </Link>{" "}
+          and{" "}
+          <Link href="/admin/platform/footers" className="underline">
+            Footers
+          </Link>
+          .
         </p>
       </div>
       <NavigationEditor

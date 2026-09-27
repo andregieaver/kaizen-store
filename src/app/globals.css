@@ -224,3 +224,33 @@ body:has([data-product-bar]) [data-default-bar] {
 [data-builder-dragging] [data-builder-item] {
   outline-color: transparent !important;
 }
+
+/*
+ * A header over the page (D80): a page whose header may lie over it marks
+ * itself `data-header-overlay` (`headerOverlays()`); the header then leaves
+ * the flow, so the page's first row, with its background, runs up behind
+ * it, and is see-through while the page is at its top. Scrolled, it has its
+ * background again, so its links stay readable over the page.
+ */
+.site-header {
+  transition:
+    background-color 200ms ease-out,
+    border-color 200ms ease-out,
+    color 200ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-header {
+    transition: none;
+  }
+}
+body:has([data-header-overlay]) [data-header-wrap] {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+}
+body:has([data-header-overlay]) [data-header-wrap][data-at-top] .site-header {
+  background-color: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+  color: var(--header-overlay-text, inherit);
+}

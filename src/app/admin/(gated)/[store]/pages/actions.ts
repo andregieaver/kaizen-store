@@ -14,6 +14,7 @@ import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, unpublishPage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
+import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import { storeTag } from "@/server/stores";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 
@@ -88,6 +89,22 @@ export async function setFrontPageAction(storeSlug: string, _state: FormState, f
     status: "ok",
     messages: [choice ? "Saved. Your store opens with this page now." : "Saved. Your store opens with its products now."],
   };
+}
+
+/** Which of the store's headers or footers it shows (D80), or the standard one; every page follows at once. */
+export async function chooseStoreSiteLayoutAction(
+  storeSlug: string,
+  type: SiteLayoutType,
+  _state: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  const choice = String(form.get("layout") ?? "");
+  if (choice !== "" && !isId(choice)) return { status: "error", messages: [`Unknown ${type}.`] };
+  const result = await chooseSiteLayout(member.account, member.store.id, type, choice || null);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(pagesTag(member.store.id));
+  return { status: "ok", messages: [choice ? `Saved. Your store shows this ${type} now.` : `Saved. Your store shows the standard ${type} now.`] };
 }
 
 // Saved rows, columns and components: the store's own (D46, D53).

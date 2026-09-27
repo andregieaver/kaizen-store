@@ -78,6 +78,7 @@ export default async function MarketHome({ params }: Props) {
       <>
         {jsonLd}
         <StorePageArticle
+          front
           content={localizePage(frontPage.content, market.locale)}
           place={{ pageId: frontPage.id, owner: store.id, market: market.code }}
         />

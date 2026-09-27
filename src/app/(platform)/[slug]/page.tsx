@@ -5,10 +5,12 @@ import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle, pageRoomClass } from "@/components/page-article";
 import { PageEditLink } from "@/components/page-edit-link";
 import { pageExcerpt, pageSlugProblem } from "@/lib/page-content";
+import { headerOverlays } from "@/lib/site-layout";
 import { siteUrl } from "@/lib/site";
 import { pageJsonLd } from "@/lib/structured-data";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
+import { siteLayoutFor } from "@/server/site-layouts";
 
 type Props = PageProps<"/[slug]">;
 
@@ -58,9 +60,12 @@ export default async function PlatformPage({ params }: Props) {
   const { page } = found;
   const c = page.content;
   const origin = siteUrl();
+  // Kaizen's header may lie over its pages (D80); its home page is not built in the page builder.
+  const header = await siteLayoutFor(null, "header");
+  const over = headerOverlays(header?.content.overlay, { front: false, categories: c.categories, tags: c.tags, rows: c.rows });
 
   return (
-    <main id="main" className={`w-full flex-1 ${pageRoomClass(c, "pt-10", "pb-10")}`}>
+    <main id="main" className={`w-full flex-1 ${pageRoomClass(c, "pt-10", "pb-10")}`} data-header-overlay={over ? "" : undefined}>
       <JsonLdScript
         data={pageJsonLd({
           origin,

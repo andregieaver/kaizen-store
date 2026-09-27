@@ -1434,6 +1434,48 @@ describe("pages", () => {
     expect((await one<{ product_layout_id: string | null }>("select product_layout_id from commerce.terms where id = $1", [category])).product_layout_id).toBeNull();
   });
 
+  it("chooses a site's own header and footer only, lets go when deleted, and copies the template's (D80)", async () => {
+    const template = await createStore("chrome-template", ["NO"]);
+    const page = (type: string, slug: string, storeId: string | null = template) =>
+      one<{ id: string }>(
+        `insert into commerce.pages (store_id, type, slug, draft, published, published_at)
+         values ($1, $2, $3, '{"title": "Top"}', '{"title": "Top"}'::jsonb, now()) returning id`,
+        [storeId, type, slug],
+      );
+    const { id: header } = await page("header", "top");
+    const { id: footer } = await page("footer", "bottom");
+    const { id: about } = await page("page", "about");
+    const { id: kaizens } = await page("header", "kaizen-top", null);
+
+    // Only a header as the header and a footer as the footer, and only the store's own.
+    await expect(db.query("update commerce.stores set header_id = $1 where id = $2", [about, template])).rejects.toThrow(/must be one of its headers/);
+    await expect(db.query("update commerce.stores set footer_id = $1 where id = $2", [header, template])).rejects.toThrow(/must be one of its footers/);
+    await expect(db.query("update commerce.stores set header_id = $1 where id = $2", [kaizens, template])).rejects.toThrow(/stores_header_fk/);
+    await expect(db.query("update commerce.platform_settings set header_id = $1 where id", [header])).rejects.toThrow(/must be one of its headers/);
+    await db.query("update commerce.stores set header_id = $1, footer_id = $2 where id = $3", [header, footer, template]);
+    await db.query("insert into commerce.platform_settings (id) values (true) on conflict do nothing");
+    await db.query("update commerce.platform_settings set header_id = $1 where id", [kaizens]);
+
+    // A new store copies both and uses the copies.
+    const owner = await createAccount("chrome-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'chrome-copy', 'Copy', $2) as id", [template, owner]);
+    const copied = await one<{ header_id: string; footer_id: string }>("select header_id, footer_id from commerce.stores where id = $1", [copy]);
+    expect((await one<{ type: string; store_id: string }>("select type, store_id from commerce.pages where id = $1", [copied.header_id]))).toEqual({
+      type: "header",
+      store_id: copy,
+    });
+    expect((await one<{ type: string }>("select type from commerce.pages where id = $1", [copied.footer_id])).type).toBe("footer");
+
+    // Deleting lets go, keeping the store id; Kaizen's too.
+    await db.query("delete from commerce.pages where id in ($1, $2)", [header, kaizens]);
+    expect(await one("select id, header_id, footer_id from commerce.stores where id = $1", [template])).toEqual({
+      id: template,
+      header_id: null,
+      footer_id: footer,
+    });
+    expect((await one<{ header_id: string | null }>("select header_id from commerce.platform_settings where id")).header_id).toBeNull();
+  });
+
   it("gives articles addresses of their own, beside pages, with their own reserved routes and redirects (D57)", async () => {
     const article = (slug: string, storeId: string | null = null) =>
       one<{ id: string }>(

@@ -8,14 +8,18 @@ import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { ArticleView } from "@/components/article-view";
+import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { PageArticle } from "@/components/page-article";
-import { termContentOf, type PageType } from "@/lib/page-content";
+import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
+import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getPageForEdit, listPages } from "@/server/pages";
+import { getPlatformChrome } from "@/server/platform-navigation";
 import { listSavedParts } from "@/server/saved-parts";
+import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 
-import { createPageTermAction, deletePageTermAction, updatePageTermAction } from "./actions";
+import { choosePlatformSiteLayoutAction, createPageTermAction, deletePageTermAction, updatePageTermAction } from "./actions";
 import { platformPageContext } from "./context";
 
 /**
@@ -33,6 +37,10 @@ const INTRO: Record<PageType, string> = {
     "Kaizen's blog: articles at /blog/{address}, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
   // Stores' own (D79); Kaizen has no products.
   product_layout: "",
+  header:
+    "The top of Kaizen's pages, built from components: the logo, menus, sign-in, the Start your store button and anything else. Publish a header, then choose it as the site's header; until you do, the standard one is shown.",
+  footer:
+    "The bottom of Kaizen's pages, built from components: the logo, menus, business details, the cookies link and anything else. Publish a footer, then choose it as the site's footer; until you do, the standard one is shown. A footer shows the business details and the cookies link, as the law asks.",
 };
 
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {
@@ -50,9 +58,11 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           <p className="max-w-2xl text-sm text-muted">{INTRO[type]}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-md border border-border px-5 font-medium">
-            Categories and tags
-          </Link>
+          {!LAYOUT_TYPES.includes(type) && (
+            <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-md border border-border px-5 font-medium">
+              Categories and tags
+            </Link>
+          )}
           <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-md bg-foreground px-5 font-medium text-background">
             New {copy.one}
           </Link>
@@ -69,8 +79,19 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
+      ) : type === "header" || type === "footer" ? (
+        <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(null))[type]} />
       ) : (
         <PagesTable pages={pages} adminBase={base} siteBase={copy.sitePrefix} />
+      )}
+      {(type === "header" || type === "footer") && (
+        <SiteLayoutChoice
+          type={type}
+          layouts={pages}
+          current={(await siteLayoutChoice(null))[type]}
+          siteName="Kaizen's site"
+          action={choosePlatformSiteLayoutAction.bind(null, type)}
+        />
       )}
     </>
   );
@@ -150,7 +171,9 @@ export async function EditPageView({ type, params, searchParams }: { type: PageT
       <PageEditor
         key={page.id}
         page={page}
-        notice={justSaved === "draft" ? "Draft saved." : justSaved === "published" ? `Published at ${address}.` : null}
+        notice={
+          justSaved === "draft" ? "Draft saved." : justSaved === "published" ? (LAYOUT_TYPES.includes(type) ? "Published." : `Published at ${address}.`) : null
+        }
         savedParts={saved}
         terms={terms}
         gridTerms={gridTerms}
@@ -183,7 +206,16 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
         </Link>
       </p>
       <div className="py-6">
-        {type === "article" ? (
+        {type === "header" || type === "footer" ? (
+          // As Kaizen's pages draw it (D80), with its logo, menus and details.
+          <div className="overflow-hidden rounded-lg border border-border">
+            {type === "header" ? (
+              <KaizenSiteHeader chrome={await getPlatformChrome()} layout={{ id: page.id, content: page.draft }} />
+            ) : (
+              <KaizenSiteFooter chrome={await getPlatformChrome()} layout={{ id: page.id, content: page.draft }} />
+            )}
+          </div>
+        ) : type === "article" ? (
           // As the blog will show it (D57); the date is the day it is first published.
           <ArticleView
             content={page.draft}

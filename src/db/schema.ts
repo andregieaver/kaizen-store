@@ -327,6 +327,13 @@ export const stores = commerce.table(
      * layout is chosen for; null: Kaizen's. Foreign key in a custom migration.
      */
     productLayoutId: uuid("product_layout_id"),
+    /**
+     * The store's own header and footer (D80), pages of type `header` and
+     * `footer` built in the page builder; null: the standard ones. Foreign
+     * keys in a custom migration: deleting the page sets these back to null.
+     */
+    headerId: uuid("header_id"),
+    footerId: uuid("footer_id"),
     /** The store's analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
     /** The owner's own code for the storefront's head and body (D61): `CustomCode` in lib/custom-code, added only on the store's own host. */
@@ -425,6 +432,9 @@ export const platformSettings = commerce.table(
      * custom domains is built into each deployment, so a change needs one.
      */
     domainsDeployRequestedAt: timestamp("domains_deploy_requested_at", { withTimezone: true }),
+    /** Kaizen's own header and footer (D80), its pages of type `header` and `footer`; null: the standard ones. Foreign keys in a custom migration. */
+    headerId: uuid("header_id"),
+    footerId: uuid("footer_id"),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -2652,7 +2662,7 @@ export const pages = commerce.table(
   },
   (t) => [
     unique("pages_store_slug_key").on(t.storeId, t.type, t.slug).nullsNotDistinct(),
-    check("pages_type", sql`${t.type} in ('page', 'article', 'product_layout')`),
+    check("pages_type", sql`${t.type} in ('page', 'article', 'product_layout', 'header', 'footer')`),
     // Product layouts (D79) are a store's: Kaizen has no products of its own.
     check("pages_product_layout_store", sql`${t.type} <> 'product_layout' or ${t.storeId} is not null`),
     // For stores' front pages (D54): a store can only choose a page of its own.

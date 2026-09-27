@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
 /**
  * The storefront's moving parts (D30): a header that slides away while the
@@ -63,14 +63,22 @@ function useFocusShows() {
 
 const slide = "transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none";
 
-/** Stays at the top of the screen; slides up out of view while scrolling down. */
-export function HidingHeader({ children }: { children: ReactNode }) {
+/**
+ * Stays at the top of the screen; slides up out of view while scrolling
+ * down. A header that may lie over the page (D80) is marked for the
+ * stylesheet, which lays it over a page that asks for it (`data-header-overlay`)
+ * and makes it see-through while the page is at its top.
+ */
+export function HidingHeader({ children, overlay }: { children: ReactNode; overlay?: { textColor?: string } }) {
   const { direction, atTop } = useScroll();
   const { focused, onFocus } = useFocusShows();
   const hidden = direction === "down" && !atTop && !focused;
   return (
     <div
       onFocus={onFocus}
+      data-header-wrap={overlay ? "" : undefined}
+      data-at-top={overlay && atTop ? "" : undefined}
+      style={overlay?.textColor ? ({ "--header-overlay-text": overlay.textColor } as CSSProperties) : undefined}
       className={`sticky top-0 z-30 ${slide} ${hidden ? "-translate-y-full" : "translate-y-0"}`}
     >
       {children}

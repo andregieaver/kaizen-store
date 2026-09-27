@@ -334,6 +334,19 @@ of running `playwright install`.
   `ProductBlock`'s settings, `ProductPartView`, `productPartShows()` and the
   builder's `ProductFields`/`ProductStandIn`. Keep the product's details
   outside `<Suspense>`; only the buy part streams in.
+- Headers and footers (D80, `src/lib/site-layout.ts`, `src/components/site-parts.tsx`,
+  `src/server/site-layouts.ts`): pages of type `header` and `footer` built
+  with `site` blocks (`SITE_PARTS`, drawn by `SitePartView` with a
+  `SiteContext`, a store's in its country or Kaizen's); `siteLayoutFor()`
+  gives the chosen one (`header_id`/`footer_id` on `stores` and
+  `platform_settings`), else the layouts draw the standard `StoreHeader`/
+  `PlatformHeader`. `siteLayoutProblem()` keeps site blocks in headers and
+  footers, the owner's own parts, and the business details and cookies link
+  in footers. A header's `overlay` lies over pages that `headerOverlays()`
+  covers (only over a first row with a background): pages mark themselves
+  `data-header-overlay`, and globals.css does the rest. A new part goes in
+  `SITE_PARTS`, `SiteBlock`, `SitePartView`/`sitePartShows()` and the
+  builder's `SiteFields`/`SiteStandIn`.
 - Design themes (D60, `src/lib/theme.ts`, `src/server/themes.ts`): a store's
   look is `stores.theme` (template, saved theme, settings; `parseStoreTheme()`
   fills gaps from the template), edited at `/admin/{store}/settings/design`

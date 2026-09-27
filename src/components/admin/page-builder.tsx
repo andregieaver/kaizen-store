@@ -113,9 +113,15 @@ import {
   type Sides,
   type Spacing,
   PRODUCT_PARTS,
+  SITE_PARTS,
+  COLUMN_JUSTIFY,
+  LOGO_HEIGHT,
   RELATED_MAX,
   type ProductBlock,
   type ProductPart,
+  type SiteBlock,
+  type SitePart,
+  type ColumnJustify,
 } from "@/lib/page-content";
 import {
   copyBlock,
@@ -186,7 +192,7 @@ export const newId = () =>
 /** What is dragged, and what it is dropped on. */
 type DragData =
   | { kind: "palette-row"; layout: RowLayout }
-  | { kind: "palette-block"; type: BlockType; part?: ProductPart }
+  | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart }
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
   | { kind: "column"; columnId: string; rowId: string }
@@ -255,6 +261,7 @@ const blockLabels: Record<BlockType, string> = {
   button: "Button",
   contentGrid: "Content grid",
   product: "Product",
+  site: "Site",
 };
 /** The palette's components, in order. */
 const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid"] as const satisfies readonly BlockType[];
@@ -266,6 +273,7 @@ const blockThis: Record<BlockType, string> = {
   button: "this button",
   contentGrid: "this content grid",
   product: "this product component",
+  site: "this site component",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -341,11 +349,14 @@ export function PageBuilder({
   translate = null,
   library = [],
   productParts = false,
+  siteParts = null,
 }: {
   rows: PageRow[];
   onRows: Rows;
   /** A product layout (D79): its palette offers the product's parts. */
   productParts?: boolean;
+  /** A header or footer (D80): its palette offers the site's parts its owner has. */
+  siteParts?: SitePart[] | null;
   grid: GridContext;
   fonts: BuilderFonts;
   /** Kaizen's saved parts, for a store's pages: a starter library to copy from, not to change (D56). */
@@ -381,7 +392,7 @@ export function PageBuilder({
   const addRow = (layout: RowLayout, index = rows.length) => {
     if (!rowsFull) onRows((current) => insertRow(current, newRow(layout, newId), index));
   };
-  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart) => {
+  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart) => {
     if (blocksFull) return;
     const block = newBlock(type, newId, part);
     onRows((current) => {
@@ -579,6 +590,7 @@ export function PageBuilder({
           onAddRow={(layout) => addRow(layout)}
           onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
           productParts={productParts}
+          siteParts={siteParts}
           parts={parts}
           library={library}
           onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
@@ -608,7 +620,13 @@ export function PageBuilder({
           <Tile label={ROW_LAYOUTS[dragging.layout].label} preview={<LayoutPreview layout={dragging.layout} />} lifted />
         ) : dragging?.kind === "palette-block" ? (
           <Tile
-            label={dragging.part ? PRODUCT_PARTS[dragging.part] : blockLabels[dragging.type]}
+            label={
+              dragging.part
+                ? dragging.type === "site"
+                  ? SITE_PARTS[dragging.part as SitePart]
+                  : PRODUCT_PARTS[dragging.part as ProductPart]
+                : blockLabels[dragging.type]
+            }
             preview={<BlockIcon type={dragging.type} />}
             lifted
           />
@@ -661,6 +679,7 @@ function Sidebar({
   onAddRow,
   onAddBlock,
   productParts,
+  siteParts,
   parts,
   library,
   onOpenSaved,
@@ -671,8 +690,10 @@ function Sidebar({
   tab: Tab;
   onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
-  onAddBlock: (type: BlockType, part?: ProductPart) => void;
+  onAddBlock: (type: BlockType, part?: ProductPart | SitePart) => void;
   productParts: boolean;
+  /** A header or footer (D80): the site parts its owner has. */
+  siteParts: SitePart[] | null;
   parts: SavedPart[];
   library: SavedPart[];
   onOpenSaved: (partId: string) => void;
@@ -743,6 +764,25 @@ function Sidebar({
                     ))}
                   </div>
                   <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Around it</h3>
+                </>
+              )}
+              {siteParts && (
+                <>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">The site</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {siteParts.map((part) => (
+                      <PaletteTile
+                        key={part}
+                        id={`palette:site:${part}`}
+                        data={{ kind: "palette-block", type: "site", part }}
+                        label={SITE_PARTS[part]}
+                        preview={<BlockIcon type="site" />}
+                        onAdd={() => onAddBlock("site", part)}
+                        disabled={blocksFull}
+                      />
+                    ))}
+                  </div>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
                 </>
               )}
               <div className="grid grid-cols-2 gap-3">
@@ -845,7 +885,8 @@ function LayoutPreview({ layout }: { layout: RowLayout }) {
   return (
     <span aria-hidden className="flex h-9 gap-1">
       {ROW_LAYOUTS[layout].widths.map((width, index) => (
-        <span key={index} style={{ flexGrow: width }} className="basis-0 rounded-sm bg-foreground/75" />
+        // A column as wide as what it holds (0, D80) shows as a narrow bar.
+        <span key={index} style={width ? { flexGrow: width } : { flexBasis: "0.75rem" }} className={`${width ? "basis-0" : "shrink-0"} rounded-sm bg-foreground/75`} />
       ))}
     </span>
   );
@@ -1024,6 +1065,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <GridIcon />;
     case "product":
       return <ProductIcon />;
+    case "site":
+      return <SiteIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
@@ -1501,6 +1544,8 @@ function BlockItem({
           <GridPreview block={block} grid={actions.grid} />
         ) : block.type === "product" ? (
           <ProductStandIn block={block} />
+        ) : block.type === "site" ? (
+          <SiteStandIn block={block} />
         ) : blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (
@@ -1519,6 +1564,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   button: "A button needs its text and an address. Double-click or use the wrench.",
   contentGrid: "Content grid.",
   product: "Product component.",
+  site: "Site component.",
 };
 
 // ---------------------------------------------------------------------------
@@ -1816,6 +1862,38 @@ function Dialogs({
       </Modal>
 
       <Modal
+        open={block?.type === "site"}
+        onClose={onClose}
+        title={block?.type === "site" ? SITE_PARTS[block.part] : "Site"}
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "site" && (
+          <SettingsTabs
+            key={block.id}
+            general={<SiteFields block={block} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />}
+            style={
+              <>
+                {fontField("Font", block.font, "The site's fonts", (font) =>
+                  onRows((current) => patchBlock<SiteBlock>(current, block.id, { font })),
+                )}
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
         open={block?.type === "contentGrid"}
         onClose={onClose}
         title="Content grid"
@@ -1886,6 +1964,24 @@ function Dialogs({
                   link={column.link}
                   onChange={(link) => onRows((current) => patchColumn(current, column.id, { link }))}
                 />
+                <div className="flex flex-col gap-4 border-t border-border pt-4">
+                  <Check
+                    label="Components side by side"
+                    hint="In a line that wraps when it runs out of room, rather than one under another, as a header's icons."
+                    checked={Boolean(column.inline)}
+                    onChange={(inline) =>
+                      onRows((current) => patchColumn(current, column.id, inline ? { inline } : { inline: undefined, justify: undefined }))
+                    }
+                  />
+                  {column.inline && (
+                    <Choices
+                      legend="Where they sit"
+                      options={(Object.keys(COLUMN_JUSTIFY) as ColumnJustify[]).map((value) => ({ value, label: COLUMN_JUSTIFY[value] }))}
+                      value={column.justify ?? "start"}
+                      onChange={(justify) => onRows((current) => patchColumn(current, column.id, { justify: justify === "start" ? undefined : justify }))}
+                    />
+                  )}
+                </div>
                 <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
                   <legend className="float-left mb-2 w-full text-sm font-medium">Row layout</legend>
                   <p className="text-sm text-muted">
@@ -2412,16 +2508,24 @@ function Check({
   label,
   hint,
   checked,
+  disabled = false,
   onChange,
 }: {
   label: string;
   hint?: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-start gap-3 text-sm">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-0.5 size-4 shrink-0" />
+    <label className={`flex items-start gap-3 text-sm ${disabled ? "opacity-50" : ""}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-0.5 size-4 shrink-0"
+      />
       <span className="flex flex-col gap-0.5">
         <span className="font-medium">{label}</span>
         {hint && <span className="text-xs text-muted">{hint}</span>}
@@ -2433,7 +2537,7 @@ function Check({
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /** A colour: the browser's picker, or `#rrggbb` typed. */
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
+export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
   const id = useId();
   const [text, setText] = useState(value);
   return (
@@ -2685,9 +2789,16 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
         onChange={(fullHeight) => onChange({ fullHeight })}
       />
       <Check
+        label="Side by side on phones"
+        hint="The columns stay side by side on phones instead of stacking, as in a header."
+        checked={Boolean(row.sideBySide)}
+        onChange={(sideBySide) => onChange({ sideBySide: sideBySide || undefined })}
+      />
+      <Check
         label="Reverse the columns on phones"
         hint="On phones the columns stack; this puts the last one first."
         checked={Boolean(row.reverseOnMobile)}
+        disabled={Boolean(row.sideBySide)}
         onChange={(reverseOnMobile) => onChange({ reverseOnMobile })}
       />
       <Check
@@ -3904,6 +4015,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Content grid: change its settings where it is used on a page.</p>
                     ) : block.type === "product" ? (
                       <p className="text-sm text-muted">Product component: change its settings where it is used in a layout.</p>
+                    ) : block.type === "site" ? (
+                      <p className="text-sm text-muted">Site component: change its settings where it is used in a header or footer.</p>
                     ) : (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     )}
@@ -3980,6 +4093,167 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
     >
       {ICONS[name]}
     </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Site components (D80)
+// ---------------------------------------------------------------------------
+
+/** What each site part shows, for the owner choosing and setting it. */
+const SITE_HELP: Record<SitePart, string> = {
+  logo: "The site's logo, linking to its front page; its name where there is no logo. The logo is set under Header and footer.",
+  menu: "One of the site's menus, set under Header and footer.",
+  menuButton: "The button that opens the menu on phones. It shows on phones only.",
+  search: "A link to the store's search.",
+  account: "A link to the shopper's account (sign in on Kaizen's site).",
+  wishlist: "A link to the wishlist, with how many products are saved.",
+  cart: "A link to the cart, with how many products are in it.",
+  markets: "The countries the store sells to, to switch between. Shown only with two or more.",
+  buyerSwitch: "For stores selling to both: whether prices are shown for a business or a private buyer.",
+  signUp: "The Start your store button.",
+  business: "Who runs the site: name, organisation number, address and email, required on every page.",
+  cookies: "A link to the cookies page, where visitors change their choice.",
+};
+
+function SiteIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M3 9h18" />
+      </svg>
+    </span>
+  );
+}
+
+/** A site component's own settings (D80): only those its part has. */
+function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void }) {
+  const lined = block.part === "menu" || (block.part === "markets" && block.display === "list");
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted">{SITE_HELP[block.part]} A part with nothing to show is left out.</p>
+      {block.part === "logo" && (
+        <NumberField
+          label="Height"
+          hint={`pixels, ${LOGO_HEIGHT.min} to ${LOGO_HEIGHT.max}; empty: the usual size`}
+          value={block.height ?? 0}
+          max={LOGO_HEIGHT.max}
+          onChange={(height) => onChange({ height: height >= LOGO_HEIGHT.min ? height : undefined })}
+        />
+      )}
+      {block.part === "menu" && (
+        <Choices
+          legend="Which menu"
+          options={[
+            { value: "header" as const, label: "Header menu" },
+            { value: "footer" as const, label: "Footer menu" },
+          ]}
+          value={block.menu ?? "header"}
+          onChange={(menu) => onChange({ menu: menu === "header" ? undefined : menu })}
+        />
+      )}
+      {block.part === "markets" && (
+        <Choices
+          legend="Shown as"
+          options={[
+            { value: "dropdown" as const, label: "A list to open" },
+            { value: "list" as const, label: "Links" },
+          ]}
+          value={block.display ?? "dropdown"}
+          onChange={(display) => onChange({ display: display === "dropdown" ? undefined : display, direction: undefined })}
+        />
+      )}
+      {lined && (
+        <Choices
+          legend="Links"
+          options={[
+            { value: "row" as const, label: "Side by side" },
+            { value: "column" as const, label: "One under another" },
+          ]}
+          value={block.direction ?? "row"}
+          onChange={(direction) => onChange({ direction: direction === "row" ? undefined : direction })}
+        />
+      )}
+      {block.part !== "menuButton" && (
+        <Check
+          label="Hide on phones"
+          hint="Phones have the menu button and the slide-out menu, with the menu, account and countries."
+          checked={Boolean(block.hideOnPhones)}
+          onChange={(hideOnPhones) => onChange({ hideOnPhones: hideOnPhones || undefined })}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * How a site component looks on the canvas (D80): a sketch of its part; the
+ * preview draws it with the site's own logo, menus and details.
+ */
+function SiteStandIn({ block }: { block: SiteBlock }) {
+  const icon = (d: string) => (
+    <span className="flex size-10 items-center justify-center rounded-full border border-border">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d={d} />
+      </svg>
+    </span>
+  );
+  const links = (names: string[]) => (
+    <span className={`flex gap-3 text-sm ${block.direction === "column" ? "flex-col" : "flex-wrap items-center"}`}>
+      {names.map((name) => (
+        <span key={name}>{name}</span>
+      ))}
+    </span>
+  );
+  const phones = block.hideOnPhones ? <span className="block text-[10px] text-muted">Not on phones</span> : null;
+  const body = (() => {
+    switch (block.part) {
+      case "logo":
+        return (
+          <span className="flex items-center gap-2 font-semibold" style={block.height ? { height: block.height } : undefined}>
+            <span className="aspect-square h-full min-h-6 rounded-md bg-foreground/80" /> Logo
+          </span>
+        );
+      case "menu":
+        return links(block.menu === "footer" ? ["Footer link", "Footer link", "Footer link"] : ["Menu link", "Menu link", "Menu link"]);
+      case "menuButton":
+        return (
+          <span className="flex items-center gap-2 text-xs text-muted">
+            {icon("M4 7h16M4 12h16M4 17h16")} Phones only
+          </span>
+        );
+      case "search":
+        return icon("M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4");
+      case "account":
+        return icon("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0");
+      case "wishlist":
+        return icon("M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z");
+      case "cart":
+        return icon("M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0");
+      case "markets":
+        return block.display === "list" ? links(["Norge", "Sverige", "Danmark"]) : <span className="text-sm">Norge ▾</span>;
+      case "buyerSwitch":
+        return <span className="rounded-full border border-border px-3 py-1 text-xs">Private · Business</span>;
+      case "signUp":
+        return <span className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background">Start your store</span>;
+      case "business":
+        return (
+          <span className="flex flex-col gap-1 text-sm text-muted">
+            <span>Business name · Org. 123 456 789</span>
+            <span>Street 1, 0150 City</span>
+            <span className="underline">hello@example.com</span>
+          </span>
+        );
+      case "cookies":
+        return <span className="text-sm text-muted underline">Cookies</span>;
+    }
+  })();
+  return (
+    <span className="block">
+      {body}
+      {phones}
+    </span>
   );
 }
 

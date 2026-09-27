@@ -51,6 +51,9 @@ export function mapTexts(content: PageContent, visit: Visit): PageContent {
       case "product":
         // Only a heading of the store's own is text to translate; the product's own texts have their languages already.
         return b.heading ? { ...b, heading: str(key("heading"), b.heading, 300) } : b;
+      case "site":
+        // The site's logo, menus and details have their own texts in each language already (D80).
+        return b;
     }
   };
   const column = (c: PageColumn): PageColumn => ({

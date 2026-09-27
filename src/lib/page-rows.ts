@@ -1,11 +1,14 @@
 import {
   EMPTY_DOC,
+  PRODUCT_PARTS,
   ROW_LAYOUTS,
+  SITE_PARTS,
   pageParts,
   type BlockType,
   type PartBase,
   type PageBlock,
   type ProductPart,
+  type SitePart,
   type PageColumn,
   type PageRow,
   type RowLayout,
@@ -32,10 +35,13 @@ export function newRow(layout: RowLayout, id: NewId): PageRow {
   };
 }
 
-export function newBlock(type: BlockType, id: NewId, part: ProductPart = "title"): PageBlock {
+/** A new block of a kind; a product or site component (D79, D80) shows `part`. */
+export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePart = "title"): PageBlock {
   switch (type) {
     case "product":
-      return { id: id(), type, part };
+      return { id: id(), type, part: part in PRODUCT_PARTS ? (part as ProductPart) : "title" };
+    case "site":
+      return { id: id(), type, part: part in SITE_PARTS ? (part as SitePart) : "logo" };
     case "richText":
       return { id: id(), type, doc: EMPTY_DOC };
     case "image":

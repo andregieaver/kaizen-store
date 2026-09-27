@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { FontLinks } from "@/components/font-links";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
+import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
 import { siteFontFamilies } from "@/lib/fonts";
 import { siteUrl } from "@/lib/site";
@@ -11,6 +12,7 @@ import { siteIcons } from "@/lib/site-icons";
 import { siteFontStyle } from "@/server/fonts";
 import { getPlatformChrome, getPlatformFavicon } from "@/server/platform-navigation";
 import { getPlatformSeo, PLATFORM_DEFAULTS, verificationTags } from "@/server/seo";
+import { siteLayoutFor } from "@/server/site-layouts";
 
 import "../globals.css";
 
@@ -34,7 +36,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** Kaizen's own pages, with its header and footer (D42), built like a store's. */
 export default async function PlatformLayout({ children }: LayoutProps<"/">) {
-  const chrome = await getPlatformChrome();
+  // Kaizen's own header and footer built in the page builder (D80), else the standard ones.
+  const [chrome, headerLayout, footerLayout] = await Promise.all([getPlatformChrome(), siteLayoutFor(null, "header"), siteLayoutFor(null, "footer")]);
   return (
     <html lang="en" className="h-full antialiased">
       {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
@@ -50,9 +53,9 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
         >
           {t("en").skipToContent}
         </a>
-        <PlatformHeader chrome={chrome} />
+        {headerLayout ? <KaizenSiteHeader chrome={chrome} layout={headerLayout} /> : <PlatformHeader chrome={chrome} />}
         {children}
-        <PlatformFooter chrome={chrome} />
+        {footerLayout ? <KaizenSiteFooter chrome={chrome} layout={footerLayout} /> : <PlatformFooter chrome={chrome} />}
         {/* Phone enhancements, each in its own boundary, as in the storefront (D30). */}
         <Suspense fallback={null}>
           <PlatformBottomBar />

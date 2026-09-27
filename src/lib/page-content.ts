@@ -239,9 +239,11 @@ export function richTextPlain(doc: RichTextDoc): string {
 // ---------------------------------------------------------------------------
 
 /**
- * How a row divides its width: each column's share. A page is rows, one
- * under another; each row has these columns, and each column holds blocks.
- * On phones the columns stack.
+ * How a row divides its width: each column's share, 0 for a column as wide
+ * as what it holds (D80, such as a header's logo and icons beside a menu
+ * that takes the rest). A page is rows, one under another; each row has
+ * these columns, and each column holds blocks. On phones the columns stack
+ * unless the row keeps them side by side.
  */
 export const ROW_LAYOUTS = {
   "1": { label: "1 column", widths: [1] },
@@ -253,6 +255,9 @@ export const ROW_LAYOUTS = {
   "left-sidebar": { label: "Left sidebar", widths: [1, 2] },
   "right-sidebar": { label: "Right sidebar", widths: [2, 1] },
   "both-sidebars": { label: "Left and right sidebars", widths: [1, 2, 1] },
+  "fit-sides": { label: "Sides fit, middle fills", widths: [0, 1, 0] },
+  "fit-middle": { label: "Middle fits", widths: [1, 0, 1] },
+  "fit-end": { label: "Last fits", widths: [1, 0] },
 } as const satisfies Record<string, { label: string; widths: readonly number[] }>;
 
 export type RowLayout = keyof typeof ROW_LAYOUTS;
@@ -545,18 +550,80 @@ export type ProductBlock = PartBase & BlockFont & {
   columns?: GridColumns;
 };
 
+/**
+ * The parts of a site's header and footer (D80), each a component a header
+ * or footer layout places: they show the site's own logo, menus, countries
+ * and details, so they belong only in headers and footers. A store's cart,
+ * wishlist, search, countries and buyer switch are a store's alone;
+ * Kaizen's sign-up button is Kaizen's.
+ */
+export const SITE_PARTS = {
+  logo: "Logo",
+  menu: "Menu",
+  menuButton: "Phone menu button",
+  search: "Search",
+  account: "Account or sign in",
+  wishlist: "Wishlist",
+  cart: "Cart",
+  markets: "Countries",
+  buyerSwitch: "Business or private",
+  signUp: "Start your store",
+  business: "Business details",
+  cookies: "Cookies link",
+} as const;
+export type SitePart = keyof typeof SITE_PARTS;
+const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch"];
+const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];
+
+/** The site parts an owner's headers and footers offer: a store's (with a store id) or Kaizen's (null). */
+export const sitePartsFor = (storeId: string | null): SitePart[] =>
+  (Object.keys(SITE_PARTS) as SitePart[]).filter((part) => !(storeId === null ? STORE_PARTS : KAIZEN_PARTS).includes(part));
+
+export const LOGO_HEIGHT = { min: 16, max: 160, header: 40, footer: 32 } as const;
+
+/**
+ * A part of the site's header or footer (D80). Each takes only the settings
+ * that concern it, all optional: the logo's height, which menu and whether
+ * its links go side by side or one under another, and the countries as a
+ * drop-down list or as links.
+ */
+export type SiteBlock = PartBase & BlockFont & {
+  id: string;
+  type: "site";
+  part: SitePart;
+  align?: TextAlignments;
+  /** The logo's height in pixels; the header's or footer's usual one unless set. */
+  height?: number;
+  /** The menu: the header's (the default) or the footer's. */
+  menu?: "header" | "footer";
+  /** The menu's links, or the countries as links: side by side (the default) or one under another. */
+  direction?: "row" | "column";
+  /** The countries: a drop-down list (the default) or links to each. */
+  display?: "dropdown" | "list";
+  /** Left out on phones, where the phone menu has it (a header's menu, say). */
+  hideOnPhones?: boolean;
+};
+
 /** One piece of a page's content. */
-export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock | ProductBlock;
+export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock | ProductBlock | SiteBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
 export type ColumnLink = { href: string; label: string };
+
+/** Where a column's components sit when side by side (D80). */
+export const COLUMN_JUSTIFY = { start: "Start", center: "Centre", end: "End", between: "Spread out" } as const;
+export type ColumnJustify = keyof typeof COLUMN_JUSTIFY;
 
 export type PageColumn = PartBase & {
   id: string;
   blocks: PageBlock[];
   background?: Background;
   link?: ColumnLink;
+  /** Its components side by side, wrapping as needed, rather than one under another (D80). */
+  inline?: boolean;
+  /** Side by side, where they sit along the column: at its start unless set. */
+  justify?: ColumnJustify;
 };
 
 export type VerticalAlign = "top" | "middle" | "bottom";
@@ -574,6 +641,8 @@ export type PageRow = PartBase & {
   fullHeight?: boolean;
   /** On phones, where columns stack, the last comes first. */
   reverseOnMobile?: boolean;
+  /** On phones too, columns side by side rather than stacked (D80, such as a header's). */
+  sideBySide?: boolean;
   /** Columns as tall as the tallest; what is in them sits at `align`. */
   equalHeight?: boolean;
   /** Where columns' content sits, top (the default), middle or bottom. */
@@ -603,6 +672,9 @@ export function blockHasContent(block: PageBlock): boolean {
     case "product":
       // The product decides what shows: a part it has nothing for draws nothing.
       return true;
+    case "site":
+      // The site decides: a menu with no links, or a store's countries with one, draws nothing.
+      return true;
   }
 }
 
@@ -622,6 +694,7 @@ export function blockText(block: PageBlock): string {
     case "button":
     case "contentGrid":
     case "product":
+    case "site":
       return "";
   }
 }
@@ -676,11 +749,28 @@ export type PageContent = {
   author?: string;
   /** The content: rows of columns of blocks. */
   rows: PageRow[];
+  /** A header's place over the page (D80); only headers have one. */
+  overlay?: HeaderOverlay;
   /**
    * Its texts in the owner's other languages (D55), by locale: only those
    * that differ from the page's own (`src/lib/page-translation.ts`).
    */
   translations?: Record<string, PageTranslation>;
+};
+
+/**
+ * Where a header lies over the page rather than above it (D80): on every
+ * page, on the front page, or on pages in these page categories or tags
+ * (by id) — and only on a page whose first row has a background of its own,
+ * which then runs up behind the header. At the top of the page the header
+ * is see-through, its text in `textColor` if set; scrolled, it has its
+ * background again.
+ */
+export type HeaderOverlay = {
+  where: "everywhere" | "front" | "terms";
+  categories: string[];
+  tags: string[];
+  textColor?: Color;
 };
 
 /** A text of a page in another language: plain, or rich text for a rich text block (D55). */
@@ -754,20 +844,23 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
  */
 export const RESERVED_ARTICLE_SLUGS: readonly string[] = ["category", "page", "tag"];
 
-/** What is built in the page builder: pages, and articles in the blog (D57). */
-export const PAGE_TYPES = ["page", "article", "product_layout"] as const;
+/** What is built in the page builder: pages, articles in the blog (D57), product layouts (D79), and the site's headers and footers (D80). */
+export const PAGE_TYPES = ["page", "article", "product_layout", "header", "footer"] as const;
+/** The types that are parts of the site rather than pages at addresses of their own. */
+export const LAYOUT_TYPES: readonly PageType[] = ["product_layout", "header", "footer"];
 export type PageType = (typeof PAGE_TYPES)[number];
 
 /**
  * The content whose categories and tags (D50) a page type uses: its own for
- * pages and articles. Product layouts (D79) have none; they read as pages
+ * pages and articles. Product layouts (D79), headers and footers (D80) have
+ * none; they read as pages
  * where a type is asked for, and saving one with any is refused.
  */
 export const termContentOf = (type: PageType): "page" | "article" => (type === "article" ? "article" : "page");
 
 /** The addresses an owner's pages (Kaizen's with null, or a store's) or articles cannot take. */
 export const reservedPageSlugs = (storeId: string | null, type: PageType = "page"): readonly string[] =>
-  type === "product_layout"
+  LAYOUT_TYPES.includes(type)
     ? NO_RESERVED_SLUGS
     : type === "article"
       ? RESERVED_ARTICLE_SLUGS
@@ -775,7 +868,7 @@ export const reservedPageSlugs = (storeId: string | null, type: PageType = "page
         ? RESERVED_PAGE_SLUGS
         : RESERVED_STORE_PAGE_SLUGS;
 
-/** Product layouts (D79) have no address on the site: their name's own is only a key. */
+/** Product layouts (D79), headers and footers (D80) have no address on the site: their name's own is only a key. */
 const NO_RESERVED_SLUGS: readonly string[] = [];
 
 /** Why an address is not well formed, or null. */
@@ -1070,7 +1163,26 @@ const productBlock = z.object({
   ...partBase,
 });
 
-/** One block, as stored: rich text, a picture, a heading, a button, a content grid or a part of a product's page. */
+const siteBlock = z.object({
+  id: itemId,
+  type: z.literal("site"),
+  part: z.enum(Object.keys(SITE_PARTS) as [SitePart, ...SitePart[]], "A site component shows an unknown part."),
+  align: textAlignments,
+  height: z
+    .number()
+    .int()
+    .min(LOGO_HEIGHT.min, `Make the logo at least ${LOGO_HEIGHT.min} pixels tall.`)
+    .max(LOGO_HEIGHT.max, `Keep the logo at most ${LOGO_HEIGHT.max} pixels tall.`)
+    .optional(),
+  menu: z.enum(["header", "footer"]).optional(),
+  direction: z.enum(["row", "column"]).optional(),
+  display: z.enum(["dropdown", "list"]).optional(),
+  hideOnPhones: z.boolean().optional(),
+  font: blockFont,
+  ...partBase,
+});
+
+/** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
   imageBlock,
@@ -1078,6 +1190,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   buttonBlock,
   contentGridBlock,
   productBlock,
+  siteBlock,
 ]);
 
 export const pageColumnSchema = z.object({
@@ -1093,6 +1206,8 @@ export const pageColumnSchema = z.object({
       label: z.string().trim().max(200, "Keep a column link's description under 200 characters.").default(""),
     })
     .optional(),
+  inline: z.boolean().optional(),
+  justify: z.enum(Object.keys(COLUMN_JUSTIFY) as [ColumnJustify, ...ColumnJustify[]]).optional(),
   ...partBase,
 });
 
@@ -1106,6 +1221,7 @@ export const pageRowSchema = z
     contentWidth: z.enum(["content", "full"]).optional(),
     fullHeight: z.boolean().optional(),
     reverseOnMobile: z.boolean().optional(),
+    sideBySide: z.boolean().optional(),
     equalHeight: z.boolean().optional(),
     align: z.enum(["top", "middle", "bottom"]).optional(),
     background: rowBackground,
@@ -1163,6 +1279,13 @@ export const pageInput = z.preprocess(
       ...termIdsSchema.shape,
       author: z.string().trim().max(AUTHOR_MAX, `Keep the author's name under ${AUTHOR_MAX} characters.`).optional(),
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
+      overlay: z
+        .object({
+          where: z.enum(["everywhere", "front", "terms"]),
+          ...termIdsSchema.shape,
+          textColor: color.optional(),
+        })
+        .optional(),
       // Checked against the page and its owner's languages when saved (`cleanTranslations`).
       translations: z
         .record(

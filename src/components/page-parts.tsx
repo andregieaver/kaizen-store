@@ -9,6 +9,7 @@ import {
   spacingStyle,
   type PageBlock,
   type PageColumn,
+  type ColumnJustify,
   type PageRow,
   type RowBackground,
   type TextAlignments,
@@ -38,6 +39,13 @@ const JUSTIFY: Record<VerticalAlign, string> = {
   bottom: "[justify-content:end]",
 };
 const MD_ITEMS: Record<VerticalAlign, string> = { top: "md:items-start", middle: "md:items-center", bottom: "md:items-end" };
+const ITEMS: Record<VerticalAlign, string> = { top: "items-start", middle: "items-center", bottom: "items-end" };
+const INLINE_JUSTIFY: Record<ColumnJustify, string> = {
+  start: "justify-start",
+  center: "justify-center",
+  end: "justify-end",
+  between: "justify-between",
+};
 const TEXT_ALIGN = {
   mobile: { left: "text-left", center: "text-center", right: "text-right" },
   tablet: { left: "md:text-left", center: "md:text-center", right: "md:text-right" },
@@ -71,18 +79,27 @@ export function rowInnerClass(row: PageRow, mode: PartsMode): string {
   return cx("flex flex-1 flex-col", keep && (mode === "site" ? "mx-auto w-full max-w-(--content-width)" : "px-6"));
 }
 
-/** The row's columns: side by side by its layout, stacked on phones (last first when reversed). */
+/** The row's columns: side by side by its layout, stacked on phones (last first when reversed) unless kept side by side (D80). */
 export function rowGrid(row: PageRow): Box {
   const align = row.align ?? "top";
   return {
-    className: cx(
-      "flex gap-8 md:grid md:[grid-template-columns:var(--columns)]",
-      row.reverseOnMobile ? "flex-col-reverse" : "flex-col",
-      row.fullHeight && "flex-1",
-      JUSTIFY[align],
-      row.equalHeight ? "md:items-stretch" : MD_ITEMS[align],
-    ),
-    style: { "--columns": ROW_LAYOUTS[row.layout].widths.map((w) => `minmax(0, ${w}fr)`).join(" ") } as CSSProperties,
+    className: row.sideBySide
+      ? cx(
+          "grid gap-2 [grid-template-columns:var(--columns)] md:gap-8",
+          row.fullHeight && "flex-1",
+          row.equalHeight ? "items-stretch" : ITEMS[align],
+        )
+      : cx(
+          "flex gap-8 md:grid md:[grid-template-columns:var(--columns)]",
+          row.reverseOnMobile ? "flex-col-reverse" : "flex-col",
+          row.fullHeight && "flex-1",
+          JUSTIFY[align],
+          row.equalHeight ? "md:items-stretch" : MD_ITEMS[align],
+        ),
+    // A width of 0 is a column as wide as what it holds (D80), narrower only when the row has no more room.
+    style: {
+      "--columns": ROW_LAYOUTS[row.layout].widths.map((w: number) => (w === 0 ? "minmax(0, max-content)" : `minmax(0, ${w}fr)`)).join(" "),
+    } as CSSProperties,
   };
 }
 
@@ -91,8 +108,16 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
   return {
     id: mode === "site" ? column.htmlId : undefined,
     className: cx(
-      "relative isolate flex min-w-0 flex-col gap-6",
-      row.equalHeight && JUSTIFY[row.align ?? "top"],
+      // Side by side (D80): its components in a line that wraps, centred on each other, placed by `justify`.
+      // In a row kept side by side (a header's), they stay on one line, the widest (a logo) narrowing first.
+      column.inline
+        ? cx(
+            "relative isolate flex min-w-0 flex-row items-center gap-x-2 gap-y-2 [&>*]:min-w-0",
+            row.sideBySide ? "flex-nowrap" : "flex-wrap",
+            INLINE_JUSTIFY[column.justify ?? "start"],
+          )
+        : "relative isolate flex min-w-0 flex-col gap-6",
+      !column.inline && row.equalHeight && JUSTIFY[row.align ?? "top"],
       // In the canvas the column sits inside its pointing band, which it fills.
       mode === "canvas" && "flex-1",
       clips(column) && "overflow-hidden",
@@ -128,6 +153,8 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
       // Its own font (D59) for all its text; the stylesheet comes with `FontLinks`.
       "font" in block && block.font && fontClass(block.font),
       block.type !== "button" && Boolean(block.radius) && "overflow-hidden",
+      // A site's phone menu button is for phones; a part set so is left out on them, leaving no gap (D80).
+      mode === "site" && block.type === "site" && (block.part === "menuButton" ? "md:hidden" : block.hideOnPhones && "max-md:hidden"),
       mode === "site" && block.className,
     ),
     // A button's border, corners and shadow are the button's own (`PageBlockView`).

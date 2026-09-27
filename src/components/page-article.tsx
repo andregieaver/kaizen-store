@@ -42,7 +42,7 @@ export function PageArticle({
     <article className="flex flex-col gap-8">
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
-        <Row key={row.id} row={row} place={place} renderBlock={renderBlock} />
+        <PageRowView key={row.id} row={row} place={place} renderBlock={renderBlock} />
       ))}
     </article>
   );
@@ -60,10 +60,22 @@ export const pageRoomClass = (content: Pick<PageContent, "rows">, top: string, b
 };
 
 /** A row shows when something in it does, or it has a background of its own. */
-const rowShows = (row: PageRow) =>
+export const rowShows = (row: PageRow) =>
   Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockHasContent));
 
-function Row({ row, place, renderBlock }: { row: PageRow; place: GridPlace; renderBlock?: (block: PageBlock) => ReactNode }) {
+/**
+ * One row on the site, with its columns and blocks; also a header's or
+ * footer's rows (D80), whose site components `renderBlock` draws.
+ */
+export function PageRowView({
+  row,
+  place,
+  renderBlock,
+}: {
+  row: PageRow;
+  place: GridPlace;
+  renderBlock?: (block: PageBlock) => ReactNode;
+}) {
   const box = rowBox(row, "site");
   const grid = rowGrid(row);
   return (
@@ -80,8 +92,8 @@ function Row({ row, place, renderBlock }: { row: PageRow; place: GridPlace; rend
                   <ColumnLinkCover column={column} />
                   {column.blocks.filter(blockHasContent).map((block) => {
                     const b = blockBox(block, "site");
-                    // A product component with nothing to show for this product leaves no space behind (D79).
-                    const own = renderBlock && block.type === "product" ? renderBlock(block) : undefined;
+                    // A product or site component with nothing to show leaves no space behind (D79, D80).
+                    const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
                     if (own === null) return null;
                     return (
                       <div key={block.id} id={b.id} className={b.className || undefined} style={b.style}>

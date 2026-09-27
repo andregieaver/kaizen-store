@@ -7,6 +7,8 @@ import { z } from "zod";
 import { requirePlatformAdmin } from "@/server/auth";
 import type { PageSaveState } from "@/components/admin/page-context";
 import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
+import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
+import type { FormState } from "@/components/admin/action-form";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { gridData } from "@/server/content-grid";
@@ -142,4 +144,15 @@ export async function gridTermsAction(storeId: string): Promise<Term[]> {
   await requirePlatformAdmin();
   if (!isId(storeId)) return [];
   return listTerms({ storeId, contentType: "product" });
+}
+
+/** Which of Kaizen's headers or footers its pages show (D80), or the standard one. */
+export async function choosePlatformSiteLayoutAction(type: SiteLayoutType, _state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const choice = String(form.get("layout") ?? "");
+  if (choice !== "" && !z.uuid().safeParse(choice).success) return { status: "error", messages: [`Unknown ${type}.`] };
+  const result = await chooseSiteLayout(admin, null, type, choice || null);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(PAGES_TAG);
+  return { status: "ok", messages: [choice ? `Saved. Kaizen's pages show this ${type} now.` : `Saved. Kaizen's pages show the standard ${type} now.`] };
 }

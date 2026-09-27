@@ -9,12 +9,15 @@ import { shrinkImage } from "@/lib/image-resize";
 import {
   ALT_MAX,
   AUTHOR_MAX,
+  LAYOUT_TYPES,
   PAGE_SLUG_MAX,
   PAGE_TITLE_MAX,
   newPageContent,
   pageExcerpt,
   pageSlugFromTitle,
   pageSlugProblem,
+  sitePartsFor,
+  type HeaderOverlay,
   type PageContent,
   type PageRow,
   type PageType,
@@ -22,6 +25,7 @@ import {
 } from "@/lib/page-content";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
+import { defaultFooter, defaultHeader } from "@/lib/site-layout";
 import {
   localizePage,
   translationOf,
@@ -35,7 +39,7 @@ import type { EditablePage, PageState } from "@/server/pages";
 
 import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
-import { newId, PageBuilder } from "./page-builder";
+import { ColorField, newId, PageBuilder } from "./page-builder";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -50,9 +54,11 @@ const STATE_TEXT: Record<PageState, string> = {
 };
 
 /** A new page starts with one full-width row holding an empty text block. */
-function startingRows(type: PageType): PageRow[] {
-  // A product layout (D79) starts as the standard one, to change from.
+function startingRows(type: PageType, owner: string | null): PageRow[] {
+  // A product layout (D79), header or footer (D80) starts as the standard one, to change from.
   if (type === "product_layout") return DEFAULT_PRODUCT_LAYOUT.rows.map((row) => copyRow(row, newId));
+  if (type === "header") return defaultHeader(owner).rows.map((row) => copyRow(row, newId));
+  if (type === "footer") return defaultFooter(owner).rows.map((row) => copyRow(row, newId));
   const row = newRow("1", newId);
   row.columns[0].blocks.push(newBlock("richText", newId));
   return [row];
@@ -92,13 +98,14 @@ export function PageEditor({
   const router = useRouter();
   const [saved, setSaved] = useState<EditablePage | null>(page);
   // What is being edited: a page, or an article in the blog (D57), which starts with its writer as author.
-  const noun = context.type === "article" ? "article" : context.type === "product_layout" ? "layout" : "page";
-  // A product layout (D79) is only its name and its rows: no address, picture, search texts or categories.
-  const layout = context.type === "product_layout";
+  const noun =
+    context.type === "product_layout" ? "layout" : context.type === "header" || context.type === "footer" ? context.type : context.type === "article" ? "article" : "page";
+  // A product layout (D79), header or footer (D80) is only its name and its rows: no address, picture, search texts or categories.
+  const layout = LAYOUT_TYPES.includes(context.type);
   const [content, setContent] = useState<PageContent>(
     page?.draft ?? {
       ...newPageContent(),
-      rows: startingRows(context.type),
+      rows: startingRows(context.type, context.owner),
       ...(context.type === "article" && context.defaultAuthor ? { author: context.defaultAuthor } : {}),
     },
   );
@@ -208,7 +215,8 @@ export function PageEditor({
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
         saved={savedParts}
         library={library}
-        productParts={layout}
+        productParts={context.type === "product_layout"}
+        siteParts={context.type === "header" || context.type === "footer" ? sitePartsFor(context.owner) : null}
         upload={upload}
         startVideo={context.startVideo}
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
@@ -232,7 +240,7 @@ export function PageEditor({
             )}
             <section aria-label={layout ? "Name" : "Title and address"} className={card}>
               <label className={label}>
-                {layout ? "Layout name" : translating ? `Title in ${language.name}` : "Title"}
+                {layout ? `${noun[0].toUpperCase()}${noun.slice(1)} name` : translating ? `Title in ${language.name}` : "Title"}
                 <input
                   value={view.title}
                   maxLength={PAGE_TITLE_MAX}
@@ -241,12 +249,26 @@ export function PageEditor({
                     // The address is one for all languages, made from the main title.
                     change(slugFollows && !translating ? { title, slug: pageSlugFromTitle(title, reserved) } : { title });
                   }}
-                  placeholder={context.type === "article" ? "What we learned this spring" : layout ? "Wide pictures" : "About us"}
+                  placeholder={
+                    context.type === "article"
+                      ? "What we learned this spring"
+                      : context.type === "header"
+                        ? "Header with a centred logo"
+                        : context.type === "footer"
+                          ? "Footer with four columns"
+                          : layout
+                            ? "Wide pictures"
+                            : "About us"
+                  }
                   className={`${input} min-h-12 text-xl font-semibold`}
                 />
               </label>
               {layout ? (
-                <p className={hint}>Only for you: shoppers see the product it is used for.</p>
+                <p className={hint}>
+                  {context.type === "product_layout"
+                    ? "Only for you: shoppers see the product it is used for."
+                    : `Only for you: once chosen, visitors see the ${context.type} on every page.`}
+                </p>
               ) : translating ? (
                 <p className={hint}>
                   The address, {content.slug}, is the same in every language. Change it in {main.name}.
@@ -275,6 +297,17 @@ export function PageEditor({
                 </p>
               )}
             </section>
+            {!translating && context.type === "header" && (
+              <HeaderOverlayFields
+                value={content.overlay}
+                kaizen={context.owner === null}
+                terms={terms}
+                onChange={(overlay) => change({ overlay })}
+                onTerms={setTerms}
+                create={actions.createTerm}
+                manageHref={`${adminBase.replace(/\/headers$/, "/pages")}/categories`}
+              />
+            )}
             {!translating && !layout && (
             <>
             {context.type === "article" && (
@@ -696,6 +729,89 @@ function LanguageField({
         The page is built in {main.name}. In {others.map((l) => l.name).join(", ")}, you translate its texts; a text not
         translated shows in {main.name}.
       </p>
+    </section>
+  );
+}
+
+/**
+ * Where a header lies over the page (D80): nowhere, every page, the front
+ * page (a store's) or pages in chosen page categories and tags; only over
+ * pages whose first row has a background. Its text colour while over one.
+ */
+function HeaderOverlayFields({
+  value,
+  kaizen,
+  terms,
+  onChange,
+  onTerms,
+  create,
+  manageHref,
+}: {
+  value: HeaderOverlay | undefined;
+  kaizen: boolean;
+  terms: Term[];
+  onChange: (overlay: HeaderOverlay | undefined) => void;
+  onTerms: (terms: Term[]) => void;
+  create: PageOwnerContext["actions"]["createTerm"];
+  manageHref: string;
+}) {
+  const id = useId();
+  const where = value?.where ?? "none";
+  const choices = [
+    { value: "none", label: "Above the page" },
+    { value: "everywhere", label: "Over every page" },
+    ...(kaizen ? [] : [{ value: "front", label: "Over the front page" }]),
+    { value: "terms", label: "Over pages in categories or tags" },
+  ] as const;
+  const set = (next: string) =>
+    onChange(
+      next === "none"
+        ? undefined
+        : { where: next as HeaderOverlay["where"], categories: value?.categories ?? [], tags: value?.tags ?? [], textColor: value?.textColor },
+    );
+  return (
+    <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
+      <h2 id={`${id}-heading`} className="font-medium">
+        Over the page
+      </h2>
+      <p className="text-xs text-muted">
+        The header can lie over the top of a page whose first row has a background of its own (a picture, a video or a
+        colour), see-through until the visitor scrolls. Pages that start without one keep it above.
+      </p>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="sr-only">Where the header goes</legend>
+        {choices.map((choice) => (
+          <label key={choice.value} className="flex items-center gap-2 text-sm">
+            <input type="radio" name={`${id}-where`} checked={where === choice.value} onChange={() => set(choice.value)} className="size-4" />
+            {choice.label}
+          </label>
+        ))}
+      </fieldset>
+      {value?.where === "terms" && (
+        <TermPicker
+          terms={terms}
+          value={{ categories: value.categories, tags: value.tags }}
+          onChange={(ids) => onChange({ ...value, ...ids })}
+          onTerms={onTerms}
+          create={create}
+          manageHref={manageHref}
+        />
+      )}
+      {value && (
+        <div className="flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(value.textColor)}
+              onChange={(event) => onChange({ ...value, textColor: event.target.checked ? "#ffffff" : undefined })}
+              className="size-4"
+            />
+            Own text colour over the page
+          </label>
+          {value.textColor && <ColorField label="Text colour" value={value.textColor} onChange={(textColor) => onChange({ ...value, textColor })} />}
+          <p className="text-xs text-muted">White suits a dark picture or video; scrolled, the header has its usual colours again.</p>
+        </div>
+      )}
     </section>
   );
 }
