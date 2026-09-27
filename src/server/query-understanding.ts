@@ -45,9 +45,10 @@ export async function understandWith(
 /**
  * A search's filters from the store's text model, kept in the search cache,
  * as searches come again. A search waits `UNDERSTAND_WAIT_MS`; a slower answer
- * is still kept, for the next one. The model, the market and the store's categories
- * and tags are part of the key, so a new model or a changed category asks
- * again; a failure is not kept.
+ * is still kept, for the next one. The model and the instructions (market,
+ * the store's categories and tags, the prompt) are part of the key, so a new
+ * model, a changed category or a changed prompt asks again; a failure is not
+ * kept.
  */
 export async function understandQuery(
   storeId: string,
@@ -63,7 +64,9 @@ export async function understandQuery(
     categories: terms.filter((term) => term.kind === "category").map(({ slug, name }) => ({ slug, name })),
     tags: terms.filter((term) => term.kind === "tag").map(({ slug, name }) => ({ slug, name })),
   };
-  const key = cacheKey(textModel, market.locale, market.currency, JSON.stringify([context.categories, context.tags]), query);
+  // The instructions hold the market, the store's terms and the prompt itself, so a change to any asks again.
+  const [instructions] = understandingMessages("", context);
+  const key = cacheKey(textModel, instructions.content, query);
   return cached(storeId, "filters", key, async () => {
     const ai = await aiFor(storeId);
     if (!ai?.textModel || ai.textModel !== textModel) throw new AiError("The store's text model changed.");
