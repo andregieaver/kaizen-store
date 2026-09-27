@@ -10,8 +10,16 @@ import {
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { accountSessionAction, refreshStripeAccountAction } from "@/app/admin/(gated)/actions";
-import type { AccountStage, PaymentModeName } from "@/lib/stripe-account";
+import type { AccountStage } from "@/lib/stripe-account";
+
+/**
+ * Server actions already bound to the account: a store's (the owner's) or a
+ * host's own (D71).
+ */
+export type ConnectActions = {
+  session: () => Promise<{ ok: true; clientSecret: string } | { ok: false; problem: string }>;
+  refresh: () => Promise<void>;
+};
 
 /**
  * Stripe's own onboarding and account screens, embedded in the admin (Connect
@@ -19,13 +27,11 @@ import type { AccountStage, PaymentModeName } from "@/lib/stripe-account";
  * loaded when this appears, never on other admin pages.
  */
 export default function StripeConnectEmbed({
-  storeSlug,
-  mode,
+  actions,
   publishableKey,
   stage,
 }: {
-  storeSlug: string;
-  mode: PaymentModeName;
+  actions: ConnectActions;
   publishableKey: string;
   stage: AccountStage;
 }) {
@@ -38,7 +44,7 @@ export default function StripeConnectEmbed({
     return loadConnectAndInitialize({
       publishableKey,
       fetchClientSecret: async () => {
-        const session = await accountSessionAction(storeSlug, mode);
+        const session = await actions.session();
         if (!session.ok) {
           setProblem(session.problem);
           throw new Error(session.problem);
@@ -59,7 +65,7 @@ export default function StripeConnectEmbed({
 
   const refresh = () =>
     startRefresh(async () => {
-      await refreshStripeAccountAction(storeSlug, mode);
+      await actions.refresh();
       router.refresh();
     });
 

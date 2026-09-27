@@ -3,7 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { formatMoney } from "@/lib/money";
+import { accountStage } from "@/lib/stripe-account";
 import { requireMember } from "@/server/auth";
+import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
 
 import { setHostDisabledAction, updateHostAction } from "../actions";
@@ -17,8 +20,16 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   if (!z.uuid().safeParse(hostId).success) notFound();
   const host = await getHost(store.id, hostId);
   if (!host) notFound();
-  const listings = await hostListings(store.id, host.id);
+  const [listings, mode, accounts, earnings] = await Promise.all([
+    hostListings(store.id, host.id),
+    storePaymentMode(store.id),
+    getHostStripeAccounts(store.id, host.id),
+    hostEarnings(store.id, host.id),
+  ]);
   const owner = role === "owner";
+  const stage = mode ? accountStage(accounts[mode] ?? null) : null;
+  const locale = store.markets[0]?.locale ?? "en-GB";
+  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -52,6 +63,37 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
                   {l.title}
                 </Link>
                 <span className="text-muted">{l.status === "active" ? "For sale" : "Draft"}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section aria-labelledby="payments-heading" className="flex flex-col gap-2">
+        <h2 id="payments-heading" className="font-medium">
+          Payments
+        </h2>
+        <p className="text-sm text-muted">
+          {stage === "ready"
+            ? "Guests pay the host's own Stripe account; your commission is sent on to your Stripe account."
+            : stage === null
+              ? "Payments are off in the store."
+              : mode === "test"
+                ? "Kaizen sets up the host's test account; it is ready within a few minutes."
+                : "The host has not finished setting up Stripe in their area, so their listings cannot be paid for yet."}
+        </p>
+        {earnings.length > 0 && (
+          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+            {earnings.map((e) => (
+              <li key={e.orderId} className="flex flex-wrap justify-between gap-3 p-3">
+                <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">
+                  {e.number} · {date.format(new Date(e.placedAt))}
+                </Link>
+                <span className="text-right tabular-nums">
+                  Commission {formatMoney(e.commissionMinor, e.currency, locale)}
+                  <span className="block text-xs text-muted">
+                    {e.sent ? "Sent to your Stripe account" : e.problem ? `Not sent yet: ${e.problem}` : "Not sent yet"}
+                  </span>
+                </span>
               </li>
             ))}
           </ul>

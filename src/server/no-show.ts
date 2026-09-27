@@ -93,7 +93,7 @@ async function chargeSavedCard(
   const [payment] = await db().execute<Row>(sql`
     select p.provider_reference, p.provider_account, a.mode
     from commerce.payments p
-    join commerce.stripe_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
+    join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
     where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.provider = 'stripe'
       and p.status = 'captured' and left(p.provider_reference, 3) = 'cs_'
     order by p.created_at limit 1

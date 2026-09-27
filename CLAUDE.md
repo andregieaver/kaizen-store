@@ -380,8 +380,18 @@ of running `playwright install`.
   rooms and items (`booking_resources.host_id`) and their bookings
   (`listBookings(..., hostId)`). Host actions check the resource is the
   host's (`hostOwnsResource()`). Shared panels such as `ResourceCalendar`
-  take their actions as props (`CalendarActions`). A host not VAT
-  registered sells without VAT (trigger `products_host_vat`).
+  take their actions as props (`CalendarActions`, and `ConnectActions` for
+  `StripeConnect`). A host not VAT registered sells without VAT (trigger
+  `products_host_vat`). Paying hosts (`src/server/host-payments.ts`): an
+  order is for one seller (`orders.host_id`; `placeOrder` refuses a mix as
+  `host_mix`); `startCheckout` charges a host's order on the host's account
+  (`hostCheckoutAccount()`) with Kaizen's fee plus `commissionOf()` as the
+  application fee; `applySession` records the commission
+  (`recordHostCommission()`), sent by `payHostCommissions()` (also from the
+  five-minute cron) and reduced by `reverseHostCommission()` after refunds.
+  Queries joining a payment's `provider_account` to its store and mode use
+  `commerce.connected_accounts` (stores' and hosts' accounts), never
+  `stripe_accounts` alone.
 - Demo products: the template store has a clearly labelled demo product
   (`Demo: …`) of every kind, and new stores are copied with them
   (`clone_store()`). A new kind of product gets one in the same change: a

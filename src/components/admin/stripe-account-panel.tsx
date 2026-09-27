@@ -1,4 +1,4 @@
-import { createStripeAccountAction } from "@/app/admin/(gated)/actions";
+import { accountSessionAction, createStripeAccountAction, refreshStripeAccountAction } from "@/app/admin/(gated)/actions";
 import { accountStage, type AccountStage, type PaymentModeName } from "@/lib/stripe-account";
 import type { StripeAccount } from "@/server/connect";
 import { platformPublishableKey } from "@/server/stripe";
@@ -69,7 +69,14 @@ export function StripeAccountPanel({
           <SubmitButton>Set up Stripe</SubmitButton>
         </ActionForm>
       ) : publishableKey ? (
-        <StripeConnect storeSlug={storeSlug} mode={mode} publishableKey={publishableKey} stage={stage} />
+        <StripeConnect
+          actions={{
+            session: accountSessionAction.bind(null, storeSlug, mode),
+            refresh: refreshStripeAccountAction.bind(null, storeSlug, mode),
+          }}
+          publishableKey={publishableKey}
+          stage={stage}
+        />
       ) : (
         <p className="text-sm text-muted">Stripe cannot be shown right now. Try again later.</p>
       )}

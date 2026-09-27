@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { after } from "next/server";
 
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { marketPath, storeHref } from "@/lib/paths";
 import { listBookings } from "@/server/bookings";
+import { requestIp } from "@/server/connect";
+import { ensureHostTestAccount, getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { hostListings, hostResources, requireHost } from "@/server/hosts";
+
+import { HostPayouts } from "./host-payouts";
 
 export const metadata: Metadata = { title: "Hosting" };
 
@@ -21,11 +26,19 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
   const { store, host } = await requireHost((await params).store);
   const tz = store.timeZone;
   const today = todayIn(tz);
-  const [listings, resources, bookings] = await Promise.all([
+  const [listings, resources, bookings, mode, accounts, earnings] = await Promise.all([
     hostListings(store.id, host.id),
     hostResources(store.id, host.id),
     listBookings(store.id, new Date(zonedTime(today, "00:00", tz)), new Date(zonedTime(addDays(today, AHEAD_DAYS), "00:00", tz)), ["unit", "item"], host.id),
+    storePaymentMode(store.id),
+    getHostStripeAccounts(store.id, host.id),
+    hostEarnings(store.id, host.id),
   ]);
+  // In test mode Kaizen makes the host's test account, as it does the store's (D20).
+  if (mode === "test" && accounts.test?.cardPayments !== "active") {
+    const ip = await requestIp();
+    after(() => ensureHostTestAccount(store.id, host.id, ip));
+  }
   const when = new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const base = `/admin/hosting/${store.slug}`;
 
@@ -38,6 +51,17 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
           The store keeps {host.commissionBps / 100} % of each booking; you are paid the rest.
         </p>
       </div>
+
+      {mode && (
+        <HostPayouts
+          storeSlug={store.slug}
+          mode={mode}
+          account={accounts[mode]}
+          commissionPercent={host.commissionBps / 100}
+          earnings={earnings}
+          locale={store.markets[0]?.locale ?? "en-GB"}
+        />
+      )}
 
       <section aria-labelledby="bookings-heading" className="flex flex-col gap-2">
         <h2 id="bookings-heading" className="font-medium">

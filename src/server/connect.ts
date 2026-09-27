@@ -36,22 +36,22 @@ export async function getStripeAccounts(
   return Object.fromEntries(rows.map((row) => [row.mode, toAccount(row)]));
 }
 
-/** The store a connected account belongs to. */
+/** The store a connected account belongs to: its own, or one of its hosts' (D71, with the host). */
 export async function storeForAccount(
   mode: PaymentModeName,
   accountId: string,
-): Promise<{ storeId: string; slug: string } | null> {
+): Promise<{ storeId: string; slug: string; hostId: string | null } | null> {
   const [row] = await db().execute<Row>(sql`
-    select a.store_id, s.slug from commerce.stripe_accounts a
+    select a.store_id, s.slug, a.host_id from commerce.connected_accounts a
     join commerce.stores s on s.id = a.store_id
     where a.mode = ${mode} and a.account_id = ${accountId}
   `);
-  return row ? { storeId: String(row.store_id), slug: String(row.slug) } : null;
+  return row ? { storeId: String(row.store_id), slug: String(row.slug), hostId: row.host_id ? String(row.host_id) : null } : null;
 }
 
-const INCLUDE: Stripe.V2.Core.AccountRetrieveParams.Include[] = ["configuration.merchant", "requirements"];
+export const INCLUDE: Stripe.V2.Core.AccountRetrieveParams.Include[] = ["configuration.merchant", "requirements"];
 
-function stripeProblem(error: unknown): string {
+export function stripeProblem(error: unknown): string {
   return error instanceof Stripe.errors.StripeError ? error.message : "Stripe could not be reached.";
 }
 
@@ -167,6 +167,76 @@ const TEST_IDENTITY = {
 const testBusinessDetails = { id_numbers: [{ type: "no_orgnr" as const, value: TEST_IDENTITY.orgnr }] };
 
 /**
+ * A connected account Kaizen fills in with Stripe's test values (D20), with
+ * a test bank account: for a store's test mode, or a host's (D71).
+ */
+export async function makeTestAccount(
+  stripe: Stripe,
+  input: {
+    displayName: string;
+    email: string;
+    currency: string;
+    description: string;
+    metadata: Record<string, string>;
+    idempotencyKey: string;
+    minute: number;
+    ip: string;
+  },
+): Promise<Stripe.V2.Core.Account> {
+  const created = await stripe.v2.core.accounts.create(
+    {
+      display_name: input.displayName,
+      contact_email: input.email,
+      // Kaizen collects the (test) details, so there is no Stripe login.
+      dashboard: "none",
+      identity: {
+        country: "no",
+        entity_type: "individual",
+        business_details: testBusinessDetails,
+        individual: {
+          given_name: "Kaizen",
+          surname: "Test",
+          email: input.email,
+          phone: "+4722222222",
+          date_of_birth: TEST_IDENTITY.dateOfBirth,
+          address: TEST_IDENTITY.address,
+        },
+        attestations: {
+          terms_of_service: {
+            account: { date: new Date(input.minute).toISOString(), ip: input.ip, user_agent: "Kaizen test setup" },
+          },
+        },
+      },
+      configuration: {
+        customer: {},
+        merchant: { mcc: "5999", capabilities: requestedCapabilities() },
+      },
+      defaults: {
+        currency: input.currency.toLowerCase(),
+        responsibilities: { fees_collector: "application", losses_collector: "application" },
+        profile: { business_url: TEST_IDENTITY.website, product_description: input.description },
+      },
+      metadata: input.metadata,
+      include: INCLUDE,
+    },
+    { idempotencyKey: input.idempotencyKey },
+  );
+  await stripe.accounts.createExternalAccount(
+    created.id,
+    {
+      external_account: {
+        object: "bank_account",
+        country: "NO",
+        currency: "nok",
+        account_number: TEST_IDENTITY.iban,
+      },
+    },
+    { idempotencyKey: `kaizen-test-bank-${created.id}` },
+  );
+  return created;
+}
+
+/**
  * The store's test Stripe account, set up by Kaizen with no questions to the
  * owner (decision D20): Kaizen fills in Stripe's test values and accepts the
  * service agreement, so test purchases land in the store's own test account
@@ -218,59 +288,16 @@ export async function ensureTestAccount(
 
   let created: Stripe.V2.Core.Account;
   try {
-    created = await stripe.v2.core.accounts.create(
-      {
-        display_name: `${String(store.name)} (test)`,
-        contact_email: email,
-        // Kaizen collects the (test) details, so there is no Stripe login.
-        dashboard: "none",
-        identity: {
-          country: "no",
-          entity_type: "individual",
-          business_details: testBusinessDetails,
-          individual: {
-            given_name: "Kaizen",
-            surname: "Test",
-            email,
-            phone: "+4722222222",
-            date_of_birth: TEST_IDENTITY.dateOfBirth,
-            address: TEST_IDENTITY.address,
-          },
-          attestations: {
-            terms_of_service: {
-              account: { date: new Date(minute).toISOString(), ip, user_agent: "Kaizen test setup" },
-            },
-          },
-        },
-        configuration: {
-          customer: {},
-          merchant: { mcc: "5999", capabilities: requestedCapabilities() },
-        },
-        defaults: {
-          currency: String(store.currency ?? "NOK").toLowerCase(),
-          responsibilities: { fees_collector: "application", losses_collector: "application" },
-          profile: {
-            business_url: TEST_IDENTITY.website,
-            product_description: `Test store for ${String(store.name)} on Kaizen`,
-          },
-        },
-        metadata: { store_id: storeId, store_slug: String(store.slug), kaizen_test_account: "true" },
-        include: INCLUDE,
-      },
-      { idempotencyKey: `kaizen-test-account-${storeId}-${minute}-${ip}` },
-    );
-    await stripe.accounts.createExternalAccount(
-      created.id,
-      {
-        external_account: {
-          object: "bank_account",
-          country: "NO",
-          currency: "nok",
-          account_number: TEST_IDENTITY.iban,
-        },
-      },
-      { idempotencyKey: `kaizen-test-bank-${created.id}` },
-    );
+    created = await makeTestAccount(stripe, {
+      displayName: `${String(store.name)} (test)`,
+      email,
+      currency: String(store.currency ?? "NOK"),
+      description: `Test store for ${String(store.name)} on Kaizen`,
+      metadata: { store_id: storeId, store_slug: String(store.slug), kaizen_test_account: "true" },
+      idempotencyKey: `kaizen-test-account-${storeId}-${minute}-${ip}`,
+      minute,
+      ip,
+    });
   } catch (error) {
     return { ok: false, problem: stripeProblem(error) };
   }

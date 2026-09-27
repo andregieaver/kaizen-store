@@ -1303,6 +1303,13 @@ export const orders = commerce.table(
     totalMinor: money("total_minor"),
     /** What is still to be paid at the venue (D66): appointments paid there, or the rest after a deposit. */
     balanceMinor: money("balance_minor").default(0),
+    /**
+     * An order for a host's listing (D71): paid to the host's own Stripe
+     * account, the store's commission (of what was paid online) then sent to
+     * the store. One checkout pays one host.
+     */
+    hostId: uuid("host_id"),
+    commissionMinor: money("commission_minor").default(0),
     billingAddress: jsonb("billing_address").notNull(),
     shippingAddress: jsonb("shipping_address").notNull(),
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1325,6 +1332,12 @@ export const orders = commerce.table(
     createdAt: createdAt(),
   },
   (t) => [
+    foreignKey({
+      name: "orders_host_fk",
+      columns: [t.storeId, t.hostId],
+      foreignColumns: [hosts.storeId, hosts.id],
+    }),
+    index("orders_host_idx").on(t.storeId, t.hostId),
     unique("orders_store_id_key").on(t.storeId, t.id),
     index("orders_discount_code_idx").on(t.storeId, t.discountCodeId),
     foreignKey({
@@ -2881,6 +2894,76 @@ export const hosts = commerce.table(
     index("hosts_invited_by_idx").on(t.invitedBy),
     check("hosts_name", sql`length(${t.name}) between 1 and 120`),
     check("hosts_commission", sql`${t.commissionBps} between 0 and 10000`),
+  ],
+);
+
+/**
+ * A host's own Stripe account for a mode (D71): bookings of their listings
+ * are direct charges on it, as the store's own are on the store's. Kept
+ * like the store's (`stripe_accounts`); `connected_accounts` lists both.
+ */
+export const hostStripeAccounts = commerce.table(
+  "host_stripe_accounts",
+  {
+    hostId: uuid("host_id").notNull(),
+    storeId: storeId(),
+    mode: paymentMode("mode").notNull(),
+    accountId: text("account_id").notNull(),
+    cardPayments: text("card_payments").notNull().default("inactive"),
+    requirementsDue: boolean("requirements_due").notNull().default(true),
+    requirements: jsonb("requirements").notNull().default([]),
+    /** Created and filled in by Kaizen with Stripe's test values (test mode, D20). */
+    managedByKaizen: boolean("managed_by_kaizen").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.hostId, t.mode] }),
+    unique("host_stripe_accounts_account_key").on(t.mode, t.accountId),
+    foreignKey({
+      name: "host_stripe_accounts_host_fk",
+      columns: [t.storeId, t.hostId],
+      foreignColumns: [hosts.storeId, hosts.id],
+    }).onDelete("cascade"),
+    index("host_stripe_accounts_store_idx").on(t.storeId, t.hostId),
+  ],
+);
+
+/**
+ * The store's commission of a host's order (D71), sent from Kaizen's
+ * balance to the store's Stripe account once the order is paid; tried
+ * again from the cron until it goes through, and reversed in part with
+ * refunds.
+ */
+export const hostCommissions = commerce.table(
+  "host_commissions",
+  {
+    orderId: uuid("order_id").primaryKey(),
+    storeId: storeId(),
+    hostId: uuid("host_id").notNull(),
+    mode: paymentMode("mode").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor"),
+    /** What has been taken back with refunds. */
+    reversedMinor: money("reversed_minor").default(0),
+    status: text("status").notNull().default("pending"),
+    transferId: text("transfer_id"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    orderRef("host_commissions_order_fk", t),
+    foreignKey({
+      name: "host_commissions_host_fk",
+      columns: [t.storeId, t.hostId],
+      foreignColumns: [hosts.storeId, hosts.id],
+    }),
+    index("host_commissions_host_idx").on(t.storeId, t.hostId),
+    index("host_commissions_due_idx").on(t.status).where(sql`${t.status} = 'pending'`),
+    check("host_commissions_status", sql`${t.status} in ('pending', 'paid')`),
+    check("host_commissions_amounts", sql`${t.amountMinor} >= 0 and ${t.reversedMinor} between 0 and ${t.amountMinor}`),
   ],
 );
 

@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
 import { markCheckoutRecovered } from "./cart-reminders";
 import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
+import { recordHostCommission } from "./host-payments";
 import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
@@ -84,6 +85,8 @@ export async function applySession(
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
     if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
+    // A host's booking (D71): the store's commission is owed to it now.
+    await recordHostCommission(storeId, orderId);
     // Paid: no reminders about this cart, or others with the same email (D33).
     await markCheckoutRecovered(storeId, orderId);
     // The account asked for at checkout opens now, with the paid email (D32).

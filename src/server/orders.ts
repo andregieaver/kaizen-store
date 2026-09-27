@@ -271,7 +271,7 @@ export async function getShopperOrder(
   const [payment] = await db().execute<Row>(sql`
     select pay.provider_account, a.mode
     from commerce.payments pay
-    left join commerce.stripe_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
+    left join commerce.connected_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
       and pay.provider in ('stripe', 'venue') and pay.provider_reference = ${sessionId}
   `);

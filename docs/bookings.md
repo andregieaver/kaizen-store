@@ -130,7 +130,10 @@ and a fee per booking such as final cleaning (`src/lib/booking-prices.ts`).
 B3 is done. B4 (hosts, D71) is under way: B4a is done (hosts added by the
 store's owners with a commission, their own area at `/admin/hosting/{store}`
 with their listings, bookings and calendars, and no VAT for hosts not VAT
-registered); B4b (payments to hosts) and B4c (DAC7) are next.
+registered). B4b is done: hosts' bookings are charged on their own Stripe
+accounts with the store's commission in the application fee, sent on to
+the store and given back in part with refunds (`src/server/host-payments.ts`).
+B4c (DAC7) is next.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`

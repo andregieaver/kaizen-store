@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import type { PaymentModeName } from "@/lib/stripe-account";
 import {
   addBlock,
   addFeed,
@@ -14,6 +15,7 @@ import {
   resourceOfFeed,
   syncFeed,
 } from "@/server/calendar-sync";
+import { createHostAccountSession, createHostStripeAccount, refreshHostStripeAccount } from "@/server/host-payments";
 import { hostOwnsResource, requireHost, type Hosting } from "@/server/hosts";
 
 /**
@@ -76,5 +78,38 @@ export async function hostRemoveFeedAction(storeSlug: string, feedId: string): P
   const hosting = await requireHost(storeSlug);
   if (!id.safeParse(feedId).success) return;
   if (await owned(storeSlug, await resourceOfFeed(hosting.store.id, feedId))) await removeFeed(hosting, feedId);
+  refresh();
+}
+
+// ---------------------------------------------------------------------------
+// The host's own Stripe account (D71)
+// ---------------------------------------------------------------------------
+
+const mode = z.enum(["test", "live"]);
+
+export async function hostCreateStripeAccountAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const hosting = await requireHost(storeSlug);
+  const parsed = mode.safeParse(formData.get("mode"));
+  if (!parsed.success) return { status: "error", messages: ["Unknown mode."] };
+  const result = await createHostStripeAccount(hosting, parsed.data);
+  if (!result.ok) return { status: "error", messages: [result.problem] };
+  refresh();
+  return { status: "ok", messages: ["Account created."] };
+}
+
+export async function hostAccountSessionAction(
+  storeSlug: string,
+  modeName: PaymentModeName,
+): Promise<{ ok: true; clientSecret: string } | { ok: false; problem: string }> {
+  const { store, host } = await requireHost(storeSlug);
+  const parsed = mode.safeParse(modeName);
+  if (!parsed.success) return { ok: false, problem: "Unknown mode." };
+  return createHostAccountSession(store.id, host.id, parsed.data);
+}
+
+export async function hostRefreshStripeAccountAction(storeSlug: string, modeName: PaymentModeName): Promise<void> {
+  const { store, host } = await requireHost(storeSlug);
+  const parsed = mode.safeParse(modeName);
+  if (parsed.success) await refreshHostStripeAccount(store.id, host.id, parsed.data);
   refresh();
 }

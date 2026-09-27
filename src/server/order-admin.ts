@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
+import { reverseHostCommission } from "./host-payments";
 import { getOrder, type Address, type OrderView } from "./orders";
 import { platformStripe } from "./stripe";
 
@@ -254,7 +255,7 @@ export async function refundOrder(
   const [payment] = await db().execute<Row>(sql`
     select p.id, p.provider_reference, p.provider_account, a.mode
     from commerce.payments p
-    join commerce.stripe_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
+    join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
     where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured' and p.provider = 'stripe'
     order by p.created_at limit 1
   `);
@@ -312,6 +313,8 @@ export async function refundOrder(
     `);
     return id;
   });
+  // A host's order (D71): the store gives back the refunded share of its commission.
+  if (input.amountMinor > 0 && status !== "failed") await reverseHostCommission(storeId, orderId);
   return { ok: true, refundId, amountMinor: input.amountMinor };
 }
 

@@ -743,6 +743,20 @@
       "when": 1790511978497,
       "tag": "20260927122618_hosts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1790513037914,
+      "tag": "20260927124357_host_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1790513039873,
+      "tag": "20260927124359_host_payments_rules",
+      "breakpoints": true
     }
   ]
 }

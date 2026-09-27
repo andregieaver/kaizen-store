@@ -29,6 +29,7 @@ import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails
 import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { findUsableDiscount } from "./discounts";
+import { commissionOf, hostCheckoutAccount } from "./host-payments";
 import { getCheckoutAccount } from "./settings";
 import { ensureSubscriptionEvents } from "./subscriptions";
 import { platformStripe } from "./stripe";
@@ -76,6 +77,8 @@ export type PlacedOrder = {
   company: { name: string; number: string } | null;
   /** The discount code, and what Stripe takes off as a one-time coupon. */
   discount: { code: string; couponMinor: number } | null;
+  /** The host whose listings these are (D71), paid on their own Stripe account; null for the store's own. */
+  hostId: string | null;
 };
 
 export type CheckoutProblem =
@@ -95,7 +98,9 @@ export type CheckoutProblem =
   | "company_number"
   | "slot_taken"
   | "contact"
-  | "pay_later_mix";
+  | "pay_later_mix"
+  | "host_mix"
+  | "host_payments_off";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -141,7 +146,7 @@ export async function placeOrder(
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
-        p.kind, aps.check_in_time, aps.check_out_time, v.rental_period,
+        p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
         (p.status = 'active' and v.active and ${bookable}) as sellable
       from commerce.cart_lines cl
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -160,6 +165,12 @@ export async function placeOrder(
     if (lines.length === 0) return { ok: false, problem: "empty" };
     if (lines.some((l) => !l.sellable || !l.plan_ok || l.amount_minor === null)) {
       return { ok: false, problem: "unavailable" };
+    }
+    // One checkout pays one seller (D71): a host's listings on their own, and never a subscription.
+    const sellers = new Set(lines.map((l) => (l.host_id ? String(l.host_id) : null)));
+    const hostId = sellers.size === 1 ? [...sellers][0] : null;
+    if (sellers.size > 1 || (hostId && lines.some((l) => l.selling_plan_id !== null))) {
+      return { ok: false, problem: "host_mix" };
     }
     // Businesses buy with their company's name and organisation number (B2B): in a store
     // selling only to them, and for business-only products in one selling to both.
@@ -383,13 +394,13 @@ export async function placeOrder(
         store_id, number, market_code, currency, locale, cart_id, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
-        company_name, organisation_number, balance_minor
+        company_name, organisation_number, balance_minor, host_id
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
         ${subtotal}, ${shipping}, ${discountTotal}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
         ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
-        ${company?.name ?? null}, ${company?.number ?? null}, ${balance}
+        ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid
       )
       returning id
     `);
@@ -541,6 +552,7 @@ export async function placeOrder(
             priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount), 0) +
             (rhythm ? shippingDiscount : 0),
         },
+        hostId,
       },
     };
   });
@@ -666,7 +678,9 @@ const COMPANY_LABELS: Record<string, { name: string; number: string }> = {
  * Kaizen's fee, if any, is taken as an application fee). The shopper then
  * pays on Kaizen's checkout page with Stripe's form (D22), or on Stripe's
  * own page when the platform is switched to that fallback. The returned
- * address is where to send the shopper.
+ * address is where to send the shopper. A host's listings are charged on
+ * the host's account instead, the store's commission added to Kaizen's fee
+ * (D71).
  */
 export async function startCheckout(
   shop: CheckoutShop,
@@ -740,25 +754,49 @@ export async function startCheckout(
   }
   // Renewals arrive as webhook events that older platform webhooks were not sent (D25).
   if (order.subscription) await ensureSubscriptionEvents(connection.mode);
+  // A host's listings are paid on the host's own account (D71), in the store's mode.
+  let seller = connection.accountId;
+  let commissionBps = 0;
+  if (order.hostId) {
+    const hostAccount = await hostCheckoutAccount(shop.storeId, order.hostId, connection.mode);
+    if (!hostAccount) {
+      await cancelUnpaidOrder(order.orderId, "the host cannot take payments");
+      return { ok: false, problem: "host_payments_off" };
+    }
+    seller = hostAccount;
+    const [host] = await db().execute<Row>(sql`
+      select commission_bps from commerce.hosts where store_id = ${shop.storeId}::uuid and id = ${order.hostId}::uuid
+    `);
+    commissionBps = Number(host?.commission_bps ?? 0);
+  }
 
   const [store] = await db().execute<Row>(sql`
     select legal_name, organisation_number from commerce.stores where id = ${shop.storeId}::uuid
   `);
   const feeBps = await storeFeeBps(shop.storeId);
   // Kaizen's fee is on what is paid through Stripe; the rest is paid at the venue (D66).
-  const fee = saleFee(order.dueNowMinor, feeBps);
+  const kaizenFee = saleFee(order.dueNowMinor, feeBps);
+  // On a host's charge, the store's commission rides in the application fee, to be sent on to the store (D71).
+  const commission = commissionOf(order.dueNowMinor, commissionBps);
+  const fee = commission > 0 ? Math.min(order.dueNowMinor, (kaizenFee ?? 0) + commission) : kaizenFee;
+  if (commission > 0) {
+    await db().execute(sql`
+      update commerce.orders set commission_minor = ${(fee ?? 0) - (kaizenFee ?? 0)}
+      where store_id = ${shop.storeId}::uuid and id = ${order.orderId}::uuid
+    `);
+  }
   const partial = order.balanceMinor > 0;
   const depositLabel = t(shop.market.lang).booking.deposit;
   // Back to the store's own host once it has one (P7), whichever host the request came from.
   const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
   const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId };
-  const seller = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]
+  const sellerLine = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]
     .filter(Boolean)
     .join(" · ");
   const returnUrl = `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`;
   // Wallets, Link and Klarna show in Stripe's form only on registered domains.
-  if (ui === "custom" && origin.startsWith("https://")) {
+  if (ui === "custom" && origin.startsWith("https://") && !order.hostId) {
     await ensurePaymentDomain(shop.storeId, connection.mode, connection.accountId, new URL(origin).hostname);
   }
 
@@ -777,7 +815,7 @@ export async function startCheckout(
               name: order.discount.code.slice(0, 40),
               metadata,
             },
-            { stripeAccount: connection.accountId, idempotencyKey: `coupon-${order.orderId}` },
+            { stripeAccount: seller, idempotencyKey: `coupon-${order.orderId}` },
           )
         : null;
     session = await stripe.checkout.sessions.create(
@@ -859,15 +897,17 @@ export async function startCheckout(
         // turned on in its Stripe Dashboard that suit the shopper.
         // Subscriptions always get Stripe invoices; this is for single payments.
         // An invoice for part of an order would mislead: the store invoices the whole at the venue.
+        // A host is the seller of their own bookings, so the store's invoices are not theirs (D71).
         ...(connection.orderInvoices &&
           !order.subscription &&
-          !partial && {
+          !partial &&
+          !order.hostId && {
           invoice_creation: {
             enabled: true,
             invoice_data: {
               description: `Order ${order.number}`,
               metadata,
-              ...(seller && { footer: seller }),
+              ...(sellerLine && { footer: sellerLine }),
               custom_fields: [
                 {
                   name: VAT_LABELS[shop.market.lang] ?? "Incl. VAT",
@@ -894,7 +934,7 @@ export async function startCheckout(
             }),
         expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_MINUTES * 60 + 60,
       },
-      { stripeAccount: connection.accountId, idempotencyKey: `checkout-${order.orderId}` },
+      { stripeAccount: seller, idempotencyKey: `checkout-${order.orderId}` },
     );
   } catch {
     await cancelUnpaidOrder(order.orderId, "stripe session could not be created");
@@ -911,7 +951,7 @@ export async function startCheckout(
     insert into commerce.payments (
       store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status
     ) values (
-      ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${connection.accountId},
+      ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${seller},
       ${ui === "custom" ? session.client_secret : null}, ${order.dueNowMinor}, ${order.currency}, 'pending'
     )
   `);
@@ -968,7 +1008,7 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
       s.interval, s.interval_count, s.total_minor as renewal_minor
     from commerce.orders o
     join commerce.payments pay on pay.store_id = o.store_id and pay.order_id = o.id and pay.provider = 'stripe'
-    join commerce.stripe_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
+    join commerce.connected_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     left join commerce.subscriptions s on s.store_id = o.store_id and s.id = o.subscription_id
     where o.store_id = ${storeId}::uuid and o.cart_id = ${cartId}::uuid and o.status = 'pending_payment'
       and pay.client_secret is not null

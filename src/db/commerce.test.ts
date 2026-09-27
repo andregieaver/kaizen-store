@@ -1059,6 +1059,49 @@ describe("hosts (D71)", () => {
     await expect(db.query("update commerce.products set host_id = $2 where id = $1", [other, host])).rejects.toThrow(/products_host_fk/);
   });
 
+  it("lists hosts' Stripe accounts with the store's, and keeps commissions within what was taken", async () => {
+    const { id: accountId } = await one<{ id: string }>("insert into commerce.accounts (email) values ('paid-host@example.com') returning id");
+    const { id: host } = await one<{ id: string }>(
+      "insert into commerce.hosts (store_id, account_id, name) values ($1, $2, 'Paid host') returning id",
+      [store, accountId],
+    );
+    await expect(
+      db.query("insert into commerce.host_stripe_accounts (host_id, store_id, mode, account_id) values ($1, $2, 'test', 'not-an-account')", [host, store]),
+    ).rejects.toThrow(/host_stripe_accounts_account_id_format/);
+    await db.query("insert into commerce.host_stripe_accounts (host_id, store_id, mode, account_id, card_payments) values ($1, $2, 'test', 'acct_paidhost', 'active')", [
+      host,
+      store,
+    ]);
+    expect(await one("select store_id, host_id, card_payments from commerce.connected_accounts where account_id = 'acct_paidhost'")).toEqual({
+      store_id: store,
+      host_id: host,
+      card_payments: "active",
+    });
+    // Another store's host's account is not this store's.
+    const otherStore = await createStore("hosts-paid-other", ["DE"]);
+    await expect(
+      db.query("insert into commerce.host_stripe_accounts (host_id, store_id, mode, account_id) values ($1, $2, 'live', 'acct_elsewhere')", [host, otherStore]),
+    ).rejects.toThrow(/host_stripe_accounts_host_fk/);
+
+    const { id: orderId } = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, subtotal_minor, shipping_minor,
+         discount_minor, tax_minor, total_minor, billing_address, shipping_address, host_id, commission_minor)
+       values ($1, 'H-1', 'DE', 'EUR', 'de-DE', '', 10000, 0, 0, 0, 10000, '{}', '{}', $2, 1250) returning id`,
+      [store, host],
+    );
+    const commission = (amount: number, reversed: number) =>
+      db.query(
+        `insert into commerce.host_commissions (order_id, store_id, host_id, mode, currency, amount_minor, reversed_minor)
+         values ($1, $2, $3, 'test', 'EUR', $4, $5)`,
+        [orderId, store, host, amount, reversed],
+      );
+    await expect(commission(1250, 1300)).rejects.toThrow(/host_commissions_amounts/);
+    await commission(1250, 0);
+    await expect(db.query("update commerce.host_commissions set status = 'sent' where order_id = $1", [orderId])).rejects.toThrow(
+      /host_commissions_status/,
+    );
+  });
+
   it("keeps 'hosting' free of store addresses", async () => {
     await expect(
       db.query("insert into commerce.stores (slug, name) values ('hosting', 'Hosting')"),
