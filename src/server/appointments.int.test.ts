@@ -16,7 +16,21 @@ vi.mock("next/headers", () => ({
   }),
 }));
 
+const sent = vi.hoisted(() => [] as import("./email").OutgoingEmail[]);
+vi.mock("./email", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./email")>();
+  return {
+    ...actual,
+    sendEmail: async (message: import("./email").OutgoingEmail) => {
+      sent.push(message);
+      return actual.sendEmail(message);
+    },
+  };
+});
+
 const { appointmentSlots, getAppointmentOffer } = await import("./appointments");
+const { cancelBooking } = await import("./bookings");
+const { sendBookingStaffNotices, sendDueBookingReminders, sendOrderConfirmation } = await import("./shopper-emails");
 const { changeLine, getCart } = await import("./cart");
 const { placeOrder } = await import("./checkout");
 const { getOrder } = await import("./orders");
@@ -88,6 +102,7 @@ const newShopper = () => jar.clear();
 const cartId = () => jar.get(`cart_${storeId}_${no.slug}`)!;
 
 let first: string;
+let paidOrder: string;
 
 describe("booking an appointment (D65)", () => {
   it("offers the first week with free times, and who does it", async () => {
@@ -161,10 +176,87 @@ describe("booking an appointment (D65)", () => {
 
     // Paying confirms the time; giving up the order frees it.
     await db().execute(sql`update commerce.orders set status = 'paid' where id = ${placed.order.orderId}::uuid`);
+    paidOrder = placed.order.orderId;
     expect((await getOrder(storeId, placed.order.orderId))?.lines[0].booking?.status).toBe("confirmed");
     await db().execute(sql`select commerce.cancel_unpaid_order(${second.order.orderId}::uuid, 'test')`);
     const week = await appointmentSlots(storeId, productId, { from: first.slice(0, 10) });
     const slot = week?.days.flatMap((d) => d.slots).find((s) => s.startsAt === first);
     expect(slot?.resourceIds).toEqual([ola]);
+  });
+});
+
+describe("appointment emails (D65)", () => {
+  const bookingOf = async () => {
+    const [row] = await db().execute<Row>(sql`select id from commerce.bookings where order_id = ${paidOrder}::uuid`);
+    return String(row.id);
+  };
+
+  it("confirms with the time, the place and a calendar file, and tells the member of staff", async () => {
+    await db().execute(sql`
+      update commerce.orders set email = 'kunde@example.com', billing_address = '{"name":"Kunde Kari","phone":"+4790000000"}'::jsonb
+      where id = ${paidOrder}::uuid
+    `);
+    await db().execute(sql`update commerce.booking_resources set email = 'kari@example.com' where id = ${kari}::uuid`);
+    sent.length = 0;
+    await sendOrderConfirmation(storeId, paidOrder);
+    const [confirmation] = sent;
+    expect(confirmation.email.text).toContain("Timen din:");
+    expect(confirmation.email.text).toContain("Massasje: ");
+    expect(confirmation.email.text).toContain("hos Kari");
+    const [file] = confirmation.attachments ?? [];
+    expect(file).toMatchObject({ filename: "appointment.ics", contentType: expect.stringContaining("text/calendar") });
+    expect(file.content).toContain(`DTSTART:${first.replace(/[-:]/g, "").replace(".000", "")}`);
+    expect(file.content).toContain(`UID:booking-${await bookingOf()}@kaizen`);
+
+    sent.length = 0;
+    await sendBookingStaffNotices(storeId, paidOrder);
+    await sendBookingStaffNotices(storeId, paidOrder);
+    expect(sent.map((email) => [email.to, email.kind])).toEqual([
+      ["kari@example.com", "booking.staff"],
+      ["kari@example.com", "booking.staff"],
+    ]);
+    expect(sent[0].email.text).toContain("Kunde Kari · kunde@example.com · +4790000000");
+    const [row] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.email_messages where order_id = ${paidOrder}::uuid and kind = 'booking.staff'
+    `);
+    expect(row.n).toBe(1);
+  });
+
+  it("reminds once within the store's hours before, but not those booked inside them", async () => {
+    await db().execute(sql`update commerce.stores set booking_reminder_hours = 168 where id = ${storeId}::uuid`);
+    sent.length = 0;
+    // Booked a moment ago, inside the week before: the confirmation was enough.
+    await sendDueBookingReminders();
+    expect(sent.filter((e) => e.orderId === paidOrder)).toEqual([]);
+    await db().execute(sql`update commerce.bookings set created_at = now() - interval '30 days' where order_id = ${paidOrder}::uuid`);
+    await sendDueBookingReminders();
+    await sendDueBookingReminders();
+    const reminders = sent.filter((e) => e.orderId === paidOrder);
+    expect(reminders.map((e) => e.kind)).toEqual(["booking.reminder"]);
+    expect(reminders[0].email.subject).toMatch(/^Påminnelse: timen din hos /);
+    expect(reminders[0].attachments?.[0].content).toContain("METHOD:PUBLISH");
+  });
+
+  it("lets the store cancel a confirmed appointment, freeing the time and taking it out of the calendar", async () => {
+    const [account] = await db().execute<Row>(sql`
+      insert into commerce.accounts (email, name) values (${`owner-appt-${run}@example.com`}, 'Owner') returning id
+    `);
+    const member = {
+      account: { id: String(account.id), email: "owner@example.com", name: "Owner", platformAdmin: false },
+      role: "owner" as const,
+      store: { id: storeId, slug: `appt-${run}` } as import("./stores").Store,
+    };
+    const id = await bookingOf();
+    expect(await cancelBooking(member, id)).toBe(true);
+    expect(await cancelBooking(member, id)).toBe(false);
+    const week = await appointmentSlots(storeId, productId, { from: first.slice(0, 10) });
+    expect(week?.days.flatMap((d) => d.slots).find((s) => s.startsAt === first)?.resourceIds).toEqual([kari, ola]);
+
+    sent.length = 0;
+    const { sendBookingCancelled } = await import("./shopper-emails");
+    await sendBookingCancelled(storeId, id);
+    expect(sent[0].email.subject).toMatch(/er avlyst$/);
+    expect(sent[0].attachments?.[0]).toMatchObject({ filename: "cancelled.ics" });
+    expect(sent[0].attachments?.[0].content).toContain("STATUS:CANCELLED");
   });
 });

@@ -73,11 +73,14 @@ export type OrderView = {
 };
 
 export type OrderBooking = {
+  id: string;
   startsAt: string;
   endsAt: string;
   staff: string;
   status: "held" | "confirmed" | "cancelled";
   timeZone: string;
+  /** Where it is, as the appointment says: the place's name and address, or null. */
+  place: string | null;
 };
 
 /** A file the shopper can download from a paid order (D24). */
@@ -124,11 +127,13 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     taxRate: Number(line.tax_rate ?? 0),
     booking: line.starts_at
       ? {
+          id: String(line.booking_id),
           startsAt: new Date(String(line.starts_at)).toISOString(),
           endsAt: new Date(String(line.ends_at)).toISOString(),
           staff: String(line.staff ?? ""),
           status: line.booking_status as OrderBooking["status"],
           timeZone: String(line.time_zone),
+          place: line.place ? String(line.place) : null,
         }
       : null,
   })),
@@ -154,13 +159,16 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
           join commerce.product_media m on m.product_id = v.product_id
           where v.store_id = ol.store_id and v.id = ol.variant_id
           order by m.position limit 1) as image,
-        b.starts_at, b.ends_at, b.status as booking_status, b.staff, s.time_zone
+        b.id as booking_id, b.starts_at, b.ends_at, b.status as booking_status, b.staff, b.place, s.time_zone
       from commerce.order_lines ol
       join commerce.stores s on s.id = ol.store_id
       left join lateral (
-        select b.starts_at, b.ends_at, b.status, r.name as staff
+        select b.id, b.starts_at, b.ends_at, b.status, r.name as staff,
+          nullif(concat_ws(', ', nullif(l.name, ''), l.street, nullif(trim(concat_ws(' ', l.postal_code, l.city)), '')), '') as place
         from commerce.bookings b
         join commerce.booking_resources r on r.store_id = b.store_id and r.id = b.resource_id
+        left join commerce.appointment_settings a on a.store_id = b.store_id and a.product_id = b.product_id
+        left join commerce.store_locations l on l.store_id = a.store_id and l.id = a.location_id
         where b.store_id = ol.store_id and b.order_line_id = ol.id
         order by b.created_at desc limit 1
       ) b on true

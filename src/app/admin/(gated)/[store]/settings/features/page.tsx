@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
-import { storeTimeZones } from "@/server/bookings";
+import { REMINDER_HOURS, storeTimeZones } from "@/server/bookings";
 
 import { saveBookingsModuleAction } from "./actions";
 
@@ -55,6 +55,25 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
               ))}
             </select>
             <span className="font-normal text-muted">Where the appointments take place: times are shown in it.</span>
+          </label>
+          <label className="flex max-w-sm flex-col gap-1 text-sm font-medium">
+            Reminder email
+            <select
+              name="reminderHours"
+              defaultValue={store.bookingReminderHours}
+              disabled={!owner}
+              className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
+            >
+              {REMINDER_HOURS.map((hours) => (
+                <option key={hours} value={hours}>
+                  {hours === 0 ? "Send none" : hours < 48 ? `${hours} hours before` : `${hours / 24} days before`}
+                </option>
+              ))}
+            </select>
+            <span className="font-normal text-muted">
+              Shoppers get a reminder with the time, place and a calendar file. Those who book closer to the time than
+              this get only their confirmation.
+            </span>
           </label>
           {owner ? (
             <div>

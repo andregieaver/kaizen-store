@@ -97,10 +97,13 @@ moves like this (**to confirm before building**):
 | **B3 Stays and rentals** | Date ranges over units; nightly and seasonal prices; minimum stay, cleaning fee, deposits; calendar sync with Airbnb and Booking.com (iCal in and out) | Stores sell rooms, homes and rentals |
 | **B4 Hosts** | Hosts, their Stripe accounts and area; commission; payouts; DAC7 data and yearly report | Stores run marketplaces |
 
-B1 is built in parts: B1a (the module, staff and their hours, appointment
-products) and B1b (free times on the product page, times in the cart, held
-at checkout and confirmed on payment) are done; B1c (the admin calendar,
-confirmation emails with .ics, reminders) is next.
+B1 is done, in three parts: B1a (the module, staff and their hours,
+appointment products), B1b (free times on the product page, times in the
+cart, held at checkout and confirmed on payment) and B1c (the week calendar
+where the store can cancel a booking, calendar files with the confirmation,
+a notice to the member of staff, reminders a set number of hours before,
+and cancellation emails). Moving a booking to another time is not built
+yet; for now the store cancels and the shopper books again. B2 is next.
 
 Each phase ends with its migrations applied, tests and a decision entry, as
 before.

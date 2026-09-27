@@ -24,7 +24,11 @@ export function storeTimeZones(): string[] {
 export const bookingsModuleInput = z.object({
   enabled: z.boolean(),
   timeZone: z.string().refine((zone) => storeTimeZones().includes(zone), "Choose a time zone."),
+  reminderHours: z.coerce.number().int().min(0, "Choose when reminders go.").max(168, "Reminders go at most a week before."),
 });
+
+/** When the reminder before an appointment can go, in hours (0: none). */
+export const REMINDER_HOURS = [0, 2, 12, 24, 48, 72] as const;
 
 /** Switches appointments on or off, and says where the store's times are. Owners only. */
 export async function setBookingsModule(
@@ -36,10 +40,14 @@ export async function setBookingsModule(
       modules = case when ${input.enabled}
         then (select array_agg(distinct m) from unnest(modules || array['bookings']) m)
         else array_remove(modules, 'bookings') end,
-      time_zone = ${input.timeZone}
+      time_zone = ${input.timeZone},
+      booking_reminder_hours = ${input.reminderHours}
     where id = ${store.id}::uuid
   `);
-  await audit(account.id, store.id, input.enabled ? "bookings.enabled" : "bookings.disabled", { timeZone: input.timeZone });
+  await audit(account.id, store.id, input.enabled ? "bookings.enabled" : "bookings.disabled", {
+    timeZone: input.timeZone,
+    reminderHours: input.reminderHours,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -180,6 +188,7 @@ export type StoreBooking = {
   status: "held" | "confirmed" | "cancelled";
   service: string;
   staff: string;
+  resourceId: string;
   orderId: string | null;
   orderNumber: string | null;
   customer: string;
@@ -188,7 +197,7 @@ export type StoreBooking = {
 /** Bookings between two instants, held ones only while their hold lasts, earliest first. */
 export async function listBookings(storeId: string, from: Date, to: Date): Promise<StoreBooking[]> {
   const rows = await db().execute<Row>(sql`
-    select b.id, b.starts_at, b.ends_at, b.status, r.name as staff,
+    select b.id, b.starts_at, b.ends_at, b.status, r.name as staff, b.resource_id,
       coalesce((select t.title from commerce.product_translations t where t.product_id = b.product_id order by t.locale limit 1), p.handle) as service,
       o.id as order_id, o.number as order_number,
       coalesce(nullif(o.billing_address ->> 'name', ''), o.email, '') as customer
@@ -208,8 +217,31 @@ export async function listBookings(storeId: string, from: Date, to: Date): Promi
     status: row.status as StoreBooking["status"],
     service: String(row.service),
     staff: String(row.staff),
+    resourceId: String(row.resource_id),
     orderId: row.order_id ? String(row.order_id) : null,
     orderNumber: row.order_number ? String(row.order_number) : null,
     customer: String(row.customer ?? ""),
   }));
+}
+
+/**
+ * The store cancels a confirmed appointment: its time is free again, and
+ * the order keeps a note. Paying back is done from the order, as for goods.
+ */
+export async function cancelBooking({ account, store }: Membership, bookingId: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    update commerce.bookings set status = 'cancelled', cancelled_at = now(), updated_at = now()
+    where store_id = ${store.id}::uuid and id = ${bookingId}::uuid and status = 'confirmed'
+    returning order_id, starts_at
+  `);
+  if (!row) return false;
+  if (row.order_id) {
+    await db().execute(sql`
+      insert into commerce.order_events (store_id, order_id, type, data, actor)
+      values (${store.id}::uuid, ${String(row.order_id)}::uuid, 'booking.cancelled',
+              ${JSON.stringify({ booking: bookingId, startsAt: new Date(String(row.starts_at)).toISOString() })}::jsonb, 'staff')
+    `);
+  }
+  await audit(account.id, store.id, "booking.cancelled", { id: bookingId });
+  return true;
 }

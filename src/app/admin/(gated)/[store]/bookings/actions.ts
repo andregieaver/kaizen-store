@@ -1,11 +1,13 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
-import { removeResource, saveResource } from "@/server/bookings";
+import { cancelBooking, removeResource, saveResource } from "@/server/bookings";
+import { sendBookingCancelled } from "@/server/shopper-emails";
 
 /** Adds or changes a member of staff who takes appointments (D65); a new one goes back to the list. */
 export async function saveStaffAction(
@@ -34,4 +36,17 @@ export async function removeStaffAction(storeSlug: string, staffId: string): Pro
     return { ok: false, problems: ["They are no longer in the store."] };
   }
   redirect(`/admin/${storeSlug}/bookings/staff`);
+}
+
+/**
+ * Cancels one confirmed appointment from the calendar (D65), telling the
+ * shopper with a calendar cancellation when asked. Paying back is done from
+ * the order.
+ */
+export async function cancelBookingAction(storeSlug: string, bookingId: string, formData: FormData): Promise<void> {
+  const member = await requireMember(storeSlug);
+  if (!z.uuid().safeParse(bookingId).success) return;
+  if (!(await cancelBooking(member, bookingId))) return;
+  if (formData.get("notify") === "on") await sendBookingCancelled(member.store.id, bookingId);
+  refresh();
 }

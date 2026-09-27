@@ -59,6 +59,15 @@ describe("deliver", () => {
     });
   });
 
+  it("sends attachments such as a calendar file, base64-encoded", async () => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ id: "re-email-3" }));
+    const attachments = [{ filename: "time.ics", content: "BEGIN:VCALENDAR\r\nSUMMARY:Ø\r\n", contentType: "text/calendar" }];
+    await deliver(settings, "abc", { ...message, attachments }, fetcher);
+    const [file] = JSON.parse(fetcher.mock.calls[0][1].body).attachments;
+    expect(file).toEqual({ filename: "time.ics", content: expect.any(String), content_type: "text/calendar" });
+    expect(Buffer.from(file.content, "base64").toString("utf8")).toBe(attachments[0].content);
+  });
+
   it("tries again when Resend is busy, but not when the email is refused", async () => {
     const busy = vi
       .fn()

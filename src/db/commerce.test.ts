@@ -1387,6 +1387,13 @@ describe("bookings (D65)", () => {
     expect(await one("select count(*)::int as n from commerce.order_events where order_id = $1 and type = 'booking.lost'", [late])).toEqual({
       n: 1,
     });
+    // Staff cancelling a paid order gives up its confirmed time too.
+    await db.query("update commerce.orders set status = 'cancelled' where id = $1", [late]);
+    expect(await status(kept)).toBe("cancelled");
+    // Reminders go a set number of hours before, within a week.
+    await expect(db.query("update commerce.stores set booking_reminder_hours = 200 where id = $1", [store])).rejects.toThrow(
+      /stores_booking_reminder_hours/,
+    );
     await expect(
       db.query("update commerce.stores set modules = '{bookings,parking}' where id = $1", [store]),
     ).rejects.toThrow(/stores_modules/);

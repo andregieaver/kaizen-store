@@ -8,7 +8,7 @@ import { db } from "@/db/client";
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
 import { markCheckoutRecovered } from "./cart-reminders";
 import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
-import { sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
+import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -92,6 +92,8 @@ export async function applySession(
     await linkOrderToCustomer(storeId, orderId);
     // Once per order, however many times the session is applied (D26).
     await sendOrderConfirmation(storeId, orderId);
+    // Staff with an email hear of their new appointments (D65), once each.
+    await sendBookingStaffNotices(storeId, orderId);
     if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
   } else if (failed || expired) {
     await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");

@@ -309,6 +309,8 @@ export const stores = commerce.table(
     modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
     /** Where the store's times are, e.g. appointments' (D65): an IANA time zone. */
     timeZone: text("time_zone").notNull().default("Europe/Oslo"),
+    /** Hours before an appointment its reminder goes to the shopper (D65); 0 sends none. */
+    bookingReminderHours: integer("booking_reminder_hours").notNull().default(24),
     /**
      * One of the store's own pages shown as its front page in every market
      * (D54), instead of the product list. Null for the product list. The
@@ -330,6 +332,7 @@ export const stores = commerce.table(
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check("stores_modules", sql`${t.modules} <@ array['bookings']::text[]`),
+    check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check(
       "stores_slug_format",
       sql`${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$'`,
@@ -2935,6 +2938,8 @@ export const bookings = commerce.table(
     orderId: uuid("order_id"),
     orderLineId: uuid("order_line_id"),
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /** When the reminder before it was sent to the shopper. */
+    remindedAt: timestamp("reminded_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -2954,6 +2959,8 @@ export const bookings = commerce.table(
     index("bookings_order_idx").on(t.storeId, t.orderId),
     index("bookings_order_line_idx").on(t.storeId, t.orderLineId),
     index("bookings_store_starts_idx").on(t.storeId, t.startsAt),
+    // Reminders still to send, across stores (D65).
+    index("bookings_reminder_due_idx").on(t.startsAt).where(sql`${t.status} = 'confirmed' and ${t.remindedAt} is null`),
     check("bookings_status", sql`${t.status} in ('held', 'confirmed', 'cancelled')`),
     check("bookings_times", sql`${t.startsAt} < ${t.endsAt}`),
     check("bookings_blocked", sql`${t.blockedFrom} <= ${t.startsAt} and ${t.blockedTo} >= ${t.endsAt}`),

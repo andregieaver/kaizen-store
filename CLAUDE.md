@@ -316,7 +316,15 @@ of running `playwright install`.
   time with `holdAppointment()` (the chosen person, or the first free) and
   undoes the whole order as `slot_taken` if one is gone. Order lines find
   their time through `bookings.order_line_id` (`OrderView` lines' `booking`);
-  show times with `formatBookingTime()` in the store's time zone.
+  show times with `formatBookingTime()` in the store's time zone. Emails
+  about bookings carry a calendar file (`src/lib/ics.ts`, one uid per
+  booking so a cancellation replaces it; `attachments` on `sendEmail`): the
+  confirmation, staff notices (`sendBookingStaffNotices`, from
+  `applySession`), reminders (`stores.booking_reminder_hours`,
+  `sendDueBookingReminders()` in the five-minute cron, claimed through
+  `bookings.reminded_at`) and cancellations. A cancelled order gives up its
+  times; the store cancels one from the week calendar (`cancelBooking()`,
+  layout in `src/lib/booking-calendar.ts`) and refunds from the order.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and

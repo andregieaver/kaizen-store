@@ -6,14 +6,16 @@ import { db } from "@/db/client";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
+import { calendarFile, type CalendarEvent } from "@/lib/ics";
 import { t, type Messages } from "@/lib/i18n";
 import { toMarket, type Market, type MarketRow } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
+import { siteUrl } from "@/lib/site";
 
-import { sendEmail, type SendOutcome } from "./email";
-import { getOrder, type OrderView } from "./orders";
+import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
+import { getOrder, type OrderBooking, type OrderView } from "./orders";
 import type { Store } from "./stores";
 import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
 
@@ -123,6 +125,47 @@ function orderLines(
   };
 }
 
+type BookedLine = OrderView["lines"][number] & { booking: OrderBooking };
+
+/** An order's appointments (D65), confirmed ones unless said. */
+function bookedLines(order: OrderView, status: OrderBooking["status"] = "confirmed"): BookedLine[] {
+  return order.lines.filter((line): line is BookedLine => line.booking?.status === status);
+}
+
+/** A booking as a calendar event: the same uid in every email about it, so a cancellation replaces it. */
+function bookingEvent(line: BookedLine, store: EmailStore, m: Messages, cancelled = false): CalendarEvent {
+  const { booking } = line;
+  return {
+    uid: `booking-${booking.id}@kaizen`,
+    startsAt: booking.startsAt,
+    endsAt: booking.endsAt,
+    summary: `${line.title} · ${store.name}`,
+    description: m.booking.withStaff(booking.staff),
+    location: booking.place ?? undefined,
+    organizer: store.details.contactEmail ? { name: store.name, email: store.details.contactEmail } : null,
+    cancelled,
+  };
+}
+
+/** The calendar file sent with an email about bookings. */
+function calendarAttachment(events: CalendarEvent[]): NonNullable<OutgoingEmail["attachments"]> {
+  if (events.length === 0) return [];
+  const cancel = events.every((e) => e.cancelled);
+  return [
+    {
+      filename: cancel ? "cancelled.ics" : "appointment.ics",
+      content: calendarFile(events),
+      contentType: `text/calendar; charset=utf-8; method=${cancel ? "CANCEL" : "PUBLISH"}`,
+    },
+  ];
+}
+
+/** An appointment as the emails write it: what, when, with whom, and where. */
+function bookingText(line: BookedLine, locale: string, m: Messages): string {
+  const when = formatBookingTime(line.booking.startsAt, locale, line.booking.timeZone);
+  return [`${line.title}: ${when}, ${m.booking.withStaff(line.booking.staff)}`, line.booking.place].filter(Boolean).join("\n");
+}
+
 /** The company an order was bought for (B2B), as on its invoice. */
 function companyText(order: OrderView, m: Messages): string | null {
   return order.company ? `${order.company.name}\n${m.company.number}: ${order.company.number}` : null;
@@ -151,6 +194,7 @@ export async function sendOrderConfirmation(
   const url = await orderUrl(storeId, store, market, orderId);
   const address = addressText(order);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
+  const booked = bookedLines(order);
 
   const blocks: EmailBlock[] = [
     { type: "heading", text: text.orderHeading },
@@ -159,6 +203,15 @@ export async function sendOrderConfirmation(
     ...[companyText(order, m)].flatMap((company) => (company ? [{ type: "paragraph" as const, text: company }] : [])),
     ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
     ...(digital ? [{ type: "paragraph" as const, text: text.downloadsReady }] : []),
+    // Appointments (D65): where and when again, and the calendar file.
+    ...(booked.length > 0
+      ? [
+          {
+            type: "paragraph" as const,
+            text: `${text.appointmentsHeading}:\n${booked.map((line) => bookingText(line, order.locale, m)).join("\n\n")}\n\n${text.calendarNote}`,
+          },
+        ]
+      : []),
     ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
     ...(subscription
       ? [
@@ -193,6 +246,7 @@ export async function sendOrderConfirmation(
     idempotencyKey: resend ? undefined : `order-confirmation:${orderId}`,
     orderId,
     subscriptionId: subscription?.id ?? null,
+    attachments: calendarAttachment(booked.map((line) => bookingEvent(line, store, m))),
   });
 }
 
@@ -207,15 +261,16 @@ async function orderNotice(
     text: EmailText;
     money: (minor: number) => string;
     store: EmailStore;
-  }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[] },
+    m: Messages;
+  }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[]; attachments?: OutgoingEmail["attachments"] },
 ): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
   if (!order?.email) return null;
   const ctx = await context(storeId, order.marketCode, order.locale);
   if (!ctx) return null;
-  const { store, market, text } = ctx;
+  const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
-  const built = build({ order, text, money, store });
+  const built = build({ order, text, money, store, m });
   const url = await orderUrl(storeId, store, market, orderId);
   const email = renderEmail({
     subject: built.subject,
@@ -238,6 +293,7 @@ async function orderNotice(
     replyTo: store.details.contactEmail,
     idempotencyKey: key,
     orderId,
+    attachments: built.attachments,
   });
 }
 
@@ -270,10 +326,12 @@ export function sendRefunded(storeId: string, orderId: string, refundId: string,
 }
 
 export function sendCancelled(storeId: string, orderId: string, amountMinor: number) {
-  return orderNotice(storeId, orderId, "order.cancelled", `order-cancelled:${orderId}`, ({ order, text, money, store }) => ({
+  return orderNotice(storeId, orderId, "order.cancelled", `order-cancelled:${orderId}`, ({ order, text, money, store, m }) => ({
     subject: text.cancelledSubject(store.name, order.number),
     heading: text.cancelledHeading,
     intro: text.cancelledIntro(order.number, money(amountMinor)),
+    // Its appointments come out of the shopper's calendar too (D65).
+    attachments: calendarAttachment(bookedLines(order, "cancelled").map((line) => bookingEvent(line, store, m, true))),
   }));
 }
 
@@ -493,3 +551,163 @@ export async function sendRenewalReminder(
 }
 
 export { context as emailContext, footer as emailFooter, orderUrl, orderLines as orderLinesBlock, storeById };
+
+// ---------------------------------------------------------------------------
+// Appointments (D65)
+// ---------------------------------------------------------------------------
+
+/** An order's email about one of its bookings, with that booking's calendar event. */
+async function bookingEmail(
+  storeId: string,
+  bookingId: string,
+  kind: string,
+  build: (args: { order: OrderView; line: BookedLine; when: string; text: EmailText; store: EmailStore; m: Messages }) => {
+    subject: string;
+    heading: string;
+    intro: string;
+    cancelled: boolean;
+  },
+): Promise<SendOutcome | null> {
+  const [row] = await db().execute<Row>(sql`
+    select order_id from commerce.bookings where store_id = ${storeId}::uuid and id = ${bookingId}::uuid
+  `);
+  const order = row?.order_id ? await getOrder(storeId, String(row.order_id)) : null;
+  const line = order?.lines.find((l): l is BookedLine => l.booking?.id === bookingId);
+  if (!order?.email || !line) return null;
+  const ctx = await context(storeId, order.marketCode, order.locale);
+  if (!ctx) return null;
+  const { store, market, text, m } = ctx;
+  const when = formatBookingTime(line.booking.startsAt, order.locale, line.booking.timeZone);
+  const built = build({ order, line, when, text, store, m });
+  const url = await orderUrl(storeId, store, market, order.id);
+  const email = renderEmail({
+    subject: built.subject,
+    preview: built.intro,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: built.heading },
+      { type: "paragraph", text: built.intro },
+      { type: "paragraph", text: bookingText(line, order.locale, m) },
+      ...(built.cancelled ? [] : [{ type: "paragraph" as const, text: text.calendarNote }]),
+      ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind,
+    to: order.email,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `${kind}:${bookingId}`,
+    orderId: order.id,
+    attachments: calendarAttachment([bookingEvent(line, store, m, built.cancelled)]),
+  });
+}
+
+/** The reminder a set number of hours before an appointment. Once per booking. */
+export function sendBookingReminder(storeId: string, bookingId: string) {
+  return bookingEmail(storeId, bookingId, "booking.reminder", ({ when, text, store }) => ({
+    subject: text.bookingReminderSubject(store.name, when),
+    heading: text.bookingReminderHeading,
+    intro: text.bookingReminderIntro(when),
+    cancelled: false,
+  }));
+}
+
+/** The store has cancelled one appointment: the shopper is told, and it leaves their calendar. */
+export function sendBookingCancelled(storeId: string, bookingId: string) {
+  return bookingEmail(storeId, bookingId, "booking.cancelled", ({ line, when, text, store }) => ({
+    subject: text.bookingCancelledSubject(store.name, when),
+    heading: text.bookingCancelledHeading,
+    intro: text.bookingCancelledIntro(line.title, when),
+    cancelled: true,
+  }));
+}
+
+/**
+ * Tells each member of staff with an email about their new bookings in a
+ * paid order, with the calendar event. In English, like the admin; once per
+ * booking.
+ */
+export async function sendBookingStaffNotices(storeId: string, orderId: string): Promise<SendOutcome[]> {
+  const order = await getOrder(storeId, orderId);
+  const booked = order ? bookedLines(order) : [];
+  if (!order || booked.length === 0) return [];
+  const store = await storeById(storeId);
+  if (!store) return [];
+  const emails = await db().execute<Row>(sql`
+    select b.id, r.email from commerce.bookings b
+    join commerce.booking_resources r on r.store_id = b.store_id and r.id = b.resource_id
+    where b.store_id = ${storeId}::uuid and b.order_id = ${orderId}::uuid and r.email <> ''
+  `);
+  const staffEmail = new Map(emails.map((row) => [String(row.id), String(row.email)]));
+  const m = t("en");
+  const customer = [order.billingAddress.name, order.email, order.billingAddress.phone].filter(Boolean).join(" · ");
+  const outcomes: SendOutcome[] = [];
+  for (const line of booked) {
+    const to = staffEmail.get(line.booking.id);
+    if (!to) continue;
+    const when = formatBookingTime(line.booking.startsAt, "en-GB", line.booking.timeZone);
+    const email = renderEmail({
+      subject: `New booking: ${line.title}, ${when}`,
+      preview: `${line.title}, ${when}, ${customer}`,
+      lang: "en",
+      footer: [store.name],
+      blocks: [
+        { type: "heading", text: "New booking" },
+        { type: "paragraph", text: bookingText(line, "en-GB", m) },
+        { type: "paragraph", text: `Customer: ${customer}\nOrder ${order.number}` },
+        { type: "button", text: "See the order", url: `${siteUrl()}/admin/${store.slug}/orders/${order.id}` },
+      ],
+    });
+    outcomes.push(
+      await sendEmail({
+        storeId,
+        kind: "booking.staff",
+        to,
+        email,
+        fromName: store.name,
+        replyTo: order.email,
+        idempotencyKey: `booking.staff:${line.booking.id}`,
+        orderId: order.id,
+        attachments: calendarAttachment([{ ...bookingEvent(line, store, m), description: `${customer}\nOrder ${order.number}` }]),
+      }),
+    );
+  }
+  return outcomes;
+}
+
+/**
+ * Sends the reminders now due, across stores: confirmed appointments of
+ * paid orders starting within the store's reminder hours. Each is claimed
+ * before it is sent, so none goes twice. Bookings made inside that window
+ * get none: their confirmation has just told them.
+ */
+export async function sendDueBookingReminders(limit = 100): Promise<number> {
+  const due = await db().execute<Row>(sql`
+    update commerce.bookings set reminded_at = now()
+    where id in (
+      select b.id from commerce.bookings b
+      join commerce.stores s on s.id = b.store_id
+      join commerce.orders o on o.store_id = b.store_id and o.id = b.order_id
+      where b.status = 'confirmed' and b.reminded_at is null
+        and b.starts_at > now()
+        and s.booking_reminder_hours > 0
+        and b.starts_at <= now() + make_interval(hours => s.booking_reminder_hours)
+        and b.created_at <= b.starts_at - make_interval(hours => s.booking_reminder_hours)
+        and o.status in ('paid', 'fulfilled') and o.email <> ''
+      order by b.starts_at
+      limit ${limit}
+      for update of b skip locked
+    )
+    returning id, store_id
+  `);
+  let sent = 0;
+  for (const row of due) {
+    const outcome = await sendBookingReminder(String(row.store_id), String(row.id));
+    if (outcome === "sent" || outcome === "logged") sent += 1;
+  }
+  return sent;
+}

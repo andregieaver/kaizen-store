@@ -37,7 +37,7 @@ type Delivery = { ok: true; id: string } | { ok: false; error: string };
 export async function deliver(
   settings: EmailSettings,
   id: string,
-  message: Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers">,
+  message: Pick<OutgoingEmail, "storeId" | "kind" | "to" | "email" | "fromName" | "replyTo" | "headers" | "attachments">,
   fetcher: typeof fetch = fetch,
 ): Promise<Delivery> {
   const body = JSON.stringify({
@@ -48,6 +48,13 @@ export async function deliver(
     text: message.email.text,
     ...(message.replyTo && { reply_to: [message.replyTo] }),
     ...(message.headers && { headers: message.headers }),
+    ...(message.attachments?.length && {
+      attachments: message.attachments.map((file) => ({
+        filename: file.filename,
+        content: Buffer.from(file.content, "utf8").toString("base64"),
+        content_type: file.contentType,
+      })),
+    }),
     tags: [
       { name: "kind", value: message.kind.replace(/[^A-Za-z0-9_-]/g, "_") },
       { name: "store", value: message.storeId ?? "kaizen" },
@@ -100,6 +107,8 @@ export type OutgoingEmail = {
   subscriptionId?: string | null;
   /** Extra headers, such as List-Unsubscribe on reminders (D33). */
   headers?: Record<string, string>;
+  /** Text files sent with it, such as a booking's calendar file (D65); not kept with the email. */
+  attachments?: { filename: string; content: string; contentType: string }[];
 };
 
 export type SendOutcome = "sent" | "logged" | "failed" | "duplicate";

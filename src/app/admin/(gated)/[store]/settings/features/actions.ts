@@ -17,6 +17,7 @@ export async function saveBookingsModuleAction(storeSlug: string, _state: FormSt
   const parsed = bookingsModuleInput.safeParse({
     enabled: formData.get("bookings") === "on",
     timeZone: formData.get("timeZone"),
+    reminderHours: formData.get("reminderHours") ?? 24,
   });
   if (!parsed.success) return problems([...new Set(parsed.error.issues.map((issue) => issue.message))]);
   await setBookingsModule(member, parsed.data);

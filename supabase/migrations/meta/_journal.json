@@ -624,6 +624,20 @@
       "when": 1790462648060,
       "tag": "20260926224408_bookings_order_line_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1790463783196,
+      "tag": "20260926230303_booking_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1790463785122,
+      "tag": "20260926230305_booking_reminders_rules",
+      "breakpoints": true
     }
   ]
 }

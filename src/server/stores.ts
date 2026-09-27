@@ -39,6 +39,8 @@ export type Store = {
   bookingsOn: boolean;
   /** Where the store's times are, e.g. appointments' (D65). */
   timeZone: string;
+  /** Hours before an appointment its reminder goes (D65); 0 sends none. */
+  bookingReminderHours: number;
   /** Active markets, the store's own country first. */
   markets: Market[];
   /** Search and sharing settings. */
@@ -92,7 +94,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking, s.custom_code, s.theme,
-      s.audience, s.business_popup, s.open_cart_on_add, s.modules, s.time_zone,
+      s.audience, s.business_popup, s.open_cart_on_add, s.modules, s.time_zone, s.booking_reminder_hours,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -143,6 +145,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     openCartOnAdd: Boolean(row.open_cart_on_add),
     bookingsOn: ((row.modules ?? []) as string[]).includes("bookings"),
     timeZone: String(row.time_zone ?? "Europe/Oslo"),
+    bookingReminderHours: Number(row.booking_reminder_hours ?? 24),
     markets: (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(
       toMarket,
     ),

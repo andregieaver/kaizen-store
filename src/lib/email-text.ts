@@ -35,6 +35,16 @@ const text = {
     cancelledHeading: "Bestillingen er kansellert",
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er kansellert, og ${amount} er refundert.`,
+    /** Appointments (D65). */
+    appointmentsHeading: "Timen din",
+    calendarNote: "Legg timen i kalenderen din med vedlegget.",
+    bookingReminderSubject: (store: string, when: string) => `Påminnelse: timen din hos ${store} ${when}`,
+    bookingReminderHeading: "Vi ses snart",
+    bookingReminderIntro: (when: string) => `Dette er en påminnelse om timen din ${when}.`,
+    bookingCancelledSubject: (store: string, when: string) => `Timen din hos ${store} ${when} er avlyst`,
+    bookingCancelledHeading: "Timen er avlyst",
+    bookingCancelledIntro: (service: string, when: string) =>
+      `Vi har dessverre måttet avlyse ${service} ${when}. Svar på denne e-posten hvis du vil ha en ny tid eller har spørsmål om betalingen.`,
     codeSubject: (store: string) => `Innloggingskode for ${store}`,
     codeHeading: "Innloggingskoden din",
     codeIntro: "Skriv inn koden for å logge inn. Den virker i 10 minutter.",
@@ -100,6 +110,16 @@ const text = {
     cancelledHeading: "Beställningen har avbrutits",
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} har avbrutits och ${amount} har återbetalats.`,
+    /** Appointments (D65). */
+    appointmentsHeading: "Din tid",
+    calendarNote: "Lägg in tiden i din kalender med bilagan.",
+    bookingReminderSubject: (store: string, when: string) => `Påminnelse: din tid hos ${store} ${when}`,
+    bookingReminderHeading: "Vi ses snart",
+    bookingReminderIntro: (when: string) => `Det här är en påminnelse om din tid ${when}.`,
+    bookingCancelledSubject: (store: string, when: string) => `Din tid hos ${store} ${when} är inställd`,
+    bookingCancelledHeading: "Tiden är inställd",
+    bookingCancelledIntro: (service: string, when: string) =>
+      `Vi har tyvärr fått ställa in ${service} ${when}. Svara på det här mejlet om du vill boka en ny tid eller har frågor om betalningen.`,
     codeSubject: (store: string) => `Inloggningskod för ${store}`,
     codeHeading: "Din inloggningskod",
     codeIntro: "Ange koden för att logga in. Den gäller i 10 minuter.",
@@ -165,6 +185,16 @@ const text = {
     cancelledHeading: "Bestillingen er annulleret",
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er annulleret, og ${amount} er refunderet.`,
+    /** Appointments (D65). */
+    appointmentsHeading: "Din tid",
+    calendarNote: "Tilføj tiden til din kalender med vedhæftningen.",
+    bookingReminderSubject: (store: string, when: string) => `Påmindelse: din tid hos ${store} ${when}`,
+    bookingReminderHeading: "Vi ses snart",
+    bookingReminderIntro: (when: string) => `Dette er en påmindelse om din tid ${when}.`,
+    bookingCancelledSubject: (store: string, when: string) => `Din tid hos ${store} ${when} er aflyst`,
+    bookingCancelledHeading: "Tiden er aflyst",
+    bookingCancelledIntro: (service: string, when: string) =>
+      `Vi har desværre måttet aflyse ${service} ${when}. Svar på denne e-mail, hvis du vil have en ny tid eller har spørgsmål om betalingen.`,
     codeSubject: (store: string) => `Loginkode til ${store}`,
     codeHeading: "Din loginkode",
     codeIntro: "Indtast koden for at logge ind. Den virker i 10 minutter.",
@@ -230,6 +260,16 @@ const text = {
     cancelledHeading: "Your order is cancelled",
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} is cancelled and ${amount} has been refunded.`,
+    /** Appointments (D65). */
+    appointmentsHeading: "Your appointment",
+    calendarNote: "Add it to your calendar with the attached file.",
+    bookingReminderSubject: (store: string, when: string) => `Reminder: your appointment at ${store}, ${when}`,
+    bookingReminderHeading: "See you soon",
+    bookingReminderIntro: (when: string) => `This is a reminder of your appointment on ${when}.`,
+    bookingCancelledSubject: (store: string, when: string) => `Your appointment at ${store} on ${when} is cancelled`,
+    bookingCancelledHeading: "Your appointment is cancelled",
+    bookingCancelledIntro: (service: string, when: string) =>
+      `We have had to cancel ${service} on ${when}. Reply to this email to book a new time or with any questions about your payment.`,
     codeSubject: (store: string) => `Sign-in code for ${store}`,
     codeHeading: "Your sign-in code",
     codeIntro: "Enter the code to sign in. It works for 10 minutes.",
