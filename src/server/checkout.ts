@@ -796,8 +796,8 @@ export async function startCheckout(
     .join(" · ");
   const returnUrl = `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`;
   // Wallets, Link and Klarna show in Stripe's form only on registered domains.
-  if (ui === "custom" && origin.startsWith("https://") && !order.hostId) {
-    await ensurePaymentDomain(shop.storeId, connection.mode, connection.accountId, new URL(origin).hostname);
+  if (ui === "custom" && origin.startsWith("https://")) {
+    await ensurePaymentDomain(shop.storeId, connection.mode, seller, new URL(origin).hostname);
   }
 
   let session: Stripe.Checkout.Session;

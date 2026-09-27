@@ -69,7 +69,11 @@ async function saveHostAccount(
     on conflict (host_id, mode) do update set
       account_id = excluded.account_id, card_payments = excluded.card_payments,
       requirements_due = excluded.requirements_due, requirements = excluded.requirements,
-      managed_by_kaizen = excluded.managed_by_kaizen, updated_at = now()
+      managed_by_kaizen = excluded.managed_by_kaizen,
+      -- A new account has no domains registered yet.
+      payment_domains = case when commerce.host_stripe_accounts.account_id = excluded.account_id
+        then commerce.host_stripe_accounts.payment_domains else '{}' end,
+      updated_at = now()
   `);
   return status;
 }

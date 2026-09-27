@@ -29,6 +29,7 @@ const fake = vi.hoisted(() => {
   const reversals: { id: string; params: Record<string, unknown> }[] = [];
   const refunds: { params: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const accountUpdates: { id: string; params: Record<string, unknown> }[] = [];
+  const domains: { domain: string; account?: string }[] = [];
   const state = { cardPayments: "pending", transferFails: false, accounts: 0, run: Date.now().toString(36) };
   const account = (id: string) => ({
     id,
@@ -50,13 +51,22 @@ const fake = vi.hoisted(() => {
       },
     },
     accounts: { createExternalAccount: async () => ({ id: "ba_test" }) },
+    paymentMethodDomains: {
+      create: async (params: { domain_name: string }, options: { stripeAccount?: string }) => {
+        domains.push({ domain: params.domain_name, account: options?.stripeAccount });
+        return { id: `pmd_${domains.length}` };
+      },
+      list: async () => ({ data: [] }),
+    },
     checkout: {
       sessions: {
         create: async (params: Record<string, unknown>, options: Record<string, unknown>) => {
           const id = `cs_host_${++next}`;
           sessions.set(id, { status: "open", payment_status: "unpaid" });
           created.push({ params, options });
-          return { id, url: `https://checkout.stripe.test/${id}`, client_secret: null };
+          return params.ui_mode === "elements"
+            ? { id, url: null, client_secret: `${id}_secret_test` }
+            : { id, url: `https://checkout.stripe.test/${id}`, client_secret: null };
         },
         retrieve: async (id: string, _params: unknown, options: { stripeAccount?: string }) => {
           if (!options?.stripeAccount) throw new Error("no connected account");
@@ -83,7 +93,7 @@ const fake = vi.hoisted(() => {
       },
     },
   };
-  return { client, created, sessions, transfers, reversals, refunds, accountUpdates, state };
+  return { client, created, sessions, transfers, reversals, refunds, accountUpdates, domains, state };
 });
 
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => null }));
@@ -163,15 +173,17 @@ const hostAccount = () => `acct_host${fake.state.run}1`;
 const cartId = () => jar.get(`cart_${storeId}_${no.slug}`)!;
 
 /** Two ordinary nights, from a Monday a few weeks ahead outside high summer. */
-function checkIn(): string {
+function checkIn(weeksLater = 0): string {
   const today = zonedDate(Date.now(), "Europe/Oslo");
-  let date = addDays(today.slice(5) >= "06-01" && today.slice(5) < "08-16" ? `${today.slice(0, 4)}-08-20` : today, 14);
+  let date = addDays(today.slice(5) >= "06-01" && today.slice(5) < "08-16" ? `${today.slice(0, 4)}-08-20` : today, 14 + 7 * weeksLater);
   while (new Date(`${date}T12:00:00Z`).getUTCDay() !== 1) date = addDays(date, 1);
   return new Date(zonedTime(date, "15:00", tz)).toISOString();
 }
 
-async function addCabin() {
-  expect((await changeLine(shop(), cabinVariant, 2, "add", null, undefined, { startsAt: checkIn(), resourceId: null })).outcome).toBe("added");
+async function addCabin(weeksLater = 0) {
+  expect(
+    (await changeLine(shop(), cabinVariant, 2, "add", null, undefined, { startsAt: checkIn(weeksLater), resourceId: null })).outcome,
+  ).toBe("added");
 }
 
 describe("paying hosts (D71)", () => {
@@ -323,6 +335,28 @@ describe("paying hosts (D71)", () => {
     expect(csv[0]).toMatch(/^Host,Email,Type,Legal name,Date of birth,Address,Country,TIN,/);
     expect(csv[1]).toContain(`Karis hytter,kari-${slug}@example.com,individual,Kari Nordmann,1980-05-17,"Storgata 1, 0155 Oslo",NO,01018012345,NO`);
     expect(dac7.dac7Csv(report, "properties")).toContain("Kari Nordmann,");
+  });
+
+  it("registers the site's domain on the host's account for wallets on Kaizen's checkout page, once", async () => {
+    await db().execute(sql`update commerce.platform_settings set checkout_ui = 'custom'`);
+    try {
+      for (const weeks of [2, 4]) {
+        jar.clear();
+        await addCabin(weeks);
+        expect(await startCheckout(shop(), cartId(), "https://butikk.example.no", "Frakt")).toMatchObject({ ok: true });
+        expect(fake.created.at(-1)?.options).toMatchObject({ stripeAccount: hostAccount() });
+      }
+      expect(fake.domains).toEqual([{ domain: "butikk.example.no", account: hostAccount() }]);
+      const [row] = await db().execute<Row>(sql`
+        select h.payment_domains as host, s.payment_domains as store
+        from commerce.host_stripe_accounts h, commerce.stripe_accounts s
+        where h.host_id = ${hostId}::uuid and h.mode = 'test' and s.store_id = ${storeId}::uuid and s.mode = 'test'
+      `);
+      // The store's own account is not touched.
+      expect(row).toEqual({ host: ["butikk.example.no"], store: [] });
+    } finally {
+      await db().execute(sql`update commerce.platform_settings set checkout_ui = 'hosted'`);
+    }
   });
 
   it("takes the store's commission as a share of what is paid online", () => {

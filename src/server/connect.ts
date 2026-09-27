@@ -474,10 +474,11 @@ export async function setCheckoutUi(account: Account, ui: CheckoutUi): Promise<S
 }
 
 /**
- * Registers the site's domain on the store's Stripe account, once, so Apple
- * Pay, Google Pay, Link and Klarna can show in Stripe's form on Kaizen's
- * checkout page (Stripe needs this per account for direct charges). A
- * failure only hides those methods; the checkout goes on.
+ * Registers the site's domain on the Stripe account taking the payment
+ * (the store's own, or a host's, D71), once, so Apple Pay, Google Pay, Link
+ * and Klarna can show in Stripe's form on Kaizen's checkout page (Stripe
+ * needs this per account for direct charges). A failure only hides those
+ * methods; the checkout goes on.
  */
 export async function ensurePaymentDomain(
   storeId: string,
@@ -487,9 +488,11 @@ export async function ensurePaymentDomain(
 ): Promise<boolean> {
   const stripe = platformStripe(mode);
   if (!stripe || !/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return false;
+  const where = sql`store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${accountId}`;
   const [row] = await db().execute<Row>(sql`
-    select ${domain} = any(payment_domains) as done from commerce.stripe_accounts
-    where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${accountId}
+    select ${domain} = any(payment_domains) as done, false as host from commerce.stripe_accounts where ${where}
+    union all
+    select ${domain} = any(payment_domains), true from commerce.host_stripe_accounts where ${where}
   `);
   if (!row) return false;
   if (row.done) return true;
@@ -502,10 +505,10 @@ export async function ensurePaymentDomain(
       .catch(() => null);
     if (!found?.data.length) return false;
   }
+  const table = row.host ? sql`commerce.host_stripe_accounts` : sql`commerce.stripe_accounts`;
   await db().execute(sql`
-    update commerce.stripe_accounts set payment_domains = array_append(payment_domains, ${domain})
-    where store_id = ${storeId}::uuid and mode = ${mode} and account_id = ${accountId}
-      and not ${domain} = any(payment_domains)
+    update ${table} set payment_domains = array_append(payment_domains, ${domain})
+    where ${where} and not ${domain} = any(payment_domains)
   `);
   return true;
 }

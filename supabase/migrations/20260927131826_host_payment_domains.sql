@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."host_stripe_accounts" ADD COLUMN "payment_domains" text[] DEFAULT '{}'::text[] NOT NULL;

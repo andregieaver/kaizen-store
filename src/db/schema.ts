@@ -2914,6 +2914,8 @@ export const hostStripeAccounts = commerce.table(
     requirements: jsonb("requirements").notNull().default([]),
     /** Created and filled in by Kaizen with Stripe's test values (test mode, D20). */
     managedByKaizen: boolean("managed_by_kaizen").notNull().default(false),
+    /** The site domains registered on it for wallets, Link and Klarna, as on the store's own. */
+    paymentDomains: text("payment_domains").array().notNull().default(sql`'{}'::text[]`),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
