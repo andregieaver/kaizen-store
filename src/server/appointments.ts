@@ -100,7 +100,11 @@ export async function getAppointmentOffer(storeId: string, productId: string): P
   return shown;
 }
 
-/** Times taken on these resources that overlap the range: confirmed, or held and not expired. */
+/**
+ * Times taken on these resources that overlap the range: bookings confirmed,
+ * or held and not expired; and blocks (D67), which close the whole resource,
+ * so each counts once for every place it has.
+ */
 export async function busyOn(
   q: Queryable,
   storeId: string,
@@ -119,6 +123,15 @@ export async function busyOn(
       and id is distinct from ${exceptBookingId}::uuid
       and blocked_from < ${new Date(to).toISOString()}::timestamptz
       and blocked_to > ${new Date(from).toISOString()}::timestamptz
+    union all
+    select k.resource_id, k.starts_at, k.ends_at
+    from commerce.resource_blocks k
+    join commerce.booking_resources r on r.store_id = k.store_id and r.id = k.resource_id
+    cross join generate_series(1, r.capacity)
+    where k.store_id = ${storeId}::uuid
+      and k.resource_id in (${sql.join(resourceIds.map((id) => sql`${id}::uuid`), sql`, `)})
+      and k.starts_at < ${new Date(to).toISOString()}::timestamptz
+      and k.ends_at > ${new Date(from).toISOString()}::timestamptz
   `);
   for (const row of rows) {
     busy.get(String(row.resource_id))?.push({

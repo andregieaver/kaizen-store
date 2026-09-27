@@ -2852,6 +2852,8 @@ export const bookingResources = commerce.table(
     capacity: integer("capacity").notNull().default(1),
     active: boolean("active").notNull().default(true),
     position: integer("position").notNull().default(0),
+    /** The secret in its calendar's address (D67), for Airbnb, Booking.com and the like to read; null until asked for. */
+    calendarToken: text("calendar_token").unique("booking_resources_calendar_token_key"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -2861,6 +2863,79 @@ export const bookingResources = commerce.table(
     check("booking_resources_kind", sql`${t.kind} in ('staff', 'unit', 'item')`),
     check("booking_resources_capacity", sql`${t.capacity} between 1 and 500`),
     check("booking_resources_name", sql`length(${t.name}) between 1 and 120`),
+  ],
+);
+
+/**
+ * Another calendar a room, item or member of staff is also booked in (D67):
+ * an iCal address from Airbnb, Booking.com or the like, read every quarter
+ * of an hour into `resource_blocks`.
+ */
+export const calendarFeeds = commerce.table(
+  "calendar_feeds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    resourceId: uuid("resource_id").notNull(),
+    name: text("name").notNull(),
+    url: text("url").notNull(),
+    /** When it was last read, and what went wrong then (empty when it worked). */
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+    error: text("error").notNull().default(""),
+    /** Events read the last time. */
+    events: integer("events").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("calendar_feeds_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "calendar_feeds_resource_fk",
+      columns: [t.storeId, t.resourceId],
+      foreignColumns: [bookingResources.storeId, bookingResources.id],
+    }).onDelete("cascade"),
+    index("calendar_feeds_resource_idx").on(t.storeId, t.resourceId),
+    index("calendar_feeds_due_idx").on(t.syncedAt),
+    check("calendar_feeds_name", sql`length(${t.name}) between 1 and 80`),
+    check("calendar_feeds_url", sql`${t.url} ~ '^https://' and length(${t.url}) <= 2000`),
+  ],
+);
+
+/**
+ * A time a resource is closed (D67): blocked by the store (the owner's own
+ * week, repairs, holidays) or booked elsewhere, as an imported calendar
+ * says (`feed_id`, with the event's `uid`). A block closes the whole
+ * resource, whatever its capacity.
+ */
+export const resourceBlocks = commerce.table(
+  "resource_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    resourceId: uuid("resource_id").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    note: text("note").notNull().default(""),
+    feedId: uuid("feed_id"),
+    uid: text("uid"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "resource_blocks_resource_fk",
+      columns: [t.storeId, t.resourceId],
+      foreignColumns: [bookingResources.storeId, bookingResources.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "resource_blocks_feed_fk",
+      columns: [t.storeId, t.feedId],
+      foreignColumns: [calendarFeeds.storeId, calendarFeeds.id],
+    }).onDelete("cascade"),
+    index("resource_blocks_resource_time_idx").on(t.storeId, t.resourceId, t.startsAt),
+    uniqueIndex("resource_blocks_feed_uid_key").on(t.feedId, t.uid),
+    index("resource_blocks_feed_idx").on(t.storeId, t.feedId),
+    check("resource_blocks_times", sql`${t.startsAt} < ${t.endsAt}`),
+    check("resource_blocks_note", sql`length(${t.note}) <= 200`),
+    check("resource_blocks_feed_uid", sql`(${t.feedId} is null) = (${t.uid} is null)`),
   ],
 );
 

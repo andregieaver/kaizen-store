@@ -687,6 +687,20 @@
       "when": 1790507035261,
       "tag": "20260927110355_stays_and_rentals_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1790508068368,
+      "tag": "20260927112108_calendar_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1790508070176,
+      "tag": "20260927112110_calendar_sync_rules",
+      "breakpoints": true
     }
   ]
 }

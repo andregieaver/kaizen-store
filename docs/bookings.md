@@ -119,9 +119,12 @@ shortest and longest, and D66's payment and cancellation rules per product;
 a four-week date picker on the product page (`RangePicker`,
 `src/server/ranges.ts`, pure rules in `src/lib/booking-ranges.ts`); the cart
 line's quantity is the nights or days, and checkout holds the whole span.
-Shoppers cancel, but do not move, stays and rentals. B3b (blocked dates,
-iCal sync with Airbnb and Booking.com) and B3c (seasonal prices, cleaning
-fee) are next.
+Shoppers cancel, but do not move, stays and rentals. B3b is done (D68):
+blocked dates on each room, item or member of staff (time off), other
+sites' calendars read in every 15 minutes, and each room's or item's taken
+days published at a secret iCal address (`src/server/calendar-sync.ts`,
+pure parts in `src/lib/calendar-sync.ts`). B3c (seasonal prices, cleaning
+fee) is next.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`

@@ -71,6 +71,8 @@ export type BookingResource = {
   services: number;
   /** Confirmed bookings still to come. */
   upcoming: number;
+  /** The secret in its calendar's address for other sites (D67), once made. */
+  calendarToken: string | null;
 };
 
 const toResource = (row: Row): BookingResource => ({
@@ -83,10 +85,11 @@ const toResource = (row: Row): BookingResource => ({
   active: Boolean(row.active),
   services: Number(row.services ?? 0),
   upcoming: Number(row.upcoming ?? 0),
+  calendarToken: row.calendar_token ? String(row.calendar_token) : null,
 });
 
 const resourceColumns = sql`
-  r.id, r.kind, r.name, r.email, r.hours, r.capacity, r.active,
+  r.id, r.kind, r.name, r.email, r.hours, r.capacity, r.active, r.calendar_token,
   (select count(*)::int from commerce.product_resources pr where pr.store_id = r.store_id and pr.resource_id = r.id) as services,
   (select count(*)::int from commerce.bookings b
     where b.store_id = r.store_id and b.resource_id = r.id and b.status = 'confirmed' and b.starts_at > now()) as upcoming

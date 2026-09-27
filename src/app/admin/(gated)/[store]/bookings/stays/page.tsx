@@ -3,8 +3,10 @@ import Link from "next/link";
 
 import { occupiedDates } from "@/lib/booking-ranges";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
+import { exportDates } from "@/lib/calendar-sync";
 import { requireMember } from "@/server/auth";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
+import { blocksBetween } from "@/server/calendar-sync";
 
 import { CancelBookingForm } from "../cancel-booking-form";
 
@@ -30,13 +32,19 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
   const now = nowMs();
   const from = typeof query.from === "string" && DATE.test(query.from) ? query.from : today;
   const days = Array.from({ length: DAYS }, (_, i) => addDays(from, i));
+  const start = new Date(zonedTime(from, "00:00", tz));
+  const end = new Date(zonedTime(addDays(from, DAYS), "00:00", tz));
   const [bookings, units] = await Promise.all([
-    listBookings(store.id, new Date(zonedTime(from, "00:00", tz)), new Date(zonedTime(addDays(from, DAYS), "00:00", tz)), [
-      "unit",
-      "item",
-    ]),
+    listBookings(store.id, start, end, ["unit", "item"]),
     listResources(store.id, ["unit", "item"]),
   ]);
+  const blocks = await blocksBetween(store.id, units.map((u) => u.id), start, end);
+  const kindOf = new Map(units.map((u) => [u.id, u.kind]));
+  const blocked = new Set<string>();
+  for (const k of blocks) {
+    const { start: first, end: after } = exportDates(kindOf.get(k.resourceId) ?? "unit", Date.parse(k.startsAt), Date.parse(k.endsAt), tz);
+    for (let day = first; day < after; day = addDays(day, 1)) blocked.add(`${k.resourceId}|${day}`);
+  }
   const taken = (b: StoreBooking) => occupiedDates(b.kind === "unit" ? "stay" : "rental", b.startsAt, b.endsAt, tz);
   const used = new Map<string, number>();
   for (const b of bookings) for (const day of taken(b)) used.set(`${b.resourceId}|${day}`, (used.get(`${b.resourceId}|${day}`) ?? 0) + 1);
@@ -102,20 +110,29 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
               {units.map((u) => (
                 <tr key={u.id}>
                   <th scope="row" className="border-b border-border p-2 text-left font-normal">
-                    {u.name}
+                    <Link href={`/admin/${store.slug}/bookings/units/${u.id}`} className="underline-offset-2 hover:underline">
+                      {u.name}
+                    </Link>
                     <span className="block text-xs text-muted">{u.kind === "unit" ? "Stays" : "Rentals"}</span>
                   </th>
                   {days.map((day) => {
                     const count = used.get(`${u.id}|${day}`) ?? 0;
+                    const closed = blocked.has(`${u.id}|${day}`);
                     const full = count >= u.capacity;
                     return (
                       <td
                         key={day}
                         className={`border-b border-l border-border p-1 text-center text-xs tabular-nums ${
-                          full ? "bg-foreground/80 text-background" : count > 0 ? "bg-surface" : ""
+                          full ? "bg-foreground/80 text-background" : count > 0 ? "bg-surface" : closed ? "bg-surface text-muted" : ""
                         }`}
                       >
-                        {count > 0 ? (u.capacity > 1 ? `${count}/${u.capacity}` : <span aria-label="Taken">●</span>) : ""}
+                        {count > 0 ? (
+                          u.capacity > 1 ? `${count}/${u.capacity}` : <span aria-label="Taken">●</span>
+                        ) : closed ? (
+                          <span aria-label="Blocked">×</span>
+                        ) : (
+                          ""
+                        )}
                       </td>
                     );
                   })}

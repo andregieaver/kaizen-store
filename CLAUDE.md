@@ -335,6 +335,13 @@ of running `playwright install`.
   or days and `starts_at` the check-in, so prices and VAT need nothing new.
   Show any booking with `bookingWhen()` (`src/lib/booking-text.ts`); stays
   and rentals are cancelled, never moved.
+  Blocks (D68, `commerce.resource_blocks`) close a whole resource: set by
+  the store, or read from other sites' iCal calendars (`calendar_feeds`,
+  `syncDueFeeds()` in the five-minute cron, `src/server/calendar-sync.ts`).
+  Anything that decides whether a resource is free counts them: `busyOn()`
+  in code, `commerce.resource_blocked()` in SQL. A room's or item's own
+  calendar is published at `/api/calendar/{calendar_token}.ics`, whole days
+  marked only Booked or Blocked.
   How an appointment is paid (D66, `src/lib/pay-later.ts`): `now`,
   `deposit` or `venue` in `appointment_settings`; `venuePart()` gives each
   line's share for the venue, the same in the cart and `placeOrder`.

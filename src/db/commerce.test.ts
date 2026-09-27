@@ -909,6 +909,50 @@ describe("stays and rentals (D67)", () => {
       db.query("insert into commerce.booking_resources (store_id, kind, name, hours) values ($1, 'room', 'Rom 1', '{}')", [store]),
     ).rejects.toThrow(/booking_resources_kind/);
   });
+
+  it("books nothing over a blocked time, and a feed's blocks go with it (B3b)", async () => {
+    const { productId, variantId } = await createProduct();
+    const { id: room } = await one<{ id: string }>(
+      "insert into commerce.booking_resources (store_id, kind, name, hours, capacity) values ($1, 'unit', 'Rom 2', '{}', 2) returning id",
+      [store],
+    );
+    const hold = (from: string, to: string) =>
+      one<{ id: string | null }>(
+        "select commerce.hold_booking($1, $2, $3, $4, $5::timestamptz, $6::timestamptz, $5::timestamptz, $6::timestamptz, now() + interval '15 minutes', null) as id",
+        [store, productId, variantId, room, from, to],
+      );
+    await db.query(
+      "insert into commerce.resource_blocks (store_id, resource_id, starts_at, ends_at, note) values ($1, $2, '2030-03-01T11:00Z', '2030-03-04T11:00Z', 'Maling')",
+      [store, room],
+    );
+    // A block closes every place the room has; the days around it are open.
+    expect((await hold("2030-03-03T14:00Z", "2030-03-05T10:00Z")).id).toBeNull();
+    expect((await hold("2030-02-27T14:00Z", "2030-03-01T10:00Z")).id).not.toBeNull();
+    expect((await hold("2030-03-04T14:00Z", "2030-03-06T10:00Z")).id).not.toBeNull();
+
+    await expect(
+      db.query("insert into commerce.calendar_feeds (store_id, resource_id, name, url) values ($1, $2, 'Airbnb', 'http://example.com/a.ics')", [
+        store,
+        room,
+      ]),
+    ).rejects.toThrow(/calendar_feeds_url/);
+    const { id: feed } = await one<{ id: string }>(
+      "insert into commerce.calendar_feeds (store_id, resource_id, name, url) values ($1, $2, 'Airbnb', 'https://example.com/a.ics') returning id",
+      [store, room],
+    );
+    await expect(
+      db.query(
+        "insert into commerce.resource_blocks (store_id, resource_id, starts_at, ends_at, feed_id) values ($1, $2, '2030-04-01T10:00Z', '2030-04-02T10:00Z', $3)",
+        [store, room, feed],
+      ),
+    ).rejects.toThrow(/resource_blocks_feed_uid/);
+    await db.query(
+      "insert into commerce.resource_blocks (store_id, resource_id, starts_at, ends_at, feed_id, uid) values ($1, $2, '2030-04-01T10:00Z', '2030-04-02T10:00Z', $3, 'x@airbnb.com')",
+      [store, room, feed],
+    );
+    await db.query("delete from commerce.calendar_feeds where id = $1", [feed]);
+    expect(await one("select count(*)::int as n from commerce.resource_blocks where resource_id = $1", [room])).toEqual({ n: 1 });
+  });
 });
 
 describe("paying for an order", () => {

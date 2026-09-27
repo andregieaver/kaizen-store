@@ -65,3 +65,29 @@ test("the date picker fits a phone", async ({ page }) => {
   await expect(page.getByText("Hentes fra 09:00, leveres innen 17:00.")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
+
+test("a room's calendar is published at its secret address, as whole days, and nowhere else", async ({ request }) => {
+  const slug = await newStore();
+  const token = `e2e${Date.now()}abcdefghijklmnop`;
+  const sql = testDb();
+  try {
+    await sql`
+      update commerce.booking_resources r set calendar_token = ${token}
+      from commerce.stores s where s.id = r.store_id and s.slug = ${slug} and r.kind = 'unit'`;
+    await sql`
+      insert into commerce.resource_blocks (store_id, resource_id, starts_at, ends_at, note)
+      select r.store_id, r.id, '2030-05-01T10:00Z', '2030-05-03T10:00Z', 'Eierens uke'
+      from commerce.booking_resources r join commerce.stores s on s.id = r.store_id
+      where s.slug = ${slug} and r.kind = 'unit'`;
+  } finally {
+    await sql.end();
+  }
+  const response = await request.get(`/api/calendar/${token}.ics`);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("text/calendar");
+  const body = await response.text();
+  expect(body).toContain("DTSTART;VALUE=DATE:20300501\r\nDTEND;VALUE=DATE:20300503");
+  expect(body).toContain("SUMMARY:Blocked");
+  expect(body).not.toContain("Eierens uke");
+  expect((await request.get(`/api/calendar/${token}x.ics`)).status()).toBe(404);
+});

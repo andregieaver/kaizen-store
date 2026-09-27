@@ -8,6 +8,7 @@ import { requireMember } from "@/server/auth";
 import { getResource } from "@/server/bookings";
 
 import { removeUnitAction, saveUnitAction } from "../../actions";
+import { ResourceCalendar } from "../../resource-calendar";
 import { UnitForm } from "../unit-form";
 
 export const metadata: Metadata = { title: "Room or item" };
@@ -29,6 +30,7 @@ export default async function UnitPage({ params }: PageProps<"/admin/[store]/boo
         <h1 className="text-2xl font-semibold">{unit.name}</h1>
       </div>
       <UnitForm kind={kind} unit={unit} action={saveUnitAction.bind(null, store.slug, kind, unit.id)} />
+      <ResourceCalendar storeSlug={store.slug} storeId={store.id} timeZone={store.timeZone} resource={unit} />
       <DeleteDiscountButton
         action={removeUnitAction.bind(null, store.slug, unit.id)}
         code={unit.name}
