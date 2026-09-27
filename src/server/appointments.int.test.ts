@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { addDays } from "@/lib/booking-slots";
 import { toMarket } from "@/lib/markets";
 
 type Row = Record<string, unknown>;
@@ -30,6 +31,7 @@ vi.mock("./email", async (importOriginal) => {
 
 const { appointmentSlots, getAppointmentOffer } = await import("./appointments");
 const { cancelBooking } = await import("./bookings");
+const { cancelOwnBooking, moveOwnBooking } = await import("./booking-changes");
 const { sendBookingStaffNotices, sendDueBookingReminders, sendOrderConfirmation } = await import("./shopper-emails");
 const { changeLine, getCart } = await import("./cart");
 const { placeOrder } = await import("./checkout");
@@ -258,5 +260,67 @@ describe("appointment emails (D65)", () => {
     expect(sent[0].email.subject).toMatch(/er avlyst$/);
     expect(sent[0].attachments?.[0]).toMatchObject({ filename: "cancelled.ics" });
     expect(sent[0].attachments?.[0].content).toContain("STATUS:CANCELLED");
+  });
+});
+
+describe("shoppers changing their own bookings (D66)", () => {
+  /** A paid order for a time, opened by a key as the order page is. */
+  async function bookedOrder(startsAt: string): Promise<{ orderId: string; bookingId: string; key: string }> {
+    newShopper();
+    const added = await changeLine(shop, variantId, 1, "add", null, undefined, { startsAt, resourceId: null });
+    if (added.outcome !== "added") throw new Error(added.outcome);
+    const placed = await placeOrder(shop, cartId());
+    if (!placed.ok) throw new Error(placed.problem);
+    const orderId = placed.order.orderId;
+    const key = `venue_test_${orderId}`;
+    await db().execute(sql`update commerce.orders set status = 'paid', email = 'kunde@example.com' where id = ${orderId}::uuid`);
+    await db().execute(sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+      values (${storeId}::uuid, ${orderId}::uuid, 'venue', ${key}, 89000, 'NOK', 'pending')
+    `);
+    const [booking] = await db().execute<Row>(sql`select id from commerce.bookings where order_id = ${orderId}::uuid`);
+    return { orderId, bookingId: String(booking.id), key };
+  }
+
+  async function freeTimes(): Promise<string[]> {
+    const week = await appointmentSlots(storeId, productId, { from: addDays(first.slice(0, 10), 3) });
+    return week!.days.flatMap((d) => d.slots).map((s) => s.startsAt);
+  }
+
+  it("moves a booking to another free time, only for whoever has the order", async () => {
+    const [from, to] = await freeTimes();
+    const { orderId, bookingId, key } = await bookedOrder(from);
+    expect(await moveOwnBooking(storeId, orderId, { sessionId: "wrong" }, bookingId, to)).toBe("not_found");
+    const odd = new Date(Date.parse(to) + 7 * 60_000).toISOString();
+    expect(await moveOwnBooking(storeId, orderId, { sessionId: key }, bookingId, odd)).toBe("taken");
+    sent.length = 0;
+    expect(await moveOwnBooking(storeId, orderId, { sessionId: key }, bookingId, to)).toBe("done");
+    const [moved] = await db().execute<Row>(sql`select starts_at, sequence from commerce.bookings where id = ${bookingId}::uuid`);
+    expect({ startsAt: new Date(String(moved.starts_at)).toISOString(), sequence: moved.sequence }).toEqual({ startsAt: to, sequence: 1 });
+    // The shopper and Kari hear of it, and the event in their calendars is replaced.
+    expect(sent.map((e) => e.kind).sort()).toEqual(["booking.moved", "booking.staff_moved"]);
+    expect(sent[0].attachments?.[0].content).toContain("SEQUENCE:1");
+    expect(sent[0].attachments?.[0].content).toContain(`UID:booking-${bookingId}@kaizen`);
+  });
+
+  it("cancels a booking while the rule allows, cancelling an order with nothing else in it", async () => {
+    const times = await freeTimes();
+    const { orderId, bookingId, key } = await bookedOrder(times[times.length - 1]);
+    // Thirty days' notice: too late to change it online.
+    await db().execute(sql`update commerce.appointment_settings set cancel_hours = 720 where product_id = ${productId}::uuid`);
+    expect(await cancelOwnBooking(storeId, orderId, { sessionId: key }, bookingId)).toEqual({ outcome: "closed", refundMinor: 0 });
+    await db().execute(sql`update commerce.appointment_settings set cancel_hours = 24 where product_id = ${productId}::uuid`);
+
+    sent.length = 0;
+    expect(await cancelOwnBooking(storeId, orderId, { sessionId: key }, bookingId)).toEqual({ outcome: "done", refundMinor: 0 });
+    expect(await cancelOwnBooking(storeId, orderId, { sessionId: key }, bookingId)).toEqual({ outcome: "not_found", refundMinor: 0 });
+    const [state] = await db().execute<Row>(sql`
+      select o.status, b.status as booking from commerce.orders o join commerce.bookings b on b.order_id = o.id
+      where o.id = ${orderId}::uuid
+    `);
+    expect(state).toEqual({ status: "cancelled", booking: "cancelled" });
+    const shopperEmail = sent.find((e) => e.kind === "booking.cancelled_by_customer");
+    expect(shopperEmail?.email.subject).toMatch(/^Du har avbestilt timen /);
+    expect(shopperEmail?.attachments?.[0]).toMatchObject({ filename: "cancelled.ics" });
   });
 });

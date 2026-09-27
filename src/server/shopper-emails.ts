@@ -146,6 +146,8 @@ function bookingEvent(line: BookedLine, store: EmailStore, m: Messages, cancelle
     location: booking.place ?? undefined,
     organizer: store.details.contactEmail ? { name: store.name, email: store.details.contactEmail } : null,
     cancelled,
+    // Each move raised it; a cancellation goes one higher, so calendars take it over the event.
+    sequence: booking.sequence + (cancelled ? 1 : 0),
   };
 }
 
@@ -563,7 +565,15 @@ async function bookingEmail(
   storeId: string,
   bookingId: string,
   kind: string,
-  build: (args: { order: OrderView; line: BookedLine; when: string; text: EmailText; store: EmailStore; m: Messages }) => {
+  build: (args: {
+    order: OrderView;
+    line: BookedLine;
+    when: string;
+    text: EmailText;
+    store: EmailStore;
+    m: Messages;
+    money: (minor: number) => string;
+  }) => {
     subject: string;
     heading: string;
     intro: string;
@@ -576,11 +586,12 @@ async function bookingEmail(
   const order = row?.order_id ? await getOrder(storeId, String(row.order_id)) : null;
   const line = order?.lines.find((l): l is BookedLine => l.booking?.id === bookingId);
   if (!order?.email || !line) return null;
+  const money = (minor: number) => formatMoney(minor, order.currency, order.locale);
   const ctx = await context(storeId, order.marketCode, order.locale);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
   const when = formatBookingTime(line.booking.startsAt, order.locale, line.booking.timeZone);
-  const built = build({ order, line, when, text, store, m });
+  const built = build({ order, line, when, text, store, m, money });
   const url = await orderUrl(storeId, store, market, order.id);
   const email = renderEmail({
     subject: built.subject,
@@ -602,7 +613,8 @@ async function bookingEmail(
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
-    idempotencyKey: `${kind}:${bookingId}`,
+    // Once per booking and change: a booking moved twice gets two emails.
+    idempotencyKey: `${kind}:${bookingId}:${line.booking.sequence}`,
     orderId: order.id,
     attachments: calendarAttachment([bookingEvent(line, store, m, built.cancelled)]),
   });
@@ -615,6 +627,26 @@ export function sendBookingReminder(storeId: string, bookingId: string) {
     heading: text.bookingReminderHeading,
     intro: text.bookingReminderIntro(when),
     cancelled: false,
+  }));
+}
+
+/** The shopper moved their appointment (D66): the new time, replacing the event in their calendar. */
+export function sendBookingMoved(storeId: string, bookingId: string) {
+  return bookingEmail(storeId, bookingId, "booking.moved", ({ when, text, store }) => ({
+    subject: text.bookingMovedSubject(store.name, when),
+    heading: text.bookingMovedHeading,
+    intro: text.bookingMovedIntro(when),
+    cancelled: false,
+  }));
+}
+
+/** The shopper cancelled their appointment (D66): what is paid back, and it leaves their calendar. */
+export function sendBookingCancelledByShopper(storeId: string, bookingId: string, refundMinor: number) {
+  return bookingEmail(storeId, bookingId, "booking.cancelled_by_customer", ({ line, when, text, store, money }) => ({
+    subject: text.bookingCancelledByYouSubject(store.name, when),
+    heading: text.bookingCancelledByYouHeading,
+    intro: text.bookingCancelledByYouIntro(line.title, when, refundMinor > 0 ? money(refundMinor) : null),
+    cancelled: true,
   }));
 }
 
@@ -712,4 +744,55 @@ export async function sendDueBookingReminders(limit = 100): Promise<number> {
     if (outcome === "sent" || outcome === "logged") sent += 1;
   }
   return sent;
+}
+
+/**
+ * Tells the member of staff, if they have an email, that a customer moved
+ * or cancelled their booking (D66), with the calendar event updated or
+ * cancelled. In English, like the admin.
+ */
+export async function sendBookingStaffChange(
+  storeId: string,
+  bookingId: string,
+  change: "moved" | "cancelled",
+): Promise<SendOutcome | null> {
+  const [row] = await db().execute<Row>(sql`
+    select b.order_id, r.email from commerce.bookings b
+    join commerce.booking_resources r on r.store_id = b.store_id and r.id = b.resource_id
+    where b.store_id = ${storeId}::uuid and b.id = ${bookingId}::uuid
+  `);
+  if (!row?.email || !row.order_id) return null;
+  const order = await getOrder(storeId, String(row.order_id));
+  const line = order?.lines.find((l): l is BookedLine => l.booking?.id === bookingId);
+  const store = await storeById(storeId);
+  if (!order || !line || !store) return null;
+  const when = formatBookingTime(line.booking.startsAt, "en-GB", line.booking.timeZone);
+  const customer = [order.billingAddress.name, order.email].filter(Boolean).join(" · ");
+  const heading = change === "moved" ? "Booking moved" : "Booking cancelled";
+  const email = renderEmail({
+    subject: `${heading}: ${line.title}, ${when}`,
+    preview: `${line.title}, ${when}, ${customer}`,
+    lang: "en",
+    footer: [store.name],
+    blocks: [
+      { type: "heading", text: heading },
+      {
+        type: "paragraph",
+        text: `${change === "moved" ? "The customer moved their booking to" : "The customer cancelled their booking on"} ${when}: ${line.title}.`,
+      },
+      { type: "paragraph", text: `Customer: ${customer}\nOrder ${order.number}` },
+      { type: "button", text: "See the order", url: `${siteUrl()}/admin/${store.slug}/orders/${order.id}` },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: `booking.staff_${change}`,
+    to: String(row.email),
+    email,
+    fromName: store.name,
+    replyTo: order.email,
+    idempotencyKey: `booking.staff_${change}:${bookingId}:${line.booking.sequence}`,
+    orderId: order.id,
+    attachments: calendarAttachment([bookingEvent(line, store, t("en"), change === "cancelled")]),
+  });
 }

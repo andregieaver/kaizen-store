@@ -13,6 +13,7 @@ import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
+import { pickerLabels } from "@/lib/booking-labels";
 import { slotWeek } from "@/lib/booking-slots";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -304,27 +305,7 @@ async function AppointmentBooking({
         staff={offer.staff}
         initial={slotWeek(week, market.locale, store.timeZone)}
         openCart={store.openCartOnAdd}
-        labels={{
-          addToCart: m.addToCart,
-          adding: m.adding,
-          added: m.added,
-          capped: m.capped,
-          unavailable: m.unavailable,
-          planConflict: m.planConflict,
-          tryAgain: m.tryAgain,
-          goToCart: m.goToCart,
-          chooseTime: m.booking.chooseTime,
-          who: m.booking.who,
-          anyone: m.booking.anyone,
-          earlier: m.booking.earlier,
-          later: m.booking.later,
-          noTimes: m.booking.noTimes,
-          noTimesDay: m.booking.noTimesDay,
-          choose: m.booking.choose,
-          slotTaken: m.booking.slotTaken,
-          loading: m.booking.loading,
-          option: m.booking.option,
-        }}
+        labels={pickerLabels(m)}
       />
       <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable />
     </div>

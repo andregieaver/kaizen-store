@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { OwnBookings } from "@/components/own-bookings";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
@@ -79,6 +80,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
           ))}
         </section>
       )}
+
+      <OwnBookings order={order} store={store.slug} market={market} m={m} sessionId={null} />
 
       <section aria-label={m.orderSummary} className="rounded-lg border border-border p-4">
         <ul className="divide-y divide-border">

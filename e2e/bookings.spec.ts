@@ -95,3 +95,68 @@ test("a deposit is paid now and the rest at the appointment, and the page says u
   await expect(summary.locator("div").filter({ hasText: /^Betales nå/ })).toContainText("267,00");
   await expect(summary.locator("div").filter({ hasText: /^Betales på stedet/ })).toContainText("623,00");
 });
+
+/** A paid order for the massage, two days ahead at 10:00 in Oslo, paid at the venue: its page and key. */
+async function bookedOrder(slug: string): Promise<string> {
+  const sql = testDb();
+  try {
+    const [row] = await sql`
+      select s.id as store_id, p.id as product_id, v.id as variant_id, r.id as resource_id
+      from commerce.stores s
+      join commerce.products p on p.store_id = s.id and p.handle = 'massasje'
+      join commerce.product_variants v on v.product_id = p.id
+      join commerce.product_resources pr on pr.product_id = p.id
+      join commerce.booking_resources r on r.id = pr.resource_id
+      where s.slug = ${slug}`;
+    const [order] = await sql`
+      insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor,
+        tax_minor, total_minor, balance_minor, billing_address, shipping_address)
+      values (${row.store_id}, 'E2E-1', 'NO', 'NOK', 'nb-NO', 'kunde@example.com', 'paid', 89000, 0, 89000, 89000,
+        '{"name": "Kunde"}', '{}')
+      returning id`;
+    const [line] = await sql`
+      insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor,
+        total_minor, tax_minor, venue_minor, tax_rate, tax_code, withdrawal_exclusion, delivery)
+      values (${row.store_id}, ${order.id}, ${row.variant_id}, 'MASSASJE', 'Massasje', 1, 89000, 89000, 0, 89000, 0,
+        'txcd_20030000', 'dated_service', 'service')
+      returning id`;
+    await sql`
+      insert into commerce.bookings (store_id, product_id, variant_id, resource_id, starts_at, ends_at, blocked_from,
+        blocked_to, status, order_id, order_line_id)
+      select ${row.store_id}, ${row.product_id}, ${row.variant_id}, ${row.resource_id}, t, t + interval '1 hour', t,
+        t + interval '1 hour', 'confirmed', ${order.id}, ${line.id}
+      from (select (date_trunc('day', now() at time zone 'Europe/Oslo') + interval '2 days 10 hours') at time zone 'Europe/Oslo' as t) x`;
+    await sql`
+      insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+      values (${row.store_id}, ${order.id}, 'venue', ${`venue_e2e_${order.id}`}, 89000, 'NOK', 'pending')`;
+    await sql`
+      insert into commerce.order_events (store_id, order_id, type, data, actor)
+      values (${row.store_id}, ${order.id}, 'order.paid', '{}', 'system')`;
+    return `/s/${slug}/no/order/${order.id}?session_id=venue_e2e_${order.id}`;
+  } finally {
+    await sql.end();
+  }
+}
+
+test("a shopper moves their booking to another time, then cancels it, from the order page", async ({ page }) => {
+  const slug = await storeWithAppointment("venue");
+  await page.goto(await bookedOrder(slug));
+  await expect(page.getByText("Betales på stedet").first()).toBeVisible();
+  const bookings = page.getByRole("region", { name: "Tid" });
+  await expect(bookings.getByText(/10[:.]00, hos Kari/)).toBeVisible();
+  await expect(bookings.getByText(/^Kan endres eller avbestilles til /)).toBeVisible();
+
+  await bookings.getByRole("button", { name: "Endre tid" }).click();
+  const times = bookings.getByRole("group", { name: "Velg tid" });
+  // Next week, so the new time is still more than a day away and can be cancelled after.
+  await times.getByRole("button", { name: "Neste uke →" }).click();
+  await times.getByRole("button", { name: /^\d\d[:.]\d\d$/ }).nth(3).click();
+  await bookings.getByRole("button", { name: "Flytt hit" }).click();
+  await expect(bookings.getByText("Timen er flyttet.")).toBeVisible();
+  await page.reload();
+  await expect(bookings.getByText(/10[:.]00, hos Kari/)).toHaveCount(0);
+
+  await bookings.getByRole("button", { name: "Avbestill" }).click();
+  await bookings.getByRole("button", { name: "Ja, avbestill timen" }).click();
+  await expect(page.getByRole("heading", { name: "Bestillingen er kansellert." })).toBeVisible();
+});

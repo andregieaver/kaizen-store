@@ -6,6 +6,7 @@ import { useActionState, useState, useTransition, type ReactNode } from "react";
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 import { appointmentWeekAction } from "@/app/s/[store]/[market]/p/actions";
 import { addDays, type SlotWeek } from "@/lib/booking-slots";
+import type { ChangeOutcome } from "@/server/booking-changes";
 
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
@@ -26,6 +27,12 @@ export type AppointmentPickerLabels = AddToCartLabels & {
 
 const initialState: AddToCartState = { outcome: "idle", quantity: 0 };
 
+/** A move's outcome, said as adding to the cart would be (the messages differ). */
+const moved = (outcome: ChangeOutcome): AddToCartState => ({
+  outcome: outcome === "done" ? "added" : outcome === "taken" ? "slot_taken" : outcome === "closed" ? "unavailable" : "error",
+  quantity: outcome === "done" ? 1 : 0,
+});
+
 /** The first date of a week with a free time, or its first date. */
 const firstFree = (week: SlotWeek) => (week.days.find((d) => d.slots.length > 0) ?? week.days[0])?.date ?? week.from;
 
@@ -44,6 +51,7 @@ export function AppointmentPicker({
   initial,
   openCart = false,
   labels,
+  reschedule,
 }: {
   store: string;
   market: string;
@@ -55,6 +63,8 @@ export function AppointmentPicker({
   initial: SlotWeek;
   openCart?: boolean;
   labels: AppointmentPickerLabels;
+  /** Moving a booking the shopper has (D66) instead of adding one to the cart. */
+  reschedule?: { move: (startsAt: string) => Promise<ChangeOutcome>; labels: { moveTo: string; moved: string; closed: string } };
 }) {
   const [week, setWeek] = useState(initial);
   const [date, setDate] = useState(() => firstFree(initial));
@@ -73,7 +83,9 @@ export function AppointmentPicker({
   const load = (from: string | null, who: string | null) => startLoading(() => fetchWeek(from, who));
 
   const [state, action, pending] = useActionState(async (previous: AddToCartState, form: FormData) => {
-    const result = await addToCart(previous, form);
+    const result: AddToCartState = reschedule
+      ? moved(await reschedule.move(String(form.get("startsAt") ?? "")))
+      : await addToCart(previous, form);
     // Taken meanwhile: show the week's times as they are now.
     if (result.outcome === "slot_taken") await fetchWeek(week.from, resourceId);
     return result;
@@ -83,7 +95,11 @@ export function AppointmentPicker({
   const day = week.days.find((d) => d.date === date);
   const anyFree = week.days.some((d) => d.slots.length > 0);
   const message =
-    state.outcome === "added" || state.outcome === "capped"
+    reschedule && state.outcome === "added"
+      ? reschedule.labels.moved
+      : reschedule && state.outcome === "unavailable"
+        ? reschedule.labels.closed
+        : state.outcome === "added" || state.outcome === "capped"
       ? labels.added
       : state.outcome === "slot_taken"
         ? labels.slotTaken
@@ -217,11 +233,11 @@ export function AppointmentPicker({
           disabled={!startsAt || pending || loading}
           className="min-h-11 button-primary px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {pending ? labels.adding : labels.addToCart}
+          {pending ? labels.adding : (reschedule?.labels.moveTo ?? labels.addToCart)}
         </button>
         <p role="status" aria-live="polite" className="text-sm">
           {!startsAt && state.outcome === "idle" ? labels.choose : message}{" "}
-          {(state.outcome === "added" || state.outcome === "capped") && (
+          {!reschedule && (state.outcome === "added" || state.outcome === "capped") && (
             <Link href={cartHref} className="underline">
               {labels.goToCart}
             </Link>

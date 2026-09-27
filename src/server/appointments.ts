@@ -101,7 +101,14 @@ export async function getAppointmentOffer(storeId: string, productId: string): P
 }
 
 /** Times taken on these resources that overlap the range: confirmed, or held and not expired. */
-async function busyOn(q: Queryable, storeId: string, resourceIds: string[], from: number, to: number) {
+async function busyOn(
+  q: Queryable,
+  storeId: string,
+  resourceIds: string[],
+  from: number,
+  to: number,
+  exceptBookingId: string | null = null,
+) {
   const busy = new Map<string, Busy[]>(resourceIds.map((id) => [id, []]));
   if (resourceIds.length === 0) return busy;
   const rows = await q.execute<Row>(sql`
@@ -109,6 +116,7 @@ async function busyOn(q: Queryable, storeId: string, resourceIds: string[], from
     where store_id = ${storeId}::uuid
       and resource_id in (${sql.join(resourceIds.map((id) => sql`${id}::uuid`), sql`, `)})
       and (status = 'confirmed' or (status = 'held' and hold_expires_at > now()))
+      and id is distinct from ${exceptBookingId}::uuid
       and blocked_from < ${new Date(to).toISOString()}::timestamptz
       and blocked_to > ${new Date(from).toISOString()}::timestamptz
   `);
@@ -135,11 +143,12 @@ async function daysOf(
   days: number,
   resourceId: string | null,
   now: number,
+  exceptBookingId: string | null = null,
 ): Promise<SlotDay[]> {
   const resources = offer.resources.filter((r) => !resourceId || r.id === resourceId);
   const start = zonedTime(from, "00:00", offer.timeZone) - DAY;
   const end = zonedTime(addDays(from, days), "00:00", offer.timeZone) + DAY;
-  const busy = await busyOn(q, storeId, resources.map((r) => r.id), start, end);
+  const busy = await busyOn(q, storeId, resources.map((r) => r.id), start, end, exceptBookingId);
   const withBusy = resources.map((r) => ({ ...r, busy: busy.get(r.id) ?? [] }));
   return Array.from({ length: days }, (_, i) => {
     const date = addDays(from, i);
@@ -191,12 +200,14 @@ export async function freeResourcesAt(
   startsAt: string,
   resourceId: string | null,
   now = Date.now(),
+  /** A booking being moved: its own time does not count against it (D66). */
+  exceptBookingId: string | null = null,
 ): Promise<{ offer: LoadedOffer; resourceIds: string[] } | null> {
   const offer = await loadOffer(q, storeId, productId);
   const start = Date.parse(startsAt);
   if (!offer || Number.isNaN(start)) return null;
   const date = zonedDate(start, offer.timeZone);
-  const [day] = await daysOf(q, storeId, offer, date, 1, resourceId, now);
+  const [day] = await daysOf(q, storeId, offer, date, 1, resourceId, now, exceptBookingId);
   const slot = day.slots.find((s) => Date.parse(s.startsAt) === start);
   return { offer, resourceIds: slot?.resourceIds ?? [] };
 }

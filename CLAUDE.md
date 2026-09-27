@@ -333,7 +333,13 @@ of running `playwright install`.
   now (`PlacedOrder.dueNowMinor`, line by line, no coupon or invoice), and
   refunds count only Stripe's payments. An order with nothing due online is
   confirmed by `confirmAtVenue()` with the shopper's contact details and a
-  `venue` payment whose reference opens its order page.
+  `venue` payment whose reference opens its order page. Shoppers cancel or
+  move their own bookings until `cancel_hours` before (`selfServiceOpen()`)
+  from the order page or My account (`OwnBookings`, `BookingChanges`,
+  `src/server/booking-changes.ts`, access by the page's key or ownership):
+  cancelling refunds what Stripe took for it and cancels an order left with
+  nothing; moving goes through `commerce.move_booking()` (locked, raises
+  `bookings.sequence`, which calendar files carry).
 - Demo products: the template store has a clearly labelled demo product
   (`Demo: …`) of every kind, and new stores are copied with them
   (`clone_store()`). A new kind of product gets one in the same change: a

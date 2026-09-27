@@ -36,6 +36,13 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er kansellert, og ${amount} er refundert.`,
     /** Appointments (D65). */
+    bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
+    bookingMovedHeading: "Timen er flyttet",
+    bookingMovedIntro: (when: string) => `Timen din er nå ${when}.`,
+    bookingCancelledByYouSubject: (store: string, when: string) => `Du har avbestilt timen ${when} hos ${store}`,
+    bookingCancelledByYouHeading: "Timen er avbestilt",
+    bookingCancelledByYouIntro: (service: string, when: string, refund: string | null) =>
+      `Du har avbestilt ${service} ${when}.${refund ? ` Vi betaler tilbake ${refund}; det tar vanligvis 5–10 virkedager.` : ""}`,
     appointmentsHeading: "Timen din",
     calendarNote: "Legg timen i kalenderen din med vedlegget.",
     bookingReminderSubject: (store: string, when: string) => `Påminnelse: timen din hos ${store} ${when}`,
@@ -111,6 +118,13 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} har avbrutits och ${amount} har återbetalats.`,
     /** Appointments (D65). */
+    bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
+    bookingMovedHeading: "Tiden är flyttad",
+    bookingMovedIntro: (when: string) => `Din tid är nu ${when}.`,
+    bookingCancelledByYouSubject: (store: string, when: string) => `Du har avbokat tiden ${when} hos ${store}`,
+    bookingCancelledByYouHeading: "Tiden är avbokad",
+    bookingCancelledByYouIntro: (service: string, when: string, refund: string | null) =>
+      `Du har avbokat ${service} ${when}.${refund ? ` Vi betalar tillbaka ${refund}; det tar oftast 5–10 bankdagar.` : ""}`,
     appointmentsHeading: "Din tid",
     calendarNote: "Lägg in tiden i din kalender med bilagan.",
     bookingReminderSubject: (store: string, when: string) => `Påminnelse: din tid hos ${store} ${when}`,
@@ -186,6 +200,13 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er annulleret, og ${amount} er refunderet.`,
     /** Appointments (D65). */
+    bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
+    bookingMovedHeading: "Tiden er flyttet",
+    bookingMovedIntro: (when: string) => `Din tid er nu ${when}.`,
+    bookingCancelledByYouSubject: (store: string, when: string) => `Du har afbestilt tiden ${when} hos ${store}`,
+    bookingCancelledByYouHeading: "Tiden er afbestilt",
+    bookingCancelledByYouIntro: (service: string, when: string, refund: string | null) =>
+      `Du har afbestilt ${service} ${when}.${refund ? ` Vi betaler ${refund} tilbage; det tager normalt 5–10 hverdage.` : ""}`,
     appointmentsHeading: "Din tid",
     calendarNote: "Tilføj tiden til din kalender med vedhæftningen.",
     bookingReminderSubject: (store: string, when: string) => `Påmindelse: din tid hos ${store} ${when}`,
@@ -261,6 +282,13 @@ const text = {
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} is cancelled and ${amount} has been refunded.`,
     /** Appointments (D65). */
+    bookingMovedSubject: (store: string, when: string) => `New time at ${store}: ${when}`,
+    bookingMovedHeading: "Your appointment has moved",
+    bookingMovedIntro: (when: string) => `Your appointment is now on ${when}.`,
+    bookingCancelledByYouSubject: (store: string, when: string) => `You have cancelled your appointment on ${when} at ${store}`,
+    bookingCancelledByYouHeading: "Your appointment is cancelled",
+    bookingCancelledByYouIntro: (service: string, when: string, refund: string | null) =>
+      `You have cancelled ${service} on ${when}.${refund ? ` We are paying back ${refund}; it usually takes 5–10 working days.` : ""}`,
     appointmentsHeading: "Your appointment",
     calendarNote: "Add it to your calendar with the attached file.",
     bookingReminderSubject: (store: string, when: string) => `Reminder: your appointment at ${store}, ${when}`,

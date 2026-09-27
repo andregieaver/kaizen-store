@@ -659,6 +659,13 @@
       "when": 1790503289379,
       "tag": "20260927100129_pay_later_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1790504662774,
+      "tag": "20260927102422_self_service_bookings",
+      "breakpoints": true
     }
   ]
 }

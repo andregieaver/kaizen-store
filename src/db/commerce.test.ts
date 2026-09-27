@@ -1427,6 +1427,23 @@ describe("bookings (D65)", () => {
     // Staff cancelling a paid order gives up its confirmed time too.
     await db.query("update commerce.orders set status = 'cancelled' where id = $1", [late]);
     expect(await status(kept)).toBe("cancelled");
+    // Moving (D66): to a free time only, never onto another booking; a move raises the sequence.
+    const { id: movable } = await hold("2030-01-11T09:00Z", "2030-01-11T10:00Z");
+    await db.query("update commerce.bookings set status = 'confirmed', hold_expires_at = null where id = $1", [movable]);
+    const { id: other } = await hold("2030-01-11T12:00Z", "2030-01-11T13:00Z");
+    const move = (from: string, to: string) =>
+      one<{ moved: boolean }>(
+        "select commerce.move_booking($1, $2, $3, $4::timestamptz, $5::timestamptz, $4::timestamptz, $5::timestamptz) as moved",
+        [store, movable, staff, from, to],
+      );
+    expect(await move("2030-01-11T12:30Z", "2030-01-11T13:30Z")).toEqual({ moved: false });
+    // Onto part of its own time is fine: it does not count itself.
+    expect(await move("2030-01-11T09:30Z", "2030-01-11T10:30Z")).toEqual({ moved: true });
+    expect(await one("select starts_at, sequence from commerce.bookings where id = $1", [movable])).toEqual({
+      starts_at: new Date("2030-01-11T09:30Z"),
+      sequence: 1,
+    });
+    expect(other).not.toBeNull();
     // Paid later (D66): no more at the venue than the order costs, and only the modes the app knows.
     await expect(db.query("update commerce.orders set balance_minor = total_minor + 1 where id = $1", [late])).rejects.toThrow(
       /orders_balance/,

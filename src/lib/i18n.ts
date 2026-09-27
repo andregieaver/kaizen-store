@@ -43,6 +43,8 @@ const messages = {
     thanks: "Takk for bestillingen!",
     orderNumber: "Ordrenummer",
     paymentPending: "Vi venter på bekreftelse fra betalingen. Siden oppdateres av seg selv.",
+    /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
+    orderCancelledPaid: "Bestillingen er kansellert.",
     orderCancelled: "Bestillingen ble avbrutt, og du har ikke betalt.",
     deliverTo: "Leveres til",
     keepNumber: "Oppgi ordrenummeret hvis du kontakter butikken.",
@@ -388,6 +390,16 @@ const messages = {
     },
     /** Appointments (D65). */
     booking: {
+      changeTime: "Endre tid",
+      cancelBooking: "Avbestill",
+      confirmCancel: "Ja, avbestill timen",
+      keepBooking: "Behold timen",
+      changeUntil: (when: string) => `Kan endres eller avbestilles til ${when}.`,
+      changeClosed: "Timen kan ikke lenger endres her. Kontakt oss hvis du må endre den.",
+      moved: "Timen er flyttet.",
+      cancelled: "Timen er avbestilt.",
+      refundNote: (amount: string) => `Du får tilbake ${amount}.`,
+      moveTo: "Flytt hit",
       payDeposit: (percent: number) => `Depositum ${percent} % ved bestilling, resten på stedet.`,
       payVenue: "Betales på stedet.",
       freeCancel: (hours: number) => (hours === 0 ? "Gratis avbestilling eller endring frem til timen starter." : `Gratis avbestilling eller endring til ${hours} timer før.`),
@@ -461,6 +473,8 @@ const messages = {
     thanks: "Tack för din beställning!",
     orderNumber: "Ordernummer",
     paymentPending: "Vi väntar på bekräftelse av betalningen. Sidan uppdateras av sig själv.",
+    /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
+    orderCancelledPaid: "Beställningen är avbruten.",
     orderCancelled: "Beställningen avbröts och du har inte betalat.",
     deliverTo: "Levereras till",
     keepNumber: "Ange ordernumret om du kontaktar butiken.",
@@ -808,6 +822,16 @@ const messages = {
     },
     /** Appointments (D65). */
     booking: {
+      changeTime: "Ändra tid",
+      cancelBooking: "Avboka",
+      confirmCancel: "Ja, avboka tiden",
+      keepBooking: "Behåll tiden",
+      changeUntil: (when: string) => `Kan ändras eller avbokas till ${when}.`,
+      changeClosed: "Tiden kan inte längre ändras här. Kontakta oss om du behöver ändra den.",
+      moved: "Tiden är flyttad.",
+      cancelled: "Tiden är avbokad.",
+      refundNote: (amount: string) => `Du får tillbaka ${amount}.`,
+      moveTo: "Flytta hit",
       payDeposit: (percent: number) => `Handpenning ${percent} % vid bokning, resten på plats.`,
       payVenue: "Betalas på plats.",
       freeCancel: (hours: number) => (hours === 0 ? "Avboka eller ändra gratis fram till att tiden börjar." : `Avboka eller ändra gratis fram till ${hours} timmar innan.`),
@@ -881,6 +905,8 @@ const messages = {
     thanks: "Tak for din bestilling!",
     orderNumber: "Ordrenummer",
     paymentPending: "Vi venter på bekræftelse af betalingen. Siden opdateres af sig selv.",
+    /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
+    orderCancelledPaid: "Bestillingen er annulleret.",
     orderCancelled: "Bestillingen blev afbrudt, og du har ikke betalt.",
     deliverTo: "Leveres til",
     keepNumber: "Oplys ordrenummeret, hvis du kontakter butikken.",
@@ -1226,6 +1252,16 @@ const messages = {
     },
     /** Appointments (D65). */
     booking: {
+      changeTime: "Skift tid",
+      cancelBooking: "Afbestil",
+      confirmCancel: "Ja, afbestil tiden",
+      keepBooking: "Behold tiden",
+      changeUntil: (when: string) => `Kan ændres eller afbestilles indtil ${when}.`,
+      changeClosed: "Tiden kan ikke længere ændres her. Kontakt os, hvis du skal ændre den.",
+      moved: "Tiden er flyttet.",
+      cancelled: "Tiden er afbestilt.",
+      refundNote: (amount: string) => `Du får ${amount} tilbage.`,
+      moveTo: "Flyt hertil",
       payDeposit: (percent: number) => `Depositum ${percent} % ved booking, resten på stedet.`,
       payVenue: "Betales på stedet.",
       freeCancel: (hours: number) => (hours === 0 ? "Gratis afbestilling eller ændring, indtil tiden starter." : `Gratis afbestilling eller ændring indtil ${hours} timer før.`),
@@ -1299,6 +1335,8 @@ const messages = {
     thanks: "Thank you for your order!",
     orderNumber: "Order number",
     paymentPending: "We are waiting for the payment to be confirmed. This page updates by itself.",
+    /** Cancelled after it was paid: by the store, or by the shopper cancelling their booking (D66). */
+    orderCancelledPaid: "The order is cancelled.",
     orderCancelled: "The order was cancelled and you have not paid.",
     deliverTo: "Delivered to",
     keepNumber: "Quote the order number if you contact the store.",
@@ -1644,6 +1682,16 @@ const messages = {
     },
     /** Appointments (D65). */
     booking: {
+      changeTime: "Change time",
+      cancelBooking: "Cancel",
+      confirmCancel: "Yes, cancel it",
+      keepBooking: "Keep it",
+      changeUntil: (when: string) => `Can be changed or cancelled until ${when}.`,
+      changeClosed: "It can no longer be changed here. Contact us if you need to change it.",
+      moved: "Moved.",
+      cancelled: "Cancelled.",
+      refundNote: (amount: string) => `You get ${amount} back.`,
+      moveTo: "Move here",
       payDeposit: (percent: number) => `A ${percent} % deposit when you book, the rest at the appointment.`,
       payVenue: "Paid at the appointment.",
       freeCancel: (hours: number) => (hours === 0 ? "Cancel or change for free until it starts." : `Cancel or change for free until ${hours} hours before.`),

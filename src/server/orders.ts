@@ -44,6 +44,8 @@ export type OrderView = {
   totalMinor: number;
   /** Still to be paid at the venue (D66); 0 once staff mark it paid. */
   balanceMinor: number;
+  /** It was paid (or confirmed to be paid at the venue) at some point, even if cancelled since. */
+  wasPaid: boolean;
   shippingAddress: Address;
   billingAddress: Address;
   lines: {
@@ -59,6 +61,8 @@ export type OrderView = {
     image: string | null;
     /** The VAT rate it was sold at (D65). */
     taxRate: number;
+    /** The part of its total paid at the venue (D66). */
+    venueMinor: number;
     /** An appointment's time (D65), who with, and where it stands, shown in the store's time zone. */
     booking: OrderBooking | null;
   }[];
@@ -83,6 +87,12 @@ export type OrderBooking = {
   timeZone: string;
   /** Where it is, as the appointment says: the place's name and address, or null. */
   place: string | null;
+  productId: string;
+  resourceId: string;
+  /** Until how many hours before the shopper may cancel or move it (D66). */
+  cancelHours: number;
+  /** Raised by each move, for calendar files that replace the earlier event. */
+  sequence: number;
 };
 
 /** A file the shopper can download from a paid order (D24). */
@@ -115,6 +125,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   taxMinor: Number(row.tax_minor),
   totalMinor: Number(row.total_minor),
   balanceMinor: Number(row.balance_minor ?? 0),
+  wasPaid: Boolean(row.was_paid),
   shippingAddress: (row.shipping_address ?? {}) as Address,
   billingAddress: (row.billing_address ?? {}) as Address,
   lines: lines.map((line) => ({
@@ -128,6 +139,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     delivery: parseDelivery(line.delivery),
     image: line.image ? String(line.image) : null,
     taxRate: Number(line.tax_rate ?? 0),
+    venueMinor: Number(line.venue_minor ?? 0),
     booking: line.starts_at
       ? {
           id: String(line.booking_id),
@@ -137,6 +149,10 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
           status: line.booking_status as OrderBooking["status"],
           timeZone: String(line.time_zone),
           place: line.place ? String(line.place) : null,
+          productId: String(line.booking_product_id),
+          resourceId: String(line.booking_resource_id),
+          cancelHours: Number(line.cancel_hours ?? 24),
+          sequence: Number(line.sequence ?? 0),
         }
       : null,
   })),
@@ -152,7 +168,8 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
 export async function getOrder(storeId: string, orderId: string): Promise<OrderView | null> {
   const [[order], lines] = await Promise.all([
     db().execute<Row>(sql`
-      select o.*, (select c.standard_vat_rate from commerce.countries c where c.code = o.market_code) as shipping_vat_rate
+      select o.*, (select c.standard_vat_rate from commerce.countries c where c.code = o.market_code) as shipping_vat_rate,
+        exists (select 1 from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid') as was_paid
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
@@ -162,11 +179,13 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
           join commerce.product_media m on m.product_id = v.product_id
           where v.store_id = ol.store_id and v.id = ol.variant_id
           order by m.position limit 1) as image,
-        b.id as booking_id, b.starts_at, b.ends_at, b.status as booking_status, b.staff, b.place, s.time_zone
+        b.id as booking_id, b.starts_at, b.ends_at, b.status as booking_status, b.staff, b.place, s.time_zone,
+        b.product_id as booking_product_id, b.resource_id as booking_resource_id, b.cancel_hours, b.sequence,
+        ol.venue_minor
       from commerce.order_lines ol
       join commerce.stores s on s.id = ol.store_id
       left join lateral (
-        select b.id, b.starts_at, b.ends_at, b.status, r.name as staff,
+        select b.id, b.starts_at, b.ends_at, b.status, r.name as staff, b.product_id, b.resource_id, a.cancel_hours, b.sequence,
           nullif(concat_ws(', ', nullif(l.name, ''), l.street, nullif(trim(concat_ws(' ', l.postal_code, l.city)), '')), '') as place
         from commerce.bookings b
         join commerce.booking_resources r on r.store_id = b.store_id and r.id = b.resource_id

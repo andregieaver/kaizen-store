@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
+import { OwnBookings } from "@/components/own-bookings";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
@@ -65,7 +66,7 @@ async function OrderDetails({
       {order.status !== "pending_payment" && <RefreshOnce id={`order:${order.id}:${order.status}`} />}
       <div role="status" aria-live="polite">
         <h1 className="text-3xl font-heading tracking-tight">
-          {order.status === "cancelled" ? m.orderCancelled : m.thanks}
+          {order.status === "cancelled" ? (order.wasPaid ? m.orderCancelledPaid : m.orderCancelled) : m.thanks}
         </h1>
         {order.status === "pending_payment" && <p className="mt-2">{m.paymentPending}</p>}
       </div>
@@ -83,6 +84,8 @@ async function OrderDetails({
           accountUrl={marketPath(store.slug, market.slug, "/account")}
         />
       )}
+
+      <OwnBookings order={order} store={store.slug} market={market} m={m} sessionId={sessionId} />
 
       <section aria-label={m.cart} className="rounded-lg border border-border p-4">
         <ul className="divide-y divide-border">
