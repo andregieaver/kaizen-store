@@ -76,6 +76,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         { href: `${base}/settings/domains`, label: "Domains" },
         { href: `${base}/settings/company`, label: "Company" },
         { href: `${base}/integrations`, label: "Integrations" },
+        { href: `${base}/settings/ai`, label: "AI" },
         { href: `${base}/settings/features`, label: "Features" },
         { href: `${base}/settings/cookies`, label: "Cookies and tracking" },
       ],

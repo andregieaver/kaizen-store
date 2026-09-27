@@ -31,6 +31,7 @@ import {
   numeric,
   pgSchema,
   primaryKey,
+  real,
   text,
   timestamp,
   unique,
@@ -3361,5 +3362,57 @@ export const bookings = commerce.table(
     check("bookings_times", sql`${t.startsAt} < ${t.endsAt}`),
     check("bookings_blocked", sql`${t.blockedFrom} <= ${t.startsAt} and ${t.blockedTo} >= ${t.endsAt}`),
     check("bookings_held_expires", sql`${t.status} <> 'held' or ${t.holdExpiresAt} is not null`),
+  ],
+);
+
+/**
+ * Which AI provider and models Kaizen uses (D73): one row for Kaizen
+ * (`store_id` null), the default for every store, and optionally one per
+ * store whose owner brings their own provider. Requests go to an
+ * OpenAI-compatible API (Vercel AI Gateway, or a provider's own address),
+ * so changing provider or model is a change here, not in code. The key is
+ * encrypted like payment secrets. A store's row replaces Kaizen's while
+ * it is on.
+ */
+export const aiProviders = commerce.table(
+  "ai_providers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `gateway`, `mistral`, `openai`, `google` or `custom` (`src/lib/ai-provider.ts`). */
+    provider: text("provider").notNull(),
+    /** Only for `custom`: the API's address, ending before `/embeddings`. */
+    baseUrl: text("base_url"),
+    apiKeyEncrypted: text("api_key_encrypted").notNull(),
+    apiKeyHint: text("api_key_hint").notNull(),
+    /** For meaning-based search; none turns it off. */
+    embeddingModel: text("embedding_model"),
+    /** For understanding queries and writing product content; none turns those off. */
+    textModel: text("text_model"),
+    /** How similar a product must be to a query to be found by meaning, from 0 to 1. */
+    minSimilarity: real("min_similarity").notNull().default(0.8),
+    /**
+     * Gateway only: run each model in EU data centres, the request failing
+     * where the model cannot (no embedding model can yet: D73).
+     */
+    embeddingEuOnly: boolean("embedding_eu_only").notNull().default(true),
+    textEuOnly: boolean("text_eu_only").notNull().default(true),
+    /** Gateway only: only providers that keep nothing after the request. */
+    zeroDataRetention: boolean("zero_data_retention").notNull().default(true),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("ai_providers_store_key").on(t.storeId).nullsNotDistinct(),
+    index("ai_providers_updated_by_idx").on(t.updatedBy),
+    check("ai_providers_provider", sql`${t.provider} in ('gateway', 'mistral', 'openai', 'google', 'custom')`),
+    check("ai_providers_base_url", sql`(${t.provider} = 'custom') = (${t.baseUrl} is not null)`),
+    check("ai_providers_min_similarity", sql`${t.minSimilarity} between 0 and 1`),
+    check(
+      "ai_providers_models",
+      sql`coalesce(length(${t.embeddingModel}) between 1 and 200, true) and coalesce(length(${t.textModel}) between 1 and 200, true)`,
+    ),
   ],
 );

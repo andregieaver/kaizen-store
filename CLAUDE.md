@@ -97,6 +97,13 @@ of running `playwright install`.
   `suggestAction` (keyword only, never a model call), and page searches are
   logged in `search_queries` for 90 days. AI search parts (Phase 2, S2–S5)
   must fall back to this when their model is unavailable.
+- AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`): never
+  name a provider or model in code. Kaizen's are set at `/admin/platform/ai`,
+  a store owner's own at `/admin/{store}/settings/ai` (`commerce.ai_providers`;
+  a store's row replaces Kaizen's while on). Get the connection with
+  `aiFor(storeId)` (null: no AI) and call `embedTexts()` / `completeText()`,
+  an OpenAI-compatible API; catch `AiError` and carry on without AI. Keep
+  vectors with their `space`, so a new model never compares with an old one.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - The template store's product pages are prerendered at build time, so their

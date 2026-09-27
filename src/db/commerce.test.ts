@@ -1759,6 +1759,27 @@ describe("selling to businesses (B2B)", () => {
   });
 });
 
+describe("AI providers (D73)", () => {
+  it("keeps one provider for Kaizen and one per store, with an address only for other APIs", async () => {
+    const insert = (storeId: string | null, provider: string, baseUrl: string | null) =>
+      db.query(
+        `insert into commerce.ai_providers (store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model)
+         values ($1, $2, $3, 'v1.x', '…1234', 'mistral-embed')`,
+        [storeId, provider, baseUrl],
+      );
+    await insert(null, "gateway", null);
+    await expect(insert(null, "mistral", null)).rejects.toThrow(/ai_providers_store_key/);
+    await insert(store, "custom", "https://llm.example.com/v1");
+    await expect(insert(other, "custom", null)).rejects.toThrow(/ai_providers_base_url/);
+    await expect(insert(other, "gateway", "https://example.com")).rejects.toThrow(/ai_providers_base_url/);
+    await expect(insert(other, "acme", null)).rejects.toThrow(/ai_providers_provider/);
+    await expect(
+      db.query("update commerce.ai_providers set min_similarity = 1.5 where store_id = $1", [store]),
+    ).rejects.toThrow(/ai_providers_min_similarity/);
+    await db.query("delete from commerce.ai_providers");
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(
