@@ -110,6 +110,10 @@ of running `playwright install`.
   `filterClause()`; the model never names products or prices. Change the
   prompt or filters together with the eval (`src/lib/query-eval.ts`) and
   run it from the AI pages.
+  A search's vector and filters are kept in `commerce.search_cache`
+  (`cached()` in `src/server/search-cache.ts`, keyed by everything the
+  answer depends on, 30 days), not in `'use cache'`, whose memory is per
+  server instance.
 - AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`): never
   name a provider or model in code. Kaizen's are set at `/admin/platform/ai`,
   a store owner's own at `/admin/{store}/settings/ai` (`commerce.ai_providers`;

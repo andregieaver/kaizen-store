@@ -829,6 +829,31 @@ export const searchQueries = commerce.table(
   ],
 );
 
+/**
+ * What search asked the store's AI, kept so the same search asks once
+ * (D74, D75): a search's vector and the filters it was read as, keyed by a
+ * hash of the model, the market, the store's terms (for filters) and the
+ * search. Shared by every server instance, unlike an in-memory cache. Kept
+ * 30 days, as searches can hold personal data.
+ */
+export const searchCache = commerce.table(
+  "search_cache",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    /** `vector` or `filters`. */
+    kind: text("kind").notNull(),
+    /** md5 of everything the answer depends on. */
+    key: char("key", { length: 32 }).notNull(),
+    value: jsonb("value").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.kind, t.key] }),
+    index("search_cache_created_idx").on(t.createdAt),
+    check("search_cache_kind", sql`${t.kind} in ('vector', 'filters')`),
+  ],
+);
+
 export const productMedia = commerce.table(
   "product_media",
   {

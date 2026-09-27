@@ -1,7 +1,5 @@
 import "server-only";
 
-import { cacheLife, cacheTag } from "next/cache";
-
 import { minorUnitDigits } from "@/lib/money";
 import { EVAL_CASES, PASS_RATE, scoreCase } from "@/lib/query-eval";
 import {
@@ -13,7 +11,8 @@ import {
 } from "@/lib/query-understanding";
 
 import { AiError, aiFor, completeText, type AiConnection } from "./ai";
-import { currentTerms, termsTag } from "./taxonomy";
+import { cached, cacheKey } from "./search-cache";
+import { siteTerms } from "./taxonomy";
 
 /** How long a search waits for its filters before running as typed; answers are cached, so a search waits once. */
 const UNDERSTAND_TIMEOUT_MS = 4000;
@@ -42,10 +41,10 @@ export async function understandWith(
 }
 
 /**
- * A search's filters from the store's text model, cached, as searches come
- * again. The model and market are part of the key, and the store's terms
- * tag the entry, so a new model or a changed category asks again; a
- * failure is not cached.
+ * A search's filters from the store's text model, kept in the search cache,
+ * as searches come again. The model, the market and the store's categories
+ * and tags are part of the key, so a new model or a changed category asks
+ * again; a failure is not kept.
  */
 export async function understandQuery(
   storeId: string,
@@ -53,12 +52,7 @@ export async function understandQuery(
   market: { locale: string; currency: string },
   query: string,
 ): Promise<SearchFilters> {
-  "use cache";
-  cacheLife("days");
-  cacheTag(termsTag({ storeId, contentType: "product" }));
-  const ai = await aiFor(storeId);
-  if (!ai?.textModel || ai.textModel !== textModel) throw new AiError("The store's text model changed.");
-  const terms = await currentTerms(storeId, "product");
+  const terms = await siteTerms(storeId, "product");
   const context: UnderstandingContext = {
     locale: market.locale,
     currency: market.currency,
@@ -66,7 +60,12 @@ export async function understandQuery(
     categories: terms.filter((term) => term.kind === "category").map(({ slug, name }) => ({ slug, name })),
     tags: terms.filter((term) => term.kind === "tag").map(({ slug, name }) => ({ slug, name })),
   };
-  return understandWith(ai, query, context);
+  const key = cacheKey(textModel, market.locale, market.currency, JSON.stringify([context.categories, context.tags]), query);
+  return cached(storeId, "filters", key, async () => {
+    const ai = await aiFor(storeId);
+    if (!ai?.textModel || ai.textModel !== textModel) throw new AiError("The store's text model changed.");
+    return understandWith(ai, query, context);
+  });
 }
 
 export type EvalResult = {
