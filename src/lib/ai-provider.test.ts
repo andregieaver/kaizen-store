@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { aiFormValues, aiProviderInput, apiBaseUrl, checkBaseUrl, embeddingSpace, keyHint } from "./ai-provider";
+import {
+  aiFormValues,
+  aiProviderInput,
+  apiBaseUrl,
+  checkBaseUrl,
+  embeddingSpace,
+  keepsKey,
+  keyHint,
+} from "./ai-provider";
 import { cosineSimilarity } from "./vectors";
 
 const valid = {
@@ -18,7 +26,10 @@ const valid = {
 
 describe("AI providers (D73)", () => {
   it("takes public https addresses only, for providers of the store's own", () => {
-    expect(checkBaseUrl("https://api.example.com/v1/")).toEqual({ ok: true, url: "https://api.example.com/v1" });
+    expect(checkBaseUrl("https://api.example.com/v1/")).toEqual({
+      ok: true,
+      url: "https://api.example.com/v1",
+    });
     for (const bad of [
       "http://api.example.com/v1",
       "https://127.0.0.1/v1",
@@ -39,27 +50,76 @@ describe("AI providers (D73)", () => {
     expect(apiBaseUrl("gateway", null)).toBe("https://ai-gateway.vercel.sh/v1");
     // OpenAI's EU data residency is its own address, and so its own vectors.
     expect(apiBaseUrl("openai_eu", null)).toBe("https://eu.api.openai.com/v1");
-    expect(embeddingSpace("openai_eu", null, "text-embedding-3-small")).not.toBe(embeddingSpace("openai", null, "text-embedding-3-small"));
-    expect(apiBaseUrl("custom", "https://llm.example.com/v1")).toBe("https://llm.example.com/v1");
-    expect(embeddingSpace("gateway", null, "mistral/mistral-embed")).toBe("ai-gateway.vercel.sh/v1|mistral/mistral-embed");
-    expect(embeddingSpace("gateway", null, "openai/text-embedding-3-small")).not.toBe(
-      embeddingSpace("gateway", null, "mistral/mistral-embed"),
+    expect(
+      embeddingSpace("openai_eu", null, "text-embedding-3-small"),
+    ).not.toBe(embeddingSpace("openai", null, "text-embedding-3-small"));
+    expect(apiBaseUrl("custom", "https://llm.example.com/v1")).toBe(
+      "https://llm.example.com/v1",
     );
+    expect(embeddingSpace("gateway", null, "mistral/mistral-embed")).toBe(
+      "ai-gateway.vercel.sh/v1|mistral/mistral-embed",
+    );
+    expect(
+      embeddingSpace("gateway", null, "openai/text-embedding-3-small"),
+    ).not.toBe(embeddingSpace("gateway", null, "mistral/mistral-embed"));
     expect(keyHint(" sk-abcdef1234 ")).toBe("…1234");
   });
 
+  it("keeps a saved key only for a provider that can use it", () => {
+    const openai = { provider: "openai" as const, baseUrl: null };
+    expect(keepsKey(openai, openai)).toBe(true);
+    // OpenAI's keys carry over to its EU address, and back.
+    expect(keepsKey(openai, { provider: "openai_eu", baseUrl: null })).toBe(
+      true,
+    );
+    expect(keepsKey({ provider: "openai_eu", baseUrl: null }, openai)).toBe(
+      true,
+    );
+    expect(keepsKey(openai, { provider: "mistral", baseUrl: null })).toBe(
+      false,
+    );
+    // A custom API's key stays with its address.
+    const custom = {
+      provider: "custom" as const,
+      baseUrl: "https://api.example.com/v1",
+    };
+    expect(keepsKey(custom, custom)).toBe(true);
+    expect(
+      keepsKey(custom, {
+        provider: "custom",
+        baseUrl: "https://other.example.com/v1",
+      }),
+    ).toBe(false);
+  });
+
   it("checks the settings form", () => {
-    expect(aiProviderInput.parse(valid)).toMatchObject({ embeddingModel: "mistral/mistral-embed", textModel: null, minSimilarity: 0.8 });
+    expect(aiProviderInput.parse(valid)).toMatchObject({
+      embeddingModel: "mistral/mistral-embed",
+      textModel: null,
+      minSimilarity: 0.8,
+    });
     const problems = (input: Record<string, unknown>) => {
       const result = aiProviderInput.safeParse({ ...valid, ...input });
-      return result.success ? [] : result.error.issues.map((issue) => issue.message);
+      return result.success
+        ? []
+        : result.error.issues.map((issue) => issue.message);
     };
     expect(problems({ provider: "acme" })).toEqual(["Choose a provider."]);
-    expect(problems({ embeddingModel: "", textModel: "" })).toEqual(["Name at least one model."]);
-    expect(problems({ embeddingModel: "mistral embed; drop" })[0]).toMatch(/letters, digits/);
-    expect(problems({ minSimilarity: "1.5" })).toEqual(["The similarity is a number from 0 to 1."]);
-    expect(problems({ provider: "custom", baseUrl: "http://10.0.0.1/v1" })).toEqual(["The address must start with https://."]);
-    expect(problems({ provider: "custom", baseUrl: "https://llm.example.com/v1" })).toEqual([]);
+    expect(problems({ embeddingModel: "", textModel: "" })).toEqual([
+      "Name at least one model.",
+    ]);
+    expect(problems({ embeddingModel: "mistral embed; drop" })[0]).toMatch(
+      /letters, digits/,
+    );
+    expect(problems({ minSimilarity: "1.5" })).toEqual([
+      "The similarity is a number from 0 to 1.",
+    ]);
+    expect(
+      problems({ provider: "custom", baseUrl: "http://10.0.0.1/v1" }),
+    ).toEqual(["The address must start with https://."]);
+    expect(
+      problems({ provider: "custom", baseUrl: "https://llm.example.com/v1" }),
+    ).toEqual([]);
   });
 
   it("reads checkboxes from the form as on or off", () => {
@@ -67,7 +127,13 @@ describe("AI providers (D73)", () => {
     form.set("provider", "mistral");
     form.set("embeddingModel", "mistral-embed");
     form.set("textEuOnly", "on");
-    expect(aiFormValues(form)).toMatchObject({ provider: "mistral", embeddingEuOnly: false, textEuOnly: true, enabled: false, minSimilarity: "0.3" });
+    expect(aiFormValues(form)).toMatchObject({
+      provider: "mistral",
+      embeddingEuOnly: false,
+      textEuOnly: true,
+      enabled: false,
+      minSimilarity: "0.3",
+    });
   });
 
   it("measures how alike two vectors are", () => {

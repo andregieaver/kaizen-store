@@ -2,8 +2,18 @@
 
 import { useId, useState, useTransition } from "react";
 
-import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { AI_PROVIDERS, DEFAULT_MIN_SIMILARITY, providerInfo, type AiProviderId } from "@/lib/ai-provider";
+import {
+  ActionForm,
+  SubmitButton,
+  type FormState,
+} from "@/components/admin/action-form";
+import {
+  AI_PROVIDERS,
+  DEFAULT_MIN_SIMILARITY,
+  keepsKey,
+  providerInfo,
+  type AiProviderId,
+} from "@/lib/ai-provider";
 
 /** A provider's saved settings as the form shows them: never the key. */
 export type AiFormSettings = {
@@ -19,7 +29,8 @@ export type AiFormSettings = {
   enabled: boolean;
 };
 
-const field = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const field =
+  "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
 
 /**
  * Chooses an AI provider and its models (D73), for Kaizen or for one store:
@@ -36,10 +47,19 @@ export function AiProviderForm({
   submitLabel?: string;
 }) {
   const id = useId();
-  const [provider, setProvider] = useState<AiProviderId>(settings?.provider ?? "gateway");
+  const [provider, setProvider] = useState<AiProviderId>(
+    settings?.provider ?? "gateway",
+  );
   const info = providerInfo(provider);
   const saved = settings && settings.provider === provider ? settings : null;
-  const keptKey = saved?.apiKeyHint ?? null;
+  const keptKey =
+    settings &&
+    keepsKey(settings, {
+      provider,
+      baseUrl: provider === "custom" ? settings.baseUrl : null,
+    })
+      ? settings.apiKeyHint
+      : null;
 
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
@@ -76,13 +96,16 @@ export function AiProviderForm({
             className={`${field} font-mono text-sm`}
           />
           <p id={`${id}-base-hint`} className="font-normal text-muted">
-            An OpenAI-compatible API: Kaizen adds /embeddings and /chat/completions to this address.
+            An OpenAI-compatible API: Kaizen adds /embeddings and
+            /chat/completions to this address.
           </p>
         </div>
       )}
 
       <div className="flex flex-col gap-1 text-sm font-medium">
-        <label htmlFor={`${id}-key`}>{keptKey ? "New API key" : "API key"}</label>
+        <label htmlFor={`${id}-key`}>
+          {keptKey ? "New API key" : "API key"}
+        </label>
         <input
           id={`${id}-key`}
           name="apiKey"
@@ -97,7 +120,12 @@ export function AiProviderForm({
           {keptKey ? `Leave empty to keep the saved key (${keptKey}). ` : ""}
           The key is kept encrypted and only ever sent to {info.name}.{" "}
           {info.keysUrl && (
-            <a href={info.keysUrl} target="_blank" rel="noreferrer" className="underline">
+            <a
+              href={info.keysUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
               Where to get a key
             </a>
           )}
@@ -112,7 +140,11 @@ export function AiProviderForm({
           label="Model for search by meaning"
           hint="Turns products and searches into vectors. Empty: keyword search only."
           suggestions={info.embeddingModels}
-          defaultValue={saved ? (saved.embeddingModel ?? "") : (info.embeddingModels[0] ?? "")}
+          defaultValue={
+            saved
+              ? (saved.embeddingModel ?? "")
+              : (info.embeddingModels[0] ?? "")
+          }
         />
         <ModelField
           key={`text-${provider}`}
@@ -121,7 +153,9 @@ export function AiProviderForm({
           label="Model for text"
           hint="Understands searches and writes product texts for staff to approve. Empty: off."
           suggestions={info.textModels}
-          defaultValue={saved ? (saved.textModel ?? "") : (info.textModels[0] ?? "")}
+          defaultValue={
+            saved ? (saved.textModel ?? "") : (info.textModels[0] ?? "")
+          }
         />
       </div>
 
@@ -129,30 +163,56 @@ export function AiProviderForm({
       <fieldset hidden={!info.gateway} className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">Where requests run</legend>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="embeddingEuOnly" defaultChecked={settings?.embeddingEuOnly ?? false} className="mt-0.5 size-4" />
+          <input
+            type="checkbox"
+            name="embeddingEuOnly"
+            defaultChecked={settings?.embeddingEuOnly ?? false}
+            className="mt-0.5 size-4"
+          />
           <span>
             Search model only in EU data centres
-            <span className="block text-xs text-muted">No embedding model can be pinned to the EU yet: requests would fail.</span>
+            <span className="block text-xs text-muted">
+              No embedding model can be pinned to the EU yet: requests would
+              fail.
+            </span>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="textEuOnly" defaultChecked={settings?.textEuOnly ?? true} className="mt-0.5 size-4" />
+          <input
+            type="checkbox"
+            name="textEuOnly"
+            defaultChecked={settings?.textEuOnly ?? true}
+            className="mt-0.5 size-4"
+          />
           <span>
             Text model only in EU data centres
-            <span className="block text-xs text-muted">A request fails rather than run elsewhere, and search carries on without it.</span>
+            <span className="block text-xs text-muted">
+              A request fails rather than run elsewhere, and search carries on
+              without it.
+            </span>
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="zeroDataRetention" defaultChecked={settings?.zeroDataRetention ?? true} className="mt-0.5 size-4" />
+          <input
+            type="checkbox"
+            name="zeroDataRetention"
+            defaultChecked={settings?.zeroDataRetention ?? true}
+            className="mt-0.5 size-4"
+          />
           <span>
             Only providers that keep nothing
-            <span className="block text-xs text-muted">Zero data retention: prompts and answers are deleted after each request.</span>
+            <span className="block text-xs text-muted">
+              Zero data retention: prompts and answers are deleted after each
+              request.
+            </span>
           </span>
         </label>
       </fieldset>
 
       <div className="flex flex-col gap-1 text-sm font-medium">
-        <label htmlFor={`${id}-similarity`}>Similarity needed for search by meaning</label>
+        <label htmlFor={`${id}-similarity`}>
+          Similarity needed for search by meaning
+        </label>
         <input
           id={`${id}-similarity`}
           name="minSimilarity"
@@ -167,13 +227,19 @@ export function AiProviderForm({
           className={`${field} w-32`}
         />
         <p id={`${id}-similarity-hint`} className="font-normal text-muted">
-          From 0 to 1. Products less like the search than this are not found by meaning. Each model scores differently: Test
-          shows a matching and an unrelated product&apos;s scores, and the limit belongs between them.
+          From 0 to 1. Products less like the search than this are not found by
+          meaning. Each model scores differently: Test shows a matching and an
+          unrelated product&apos;s scores, and the limit belongs between them.
         </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm font-medium">
-        <input type="checkbox" name="enabled" defaultChecked={settings?.enabled ?? true} className="size-4" />
+        <input
+          type="checkbox"
+          name="enabled"
+          defaultChecked={settings?.enabled ?? true}
+          className="size-4"
+        />
         On
       </label>
 
@@ -226,17 +292,28 @@ function ModelField({
   );
 }
 
-export type AiTestResult = { embedding: { ok: boolean; message: string } | null; text: { ok: boolean; message: string } | null } | { error: string };
+export type AiTestResult =
+  | {
+      embedding: { ok: boolean; message: string } | null;
+      text: { ok: boolean; message: string } | null;
+    }
+  | { error: string };
 
 /** Tries the saved models now and says how each went. */
-export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }) {
+export function AiTestButton({
+  action,
+}: {
+  action: () => Promise<AiTestResult>;
+}) {
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiTestResult | null>(null);
   const lines =
     result && "error" in result
       ? [{ ok: false, message: result.error }]
       : result
-        ? [result.embedding, result.text].filter((part): part is { ok: boolean; message: string } => part !== null)
+        ? [result.embedding, result.text].filter(
+            (part): part is { ok: boolean; message: string } => part !== null,
+          )
         : [];
   return (
     <div className="flex flex-col gap-2">
@@ -250,7 +327,10 @@ export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }
       </button>
       <ul role="status" className="flex flex-col gap-1 text-sm">
         {lines.map((line) => (
-          <li key={line.message} className={line.ok ? "" : "text-red-700 dark:text-red-400"}>
+          <li
+            key={line.message}
+            className={line.ok ? "" : "text-red-700 dark:text-red-400"}
+          >
             {line.ok ? "✓ " : "✗ "}
             {line.message}
           </li>
@@ -261,11 +341,22 @@ export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }
 }
 
 export type AiEvalResult =
-  | { model: string; passed: number; total: number; ok: boolean; ms: number; failures: { query: string; problems: string[] }[] }
+  | {
+      model: string;
+      passed: number;
+      total: number;
+      ok: boolean;
+      ms: number;
+      failures: { query: string; problems: string[] }[];
+    }
   | { error: string };
 
 /** Runs the query-understanding eval against the saved text model and shows how it did (D75). */
-export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }) {
+export function AiEvalButton({
+  action,
+}: {
+  action: () => Promise<AiEvalResult>;
+}) {
   const [pending, start] = useTransition();
   const [result, setResult] = useState<AiEvalResult | null>(null);
   return (
@@ -279,18 +370,23 @@ export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }
         {pending ? "Checking … (up to a minute)" : "Check query understanding"}
       </button>
       <div role="status" className="text-sm">
-        {result && "error" in result && <p className="text-red-700 dark:text-red-400">✗ {result.error}</p>}
+        {result && "error" in result && (
+          <p className="text-red-700 dark:text-red-400">✗ {result.error}</p>
+        )}
         {result && !("error" in result) && (
           <>
             <p className={result.ok ? "" : "text-red-700 dark:text-red-400"}>
-              {result.ok ? "✓ Passes" : "✗ Does not pass"}: {result.model} understood {result.passed} of {result.total} searches (
-              {Math.round((result.passed / result.total) * 100)} %) in {(result.ms / 1000).toFixed(1)} s.
+              {result.ok ? "✓ Passes" : "✗ Does not pass"}: {result.model}{" "}
+              understood {result.passed} of {result.total} searches (
+              {Math.round((result.passed / result.total) * 100)} %) in{" "}
+              {(result.ms / 1000).toFixed(1)} s.
             </p>
             {result.failures.length > 0 && (
               <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
                 {result.failures.map((failure) => (
                   <li key={failure.query}>
-                    <span className="font-medium">“{failure.query}”</span>: {failure.problems.join("; ")}
+                    <span className="font-medium">“{failure.query}”</span>:{" "}
+                    {failure.problems.join("; ")}
                   </li>
                 ))}
               </ul>
