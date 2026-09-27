@@ -70,3 +70,28 @@ test("a Swedish shopper finds products by their Swedish names", async ({ page })
   await page.goto(`/s/${slug}/se/search?q=stuga`);
   await expect(page.getByRole("link", { name: /Stuga vid sjön/ }).first()).toBeVisible();
 });
+
+test("opening a result goes to the product and is recorded against the search, with no cookie", async ({ page, context }) => {
+  const slug = await newStore();
+  await page.goto(`/s/${slug}/no/search?q=kopp`);
+  const result = page.getByRole("link", { name: /Keramikkopp/ }).first();
+  await expect(result).toHaveAttribute("rel", "nofollow");
+  await result.click();
+  await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/p/demo-keramikkopp$`));
+  expect((await context.cookies()).filter((c) => /search|arm|experiment/i.test(c.name))).toEqual([]);
+  const sql = testDb();
+  try {
+    await expect
+      .poll(async () => {
+        const [row] = await sql`
+          select c.position, q.query from commerce.search_clicks c
+          join commerce.search_queries q on q.id = c.search_id
+          join commerce.stores s on s.id = c.store_id
+          where s.slug = ${slug}`;
+        return row ? `${row.query}@${row.position}` : null;
+      })
+      .toBe("kopp@1");
+  } finally {
+    await sql.end();
+  }
+});

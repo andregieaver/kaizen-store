@@ -114,6 +114,11 @@ of running `playwright install`.
   (`cached()` in `src/server/search-cache.ts`, keyed by everything the
   answer depends on, 30 days), not in `'use cache'`, whose memory is per
   server instance.
+  The search test (D77, `src/server/search-experiment.ts`): while one runs,
+  the search page draws each search's arm (`drawArm()`), the keyword arm
+  passes no `vectorFor` or `understand`, and result links go through
+  `search/go`, which records the opened result (`search_clicks`). Set no
+  cookie or storage for it: the unit is the search.
 - AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`): never
   name a provider or model in code. Kaizen's are set at `/admin/platform/ai`,
   a store owner's own at `/admin/{store}/settings/ai` (`commerce.ai_providers`;

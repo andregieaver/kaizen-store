@@ -15,9 +15,15 @@ export function ProductCard({
   m,
   store,
   base,
+  tracked = false,
 }: {
   product: ProductSummary;
   href: string;
+  /**
+   * The link records the click on its way (search results, D77): a plain
+   * link, so it is never prefetched, and not for crawlers to follow.
+   */
+  tracked?: boolean;
   market: Market;
   m: Messages;
   /** The store's slug and the market's path, for the wishlist heart (D34). */
@@ -46,12 +52,15 @@ export function ProductCard({
         />
       )}
       <h2 className="font-medium">
-        <Link
-          href={href}
-          className="after:absolute after:inset-0 focus-visible:outline-2"
-        >
-          {product.title}
-        </Link>
+        {tracked ? (
+          <a href={href} rel="nofollow" className="after:absolute after:inset-0 focus-visible:outline-2">
+            {product.title}
+          </a>
+        ) : (
+          <Link href={href} className="after:absolute after:inset-0 focus-visible:outline-2">
+            {product.title}
+          </Link>
+        )}
       </h2>
       <Price price={product.price} locale={market.locale} m={m} from={product.priceVaries} />
     </li>

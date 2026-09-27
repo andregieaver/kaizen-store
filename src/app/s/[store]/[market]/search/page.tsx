@@ -14,14 +14,16 @@ import { normalizeQuery } from "@/lib/search";
 import { byName, type Term } from "@/lib/taxonomy";
 import { understandQuery } from "@/server/query-understanding";
 import { queryVector } from "@/server/query-vector";
+import { drawArm, runningExperiment } from "@/server/search-experiment";
 import { logSearch, searchProducts } from "@/server/search";
 import { resolveShop } from "@/server/shop";
 import { siteTerms } from "@/server/taxonomy";
 
 type Props = PageProps<"/s/[store]/[market]/search">;
 
-// Results pages are for shoppers, not search engines.
-export const metadata: Metadata = { robots: { index: false, follow: true } };
+// Results pages are for shoppers, not search engines: crawlers neither list
+// them nor follow their links, which record clicks (D77).
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 /**
  * Search in a store (Phase 2, S1, S2): the store's products in the market
@@ -52,9 +54,17 @@ async function Search({ params, searchParams }: Pick<Props, "params" | "searchPa
   // `exact`: the shopper asked for the words as typed, not as understood.
   const exact = asked.exact === "1";
   const where = { storeId: store.id, market };
-  const found = query ? await searchProducts(where, query, queryVector, exact ? null : understandQuery) : null;
+  // A search test (D77): this search gets hybrid or keyword search alone, drawn now.
+  const experiment = query ? await runningExperiment() : null;
+  const arm = experiment ? drawArm(experiment) : null;
+  const keywordOnly = arm === "keyword";
+  const found = query
+    ? await searchProducts(where, query, keywordOnly ? null : queryVector, exact || keywordOnly ? null : understandQuery)
+    : null;
   const products = found?.products ?? [];
-  if (found) after(() => logSearch(where, query, products.length, found));
+  // The search's id goes into its result links, so opening one is recorded against it.
+  const searchId = crypto.randomUUID();
+  if (found) after(() => logSearch(where, query, products.length, found, { id: searchId, experimentId: experiment?.id ?? null, arm }));
   const terms = query && (products.length === 0 || found?.filters) ? await siteTerms(store.id, "product") : [];
   const categories = products.length === 0 ? terms.filter((term) => term.kind === "category" && !term.parentId).sort(byName) : [];
   const understood = found?.filters ? describeFilters(found.filters, terms, m, market) : [];
@@ -107,11 +117,12 @@ async function Search({ params, searchParams }: Pick<Props, "params" | "searchPa
           </p>
           {understood.length > 0 && <Understood parts={understood} exactHref={exactHref(base, typed)} m={m} typed={typed} />}
           <ul className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <ProductCard
                 key={product.handle}
                 product={product}
-                href={`${base}/p/${product.handle}`}
+                href={`${base}/search/go?s=${searchId}&p=${encodeURIComponent(product.handle)}&r=${index + 1}`}
+                tracked
                 market={market}
                 m={m}
                 store={store.slug}

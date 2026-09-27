@@ -1814,6 +1814,38 @@ describe("search by meaning (D74)", () => {
   });
 });
 
+describe("search tests (D77)", () => {
+  it("runs one test at a time, keeps each search's arm with its test, and a search's clicks with it", async () => {
+    const { id } = await one<{ id: string }>("insert into commerce.search_experiments (keyword_share) values (0.5) returning id");
+    await expect(db.query("insert into commerce.search_experiments (keyword_share) values (0.5)")).rejects.toThrow(/search_experiments_one_running/);
+    await expect(db.query("update commerce.search_experiments set keyword_share = 1 where id = $1", [id])).rejects.toThrow(/search_experiments_share/);
+
+    const log = (experimentId: string | null, arm: string | null) =>
+      one<{ id: string }>(
+        `insert into commerce.search_queries (store_id, market_code, query, results, experiment_id, arm)
+         values ($1, 'NO', 'kopp', 1, $2, $3) returning id`,
+        [store, experimentId, arm],
+      );
+    const search = await log(id, "hybrid");
+    await log(null, null);
+    await expect(log(id, null)).rejects.toThrow(/search_queries_arm/);
+    await expect(log(null, "keyword")).rejects.toThrow(/search_queries_arm/);
+    await expect(log(id, "chat")).rejects.toThrow(/search_queries_arm/);
+
+    const { productId } = await createProduct();
+    await db.query("insert into commerce.search_clicks (store_id, search_id, product_id, position) values ($1, $2, $3, 1)", [store, search.id, productId]);
+    await expect(
+      db.query("insert into commerce.search_clicks (store_id, search_id, product_id, position) values ($1, $2, $3, 0)", [store, search.id, productId]),
+    ).rejects.toThrow(/search_clicks_position/);
+    await db.query("delete from commerce.search_queries where id = $1", [search.id]);
+    const { n } = await one<{ n: number }>("select count(*)::int as n from commerce.search_clicks where search_id = $1", [search.id]);
+    expect(n).toBe(0);
+
+    await db.query("update commerce.search_experiments set ended_at = now() where id = $1", [id]);
+    await db.query("insert into commerce.search_experiments (keyword_share) values (0.2)");
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

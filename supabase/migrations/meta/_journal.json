@@ -904,6 +904,20 @@
       "when": 1790530719036,
       "tag": "20260927173839_search_cache_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1790531632210,
+      "tag": "20260927175352_search_experiments",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1790531634465,
+      "tag": "20260927175354_search_experiments_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -804,6 +804,30 @@ export const productTranslations = commerce.table(
  * kept 90 days (`pruneSearchLog()` in the five-minute cron). Type-ahead is
  * not logged.
  */
+/**
+ * A randomised test of search (Phase 2, S5, D77): while one runs, each
+ * search is given hybrid search (words, meaning and understanding) or
+ * keyword search alone at random, `keyword_share` of them keyword. At most
+ * one runs at a time (a unique index in the rules migration).
+ */
+export const searchExperiments = commerce.table(
+  "search_experiments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    keywordShare: real("keyword_share").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    startedBy: uuid("started_by").references(() => accounts.id),
+    endedBy: uuid("ended_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("search_experiments_started_by_idx").on(t.startedBy),
+    index("search_experiments_ended_by_idx").on(t.endedBy),
+    check("search_experiments_share", sql`${t.keywordShare} between 0.05 and 0.95`),
+    check("search_experiments_times", sql`${t.endedAt} is null or ${t.endedAt} >= ${t.startedAt}`),
+  ],
+);
+
 export const searchQueries = commerce.table(
   "search_queries",
   {
@@ -818,11 +842,16 @@ export const searchQueries = commerce.table(
     meaningResults: integer("meaning_results").notNull().default(0),
     /** What the store's text model understood the search as, when it changed anything (D75): checked filters. */
     filters: jsonb("filters"),
+    /** The search test it was part of (D77), and the search it was given: `hybrid` or `keyword`. */
+    experimentId: uuid("experiment_id").references(() => searchExperiments.id),
+    arm: text("arm"),
     createdAt: createdAt(),
   },
   (t) => [
     index("search_queries_store_idx").on(t.storeId, t.createdAt),
     index("search_queries_created_idx").on(t.createdAt),
+    index("search_queries_experiment_idx").on(t.experimentId, t.arm),
+    check("search_queries_arm", sql`(${t.arm} is null) = (${t.experimentId} is null) and coalesce(${t.arm} in ('hybrid', 'keyword'), true)`),
     check("search_queries_query", sql`length(${t.query}) between 1 and 100`),
     check("search_queries_results", sql`${t.results} >= 0`),
     check("search_queries_meaning", sql`${t.meaningResults} between 0 and ${t.results}`),
@@ -851,6 +880,32 @@ export const searchCache = commerce.table(
     primaryKey({ columns: [t.storeId, t.kind, t.key] }),
     index("search_cache_created_idx").on(t.createdAt),
     check("search_cache_kind", sql`${t.kind} in ('vector', 'filters')`),
+  ],
+);
+
+/**
+ * A shopper opening a product from search results (D77): which search,
+ * which product and at which place in the list. Recorded by the result
+ * link itself, with no cookie; goes with its search after 90 days.
+ */
+export const searchClicks = commerce.table(
+  "search_clicks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    searchId: uuid("search_id")
+      .notNull()
+      .references(() => searchQueries.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").notNull(),
+    /** The result's place in the list, from 1. */
+    position: integer("position").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    productRef("search_clicks_product_fk", t),
+    index("search_clicks_search_idx").on(t.searchId),
+    index("search_clicks_product_idx").on(t.storeId, t.productId),
+    check("search_clicks_position", sql`${t.position} between 1 and 100`),
   ],
 );
 

@@ -279,12 +279,13 @@ const skipped = (what: string) => (error: unknown) => {
  * its text model (`understand`) turns a search that may hold a price, an
  * order or stock into filters; both are asked at once, and whatever fails
  * or is late is left out, down to keyword search alone. `understand` is
- * left out when the shopper asked for the words exactly as typed.
+ * left out when the shopper asked for the words exactly as typed, and both
+ * are in the keyword arm of a search test (D77).
  */
 export async function searchProducts(
   shop: Shop,
   query: string,
-  vectorFor: VectorFor,
+  vectorFor: VectorFor | null,
   understand: Understand | null = null,
   limit = 48,
 ): Promise<SearchResult> {
@@ -293,7 +294,7 @@ export async function searchProducts(
   const ai = await aiFor(shop.storeId);
   const textModel = understand && ai?.textModel && worthUnderstanding(text) ? ai.textModel : null;
   const [vector, understood] = await Promise.all([
-    ai?.space ? vectorFor(shop.storeId, ai.space, text).catch(skipped("Search by meaning")) : null,
+    ai?.space && vectorFor ? vectorFor(shop.storeId, ai.space, text).catch(skipped("Search by meaning")) : null,
     textModel && understand
       ? understand(shop.storeId, textModel, { locale: shop.market.locale, currency: shop.market.currency }, text).catch(
           skipped("Understanding the search"),
@@ -345,14 +346,16 @@ export async function logSearch(
   query: string,
   results: number,
   meaning: { semanticBest: number | null; meaningOnly: number; filters?: SearchFilters | null } = { semanticBest: null, meaningOnly: 0 },
+  /** The search's own id (its result links carry it), and its search test and arm (D77). */
+  test: { id: string; experimentId: string | null; arm: "hybrid" | "keyword" | null } | null = null,
 ): Promise<void> {
   const text = normalizeQuery(query).slice(0, 100);
   if (!text) return;
   const filters = meaning.filters ? JSON.stringify(meaning.filters) : null;
   await db().execute(sql`
-    insert into commerce.search_queries (store_id, market_code, query, results, semantic_best, meaning_results, filters)
-    values (${shop.storeId}::uuid, ${shop.market.code}, ${text}, ${results}, ${meaning.semanticBest},
-      ${Math.min(meaning.meaningOnly, results)}, ${filters}::jsonb)
+    insert into commerce.search_queries (id, store_id, market_code, query, results, semantic_best, meaning_results, filters, experiment_id, arm)
+    values (coalesce(${test?.id ?? null}::uuid, gen_random_uuid()), ${shop.storeId}::uuid, ${shop.market.code}, ${text}, ${results}, ${meaning.semanticBest},
+      ${Math.min(meaning.meaningOnly, results)}, ${filters}::jsonb, ${test?.experimentId ?? null}::uuid, ${test?.arm ?? null})
   `);
 }
 
