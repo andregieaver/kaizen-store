@@ -406,6 +406,11 @@ describe("paying hosts (D71)", () => {
       ["booking", paidOrder.due, paidOrder.commission - paidOrder.back, earnings[1].kaizenFeeMinor],
     ]);
     expect(earnings[1].kaizenFeeMinor).toBeGreaterThan(0);
+    // What the host keeps: what the guest paid, less refunds, the commission and Kaizen's fee.
+    for (const e of earnings) {
+      expect(e.netMinor).toBe(e.paidMinor - e.refundedMinor - e.commissionMinor - e.kaizenFeeMinor);
+    }
+    expect(earnings[0].netMinor).toBe(fee - commission - Math.round(fee * 0.02));
     // The tax report counts the fee as paid to the host, and the commission on it.
     const report = await dac7.dac7Report(storeId, Number(zonedDate(Date.now(), tz).slice(0, 4)), tz);
     const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);

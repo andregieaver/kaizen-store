@@ -453,6 +453,8 @@ export type HostEarning = {
   commissionMinor: number;
   /** Kaizen's own fee, after refunds (Stripe gives back its refunded share). */
   kaizenFeeMinor: number;
+  /** What the host keeps: paid, less refunds, the commission and Kaizen's fee (before Stripe's own fees). */
+  netMinor: number;
   /** Sent on to the store: the commission is settled. */
   sent: boolean;
   problem: string;
@@ -478,18 +480,25 @@ export async function hostEarnings(storeId: string, hostId: string, limit = 50):
     order by p.created_at desc
     limit ${limit}
   `);
-  return rows.map((row) => ({
-    kaizenFeeMinor: feeAfterRefunds(Number(row.kaizen_fee_minor), Number(row.paid), Number(row.refunded)),
-    paymentId: String(row.payment_id),
-    kind: row.checkout ? "booking" : "no_show",
-    orderId: String(row.id),
-    number: String(row.number),
-    paidAt: new Date(String(row.created_at)).toISOString(),
-    currency: String(row.currency),
-    paidMinor: Number(row.paid),
-    refundedMinor: Number(row.refunded),
-    commissionMinor: Number(row.commission),
-    sent: row.status !== "pending",
-    problem: row.status === "pending" ? String(row.problem) : "",
-  }));
+  return rows.map((row) => {
+    const paidMinor = Number(row.paid);
+    const refundedMinor = Number(row.refunded);
+    const commissionMinor = Number(row.commission);
+    const kaizenFeeMinor = feeAfterRefunds(Number(row.kaizen_fee_minor), paidMinor, refundedMinor);
+    return {
+      paymentId: String(row.payment_id),
+      kind: row.checkout ? "booking" : "no_show",
+      orderId: String(row.id),
+      number: String(row.number),
+      paidAt: new Date(String(row.created_at)).toISOString(),
+      currency: String(row.currency),
+      paidMinor,
+      refundedMinor,
+      commissionMinor,
+      kaizenFeeMinor,
+      netMinor: paidMinor - refundedMinor - commissionMinor - kaizenFeeMinor,
+      sent: row.status !== "pending",
+      problem: row.status === "pending" ? String(row.problem) : "",
+    };
+  });
 }

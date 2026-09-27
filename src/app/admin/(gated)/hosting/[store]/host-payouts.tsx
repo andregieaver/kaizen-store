@@ -89,7 +89,8 @@ export function HostPayouts({
                   <th className="py-1 pr-3 text-right font-normal">Guest paid</th>
                   <th className="py-1 pr-3 text-right font-normal">Refunded</th>
                   <th className="py-1 pr-3 text-right font-normal">Commission</th>
-                  <th className="py-1 text-right font-normal">Kaizen&apos;s fee</th>
+                  <th className="py-1 pr-3 text-right font-normal">Kaizen&apos;s fee</th>
+                  <th className="py-1 text-right font-normal">You get</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -103,14 +104,15 @@ export function HostPayouts({
                       {e.refundedMinor > 0 ? formatMoney(e.refundedMinor, e.currency, locale) : "–"}
                     </td>
                     <td className="py-1 pr-3 text-right tabular-nums">{formatMoney(e.commissionMinor, e.currency, locale)}</td>
-                    <td className="py-1 text-right tabular-nums">{formatMoney(e.kaizenFeeMinor, e.currency, locale)}</td>
+                    <td className="py-1 pr-3 text-right tabular-nums">{formatMoney(e.kaizenFeeMinor, e.currency, locale)}</td>
+                    <td className="py-1 text-right font-medium tabular-nums">{formatMoney(e.netMinor, e.currency, locale)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        <p className="text-xs text-muted">The commission and Kaizen&apos;s fee come off each payment, and are given back in part with refunds. Stripe&apos;s own fees also come off what you are paid; see them in your Stripe Dashboard.</p>
+        <p className="text-xs text-muted">The commission and Kaizen&apos;s fee come off each payment, and are given back in part with refunds. &quot;You get&quot; is before Stripe&apos;s own fees, which also come off what you are paid; see them in your Stripe Dashboard.</p>
       </div>
     </section>
   );
