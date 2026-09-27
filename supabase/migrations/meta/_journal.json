@@ -848,6 +848,20 @@
       "when": 1790523007503,
       "tag": "20260927153007_ai_providers_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1790523893484,
+      "tag": "20260927154453_embeddings",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1790523896189,
+      "tag": "20260927154456_search_meaning",
+      "breakpoints": true
     }
   ]
 }

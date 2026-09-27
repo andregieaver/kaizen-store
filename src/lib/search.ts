@@ -26,3 +26,27 @@ export function prefixQuery(query: string): string | null {
   const words = normalizeQuery(query).match(/[\p{L}\p{N}]+/gu)?.slice(0, 6) ?? [];
   return words.length === 0 ? null : words.map((word) => `${word}:*`).join(" & ");
 }
+
+/**
+ * Search by meaning (S2, D74): merges ranked lists (keyword, meaning) by
+ * reciprocal rank fusion: each list gives an item 1 / (k + rank), and items
+ * are ordered by their sum. Ranks, not scores, so lists scored on different
+ * scales combine; k damps the difference between the first few places.
+ * Ties keep the order items were first seen, keyword first.
+ */
+export function reciprocalRankFusion(lists: string[][], k = 60): string[] {
+  const scores = new Map<string, number>();
+  for (const list of lists) {
+    list.forEach((id, index) => scores.set(id, (scores.get(id) ?? 0) + 1 / (k + index + 1)));
+  }
+  // Map keeps insertion order and sort is stable, so ties stay in first-seen order.
+  return [...scores.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
+}
+
+/** Longest text embedded for a product: its title and categories come first, so a long description is what gets cut. */
+export const MAX_EMBEDDED = 4000;
+
+/** What is embedded for a product translation: its title, its categories and tags, and its description. */
+export function embeddingDocument(title: string, terms: string, description: string): string {
+  return [title.trim(), terms.trim(), description.trim()].filter(Boolean).join("\n").slice(0, MAX_EMBEDDED);
+}

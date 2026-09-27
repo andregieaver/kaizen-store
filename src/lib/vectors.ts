@@ -13,3 +13,9 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   }
   return aa === 0 || bb === 0 ? 0 : dot / Math.sqrt(aa * bb);
 }
+
+/** A vector as pgvector reads it: `[0.1,0.2]`. Only finite numbers are taken. */
+export function vectorLiteral(vector: number[]): string {
+  if (vector.length === 0 || !vector.every(Number.isFinite)) throw new Error("A vector needs finite numbers.");
+  return `[${vector.join(",")}]`;
+}

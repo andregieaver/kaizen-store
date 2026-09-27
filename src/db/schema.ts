@@ -812,6 +812,10 @@ export const searchQueries = commerce.table(
     marketCode: char("market_code", { length: 2 }).notNull(),
     query: text("query").notNull(),
     results: integer("results").notNull(),
+    /** The closest product by meaning (D74), when meaning was asked; for setting the store's similarity limit. */
+    semanticBest: real("semantic_best"),
+    /** Results only meaning found, not the words (D74). */
+    meaningResults: integer("meaning_results").notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [
@@ -819,6 +823,7 @@ export const searchQueries = commerce.table(
     index("search_queries_created_idx").on(t.createdAt),
     check("search_queries_query", sql`length(${t.query}) between 1 and 100`),
     check("search_queries_results", sql`${t.results} >= 0`),
+    check("search_queries_meaning", sql`${t.meaningResults} between 0 and ${t.results}`),
   ],
 );
 

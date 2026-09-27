@@ -2,11 +2,13 @@
 
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { productInput, type ProductInput } from "@/lib/product-input";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
+import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { startFileUpload, uploadProductImage, type FileUpload, type UploadResult } from "@/server/media";
 import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import {
@@ -60,6 +62,8 @@ export async function saveProductAction(
   const result = await saveProduct(member.store, context, productId, parsed.data);
   if (!result.ok) return { status: "error", problems: result.problems };
   refreshCatalogue(member);
+  // Search by meaning finds the product as saved, without waiting for the cron (D74).
+  after(() => refreshStoreEmbeddings(member.store.id));
   const fresh = await getEditorContext(member.store);
   const product = await getProductForEdit(member.store, fresh, result.productId);
   if (!product) return { status: "error", problems: ["The product was saved but could not be reloaded."] };

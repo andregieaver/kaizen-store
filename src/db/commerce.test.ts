@@ -1780,6 +1780,40 @@ describe("AI providers (D73)", () => {
   });
 });
 
+describe("search by meaning (D74)", () => {
+  it("keeps a vector per translation, of any length, compared with pgvector, and gone with its translation", async () => {
+    const { productId } = await createProduct();
+    const insert = (vector: string, hash = "0123456789abcdef0123456789abcdef") =>
+      db.query(
+        `insert into commerce.product_embeddings (store_id, product_id, locale, space, content_hash, embedding)
+         values ($1, $2, 'en-IE', 'api.example.com|embed', $3, $4::extensions.vector)
+         on conflict (product_id, locale) do update set embedding = excluded.embedding, content_hash = excluded.content_hash`,
+        [store, productId, hash, vector],
+      );
+    await insert("[1,0,0]");
+    await expect(insert("[1,0]", "not a hash")).rejects.toThrow(/content_hash/);
+    // Another model's vectors may be longer.
+    await insert("[0.6,0.8]");
+    const { similarity } = await one<{ similarity: number }>(
+      `select 1 - (embedding OPERATOR(extensions.<=>) '[0.6,0.8]'::extensions.vector) as similarity
+       from commerce.product_embeddings where product_id = $1`,
+      [productId],
+    );
+    expect(similarity).toBeCloseTo(1);
+    // It cannot outlive its translation.
+    await expect(
+      db.query(
+        `insert into commerce.product_embeddings (store_id, product_id, locale, space, content_hash, embedding)
+         values ($1, $2, 'sv-SE', 's', '0123456789abcdef0123456789abcdef', '[1]')`,
+        [store, productId],
+      ),
+    ).rejects.toThrow(/product_embeddings_translation_fk/);
+    await db.query("delete from commerce.product_translations where product_id = $1", [productId]);
+    const { n } = await one<{ n: number }>("select count(*)::int as n from commerce.product_embeddings where product_id = $1", [productId]);
+    expect(n).toBe(0);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

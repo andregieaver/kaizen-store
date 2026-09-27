@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."search_queries" ADD COLUMN "semantic_best" real;--> statement-breakpoint
+ALTER TABLE "commerce"."search_queries" ADD COLUMN "meaning_results" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."search_queries" ADD CONSTRAINT "search_queries_meaning" CHECK ("commerce"."search_queries"."meaning_results" between 0 and "commerce"."search_queries"."results");

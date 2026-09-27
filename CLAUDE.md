@@ -96,7 +96,13 @@ of running `playwright install`.
   search page is `/s/{store}/{market}/search`, type-ahead goes through
   `suggestAction` (keyword only, never a model call), and page searches are
   logged in `search_queries` for 90 days. AI search parts (Phase 2, S2–S5)
-  must fall back to this when their model is unavailable.
+  must fall back to this when their model is unavailable. Search by meaning
+  (D74): product translations' vectors are in `product_embeddings` (pgvector
+  in `extensions`: write `extensions.vector` and `OPERATOR(extensions.<=>)`;
+  the table is SQL only, outside the Drizzle schema), kept current by
+  `refreshEmbeddings()` in the five-minute cron and `refreshStoreEmbeddings()`
+  after a product is saved; `rankedSearch()` merges keyword and meaning by
+  reciprocal rank fusion, and only compares vectors of the same `space`.
 - AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`): never
   name a provider or model in code. Kaizen's are set at `/admin/platform/ai`,
   a store owner's own at `/admin/{store}/settings/ai` (`commerce.ai_providers`;

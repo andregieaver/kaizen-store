@@ -10,6 +10,7 @@ import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { normalizeQuery } from "@/lib/search";
 import { byName } from "@/lib/taxonomy";
+import { queryVector } from "@/server/query-vector";
 import { logSearch, searchProducts } from "@/server/search";
 import { resolveShop } from "@/server/shop";
 import { siteTerms } from "@/server/taxonomy";
@@ -20,8 +21,9 @@ type Props = PageProps<"/s/[store]/[market]/search">;
 export const metadata: Metadata = { robots: { index: false, follow: true } };
 
 /**
- * Search in a store (Phase 2, S1): the store's products in the market that
- * match what was typed, as its product cards show them. Nothing found, it
+ * Search in a store (Phase 2, S1, S2): the store's products in the market
+ * that match what was typed, by its words and, with the store's AI, by its
+ * meaning, as its product cards show them. Nothing found, it
  * offers the store's categories instead; every search is logged for the
  * store's zero-result rate.
  */
@@ -44,8 +46,9 @@ async function Search({ params, searchParams }: Pick<Props, "params" | "searchPa
   const query = normalizeQuery(typeof raw === "string" ? raw : Array.isArray(raw) ? (raw[0] ?? "") : "");
   const typed = typeof raw === "string" ? raw.trim().slice(0, 100) : query;
   const where = { storeId: store.id, market };
-  const products = query ? await searchProducts(where, query) : [];
-  if (query) after(() => logSearch(where, query, products.length));
+  const found = query ? await searchProducts(where, query, queryVector) : null;
+  const products = found?.products ?? [];
+  if (found) after(() => logSearch(where, query, products.length, found));
   const categories = query && products.length === 0
     ? (await siteTerms(store.id, "product")).filter((term) => term.kind === "category" && !term.parentId).sort(byName)
     : [];
