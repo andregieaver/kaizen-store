@@ -108,8 +108,11 @@ const operatorSchema = z.union([
 export type OperatorChoice = z.infer<typeof operatorSchema>;
 
 /** What a product is (D65): goods (shipped or downloaded) or an appointment. */
-export const PRODUCT_KINDS = ["goods", "appointment"] as const;
+export const PRODUCT_KINDS = ["goods", "appointment", "stay", "rental"] as const;
 export type ProductKind = (typeof PRODUCT_KINDS)[number];
+/** Kinds booked for a time (D65, D67): sold as services, with the settings below. */
+export const BOOKED_KINDS = ["appointment", "stay", "rental"] as const;
+export const isBooked = (kind: ProductKind): kind is (typeof BOOKED_KINDS)[number] => kind !== "goods";
 
 /** How an appointment is booked (D65); kept in `appointment_settings` and `product_resources`. */
 export const appointmentInput = z.object({
@@ -126,6 +129,11 @@ export const appointmentInput = z.object({
   depositPercent: z.number().int().min(1, "A deposit is at least 1 %.").max(99, "A deposit is at most 99 %; take it all now instead.").default(DEFAULT_DEPOSIT_PERCENT),
   cancelHours: z.number().int().min(0).max(720, "Let shoppers cancel at most 30 days before.").default(DEFAULT_CANCEL_HOURS),
   noShowPercent: z.number().int().min(0).max(100, "A no-show fee is at most the whole price.").default(0),
+  /** Stays and rentals (D67): check-in and check-out (pick-up and return), and how many nights or days. */
+  checkInTime: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, "Write times as HH:MM.").default("15:00"),
+  checkOutTime: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, "Write times as HH:MM.").default("11:00"),
+  minNights: z.number().int().min(1, "A booking is at least one night or day.").max(365).default(1),
+  maxNights: z.number().int().min(1).max(365, "A booking is at most a year.").default(28),
 });
 
 export const DEFAULT_APPOINTMENT: z.infer<typeof appointmentInput> = {
@@ -141,7 +149,31 @@ export const DEFAULT_APPOINTMENT: z.infer<typeof appointmentInput> = {
   depositPercent: DEFAULT_DEPOSIT_PERCENT,
   cancelHours: DEFAULT_CANCEL_HOURS,
   noShowPercent: 0,
+  checkInTime: "15:00",
+  checkOutTime: "11:00",
+  minNights: 1,
+  maxNights: 28,
 };
+
+/** Where a stay or a rental starts from (D67): a year ahead, a day's notice for a stay, check-in 15–11, pick-up 9–17. */
+export const DEFAULT_STAY: z.infer<typeof appointmentInput> = {
+  ...DEFAULT_APPOINTMENT,
+  minNoticeMinutes: 0,
+  maxDaysAhead: 365,
+  cancelHours: 72,
+};
+export const DEFAULT_RENTAL: z.infer<typeof appointmentInput> = {
+  ...DEFAULT_STAY,
+  checkInTime: "09:00",
+  checkOutTime: "17:00",
+  maxNights: 14,
+  cancelHours: 24,
+};
+
+/** The settings a new booked product of a kind starts with. */
+export function defaultBooking(kind: (typeof BOOKED_KINDS)[number]): z.infer<typeof appointmentInput> {
+  return kind === "stay" ? DEFAULT_STAY : kind === "rental" ? DEFAULT_RENTAL : DEFAULT_APPOINTMENT;
+}
 
 export const productInput = z.object({
   handle: z
@@ -371,12 +403,22 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     problems.push("Add a purchase option, or let shoppers also buy the product once.");
   }
 
-  // Appointments (D65): booked one at a time, never subscribed to.
-  if (input.kind === "appointment") {
-    if (!input.appointment) problems.push("Say how the appointment is booked.");
-    if (input.plans.length > 0) problems.push("Appointments cannot be subscribed to: take the purchase options away.");
+  // Appointments, stays and rentals (D65, D67): booked for a time, never subscribed to.
+  if (isBooked(input.kind)) {
+    const what = { appointment: "appointment", stay: "stay", rental: "rental" }[input.kind];
+    if (!input.appointment) problems.push(`Say how the ${what} is booked.`);
+    if (input.plans.length > 0) problems.push("Bookings cannot be subscribed to: take the purchase options away.");
     if (input.status === "active" && input.appointment && input.appointment.resourceIds.length === 0) {
-      problems.push("Choose who does the appointment before publishing it.");
+      problems.push(
+        input.kind === "appointment"
+          ? "Choose who does the appointment before publishing it."
+          : input.kind === "stay"
+            ? "Choose the rooms or homes guests stay in before publishing it."
+            : "Choose the items that are rented out before publishing it.",
+      );
+    }
+    if (input.kind !== "appointment" && input.appointment && input.appointment.maxNights < input.appointment.minNights) {
+      problems.push("The longest booking cannot be shorter than the shortest.");
     }
   }
 

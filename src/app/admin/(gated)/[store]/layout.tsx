@@ -50,6 +50,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             items: [
               { href: `${base}/bookings`, label: "Calendar", exact: true },
               { href: `${base}/bookings/staff`, label: "Staff and hours" },
+              { href: `${base}/bookings/stays`, label: "Stays and rentals" },
+              { href: `${base}/bookings/units`, label: "Rooms and items" },
             ],
           },
         ]

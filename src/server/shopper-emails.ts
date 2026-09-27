@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { formatBookingTime } from "@/lib/booking-slots";
+import { bookingWhen, isRange } from "@/lib/booking-text";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
@@ -101,7 +102,7 @@ function orderLines(
     rows: [
       ...order.lines.map((line) => ({
         label: line.booking
-          ? `${line.quantity} × ${line.title}, ${formatBookingTime(line.booking.startsAt, order.locale, line.booking.timeZone)}, ${m.booking.withStaff(line.booking.staff)}`
+          ? `${isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}, ${bookingWhen(line.booking, order.locale, m)}`
           : `${line.quantity} × ${line.title}`,
         value: money(line.unitPriceMinor * line.quantity),
         image: line.image ? absoluteUrl(line.image, origin) : null,
@@ -142,7 +143,7 @@ function bookingEvent(line: BookedLine, store: EmailStore, m: Messages, cancelle
     startsAt: booking.startsAt,
     endsAt: booking.endsAt,
     summary: `${line.title} · ${store.name}`,
-    description: m.booking.withStaff(booking.staff),
+    description: booking.kind === "appointment" ? m.booking.withStaff(booking.staff) : booking.staff,
     location: booking.place ?? undefined,
     organizer: store.details.contactEmail ? { name: store.name, email: store.details.contactEmail } : null,
     cancelled,
@@ -164,10 +165,9 @@ function calendarAttachment(events: CalendarEvent[]): NonNullable<OutgoingEmail[
   ];
 }
 
-/** An appointment as the emails write it: what, when, with whom, and where. */
+/** An appointment (or a stay, a rental) as the emails write it: what, when, with whom or in what, and where. */
 function bookingText(line: BookedLine, locale: string, m: Messages): string {
-  const when = formatBookingTime(line.booking.startsAt, locale, line.booking.timeZone);
-  return [`${line.title}: ${when}, ${m.booking.withStaff(line.booking.staff)}`, line.booking.place].filter(Boolean).join("\n");
+  return [`${line.title}: ${bookingWhen(line.booking, locale, m)}`, line.booking.place].filter(Boolean).join("\n");
 }
 
 /** The company an order was bought for (B2B), as on its invoice. */

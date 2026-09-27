@@ -325,6 +325,16 @@ of running `playwright install`.
   `bookings.reminded_at`) and cancellations. A cancelled order gives up its
   times; the store cancels one from the week calendar (`cancelBooking()`,
   layout in `src/lib/booking-calendar.ts`) and refunds from the order.
+  Stays and rentals (D67) are products of `kind` `stay` or `rental`, booked
+  by whole nights or days over `booking_resources` of kind `unit` or `item`
+  (no hours; `appointment_settings` holds check-in/out times and the
+  shortest and longest). Their rules are pure in `src/lib/booking-ranges.ts`
+  (`rangeSpan()`: a stay ends on check-out N days later, a rental on its last
+  day), the server side is `src/server/ranges.ts` (`rangeDates()`,
+  `freeUnitsFor()`, `holdRange()`); the cart line's quantity is the nights
+  or days and `starts_at` the check-in, so prices and VAT need nothing new.
+  Show any booking with `bookingWhen()` (`src/lib/booking-text.ts`); stays
+  and rentals are cancelled, never moved.
   How an appointment is paid (D66, `src/lib/pay-later.ts`): `now`,
   `deposit` or `venue` in `appointment_settings`; `venuePart()` gives each
   line's share for the venue, the same in the cart and `placeOrder`.

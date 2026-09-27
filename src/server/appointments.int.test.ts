@@ -138,7 +138,7 @@ describe("booking an appointment (D65)", () => {
         status: "ok",
         delivery: "service",
         vatRate: 0,
-        booking: { startsAt: first, resourceId: null, staff: null, timeZone: "Europe/Oslo" },
+        booking: { kind: "appointment", startsAt: first, endsAt: null, resourceId: null, staff: null, timeZone: "Europe/Oslo" },
       }),
     ]);
   });

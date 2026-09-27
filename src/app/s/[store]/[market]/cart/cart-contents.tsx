@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
 import { companyRequired, withoutVat } from "@/lib/b2b";
-import { formatBookingTime } from "@/lib/booking-slots";
+import { bookingWhen, isRange } from "@/lib/booking-text";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
 import { vatIncluded } from "@/lib/checkout";
 import { basketShipping } from "@/lib/subscriptions";
@@ -184,8 +184,12 @@ export async function CartContents({
                   {line.booking && (
                     <p className="text-sm">
                       <span className="sr-only">{m.booking.time}: </span>
-                      {formatBookingTime(line.booking.startsAt, market.locale, line.booking.timeZone)}
-                      {line.booking.staff && `, ${m.booking.withStaff(line.booking.staff)}`}
+                      {bookingWhen(line.booking, market.locale, m)}
+                      {isRange(line.booking) && (
+                        <span className="block text-muted">
+                          {line.booking.kind === "stay" ? m.stay.nights(line.quantity) : m.stay.days(line.quantity)}
+                        </span>
+                      )}
                     </p>
                   )}
                   {line.plan && (
@@ -219,7 +223,7 @@ export async function CartContents({
               )}
 
               <div className="flex flex-wrap items-end gap-2">
-                {/* An appointment is one place at one time (D65): nothing to count. */}
+                {/* An appointment is one place at one time (D65), a stay its nights (D67): nothing to count. */}
                 {line.status !== "unavailable" && !line.booking && (
                   <form action={updateCartLine} className="flex items-end gap-2">
                     <input type="hidden" name="store" value={store.slug} />

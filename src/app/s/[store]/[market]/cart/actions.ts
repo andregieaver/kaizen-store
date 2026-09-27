@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
+import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
@@ -15,16 +16,19 @@ import { setCartCode } from "@/server/discounts";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveShop } from "@/server/shop";
 
-const lineInput = z.object({
-  store: z.string(),
-  market: z.string(),
-  variantId: z.uuid(),
-  quantity: z.coerce.number().int().min(0).max(MAX_LINE_QUANTITY),
-  sellingPlanId: z.uuid().nullable(),
-  /** An appointment's time and who with (D65). */
-  startsAt: z.iso.datetime({ offset: true }).nullable(),
-  resourceId: z.uuid().nullable(),
-});
+const lineInput = z
+  .object({
+    store: z.string(),
+    market: z.string(),
+    variantId: z.uuid(),
+    /** Units; a stay's nights or a rental's days (D67), which may be more. */
+    quantity: z.coerce.number().int().min(0).max(MAX_RANGE_LENGTH),
+    sellingPlanId: z.uuid().nullable(),
+    /** An appointment's time and who with (D65), or a stay's or rental's check-in and room or item (D67). */
+    startsAt: z.iso.datetime({ offset: true }).nullable(),
+    resourceId: z.uuid().nullable(),
+  })
+  .refine((line) => line.startsAt !== null || line.quantity <= MAX_LINE_QUANTITY);
 
 export type AddToCartState = {
   outcome: "idle" | "added" | "capped" | "unavailable" | "plan_conflict" | "slot_taken" | "error";

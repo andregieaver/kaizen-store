@@ -17,7 +17,7 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(staffId).success) notFound();
   const staff = await getResource(store.id, staffId);
-  if (!staff) notFound();
+  if (!staff || staff.kind !== "staff") notFound();
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

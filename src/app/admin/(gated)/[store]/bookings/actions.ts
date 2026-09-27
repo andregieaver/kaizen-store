@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
-import { cancelBooking, removeResource, saveResource } from "@/server/bookings";
+import { cancelBooking, removeResource, saveResource, type ResourceKind } from "@/server/bookings";
 import { markNoShow } from "@/server/no-show";
 import { sendBookingCancelled } from "@/server/shopper-emails";
 
@@ -37,6 +37,37 @@ export async function removeStaffAction(storeSlug: string, staffId: string): Pro
     return { ok: false, problems: ["They are no longer in the store."] };
   }
   redirect(`/admin/${storeSlug}/bookings/staff`);
+}
+
+/** Adds or changes a room or home (a unit) or a rental item (D67); a new one goes back to the list. */
+export async function saveUnitAction(
+  storeSlug: string,
+  kind: Exclude<ResourceKind, "staff">,
+  unitId: string | null,
+  _state: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  const gone = "It is no longer in the store.";
+  if (unitId && !z.uuid().safeParse(unitId).success) return { status: "error", messages: [gone] };
+  const result = await saveResource(
+    member,
+    unitId,
+    { name: formData.get("name"), email: "", capacity: formData.get("capacity"), active: formData.get("active") === "on" },
+    kind,
+  );
+  const words: Record<string, string> = { "They are no longer in the store.": gone, "Give them a name.": "Give it a name." };
+  if (!result.ok) return { status: "error", messages: result.problems.map((p) => words[p] ?? p) };
+  if (!unitId) redirect(`/admin/${storeSlug}/bookings/units`);
+  return { status: "ok", messages: ["Saved."] };
+}
+
+export async function removeUnitAction(storeSlug: string, unitId: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const member = await requireMember(storeSlug);
+  if (!z.uuid().safeParse(unitId).success || !(await removeResource(member, unitId))) {
+    return { ok: false, problems: ["It is no longer in the store."] };
+  }
+  redirect(`/admin/${storeSlug}/bookings/units`);
 }
 
 /**

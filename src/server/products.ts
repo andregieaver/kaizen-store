@@ -10,9 +10,12 @@ import {
   combineOptions,
   formatPriceInput,
   DEFAULT_APPOINTMENT,
+  defaultBooking,
   GENERAL_TAX_CODE,
+  isBooked,
   parseDelivery,
   parsePrice,
+  PRODUCT_KINDS,
   productProblems,
   type AppointmentInput,
   type OperatorChoice,
@@ -52,7 +55,8 @@ export type EditorContext = {
   terms: Term[];
   /** Appointments are switched on (D65), with the staff who do them and the places they can be at. */
   bookingsOn: boolean;
-  staff: { id: string; name: string; active: boolean }[];
+  /** The store's staff, rooms and homes, and items to rent (D65, D67); each kind of product picks from its own. */
+  staff: { id: string; name: string; active: boolean; kind: "staff" | "unit" | "item" }[];
   places: { id: string; name: string }[];
 };
 
@@ -77,7 +81,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       from commerce.countries
     `),
     db().execute<Row>(sql`
-      select id, name, active from commerce.booking_resources
+      select id, name, active, kind from commerce.booking_resources
       where store_id = ${store.id}::uuid order by active desc, position, name
     `),
     db().execute<Row>(sql`
@@ -109,7 +113,12 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     })),
     locationName: location ? String(location.name) : null,
     bookingsOn: store.bookingsOn,
-    staff: staff.map((row) => ({ id: String(row.id), name: String(row.name), active: Boolean(row.active) })),
+    staff: staff.map((row) => ({
+      id: String(row.id),
+      name: String(row.name),
+      active: Boolean(row.active),
+      kind: row.kind === "unit" || row.kind === "item" ? row.kind : "staff",
+    })),
     places: places.map((row) => ({ id: String(row.id), name: String(row.name) })),
   };
 }
@@ -249,6 +258,7 @@ export async function getProductForEdit(
   if (!product) return null;
   // Prices are typed without VAT at this product's rate in stores selling only to businesses.
   const category = parseVatCategory(product.vat_category);
+  const kind = PRODUCT_KINDS.find((k) => k === product.kind) ?? "goods";
 
   const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources] = await Promise.all([
     db().execute<Row>(sql`
@@ -298,7 +308,8 @@ export async function getProductForEdit(
     `),
     db().execute<Row>(sql`
       select duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes, min_notice_minutes,
-        max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent
+        max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent,
+        check_in_time, check_out_time, min_nights, max_nights
       from commerce.appointment_settings where store_id = ${store.id}::uuid and product_id = ${productId}::uuid
     `),
     db().execute<Row>(sql`
@@ -404,9 +415,8 @@ export async function getProductForEdit(
     subscriptionOnly: Boolean(product.subscription_only),
     audience: parseProductAudience(product.audience),
     vatCategory: category,
-    kind: product.kind === "appointment" ? "appointment" : "goods",
-    appointment:
-      product.kind === "appointment"
+    kind,
+    appointment: isBooked(kind)
         ? {
             durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
             bufferBeforeMinutes: Number(appointment?.buffer_before_minutes ?? 0),
@@ -420,6 +430,10 @@ export async function getProductForEdit(
             depositPercent: Number(appointment?.deposit_percent ?? DEFAULT_APPOINTMENT.depositPercent),
             cancelHours: Number(appointment?.cancel_hours ?? DEFAULT_APPOINTMENT.cancelHours),
             noShowPercent: Number(appointment?.no_show_percent ?? 0),
+            checkInTime: String(appointment?.check_in_time ?? DEFAULT_APPOINTMENT.checkInTime),
+            checkOutTime: String(appointment?.check_out_time ?? DEFAULT_APPOINTMENT.checkOutTime),
+            minNights: Number(appointment?.min_nights ?? 1),
+            maxNights: Number(appointment?.max_nights ?? 28),
           }
         : null,
     taxCode: String(product.tax_code),
@@ -456,14 +470,14 @@ function keptAmount(
  * services, booked for a time; goods are shipped or downloaded.
  */
 function asKind(input: ProductInput): ProductInput {
-  const appointment = input.kind === "appointment";
-  const delivery = (d: ProductInput["delivery"]) => (appointment ? "service" : d === "service" ? "physical" : d);
+  const booked = isBooked(input.kind);
+  const delivery = (d: ProductInput["delivery"]) => (booked ? "service" : d === "service" ? "physical" : d);
   return {
     ...input,
     delivery: delivery(input.delivery),
     variants: input.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })),
-    subscriptionOnly: appointment ? false : input.subscriptionOnly,
-    appointment: appointment ? (input.appointment ?? DEFAULT_APPOINTMENT) : null,
+    subscriptionOnly: booked ? false : input.subscriptionOnly,
+    appointment: isBooked(input.kind) ? (input.appointment ?? defaultBooking(input.kind)) : null,
   };
 }
 
@@ -471,26 +485,30 @@ function asKind(input: ProductInput): ProductInput {
 async function saveAppointment(tx: Tx, storeId: string, productId: string, input: ProductInput) {
   await tx.execute(sql`delete from commerce.product_resources where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
   const a = input.appointment;
-  if (input.kind !== "appointment" || !a) {
+  if (!isBooked(input.kind) || !a) {
     await tx.execute(sql`delete from commerce.appointment_settings where store_id = ${storeId}::uuid and product_id = ${productId}::uuid`);
     return;
   }
   await tx.execute(sql`
     insert into commerce.appointment_settings (
       product_id, store_id, duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes,
-      min_notice_minutes, max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent
+      min_notice_minutes, max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent,
+      check_in_time, check_out_time, min_nights, max_nights
     ) values (
       ${productId}::uuid, ${storeId}::uuid, ${a.durationMinutes}, ${a.bufferBeforeMinutes}, ${a.bufferAfterMinutes},
       ${a.stepMinutes}, ${a.minNoticeMinutes}, ${a.maxDaysAhead},
       (select id from commerce.store_locations where store_id = ${storeId}::uuid and id = ${a.locationId}::uuid),
-      ${a.payment}, ${a.depositPercent}, ${a.cancelHours}, ${a.noShowPercent}
+      ${a.payment}, ${a.depositPercent}, ${a.cancelHours}, ${a.noShowPercent},
+      ${a.checkInTime}, ${a.checkOutTime}, ${a.minNights}, ${Math.max(a.minNights, a.maxNights)}
     )
     on conflict (product_id) do update set
       duration_minutes = excluded.duration_minutes, buffer_before_minutes = excluded.buffer_before_minutes,
       buffer_after_minutes = excluded.buffer_after_minutes, step_minutes = excluded.step_minutes,
       min_notice_minutes = excluded.min_notice_minutes, max_days_ahead = excluded.max_days_ahead,
       location_id = excluded.location_id, payment = excluded.payment, deposit_percent = excluded.deposit_percent,
-      cancel_hours = excluded.cancel_hours, no_show_percent = excluded.no_show_percent
+      cancel_hours = excluded.cancel_hours, no_show_percent = excluded.no_show_percent,
+      check_in_time = excluded.check_in_time, check_out_time = excluded.check_out_time,
+      min_nights = excluded.min_nights, max_nights = excluded.max_nights
   `);
   if (a.resourceIds.length > 0) {
     await tx.execute(sql`

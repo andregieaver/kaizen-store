@@ -109,12 +109,25 @@ deposit, or at the venue; the venue's share as the order's balance, marked
 paid by staff), B2b (shoppers cancel and move their own bookings until the
 appointment's hours before, with refunds of what Stripe took) and B2c
 (staff mark no-shows and may charge the fee to the card saved with the
-deposit). B3 is next.
+deposit).
+
+B3 is under way (D67). B3a is done: products of kind `stay` and `rental`
+booked by whole nights or days over rooms and homes (`unit`) or rental items
+(`item`), managed under Bookings → Rooms and items and seen night by night
+under Stays and rentals; check-in and check-out (pick-up and return) times,
+shortest and longest, and D66's payment and cancellation rules per product;
+a four-week date picker on the product page (`RangePicker`,
+`src/server/ranges.ts`, pure rules in `src/lib/booking-ranges.ts`); the cart
+line's quantity is the nights or days, and checkout holds the whole span.
+Shoppers cancel, but do not move, stays and rentals. B3b (blocked dates,
+iCal sync with Airbnb and Booking.com) and B3c (seasonal prices, cleaning
+fee) are next.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`
-with a member of staff (`commerce.add_demo_appointment()`); stays and
-rentals get theirs in B3.
+with a member of staff (`commerce.add_demo_appointment()`), stays have
+`Demo: Hytte ved vannet` (`commerce.add_demo_stay()`) and rentals
+`Demo: Leie av elsykkel` with three bikes (`commerce.add_demo_rental()`).
 
 Each phase ends with its migrations applied, tests and a decision entry, as
 before.

@@ -209,6 +209,9 @@ BEGIN
   -- 5. An appointment (D65), with a member of staff to book: every kind of
   -- product has a demo, from the same function production's template used.
   PERFORM commerce.add_demo_appointment(v_store);
+  -- 6. A stay and a rental (D67), with a cabin and bikes to book.
+  PERFORM commerce.add_demo_stay(v_store);
+  PERFORM commerce.add_demo_rental(v_store);
 
   -- Categories and tags (D50), with the demo's products in them; a lamp is
   -- in Belysning, inside Hjem, so it shows under Hjem too.

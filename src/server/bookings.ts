@@ -55,8 +55,13 @@ export async function setBookingsModule(
 // Staff
 // ---------------------------------------------------------------------------
 
+/** Who or what is booked (D65, D67): staff for appointments, units (rooms, homes) for stays, items for rentals. */
+export const RESOURCE_KINDS = ["staff", "unit", "item"] as const;
+export type ResourceKind = (typeof RESOURCE_KINDS)[number];
+
 export type BookingResource = {
   id: string;
+  kind: ResourceKind;
   name: string;
   email: string;
   hours: OpeningHours;
@@ -70,6 +75,7 @@ export type BookingResource = {
 
 const toResource = (row: Row): BookingResource => ({
   id: String(row.id),
+  kind: RESOURCE_KINDS.find((k) => k === row.kind) ?? "staff",
   name: String(row.name),
   email: String(row.email ?? ""),
   hours: parseOpeningHours(row.hours) ?? defaultHours(),
@@ -80,17 +86,17 @@ const toResource = (row: Row): BookingResource => ({
 });
 
 const resourceColumns = sql`
-  r.id, r.name, r.email, r.hours, r.capacity, r.active,
+  r.id, r.kind, r.name, r.email, r.hours, r.capacity, r.active,
   (select count(*)::int from commerce.product_resources pr where pr.store_id = r.store_id and pr.resource_id = r.id) as services,
   (select count(*)::int from commerce.bookings b
     where b.store_id = r.store_id and b.resource_id = r.id and b.status = 'confirmed' and b.starts_at > now()) as upcoming
 `;
 
-/** The store's staff who take appointments, in their order; those switched off last. */
-export async function listResources(storeId: string): Promise<BookingResource[]> {
+/** The store's staff who take appointments (or its units or items), in their order; those switched off last. */
+export async function listResources(storeId: string, kinds: readonly ResourceKind[] = ["staff"]): Promise<BookingResource[]> {
   const rows = await db().execute<Row>(sql`
     select ${resourceColumns} from commerce.booking_resources r
-    where r.store_id = ${storeId}::uuid
+    where r.store_id = ${storeId}::uuid and r.kind in (${sql.join(kinds.map((k) => sql`${k}`), sql`, `)})
     order by r.active desc, r.position, r.name
   `);
   return rows.map(toResource);
@@ -126,28 +132,32 @@ export const resourceInput = z.object({
 
 export type SaveResourceResult = { ok: true; id: string } | { ok: false; problems: string[] };
 
-/** Adds a member of staff, or changes one of the store's. */
+/** A unit or an item (D67) has no hours: it is booked by the day. */
+const unitInput = resourceInput.omit({ hours: true });
+
+/** Adds a member of staff (or a unit or an item), or changes one of the store's of that kind. */
 export async function saveResource(
   { account, store }: Membership,
   id: string | null,
   values: Record<string, unknown>,
+  kind: ResourceKind = "staff",
 ): Promise<SaveResourceResult> {
-  const parsed = resourceInput.safeParse(values);
+  const parsed = kind === "staff" ? resourceInput.safeParse(values) : unitInput.safeParse(values);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const r = parsed.data;
-  const hours = JSON.stringify(r.hours);
+  const hours = JSON.stringify("hours" in r ? r.hours : defaultHours());
   const [row] = id
     ? await db().execute<Row>(sql`
         update commerce.booking_resources set
           name = ${r.name}, email = ${r.email}, capacity = ${r.capacity}, active = ${r.active},
-          hours = ${hours}::jsonb, updated_at = now()
-        where store_id = ${store.id}::uuid and id = ${id}::uuid
+          hours = ${kind === "staff" ? sql`${hours}::jsonb` : sql`hours`}, updated_at = now()
+        where store_id = ${store.id}::uuid and id = ${id}::uuid and kind = ${kind}
         returning id
       `)
     : await db().execute<Row>(sql`
         insert into commerce.booking_resources (store_id, kind, name, email, capacity, active, hours, position)
         values (
-          ${store.id}::uuid, 'staff', ${r.name}, ${r.email}, ${r.capacity}, ${r.active}, ${hours}::jsonb,
+          ${store.id}::uuid, ${kind}, ${r.name}, ${r.email}, ${r.capacity}, ${r.active}, ${hours}::jsonb,
           (select coalesce(max(position), -1) + 1 from commerce.booking_resources where store_id = ${store.id}::uuid)
         )
         returning id
@@ -188,8 +198,10 @@ export type StoreBooking = {
   endsAt: string;
   status: "held" | "confirmed" | "cancelled";
   service: string;
+  /** Who, or which unit or item. */
   staff: string;
   resourceId: string;
+  kind: ResourceKind;
   orderId: string | null;
   orderNumber: string | null;
   customer: string;
@@ -199,10 +211,20 @@ export type StoreBooking = {
   currency: string | null;
 };
 
-/** Bookings between two instants, held ones only while their hold lasts, earliest first. */
-export async function listBookings(storeId: string, from: Date, to: Date): Promise<StoreBooking[]> {
+/**
+ * Bookings between two instants, held ones only while their hold lasts,
+ * earliest first: appointments starting then, or stays and rentals (D67)
+ * overlapping them.
+ */
+export async function listBookings(
+  storeId: string,
+  from: Date,
+  to: Date,
+  kinds: readonly ResourceKind[] = ["staff"],
+): Promise<StoreBooking[]> {
+  const ranges = !kinds.includes("staff");
   const rows = await db().execute<Row>(sql`
-    select b.id, b.starts_at, b.ends_at, b.status, r.name as staff, b.resource_id,
+    select b.id, b.starts_at, b.ends_at, b.status, r.name as staff, b.resource_id, r.kind,
       coalesce((select t.title from commerce.product_translations t where t.product_id = b.product_id order by t.locale limit 1), p.handle) as service,
       o.id as order_id, o.number as order_number, o.currency, b.no_show_at,
       coalesce(nullif(o.billing_address ->> 'name', ''), o.email, '') as customer,
@@ -213,8 +235,12 @@ export async function listBookings(storeId: string, from: Date, to: Date): Promi
     left join commerce.orders o on o.store_id = b.store_id and o.id = b.order_id
     left join commerce.order_lines ol on ol.store_id = b.store_id and ol.id = b.order_line_id
     left join commerce.appointment_settings a on a.store_id = b.store_id and a.product_id = b.product_id
-    where b.store_id = ${storeId}::uuid
-      and b.starts_at >= ${from.toISOString()}::timestamptz and b.starts_at < ${to.toISOString()}::timestamptz
+    where b.store_id = ${storeId}::uuid and r.kind in (${sql.join(kinds.map((k) => sql`${k}`), sql`, `)})
+      and ${
+        ranges
+          ? sql`b.starts_at < ${to.toISOString()}::timestamptz and b.ends_at > ${from.toISOString()}::timestamptz`
+          : sql`b.starts_at >= ${from.toISOString()}::timestamptz and b.starts_at < ${to.toISOString()}::timestamptz`
+      }
       and (b.status = 'confirmed' or (b.status = 'held' and b.hold_expires_at > now()))
     order by b.starts_at, r.position
   `);
@@ -226,6 +252,7 @@ export async function listBookings(storeId: string, from: Date, to: Date): Promi
     service: String(row.service),
     staff: String(row.staff),
     resourceId: String(row.resource_id),
+    kind: RESOURCE_KINDS.find((k) => k === row.kind) ?? "staff",
     orderId: row.order_id ? String(row.order_id) : null,
     orderNumber: row.order_number ? String(row.order_number) : null,
     customer: String(row.customer ?? ""),

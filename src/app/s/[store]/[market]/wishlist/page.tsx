@@ -60,7 +60,7 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
         variantId: row.variantId,
         quantity: row.quantity,
         subscriptionOnly: product.subscriptionOnly,
-        booking: product.kind === "appointment",
+        booking: product.kind !== "goods",
         fromPrice: `${product.variants.length > 1 ? `${m.fromPrice} ` : ""}${formatMoney(
           Math.min(...product.variants.map((v) => shownAmount(v.price.amountMinor, v.price.vat, buyer))),
           product.variants[0]?.price.currency ?? market.currency,

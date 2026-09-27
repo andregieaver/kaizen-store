@@ -1,5 +1,6 @@
 import { bookingChangesLabels } from "@/lib/booking-labels";
 import { formatBookingTime } from "@/lib/booking-slots";
+import { bookingWhen, isRange } from "@/lib/booking-text";
 import type { Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -14,7 +15,8 @@ const nowMs = () => Date.now();
 
 /**
  * The appointments on a paid order, each with a way to change or cancel it
- * while its rule allows (D66): on the order page and in My account.
+ * while its rule allows (D66): on the order page and in My account. Stays
+ * and rentals (D67) are only cancelled.
  */
 export function OwnBookings({
   order,
@@ -48,9 +50,7 @@ export function OwnBookings({
             <li key={booking.id} className="flex flex-col gap-2">
               <p>
                 <span className="font-medium">{line.title}</span>
-                <span className="block">
-                  {formatBookingTime(booking.startsAt, market.locale, booking.timeZone)}, {m.booking.withStaff(booking.staff)}
-                </span>
+                <span className="block">{bookingWhen(booking, market.locale, m)}</span>
                 {booking.place && <span className="block text-sm text-muted">{booking.place}</span>}
               </p>
               <BookingChanges
@@ -61,11 +61,15 @@ export function OwnBookings({
                 bookingId={booking.id}
                 productId={booking.productId}
                 open={selfServiceOpen(booking.startsAt, booking.cancelHours, now)}
-                labels={bookingChangesLabels(
-                  m,
-                  formatBookingTime(until, market.locale, booking.timeZone),
-                  paidOnline > 0 ? formatMoney(paidOnline, order.currency, market.locale) : null,
-                )}
+                canMove={!isRange(booking)}
+                labels={{
+                  ...bookingChangesLabels(
+                    m,
+                    formatBookingTime(until, market.locale, booking.timeZone),
+                    paidOnline > 0 ? formatMoney(paidOnline, order.currency, market.locale) : null,
+                  ),
+                  ...(isRange(booking) && { changeUntil: m.stay.cancelUntil(formatBookingTime(until, market.locale, booking.timeZone)) }),
+                }}
               />
             </li>
           );

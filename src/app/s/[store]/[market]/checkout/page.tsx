@@ -7,7 +7,7 @@ import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
 import { LineThumbnail } from "@/components/line-thumbnail";
-import { formatBookingTime } from "@/lib/booking-slots";
+import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { checkoutLabels } from "@/lib/checkout-labels";
@@ -223,11 +223,10 @@ function Summary({
           <li key={line.id} className="flex items-center gap-3 py-2 text-sm">
             <LineThumbnail src={line.image} size={40} />
             <span className="min-w-0 flex-1">
-              {line.quantity} × {line.title}
+              {isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}
               {line.booking && (
                 <span className="block">
-                  {formatBookingTime(line.booking.startsAt, order.locale, line.booking.timeZone)},{" "}
-                  {m.booking.withStaff(line.booking.staff)}
+                  {bookingWhen(line.booking, order.locale, m)}
                 </span>
               )}
             </span>

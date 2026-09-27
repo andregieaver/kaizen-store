@@ -80,6 +80,8 @@ export type OrderView = {
 
 export type OrderBooking = {
   id: string;
+  /** An appointment (D65), or a stay or a rental (D67): then from check-in to check-out, in a room or with an item. */
+  kind: "appointment" | "stay" | "rental";
   startsAt: string;
   endsAt: string;
   staff: string;
@@ -143,6 +145,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     booking: line.starts_at
       ? {
           id: String(line.booking_id),
+          kind: line.resource_kind === "unit" ? ("stay" as const) : line.resource_kind === "item" ? ("rental" as const) : ("appointment" as const),
           startsAt: new Date(String(line.starts_at)).toISOString(),
           endsAt: new Date(String(line.ends_at)).toISOString(),
           staff: String(line.staff ?? ""),
@@ -181,11 +184,12 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
           order by m.position limit 1) as image,
         b.id as booking_id, b.starts_at, b.ends_at, b.status as booking_status, b.staff, b.place, s.time_zone,
         b.product_id as booking_product_id, b.resource_id as booking_resource_id, b.cancel_hours, b.sequence,
-        ol.venue_minor
+        b.resource_kind, ol.venue_minor
       from commerce.order_lines ol
       join commerce.stores s on s.id = ol.store_id
       left join lateral (
-        select b.id, b.starts_at, b.ends_at, b.status, r.name as staff, b.product_id, b.resource_id, a.cancel_hours, b.sequence,
+        select b.id, b.starts_at, b.ends_at, b.status, r.name as staff, r.kind as resource_kind, b.product_id, b.resource_id,
+          a.cancel_hours, b.sequence,
           nullif(concat_ws(', ', nullif(l.name, ''), l.street, nullif(trim(concat_ws(' ', l.postal_code, l.city)), '')), '') as place
         from commerce.bookings b
         join commerce.booking_resources r on r.store_id = b.store_id and r.id = b.resource_id

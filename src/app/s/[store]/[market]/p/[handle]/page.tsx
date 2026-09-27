@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { AddToCart } from "@/components/add-to-cart";
 import { AppointmentPicker } from "@/components/appointment-picker";
+import { RangePicker } from "@/components/range-picker";
 import { SwitchToBusiness } from "@/components/buyer";
 import { JsonLdScript } from "@/components/json-ld";
 import { Price } from "@/components/price";
@@ -13,7 +14,8 @@ import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
-import { pickerLabels } from "@/lib/booking-labels";
+import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
+import { rangeCalendar } from "@/lib/booking-ranges";
 import { slotWeek } from "@/lib/booking-slots";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -24,6 +26,7 @@ import { schemaPrice, summarize } from "@/lib/seo";
 import { productJsonLd } from "@/lib/structured-data";
 import { planPrice } from "@/lib/subscriptions";
 import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
+import { getRangeOffer, rangeDates } from "@/server/ranges";
 import {
   getAvailability,
   getProduct,
@@ -179,6 +182,13 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
               <AppointmentBooking store={store} product={product} market={market} m={m} />
             </Suspense>
           </section>
+        ) : product.kind === "stay" || product.kind === "rental" ? (
+          // Booked for nights or days (D67): which are free is read per request, like stock.
+          <section aria-label={m.stay.chooseDates} className={product.audience === "businesses" ? "for-business" : ""}>
+            <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
+              <RangeBooking store={store} product={product} market={market} m={m} />
+            </Suspense>
+          </section>
         ) : (
           <section aria-labelledby="variants-heading" className={product.audience === "businesses" ? "for-business" : ""}>
             <h2 id="variants-heading" className="mb-2 font-medium">
@@ -197,6 +207,8 @@ async function ProductDetails({ params }: { params: Props["params"] }) {
           <p>{product.description}</p>
           {product.kind === "appointment" ? (
             <p className="mt-2 text-sm">{m.booking.noWithdrawal}</p>
+          ) : product.kind === "stay" || product.kind === "rental" ? (
+            <p className="mt-2 text-sm">{m.stay.noWithdrawal(product.kind === "stay")}</p>
           ) : product.variants.some((v) => v.delivery === "digital") ? (
             <p className="mt-2 text-sm">{m.digitalWithdrawal}</p>
           ) : (
@@ -306,6 +318,80 @@ async function AppointmentBooking({
         initial={slotWeek(week, market.locale, store.timeZone)}
         openCart={store.openCartOnAdd}
         labels={pickerLabels(m)}
+      />
+      <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable />
+    </div>
+  );
+}
+
+/** A stay's or rental's facts and free dates (D67), read per request after the cached page shell. */
+async function RangeBooking({
+  store,
+  product,
+  market,
+  m,
+}: {
+  store: Store;
+  product: ProductDetail;
+  market: Market;
+  m: Messages;
+}) {
+  await connection();
+  const [offer, month] = await Promise.all([getRangeOffer(store.id, product.id), rangeDates(store.id, product.id)]);
+  if (!store.bookingsOn || !offer || !month) return <p>{m.booking.notBookable}</p>;
+  const stay = offer.kind === "stay";
+  const { rules } = offer;
+  return (
+    <div className="flex flex-col gap-4">
+      <dl className="grid gap-1 text-sm">
+        <div className="flex gap-2">
+          <dt className="sr-only">{m.booking.time}</dt>
+          <dd>
+            {[
+              m.stay.times(rules.checkInTime, rules.checkOutTime, stay),
+              rules.minNights > 1 && m.stay.tooShort(rules.minNights, stay),
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          </dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="sr-only">{m.booking.atVenue}</dt>
+          <dd>
+            {[
+              offer.payment.mode === "deposit" && m.booking.payDeposit(offer.payment.depositPercent),
+              offer.payment.mode === "venue" && m.booking.payVenue,
+              m.stay.freeCancel(offer.cancelHours, stay),
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          </dd>
+        </div>
+        {offer.place && (
+          <div className="flex gap-2">
+            <dt className="font-medium">{m.booking.where}:</dt>
+            <dd>{[offer.place.name, offer.place.address].filter(Boolean).join(", ")}</dd>
+          </div>
+        )}
+      </dl>
+      <RangePicker
+        store={store.slug}
+        market={market.slug}
+        cartHref={marketPath(store.slug, market.slug, "/cart")}
+        productId={product.id}
+        kind={offer.kind}
+        variants={product.variants.map((variant) => ({
+          id: variant.id,
+          label: optionLabel(m, variant.options) || product.title,
+          price: <Price price={variant.price} locale={market.locale} m={m} />,
+        }))}
+        initial={rangeCalendar(month, market.locale)}
+        checkInTime={rules.checkInTime}
+        timeZone={offer.timeZone}
+        minNights={rules.minNights}
+        maxNights={rules.maxNights}
+        openCart={store.openCartOnAdd}
+        labels={rangePickerLabels(m, stay, rules.minNights, rules.maxNights)}
       />
       <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable />
     </div>

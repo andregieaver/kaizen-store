@@ -715,7 +715,7 @@ export const products = commerce.table(
     audience: text("audience").notNull().default("all"),
     /** Which VAT rate it takes (D65): the market's standard rate, accommodation's, or none (exempt, such as health care). */
     vatCategory: text("vat_category").notNull().default("standard"),
-    /** What it is (D65): goods (physical or digital), or an appointment booked for a time. */
+    /** What it is (D65, D67): goods (physical or digital), an appointment, a stay (nights) or a rental (days). */
     kind: text("kind").notNull().default("goods"),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
@@ -740,7 +740,7 @@ export const products = commerce.table(
     index("products_store_status_idx").on(t.storeId, t.status),
     check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
     check("products_vat_category", sql`${t.vatCategory} in ('standard', 'accommodation', 'exempt')`),
-    check("products_kind", sql`${t.kind} in ('goods', 'appointment')`),
+    check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental')`),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
@@ -2858,7 +2858,7 @@ export const bookingResources = commerce.table(
   (t) => [
     unique("booking_resources_store_id_key").on(t.storeId, t.id),
     index("booking_resources_store_idx").on(t.storeId, t.position),
-    check("booking_resources_kind", sql`${t.kind} in ('staff')`),
+    check("booking_resources_kind", sql`${t.kind} in ('staff', 'unit', 'item')`),
     check("booking_resources_capacity", sql`${t.capacity} between 1 and 500`),
     check("booking_resources_name", sql`length(${t.name}) between 1 and 120`),
   ],
@@ -2877,6 +2877,15 @@ export const appointmentSettings = commerce.table(
     stepMinutes: integer("step_minutes").notNull().default(15),
     minNoticeMinutes: integer("min_notice_minutes").notNull().default(60),
     maxDaysAhead: integer("max_days_ahead").notNull().default(60),
+    /**
+     * Stays and rentals (D67): when guests check in and out (rentals: pick
+     * up and return), in the store's time zone, and how many nights (or
+     * days) one booking may be.
+     */
+    checkInTime: text("check_in_time").notNull().default("15:00"),
+    checkOutTime: text("check_out_time").notNull().default("11:00"),
+    minNights: integer("min_nights").notNull().default(1),
+    maxNights: integer("max_nights").notNull().default(28),
     /** Where it takes place: one of the store's places (D40), or none said. */
     /** How it is paid (D66): `now`, a `deposit` now and the rest at the venue, or all at the `venue`. */
     payment: text("payment").notNull().default("now"),
@@ -2908,6 +2917,11 @@ export const appointmentSettings = commerce.table(
     check("appointment_settings_cancel", sql`${t.cancelHours} between 0 and 720`),
     check("appointment_settings_no_show", sql`${t.noShowPercent} between 0 and 100`),
     check("appointment_settings_ahead", sql`${t.maxDaysAhead} between 1 and 730`),
+    check(
+      "appointment_settings_times",
+      sql`${t.checkInTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' and ${t.checkOutTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`,
+    ),
+    check("appointment_settings_nights", sql`${t.minNights} between 1 and 365 and ${t.maxNights} between ${t.minNights} and 365`),
   ],
 );
 

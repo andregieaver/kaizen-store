@@ -862,6 +862,53 @@ describe("new stores from the template", () => {
       await one("select v.delivery, p.amount_minor::int from commerce.product_variants v join commerce.current_prices p on p.variant_id = v.id where v.product_id = $1 and p.market_code = 'NO'", [copy.id]),
     ).toEqual({ delivery: "service", amount_minor: 89000 });
   });
+
+  it("has a demo stay and rental, and new stores get them with their dates' rules (D67)", async () => {
+    const { id: stay } = await one<{ id: string }>("select commerce.add_demo_stay($1) as id", [template]);
+    expect(await one("select commerce.add_demo_stay($1) as id", [template])).toEqual({ id: stay });
+    await one("select commerce.add_demo_rental($1) as id", [template]);
+
+    const { store_id: store } = await approve(await request("siri@example.com"), "siris-hytter");
+    const copied = await db.query(
+      `select p.handle, p.kind, p.status, p.vat_category, a.check_in_time, a.check_out_time, a.min_nights, a.max_nights,
+         a.payment, r.kind as resource_kind, r.capacity
+       from commerce.products p
+       join commerce.appointment_settings a on a.product_id = p.id
+       join commerce.product_resources pr on pr.product_id = p.id
+       join commerce.booking_resources r on r.id = pr.resource_id and r.store_id = $1
+       where p.store_id = $1 and p.kind in ('stay', 'rental') order by p.kind`,
+      [store],
+    );
+    expect(copied.rows).toEqual([
+      {
+        handle: "demo-sykkelutleie", kind: "rental", status: "active", vat_category: "standard", check_in_time: "09:00",
+        check_out_time: "17:00", min_nights: 1, max_nights: 14, payment: "now", resource_kind: "item", capacity: 3,
+      },
+      {
+        handle: "demo-hytte", kind: "stay", status: "active", vat_category: "accommodation", check_in_time: "15:00",
+        check_out_time: "11:00", min_nights: 2, max_nights: 14, payment: "deposit", resource_kind: "unit", capacity: 1,
+      },
+    ]);
+  });
+});
+
+describe("stays and rentals (D67)", () => {
+  it("keeps check-in times and lengths sensible", async () => {
+    const { productId } = await createProduct();
+    await db.query("update commerce.products set kind = 'stay' where id = $1", [productId]);
+    const settings = (columns: string, values: string) =>
+      db.query(`insert into commerce.appointment_settings (product_id, store_id, ${columns}) values ($1, $2, ${values})`, [
+        productId,
+        store,
+      ]);
+    await expect(settings("check_in_time", "'25:00'")).rejects.toThrow(/appointment_settings_times/);
+    await expect(settings("min_nights, max_nights", "3, 2")).rejects.toThrow(/appointment_settings_nights/);
+    await expect(settings("min_nights", "0")).rejects.toThrow(/appointment_settings_nights/);
+    await settings("min_nights, max_nights", "2, 7");
+    await expect(
+      db.query("insert into commerce.booking_resources (store_id, kind, name, hours) values ($1, 'room', 'Rom 1', '{}')", [store]),
+    ).rejects.toThrow(/booking_resources_kind/);
+  });
 });
 
 describe("paying for an order", () => {

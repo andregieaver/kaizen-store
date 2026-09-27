@@ -34,6 +34,7 @@ export function BookingChanges({
   bookingId,
   productId,
   open,
+  canMove = true,
   labels,
 }: {
   store: string;
@@ -44,6 +45,8 @@ export function BookingChanges({
   bookingId: string;
   productId: string;
   open: boolean;
+  /** Stays and rentals (D67) are cancelled, not moved. */
+  canMove?: boolean;
   labels: BookingChangesLabels;
 }) {
   const [mode, setMode] = useState<"idle" | "move" | "cancel">("idle");
@@ -59,21 +62,23 @@ export function BookingChanges({
     <div className="flex flex-col gap-3 text-sm">
       <p className="text-muted">{labels.changeUntil}</p>
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          aria-expanded={mode === "move"}
-          disabled={busy}
-          onClick={() =>
-            start(async () => {
-              if (mode === "move") return setMode("idle");
-              setWeek(week ?? (await appointmentWeekAction(store, market, { productId, from: null, resourceId: null })));
-              setMode("move");
-            })
-          }
-          className={button}
-        >
-          {labels.changeTime}
-        </button>
+        {canMove && (
+          <button
+            type="button"
+            aria-expanded={mode === "move"}
+            disabled={busy}
+            onClick={() =>
+              start(async () => {
+                if (mode === "move") return setMode("idle");
+                setWeek(week ?? (await appointmentWeekAction(store, market, { productId, from: null, resourceId: null })));
+                setMode("move");
+              })
+            }
+            className={button}
+          >
+            {labels.changeTime}
+          </button>
+        )}
         <button
           type="button"
           aria-expanded={mode === "cancel"}

@@ -358,7 +358,7 @@ export async function addWishlistToCart(
       outcomes[id] = "subscription";
       continue;
     }
-    if (row.kind === "appointment") {
+    if (row.kind !== "goods") {
       outcomes[id] = "booking";
       continue;
     }

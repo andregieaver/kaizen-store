@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { OwnBookings } from "@/components/own-bookings";
-import { formatBookingTime } from "@/lib/booking-slots";
+import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
@@ -88,12 +88,11 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
           {order.lines.map((line) => (
             <li key={line.id} className="flex justify-between gap-4 py-2">
               <span>
-                {line.quantity} × {line.title}
+                {isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}
                 {line.delivery === "digital" && line.variantId && <span className="block text-sm text-muted">{m.digitalDelivery}</span>}
                 {line.booking && (
                   <span className="block text-sm">
-                    {formatBookingTime(line.booking.startsAt, market.locale, line.booking.timeZone)},{" "}
-                    {m.booking.withStaff(line.booking.staff)}
+                    {bookingWhen(line.booking, market.locale, m)}
                   </span>
                 )}
               </span>

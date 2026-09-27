@@ -24,8 +24,8 @@ import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
  */
 
 type Row = Record<string, unknown>;
-type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
-type Queryable = ReturnType<typeof db> | Tx;
+export type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+export type Queryable = ReturnType<typeof db> | Tx;
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -101,7 +101,7 @@ export async function getAppointmentOffer(storeId: string, productId: string): P
 }
 
 /** Times taken on these resources that overlap the range: confirmed, or held and not expired. */
-async function busyOn(
+export async function busyOn(
   q: Queryable,
   storeId: string,
   resourceIds: string[],

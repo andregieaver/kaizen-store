@@ -8,11 +8,13 @@ import { buyerCookie, parseBuyer, parseProductAudience, type ProductAudience } f
 import { CART_TTL_DAYS, MAX_LINE_QUANTITY, settleQuantity, type LineOutcome } from "@/lib/cart";
 import type { Market } from "@/lib/markets";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
+import { rangeEndsAt } from "@/lib/booking-ranges";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 
 import { freeResourcesAt } from "./appointments";
 import { audit, type Membership } from "./auth";
+import { rangeFromLine } from "./ranges";
 
 /** Where a cart belongs: one market of one store. */
 export type Shop = { storeId: string; market: Market };
@@ -49,14 +51,21 @@ export type CartLine = {
   vatRate: number;
   /** Bought as a subscription: the purchase option, with the price already reduced (D25). */
   plan: (PlanTerms & { id: string; trialDays: number; minCycles: number; signupFeeMinor: number }) | null;
-  /** An appointment's time (D65), with whom if the shopper chose, in the store's time zone. */
-  booking: (LineBooking & { staff: string | null; timeZone: string }) | null;
+  /**
+   * An appointment's time (D65), with whom if the shopper chose, in the
+   * store's time zone; or a stay's or rental's (D67) check-in and check-out,
+   * the line's quantity being its nights or days.
+   */
+  booking: (LineBooking & { kind: BookedKind; endsAt: string | null; staff: string | null; timeZone: string }) | null;
   /** How an appointment is paid (D66): null for goods, which are paid now. */
   payment: AppointmentPayment | null;
 };
 
-/** The time an appointment is booked for (D65), and who with; null resource is whoever is free. */
+/** The time an appointment (or a stay, a rental) is booked for (D65, D67), and who or what with; null is whichever is free. */
 export type LineBooking = { startsAt: string; resourceId: string | null };
+
+export type BookedKind = "appointment" | "stay" | "rental";
+const bookedKind = (kind: unknown): BookedKind => (kind === "stay" || kind === "rental" ? kind : "appointment");
 
 /** The company the shopper buys for (B2B), as entered at checkout. */
 export type CartCompany = { name: string; number: string };
@@ -70,12 +79,13 @@ export async function readCartId(shop: Shop): Promise<string | null> {
 }
 
 /**
- * An appointment is in the cart with its time, and goods without one (D65);
- * a time is kept while it is at least the appointment's notice away. Whether
- * it is still free is checked when adding and again at checkout.
+ * An appointment, a stay or a rental is in the cart with its time, and goods
+ * without one (D65, D67); a time is kept while it is at least the notice
+ * away. Whether it is still free is checked when adding and again at
+ * checkout.
  */
 export const bookable = sql`
-  ((p.kind = 'appointment') = (cl.starts_at is not null))
+  ((p.kind = 'goods') = (cl.starts_at is null))
   and (cl.starts_at is null or cl.starts_at > now() + make_interval(mins => coalesce(aps.min_notice_minutes, 0)))
 `;
 
@@ -90,6 +100,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
       commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
+      p.kind, aps.check_in_time, aps.check_out_time,
       c.company_name, c.organisation_number,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
@@ -122,7 +133,9 @@ export async function getCart(shop: Shop): Promise<Cart> {
     left join commerce.current_prices cp
       on cp.variant_id = v.id and cp.market_code = c.market_code
     left join lateral (
-      select case when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce(sum(s.available), 0) end::int
+      -- A stay's nights or a rental's days are checked when chosen and at checkout.
+      select case when p.kind in ('stay', 'rental') then cl.quantity
+        when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce(sum(s.available), 0) end::int
         as available
       from commerce.available_stock s
       join commerce.inventory_locations l
@@ -186,6 +199,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
         booking: row.starts_at
           ? {
               startsAt: new Date(String(row.starts_at)).toISOString(),
+              kind: bookedKind(row.kind),
+              endsAt: rangeEnd(row, quantity),
               resourceId: row.resource_id ? String(row.resource_id) : null,
               staff: row.staff ? String(row.staff) : null,
               timeZone: String(row.time_zone),
@@ -197,6 +212,14 @@ export async function getCart(shop: Shop): Promise<Cart> {
       };
     }),
   };
+}
+
+/** A stay's check-out or a rental's return (D67), from its check-in and length; null for an appointment. */
+function rangeEnd(row: Row, count: number): string | null {
+  const kind = bookedKind(row.kind);
+  if (kind === "appointment" || !row.starts_at) return null;
+  const rules = { checkInTime: String(row.check_in_time), checkOutTime: String(row.check_out_time) };
+  return rangeEndsAt(kind, new Date(String(row.starts_at)).toISOString(), count, rules, String(row.time_zone));
 }
 
 /** The company the shopper buys for (B2B), or null to buy privately: kept on the cart for the order. */
@@ -240,9 +263,11 @@ async function sellableQuantity(
   variantId: string,
   sellingPlanId: string | null,
   booking: LineBooking | null,
-) {
+  /** A stay's nights or a rental's days (D67). */
+  count: number,
+): Promise<{ available: number; kind: BookedKind | "goods" } | null> {
   const [row] = await tx.execute<Row>(sql`
-    select v.product_id, case when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce((
+    select v.product_id, p.kind, case when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce((
       select sum(s.available)
       from commerce.available_stock s
       join commerce.inventory_locations l
@@ -255,8 +280,8 @@ async function sellableQuantity(
     join commerce.prices pr
       on pr.variant_id = v.id and pr.market_code = ${market.code} and pr.valid_to is null
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
-      -- Appointments are booked for a time (D65), and goods have none.
-      and p.kind = ${booking ? "appointment" : "goods"}
+      -- Appointments, stays and rentals are booked for a time (D65, D67), and goods have none.
+      and (p.kind = 'goods') = ${booking === null}
       -- Business-only products (B2B) are sold to businesses, where the store sells to both.
       and (p.audience <> 'businesses' or ${await buysForBusiness(storeId)}
         or (select s.audience from commerce.stores s where s.id = v.store_id) <> 'both')
@@ -270,12 +295,16 @@ async function sellableQuantity(
       }
   `);
   if (!row) return null;
-  // An appointment's time must be one the product page would offer now.
-  if (booking) {
-    const free = await freeResourcesAt(tx, storeId, String(row.product_id), booking.startsAt, booking.resourceId);
-    return free && free.resourceIds.length > 0 ? 1 : 0;
+  if (!booking) return { available: Number(row.available), kind: "goods" };
+  const kind = bookedKind(row.kind);
+  // A stay or a rental must be free for all its nights or days, and keep to the product's rules.
+  if (kind !== "appointment") {
+    const free = await rangeFromLine(tx, storeId, String(row.product_id), booking.startsAt, count, booking.resourceId);
+    return { available: free.ok ? count : 0, kind };
   }
-  return Number(row.available);
+  // An appointment's time must be one the product page would offer now.
+  const free = await freeResourcesAt(tx, storeId, String(row.product_id), booking.startsAt, booking.resourceId);
+  return { available: free && free.resourceIds.length > 0 ? 1 : 0, kind };
 }
 
 /** Locks and returns the shopper's open cart, creating one if needed. */
@@ -324,7 +353,11 @@ export async function changeLine(
   sellingPlanId: string | null = null,
   /** Runs in the same transaction once the line is in the cart, with how many more it now holds. */
   afterAdd?: (tx: Tx, cartId: string, added: number) => Promise<void>,
-  /** An appointment's time (D65): one place per line, so its quantity is always 1. */
+  /**
+   * An appointment's time (D65): one place per line, so its quantity is
+   * always 1; or a stay's or rental's check-in (D67), its quantity being the
+   * nights or days, which replace the line's.
+   */
   booking: LineBooking | null = null,
 ): Promise<{ outcome: LineOutcome | "removed" | "plan_conflict" | "slot_taken"; quantity: number }> {
   return db().transaction(async (tx) => {
@@ -342,11 +375,12 @@ export async function changeLine(
       return { outcome: "removed" as const, quantity: 0 };
     }
 
-    const available = await sellableQuantity(tx, shop, variantId, sellingPlanId, booking);
-    if (available === 0 && booking) return { outcome: "slot_taken" as const, quantity: 0 };
-    if (available === null || available <= 0) {
+    const sellable = await sellableQuantity(tx, shop, variantId, sellingPlanId, booking, quantity);
+    if (sellable?.available === 0 && booking) return { outcome: "slot_taken" as const, quantity: 0 };
+    if (sellable === null || sellable.available <= 0) {
       return { outcome: "unavailable" as const, quantity: 0 };
     }
+    const range = sellable.kind === "stay" || sellable.kind === "rental";
 
     const cartId = await openCart(tx, shop);
     // One checkout makes one subscription, so it renews on one schedule.
@@ -360,7 +394,7 @@ export async function changeLine(
     `);
     // A time already in the cart is simply there: choosing it again is not asking for more.
     const wanted = booking ? 1 : mode === "add" ? Number(current?.quantity ?? 0) + quantity : quantity;
-    const settled = settleQuantity(wanted, available);
+    const settled = range ? { outcome: "added" as const, quantity } : settleQuantity(wanted, sellable.available);
 
     await tx.execute(sql`
       insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity, selling_plan_id, starts_at, resource_id)

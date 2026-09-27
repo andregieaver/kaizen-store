@@ -81,7 +81,7 @@ export type ProductDetail = {
   /** Who it is for (B2B); always `all` unless the store sells to both. */
   audience: ProductAudience;
   /** Goods, or an appointment booked for a time (D65). */
-  kind: "goods" | "appointment";
+  kind: "goods" | "appointment" | "stay" | "rental";
 };
 
 type Row = Record<string, unknown>;
@@ -275,7 +275,7 @@ export async function getProduct(
     // Without an option to subscribe to, it can only be bought once.
     subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,
     audience: productAudience(product),
-    kind: product.kind === "appointment" ? "appointment" : "goods",
+    kind: product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" ? product.kind : "goods",
   };
 }
 

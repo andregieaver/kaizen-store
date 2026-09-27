@@ -145,6 +145,8 @@ export async function moveOwnBooking(
   const found = await ownBooking(storeId, orderId, access, bookingId);
   if (!found) return "not_found";
   const { booking } = found;
+  // Stays and rentals (D67) are cancelled and booked again, not moved.
+  if (booking.kind !== "appointment") return "not_found";
   if (!selfServiceOpen(booking.startsAt, booking.cancelHours, now)) return "closed";
   if (Date.parse(startsAt) === Date.parse(booking.startsAt)) return "done";
 

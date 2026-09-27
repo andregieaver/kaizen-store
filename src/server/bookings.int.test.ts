@@ -82,6 +82,25 @@ describe("staff (D65)", () => {
     expect(kari.hours.week.mon).toEqual({ open: "09:00", close: "17:00" });
   });
 
+  it("keeps rooms and rental items apart from staff, without hours (D67)", async () => {
+    const room = await bookings.saveResource(member, null, { name: "Rom 1", email: "", capacity: "1", active: true }, "unit");
+    if (!room.ok) throw new Error(room.problems.join(" "));
+    expect((await bookings.listResources(storeId)).some((r) => r.id === room.id)).toBe(false);
+    expect((await bookings.listResources(storeId, ["unit", "item"])).find((r) => r.id === room.id)).toMatchObject({
+      kind: "unit",
+      name: "Rom 1",
+    });
+    // A room is not changed as staff, nor staff as a room.
+    expect(await bookings.saveResource(member, room.id, staffForm({ name: "Kari" }))).toEqual({
+      ok: false,
+      problems: ["They are no longer in the store."],
+    });
+    expect(await bookings.saveResource(member, room.id, { name: "Rom 2", email: "", capacity: "2", active: true }, "unit")).toEqual({
+      ok: true,
+      id: room.id,
+    });
+  });
+
   it("deletes staff never booked, and only switches off those who were, keeping their bookings", async () => {
     const never = await bookings.saveResource(member, null, staffForm({ name: "Never" }));
     const booked = await bookings.saveResource(member, null, staffForm({ name: "Booked" }));

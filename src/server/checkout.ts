@@ -7,6 +7,7 @@ import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
+import { formatRangeDates, rangeEndsAt } from "@/lib/booking-ranges";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
@@ -22,6 +23,7 @@ import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { holdAppointment } from "./appointments";
+import { holdRange } from "./ranges";
 import { storeFeeBps } from "./billing";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
 import { bookable } from "./cart";
@@ -139,6 +141,7 @@ export async function placeOrder(
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
+        p.kind, aps.check_in_time, aps.check_out_time,
         (p.status = 'active' and v.active and ${bookable}) as sellable
       from commerce.cart_lines cl
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -250,12 +253,23 @@ export async function placeOrder(
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
-      // An appointment's time goes with it to Stripe, in the store's time zone (D65).
+      // An appointment's time (or a stay's or rental's dates) goes with it to Stripe, in the store's time zone (D65, D67).
       const startsAt = line.starts_at ? new Date(String(line.starts_at)).toISOString() : null;
-      const when = startsAt ? formatBookingTime(startsAt, market.locale, String(cart.time_zone)) : null;
+      const range = line.kind === "stay" || line.kind === "rental" ? line.kind : null;
+      const tz = String(cart.time_zone);
+      const when = !startsAt
+        ? null
+        : range
+          ? formatRangeDates(
+              startsAt,
+              rangeEndsAt(range, startsAt, quantity, { checkInTime: String(line.check_in_time), checkOutTime: String(line.check_out_time) }, tz),
+              market.locale,
+              tz,
+            )
+          : formatBookingTime(startsAt, market.locale, tz);
       const delivery: Delivery = parseDelivery(line.delivery);
       const rate = Number(line.vat_rate ?? vatRate);
-      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when };
+      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when, range };
     });
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
@@ -385,9 +399,10 @@ export async function placeOrder(
         )
         returning id
       `);
-      // The appointment's time is held as long as its stock would be; taken meanwhile, nothing is placed.
+      // The appointment's time (or the stay's or rental's nights or days, D67) is held as long as
+      // its stock would be; taken meanwhile, nothing is placed.
       if (p.startsAt) {
-        const held = await holdAppointment(tx, storeId, {
+        const hold = {
           productId: String(p.line.product_id),
           variantId: String(p.line.variant_id),
           startsAt: p.startsAt,
@@ -395,7 +410,10 @@ export async function placeOrder(
           orderId,
           orderLineId: String(orderLine.id),
           holdMinutes: CHECKOUT_MINUTES + 5,
-        });
+        };
+        const held = p.range
+          ? await holdRange(tx, storeId, { ...hold, count: p.quantity })
+          : await holdAppointment(tx, storeId, hold);
         if (!held) throw new SlotTaken();
       }
     }

@@ -28,7 +28,9 @@ import type { CountryOption } from "@/lib/iso-countries";
 import {
   combineOptions,
   DEFAULT_APPOINTMENT,
+  defaultBooking,
   GENERAL_TAX_CODE,
+  isBooked,
   MAX_FILES,
   MAX_MEDIA,
   MAX_OPTIONS,
@@ -254,15 +256,18 @@ export function ProductEditor(props: Props) {
         />
       </section>
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
-      {(context.bookingsOn || product.kind === "appointment") && <KindSection product={product} update={update} />}
+      {(context.bookingsOn || isBooked(product.kind)) && <KindSection product={product} update={update} />}
       {product.kind === "appointment" && product.appointment && (
         <AppointmentSection storeSlug={storeSlug} product={product} update={update} context={context} />
+      )}
+      {(product.kind === "stay" || product.kind === "rental") && product.appointment && (
+        <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
       )}
       <VariantsSection product={product} update={update} context={context} countries={props.countries} />
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
-      {product.kind !== "appointment" && (
+      {!isBooked(product.kind) && (
         <>
           <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
           <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
@@ -652,7 +657,7 @@ function VariantsSection({
   const [mixed, setMixed] = useState(() => new Set(product.variants.map((v) => v.delivery)).size > 1);
   // Downloads and appointments (D65) have no stock.
   const allDigital = product.variants.every((v) => v.delivery !== "physical");
-  const service = product.kind === "appointment";
+  const service = isBooked(product.kind);
 
   const setOptions = (options: ProductInput["options"]) =>
     update((p) => ({ ...p, options, variants: variantsFor(options, p.variants, p.delivery) }));
@@ -1471,16 +1476,18 @@ function AudienceSection({ product, update }: SectionProps) {
 function KindSection({ product, update }: SectionProps) {
   const choose = (kind: ProductInput["kind"]) =>
     update((p) => {
-      const appointment = kind === "appointment";
-      const delivery = (d: Delivery): Delivery => (appointment ? "service" : d === "service" ? "physical" : d);
+      const booked = isBooked(kind);
+      const delivery = (d: Delivery): Delivery => (booked ? "service" : d === "service" ? "physical" : d);
       return {
         ...p,
         kind,
-        appointment: appointment ? (p.appointment ?? DEFAULT_APPOINTMENT) : null,
+        appointment: isBooked(kind) ? (p.kind === kind && p.appointment ? p.appointment : defaultBooking(kind)) : null,
+        // Rooms and homes take the reduced rate for accommodation where there is one (D65).
+        vatCategory: kind === "stay" && p.vatCategory === "standard" ? "accommodation" : p.vatCategory,
         delivery: delivery(p.delivery),
         variants: p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })),
-        plans: appointment ? [] : p.plans,
-        subscriptionOnly: appointment ? false : p.subscriptionOnly,
+        plans: booked ? [] : p.plans,
+        subscriptionOnly: booked ? false : p.subscriptionOnly,
       };
     });
   return (
@@ -1494,6 +1501,8 @@ function KindSection({ product, update }: SectionProps) {
             [
               ["goods", "Goods", "Shipped or downloaded"],
               ["appointment", "An appointment", "Booked for a time with your staff"],
+              ["stay", "A stay", "Nights in a room or a home"],
+              ["rental", "A rental", "Days with an item, such as a bike or a boat"],
             ] as const
           ).map(([value, name, note]) => (
             <label
@@ -1531,6 +1540,7 @@ function AppointmentSection({
   const minutes = (text: string, max: number) => Math.max(0, Math.min(max, Math.round(Number(text) || 0)));
   const toggleStaff = (id: string, on: boolean) =>
     set({ resourceIds: on ? [...a.resourceIds, id] : a.resourceIds.filter((r) => r !== id) });
+  const people = context.staff.filter((s) => s.kind === "staff");
   return (
     <section aria-labelledby="appointment-heading" className={card}>
       <h2 id="appointment-heading" className="mb-1 font-medium">
@@ -1628,7 +1638,7 @@ function AppointmentSection({
       )}
       <fieldset className="mt-4 flex flex-col gap-2 text-sm">
         <legend className="mb-1 font-medium">Who does it</legend>
-        {context.staff.length === 0 ? (
+        {people.length === 0 ? (
           <p className="text-muted">
             No staff yet.{" "}
             <Link href={`/admin/${storeSlug}/bookings/staff/new`} className="underline" target="_blank">
@@ -1637,7 +1647,7 @@ function AppointmentSection({
             , then come back.
           </p>
         ) : (
-          context.staff.map((s) => (
+          people.map((s) => (
             <label key={s.id} className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -1651,13 +1661,155 @@ function AppointmentSection({
           ))
         )}
       </fieldset>
-      <fieldset className="mt-6 flex flex-col gap-3 text-sm">
+      <PaymentFields a={a} set={set} where="the appointment" />
+    </section>
+  );
+}
+
+
+/** How a stay or a rental is booked (D67): check-in and check-out, how many nights or days, and which units. */
+function RangeSection({
+  storeSlug,
+  product,
+  update,
+  context,
+}: SectionProps & { storeSlug: string; context: EditorContext }) {
+  const stay = product.kind === "stay";
+  const a = product.appointment ?? defaultBooking(stay ? "stay" : "rental");
+  const set = (change: Partial<AppointmentInput>) => update((p) => ({ ...p, appointment: { ...a, ...change } }));
+  const whole = (text: string, min: number, max: number) => Math.max(min, Math.min(max, Math.round(Number(text) || 0)));
+  const units = context.staff.filter((s) => s.kind === (stay ? "unit" : "item"));
+  const toggle = (id: string, on: boolean) =>
+    set({ resourceIds: on ? [...a.resourceIds, id] : a.resourceIds.filter((r) => r !== id) });
+  const nights = stay ? "nights" : "days";
+  return (
+    <section aria-labelledby="range-heading" className={card}>
+      <h2 id="range-heading" className="mb-1 font-medium">
+        {stay ? "Stay" : "Rental"}
+      </h2>
+      <p className="mb-4 text-sm text-muted">
+        {stay
+          ? "Guests choose their arrival and departure dates. The price is per night, and each booking takes one of the rooms or homes below."
+          : "Shoppers choose the first and last day. The price is per day, and each booking takes one of the items below."}
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className={label}>
+          {stay ? "Check-in" : "Pick-up"}
+          <input type="time" value={a.checkInTime} onChange={(e) => set({ checkInTime: e.target.value })} className={input} />
+        </label>
+        <label className={label}>
+          {stay ? "Check-out" : "Return"}
+          <input type="time" value={a.checkOutTime} onChange={(e) => set({ checkOutTime: e.target.value })} className={input} />
+        </label>
+        <span />
+        <label className={label}>
+          Shortest <span className={hint}>({nights})</span>
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={a.minNights}
+            onChange={(e) => set({ minNights: whole(e.target.value, 1, 365) })}
+            className={input}
+          />
+        </label>
+        <label className={label}>
+          Longest <span className={hint}>({nights})</span>
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={a.maxNights}
+            onChange={(e) => set({ maxNights: whole(e.target.value, 1, 365) })}
+            className={input}
+          />
+        </label>
+        <label className={label}>
+          Booked up to <span className={hint}>(days ahead)</span>
+          <input
+            type="number"
+            min={1}
+            max={730}
+            value={a.maxDaysAhead}
+            onChange={(e) => set({ maxDaysAhead: whole(e.target.value, 1, 730) })}
+            className={input}
+          />
+        </label>
+        <label className={label}>
+          Notice <span className={hint}>(hours before {stay ? "check-in" : "pick-up"})</span>
+          <input
+            type="number"
+            min={0}
+            max={720}
+            value={Math.round(a.minNoticeMinutes / 60)}
+            onChange={(e) => set({ minNoticeMinutes: whole(e.target.value, 0, 720) * 60 })}
+            className={input}
+          />
+        </label>
+      </div>
+      {context.places.length > 0 && (
+        <label className={`${label} mt-4 max-w-sm`}>
+          Where
+          <select value={a.locationId ?? ""} onChange={(e) => set({ locationId: e.target.value || null })} className={input}>
+            <option value="">Not said</option>
+            {context.places.map((place) => (
+              <option key={place.id} value={place.id}>
+                {place.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <fieldset className="mt-4 flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-medium">{stay ? "Rooms and homes" : "Items"}</legend>
+        {units.length === 0 ? (
+          <p className="text-muted">
+            None yet.{" "}
+            <Link href={`/admin/${storeSlug}/bookings/units/new?kind=${stay ? "unit" : "item"}`} className="underline" target="_blank">
+              {stay ? "Add the rooms or homes guests stay in" : "Add the items you rent out"}
+            </Link>
+            , then come back.
+          </p>
+        ) : (
+          units.map((u) => (
+            <label key={u.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={a.resourceIds.includes(u.id)}
+                onChange={(e) => toggle(u.id, e.target.checked)}
+                className="size-4"
+              />
+              {u.name}
+              {!u.active && <span className="text-muted">(not taking bookings)</span>}
+            </label>
+          ))
+        )}
+      </fieldset>
+      <PaymentFields a={a} set={set} where={stay ? "check-in" : "pick-up"} />
+    </section>
+  );
+}
+
+/** How a booking is paid and until when shoppers may change it (D66), for every kind of booking. */
+function PaymentFields({
+  a,
+  set,
+  where,
+}: {
+  a: AppointmentInput;
+  set: (change: Partial<AppointmentInput>) => void;
+  /** "the appointment", "check-in" or "pick-up": when the rest is paid. */
+  where: string;
+}) {
+  const minutes = (text: string, max: number) => Math.max(0, Math.min(max, Math.round(Number(text) || 0)));
+  return (
+    <fieldset className="mt-6 flex flex-col gap-3 text-sm">
         <legend className="mb-1 font-medium">Payment and cancelling</legend>
         {(
           [
             ["now", "All at booking", "Shoppers pay the whole price when they book."],
-            ["deposit", "A deposit at booking", "Part now, the rest at the appointment. The card is saved for a no-show fee."],
-            ["venue", "All at the appointment", "Nothing to pay online; you mark it paid when they come."],
+            ["deposit", "A deposit at booking", `Part now, the rest at ${where}. The card is saved for a no-show fee.`],
+            ["venue", `All at ${where}`, "Nothing to pay online; you mark it paid when they come."],
           ] as const
         ).map(([value, title, text]) => (
           <label key={value} className="flex items-start gap-2">
@@ -1720,7 +1872,6 @@ function AppointmentSection({
             " A no-show fee is charged only when you ask for it on the booking, less the deposit already paid."}
         </p>
       </fieldset>
-    </section>
   );
 }
 
