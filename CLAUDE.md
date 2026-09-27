@@ -88,10 +88,21 @@ of running `playwright install`.
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag
   `catalog` and `catalog:{storeId}`); stock is read per request inside
   `<Suspense>`.
+- Search (D72, `src/server/search.ts`, pure parts in `src/lib/search.ts`):
+  keyword search in Postgres, no AI: `product_translations.search` (a
+  generated tsvector, stemmed per locale by `commerce.search_config()`) and
+  trigram indexes (`pg_trgm` lives in the `extensions` schema, so call
+  `extensions.word_similarity()` and use `extensions.gin_trgm_ops`). The
+  search page is `/s/{store}/{market}/search`, type-ahead goes through
+  `suggestAction` (keyword only, never a model call), and page searches are
+  logged in `search_queries` for 90 days. AI search parts (Phase 2, S2–S5)
+  must fall back to this when their model is unavailable.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - The template store's product pages are prerendered at build time, so their
   content is plain HTML; stock and add-to-cart stream in and need JavaScript.
+  Keep the details outside a `<Suspense>` boundary: React moves a finished
+  boundary out of line (shown only by script) once the page passes ~12 kB.
 - The cart (`src/server/cart.ts`) is per store and market, identified by an httpOnly
   cookie. Adding checks live stock and caps the quantity; stock is only held
   once checkout starts. Mutations are server actions that call `refresh()`.

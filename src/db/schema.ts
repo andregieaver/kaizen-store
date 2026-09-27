@@ -41,6 +41,9 @@ import {
 
 export const commerce = pgSchema("commerce");
 
+/** A Postgres text-search document (keyword search, Phase 2). */
+const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
+
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 const updatedAt = () =>
@@ -779,11 +782,42 @@ export const productTranslations = commerce.table(
     /** Title and description for search results and shares; empty uses the listing's own. */
     seoTitle: text("seo_title").notNull().default(""),
     seoDescription: text("seo_description").notNull().default(""),
+    /** The keyword search document (S1): title and description, stemmed in the translation's language. */
+    search: tsvector("search").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`commerce.product_search_doc(locale, title, description)`,
+    ),
   },
   (t) => [
     primaryKey({ columns: [t.productId, t.locale] }),
     productRef("product_translations_product_fk", t),
     index("product_translations_store_product_idx").on(t.storeId, t.productId),
+    index("product_translations_search_idx").using("gin", t.search),
+  ],
+);
+
+/**
+ * What shoppers searched for in a store (Phase 2, S1): the query as typed
+ * (trimmed, lower case, at most 100 characters), in which market, and how
+ * many products it found, for the zero-result rate and the store's list of
+ * searches that found nothing. Queries can hold personal data, so they are
+ * kept 90 days (`pruneSearchLog()` in the five-minute cron). Type-ahead is
+ * not logged.
+ */
+export const searchQueries = commerce.table(
+  "search_queries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    query: text("query").notNull(),
+    results: integer("results").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("search_queries_store_idx").on(t.storeId, t.createdAt),
+    index("search_queries_created_idx").on(t.createdAt),
+    check("search_queries_query", sql`length(${t.query}) between 1 and 100`),
+    check("search_queries_results", sql`${t.results} >= 0`),
   ],
 );
 
@@ -2537,7 +2571,7 @@ export const pages = commerce.table(
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'download', 'order', 'p', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'download', 'order', 'p', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
     ),
     // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
     check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),

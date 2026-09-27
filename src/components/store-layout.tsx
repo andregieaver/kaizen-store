@@ -168,6 +168,10 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
   const tools = (
     <div className={`flex items-center gap-1 ${centred ? "justify-end" : "ml-auto"}`}>
       <MarketChoice store={store} market={market} m={m} />
+      <Link href={`${base}/search`} className="flex size-11 items-center justify-center rounded-full hover:bg-current/5">
+        <Icon name="search" />
+        <span className="sr-only">{m.search.title}</span>
+      </Link>
       <Link
         href={`${base}/account`}
         className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex"

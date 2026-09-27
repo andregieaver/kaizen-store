@@ -316,13 +316,14 @@ export type GridProduct = ProductSummary & { description: string };
 /**
  * Active products with a price in the market for a content grid (D51):
  * only those in one of `categoryIds` (when given) and one of `tagIds`
- * (when given), sorted and at most `limit`.
+ * (when given), sorted and at most `limit`. With `ids` (search results),
+ * only those products, in that order.
  */
 export async function listGridProducts(
   storeId: string,
   marketCode: string,
   locale: string,
-  filter: { categoryIds: string[]; tagIds: string[]; sort: string; limit: number },
+  filter: { categoryIds: string[]; tagIds: string[]; sort: string; limit: number; ids?: string[] },
 ): Promise<GridProduct[]> {
   "use cache";
   cacheLife("hours");
@@ -336,8 +337,10 @@ export async function listGridProducts(
           select 1 from commerce.product_terms pt
           where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${ids(list)}::uuid[])
         )`;
-  const order =
-    filter.sort === "oldest"
+  const given = filter.ids ? ids(filter.ids) : null;
+  const order = given
+    ? sql`array_position(${given}::uuid[], p.id)`
+    : filter.sort === "oldest"
       ? sql`p.created_at, p.handle`
       : filter.sort === "title"
         ? sql`lower(coalesce(tl.title, tf.title)), p.handle`
@@ -390,6 +393,7 @@ export async function listGridProducts(
     where p.store_id = ${storeId}::uuid and p.status = 'active'
       and ${inTerms(filter.categoryIds)}
       and ${inTerms(filter.tagIds)}
+      and ${given ? sql`p.id = any(${given}::uuid[])` : sql`true`}
     order by ${order}
     limit ${Math.max(1, Math.min(48, filter.limit))}
   `);

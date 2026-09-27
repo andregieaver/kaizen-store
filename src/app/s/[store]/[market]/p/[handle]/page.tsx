@@ -115,15 +115,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function ProductPage({ params }: Props) {
-  return (
-    <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-surface" />}>
-      <ProductDetails params={params} />
-    </Suspense>
-  );
-}
-
-async function ProductDetails({ params }: { params: Props["params"] }) {
+/**
+ * The details are part of the page's shell, outside any Suspense boundary:
+ * React moves a finished boundary out of line (to be swapped in by script)
+ * once the page before it passes about 12 kB, so a product with a long
+ * description or several pictures would show nothing without JavaScript.
+ */
+export default async function ProductPage({ params }: Props) {
   const loaded = await load(params);
   if (!loaded) notFound();
   const { store, market, product } = loaded;
