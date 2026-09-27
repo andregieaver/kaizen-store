@@ -23,6 +23,9 @@ export type AppointmentPickerLabels = AddToCartLabels & {
   slotTaken: string;
   loading: string;
   option: string;
+  /** A class's seats under its time: "{left}" and "{seats}" are filled in ("4 av 12 ledige"). */
+  seatsLeft: string;
+  full: string;
 };
 
 const initialState: AddToCartState = { outcome: "idle", quantity: 0 };
@@ -34,7 +37,10 @@ const moved = (outcome: ChangeOutcome): AddToCartState => ({
 });
 
 /** The first date of a week with a free time, or its first date. */
-const firstFree = (week: SlotWeek) => (week.days.find((d) => d.slots.length > 0) ?? week.days[0])?.date ?? week.from;
+const firstFree = (week: SlotWeek) => (week.days.find(hasFree) ?? week.days[0])?.date ?? week.from;
+
+/** Whether a day has a time that can still be booked (a full class's cannot). */
+const hasFree = (day: SlotWeek["days"][number]) => day.slots.some((slot) => slot.left > 0);
 
 /**
  * Choosing an appointment's time (D65): who with, a week of dates and the
@@ -93,7 +99,7 @@ export function AppointmentPicker({
   useOpenCartAfterAdd(openCart, cartHref, state);
 
   const day = week.days.find((d) => d.date === date);
-  const anyFree = week.days.some((d) => d.slots.length > 0);
+  const anyFree = week.days.some(hasFree);
   const message =
     reschedule && state.outcome === "added"
       ? reschedule.labels.moved
@@ -182,7 +188,7 @@ export function AppointmentPicker({
               key={d.date}
               type="button"
               aria-pressed={d.date === date}
-              disabled={d.slots.length === 0}
+              disabled={!hasFree(d)}
               onClick={() => {
                 setDate(d.date);
                 setStartsAt(null);
@@ -201,21 +207,33 @@ export function AppointmentPicker({
             <p className="text-sm text-muted">{labels.loading}</p>
           ) : !anyFree ? (
             <p className="text-sm text-muted">{labels.noTimes}</p>
-          ) : !day || day.slots.length === 0 ? (
+          ) : !day || !hasFree(day) ? (
             <p className="text-sm text-muted">{labels.noTimesDay}</p>
           ) : (
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-              {day.slots.map((slot) => (
-                <button
-                  key={slot.startsAt}
-                  type="button"
-                  aria-pressed={slot.startsAt === startsAt}
-                  onClick={() => setStartsAt(slot.startsAt)}
-                  className="min-h-11 rounded-button border border-border text-sm aria-pressed:bg-accent aria-pressed:text-accent-foreground"
-                >
-                  {slot.time}
-                </button>
-              ))}
+            <div className={day.slots.some((slot) => slot.seats !== null) ? "grid grid-cols-3 gap-2 sm:grid-cols-4" : "grid grid-cols-4 gap-2 sm:grid-cols-5"}>
+              {day.slots.map((slot) => {
+                // A class (D65) says its seats: all, and how many are still free.
+                const seats =
+                  slot.seats === null
+                    ? null
+                    : slot.left > 0
+                      ? labels.seatsLeft.replace("{left}", String(slot.left)).replace("{seats}", String(slot.seats))
+                      : labels.full;
+                return (
+                  <button
+                    key={slot.startsAt}
+                    type="button"
+                    aria-pressed={slot.startsAt === startsAt}
+                    disabled={slot.left === 0}
+                    onClick={() => setStartsAt(slot.startsAt)}
+                    aria-label={seats ? `${slot.time}, ${seats}` : undefined}
+                    className="flex min-h-11 flex-col items-center justify-center rounded-button border border-border px-1 py-1 text-sm leading-tight disabled:opacity-40 aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+                  >
+                    <span>{slot.time}</span>
+                    {seats && <span className="text-[11px] opacity-80">{seats}</span>}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

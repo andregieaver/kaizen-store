@@ -24,7 +24,10 @@ hosts are its sellers.
 - **One booking module a store switches on** (`stores.modules`, later part
   of plans). It holds what is not a product:
   - **Resources**: staff, rooms, room types, properties, rental items, each
-    with a capacity.
+    with a capacity. An appointment whose staff take more than one at a time
+    is a class: the picker shows each time's seats, all and still free
+    ("4 av 12 ledige"), and keeps a full time, marked full and not bookable
+    (`slotsOn()`: `seats`, `left`, `group`).
   - **Schedules**: working and opening hours, exceptions, holidays, blocked
     dates (the opening-hours editor of D40 again).
   - **Availability**: schedules minus bookings minus holds, worked out in

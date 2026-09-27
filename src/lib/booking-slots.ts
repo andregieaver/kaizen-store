@@ -21,7 +21,13 @@ export type Busy = { from: number; to: number };
 
 export type SlotResource = { id: string; hours: OpeningHours; capacity: number; busy: Busy[] };
 
-export type Slot = { startsAt: string; endsAt: string; resourceIds: string[] };
+/**
+ * A time an appointment can start: the resources free for it, and the
+ * seats (a resource's capacity, D65), all and still free, over them. A
+ * group's time (a class, capacity above one) is kept when full, with no
+ * resources, so shoppers see it is full; a one-to-one time is left out.
+ */
+export type Slot = { startsAt: string; endsAt: string; resourceIds: string[]; seats: number; left: number; group: boolean };
 
 const MINUTE = 60_000;
 
@@ -96,7 +102,7 @@ export function slotsOn(
 ): Slot[] {
   if (!dateBookable(date, rules, timeZone, now)) return [];
   const earliest = now + rules.minNoticeMinutes * MINUTE;
-  const byStart = new Map<number, { endsAt: number; resourceIds: string[] }>();
+  const byStart = new Map<number, { endsAt: number; resourceIds: string[]; seats: number; left: number; group: boolean }>();
   for (const resource of resources) {
     const hours = hoursOn(resource.hours, date);
     if (!hours) continue;
@@ -108,9 +114,13 @@ export function slotsOn(
       const from = start - rules.bufferBeforeMinutes * MINUTE;
       const to = end + rules.bufferAfterMinutes * MINUTE;
       const taken = resource.busy.filter((b) => b.from < to && b.to > from).length;
-      if (taken >= resource.capacity) continue;
-      const slot = byStart.get(start) ?? { endsAt: end, resourceIds: [] };
-      slot.resourceIds.push(resource.id);
+      const group = resource.capacity > 1;
+      if (taken >= resource.capacity && !group) continue;
+      const slot = byStart.get(start) ?? { endsAt: end, resourceIds: [], seats: 0, left: 0, group: false };
+      slot.seats += resource.capacity;
+      slot.left += Math.max(0, resource.capacity - taken);
+      slot.group ||= group;
+      if (taken < resource.capacity) slot.resourceIds.push(resource.id);
       byStart.set(start, slot);
     }
   }
@@ -120,6 +130,9 @@ export function slotsOn(
       startsAt: new Date(start).toISOString(),
       endsAt: new Date(slot.endsAt).toISOString(),
       resourceIds: slot.resourceIds,
+      seats: slot.seats,
+      left: slot.left,
+      group: slot.group,
     }));
 }
 
@@ -157,7 +170,14 @@ export type SlotWeek = {
   /** Today in the store's time zone, and the last date that can be booked. */
   today: string;
   last: string;
-  days: { date: string; weekday: string; day: string; month: string; slots: { startsAt: string; time: string }[] }[];
+  days: {
+    date: string;
+    weekday: string;
+    day: string;
+    month: string;
+    /** A group's times (a class) say their seats: all, and still free (0: full). */
+    slots: { startsAt: string; time: string; seats: number | null; left: number }[];
+  }[];
 };
 
 /** Free times for the picker, with dates and times written in the market's language. */
@@ -179,7 +199,12 @@ export function slotWeek(
       weekday: weekday.format(noon(day.date)),
       day: dayOf.format(noon(day.date)),
       month: month.format(noon(day.date)),
-      slots: day.slots.map((slot) => ({ startsAt: slot.startsAt, time: formatSlotTime(slot.startsAt, locale, timeZone) })),
+      slots: day.slots.map((slot) => ({
+        startsAt: slot.startsAt,
+        time: formatSlotTime(slot.startsAt, locale, timeZone),
+        seats: slot.group ? slot.seats : null,
+        left: slot.left,
+      })),
     })),
   };
 }

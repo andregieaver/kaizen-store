@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { pageTopClass } from "@/components/page-article";
 import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from "@/components/product-parts";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -99,9 +100,11 @@ export default async function ProductPage({ params }: Props) {
   const { store, market, product } = loaded;
   const ctx: ProductPageContext = { store, market, product, m: t(market.lang) };
 
+  const layout = (await productLayoutFor(store.id, product.id)) ?? DEFAULT_PRODUCT_LAYOUT;
+
   return (
-    <div className="store-page py-8">
-      <ProductLayoutView layout={(await productLayoutFor(store.id, product.id)) ?? DEFAULT_PRODUCT_LAYOUT} ctx={ctx} />
+    <div className={`store-page pb-8 ${pageTopClass(layout, "pt-8")}`}>
+      <ProductLayoutView layout={layout} ctx={ctx} />
       <Suspense fallback={null}>
         <ProductJsonLdSection store={store} market={market} product={product} />
       </Suspense>

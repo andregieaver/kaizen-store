@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import { JsonLdScript } from "@/components/json-ld";
-import { PageArticle } from "@/components/page-article";
+import { PageArticle, pageTopClass } from "@/components/page-article";
 import { PageEditLink } from "@/components/page-edit-link";
 import { pageExcerpt, pageSlugProblem } from "@/lib/page-content";
 import { siteUrl } from "@/lib/site";
@@ -60,7 +60,7 @@ export default async function PlatformPage({ params }: Props) {
   const origin = siteUrl();
 
   return (
-    <main id="main" className="w-full flex-1 py-10">
+    <main id="main" className={`w-full flex-1 pb-10 ${pageTopClass(c, "pt-10")}`}>
       <JsonLdScript
         data={pageJsonLd({
           origin,

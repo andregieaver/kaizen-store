@@ -26,6 +26,8 @@ export function pickerLabels(m: Messages): AppointmentPickerLabels {
     slotTaken: m.booking.slotTaken,
     loading: m.booking.loading,
     option: m.booking.option,
+    seatsLeft: m.booking.seatsLeft,
+    full: m.booking.full,
   };
 }
 

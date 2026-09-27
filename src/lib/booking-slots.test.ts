@@ -56,4 +56,26 @@ describe("slots", () => {
     expect(both.find((s) => s.startsAt === "2026-10-05T08:00:00.000Z")?.resourceIds).toEqual(["ola"]);
     expect(both.find((s) => s.startsAt === "2026-10-05T09:30:00.000Z")?.resourceIds).toEqual(["kari", "ola"]);
   });
+
+  it("counts a class's seats, keeping a full class's time with no one free for it", () => {
+    // A yoga room for 12, with 12 booked at 09:00 Oslo and 3 at 10:00.
+    const booked = (time: string, n: number) => {
+      const span = bookingSpan(zonedTime("2026-10-05", time, OSLO), { ...rules, bufferAfterMinutes: 0 });
+      return Array.from({ length: n }, () => ({ from: span.blockedFrom, to: span.blockedTo }));
+    };
+    const room = { id: "sal", hours: defaultHours(), capacity: 12, busy: [...booked("09:00", 12), ...booked("10:00", 3)] };
+    const slots = slotsOn("2026-10-05", OSLO, { ...rules, bufferAfterMinutes: 0, stepMinutes: 60 }, [room], now);
+    expect(slots[0]).toEqual({
+      startsAt: "2026-10-05T07:00:00.000Z",
+      endsAt: "2026-10-05T08:00:00.000Z",
+      resourceIds: [],
+      seats: 12,
+      left: 0,
+      group: true,
+    });
+    expect(slots[1]).toMatchObject({ resourceIds: ["sal"], seats: 12, left: 9, group: true });
+    expect(slots[2]).toMatchObject({ seats: 12, left: 12 });
+    // One-to-one times are simply left out when taken, and say no seats.
+    expect(slotsOn("2026-10-05", OSLO, rules, [kari], now)[0]).toMatchObject({ seats: 1, left: 1, group: false });
+  });
 });

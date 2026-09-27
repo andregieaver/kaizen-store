@@ -1,7 +1,7 @@
 import type { PageContent } from "@/lib/page-content";
 import type { GridPlace } from "@/server/content-grid";
 
-import { PageArticle } from "./page-article";
+import { PageArticle, pageTopClass } from "./page-article";
 
 /**
  * A store's page (D54) inside the storefront's `<main>`, which keeps to the
@@ -11,7 +11,7 @@ import { PageArticle } from "./page-article";
  */
 export function StorePageArticle({ content, place }: { content: PageContent; place: GridPlace }) {
   return (
-    <div className="store-page py-8">
+    <div className={`store-page pb-8 ${pageTopClass(content, "pt-8")}`}>
       <PageArticle content={content} place={place} />
     </div>
   );

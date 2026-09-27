@@ -48,6 +48,14 @@ export function PageArticle({
   );
 }
 
+/**
+ * The room above a page on the site: none when its first row has a
+ * background of its own, which then meets the header; else the usual room,
+ * so text does not start right under it.
+ */
+export const pageTopClass = (content: Pick<PageContent, "rows">, room: string) =>
+  content.rows.find(rowShows)?.background ? "" : room;
+
 /** A row shows when something in it does, or it has a background of its own. */
 const rowShows = (row: PageRow) =>
   Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockHasContent));

@@ -196,7 +196,7 @@ export async function appointmentSlots(
   // The first week with a free time, looking a few weeks ahead at most.
   for (let start = today, weeks = 0; start <= last && weeks < SEARCH_WEEKS; start = addDays(start, SLOT_DAYS), weeks++) {
     const days = await daysOf(db(), storeId, offer, start, SLOT_DAYS, resourceId, now);
-    if (days.some((d) => d.slots.length > 0)) return { from: start, today, last, days };
+    if (days.some((d) => d.slots.some((slot) => slot.resourceIds.length > 0))) return { from: start, today, last, days };
   }
   return { from: today, today, last, days: await daysOf(db(), storeId, offer, today, SLOT_DAYS, resourceId, now) };
 }
