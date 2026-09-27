@@ -4,9 +4,10 @@ import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { Suspense } from "react";
 
-import { ProductCard } from "@/components/product-card";
+import { ProductListing } from "@/components/product-listing";
 import { SearchBox } from "@/components/search-box";
 import { t, type Messages } from "@/lib/i18n";
+import { parseListingParams } from "@/lib/listing-filters";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import type { SearchFilters } from "@/lib/query-understanding";
@@ -112,24 +113,20 @@ async function Search({ params, searchParams }: Pick<Props, "params" | "searchPa
         </div>
       ) : (
         <>
-          <p role="status" className="text-muted">
-            {m.search.results(products.length, typed)}
-          </p>
           {understood.length > 0 && <Understood parts={understood} exactHref={exactHref(base, typed)} m={m} typed={typed} />}
-          <ul className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {products.map((product, index) => (
-              <ProductCard
-                key={product.handle}
-                product={product}
-                href={`${base}/search/go?s=${searchId}&p=${encodeURIComponent(product.handle)}&r=${index + 1}`}
-                tracked
-                market={market}
-                m={m}
-                store={store.slug}
-                base={base}
-              />
-            ))}
-          </ul>
+          <ProductListing
+            store={store}
+            market={market}
+            scope={{ ids: products.map((product) => product.id) }}
+            filters={parseListingParams(asked)}
+            products={products}
+            base={base}
+            path={`${base}/search`}
+            keep={{ q: typed, exact: exact ? "1" : "" }}
+            countText={(n) => m.search.results(n, typed)}
+            hrefFor={(product, index) => `${base}/search/go?s=${searchId}&p=${encodeURIComponent(product.handle)}&r=${index + 1}`}
+            tracked
+          />
         </>
       )}
     </div>

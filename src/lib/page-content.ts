@@ -660,6 +660,7 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "download",
   "order",
   "p",
+  "products",
   "search",
   "subscription",
   "tag",

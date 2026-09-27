@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
-import { ProductCard } from "@/components/product-card";
+import { ProductGrid, ProductListingFor } from "@/components/product-listing";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
@@ -17,6 +18,7 @@ import { siteTerms } from "@/server/taxonomy";
  */
 
 type Params = Promise<{ store: string; market: string; slug: string }>;
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /** Prerender each category or tag known at build time; later ones render on first visit. */
 export async function termStaticParams(kind: TermKind, params: { store: string; market: string }) {
@@ -45,17 +47,20 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
   };
 }
 
-export async function TermProducts({ kind, params }: { kind: TermKind; params: Params }) {
+/**
+ * The term's products: prerendered as the page's own list, then sorted and
+ * filtered as the address asks (D78), per request.
+ */
+export async function TermProducts({ kind, params, searchParams }: { kind: TermKind; params: Params; searchParams: SearchParams }) {
   const loaded = await load(kind, params);
   if (!loaded) notFound();
   const { store, market, terms, term } = loaded;
   const m = t(market.lang);
-  const products = await listGridProducts(store.id, market.code, market.locale, {
+  const scope = {
     categoryIds: kind === "category" ? withDescendants(terms, [term.id]) : [],
     tagIds: kind === "tag" ? [term.id] : [],
-    sort: "oldest",
-    limit: 48,
-  });
+  };
+  const products = await listGridProducts(store.id, market.code, market.locale, { ...scope, sort: "oldest", limit: 48 });
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
   const base = marketPath(store.slug, market.slug);
 
@@ -78,23 +83,20 @@ export async function TermProducts({ kind, params }: { kind: TermKind; params: P
           </ul>
         </nav>
       )}
-      {products.length === 0 ? (
-        <p>{m.noProducts}</p>
-      ) : (
-        <ul className="grid grid-cols-2 gap-6 md:grid-cols-4">
-          {products.map((product) => (
-            <ProductCard
-              key={product.handle}
-              product={product}
-              href={`${base}/p/${product.handle}`}
-              market={market}
-              m={m}
-              store={store.slug}
-              base={base}
-            />
-          ))}
-        </ul>
-      )}
+      <Suspense
+        fallback={
+          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} />
+        }
+      >
+        <ProductListingFor
+          store={store}
+          market={market}
+          scope={scope}
+          searchParams={searchParams}
+          base={base}
+          path={`${base}/${kind}/${term.slug}`}
+        />
+      </Suspense>
     </>
   );
 }

@@ -22,6 +22,7 @@ describe("menuHref", () => {
     expect(menuHref({ kind: "home" }, base)).toEqual({ href: base, external: false });
     expect(menuHref({ kind: "account" }, base)).toEqual({ href: `${base}/account`, external: false });
     expect(menuHref({ kind: "cart" }, base)).toEqual({ href: `${base}/cart`, external: false });
+    expect(menuHref({ kind: "products" }, base)).toEqual({ href: `${base}/products`, external: false });
     expect(menuHref({ kind: "product", handle: "demo-notatbok" }, base)).toEqual({
       href: `${base}/p/demo-notatbok`,
       external: false,

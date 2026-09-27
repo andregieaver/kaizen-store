@@ -120,6 +120,15 @@ of running `playwright install`.
   passes no `vectorFor` or `understand`, and result links go through
   `search/go`, which records the opened result (`search_clicks`). Set no
   cookie or storage for it: the unit is the search.
+- Sorting and filtering listings (D78, `src/lib/listing-filters.ts`,
+  `src/server/listing.ts`, `FilterDialog`, `ProductListing`): the products
+  page, category and tag pages and search results take their filters from
+  the address (`parseListingParams()`/`listingQuery()`), applied by
+  `listingProducts()`; the dialog offers `listingFacets()` (kinds,
+  categories, tags, variant options, price range). Prices compare as shown
+  (`shownPrice()`: without VAT for businesses). Listing pages keep their
+  unfiltered grid prerendered as the `<Suspense>` fallback. Conditions shared
+  with search's filters live in `src/server/product-conditions.ts`.
 - AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`): never
   name a provider or model in code. Kaizen's are set at `/admin/platform/ai`,
   a store owner's own at `/admin/{store}/settings/ai` (`commerce.ai_providers`;

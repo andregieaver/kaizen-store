@@ -1,0 +1,181 @@
+import { PRODUCT_KINDS, type ProductKind } from "./query-understanding";
+
+/**
+ * Sorting and filtering a store's product listings (D78): the products
+ * page, a category's or tag's, and search results. The choices live in the
+ * page's address, so a filtered list can be shared, bookmarked and opened
+ * again, and the server applies them. Shared by the server and the dialog
+ * in the browser.
+ *
+ * - `kind=stay&kind=rental`: kinds of product (any of them).
+ * - `category=lamper`, `tag=nyhet`: the store's categories (with those
+ *   below them) and tags, by address (any of each; categories and tags
+ *   together).
+ * - `o.Farge=Blå&o.Størrelse=M`: variant options by name (any value of an
+ *   option; every option named, on the same variant).
+ * - `min=100&max=500`: the price range in whole units of the currency, as
+ *   the shopper sees prices (without VAT for businesses).
+ * - `stock=1`: only what can be bought now.
+ * - `sort=priceLow`: the order; the page's own order when left out.
+ */
+
+export const LISTING_SORTS = ["featured", "newest", "priceLow", "priceHigh", "title"] as const;
+export type ListingSort = (typeof LISTING_SORTS)[number];
+
+export type OptionFilter = { name: string; values: string[] };
+
+export type ListingFilters = {
+  kinds: ProductKind[];
+  categories: string[];
+  tags: string[];
+  options: OptionFilter[];
+  /** Whole units of the currency, as shown to the shopper. */
+  minPrice: number | null;
+  maxPrice: number | null;
+  inStock: boolean;
+  sort: ListingSort;
+};
+
+export const NO_FILTERS: ListingFilters = {
+  kinds: [],
+  categories: [],
+  tags: [],
+  options: [],
+  minPrice: null,
+  maxPrice: null,
+  inStock: false,
+  sort: "featured",
+};
+
+/** Limits on what an address may ask for, so a long one cannot make a heavy query. */
+const MAX_VALUES = 30;
+const MAX_OPTIONS = 6;
+const MAX_TEXT = 80;
+const OPTION_PREFIX = "o.";
+const MAX_PRICE = 10_000_000;
+
+type Params = Record<string, string | string[] | undefined> | URLSearchParams;
+
+function all(params: Params, key: string): string[] {
+  const raw = params instanceof URLSearchParams ? params.getAll(key) : params[key];
+  const list = raw === undefined ? [] : Array.isArray(raw) ? raw : [raw];
+  return [...new Set(list.map((value) => value.trim()).filter((value) => value && value.length <= MAX_TEXT))].slice(0, MAX_VALUES);
+}
+
+function keys(params: Params): string[] {
+  return params instanceof URLSearchParams ? [...new Set(params.keys())] : Object.keys(params);
+}
+
+const slug = (value: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
+
+function price(params: Params, key: string): number | null {
+  const [value] = all(params, key);
+  if (!value) return null;
+  const number = Number(value.replace(",", "."));
+  return Number.isFinite(number) && number >= 0 && number <= MAX_PRICE ? Math.round(number * 100) / 100 : null;
+}
+
+/** The filters in a listing's address; anything unknown or malformed is left out. */
+export function parseListingParams(params: Params): ListingFilters {
+  const kinds = all(params, "kind").filter((kind): kind is ProductKind => (PRODUCT_KINDS as readonly string[]).includes(kind));
+  const options = keys(params)
+    .filter((key) => key.startsWith(OPTION_PREFIX) && key.length > OPTION_PREFIX.length && key.length <= MAX_TEXT)
+    .slice(0, MAX_OPTIONS)
+    .map((key) => ({ name: key.slice(OPTION_PREFIX.length), values: all(params, key) }))
+    .filter((option) => option.values.length > 0);
+  let minPrice = price(params, "min");
+  let maxPrice = price(params, "max");
+  if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) [minPrice, maxPrice] = [maxPrice, minPrice];
+  const [sort] = all(params, "sort");
+  return {
+    kinds,
+    categories: all(params, "category").filter(slug),
+    tags: all(params, "tag").filter(slug),
+    options,
+    minPrice: minPrice === 0 ? null : minPrice,
+    maxPrice,
+    inStock: all(params, "stock").includes("1"),
+    sort: (LISTING_SORTS as readonly string[]).includes(sort ?? "") ? (sort as ListingSort) : "featured",
+  };
+}
+
+/**
+ * The address's query for filters (`?kind=stay&min=100`), or "" for none;
+ * `keep` holds other parameters the page needs, such as a search's `q`.
+ */
+export function listingQuery(filters: ListingFilters, keep: Record<string, string> = {}): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(keep)) if (value) params.append(key, value);
+  for (const kind of filters.kinds) params.append("kind", kind);
+  for (const category of filters.categories) params.append("category", category);
+  for (const tag of filters.tags) params.append("tag", tag);
+  for (const option of filters.options) for (const value of option.values) params.append(`${OPTION_PREFIX}${option.name}`, value);
+  if (filters.minPrice !== null) params.set("min", String(filters.minPrice));
+  if (filters.maxPrice !== null) params.set("max", String(filters.maxPrice));
+  if (filters.inStock) params.set("stock", "1");
+  if (filters.sort !== "featured") params.set("sort", filters.sort);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
+/** How many filters are chosen (the order is not one). */
+export function filterCount(filters: ListingFilters): number {
+  return (
+    filters.kinds.length +
+    filters.categories.length +
+    filters.tags.length +
+    filters.options.reduce((sum, option) => sum + option.values.length, 0) +
+    (filters.minPrice !== null || filters.maxPrice !== null ? 1 : 0) +
+    (filters.inStock ? 1 : 0)
+  );
+}
+
+/** Whether anything changes the page's own list: a filter or another order. */
+export const isFiltered = (filters: ListingFilters) => filterCount(filters) > 0 || filters.sort !== "featured";
+
+/** One chosen filter, to show and take away on its own. */
+export type ChosenFilter =
+  | { type: "kind"; value: ProductKind }
+  | { type: "category" | "tag"; value: string }
+  | { type: "option"; name: string; value: string }
+  | { type: "price" }
+  | { type: "stock" };
+
+export function chosenFilters(filters: ListingFilters): ChosenFilter[] {
+  return [
+    ...filters.kinds.map((value) => ({ type: "kind" as const, value })),
+    ...filters.categories.map((value) => ({ type: "category" as const, value })),
+    ...filters.tags.map((value) => ({ type: "tag" as const, value })),
+    ...filters.options.flatMap((option) => option.values.map((value) => ({ type: "option" as const, name: option.name, value }))),
+    ...(filters.minPrice !== null || filters.maxPrice !== null ? [{ type: "price" as const }] : []),
+    ...(filters.inStock ? [{ type: "stock" as const }] : []),
+  ];
+}
+
+/** The filters without one of them. */
+export function withoutFilter(filters: ListingFilters, chosen: ChosenFilter): ListingFilters {
+  switch (chosen.type) {
+    case "kind":
+      return { ...filters, kinds: filters.kinds.filter((kind) => kind !== chosen.value) };
+    case "category":
+      return { ...filters, categories: filters.categories.filter((value) => value !== chosen.value) };
+    case "tag":
+      return { ...filters, tags: filters.tags.filter((value) => value !== chosen.value) };
+    case "option":
+      return {
+        ...filters,
+        options: filters.options
+          .map((option) => (option.name === chosen.name ? { ...option, values: option.values.filter((value) => value !== chosen.value) } : option))
+          .filter((option) => option.values.length > 0),
+      };
+    case "price":
+      return { ...filters, minPrice: null, maxPrice: null };
+    case "stock":
+      return { ...filters, inStock: false };
+  }
+}
+
+/** Whole units of a price range as minor units of the currency (`digits` after the point). */
+export function toMinorUnits(amount: number | null, digits: number): number | null {
+  return amount === null ? null : Math.round(amount * 10 ** digits);
+}

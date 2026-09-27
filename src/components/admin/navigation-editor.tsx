@@ -85,6 +85,7 @@ const small = "min-h-10 rounded-md border border-border px-3 text-sm disabled:op
 /** The link kinds a store's menus offer. */
 export const STORE_KINDS: KindOption[] = [
   { kind: "home", label: "Front page" },
+  { kind: "products", label: "All products" },
   { kind: "page", label: "A page", pageBy: "slug" },
   { kind: "product", label: "A product" },
   { kind: "category", label: "A category's products" },

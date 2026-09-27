@@ -10,6 +10,7 @@ import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor } from "./ai";
 import { listGridProducts, type GridProduct } from "./catalog";
+import { inCategories, inStockNow, withTags } from "./product-conditions";
 
 /**
  * Keyword search (Phase 2, S1): in Postgres, with no AI. A product matches
@@ -38,25 +39,8 @@ const CLOSE = 0.5;
 function filterClause(filters: SearchFilters | null, market: Market): SQL {
   if (!filters) return sql`true`;
   const parts: SQL[] = [];
-  const list = (values: string[]) => sql`array[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]`;
-  if (filters.categories.length > 0) {
-    parts.push(sql`exists (
-      with recursive picked as (
-        select id from commerce.terms
-        where store_id = p.store_id and content_type = 'product' and kind = 'category' and slug = any(${list(filters.categories)})
-        union
-        select t.id from commerce.terms t join picked on t.parent_id = picked.id
-      )
-      select 1 from commerce.product_terms pt
-      where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id in (select id from picked)
-    )`);
-  }
-  if (filters.tags.length > 0) {
-    parts.push(sql`exists (
-      select 1 from commerce.product_terms pt join commerce.terms te on te.id = pt.term_id
-      where pt.store_id = p.store_id and pt.product_id = p.id and te.kind = 'tag' and te.slug = any(${list(filters.tags)})
-    )`);
-  }
+  if (filters.categories.length > 0) parts.push(inCategories(filters.categories));
+  if (filters.tags.length > 0) parts.push(withTags(filters.tags));
   if (filters.kind) parts.push(sql`p.kind = ${filters.kind}`);
   if (filters.minPriceMinor !== null || filters.maxPriceMinor !== null) {
     parts.push(sql`exists (
@@ -66,16 +50,7 @@ function filterClause(filters: SearchFilters | null, market: Market): SQL {
         and cp.amount_minor <= ${filters.maxPriceMinor ?? Number.MAX_SAFE_INTEGER}
     )`);
   }
-  if (filters.inStock) {
-    parts.push(sql`(p.kind <> 'goods' or exists (
-      select 1 from commerce.product_variants v
-      where v.product_id = p.id and v.active and (v.delivery = 'digital' or (
-        select coalesce(sum(s.available), 0) from commerce.available_stock s
-        join commerce.inventory_locations l on l.store_id = s.store_id and l.id = s.location_id and l.active
-        where s.store_id = p.store_id and s.variant_id = v.id
-      ) > 0)
-    ))`);
-  }
+  if (filters.inStock) parts.push(inStockNow());
   return parts.length === 0 ? sql`true` : sql.join(parts, sql` and `);
 }
 

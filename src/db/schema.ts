@@ -2659,7 +2659,7 @@ export const pages = commerce.table(
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'download', 'order', 'p', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'download', 'order', 'p', 'products', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
     ),
     // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
     check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),

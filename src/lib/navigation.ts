@@ -10,11 +10,13 @@ export const MENU_LIMITS = { header: 8, footer: 12 } as const;
 export type MenuName = keyof typeof MENU_LIMITS;
 export const LABEL_MAX = 60;
 
-export const LINK_KINDS = ["home", "page", "product", "category", "tag", "blog", "article", "blogCategory", "account", "cart", "url"] as const;
+export const LINK_KINDS = ["home", "products", "page", "product", "category", "tag", "blog", "article", "blogCategory", "account", "cart", "url"] as const;
 export type LinkKind = (typeof LINK_KINDS)[number];
 
 export type MenuLink =
   | { kind: "home" }
+  /** All the store's products, to sort and filter (D78). */
+  | { kind: "products" }
   | { kind: "account" }
   | { kind: "cart" }
   | { kind: "product"; handle: string }
@@ -84,6 +86,7 @@ const label = z.record(z.string(), z.string().trim().max(LABEL_MAX, `Keep menu t
 
 const link = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("home") }),
+  z.object({ kind: z.literal("products") }),
   z.object({ kind: z.literal("account") }),
   z.object({ kind: z.literal("cart") }),
   z.object({ kind: z.literal("product"), handle: z.string().trim().min(1, "Choose a product for each product link.").max(200) }),
@@ -160,6 +163,8 @@ export function menuHref(link: MenuLink, base: string, names?: MenuNames): { hre
     case "page":
       // A page that moved is linked at its address now.
       return { href: `${base}/${names?.page?.get(link.slug)?.slug ?? link.slug}`, external: false };
+    case "products":
+      return { href: `${base}/products`, external: false };
     case "account":
       return { href: `${base}/account`, external: false };
     case "cart":
@@ -190,7 +195,7 @@ export function menuHref(link: MenuLink, base: string, names?: MenuNames): { hre
 export function menuLabel(
   item: MenuItem,
   locale: string,
-  builtIn: { home: string; account: string; cart: string; blog?: string },
+  builtIn: { home: string; account: string; cart: string; blog?: string; products?: string },
   /** Page titles, category and tag names by address, for links without a text of their own. */
   termNames?: MenuNames,
 ): string {
@@ -200,6 +205,7 @@ export function menuLabel(
     return builtIn[item.link.kind];
   }
   if (item.link.kind === "blog" && builtIn.blog) return builtIn.blog;
+  if (item.link.kind === "products" && builtIn.products) return builtIn.products;
   if (item.link.kind === "article") {
     const title = termNames?.article?.get(item.link.slug)?.title;
     if (title) return title;

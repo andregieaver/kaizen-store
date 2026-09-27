@@ -13,6 +13,6 @@ export function generateMetadata({ params }: Props): Promise<Metadata> {
   return termMetadata("category", params);
 }
 
-export default function Page({ params }: Props) {
-  return <TermProducts kind="category" params={params} />;
+export default function Page({ params, searchParams }: Props) {
+  return <TermProducts kind="category" params={params} searchParams={searchParams} />;
 }
