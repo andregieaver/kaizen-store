@@ -6,9 +6,12 @@ import { after } from "next/server";
 import { z } from "zod";
 
 import { productInput, type ProductInput } from "@/lib/product-input";
+import { canWrite, writeRequest, type WrittenText } from "@/lib/product-writing";
+import { AiError, aiFor } from "@/server/ai";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
+import { suggestProductText } from "@/server/product-writer";
 import { startFileUpload, uploadProductImage, type FileUpload, type UploadResult } from "@/server/media";
 import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import {
@@ -134,4 +137,35 @@ export async function deleteProductTermAction(storeSlug: string, id: string): Pr
   const member = await requireMember(storeSlug);
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown category or tag."] };
   return termsChanged(member, await deleteTerm(member.account, productTerms(member), id));
+}
+
+export type SuggestResult = { ok: true; written: WrittenText; model: string } | { ok: false; problem: string };
+
+/**
+ * An AI suggestion for the product's texts (D76), from the facts in the
+ * editor. Staff edit it and copy it in; it is saved only with the product.
+ */
+export async function suggestTextAction(storeSlug: string, productId: string | null, request: unknown): Promise<SuggestResult> {
+  const member = await requireMember(storeSlug);
+  if (productId !== null && !z.uuid().safeParse(productId).success) return { ok: false, problem: "Unknown product." };
+  const parsed = writeRequest.safeParse(request);
+  if (!parsed.success) return { ok: false, problem: "The texts could not be read. Reload the page and try again." };
+  if (!canWrite(parsed.data.kind, parsed.data.facts)) {
+    return { ok: false, problem: parsed.data.kind === "improve" ? "Write a description first." : "Give the product a title first." };
+  }
+  const connection = await aiFor(member.store.id);
+  if (!connection?.textModel) return { ok: false, problem: "The store has no AI text model. Choose one under Settings → AI." };
+  try {
+    const { written, model } = await suggestProductText(
+      connection,
+      { accountId: member.account.id, storeId: member.store.id, productId },
+      parsed.data,
+    );
+    return { ok: true, written, model };
+  } catch (error) {
+    return {
+      ok: false,
+      problem: error instanceof AiError ? `The AI could not write it: ${error.message}` : "The AI could not write it. Try again.",
+    };
+  }
 }

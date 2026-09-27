@@ -17,7 +17,9 @@ import {
   startFileUploadAction,
   uploadImageAction,
   type SaveState,
+  suggestTextAction,
 } from "@/app/admin/(gated)/[store]/products/actions";
+import { AiWriter } from "@/components/admin/ai-writer";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
 import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
@@ -44,6 +46,7 @@ import {
   type ProductInput,
   type VariantInput,
 } from "@/lib/product-input";
+import type { ProductFacts, WriteRequest, WrittenText } from "@/lib/product-writing";
 import { summarize } from "@/lib/seo";
 import {
   MAX_DISCOUNT_PERCENT,
@@ -238,6 +241,7 @@ export function ProductEditor(props: Props) {
         handleTouched={handleTouched}
         onHandleTouched={() => setHandleTouched(true)}
         productUrl={`${props.siteOrigin}${props.storefrontPath ?? ""}/p/${product.handle || slugify(title) || "product"}`}
+        suggest={(request) => suggestTextAction(storeSlug, productId, request)}
       />
       <MediaSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       <section aria-labelledby="terms-heading" className={card}>
@@ -302,12 +306,14 @@ function TextSection({
   handleTouched,
   onHandleTouched,
   productUrl,
+  suggest,
 }: SectionProps & {
   context: EditorContext;
   languageNames: Record<string, string>;
   handleTouched: boolean;
   onHandleTouched: () => void;
   productUrl: string;
+  suggest: (request: WriteRequest) => Promise<Awaited<ReturnType<typeof suggestTextAction>>>;
 }) {
   const [locale, setLocale] = useState(context.primaryLocale);
   const tabsId = useId();
@@ -321,6 +327,19 @@ function TextSection({
   };
   const isPrimary = locale === context.primaryLocale;
   const primaryText = product.translations.find((t) => t.locale === context.primaryLocale);
+
+  // What AI writing is told (D76): the texts, with the product's categories, tags and options by name.
+  const termName = (id: string) => context.terms.find((term) => term.id === id)?.name;
+  const factsOf = (text: { title: string; description: string; seoTitle: string; seoDescription: string }): ProductFacts => ({
+    kind: product.kind,
+    title: text.title,
+    description: text.description,
+    seoTitle: text.seoTitle,
+    seoDescription: text.seoDescription,
+    categories: product.categories.map(termName).filter((name): name is string => Boolean(name)),
+    tags: product.tags.map(termName).filter((name): name is string => Boolean(name)),
+    options: product.options,
+  });
 
   const setField = (
     field: "title" | "description" | "safetyInformation" | "seoTitle" | "seoDescription",
@@ -373,6 +392,20 @@ function TextSection({
           <p className="text-sm text-muted">
             Leave empty to show shoppers the {languageNames[context.primaryLocale] ?? context.primaryLocale} text.
           </p>
+        )}
+        {context.aiWriting && (
+          <AiWriter
+            key={locale}
+            isPrimary={isPrimary}
+            language={languageNames[locale] ?? locale}
+            fromLanguage={languageNames[context.primaryLocale] ?? context.primaryLocale}
+            facts={factsOf(current)}
+            sourceFacts={factsOf(primaryText ?? current)}
+            suggest={suggest}
+            onUse={(written: WrittenText) => {
+              for (const [field, value] of Object.entries(written) as [keyof WrittenText, string][]) setField(field, value);
+            }}
+          />
         )}
         <label className={label}>
           Title

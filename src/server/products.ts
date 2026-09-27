@@ -26,6 +26,7 @@ import {
 import type { PlanInterval } from "@/lib/subscriptions";
 import type { Term } from "@/lib/taxonomy";
 
+import { aiFor } from "./ai";
 import { storedFileInfo, uploadsEnabled } from "./media";
 import type { Store } from "./stores";
 import { listTerms, scopedTermIds } from "./taxonomy";
@@ -62,6 +63,8 @@ export type EditorContext = {
   places: { id: string; name: string }[];
   /** The store's active hosts (D71), for its stays and rentals. */
   hosts: { id: string; name: string; vatRegistered: boolean }[];
+  /** The store's AI has a text model, so staff can ask it for texts (D76). */
+  aiWriting: boolean;
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
@@ -129,6 +132,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     })),
     places: places.map((row) => ({ id: String(row.id), name: String(row.name) })),
     hosts: hosts.map((row) => ({ id: String(row.id), name: String(row.name), vatRegistered: Boolean(row.vat_registered) })),
+    aiWriting: Boolean((await aiFor(store.id))?.textModel),
   };
 }
 

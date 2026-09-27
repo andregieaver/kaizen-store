@@ -117,6 +117,13 @@ of running `playwright install`.
   `aiFor(storeId)` (null: no AI) and call `embedTexts()` / `completeText()`,
   an OpenAI-compatible API; catch `AiError` and carry on without AI. Keep
   vectors with their `space`, so a new model never compares with an old one.
+- AI product texts (D76, `src/lib/product-writing.ts`, `src/server/product-writer.ts`,
+  `AiWriter`): suggestions only, shown in the editor for staff to edit and copy
+  in; never write AI text to a product directly. The model gets the product's
+  own words and never prices or stock. AI copy passes the claims filter
+  (`findClaims()` in `src/lib/claims.ts`: generic green claims, urgency, best
+  price, money, stock) before it can be used; new AI copy anywhere goes
+  through it too.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - The template store's product pages are prerendered at build time, so their
