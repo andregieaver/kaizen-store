@@ -1,15 +1,7 @@
 import { randomBytes } from "node:crypto";
 
 import { sql } from "drizzle-orm";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { aiFormValues } from "@/lib/ai-provider";
@@ -26,9 +18,7 @@ let storeId: string;
 let accountId: string;
 
 /** The settings form as a platform admin or owner would fill it in. */
-function form(
-  values: Record<string, string | boolean>,
-): ReturnType<typeof aiFormValues> {
+function form(values: Record<string, string | boolean>): ReturnType<typeof aiFormValues> {
   const data = new FormData();
   for (const [name, value] of Object.entries(values)) {
     if (value === true) data.set(name, "on");
@@ -57,9 +47,7 @@ beforeAll(async () => {
     select commerce.approve_access_request(${String(request.id)}::uuid, ${`ai-${run}`}, 'Test', null) as id
   `);
   storeId = String(store.id);
-  const [account] = await db().execute<Row>(
-    sql`select id from commerce.accounts where email = ${`ai-${run}@example.com`}`,
-  );
+  const [account] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`ai-${run}@example.com`}`);
   accountId = String(account.id);
   // Kaizen's provider is one row for the whole platform: start from none.
   await ai.removeAiSettings(accountId, null);
@@ -81,10 +69,7 @@ function fakeProvider(body: unknown, status = 200) {
     "fetch",
     vi.fn(async (url: string, init: RequestInit) => {
       calls.push({ url, init, body: JSON.parse(String(init.body)) as Row });
-      return new Response(JSON.stringify(body), {
-        status,
-        headers: { "content-type": "application/json" },
-      });
+      return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
     }),
   );
   return calls;
@@ -93,9 +78,7 @@ function fakeProvider(body: unknown, status = 200) {
 describe("AI providers (D73)", () => {
   it("gives stores Kaizen's AI, or their own while it is on", async () => {
     expect(await ai.aiFor(storeId)).toBeNull();
-    expect(await ai.saveAiSettings(accountId, null, form(kaizen))).toEqual({
-      ok: true,
-    });
+    expect(await ai.saveAiSettings(accountId, null, form(kaizen))).toEqual({ ok: true });
 
     const platform = await ai.aiFor(storeId);
     expect(platform).toMatchObject({
@@ -107,16 +90,8 @@ describe("AI providers (D73)", () => {
       space: "ai-gateway.vercel.sh/v1|mistral/mistral-embed",
     });
 
-    const own = {
-      provider: "mistral",
-      apiKey: "store-key-2222",
-      embeddingModel: "mistral-embed",
-      minSimilarity: "0.75",
-      enabled: true,
-    };
-    expect(await ai.saveAiSettings(accountId, storeId, form(own))).toEqual({
-      ok: true,
-    });
+    const own = { provider: "mistral", apiKey: "store-key-2222", embeddingModel: "mistral-embed", minSimilarity: "0.75", enabled: true };
+    expect(await ai.saveAiSettings(accountId, storeId, form(own))).toEqual({ ok: true });
     expect(await ai.aiFor(storeId)).toMatchObject({
       source: "store",
       apiUrl: "https://api.mistral.ai/v1",
@@ -129,17 +104,9 @@ describe("AI providers (D73)", () => {
     expect((await ai.aiFor(null))?.source).toBe("platform");
 
     // Switched off, the store is back on Kaizen's; Kaizen's off too, no AI.
-    await ai.saveAiSettings(
-      accountId,
-      storeId,
-      form({ ...own, apiKey: "", enabled: false }),
-    );
+    await ai.saveAiSettings(accountId, storeId, form({ ...own, apiKey: "", enabled: false }));
     expect((await ai.aiFor(storeId))?.source).toBe("platform");
-    await ai.saveAiSettings(
-      accountId,
-      null,
-      form({ ...kaizen, apiKey: "", enabled: false }),
-    );
+    await ai.saveAiSettings(accountId, null, form({ ...kaizen, apiKey: "", enabled: false }));
     expect(await ai.aiFor(storeId)).toBeNull();
     await ai.saveAiSettings(accountId, null, form({ ...kaizen, apiKey: "" }));
 
@@ -154,74 +121,20 @@ describe("AI providers (D73)", () => {
 
   it("keeps the key encrypted and never shows it; an empty key keeps the saved one", async () => {
     const settings = await ai.getAiSettings(null);
-    expect(settings).toMatchObject({
-      apiKeyHint: "…1111",
-      provider: "gateway",
-    });
+    expect(settings).toMatchObject({ apiKeyHint: "…1111", provider: "gateway" });
     expect(JSON.stringify(settings)).not.toContain(kaizen.apiKey);
-    const [row] = await db().execute<Row>(
-      sql`select api_key_encrypted from commerce.ai_providers where store_id is null`,
-    );
+    const [row] = await db().execute<Row>(sql`select api_key_encrypted from commerce.ai_providers where store_id is null`);
     expect(String(row.api_key_encrypted)).not.toContain(kaizen.apiKey);
 
     // Another provider needs its own key.
-    const moved = await ai.saveAiSettings(
-      accountId,
-      storeId,
-      form({
-        provider: "openai",
-        embeddingModel: "text-embedding-3-small",
-        minSimilarity: "0.5",
-      }),
-    );
-    expect(moved).toEqual({
-      ok: false,
-      problems: ["Paste an API key for OpenAI."],
-    });
+    const moved = await ai.saveAiSettings(accountId, storeId, form({ provider: "openai", embeddingModel: "text-embedding-3-small", minSimilarity: "0.5" }));
+    expect(moved).toEqual({ ok: false, problems: ["Paste an API key for OpenAI."] });
     const custom = await ai.saveAiSettings(
       accountId,
       storeId,
-      form({
-        provider: "custom",
-        baseUrl: "https://169.254.169.254/v1",
-        apiKey: "x",
-        textModel: "llama",
-        minSimilarity: "0.5",
-      }),
+      form({ provider: "custom", baseUrl: "https://169.254.169.254/v1", apiKey: "x", textModel: "llama", minSimilarity: "0.5" }),
     );
     expect(custom.ok).toBe(false);
-
-    // OpenAI's key carries over to OpenAI (EU data residency).
-    expect(
-      await ai.saveAiSettings(
-        accountId,
-        storeId,
-        form({
-          provider: "openai",
-          apiKey: "sk-openai-2222",
-          embeddingModel: "text-embedding-3-small",
-          minSimilarity: "0.5",
-        }),
-      ),
-    ).toEqual({ ok: true });
-    expect(
-      await ai.saveAiSettings(
-        accountId,
-        storeId,
-        form({
-          provider: "openai_eu",
-          textModel: "fast",
-          embeddingModel: "text-embedding-3-small",
-          minSimilarity: "0.5",
-        }),
-      ),
-    ).toEqual({ ok: true });
-    expect(await ai.getAiSettings(storeId)).toMatchObject({
-      provider: "openai_eu",
-      apiKeyHint: "…2222",
-      textModel: "fast",
-    });
-    expect((await ai.ownConnection(storeId))?.apiKey).toBe("sk-openai-2222");
   });
 
   it("asks the gateway for EU data centres and zero retention, as set, and reads the vectors in order", async () => {
@@ -239,36 +152,17 @@ describe("AI providers (D73)", () => {
     ]);
     expect(calls[0].url).toBe("https://ai-gateway.vercel.sh/v1/embeddings");
     expect(calls[0].init).toMatchObject({ method: "POST", redirect: "error" });
-    expect(
-      (calls[0].init.headers as Record<string, string>).authorization,
-    ).toBe(`Bearer ${kaizen.apiKey}`);
+    expect((calls[0].init.headers as Record<string, string>).authorization).toBe(`Bearer ${kaizen.apiKey}`);
     // No embedding model can be pinned to the EU yet, so only zero retention.
-    expect(calls[0].body).toEqual({
-      model: "mistral/mistral-embed",
-      input: ["a", "b"],
-      providerOptions: { gateway: { zeroDataRetention: true } },
-    });
+    expect(calls[0].body).toEqual({ model: "mistral/mistral-embed", input: ["a", "b"], providerOptions: { gateway: { zeroDataRetention: true } } });
 
     const chat = fakeProvider({ choices: [{ message: { content: "OK" } }] });
-    expect(
-      (
-        await ai.completeText(connection, [{ role: "user", content: "Hi" }], {
-          maxTokens: 5,
-        })
-      ).text,
-    ).toBe("OK");
-    expect(chat[0].url).toBe(
-      "https://ai-gateway.vercel.sh/v1/chat/completions",
-    );
+    expect((await ai.completeText(connection, [{ role: "user", content: "Hi" }], { maxTokens: 5 })).text).toBe("OK");
+    expect(chat[0].url).toBe("https://ai-gateway.vercel.sh/v1/chat/completions");
     expect(chat[0].body).toMatchObject({
       model: "anthropic/claude-haiku-4.5",
       max_tokens: 5,
-      providerOptions: {
-        gateway: {
-          inferenceRegion: { scope: "zone", geoRegion: "eu" },
-          zeroDataRetention: true,
-        },
-      },
+      providerOptions: { gateway: { inferenceRegion: { scope: "zone", geoRegion: "eu" }, zeroDataRetention: true } },
     });
   });
 
@@ -276,37 +170,25 @@ describe("AI providers (D73)", () => {
     await ai.saveAiSettings(
       accountId,
       storeId,
-      form({
-        provider: "openai",
-        apiKey: "sk-store-3333",
-        embeddingModel: "text-embedding-3-small",
-        textModel: "gpt-5-mini",
-        minSimilarity: "0.4",
-        enabled: true,
-      }),
+      form({ provider: "openai", apiKey: "sk-store-3333", embeddingModel: "text-embedding-3-small", textModel: "gpt-5-mini", minSimilarity: "0.4", enabled: true }),
     );
     const connection = (await ai.aiFor(storeId))!;
     const calls = fakeProvider({ choices: [{ message: { content: "OK" } }] });
-    await ai.completeText(connection, [{ role: "user", content: "Hi" }], {
-      maxTokens: 5,
-    });
+    await ai.completeText(connection, [{ role: "user", content: "Hi" }], { maxTokens: 5 });
     expect(calls[0].url).toBe("https://api.openai.com/v1/chat/completions");
-    expect(calls[0].body).toEqual({
-      model: "gpt-5-mini",
-      messages: [{ role: "user", content: "Hi" }],
-      max_completion_tokens: 5,
-    });
+    expect(calls[0].body).toEqual({ model: "gpt-5-mini", messages: [{ role: "user", content: "Hi" }], max_completion_tokens: 5 });
 
     fakeProvider({ error: { message: "Invalid API key" } }, 401);
-    await expect(ai.embedTexts(connection, ["a"])).rejects.toMatchObject({
-      name: "AiError",
-      status: 401,
-      message: "Invalid API key",
-    });
+    await expect(ai.embedTexts(connection, ["a"])).rejects.toMatchObject({ name: "AiError", status: 401, message: "Invalid API key" });
     fakeProvider({ data: [] });
-    await expect(ai.embedTexts(connection, ["a"])).rejects.toThrow(
-      /one vector per text/,
-    );
+    await expect(ai.embedTexts(connection, ["a"])).rejects.toThrow(/one vector per text/);
+
+    // OpenAI's EU address refuses keys from projects without EU data residency: say what to do.
+    const geography = { error: { message: "This endpoint is only accessible by projects with geography restrictions enabled." } };
+    fakeProvider(geography, 401);
+    await expect(ai.embedTexts({ ...connection, provider: "openai_eu" }, ["a"])).rejects.toThrow(/without European data residency/);
+    fakeProvider(geography, 401);
+    await expect(ai.embedTexts(connection, ["a"])).rejects.toThrow(/geography restrictions/);
     await ai.removeAiSettings(accountId, storeId);
   });
 
@@ -319,57 +201,24 @@ describe("AI providers (D73)", () => {
         const body = JSON.parse(String(init.body)) as Record<string, unknown>;
         bodies.push(body);
         return "temperature" in body
-          ? Response.json(
-              {
-                error: {
-                  message:
-                    "Unsupported value: 'temperature' does not support 0 with this model.",
-                },
-              },
-              { status: 400 },
-            )
+          ? Response.json({ error: { message: "Unsupported value: 'temperature' does not support 0 with this model." } }, { status: 400 })
           : Response.json({ choices: [{ message: { content: "OK" } }] });
       }),
     );
-    const reply = await ai.completeText(
-      connection,
-      [{ role: "user", content: "Hi" }],
-      { temperature: 0, reasoningEffort: "low" },
-    );
+    const reply = await ai.completeText(connection, [{ role: "user", content: "Hi" }], { temperature: 0, reasoningEffort: "low" });
     expect(reply.text).toBe("OK");
     expect(bodies).toHaveLength(2);
-    expect(bodies[0]).toMatchObject({
-      temperature: 0,
-      reasoning_effort: "low",
-    });
+    expect(bodies[0]).toMatchObject({ temperature: 0, reasoning_effort: "low" });
     expect(bodies[1]).not.toHaveProperty("temperature");
     expect(bodies[1]).not.toHaveProperty("reasoning_effort");
 
     // Other refusals are not asked again.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({ error: { message: "Invalid model" } }, { status: 400 }),
-      ),
-    );
-    await expect(
-      ai.completeText(connection, [{ role: "user", content: "Hi" }], {
-        temperature: 0,
-      }),
-    ).rejects.toThrow("Invalid model");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: { message: "Invalid model" } }, { status: 400 })));
+    await expect(ai.completeText(connection, [{ role: "user", content: "Hi" }], { temperature: 0 })).rejects.toThrow("Invalid model");
 
     // A reasoning model that thought until the limit gives no text.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          choices: [{ message: { content: "" }, finish_reason: "length" }],
-        }),
-      ),
-    );
-    await expect(
-      ai.completeText(connection, [{ role: "user", content: "Hi" }]),
-    ).rejects.toThrow(/cut off at its length limit/);
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ message: { content: "" }, finish_reason: "length" }] })));
+    await expect(ai.completeText(connection, [{ role: "user", content: "Hi" }])).rejects.toThrow(/cut off at its length limit/);
   });
 
   it("tests both models from the admin, with scores to set the similarity by", async () => {
@@ -382,29 +231,15 @@ describe("AI providers (D73)", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) =>
-        Response.json(
-          url.endsWith("/embeddings")
-            ? {
-                data: vectors.map((embedding, index) => ({ index, embedding })),
-              }
-            : { choices: [{ message: { content: "OK" } }] },
-        ),
+        Response.json(url.endsWith("/embeddings") ? { data: vectors.map((embedding, index) => ({ index, embedding })) } : { choices: [{ message: { content: "OK" } }] }),
       ),
     );
     const result = await ai.testAi(connection);
     expect(result.embedding).toMatchObject({ ok: true });
-    expect(result.embedding?.message).toMatch(
-      /matching product scored 0\.99, an unrelated one 0\.00 \(limit 0\.80\)/,
-    );
+    expect(result.embedding?.message).toMatch(/matching product scored 0\.99, an unrelated one 0\.00 \(limit 0\.80\)/);
     expect(result.text?.message).toMatch(/answered in \d+ ms: “OK”/);
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("Bad Gateway", { status: 502 })),
-    );
-    expect((await ai.testAi(connection)).text).toEqual({
-      ok: false,
-      message: "anthropic/claude-haiku-4.5: 502: Bad Gateway",
-    });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("Bad Gateway", { status: 502 })));
+    expect((await ai.testAi(connection)).text).toEqual({ ok: false, message: "anthropic/claude-haiku-4.5: 502: Bad Gateway" });
   });
 });
