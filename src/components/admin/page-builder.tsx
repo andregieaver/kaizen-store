@@ -247,6 +247,7 @@ const blockLabels: Record<BlockType, string> = {
   image: "Image",
   button: "Button",
   contentGrid: "Content grid",
+  product: "Product",
 };
 /** The palette's components, in order. */
 const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid"] as const satisfies readonly BlockType[];
@@ -257,6 +258,7 @@ const blockThis: Record<BlockType, string> = {
   image: "this picture",
   button: "this button",
   contentGrid: "this content grid",
+  product: "this product component",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1472,6 +1474,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   image: "No picture yet. Double-click or use the wrench to choose one.",
   button: "A button needs its text and an address. Double-click or use the wrench.",
   contentGrid: "Content grid.",
+  product: "Product component.",
 };
 
 // ---------------------------------------------------------------------------
@@ -3712,6 +3715,8 @@ function SavedPartDialog({
                       <HeadingFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : block.type === "contentGrid" ? (
                       <p className="text-sm text-muted">Content grid: change its settings where it is used on a page.</p>
+                    ) : block.type === "product" ? (
+                      <p className="text-sm text-muted">Product component: change its settings where it is used in a layout.</p>
                     ) : (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     )}

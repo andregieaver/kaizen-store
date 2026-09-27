@@ -1,0 +1,632 @@
+import Link from "next/link";
+import { connection } from "next/server";
+import { Suspense } from "react";
+
+import { AddToCart } from "@/components/add-to-cart";
+import { AppointmentPicker } from "@/components/appointment-picker";
+import { SwitchToBusiness } from "@/components/buyer";
+import { JsonLdScript } from "@/components/json-ld";
+import { HEADING_SIZES } from "@/components/page-block";
+import { Price, VatAmount } from "@/components/price";
+import { ProductBar } from "@/components/product-bar";
+import { ProductGallery } from "@/components/product-gallery";
+import { ProductGrid } from "@/components/product-listing";
+import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
+import { RangePicker } from "@/components/range-picker";
+import { WishlistHeart } from "@/components/wishlist-heart";
+import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
+import { seasonName, seasonPrice } from "@/lib/booking-prices";
+import { rangeCalendar } from "@/lib/booking-ranges";
+import { slotWeek } from "@/lib/booking-slots";
+import { optionLabel, t, type Messages } from "@/lib/i18n";
+import type { Market } from "@/lib/markets";
+import { formatMoney } from "@/lib/money";
+import type { ProductBlock } from "@/lib/page-content";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { stockLevel } from "@/lib/pricing";
+import { productJsonLd } from "@/lib/structured-data";
+import { planPrice } from "@/lib/subscriptions";
+import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
+import { getAvailability, type EconomicOperator, type ProductDetail } from "@/server/catalog";
+import { relatedProducts } from "@/server/listing";
+import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
+import { getShippingFacts, storeFacts } from "@/server/seo";
+import type { Store } from "@/server/stores";
+
+/**
+ * The parts of a product's page (D79), each drawn where a product layout
+ * places its product component: the back link, pictures, title (with the
+ * wishlist heart), price, the business-only notice, the host, the buy
+ * section (variants with stock for goods, times for appointments, dates for
+ * stays and rentals), the description, the right of withdrawal, product
+ * safety and related products. The text parts are the page's cached shell;
+ * what depends on the request (stock, free times and dates) streams in
+ * inside the buy section's own `<Suspense>`, so the details stay plain HTML
+ * (a finished boundary moves out of line once the page passes ~12 kB).
+ */
+
+export type ProductPageContext = { store: Store; market: Market; product: ProductDetail; m: Messages };
+
+export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: ProductPageContext }) {
+  const { store, market, product, m } = ctx;
+  const base = marketPath(store.slug, market.slug);
+  const headingId = `${block.id}-heading`;
+  const heading = (fallback: string) =>
+    block.showHeading === false ? null : (
+      <h2 id={headingId} className="mb-2 font-medium">
+        {block.heading || fallback}
+      </h2>
+    );
+  const labelledBy = block.showHeading === false ? undefined : headingId;
+  const forBusiness = product.audience === "businesses" ? "for-business" : "";
+
+  switch (block.part) {
+    case "back":
+      return (
+        <Link href={base} className="text-sm underline">
+          {m.backToProducts}
+        </Link>
+      );
+    case "gallery":
+      return (
+        <ProductGallery
+          images={product.images}
+          title={product.title}
+          thumbnails={block.thumbnails !== false}
+          labels={{
+            label: m.galleryLabel,
+            previous: m.galleryPrevious,
+            next: m.galleryNext,
+            show: product.images.map((_, i) => m.galleryShow(i + 1)),
+            slide: product.images.map((_, i) => m.gallerySlide(i + 1, product.images.length)),
+          }}
+        />
+      );
+    case "title":
+      return (
+        <div className="flex items-start justify-between gap-4">
+          <h1 className={`${block.size ? HEADING_SIZES[block.size] : "text-3xl"} flex-1 font-heading tracking-tight`}>{product.title}</h1>
+          {block.wishlist !== false && (
+            <WishlistHeart
+              store={store.slug}
+              market={market.slug}
+              base={base}
+              productId={product.id}
+              placement="page"
+              labels={{ save: m.wishlist.save(product.title), saved: m.wishlist.saved, removed: m.wishlist.removed }}
+            />
+          )}
+        </div>
+      );
+    case "price":
+      return (
+        <Price
+          price={headlinePrice(product)}
+          locale={market.locale}
+          m={m}
+          from={product.subscriptionOnly || new Set(product.variants.map((v) => v.price.amountMinor)).size > 1}
+          large={block.large !== false}
+        />
+      );
+    case "notice":
+      // Sold only to businesses (B2B): a private shopper is told so, and can switch.
+      if (product.audience !== "businesses") return null;
+      return (
+        <div className="for-private flex flex-col items-start gap-3 rounded-lg border border-border p-4">
+          <p>{m.buyer.businessOnly}</p>
+          <SwitchToBusiness storeId={store.id} label={m.buyer.switchToBusiness} />
+        </div>
+      );
+    case "host":
+      return product.hostName ? <p className="text-sm">{m.stay.hostedBy(product.hostName)}</p> : null;
+    case "buy":
+      if (product.kind === "appointment") {
+        // Booked for a time (D65): free times are read per request, like stock.
+        return (
+          <section aria-label={m.booking.chooseTime} className={forBusiness}>
+            <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
+              <AppointmentBooking store={store} product={product} market={market} m={m} />
+            </Suspense>
+          </section>
+        );
+      }
+      if (product.kind === "stay" || product.kind === "rental") {
+        // Booked for nights or days (D67): which are free is read per request, like stock.
+        return (
+          <section aria-label={m.stay.chooseDates} className={forBusiness}>
+            <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
+              <RangeBooking store={store} product={product} market={market} m={m} />
+            </Suspense>
+          </section>
+        );
+      }
+      return (
+        <section aria-labelledby={headingId} className={forBusiness}>
+          <h2 id={headingId} className="mb-2 font-medium">
+            {m.variants}
+          </h2>
+          <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
+            <VariantsWithStock store={store} product={product} market={market} m={m} />
+          </Suspense>
+        </section>
+      );
+    case "description":
+      if (!product.description) return null;
+      return (
+        <section aria-labelledby={labelledBy}>
+          {heading(m.description)}
+          <p>{product.description}</p>
+        </section>
+      );
+    case "withdrawal": {
+      const text = withdrawalText(product, m);
+      return text ? <p className="text-sm">{text}</p> : null;
+    }
+    case "safety":
+      if (!product.safetyInformation && !product.manufacturer && !product.responsiblePerson) return null;
+      return (
+        <section aria-labelledby={labelledBy} className="text-sm">
+          {heading(m.safety)}
+          {product.safetyInformation && <p className="mb-3">{product.safetyInformation}</p>}
+          <dl className="grid gap-3">
+            {product.manufacturer && <Operator label={m.manufacturer} operator={product.manufacturer} />}
+            {product.responsiblePerson && <Operator label={m.euResponsiblePerson} operator={product.responsiblePerson} />}
+          </dl>
+        </section>
+      );
+    case "related":
+      return <Related block={block} ctx={ctx} />;
+  }
+}
+
+/** Whether a part has anything to show for this product; one that has not is left out, space and all. */
+export function productPartShows(block: ProductBlock, product: ProductDetail): boolean {
+  switch (block.part) {
+    case "gallery":
+      return product.images.length > 0;
+    case "notice":
+      return product.audience === "businesses";
+    case "host":
+      return Boolean(product.hostName);
+    case "description":
+      return Boolean(product.description);
+    case "withdrawal":
+      return withdrawalText(product, t("en")) !== null;
+    case "safety":
+      return Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson);
+    default:
+      return true;
+  }
+}
+
+/** The line on the right of withdrawal: none for ordinary goods, which can be sent back. */
+function withdrawalText(product: ProductDetail, m: Messages): string | null {
+  return product.kind === "appointment"
+    ? m.booking.noWithdrawal
+    : product.kind === "stay" || product.kind === "rental"
+      ? m.stay.noWithdrawal(product.kind === "stay")
+      : product.variants.some((v) => v.delivery === "digital")
+        ? m.digitalWithdrawal
+        : product.withdrawalExclusion !== "none"
+          ? m.noWithdrawal
+          : null;
+}
+
+/** Products like this one (D79), as the store's product cards. */
+async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageContext }) {
+  const { store, market, product, m } = ctx;
+  const products = await relatedProducts(store.id, market, product.id, block.limit ?? 4);
+  if (products.length === 0) return null;
+  const headingId = `${block.id}-heading`;
+  return (
+    <section aria-labelledby={block.showHeading === false ? undefined : headingId} aria-label={block.showHeading === false ? m.related : undefined}>
+      {block.showHeading !== false && (
+        <h2 id={headingId} className="mb-4 text-xl font-heading">
+          {block.heading || m.related}
+        </h2>
+      )}
+      <ProductGrid
+        products={products}
+        market={market}
+        m={m}
+        store={store.slug}
+        base={marketPath(store.slug, market.slug)}
+        columns={block.columns ?? { mobile: 2, tablet: 4, desktop: 4 }}
+      />
+    </section>
+  );
+}
+
+/** The page's structured data (JSON-LD), with stock, per request: drawn once, whatever the layout holds. */
+export async function ProductJsonLdSection({ store, market, product }: Omit<ProductPageContext, "m">) {
+  if (product.kind !== "goods") return <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable />;
+  await connection();
+  const availability = await getAvailability(
+    store.id,
+    product.variants.map((v) => v.id),
+  );
+  return <ProductJsonLd store={store} market={market} product={product} availability={availability} />;
+}
+
+/** The price beside the title: the cheapest, or the best subscriber's price when only subscriptions are sold. */
+export function headlinePrice(product: ProductDetail) {
+  const cheapest = product.variants[0].price;
+  if (!product.subscriptionOnly) return cheapest;
+  const best = Math.max(...product.plans.map((plan) => plan.discountPercent));
+  return { ...cheapest, amountMinor: planPrice(cheapest.amountMinor, best), referenceMinor: null };
+}
+
+function Operator({ label, operator }: { label: string; operator: EconomicOperator }) {
+  return (
+    <div>
+      <dt className="font-medium">{label}</dt>
+      <dd>
+        {operator.name}, {operator.postalAddress}, {operator.electronicAddress}
+      </dd>
+    </div>
+  );
+}
+
+/** An appointment's facts and free times (D65), read per request after the cached page shell. */
+async function AppointmentBooking({
+  store,
+  product,
+  market,
+  m,
+}: {
+  store: Store;
+  product: ProductDetail;
+  market: Market;
+  m: Messages;
+}) {
+  await connection();
+  const [offer, week] = await Promise.all([
+    getAppointmentOffer(store.id, product.id),
+    appointmentSlots(store.id, product.id),
+  ]);
+  if (!store.bookingsOn || !offer || !week) return <p>{m.booking.notBookable}</p>;
+  const facts = [
+    m.booking.duration(offer.rules.durationMinutes),
+    offer.staff.length === 1 && m.booking.withStaff(offer.staff[0].name),
+  ].filter(Boolean);
+  return (
+    <div className="flex flex-col gap-4">
+      <dl className="grid gap-1 text-sm">
+        <div className="flex gap-2">
+          <dt className="sr-only">{m.booking.time}</dt>
+          <dd>{facts.join(" · ")}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="sr-only">{m.booking.atVenue}</dt>
+          <dd>
+            {[
+              offer.payment.mode === "deposit" && m.booking.payDeposit(offer.payment.depositPercent),
+              offer.payment.mode === "venue" && m.booking.payVenue,
+              m.booking.freeCancel(offer.cancelHours),
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          </dd>
+        </div>
+        {offer.place && (
+          <div className="flex gap-2">
+            <dt className="font-medium">{m.booking.where}:</dt>
+            <dd>{[offer.place.name, offer.place.address].filter(Boolean).join(", ")}</dd>
+          </div>
+        )}
+      </dl>
+      <AppointmentPicker
+        store={store.slug}
+        market={market.slug}
+        cartHref={marketPath(store.slug, market.slug, "/cart")}
+        productId={product.id}
+        variants={product.variants.map((variant) => ({
+          id: variant.id,
+          label: optionLabel(m, variant.options) || product.title,
+          price: <Price price={variant.price} locale={market.locale} m={m} />,
+        }))}
+        staff={offer.staff}
+        initial={slotWeek(week, market.locale, store.timeZone)}
+        openCart={store.openCartOnAdd}
+        labels={pickerLabels(m)}
+      />
+    </div>
+  );
+}
+
+/** A stay's or rental's facts and free dates (D67), read per request after the cached page shell. */
+async function RangeBooking({
+  store,
+  product,
+  market,
+  m,
+}: {
+  store: Store;
+  product: ProductDetail;
+  market: Market;
+  m: Messages;
+}) {
+  await connection();
+  // The calendar opens for the first variant: by the day, or (a rental, D69) by the half day or hour.
+  const firstPeriod = product.kind === "rental" ? (product.variants[0]?.rentalPeriod ?? "day") : "day";
+  const [offer, month, pricing] = await Promise.all([
+    getRangeOffer(store.id, product.id),
+    rangeDates(store.id, product.id, null, undefined, firstPeriod),
+    getRangePricing(store.id, product.id, market.code),
+  ]);
+  if (!store.bookingsOn || !offer || !month) return <p>{m.booking.notBookable}</p>;
+  const stay = offer.kind === "stay";
+  const { rules } = offer;
+  // The fee and the seasons' prices (D70), for the variant by the night or day (else the first).
+  const { seasons, feeMinor } = pricing;
+  const shown = product.variants.find((v) => v.rentalPeriod === "day") ?? product.variants[0];
+  const amount = (minor: number) => (
+    <VatAmount amountMinor={minor} currency={shown.price.currency} locale={market.locale} vat={shown.price.vat} labels={m} label={false} />
+  );
+  const dayMonth = new Intl.DateTimeFormat(market.locale, { day: "numeric", month: "long", timeZone: "UTC" });
+  const weekdayName = new Intl.DateTimeFormat(market.locale, { weekday: "short", timeZone: "UTC" });
+  // Any year's date will do for a day of the year: a leap year keeps 29 February.
+  const yearDay = (day: string) => dayMonth.format(new Date(`2028-${day}T12:00:00Z`));
+  const weekdays = (days: number[]) =>
+    days.length === 7 ? null : days.map((d) => weekdayName.format(new Date(Date.UTC(2028, 0, 2 + d, 12)))).join(", ");
+  return (
+    <div className="flex flex-col gap-4">
+      <dl className="grid gap-1 text-sm">
+        <div className="flex gap-2">
+          <dt className="sr-only">{m.booking.time}</dt>
+          <dd>
+            {[
+              m.stay.times(rules.checkInTime, rules.checkOutTime, stay),
+              rules.minNights > 1 && m.stay.tooShort(rules.minNights, stay),
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          </dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="sr-only">{m.booking.atVenue}</dt>
+          <dd>
+            {[
+              offer.payment.mode === "deposit" && m.booking.payDeposit(offer.payment.depositPercent),
+              offer.payment.mode === "venue" && m.booking.payVenue,
+              m.stay.freeCancel(offer.cancelHours, stay),
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          </dd>
+        </div>
+        {offer.place && (
+          <div className="flex gap-2">
+            <dt className="font-medium">{m.booking.where}:</dt>
+            <dd>{[offer.place.name, offer.place.address].filter(Boolean).join(", ")}</dd>
+          </div>
+        )}
+        {feeMinor > 0 && (
+          <div className="flex gap-2">
+            <dt>{stay ? m.stay.cleaningFee : m.stay.bookingFee}</dt>
+            <dd>
+              {amount(feeMinor)} {m.stay.perBooking(stay)}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {seasons.length > 0 && shown && (
+        <section aria-labelledby="seasons-heading" className="text-sm">
+          <h3 id="seasons-heading" className="mb-1 font-medium">
+            {m.stay.seasonsHeading}
+          </h3>
+          <ul className="flex flex-col gap-1">
+            {seasons.map((season, i) => (
+              <li key={i} className="flex flex-wrap justify-between gap-x-4">
+                <span>
+                  {seasonName(season, market.locale)}
+                  <span className="text-muted">
+                    {" "}
+                    ({[season.fromDay && season.toDay ? `${yearDay(season.fromDay)}–${yearDay(season.toDay)}` : m.stay.allYear, weekdays(season.weekdays)]
+                      .filter(Boolean)
+                      .join(", ")}
+                    )
+                  </span>
+                </span>
+                <span className="tabular-nums">
+                  {amount(seasonPrice(shown.price.amountMinor, season.percent, shown.price.currency))} {m.stay.perNight(stay)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <RangePicker
+        store={store.slug}
+        market={market.slug}
+        cartHref={marketPath(store.slug, market.slug, "/cart")}
+        productId={product.id}
+        kind={offer.kind}
+        variants={product.variants.map((variant) => ({
+          id: variant.id,
+          label: optionLabel(m, variant.options) || product.title,
+          price: <Price price={variant.price} locale={market.locale} m={m} />,
+          period: variant.rentalPeriod,
+          base: { amountMinor: variant.price.amountMinor, currency: variant.price.currency, vat: variant.price.vat },
+        }))}
+        pricing={pricing}
+        locale={market.locale}
+        initial={rangeCalendar(month, market.locale)}
+        checkInTime={rules.checkInTime}
+        timeZone={offer.timeZone}
+        minNights={rules.minNights}
+        maxNights={rules.maxNights}
+        openCart={store.openCartOnAdd}
+        labels={rangePickerLabels(m, stay, rules.minNights, rules.maxNights)}
+      />
+    </div>
+  );
+}
+
+/** Stock is read per request, so this renders after the cached page shell. */
+async function VariantsWithStock({
+  store,
+  product,
+  market,
+  m,
+}: {
+  store: Store;
+  product: ProductDetail;
+  market: Market;
+  m: Messages;
+}) {
+  const availability = await getAvailability(
+    store.id,
+    product.variants.map((v) => v.id),
+  );
+  const stockText = (available: number) => {
+    const level = stockLevel(available);
+    return level === "out" ? m.outOfStock : level === "low" ? m.lowStock(available) : m.inStock;
+  };
+
+  const plans = product.plans.map((plan) => ({
+    id: plan.id,
+    discountPercent: plan.discountPercent,
+    label: m.planEvery(plan.interval, plan.intervalCount),
+    note: [
+      plan.discountPercent > 0 && m.planSave(plan.discountPercent),
+      plan.trialDays > 0 && m.planTrial(plan.trialDays),
+      plan.signupFeeMinor > 0 && m.planSignupFee(formatMoney(plan.signupFeeMinor, market.currency, market.locale)),
+      plan.minCycles > 0 && m.planMinCycles(plan.minCycles),
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  }));
+
+  return (
+    <PurchaseOptions
+      plans={plans}
+      subscriptionOnly={product.subscriptionOnly}
+      labels={{ legend: m.purchaseOptions, oneTime: m.oneTimePurchase }}
+    >
+      <ul className="divide-y divide-border rounded-lg border border-border">
+        {product.variants.map((variant) => {
+          const digital = variant.delivery === "digital";
+          const available = digital ? Infinity : (availability.get(variant.id) ?? 0);
+          const label = optionLabel(m, variant.options);
+          return (
+            <li key={variant.id} className="flex items-start justify-between gap-4 p-3">
+              <div>
+                {label && <p>{label}</p>}
+                <p className="text-sm text-muted">{digital ? m.instantDownload : stockText(available)}</p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <PlanPrice
+                  amountMinor={variant.price.amountMinor}
+                  currency={variant.price.currency}
+                  locale={market.locale}
+                  vat={variant.price.vat}
+                  labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
+                >
+                  <Price price={variant.price} locale={market.locale} m={m} />
+                </PlanPrice>
+                <AddToCart
+                  store={store.slug}
+                  market={market.slug}
+                  cartHref={marketPath(store.slug, market.slug, "/cart")}
+                  variantId={variant.id}
+                  disabled={available <= 0}
+                  openCart={store.openCartOnAdd}
+                  labels={{
+                    addToCart: m.addToCart,
+                    adding: m.adding,
+                    added: m.added,
+                    capped: m.capped,
+                    unavailable: m.unavailable,
+                    planConflict: m.planConflict,
+                    tryAgain: m.tryAgain,
+                    goToCart: m.goToCart,
+                  }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <ProductBar
+        store={store.slug}
+        market={market.slug}
+        cartHref={marketPath(store.slug, market.slug, "/cart")}
+        currency={market.currency}
+        locale={market.locale}
+        vat={product.variants[0].price.vat}
+        storeAudience={store.audience}
+        openCart={store.openCartOnAdd}
+        variants={product.variants.map((variant) => ({
+          id: variant.id,
+          label: optionLabel(m, variant.options) || product.title,
+          amountMinor: variant.price.amountMinor,
+          available: variant.delivery === "digital" || (availability.get(variant.id) ?? 0) > 0,
+        }))}
+        labels={{
+          addToCart: m.addToCart,
+          adding: m.adding,
+          added: m.added,
+          capped: m.capped,
+          unavailable: m.unavailable,
+          planConflict: m.planConflict,
+          tryAgain: m.tryAgain,
+          goToCart: m.goToCart,
+          chooseVariant: m.chooseVariantLabel,
+          soldOut: m.soldOut,
+          goCart: m.goCart,
+        }}
+      />
+    </PurchaseOptions>
+  );
+}
+
+
+/** Stock is part of the offer, so this renders with the stock, per request. */
+export async function ProductJsonLd({
+  store,
+  market,
+  product,
+  availability,
+  bookable = false,
+}: {
+  store: Store;
+  market: Market;
+  product: ProductDetail;
+  availability: Map<string, number>;
+  /** An appointment with times to book (D65): offered as in stock. */
+  bookable?: boolean;
+}) {
+  const origin = storeSiteUrl(store.slug);
+  const m = t(market.lang);
+  const labels = m.options as Record<string, string>;
+  const shipping = await getShippingFacts(store.id, market.code);
+  return (
+    <JsonLdScript
+      data={productJsonLd({
+        product: {
+          ...product,
+          description: product.seoDescription || product.description,
+          // Option names and values as shoppers read them ("Farge: Hvit").
+          variants: product.variants.map((variant) => ({
+            ...variant,
+            // Sold only by subscription: the subscriber's price is the price.
+            price: product.subscriptionOnly
+              ? { ...variant.price, amountMinor: headlinePrice({ ...product, variants: [variant] }).amountMinor }
+              : variant.price,
+            options: Object.fromEntries(
+              Object.entries(variant.options).map(([name, value]) => [labels[name] ?? name, labels[value] ?? value]),
+            ),
+          })),
+        },
+        url: `${origin}${marketPath(store.slug, market.slug, `/p/${product.handle}`)}`,
+        origin,
+        store: storeFacts(store),
+        market,
+        marketHome: `${origin}${marketPath(store.slug, market.slug)}`,
+        inStock: (variantId) => bookable || (availability.get(variantId) ?? 0) > 0,
+        shipping,
+      })}
+    />
+  );
+}

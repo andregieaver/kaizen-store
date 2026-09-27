@@ -469,8 +469,59 @@ export type ContentGridBlock = PartBase & {
   gap: number;
 };
 
-/** One piece of a page's content. More kinds (products, …) come later. */
-export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock;
+/**
+ * The parts of a product's page (D79), each a component a product layout
+ * places: they show the product the layout is used for, so they belong
+ * only in product layouts.
+ */
+export const PRODUCT_PARTS = {
+  back: "Back link",
+  gallery: "Pictures",
+  title: "Title",
+  price: "Price",
+  notice: "Business-only notice",
+  host: "Host",
+  buy: "Buy",
+  description: "Description",
+  withdrawal: "Right of withdrawal",
+  safety: "Product safety",
+  related: "Related products",
+} as const;
+export type ProductPart = keyof typeof PRODUCT_PARTS;
+export const RELATED_MAX = 12;
+
+/**
+ * A part of the product's page (D79). Each part takes only the settings
+ * that concern it, all optional, with defaults that draw the page as it
+ * was before layouts: the title (with the wishlist heart) at the theme's
+ * heading size, a large price, headings over the description, safety
+ * information and related products in the shopper's language unless one
+ * of the store's own is given.
+ */
+export type ProductBlock = PartBase & BlockFont & {
+  id: string;
+  type: "product";
+  part: ProductPart;
+  align?: TextAlignments;
+  /** The title's size. */
+  size?: HeadingSize;
+  /** The title: the wishlist heart beside it; on unless off. */
+  wishlist?: boolean;
+  /** The price: large unless off. */
+  large?: boolean;
+  /** The pictures: the strip of small pictures below; on unless off. */
+  thumbnails?: boolean;
+  /** Description, safety, related: a heading over them; on unless off. */
+  showHeading?: boolean;
+  /** That heading's own text; empty uses the built-in one in the shopper's language. */
+  heading?: string;
+  /** Related products: how many at most, and columns by screen. */
+  limit?: number;
+  columns?: GridColumns;
+};
+
+/** One piece of a page's content. */
+export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock | ProductBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -524,6 +575,9 @@ export function blockHasContent(block: PageBlock): boolean {
     case "contentGrid":
       // Its items are looked up when it is shown; with none, it says so (or nothing).
       return true;
+    case "product":
+      // The product decides what shows: a part it has nothing for draws nothing.
+      return true;
   }
 }
 
@@ -542,6 +596,7 @@ export function blockText(block: PageBlock): string {
       return block.text;
     case "button":
     case "contentGrid":
+    case "product":
       return "";
   }
 }
@@ -946,13 +1001,31 @@ const contentGridBlock = z.object({
   ...partBase,
 });
 
-/** One block, as stored: rich text, a picture, a heading, a button or a content grid. */
+const productBlock = z.object({
+  id: itemId,
+  type: z.literal("product"),
+  part: z.enum(Object.keys(PRODUCT_PARTS) as [ProductPart, ...ProductPart[]], "A product component shows an unknown part."),
+  align: textAlignments,
+  size: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
+  wishlist: z.boolean().optional(),
+  large: z.boolean().optional(),
+  thumbnails: z.boolean().optional(),
+  showHeading: z.boolean().optional(),
+  heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
+  limit: z.number().int().min(1, "Show at least one related product.").max(RELATED_MAX, `Show at most ${RELATED_MAX} related products.`).optional(),
+  columns: contentGridBlock.shape.columns.optional(),
+  font: blockFont,
+  ...partBase,
+});
+
+/** One block, as stored: rich text, a picture, a heading, a button, a content grid or a part of a product's page. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
   imageBlock,
   headingBlock,
   buttonBlock,
   contentGridBlock,
+  productBlock,
 ]);
 
 export const pageColumnSchema = z.object({
@@ -1057,7 +1130,7 @@ export const pageInput = z.preprocess(
       if (new Set(ids).size !== ids.length) {
         ctx.addIssue({ code: "custom", message: "Two parts of the page have the same id. Reload the page and try again." });
       }
-      const mainHeadings = pageBlocks(page).filter((b) => b.type === "heading" && b.level === 1).length;
+      const mainHeadings = pageBlocks(page).filter((b) => (b.type === "heading" && b.level === 1) || (b.type === "product" && b.part === "title")).length;
       if (mainHeadings > 1) {
         ctx.addIssue({ code: "custom", message: "A page has one main heading (H1). Make the others H2 or smaller." });
       }

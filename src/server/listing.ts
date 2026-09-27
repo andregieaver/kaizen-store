@@ -252,3 +252,31 @@ export async function listingFacets(
     price: price && price.max > price.min ? price : null,
   };
 }
+
+/**
+ * Products related to one (D79): those sharing the most of its categories
+ * and tags first, then the newest, never the product itself; active, with a
+ * price in the market, as product cards show them.
+ */
+export async function relatedProducts(storeId: string, market: Market, productId: string, limit: number): Promise<GridProduct[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CATALOG_TAG, catalogTag(storeId));
+
+  const rows = await readDb().execute<Row>(sql`
+    select p.id
+    from commerce.products p
+    left join lateral (
+      select count(*) as shared from commerce.product_terms pt
+      where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id in (
+        select term_id from commerce.product_terms where store_id = ${storeId}::uuid and product_id = ${productId}::uuid
+      )
+    ) s on true
+    where ${scopeClause(storeId, market.code, {}, { buyer: "private", audienceBoth: false })} and p.id <> ${productId}::uuid
+    order by s.shared desc, p.created_at desc, p.handle
+    limit ${Math.max(1, Math.min(LISTING_LIMIT, limit))}
+  `);
+  const ids = rows.map((row) => String(row.id));
+  if (ids.length === 0) return [];
+  return listGridProducts(storeId, market.code, market.locale, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
+}

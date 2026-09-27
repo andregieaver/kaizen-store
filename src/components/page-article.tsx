@@ -1,4 +1,6 @@
-import { blockFonts, blockHasContent, type PageContent, type PageRow } from "@/lib/page-content";
+import type { ReactNode } from "react";
+
+import { blockFonts, blockHasContent, type PageBlock, type PageContent, type PageRow } from "@/lib/page-content";
 
 import type { GridPlace } from "@/server/content-grid";
 
@@ -19,23 +21,28 @@ export function PageArticle({
   content,
   place = { pageId: null, owner: null },
   titled = false,
+  renderBlock,
 }: {
   content: PageContent;
   /** Where the page is shown: for its content grids (D51, D53). */
   place?: GridPlace;
   /** The title is already shown as the main heading (an article's header, D57). */
   titled?: boolean;
+  /** Draws blocks the page itself knows, such as a product layout's product components (D79); null leaves one out. */
+  renderBlock?: (block: PageBlock) => ReactNode;
 }) {
   const rows = content.rows.filter(rowShows);
-  // A heading component at level 1 is the page's main heading (D49); else the title is, for screen readers.
+  // A heading component at level 1, or a product's title (D79), is the page's main heading (D49); else the title is, for screen readers.
   const hasMainHeading = rows.some((row) =>
-    row.columns.some((c) => c.blocks.some((b) => b.type === "heading" && b.level === 1 && blockHasContent(b))),
+    row.columns.some((c) =>
+      c.blocks.some((b) => (b.type === "heading" && b.level === 1 && blockHasContent(b)) || (b.type === "product" && b.part === "title")),
+    ),
   );
   return (
     <article className="flex flex-col gap-8">
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
-        <Row key={row.id} row={row} place={place} />
+        <Row key={row.id} row={row} place={place} renderBlock={renderBlock} />
       ))}
     </article>
   );
@@ -45,7 +52,7 @@ export function PageArticle({
 const rowShows = (row: PageRow) =>
   Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockHasContent));
 
-function Row({ row, place }: { row: PageRow; place: GridPlace }) {
+function Row({ row, place, renderBlock }: { row: PageRow; place: GridPlace; renderBlock?: (block: PageBlock) => ReactNode }) {
   const box = rowBox(row, "site");
   const grid = rowGrid(row);
   return (
@@ -62,10 +69,15 @@ function Row({ row, place }: { row: PageRow; place: GridPlace }) {
                   <ColumnLinkCover column={column} />
                   {column.blocks.filter(blockHasContent).map((block) => {
                     const b = blockBox(block, "site");
+                    // A product component with nothing to show for this product leaves no space behind (D79).
+                    const own = renderBlock && block.type === "product" ? renderBlock(block) : undefined;
+                    if (own === null) return null;
                     return (
                       <div key={block.id} id={b.id} className={b.className || undefined} style={b.style}>
                         <FontLinks families={blockFonts(block)} />
-                        {block.type === "contentGrid" ? (
+                        {own !== undefined ? (
+                          own
+                        ) : block.type === "contentGrid" ? (
                           <ContentGridSection block={block} place={place} />
                         ) : (
                           <PageBlockView block={block} />

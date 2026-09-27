@@ -5,6 +5,7 @@ import {
   type BlockType,
   type PartBase,
   type PageBlock,
+  type ProductPart,
   type PageColumn,
   type PageRow,
   type RowLayout,
@@ -31,8 +32,10 @@ export function newRow(layout: RowLayout, id: NewId): PageRow {
   };
 }
 
-export function newBlock(type: BlockType, id: NewId): PageBlock {
+export function newBlock(type: BlockType, id: NewId, part: ProductPart = "title"): PageBlock {
   switch (type) {
+    case "product":
+      return { id: id(), type, part };
     case "richText":
       return { id: id(), type, doc: EMPTY_DOC };
     case "image":

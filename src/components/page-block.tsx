@@ -62,6 +62,9 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "contentGrid":
       // Its items are looked up where it is shown: `ContentGridSection` on the site, a preview in the editor.
       return null;
+    case "product":
+      // The product's page draws it with the product (`ProductPartView`); the editor shows a stand-in.
+      return null;
     case "image":
       if (!block.image) return null;
       return (

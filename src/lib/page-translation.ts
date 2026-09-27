@@ -48,6 +48,9 @@ export function mapTexts(content: PageContent, visit: Visit): PageContent {
         };
       case "contentGrid":
         return { ...b, buttonLabel: str(key("buttonLabel"), b.buttonLabel, 100), emptyText: str(key("emptyText"), b.emptyText, 300) };
+      case "product":
+        // Only a heading of the store's own is text to translate; the product's own texts have their languages already.
+        return b.heading ? { ...b, heading: str(key("heading"), b.heading, 300) } : b;
     }
   };
   const column = (c: PageColumn): PageColumn => ({

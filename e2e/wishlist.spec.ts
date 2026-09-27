@@ -4,6 +4,8 @@ import { expect, test } from "@playwright/test";
 test("a shopper saves products with the heart, sorts them into lists and adds a list to the cart", async ({ page }) => {
   // The tag's list has hearts on its products (the front page is a content grid, D56).
   await page.goto("/s/demo/no/tag/nyhet");
+  // The list streams in over the prerendered one (D78): its hearts are the ones to use.
+  await expect(page.getByRole("button", { name: "Filtrer og sorter" })).toBeVisible();
   const heart = page.getByRole("button", { name: "Lagre Demo: Handlenett i lerret i ønskelisten" });
   await expect(heart).toHaveAttribute("aria-pressed", "false");
   await heart.click();

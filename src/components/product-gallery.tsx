@@ -23,7 +23,18 @@ const smooth = () =>
  * that picture; swiping highlights and centres its thumbnail. Swiping is
  * the browser's own scroll snapping, so it feels native and needs no library.
  */
-export function ProductGallery({ images, title, labels }: { images: GalleryImage[]; title: string; labels: GalleryLabels }) {
+export function ProductGallery({
+  images,
+  title,
+  labels,
+  thumbnails = true,
+}: {
+  images: GalleryImage[];
+  title: string;
+  labels: GalleryLabels;
+  /** The strip of small pictures beneath; a product layout can leave it out (D79). */
+  thumbnails?: boolean;
+}) {
   const main = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -112,7 +123,7 @@ export function ProductGallery({ images, title, labels }: { images: GalleryImage
         )}
       </div>
 
-      {many && (
+      {many && thumbnails && (
         <div
           ref={strip}
           className="flex gap-2 overflow-x-auto px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
