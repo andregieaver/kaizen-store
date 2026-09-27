@@ -416,6 +416,14 @@ describe("paying hosts (D71)", () => {
     const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
     expect(sum(report.sellers[0].considerationMinor)).toBe(paidOrder.total - paidOrder.half + fee);
     expect(sum(report.sellers[0].feesMinor)).toBe(paidOrder.commission - paidOrder.back + commission);
+    // Kaizen's fee, as the host sees it per payment, and the host's net: consideration less both fees.
+    const seller = report.sellers[0];
+    expect(sum(seller.kaizenFeesMinor)).toBe(earnings.reduce((total, e) => total + e.kaizenFeeMinor, 0));
+    expect(seller.netMinor).toEqual(seller.considerationMinor.map((c, i) => c - seller.feesMinor[i] - seller.kaizenFeesMinor[i]));
+    // What the host got online, and the part the guest was to pay on arrival (D66).
+    expect(sum(seller.netMinor)).toBe(earnings.reduce((total, e) => total + e.netMinor, 0) + (paidOrder.total - paidOrder.due));
+    const csv = dac7.dac7Csv(report, "sellers").split("\r\n");
+    expect(csv[0]).toMatch(/,Kaizen fee Q1,Kaizen fee Q2,Kaizen fee Q3,Kaizen fee Q4,Net earnings Q1,Net earnings Q2,Net earnings Q3,Net earnings Q4$/);
   });
 
   it("registers the site's domain on the host's account for wallets on Kaizen's checkout page, once", async () => {

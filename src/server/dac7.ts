@@ -133,6 +133,10 @@ export type SellerReport = {
   considerationMinor: Quarters;
   /** The store's commission, per quarter. */
   feesMinor: Quarters;
+  /** Kaizen's own fee, per quarter, less its share given back with refunds; not part of what DAC7 asks for. */
+  kaizenFeesMinor: Quarters;
+  /** What the host earned, per quarter: consideration less the commission and Kaizen's fee (before Stripe's own fees). */
+  netMinor: Quarters;
   /** Bookings paid for, per quarter. */
   activities: Quarters;
 };
@@ -165,7 +169,7 @@ export async function dac7Report(storeId: string, year: number, timeZone: string
     sql`extract(year from ${column} at time zone ${timeZone})::int = ${year}`;
   const paid = sql`(select min(e.created_at) from commerce.order_events e
     where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid')`;
-  const [orders, fees, noShows, refunds, lines, hosts] = await Promise.all([
+  const [orders, fees, noShows, refunds, lines, hosts, kaizenFees] = await Promise.all([
     db().execute<Row>(sql`
       select o.id, o.host_id, o.currency, o.total_minor, p.paid_at,
         (select count(*)::int from commerce.order_lines ol
@@ -189,7 +193,7 @@ export async function dac7Report(storeId: string, year: number, timeZone: string
         and left(p.provider_reference, 3) = 'pi_' and ${inYear(sql`p.created_at`)}
     `),
     db().execute<Row>(sql`
-      select o.host_id, o.currency, r.amount_minor, r.created_at
+      select o.host_id, o.currency, r.amount_minor, r.created_at, pay.amount_minor as paid, pay.kaizen_fee_minor
       from commerce.refunds r
       join commerce.payments pay on pay.store_id = r.store_id and pay.id = r.payment_id
       join commerce.orders o on o.store_id = pay.store_id and o.id = pay.order_id
@@ -213,6 +217,16 @@ export async function dac7Report(storeId: string, year: number, timeZone: string
       left join commerce.host_tax_details t on t.store_id = h.store_id and t.host_id = h.id
       where h.store_id = ${storeId}::uuid
     `),
+    // Kaizen's fee on each of the host's payments (D17), when the payment was made.
+    db().execute<Row>(sql`
+      select o.host_id, p.currency, p.kaizen_fee_minor,
+        case when left(p.provider_reference, 3) = 'cs_' then ${paid} else p.created_at end as paid_at
+      from commerce.payments p
+      join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+      where p.store_id = ${storeId}::uuid and o.host_id is not null and p.provider = 'stripe' and p.status = 'captured'
+        and p.kaizen_fee_minor > 0
+        and ${inYear(sql`case when left(p.provider_reference, 3) = 'cs_' then ${paid} else p.created_at end`)}
+    `),
   ]);
 
   const hostById = new Map(hosts.map((h) => [String(h.id), h]));
@@ -230,6 +244,8 @@ export async function dac7Report(storeId: string, year: number, timeZone: string
         currency,
         considerationMinor: quarters(),
         feesMinor: quarters(),
+        kaizenFeesMinor: quarters(),
+        netMinor: quarters(),
         activities: quarters(),
       };
       sellers.set(key, found);
@@ -252,7 +268,18 @@ export async function dac7Report(storeId: string, year: number, timeZone: string
   }
   for (const r of refunds) {
     const q = quarterOf(new Date(String(r.created_at)).toISOString(), timeZone) - 1;
-    seller(String(r.host_id), String(r.currency)).considerationMinor[q] -= Number(r.amount_minor);
+    const s = seller(String(r.host_id), String(r.currency));
+    s.considerationMinor[q] -= Number(r.amount_minor);
+    // Stripe gives back the refunded share of Kaizen's fee with the refund.
+    const paidMinor = Number(r.paid);
+    if (paidMinor > 0) s.kaizenFeesMinor[q] -= Math.round((Number(r.kaizen_fee_minor) * Number(r.amount_minor)) / paidMinor);
+  }
+  for (const k of kaizenFees) {
+    const q = quarterOf(new Date(String(k.paid_at)).toISOString(), timeZone) - 1;
+    seller(String(k.host_id), String(k.currency)).kaizenFeesMinor[q] += Number(k.kaizen_fee_minor);
+  }
+  for (const s of sellers.values()) {
+    s.netMinor = s.considerationMinor.map((c, i) => c - s.feesMinor[i] - s.kaizenFeesMinor[i]) as Quarters;
   }
 
   const properties = new Map<string, PropertyReport>();
@@ -296,12 +323,15 @@ export function dac7Csv(report: Dac7Report, part: "sellers" | "properties"): str
         "Host", "Email", "Type", "Legal name", "Date of birth", "Address", "Country", "TIN", "TIN issued by", "VAT number",
         "Business registration number", "IBAN", "Currency",
         ...Q.map((q) => `Consideration ${q}`), ...Q.map((q) => `Commission ${q}`), ...Q.map((q) => `Activities ${q}`),
+        // Not asked for by DAC7: for the store's own records.
+        ...Q.map((q) => `Kaizen fee ${q}`), ...Q.map((q) => `Net earnings ${q}`),
       ],
       ...report.sellers.map((s) => [
         s.name, s.email, s.details?.kind ?? "", s.details?.legalName ?? "", s.details?.dateOfBirth ?? "", s.details?.address ?? "",
         s.details?.country ?? "", s.details?.tin ?? "", s.details?.tinCountry ?? "", s.details?.vatNumber ?? "",
         s.details?.businessNumber ?? "", s.details?.iban ?? "", s.currency,
         ...money(s.considerationMinor, s.currency), ...money(s.feesMinor, s.currency), ...s.activities,
+        ...money(s.kaizenFeesMinor, s.currency), ...money(s.netMinor, s.currency),
       ]),
     ]);
   }

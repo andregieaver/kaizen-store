@@ -39,7 +39,9 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
           As a marketplace, the store reports its hosts and what they were paid to the tax authority of the country it is
           based in, once a year, by 31 January for the year before (in Norway, to Skatteetaten). Here is what Kaizen has
           gathered for {year}: check it, then file it in the tax authority&apos;s service. Amounts are what guests paid,
-          refunds taken off, by quarter of payment; the commission is the store&apos;s.
+          refunds taken off, by quarter of payment; the commission is the store&apos;s. The host&apos;s net is
+          what they earned after the commission and Kaizen&apos;s fee (before Stripe&apos;s own fees); it is for your
+          records, and not part of what the report asks for.
         </p>
       </div>
 
@@ -80,6 +82,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
                   <th className="p-2 font-normal">Tax details</th>
                   <th className="p-2 text-right font-normal">Paid</th>
                   <th className="p-2 text-right font-normal">Commission</th>
+                  <th className="p-2 text-right font-normal">Host&apos;s net</th>
                   <th className="p-2 text-right font-normal">Bookings</th>
                 </tr>
               </thead>
@@ -93,6 +96,9 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
                     </td>
                     <td className="p-2 text-right tabular-nums">
                       {decimalAmount(sum(s.feesMinor), s.currency)} {s.currency}
+                    </td>
+                    <td className="p-2 text-right tabular-nums">
+                      {decimalAmount(sum(s.netMinor), s.currency)} {s.currency}
                     </td>
                     <td className="p-2 text-right tabular-nums">{sum(s.activities)}</td>
                   </tr>
