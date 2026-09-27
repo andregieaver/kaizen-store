@@ -121,6 +121,9 @@ describe("query understanding (S3, D75)", () => {
     expect(handles(cheap.ids)).toEqual(["demo-bordlampe"]);
     const filtersOnly = await search.rankedSearch(shop(), "nyheter", 10, null, only({ tags: ["nyhet"] }));
     expect(handles(filtersOnly.ids).filter((h) => h?.startsWith("demo-"))).toEqual(["demo-handlenett", "demo-notatbok"]);
+    // Only stop words left ("i"): listed by the filters, as with no words.
+    const stopWords = await search.rankedSearch(shop(), "nyheter i", 10, null, only({ text: "i", tags: ["nyhet"] }));
+    expect(handles(stopWords.ids).filter((h) => h?.startsWith("demo-"))).toEqual(["demo-handlenett", "demo-notatbok"]);
   });
 
   it("asks the model only when a search may hold filters, never when asked for the exact words, and carries on without it", async () => {

@@ -103,6 +103,18 @@ describe("query understanding (D75)", () => {
       cleanFilters({ thing: "rød kopp", text: "rød", categories: ["papir"], kind: "goods", minPrice: 100 }, "rød kopp over 100 kroner", context),
     ).toMatchObject({ text: "rød kopp", categories: [], kind: null, minPriceMinor: 10000 });
     expect(cleanFilters({ thing: "notatbok", text: "", sort: "priceLow" }, "billigste notatbok", context)).toMatchObject({ text: "notatbok", sort: "priceLow" });
+    // Words a kept filter says leave the text: amounts and currency with a price, a named category or tag.
+    expect(
+      cleanFilters({ thing: "kopp", text: "kopp mellom 200 og 400 kr", minPrice: 200, maxPrice: 400 }, "kopp mellom 200 og 400 kr", context)?.text,
+    ).toBe("kopp");
+    expect(
+      cleanFilters({ thing: "belysning", text: "nyheter i belysning", categories: ["belysning"], tags: ["nyhet"] }, "nyheter i belysning", context)?.text,
+    ).toBe("");
+    expect(cleanFilters({ thing: "", text: "nyheter i belysning", categories: ["belysning"], tags: ["nyhet"] }, "nyheter i belysning", context)?.text).toBe("i");
+    // Without a thing named, the words left are searched.
+    expect(cleanFilters({ text: "kopp mellom 200 og 400 kr", minPrice: 200, maxPrice: 400 }, "kopp mellom 200 og 400 kr", context)?.text).toBe("kopp mellom og");
+    // Without a price filter, a number is the shopper's word.
+    expect(cleanFilters({ text: "kopp 200" }, "kopp 200", context)?.text).toBe("kopp 200");
   });
 
   it("says whether filters change the search", () => {

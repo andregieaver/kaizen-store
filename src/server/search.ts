@@ -79,6 +79,15 @@ function filterClause(filters: SearchFilters | null, market: Market): SQL {
   return parts.length === 0 ? sql`true` : sql.join(parts, sql` and `);
 }
 
+/** Whether words hold anything to search for in the market's language, rather than only stop words. */
+async function searchable(shop: Shop, words: string): Promise<boolean> {
+  if (!words) return false;
+  const [row] = await readDb().execute<Row>(sql`
+    select numnode(websearch_to_tsquery(commerce.search_config(${shop.market.locale}), ${words})) > 0 as searchable
+  `);
+  return Boolean(row?.searchable);
+}
+
 /** The ids of the products a query finds, best first (while typing, `prefix`: words as starts of words). */
 export async function matchingIds(
   shop: Shop,
@@ -244,7 +253,8 @@ export async function rankedSearch(
 ): Promise<Ranked> {
   const text = normalizeQuery(query);
   if (!text) return { ids: [], semanticBest: null, meaningOnly: 0 };
-  const words = filters ? filters.text : text;
+  // Words that are all stop words ("i" in "nyheter i belysning") search for nothing: list by the filters.
+  const words = filters ? ((await searchable(shop, filters.text)) ? filters.text : "") : text;
   const [keyword, closest] = await Promise.all([
     words ? matchingIds(shop, words, KEYWORD_CANDIDATES, false, filters) : filters ? filteredIds(shop, filters, KEYWORD_CANDIDATES) : Promise.resolve([]),
     meaning ? meaningMatches(shop, meaning, MEANING_CANDIDATES, filters) : Promise.resolve([]),

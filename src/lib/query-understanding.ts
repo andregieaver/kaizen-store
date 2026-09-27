@@ -141,32 +141,50 @@ export function cleanFilters(answer: unknown, query: string, context: Understand
     normalizeQuery(words ?? "")
       .split(" ")
       .filter((word) => word && [...(word.match(/[\p{L}\p{N}]+/gu) ?? [])].every((part) => typedWords.has(part)));
-  // The shopper's words only, with the thing they want always among them, in the order typed.
-  const kept = new Set([...typedOnly(raw.text ?? typed), ...typedOnly(raw.thing)]);
-  const text = [...kept].sort((a, b) => typedList.indexOf(a) - typedList.indexOf(b)).join(" ");
   // A category or tag only when the shopper named it: never one guessed from a thing that belongs in it.
   const pick = (wanted: string[] | undefined, terms: Term[]) => {
     const named = new Map(terms.filter((term) => namesTerm(typedList, term)).map((term) => [term.slug, term]));
     return [...new Set((wanted ?? []).map((slug) => slug.trim().toLowerCase()))].filter((slug) => named.has(slug));
   };
+  const categories = pick(raw.categories, context.categories);
+  const tags = pick(raw.tags, context.tags);
   let min = toMinor(raw.minPrice, context.currencyDigits);
   let max = toMinor(raw.maxPrice, context.currencyDigits);
   if (min !== null && max !== null && min > max) [min, max] = [max, min];
   if (min === 0) min = null;
+  // Words a kept filter says: amounts and currencies with a price, the names of categories and tags.
+  const namedTerms = [...context.categories.filter((t) => categories.includes(t.slug)), ...context.tags.filter((t) => tags.includes(t.slug))];
+  const saidByFilter = (word: string) =>
+    ((min !== null || max !== null) && (/\d/.test(word) || CURRENCY_WORDS.has(word))) ||
+    namedTerms.some((term) => namesTerm([word], term));
   // Goods only would just hide bookings, and models set it unasked: only the booked kinds filter.
   const kind = (PRODUCT_KINDS as readonly string[]).includes(raw.kind ?? "") && raw.kind !== "goods" ? (raw.kind as ProductKind) : null;
   const sort = (SEARCH_SORTS as readonly string[]).includes(raw.sort ?? "") ? (raw.sort as SearchSort) : "relevance";
+  const inStock = raw.inStock === true;
+  const filtered = categories.length > 0 || tags.length > 0 || min !== null || max !== null || kind !== null || inStock || sort !== "relevance";
+  // The shopper's words only, with the thing they want always among them, in the order typed, less
+  // what a filter says. With a filter, only the thing is searched for, as every word must match:
+  // "mellom" or "og" would find nothing.
+  const thing = typedOnly(raw.thing);
+  const kept = new Set(filtered && thing.length > 0 ? thing : [...typedOnly(raw.text ?? typed), ...thing]);
+  const text = [...kept]
+    .filter((word) => !saidByFilter(word))
+    .sort((a, b) => typedList.indexOf(a) - typedList.indexOf(b))
+    .join(" ");
   return {
     text,
-    categories: pick(raw.categories, context.categories),
-    tags: pick(raw.tags, context.tags),
+    categories,
+    tags,
     minPriceMinor: min,
     maxPriceMinor: max,
     kind,
-    inStock: raw.inStock === true,
+    inStock,
     sort,
   };
 }
+
+/** Words for money that a price filter says, in the languages stores sell in. */
+const CURRENCY_WORDS = new Set(["kr", "kr.", "kroner", "krone", "kronor", "krona", "kronur", "euro", "euros", "eur", "€", "nok", "sek", "dkk", "isk"]);
 
 /** Folds a word for comparing names: lower case, without accents (ø as o, æ as ae). */
 const fold = (word: string) =>
