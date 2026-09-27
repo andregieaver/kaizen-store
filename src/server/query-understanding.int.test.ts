@@ -178,5 +178,7 @@ describe("query understanding (S3, D75)", () => {
     const lazy = await understanding.runUnderstandingEval(connection);
     expect(lazy.ok).toBe(false);
     expect(lazy.failures.length).toBeGreaterThan(EVAL_CASES.length / 2);
+    // Each failure shows what the model answered, to see why.
+    expect(lazy.failures[0].answer).toBe("{}");
   });
 });

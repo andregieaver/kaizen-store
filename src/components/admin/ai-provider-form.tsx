@@ -261,7 +261,7 @@ export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }
 }
 
 export type AiEvalResult =
-  | { model: string; passed: number; total: number; ok: boolean; ms: number; failures: { query: string; problems: string[] }[] }
+  | { model: string; passed: number; total: number; ok: boolean; ms: number; failures: { query: string; problems: string[]; answer?: string }[] }
   | { error: string };
 
 /** Runs the query-understanding eval against the saved text model and shows how it did (D75). */
@@ -291,6 +291,9 @@ export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }
                 {result.failures.map((failure) => (
                   <li key={failure.query}>
                     <span className="font-medium">“{failure.query}”</span>: {failure.problems.join("; ")}
+                    {failure.answer && (
+                      <code className="mt-0.5 block break-all text-xs text-muted">The model answered: {failure.answer}</code>
+                    )}
                   </li>
                 ))}
               </ul>

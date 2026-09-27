@@ -30,6 +30,18 @@ export async function understandWith(
   context: UnderstandingContext,
   timeoutMs = UNDERSTAND_TIMEOUT_MS,
 ): Promise<SearchFilters> {
+  const { filters } = await askForFilters(connection, query, context, timeoutMs);
+  if (!filters) throw new AiError("The model did not answer with filters.");
+  return filters;
+}
+
+/** The model's reply as it came, and the filters it gives once checked (null if none). */
+async function askForFilters(
+  connection: AiConnection,
+  query: string,
+  context: UnderstandingContext,
+  timeoutMs: number,
+): Promise<{ reply: string; filters: SearchFilters | null }> {
   // Room for a reasoning model's thinking, which counts towards the limit; as little of it as the model allows.
   const reply = await completeText(connection, understandingMessages(query, context), {
     maxTokens: 2000,
@@ -37,9 +49,7 @@ export async function understandWith(
     temperature: 0,
     reasoningEffort: "low",
   });
-  const filters = cleanFilters(parseModelJson(reply.text), query, context);
-  if (!filters) throw new AiError("The model did not answer with filters.");
-  return filters;
+  return { reply: reply.text, filters: cleanFilters(parseModelJson(reply.text), query, context) };
 }
 
 /**
@@ -81,7 +91,8 @@ export type EvalResult = {
   /** Whether the model passes: at least `PASS_RATE` of the cases. */
   ok: boolean;
   ms: number;
-  failures: { query: string; problems: string[] }[];
+  /** With the model's own answer, shown as text, to see why. */
+  failures: { query: string; problems: string[]; answer?: string }[];
 };
 
 /**
@@ -98,10 +109,11 @@ export async function runUnderstandingEval(connection: AiConnection): Promise<Ev
   const worker = async () => {
     for (let testCase = queue.shift(); testCase; testCase = queue.shift()) {
       try {
-        const filters = await understandWith(connection, testCase.query, testCase.context, 10_000);
-        const score = scoreCase(testCase, filters);
+        const { reply, filters } = await askForFilters(connection, testCase.query, testCase.context, 10_000);
+        const answer = reply.trim().slice(0, 400);
+        const score = filters ? scoreCase(testCase, filters) : { pass: false, problems: ["The model did not answer with filters."] };
         if (score.pass) passed += 1;
-        else failures.push({ query: testCase.query, problems: score.problems });
+        else failures.push({ query: testCase.query, problems: score.problems, answer });
       } catch (error) {
         failures.push({ query: testCase.query, problems: [error instanceof Error ? error.message : String(error)] });
       }
