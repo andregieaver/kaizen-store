@@ -344,7 +344,8 @@ of running `playwright install`.
   product's `booking_seasons`, plus `appointment_settings.booking_fee`.
   In the cart and orders such a booking is quantity 1 at its whole price;
   its nights, days or hours are `booking.count` (the cart line's own
-  `quantity` column), never the line's quantity.
+  `quantity` column; the order line's `booked_count`), never the line's
+  quantity. Anything comparing a cart with its order uses them.
   Show any booking with `bookingWhen()` (`src/lib/booking-text.ts`); stays
   and rentals are cancelled, never moved.
   Blocks (D68, `commerce.resource_blocks`) close a whole resource: set by

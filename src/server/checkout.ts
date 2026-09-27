@@ -411,7 +411,7 @@ export async function placeOrder(
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
-          selling_plan_id, plan_interval, plan_interval_count, venue_minor
+          selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.total}, ${vatIncluded(p.total, p.rate)},
@@ -419,7 +419,8 @@ export async function placeOrder(
           ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
           ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
-          ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]}
+          ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
+          ${p.range && p.startsAt ? p.count : null}
         )
         returning id
       `);
@@ -994,7 +995,8 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
                                  order by cl.variant_id, cl.selling_plan_id, cl.starts_at), '[]'::jsonb)
          from commerce.cart_lines cl where cl.store_id = o.store_id and cl.cart_id = o.cart_id)
       is distinct from
-      (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.selling_plan_id, ol.quantity, b.starts_at)
+      -- A stay or rental is one order line; its nights, days or hours are the cart line's quantity (D70).
+      (select coalesce(jsonb_agg(jsonb_build_array(ol.variant_id, ol.selling_plan_id, coalesce(ol.booked_count, ol.quantity), b.starts_at)
                                  order by ol.variant_id, ol.selling_plan_id, b.starts_at), '[]'::jsonb)
          from commerce.order_lines ol
          -- An appointment's time is on its booking (D65).

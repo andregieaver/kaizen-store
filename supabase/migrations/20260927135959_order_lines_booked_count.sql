@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."order_lines" ADD COLUMN "booked_count" integer;

@@ -1417,6 +1417,12 @@ export const orderLines = commerce.table(
     sku: text("sku").notNull(),
     title: text("title").notNull(),
     quantity: integer("quantity").notNull(),
+    /**
+     * A stay's or rental's nights, days or hours (D67, D70): its cart line's
+     * quantity, as the order line is one booking at its whole price. Null
+     * for everything else. The checkout page compares carts with it.
+     */
+    bookedCount: integer("booked_count"),
     unitPriceMinor: money("unit_price_minor"),
     discountMinor: money("discount_minor").default(0),
     totalMinor: money("total_minor"),

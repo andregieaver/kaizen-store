@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { toMarket } from "@/lib/markets";
 
 type Row = Record<string, unknown>;
@@ -348,6 +349,34 @@ describe("Kaizen's checkout page", () => {
     // Checking out again replaces the order; the new one matches the cart.
     await startCheckout(shop(), cartId, "https://shop.test", "Frakt");
     expect(await getOpenCheckout(storeId, cartId)).toMatchObject({ changed: false });
+  });
+
+  it("does not see a stay's nights as a change: the order has one line for the whole stay (D70)", async () => {
+    // Two nights at the demo cabin, from 15:00 on a date a few weeks ahead, with a mug: as a shopper would.
+    const [cabin] = await db().execute<Row>(sql`
+      select v.id, s.time_zone from commerce.product_variants v
+      join commerce.products p on p.id = v.product_id join commerce.stores s on s.id = p.store_id
+      where p.store_id = ${storeId}::uuid and p.handle = 'demo-hytte'
+    `);
+    const date = addDays(zonedDate(Date.now(), String(cabin.time_zone)), 40);
+    const cartId = await cartWith("DEMO-MUG-WHITE", 1);
+    await db().execute(sql`
+      insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity, starts_at)
+      values (${storeId}::uuid, ${cartId}::uuid, ${String(cabin.id)}::uuid, 2,
+              ${new Date(zonedTime(date, "15:00", String(cabin.time_zone))).toISOString()}::timestamptz)
+    `);
+    expect(await startCheckout(shop(), cartId, "https://shop.test", "Frakt")).toMatchObject({ ok: true });
+    const [line] = await db().execute<Row>(sql`
+      select ol.quantity, ol.booked_count from commerce.order_lines ol join commerce.orders o on o.id = ol.order_id
+      where o.cart_id = ${cartId}::uuid and o.status = 'pending_payment' and ol.variant_id = ${String(cabin.id)}::uuid
+    `);
+    expect(line).toEqual({ quantity: 1, booked_count: 2 });
+    // Before, every cart with a stay looked changed, so the checkout page never showed the payment form.
+    expect(await getOpenCheckout(storeId, cartId)).toMatchObject({ changed: false, expired: false });
+
+    // A third night is a change.
+    await db().execute(sql`update commerce.cart_lines set quantity = 3 where cart_id = ${cartId}::uuid and variant_id = ${String(cabin.id)}::uuid`);
+    expect(await getOpenCheckout(storeId, cartId)).toMatchObject({ changed: true });
   });
 
   it("has nothing to show for a cart without an order waiting for payment", async () => {
