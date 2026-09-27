@@ -209,8 +209,28 @@ describe("AI providers (D73)", () => {
     expect(reply.text).toBe("OK");
     expect(bodies).toHaveLength(2);
     expect(bodies[0]).toMatchObject({ temperature: 0, reasoning_effort: "low" });
+    // Only what was refused is left out, and the model is not asked with it again.
     expect(bodies[1]).not.toHaveProperty("temperature");
-    expect(bodies[1]).not.toHaveProperty("reasoning_effort");
+    expect(bodies[1]).toMatchObject({ reasoning_effort: "low" });
+    await ai.completeText(connection, [{ role: "user", content: "Hi" }], { temperature: 0, reasoningEffort: "low" });
+    expect(bodies).toHaveLength(3);
+    expect(bodies[2]).not.toHaveProperty("temperature");
+
+    // A model that knows neither gets there too.
+    const other = { ...connection, textModel: "plain-model" };
+    const plain: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        plain.push(body);
+        if ("reasoning_effort" in body) return Response.json({ error: { message: "Unrecognized request argument supplied: reasoning_effort" } }, { status: 400 });
+        if ("temperature" in body) return Response.json({ error: { message: "Unsupported parameter: 'temperature'" } }, { status: 400 });
+        return Response.json({ choices: [{ message: { content: "OK" } }] });
+      }),
+    );
+    expect((await ai.completeText(other, [{ role: "user", content: "Hi" }], { temperature: 0, reasoningEffort: "low" })).text).toBe("OK");
+    expect(plain).toHaveLength(3);
 
     // Other refusals are not asked again.
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: { message: "Invalid model" } }, { status: 400 })));

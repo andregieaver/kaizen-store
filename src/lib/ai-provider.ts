@@ -50,7 +50,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     baseUrl: "https://api.openai.com/v1",
     keysUrl: "https://platform.openai.com/api-keys",
     embeddingModels: ["text-embedding-3-small", "text-embedding-3-large"],
-    textModels: ["gpt-5-mini"],
+    textModels: ["gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano"],
     gateway: false,
   },
   {
@@ -60,7 +60,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     baseUrl: "https://eu.api.openai.com/v1",
     keysUrl: "https://platform.openai.com/docs/guides/your-data#data-residency-controls",
     embeddingModels: ["text-embedding-3-small", "text-embedding-3-large"],
-    textModels: ["gpt-5-mini"],
+    textModels: ["gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano"],
     gateway: false,
   },
   {

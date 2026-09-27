@@ -274,6 +274,10 @@ export async function embedTexts(connection: AiConnection, texts: string[], time
   return { vectors, region: servedRegion(json) };
 }
 
+/** Tuning a text model may refuse, and which models refused which (per server instance). */
+const TUNING = ["temperature", "reasoning_effort"];
+const refusedTuning = new Map<string, Set<string>>();
+
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 /** A reply from the connection's text model, as plain text. */
@@ -284,12 +288,16 @@ export async function completeText(
 ): Promise<{ text: string; region: string | null }> {
   if (!connection.textModel) throw new AiError("No text model is set.");
   const limit = options.maxTokens ?? 1000;
-  // Tuning some models refuse (reasoning models take no temperature; others know no reasoning effort).
-  const tuning = {
+  // Tuning some models refuse (reasoning models take no temperature; others know no reasoning effort),
+  // left out once refused, and remembered, so later calls ask once.
+  const model = `${connection.apiUrl}|${connection.textModel}`;
+  const refused = refusedTuning.get(model) ?? new Set<string>();
+  const tuning: Record<string, unknown> = {
     ...(options.temperature === undefined ? {} : { temperature: options.temperature }),
     ...(options.reasoningEffort === undefined ? {} : { reasoning_effort: options.reasoningEffort }),
   };
-  const ask = (extra: Record<string, unknown>) =>
+  for (const name of refused) delete tuning[name];
+  const ask = () =>
     post(
       connection,
       "/chat/completions",
@@ -298,19 +306,23 @@ export async function completeText(
         messages,
         // OpenAI's newer models take only the second name; for reasoning models it counts their reasoning too.
         ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
-        ...extra,
+        ...tuning,
         ...gatewayOptions(connection, connection.textEuOnly),
       },
       options.timeoutMs ?? 30_000,
     );
-  let json: Row;
-  try {
-    json = await ask(tuning);
-  } catch (error) {
-    // Asked again once without the tuning the model refused, rather than failing.
-    const refused = error instanceof AiError && error.status === 400 && /temperature|reasoning/i.test(error.message);
-    if (!refused || Object.keys(tuning).length === 0) throw error;
-    json = await ask({});
+  let json: Row | null = null;
+  while (!json) {
+    try {
+      json = await ask();
+    } catch (error) {
+      // Asked again without the tuning the model refused, rather than failing.
+      const name = error instanceof AiError && error.status === 400 ? TUNING.find((n) => n in tuning && error.message.includes(n.split("_")[0])) : undefined;
+      if (!name) throw error;
+      delete tuning[name];
+      refused.add(name);
+      refusedTuning.set(model, refused);
+    }
   }
   const choice = ((json.choices ?? []) as Row[])[0];
   const message = choice?.message as Row | undefined;

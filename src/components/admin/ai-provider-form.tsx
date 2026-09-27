@@ -110,7 +110,7 @@ export function AiProviderForm({
           id={`${id}-embedding`}
           name="embeddingModel"
           label="Model for search by meaning"
-          hint="Turns products and searches into vectors. Empty: keyword search only."
+          hint="Turns products and searches into vectors. Choose one or type any model the provider offers. Empty: keyword search only."
           suggestions={info.embeddingModels}
           defaultValue={saved ? (saved.embeddingModel ?? "") : (info.embeddingModels[0] ?? "")}
         />
@@ -119,7 +119,7 @@ export function AiProviderForm({
           id={`${id}-text`}
           name="textModel"
           label="Model for text"
-          hint="Understands searches and writes product texts for staff to approve. Empty: off."
+          hint="Understands searches and writes product texts for staff to approve. Choose one or type any model the provider offers; a quick one keeps searches fast. Empty: off."
           suggestions={info.textModels}
           defaultValue={saved ? (saved.textModel ?? "") : (info.textModels[0] ?? "")}
         />
