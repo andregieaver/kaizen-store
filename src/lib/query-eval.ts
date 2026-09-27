@@ -75,9 +75,9 @@ export const EVAL_CASES: EvalCase[] = [
   { query: "billigste notesbog", context: da, accept: [{ sort: "priceLow", textHas: ["notesbog"] }] },
   { query: "cheapest notebook in stock", context: en, accept: [{ sort: "priceLow", inStock: true, textHas: ["notebook"] }] },
   // Categories and tags
-  { query: "nyheter i belysning", context: nb, accept: [{ categories: ["belysning"], tags: ["nyhet"], textLacks: ["belysning"] }, { categories: ["belysning"], sort: "newest", textLacks: ["belysning"] }] },
-  { query: "nyheter inom belysning", context: sv, accept: [{ categories: ["belysning"], tags: ["nyhet"] }, { categories: ["belysning"], sort: "newest" }] },
-  { query: "new in lighting", context: en, accept: [{ categories: ["lighting"], tags: ["new"] }, { categories: ["lighting"], sort: "newest" }] },
+  { query: "nyheter i belysning", context: nb, accept: [{ categories: ["belysning"], tags: ["nyhet"], textLacks: ["belysning"] }, { categories: ["belysning"], sort: "newest", textLacks: ["belysning"] }, { categories: ["belysning"], tags: ["nyhet"], sort: "newest", textLacks: ["belysning"] }] },
+  { query: "nyheter inom belysning", context: sv, accept: [{ categories: ["belysning"], tags: ["nyhet"] }, { categories: ["belysning"], sort: "newest" }, { categories: ["belysning"], tags: ["nyhet"], sort: "newest" }] },
+  { query: "new in lighting", context: en, accept: [{ categories: ["lighting"], tags: ["new"] }, { categories: ["lighting"], sort: "newest" }, { categories: ["lighting"], tags: ["new"], sort: "newest" }] },
   { query: "alt til kjøkkenet under 300 kr", context: nb, accept: [{ categories: ["kjokken"], maxPriceMinor: 30000 }] },
   // Kinds
   { query: "time til massasje neste uke", context: nb, accept: [{ kind: "appointment", textHas: ["massasje"] }] },

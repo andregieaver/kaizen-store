@@ -106,7 +106,8 @@ of running `playwright install`.
   Query understanding (D75, `src/lib/query-understanding.ts`,
   `src/server/query-understanding.ts`): the text model turns a search into
   `SearchFilters`, always through `cleanFilters()` (the store's own slugs,
-  words the shopper typed, prices to minor units in code), applied by
+  only categories and tags the search names (`namesTerm()`), words the
+  shopper typed with the thing wanted kept, prices to minor units in code), applied by
   `filterClause()`; the model never names products or prices. Change the
   prompt or filters together with the eval (`src/lib/query-eval.ts`) and
   run it from the AI pages.

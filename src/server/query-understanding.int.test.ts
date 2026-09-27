@@ -87,7 +87,8 @@ describe("query understanding (S3, D75)", () => {
   it("turns the model's answer into checked filters, and fails on anything else", async () => {
     const connection = (await ai.aiFor(storeId))!;
     fakeModel(() => 'Sure! ```json\n{"text": "lampe", "categories": ["belysning", "møbler"], "maxPrice": 500, "sort": "priceLow"}\n```');
-    expect(await understanding.understandWith(connection, "billig lampe under 500 kr", context)).toEqual({
+    // The store's own category named in the search is kept; one it does not have is dropped.
+    expect(await understanding.understandWith(connection, "billig lampe i belysning under 500 kr", context)).toEqual({
       ...plainFilters("lampe"),
       categories: ["belysning"],
       maxPriceMinor: 50000,
