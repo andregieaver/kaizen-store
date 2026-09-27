@@ -291,8 +291,8 @@ of running `playwright install`.
   spacing, border, corners, shadow, id and classes, backgrounds (a colour,
   or a picture with a colour and blur over it, `PartBackground`; rows also
   a video, uploaded from the browser to the `page-videos` bucket with a
-  still for its poster, `VideoUploadButton`, and drawn by `BackgroundVideo`
-  with a pause button, still for reduced motion), widths,
+  still for its poster, `VideoUploadButton`, and drawn by `BackgroundVideo`,
+  without controls, still for reduced motion), widths,
   column links, text alignment, picture shape; `frameStyle()`; a row's
   padding is 20 px until set, `ROW_PADDING`/`rowSpacing()`, and the page
   adds no room at the sides, nor above or below a row with a background,

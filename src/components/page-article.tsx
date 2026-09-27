@@ -81,7 +81,7 @@ export function PageRowView({
   return (
     <div className={row.width === "full" ? undefined : "mx-auto w-full max-w-(--content-width)"}>
       <div id={box.id} className={box.className} style={box.style}>
-        <PartBackground background={row.background} controls />
+        <PartBackground background={row.background} />
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
             {row.columns.map((column) => {

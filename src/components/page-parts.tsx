@@ -172,9 +172,9 @@ const blurredMedia = (blur: number): CSSProperties | undefined =>
  * A background picture or video (rows only), softened if blurred, and the
  * colour over it, behind what the row or column holds. A video shows its
  * still until it plays, and instead of it for people who prefer less
- * motion; `controls` adds its pause button (the site, not the builder).
+ * motion.
  */
-export function PartBackground({ background, controls = false }: { background: RowBackground | undefined; controls?: boolean }) {
+export function PartBackground({ background }: { background: RowBackground | undefined }) {
   if (background?.type !== "image" && background?.type !== "video") return null;
   const blur = background.blur ?? 0;
   const media = cx("absolute object-cover", blur ? "max-w-none" : "inset-0 size-full");
@@ -193,7 +193,6 @@ export function PartBackground({ background, controls = false }: { background: R
           poster={background.poster?.url}
           className={media}
           style={blurredMedia(blur)}
-          controls={controls}
         />
       )}
       {background.overlay && (

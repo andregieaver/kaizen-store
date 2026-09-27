@@ -2140,14 +2140,3 @@ export function optionLabel(m: Messages, options: Record<string, string>): strin
     .join(", ");
 }
 
-/**
- * The pause and play labels of a row's background video, by language, apart
- * from `messages` so the video's button in the browser carries only these
- * (it reads the page's `<html lang>`; English when the language has none).
- */
-export const videoLabels: Record<string, { pause: string; play: string }> = {
-  nb: { pause: "Sett videoen på pause", play: "Spill av videoen" },
-  sv: { pause: "Pausa videon", play: "Spela upp videon" },
-  da: { pause: "Sæt videoen på pause", play: "Afspil videoen" },
-  en: { pause: "Pause the video", play: "Play the video" },
-};
