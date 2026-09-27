@@ -49,12 +49,15 @@ export function PageArticle({
 }
 
 /**
- * The room above a page on the site: none when its first row has a
- * background of its own, which then meets the header; else the usual room,
- * so text does not start right under it.
+ * The room above and below a page on the site: none at an end whose row has
+ * a background of its own, which then meets the header or footer; else the
+ * usual room, so text does not start right under the header or end right
+ * on the footer.
  */
-export const pageTopClass = (content: Pick<PageContent, "rows">, room: string) =>
-  content.rows.find(rowShows)?.background ? "" : room;
+export const pageRoomClass = (content: Pick<PageContent, "rows">, top: string, bottom: string) => {
+  const rows = content.rows.filter(rowShows);
+  return [rows[0]?.background ? "" : top, rows.at(-1)?.background ? "" : bottom].filter(Boolean).join(" ");
+};
 
 /** A row shows when something in it does, or it has a background of its own. */
 const rowShows = (row: PageRow) =>
