@@ -339,6 +339,12 @@ of running `playwright install`.
   and hours, and capacity is counted at the busiest moment (`peakBusy()`,
   `commerce.resource_peak()`). Pass the line's period wherever a span is
   worked out (`checkRange()`, `holdRange()`, `rangeEndsAt()`).
+  Stays and rentals are priced by `bookingPrice()` (D70,
+  `src/lib/booking-prices.ts`): each night's or day's price changed by the
+  product's `booking_seasons`, plus `appointment_settings.booking_fee`.
+  In the cart and orders such a booking is quantity 1 at its whole price;
+  its nights, days or hours are `booking.count` (the cart line's own
+  `quantity` column), never the line's quantity.
   Show any booking with `bookingWhen()` (`src/lib/booking-text.ts`); stays
   and rentals are cancelled, never moved.
   Blocks (D68, `commerce.resource_blocks`) close a whole resource: set by
