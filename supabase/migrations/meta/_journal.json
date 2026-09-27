@@ -876,6 +876,20 @@
       "when": 1790526004677,
       "tag": "20260927162004_embeddings_product_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1790528242428,
+      "tag": "20260927165722_ai_similarity_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1790528839285,
+      "tag": "20260927170719_ai_provider_openai_eu",
+      "breakpoints": true
     }
   ]
 }

@@ -274,26 +274,44 @@ export type ChatMessage = { role: "system" | "user" | "assistant"; content: stri
 export async function completeText(
   connection: AiConnection,
   messages: ChatMessage[],
-  options: { maxTokens?: number; timeoutMs?: number; temperature?: number } = {},
+  options: { maxTokens?: number; timeoutMs?: number; temperature?: number; reasoningEffort?: "low" } = {},
 ): Promise<{ text: string; region: string | null }> {
   if (!connection.textModel) throw new AiError("No text model is set.");
   const limit = options.maxTokens ?? 1000;
-  const json = await post(
-    connection,
-    "/chat/completions",
-    {
-      model: connection.textModel,
-      messages,
-      // OpenAI's newer models take only the second name.
-      ...(connection.provider === "openai" ? { max_completion_tokens: limit } : { max_tokens: limit }),
-      ...(options.temperature === undefined ? {} : { temperature: options.temperature }),
-      ...gatewayOptions(connection, connection.textEuOnly),
-    },
-    options.timeoutMs ?? 30_000,
-  );
+  // Tuning some models refuse (reasoning models take no temperature; others know no reasoning effort).
+  const tuning = {
+    ...(options.temperature === undefined ? {} : { temperature: options.temperature }),
+    ...(options.reasoningEffort === undefined ? {} : { reasoning_effort: options.reasoningEffort }),
+  };
+  const ask = (extra: Record<string, unknown>) =>
+    post(
+      connection,
+      "/chat/completions",
+      {
+        model: connection.textModel,
+        messages,
+        // OpenAI's newer models take only the second name; for reasoning models it counts their reasoning too.
+        ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
+        ...extra,
+        ...gatewayOptions(connection, connection.textEuOnly),
+      },
+      options.timeoutMs ?? 30_000,
+    );
+  let json: Row;
+  try {
+    json = await ask(tuning);
+  } catch (error) {
+    // Asked again once without the tuning the model refused, rather than failing.
+    const refused = error instanceof AiError && error.status === 400 && /temperature|reasoning/i.test(error.message);
+    if (!refused || Object.keys(tuning).length === 0) throw error;
+    json = await ask({});
+  }
   const choice = ((json.choices ?? []) as Row[])[0];
   const message = choice?.message as Row | undefined;
-  if (typeof message?.content !== "string") throw new AiError("The provider's answer held no text.");
+  if (typeof message?.content !== "string" || !message.content.trim()) {
+    const cut = choice?.finish_reason === "length";
+    throw new AiError(cut ? "The answer was cut off at its length limit." : "The provider's answer held no text.");
+  }
   return { text: message.content, region: servedRegion(message) ?? servedRegion(json) };
 }
 

@@ -15,8 +15,8 @@ import {
 import { AiError, aiFor, completeText, type AiConnection } from "./ai";
 import { currentTerms, termsTag } from "./taxonomy";
 
-/** How long a search waits for its filters before running as typed. */
-const UNDERSTAND_TIMEOUT_MS = 2500;
+/** How long a search waits for its filters before running as typed; answers are cached, so a search waits once. */
+const UNDERSTAND_TIMEOUT_MS = 4000;
 
 /**
  * Asks the connection's text model what a search means as filters (D75),
@@ -29,7 +29,13 @@ export async function understandWith(
   context: UnderstandingContext,
   timeoutMs = UNDERSTAND_TIMEOUT_MS,
 ): Promise<SearchFilters> {
-  const reply = await completeText(connection, understandingMessages(query, context), { maxTokens: 300, timeoutMs, temperature: 0 });
+  // Room for a reasoning model's thinking, which counts towards the limit; as little of it as the model allows.
+  const reply = await completeText(connection, understandingMessages(query, context), {
+    maxTokens: 2000,
+    timeoutMs,
+    temperature: 0,
+    reasoningEffort: "low",
+  });
   const filters = cleanFilters(parseModelJson(reply.text), query, context);
   if (!filters) throw new AiError("The model did not answer with filters.");
   return filters;

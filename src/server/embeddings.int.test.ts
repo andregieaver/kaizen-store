@@ -176,6 +176,12 @@ describe("search by meaning (S2, D74)", () => {
     expect(nonsense.semanticBest).not.toBeNull();
     expect(nonsense.semanticBest!).toBeLessThan(0.5);
 
+    // With a low limit, only products near the closest come by meaning, not everything above the limit.
+    const loose = { ...(await meaningOf("noe å drikke te av")), minSimilarity: 0 };
+    const near = await search.rankedSearch({ storeId, market: no }, "noe å drikke te av", 10, loose);
+    expect(handles(near.ids)).toContain("demo-keramikkopp");
+    expect(handles(near.ids).filter((h) => ["demo-bordlampe", "demo-hytte", "demo-notatbok", "demo-massasje"].includes(h!))).toEqual([]);
+
     const strict = { ...(await meaningOf("noe å drikke te av")), minSimilarity: 0.999 };
     expect((await search.rankedSearch({ storeId, market: no }, "noe å drikke te av", 10, strict)).ids).toEqual([]);
   });

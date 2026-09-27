@@ -147,6 +147,12 @@ export async function matchingIds(
 /** Candidates each list gives the fusion. */
 const KEYWORD_CANDIDATES = 100;
 const MEANING_CANDIDATES = 50;
+/**
+ * How far below the closest product others may come and still be found by
+ * meaning: a query matching nothing well otherwise finds everything just
+ * above the store's limit.
+ */
+const MEANING_MARGIN = 0.1;
 
 export type Meaning = {
   /** The query's vector, made by the store's search model. */
@@ -244,7 +250,8 @@ export async function rankedSearch(
     meaning ? meaningMatches(shop, meaning, MEANING_CANDIDATES, filters) : Promise.resolve([]),
   ]);
   const semanticBest = meaning ? (closest[0]?.similarity ?? null) : null;
-  const byMeaning = closest.filter((match) => match.similarity >= (meaning?.minSimilarity ?? 1));
+  const floor = Math.max(meaning?.minSimilarity ?? 1, (semanticBest ?? 1) - MEANING_MARGIN);
+  const byMeaning = closest.filter((match) => match.similarity >= floor);
   const ids = reciprocalRankFusion([keyword, byMeaning.map((match) => match.id)]).slice(0, limit);
   const found = new Set(keyword);
   return { ids, semanticBest, meaningOnly: ids.filter((id) => !found.has(id)).length };

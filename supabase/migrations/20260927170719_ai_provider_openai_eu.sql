@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."ai_providers" DROP CONSTRAINT "ai_providers_provider";--> statement-breakpoint
+ALTER TABLE "commerce"."ai_providers" ADD CONSTRAINT "ai_providers_provider" CHECK ("commerce"."ai_providers"."provider" in ('gateway', 'mistral', 'openai', 'openai_eu', 'google', 'custom'));

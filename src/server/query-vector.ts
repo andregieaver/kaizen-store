@@ -5,7 +5,7 @@ import { cacheLife } from "next/cache";
 import { AiError, aiFor, embedTexts } from "./ai";
 
 /** How long a search waits for its vector before going on by keyword alone. */
-const QUERY_TIMEOUT_MS = 1500;
+const QUERY_TIMEOUT_MS = 2500;
 
 /**
  * A search's vector from the store's search model (D74), cached, as the

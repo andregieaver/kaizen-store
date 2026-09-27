@@ -37,6 +37,9 @@ describe("AI providers (D73)", () => {
 
   it("knows the known providers' addresses, and names each model's vectors apart", () => {
     expect(apiBaseUrl("gateway", null)).toBe("https://ai-gateway.vercel.sh/v1");
+    // OpenAI's EU data residency is its own address, and so its own vectors.
+    expect(apiBaseUrl("openai_eu", null)).toBe("https://eu.api.openai.com/v1");
+    expect(embeddingSpace("openai_eu", null, "text-embedding-3-small")).not.toBe(embeddingSpace("openai", null, "text-embedding-3-small"));
     expect(apiBaseUrl("custom", "https://llm.example.com/v1")).toBe("https://llm.example.com/v1");
     expect(embeddingSpace("gateway", null, "mistral/mistral-embed")).toBe("ai-gateway.vercel.sh/v1|mistral/mistral-embed");
     expect(embeddingSpace("gateway", null, "openai/text-embedding-3-small")).not.toBe(
@@ -64,7 +67,7 @@ describe("AI providers (D73)", () => {
     form.set("provider", "mistral");
     form.set("embeddingModel", "mistral-embed");
     form.set("textEuOnly", "on");
-    expect(aiFormValues(form)).toMatchObject({ provider: "mistral", embeddingEuOnly: false, textEuOnly: true, enabled: false, minSimilarity: "0.8" });
+    expect(aiFormValues(form)).toMatchObject({ provider: "mistral", embeddingEuOnly: false, textEuOnly: true, enabled: false, minSimilarity: "0.3" });
   });
 
   it("measures how alike two vectors are", () => {

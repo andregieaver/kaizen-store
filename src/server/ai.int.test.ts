@@ -185,6 +185,35 @@ describe("AI providers (D73)", () => {
     await ai.removeAiSettings(accountId, storeId);
   });
 
+  it("asks again without tuning a model refuses, and says when an answer was cut off", async () => {
+    const connection = (await ai.ownConnection(null))!;
+    const bodies: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        bodies.push(body);
+        return "temperature" in body
+          ? Response.json({ error: { message: "Unsupported value: 'temperature' does not support 0 with this model." } }, { status: 400 })
+          : Response.json({ choices: [{ message: { content: "OK" } }] });
+      }),
+    );
+    const reply = await ai.completeText(connection, [{ role: "user", content: "Hi" }], { temperature: 0, reasoningEffort: "low" });
+    expect(reply.text).toBe("OK");
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]).toMatchObject({ temperature: 0, reasoning_effort: "low" });
+    expect(bodies[1]).not.toHaveProperty("temperature");
+    expect(bodies[1]).not.toHaveProperty("reasoning_effort");
+
+    // Other refusals are not asked again.
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: { message: "Invalid model" } }, { status: 400 })));
+    await expect(ai.completeText(connection, [{ role: "user", content: "Hi" }], { temperature: 0 })).rejects.toThrow("Invalid model");
+
+    // A reasoning model that thought until the limit gives no text.
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ message: { content: "" }, finish_reason: "length" }] })));
+    await expect(ai.completeText(connection, [{ role: "user", content: "Hi" }])).rejects.toThrow(/cut off at its length limit/);
+  });
+
   it("tests both models from the admin, with scores to set the similarity by", async () => {
     const connection = (await ai.ownConnection(null))!;
     const vectors = [

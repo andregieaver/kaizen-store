@@ -3386,7 +3386,7 @@ export const aiProviders = commerce.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
-    /** `gateway`, `mistral`, `openai`, `google` or `custom` (`src/lib/ai-provider.ts`). */
+    /** `gateway`, `mistral`, `openai`, `openai_eu`, `google` or `custom` (`src/lib/ai-provider.ts`). */
     provider: text("provider").notNull(),
     /** Only for `custom`: the API's address, ending before `/embeddings`. */
     baseUrl: text("base_url"),
@@ -3397,7 +3397,7 @@ export const aiProviders = commerce.table(
     /** For understanding queries and writing product content; none turns those off. */
     textModel: text("text_model"),
     /** How similar a product must be to a query to be found by meaning, from 0 to 1. */
-    minSimilarity: real("min_similarity").notNull().default(0.8),
+    minSimilarity: real("min_similarity").notNull().default(0.3),
     /**
      * Gateway only: run each model in EU data centres, the request failing
      * where the model cannot (no embedding model can yet: D73).
@@ -3414,7 +3414,7 @@ export const aiProviders = commerce.table(
   (t) => [
     unique("ai_providers_store_key").on(t.storeId).nullsNotDistinct(),
     index("ai_providers_updated_by_idx").on(t.updatedBy),
-    check("ai_providers_provider", sql`${t.provider} in ('gateway', 'mistral', 'openai', 'google', 'custom')`),
+    check("ai_providers_provider", sql`${t.provider} in ('gateway', 'mistral', 'openai', 'openai_eu', 'google', 'custom')`),
     check("ai_providers_base_url", sql`(${t.provider} = 'custom') = (${t.baseUrl} is not null)`),
     check("ai_providers_min_similarity", sql`${t.minSimilarity} between 0 and 1`),
     check(

@@ -8,7 +8,7 @@ import { z } from "zod";
  * browser: no secrets here.
  */
 
-export const AI_PROVIDER_IDS = ["gateway", "mistral", "openai", "google", "custom"] as const;
+export const AI_PROVIDER_IDS = ["gateway", "mistral", "openai", "openai_eu", "google", "custom"] as const;
 export type AiProviderId = (typeof AI_PROVIDER_IDS)[number];
 
 export type AiProviderInfo = {
@@ -54,6 +54,16 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     gateway: false,
   },
   {
+    id: "openai_eu",
+    name: "OpenAI (EU data residency)",
+    // Only for an OpenAI project created with European data residency: processed and kept in the EU.
+    baseUrl: "https://eu.api.openai.com/v1",
+    keysUrl: "https://platform.openai.com/docs/guides/your-data#data-residency-controls",
+    embeddingModels: ["text-embedding-3-small", "text-embedding-3-large"],
+    textModels: ["gpt-5-mini"],
+    gateway: false,
+  },
+  {
     id: "google",
     name: "Google Gemini",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -77,8 +87,13 @@ export function providerInfo(id: AiProviderId): AiProviderInfo {
   return AI_PROVIDERS.find((p) => p.id === id) ?? AI_PROVIDERS[AI_PROVIDERS.length - 1];
 }
 
-/** Where to start: results by meaning are left out below this similarity until measured for the model. */
-export const DEFAULT_MIN_SIMILARITY = 0.8;
+/**
+ * Where to start: results by meaning are left out below this similarity.
+ * Measured with OpenAI's text-embedding-3-small on the demo store, searches
+ * that fit came out at 0.33 to 0.55 and nonsense at 0.16; other models
+ * score differently, which Test shows.
+ */
+export const DEFAULT_MIN_SIMILARITY = 0.3;
 
 export type CheckedUrl = { ok: true; url: string } | { ok: false; problem: string };
 

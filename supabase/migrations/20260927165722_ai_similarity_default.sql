@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."ai_providers" ALTER COLUMN "min_similarity" SET DEFAULT 0.3;
