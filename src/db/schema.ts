@@ -1286,6 +1286,8 @@ export const orders = commerce.table(
     /** VAT contained in the total. Prices are VAT-inclusive. */
     taxMinor: money("tax_minor"),
     totalMinor: money("total_minor"),
+    /** What is still to be paid at the venue (D66): appointments paid there, or the rest after a deposit. */
+    balanceMinor: money("balance_minor").default(0),
     billingAddress: jsonb("billing_address").notNull(),
     shippingAddress: jsonb("shipping_address").notNull(),
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1334,6 +1336,7 @@ export const orders = commerce.table(
       sql`${t.totalMinor} = ${t.subtotalMinor} + ${t.shippingMinor} - ${t.discountMinor}`,
     ),
     check("orders_tax_within_total", sql`${t.taxMinor} <= ${t.totalMinor}`),
+    check("orders_balance", sql`${t.balanceMinor} between 0 and ${t.totalMinor}`),
   ],
 );
 
@@ -1390,6 +1393,8 @@ export const orderLines = commerce.table(
     discountMinor: money("discount_minor").default(0),
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
+    /** The part of the total paid at the venue (D66): all of it, or what a deposit leaves. */
+    venueMinor: money("venue_minor").default(0),
     taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).notNull(),
     taxCode: text("tax_code").notNull(),
     withdrawalExclusion: withdrawalExclusion("withdrawal_exclusion").notNull().default("none"),
@@ -1417,6 +1422,7 @@ export const orderLines = commerce.table(
       "order_lines_amounts_non_negative",
       sql`${t.unitPriceMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.taxMinor} >= 0`,
     ),
+    check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
   ],
 );
 
@@ -2872,6 +2878,13 @@ export const appointmentSettings = commerce.table(
     minNoticeMinutes: integer("min_notice_minutes").notNull().default(60),
     maxDaysAhead: integer("max_days_ahead").notNull().default(60),
     /** Where it takes place: one of the store's places (D40), or none said. */
+    /** How it is paid (D66): `now`, a `deposit` now and the rest at the venue, or all at the `venue`. */
+    payment: text("payment").notNull().default("now"),
+    depositPercent: integer("deposit_percent").notNull().default(30),
+    /** Shoppers may cancel or move a booking themselves until this many hours before. */
+    cancelHours: integer("cancel_hours").notNull().default(24),
+    /** What a no-show costs, as a percentage of the price, charged by staff to a saved card. */
+    noShowPercent: integer("no_show_percent").notNull().default(0),
     locationId: uuid("location_id"),
   },
   (t) => [
@@ -2890,6 +2903,10 @@ export const appointmentSettings = commerce.table(
     ),
     check("appointment_settings_step", sql`${t.stepMinutes} in (5, 10, 15, 20, 30, 60)`),
     check("appointment_settings_notice", sql`${t.minNoticeMinutes} between 0 and 43200`),
+    check("appointment_settings_payment", sql`${t.payment} in ('now', 'deposit', 'venue')`),
+    check("appointment_settings_deposit", sql`${t.depositPercent} between 1 and 99`),
+    check("appointment_settings_cancel", sql`${t.cancelHours} between 0 and 720`),
+    check("appointment_settings_no_show", sql`${t.noShowPercent} between 0 and 100`),
     check("appointment_settings_ahead", sql`${t.maxDaysAhead} between 1 and 730`),
   ],
 );
@@ -2940,6 +2957,8 @@ export const bookings = commerce.table(
     cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** When the reminder before it was sent to the shopper. */
     remindedAt: timestamp("reminded_at", { withTimezone: true }),
+    /** Raised each time the booking changes, for calendar files that replace the earlier event (D66). */
+    sequence: integer("sequence").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

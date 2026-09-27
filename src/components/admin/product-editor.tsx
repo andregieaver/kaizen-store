@@ -1651,6 +1651,75 @@ function AppointmentSection({
           ))
         )}
       </fieldset>
+      <fieldset className="mt-6 flex flex-col gap-3 text-sm">
+        <legend className="mb-1 font-medium">Payment and cancelling</legend>
+        {(
+          [
+            ["now", "All at booking", "Shoppers pay the whole price when they book."],
+            ["deposit", "A deposit at booking", "Part now, the rest at the appointment. The card is saved for a no-show fee."],
+            ["venue", "All at the appointment", "Nothing to pay online; you mark it paid when they come."],
+          ] as const
+        ).map(([value, title, text]) => (
+          <label key={value} className="flex items-start gap-2">
+            <input
+              type="radio"
+              name="appointment-payment"
+              checked={a.payment === value}
+              onChange={() => set({ payment: value })}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              {title}
+              <span className="block text-muted">{text}</span>
+            </span>
+          </label>
+        ))}
+        <div className="grid gap-4 sm:grid-cols-3">
+          {a.payment === "deposit" && (
+            <label className={label}>
+              Deposit <span className={hint}>(% of the price)</span>
+              <input
+                type="number"
+                min={1}
+                max={99}
+                value={a.depositPercent}
+                onChange={(e) => set({ depositPercent: Math.max(1, minutes(e.target.value, 99)) })}
+                className={input}
+              />
+            </label>
+          )}
+          <label className={label}>
+            Free cancelling <span className={hint}>(hours before)</span>
+            <input
+              type="number"
+              min={0}
+              max={720}
+              value={a.cancelHours}
+              onChange={(e) => set({ cancelHours: minutes(e.target.value, 720) })}
+              className={input}
+            />
+          </label>
+          {a.payment === "deposit" && (
+            <label className={label}>
+              No-show fee <span className={hint}>(% of the price)</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={a.noShowPercent}
+                onChange={(e) => set({ noShowPercent: minutes(e.target.value, 100) })}
+                className={input}
+              />
+            </label>
+          )}
+        </div>
+        <p className="text-muted">
+          Until then shoppers can cancel or move the booking themselves, and get back what they paid. Later, they
+          contact you.
+          {a.payment === "deposit" &&
+            " A no-show fee is charged only when you ask for it on the booking, less the deposit already paid."}
+        </p>
+      </fieldset>
     </section>
   );
 }

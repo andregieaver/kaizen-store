@@ -52,6 +52,10 @@ const fake = vi.hoisted(() => {
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client }));
 
 const { getOpenCheckout, startCheckout } = await import("./checkout");
+const { appointmentSlots } = await import("./appointments");
+const { markBalancePaid } = await import("./order-admin");
+const { getShopperOrder } = await import("./orders");
+const { saleFee } = await import("@/lib/stripe-account");
 
 const run = Date.now().toString(36);
 const no = toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" });
@@ -340,5 +344,105 @@ describe("Kaizen's checkout page", () => {
 
   it("has nothing to show for a cart without an order waiting for payment", async () => {
     expect(await getOpenCheckout(storeId, await cartWith("DEMO-TOTE", 1))).toBeNull();
+  });
+});
+
+describe("appointments paid later (D66)", () => {
+  let taken = 0;
+
+  /** A cart with the demo appointment at a free time, paid as said. */
+  async function bookingCart(payment: "deposit" | "venue", depositPercent = 30): Promise<string> {
+    const [product] = await db().execute<Row>(sql`
+      update commerce.appointment_settings a set payment = ${payment}, deposit_percent = ${depositPercent}
+      from commerce.products p
+      where p.store_id = ${storeId}::uuid and p.handle = 'demo-massasje' and a.product_id = p.id
+      returning p.id
+    `);
+    const week = await appointmentSlots(storeId, String(product.id));
+    const slot = week?.days.flatMap((d) => d.slots)[taken++];
+    if (!slot) throw new Error("no free time");
+    const [cart] = await db().execute<Row>(sql`
+      insert into commerce.carts (store_id, market_code, currency, locale, expires_at)
+      values (${storeId}::uuid, 'NO', 'NOK', 'nb-NO', now() + interval '1 day') returning id
+    `);
+    await db().execute(sql`
+      insert into commerce.cart_lines (store_id, cart_id, variant_id, quantity, starts_at)
+      select ${storeId}::uuid, ${String(cart.id)}::uuid, id, 1, ${slot.startsAt}::timestamptz
+      from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-MASSAGE-60'
+    `);
+    return String(cart.id);
+  }
+
+  it("takes a deposit through Stripe, keeping the card, and leaves the rest for the venue", async () => {
+    await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 150`);
+    await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
+    try {
+      const cartId = await bookingCart("deposit", 30);
+      const result = await startCheckout(shop(), cartId, "https://shop.test", "Frakt");
+      expect(result.ok).toBe(true);
+      const { params } = fake.created[fake.created.length - 1];
+      expect(params).not.toHaveProperty("invoice_creation");
+      expect(params).not.toHaveProperty("shipping_options");
+      expect(params).toMatchObject({
+        mode: "payment",
+        customer_creation: "always",
+        line_items: [
+          {
+            quantity: 1,
+            price_data: { unit_amount: 26700, product_data: { name: expect.stringMatching(/^Demo: Massasje, 60 minutter, .+ \(depositum\)$/) } },
+          },
+        ],
+        payment_intent_data: { setup_future_usage: "off_session", application_fee_amount: saleFee(26700, 150) },
+      });
+      const [order] = await db().execute<Row>(sql`
+        select o.id, o.total_minor::int as total, o.balance_minor::int as balance, p.amount_minor::int as paying,
+          (select venue_minor::int from commerce.order_lines where order_id = o.id) as venue
+        from commerce.orders o join commerce.payments p on p.order_id = o.id where o.cart_id = ${cartId}::uuid
+      `);
+      expect(order).toMatchObject({ total: 89000, balance: 62300, paying: 26700, venue: 62300 });
+    } finally {
+      await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 0`);
+      await db().execute(sql`update commerce.payment_providers set order_invoices = false where store_id = ${storeId}::uuid`);
+    }
+  });
+
+  it("confirms a booking paid at the venue without Stripe, and staff mark it paid there", async () => {
+    const sessions = fake.created.length;
+    // Nothing is paid online, so the shopper says who books.
+    const withoutContact = await bookingCart("venue");
+    expect(await startCheckout(shop(), withoutContact, "https://shop.test", "Frakt")).toEqual({ ok: false, problem: "contact" });
+    const [given] = await db().execute<Row>(sql`select status from commerce.orders where cart_id = ${withoutContact}::uuid`);
+    expect(given.status).toBe("cancelled");
+
+    const cartId = await bookingCart("venue");
+    const contact = { name: "Kari Nordmann", email: "kari@example.com", phone: "+47 900 00 000" };
+    const result = await startCheckout(shop(), cartId, "https://shop.test", "Frakt", {}, { contact });
+    const [order] = await db().execute<Row>(sql`
+      select id, status, email, billing_address, balance_minor::int as balance from commerce.orders where cart_id = ${cartId}::uuid
+    `);
+    expect(result).toEqual({
+      ok: true,
+      url: expect.stringMatching(new RegExp(`^https://shop.test/s/${slug}/no/order/${order.id}\\?session_id=venue_`)),
+    });
+    expect(fake.created.length).toBe(sessions);
+    expect(order).toMatchObject({
+      status: "paid",
+      email: "kari@example.com",
+      billing_address: { name: "Kari Nordmann", phone: "+47 900 00 000" },
+      balance: 89000,
+    });
+    const [booking] = await db().execute<Row>(sql`select status from commerce.bookings where order_id = ${String(order.id)}::uuid`);
+    expect(booking.status).toBe("confirmed");
+    // The order page opens with the key it was sent to.
+    const token = new URL((result as { url: string }).url).searchParams.get("session_id")!;
+    expect((await getShopperOrder(storeId, String(order.id), token))?.balanceMinor).toBe(89000);
+
+    expect(await markBalancePaid(storeId, String(order.id), "card", null)).toBe(true);
+    expect(await markBalancePaid(storeId, String(order.id), "card", null)).toBe(false);
+    const [after] = await db().execute<Row>(sql`
+      select o.balance_minor::int as balance, p.status, p.amount_minor::int as amount
+      from commerce.orders o join commerce.payments p on p.order_id = o.id where o.id = ${String(order.id)}::uuid
+    `);
+    expect(after).toEqual({ balance: 0, status: "captured", amount: 89000 });
   });
 });

@@ -126,6 +126,13 @@ async function OrderDetails({
             <dt>{m.vatAmount}</dt>
             <dd>{money(order.taxMinor)}</dd>
           </div>
+          {order.balanceMinor > 0 && (
+            // Paid at the appointment (D66): what is still to pay there.
+            <div className="flex justify-between">
+              <dt>{m.booking.atVenue}</dt>
+              <dd>{money(order.balanceMinor)}</dd>
+            </div>
+          )}
           {order.company && (
             // Bought for a business (B2B): the total without VAT, and whom for.
             <>

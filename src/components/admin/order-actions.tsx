@@ -5,6 +5,7 @@ import { useActionState, useRef, useState, type ReactNode } from "react";
 import {
   addNoteAction,
   cancelOrderAction,
+  markBalancePaidAction,
   refundOrderAction,
   resendConfirmationAction,
   sendOrderAction,
@@ -187,6 +188,27 @@ export function CancelForm({ storeSlug, orderId, amountLabel, hasEmail }: Ids & 
         </button>
         <Result state={state} />
       </div>
+    </form>
+  );
+}
+
+/** Records what was left to pay at the venue as paid (D66). */
+export function BalanceForm({ storeSlug, orderId, amountLabel }: Ids & { amountLabel: string }) {
+  const [state, action, pending] = useActionState(markBalancePaidAction.bind(null, storeSlug, orderId), initial);
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-3">
+      <label className={label}>
+        Paid with
+        <select name="method" defaultValue="card" className={input}>
+          <option value="card">Card terminal</option>
+          <option value="cash">Cash</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <button type="submit" disabled={pending} className={primary}>
+        {pending ? "Saving …" : `Mark ${amountLabel} as paid`}
+      </button>
+      <Result state={state} />
     </form>
   );
 }

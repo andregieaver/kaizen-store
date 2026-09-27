@@ -28,6 +28,17 @@ export type CheckoutCompany = {
 };
 
 /**
+ * Who books, asked for when nothing is paid online (D66): Stripe asks
+ * everyone else. Filled in from a signed-in customer.
+ */
+export type CheckoutContactFields = {
+  name: string;
+  email: string;
+  phone: string;
+  labels: { legend: string; name: string; email: string; phone: string };
+};
+
+/**
  * Sends the shopper to payment; stays put and explains if that is not
  * possible. With `consents`, the shopper first ticks each one: that
  * downloads start at once and end the right of withdrawal, and the terms of
@@ -40,6 +51,7 @@ export function CheckoutButton({
   labels,
   consents = {},
   company,
+  contact,
 }: {
   store: string;
   market: string;
@@ -48,6 +60,8 @@ export function CheckoutButton({
   consents?: CheckoutConsents;
   /** On the cart page (B2B); the checkout page keeps what the cart has. */
   company?: CheckoutCompany;
+  /** When the order is paid entirely at the venue (D66). */
+  contact?: CheckoutContactFields;
 }) {
   const [state, action, pending] = useActionState(
     async (_: CheckoutState, form: FormData): Promise<CheckoutState> =>
@@ -63,9 +77,17 @@ export function CheckoutButton({
           : company.ask
             ? { name: String(form.get("companyName") ?? ""), number: String(form.get("organisationNumber") ?? "") }
             : null,
+        contact
+          ? {
+              name: String(form.get("contactName") ?? ""),
+              email: String(form.get("contactEmail") ?? ""),
+              phone: String(form.get("contactPhone") ?? ""),
+            }
+          : null,
       ),
     { problem: null },
   );
+  const [who, setWho] = useState({ name: contact?.name ?? "", email: contact?.email ?? "", phone: contact?.phone ?? "" });
   // Kept as typed: a form action resets its fields, and a mistyped number should not be lost.
   const [companyName, setCompanyName] = useState(company?.name ?? "");
   const [companyNumber, setCompanyNumber] = useState(company?.number ?? "");
@@ -99,6 +121,32 @@ export function CheckoutButton({
               className={field}
             />
           </label>
+        </fieldset>
+      )}
+      {contact && (
+        <fieldset className="flex min-w-0 flex-col gap-2 text-sm">
+          <legend className="mb-1 font-medium">{contact.labels.legend}</legend>
+          {(
+            [
+              ["name", "contactName", contact.labels.name, "text", "name"],
+              ["email", "contactEmail", contact.labels.email, "email", "email"],
+              ["phone", "contactPhone", contact.labels.phone, "tel", "tel"],
+            ] as const
+          ).map(([key, name, text, type, autoComplete]) => (
+            <label key={key} className="flex flex-col gap-1">
+              {text}
+              <input
+                name={name}
+                type={type}
+                value={who[key]}
+                onChange={(e) => setWho({ ...who, [key]: e.target.value })}
+                required
+                maxLength={key === "name" ? 120 : 200}
+                autoComplete={autoComplete}
+                className={field}
+              />
+            </label>
+          ))}
         </fieldset>
       )}
       {(["subscription", "digital"] as const).map(

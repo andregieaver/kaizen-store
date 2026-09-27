@@ -7,7 +7,7 @@ import { testDb } from "./db";
  * cart holds it as one place, and on a phone nothing is wider than the
  * screen.
  */
-async function storeWithAppointment(): Promise<string> {
+async function storeWithAppointment(payment: "now" | "deposit" | "venue" = "now"): Promise<string> {
   const slug = `bookings-${Date.now()}`;
   const hours = { open: "08:00", close: "20:00" };
   const week = { mon: hours, tue: hours, wed: hours, thu: hours, fri: hours, sat: hours, sun: hours };
@@ -36,8 +36,8 @@ async function storeWithAppointment(): Promise<string> {
       values (${storeId}, ${product.id}, ${`MASSASJE-${slug}`}, '{}'::jsonb, 'service') returning id`;
     await sql`select commerce.set_price(${variant.id}, 'NO', 89000)`;
     await sql`
-      insert into commerce.appointment_settings (product_id, store_id, duration_minutes, step_minutes, min_notice_minutes)
-      values (${product.id}, ${storeId}, 60, 30, 60)`;
+      insert into commerce.appointment_settings (product_id, store_id, duration_minutes, step_minutes, min_notice_minutes, payment)
+      values (${product.id}, ${storeId}, 60, 30, 60, ${payment})`;
     await sql`insert into commerce.product_resources (store_id, product_id, resource_id) values (${storeId}, ${product.id}, ${staff.id})`;
     await sql`update commerce.products set status = 'active' where id = ${product.id}`;
   } finally {
@@ -80,4 +80,18 @@ test("the time picker fits a phone", async ({ page }) => {
   await page.goto(`/s/${slug}/no/p/massasje`);
   await expect(page.getByRole("group", { name: "Velg tid" }).getByRole("button", { name: /^\d\d[:.]\d\d$/ }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
+test("a deposit is paid now and the rest at the appointment, and the page says until when it can be cancelled", async ({ page }) => {
+  const slug = await storeWithAppointment("deposit");
+  await page.goto(`/s/${slug}/no/p/massasje`);
+  await expect(page.getByText("Depositum 30 % ved bestilling, resten på stedet. Gratis avbestilling eller endring til 24 timer før.")).toBeVisible();
+  await page.getByRole("group", { name: "Velg tid" }).getByRole("button", { name: /^\d\d[:.]\d\d$/ }).first().click();
+  await page.getByRole("button", { name: "Legg i handlekurven" }).click();
+  await expect(page.getByText("Lagt i handlekurven.")).toBeVisible();
+
+  await page.goto(`/s/${slug}/no/cart`);
+  const summary = page.locator("aside dl");
+  await expect(summary.locator("div").filter({ hasText: /^Betales nå/ })).toContainText("267,00");
+  await expect(summary.locator("div").filter({ hasText: /^Betales på stedet/ })).toContainText("623,00");
 });

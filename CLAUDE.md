@@ -325,6 +325,15 @@ of running `playwright install`.
   `bookings.reminded_at`) and cancellations. A cancelled order gives up its
   times; the store cancels one from the week calendar (`cancelBooking()`,
   layout in `src/lib/booking-calendar.ts`) and refunds from the order.
+  How an appointment is paid (D66, `src/lib/pay-later.ts`): `now`,
+  `deposit` or `venue` in `appointment_settings`; `venuePart()` gives each
+  line's share for the venue, the same in the cart and `placeOrder`.
+  Orders keep their full total, with `balance_minor` for the venue
+  (`markBalancePaid()` in `order-admin.ts`); Stripe is sent only what is due
+  now (`PlacedOrder.dueNowMinor`, line by line, no coupon or invoice), and
+  refunds count only Stripe's payments. An order with nothing due online is
+  confirmed by `confirmAtVenue()` with the shopper's contact details and a
+  `venue` payment whose reference opens its order page.
 - Demo products: the template store has a clearly labelled demo product
   (`Demo: …`) of every kind, and new stores are copied with them
   (`clone_store()`). A new kind of product gets one in the same change: a

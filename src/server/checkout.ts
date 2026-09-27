@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomBytes } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import { after } from "next/server";
 import type Stripe from "stripe";
@@ -12,6 +14,7 @@ import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeOrigin } from "@/lib/paths";
 import { t } from "@/lib/i18n";
+import { parsePaymentMode, venuePart } from "@/lib/pay-later";
 import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
@@ -20,6 +23,7 @@ import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { holdAppointment } from "./appointments";
 import { storeFeeBps } from "./billing";
+import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
 import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { findUsableDiscount } from "./discounts";
@@ -36,7 +40,16 @@ export type PlacedOrder = {
   orderId: string;
   number: string;
   currency: string;
-  lines: { title: string; unitPriceMinor: number; quantity: number; recurring: boolean }[];
+  lines: {
+    title: string;
+    unitPriceMinor: number;
+    quantity: number;
+    recurring: boolean;
+    /** What of the line is paid now, after its discount: less than its total when a part is paid at the venue (D66). */
+    dueNowMinor: number;
+    /** A deposit: part now, the rest at the venue. */
+    deposit: boolean;
+  }[];
   /** Something to ship: false for downloads only (D24). */
   ships: boolean;
   /** The subscription this order starts (D25): how often it renews, and its shipping each time. */
@@ -54,6 +67,9 @@ export type PlacedOrder = {
   /** The VAT included in the total. */
   taxMinor: number;
   totalMinor: number;
+  /** What is paid now, and what is left to pay at the venue (D66); they add up to the total. */
+  dueNowMinor: number;
+  balanceMinor: number;
   /** The company it is bought for (B2B), put on the invoice. */
   company: { name: string; number: string } | null;
   /** The discount code, and what Stripe takes off as a one-time coupon. */
@@ -75,7 +91,9 @@ export type CheckoutProblem =
   | "plans"
   | "company"
   | "company_number"
-  | "slot_taken";
+  | "slot_taken"
+  | "contact"
+  | "pay_later_mix";
 
 export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; problem: CheckoutProblem };
 
@@ -120,7 +138,7 @@ export async function placeOrder(
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
-        cp.amount_minor, cl.starts_at, cl.resource_id,
+        cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         (p.status = 'active' and v.active and ${bookable}) as sellable
       from commerce.cart_lines cl
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -312,6 +330,16 @@ export async function placeOrder(
     }
     const shipping = basket.first;
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
+    // Appointments paid at the venue, or with a deposit now (D66): the part left for the venue.
+    const venue = priced.map((p) =>
+      venuePart(
+        p.total,
+        p.line.payment ? { mode: parsePaymentMode(p.line.payment), depositPercent: Number(p.line.deposit_percent) } : null,
+      ),
+    );
+    const balance = venue.reduce((sum, part) => sum + part, 0);
+    // A subscription is paid by Stripe Billing in full, so it is ordered apart from them.
+    if (rhythm && balance > 0) return { ok: false, problem: "pay_later_mix" };
     const tax =
       priced.reduce((sum, p) => sum + vatIncluded(p.total, p.rate), 0) +
       fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
@@ -328,24 +356,24 @@ export async function placeOrder(
         store_id, number, market_code, currency, locale, cart_id, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
-        company_name, organisation_number
+        company_name, organisation_number, balance_minor
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
         ${subtotal}, ${shipping}, ${discountTotal}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
         ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
-        ${company?.name ?? null}, ${company?.number ?? null}
+        ${company?.name ?? null}, ${company?.number ?? null}, ${balance}
       )
       returning id
     `);
     const orderId = String(order.id);
 
-    for (const p of priced) {
+    for (const [i, p] of priced.entries()) {
       const [orderLine] = await tx.execute<Row>(sql`
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
-          selling_plan_id, plan_interval, plan_interval_count
+          selling_plan_id, plan_interval, plan_interval_count, venue_minor
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.total}, ${vatIncluded(p.total, p.rate)},
@@ -353,7 +381,7 @@ export async function placeOrder(
           ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
           ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
-          ${p.recurring ? Number(p.line.interval_count) : null}
+          ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]}
         )
         returning id
       `);
@@ -446,18 +474,22 @@ export async function placeOrder(
         number: String(numbered.number),
         currency: market.currency,
         lines: [
-          ...priced.map((p) => ({
+          ...priced.map((p, i) => ({
             title: p.when ? `${p.title}, ${p.when}` : p.title,
             // What renews is charged at its full price by Stripe, after any free trial.
             unitPriceMinor: p.recurring ? p.renewUnit : p.unit,
             quantity: p.quantity,
             recurring: p.recurring,
+            dueNowMinor: p.total - venue[i],
+            deposit: venue[i] > 0 && venue[i] < p.total,
           })),
           ...fees.map((fee) => ({
             title: `${feeTitle}: ${fee.title}`,
             unitPriceMinor: fee.amount,
             quantity: 1,
             recurring: false,
+            dueNowMinor: fee.amount,
+            deposit: false,
           })),
         ],
         ships,
@@ -466,6 +498,8 @@ export async function placeOrder(
         shippingDiscountMinor: shippingDiscount,
         taxMinor: tax,
         totalMinor: total,
+        dueNowMinor: total - balance,
+        balanceMinor: balance,
         company,
         // Stripe takes it as a one-time coupon: everything off today that is
         // not already in a lowered subscriber's price. In a subscription,
@@ -492,6 +526,40 @@ async function inTransaction(work: (tx: Tx) => Promise<PlaceResult>): Promise<Pl
     if (error instanceof SlotTaken) return { ok: false, problem: "slot_taken" };
     throw error;
   }
+}
+
+/** Who books an order with nothing to pay online (D66). */
+export type CheckoutContact = { name: string; email: string; phone: string };
+
+/**
+ * Confirms an order paid entirely at the venue (D66): the shopper's details
+ * on it, a pending payment at the venue as its record (and the key to its
+ * order page, as a Stripe session's id is), paid as far as the shop is
+ * concerned, so its times are booked. Returns the order page's key.
+ */
+async function confirmAtVenue(storeId: string, order: PlacedOrder, contact: CheckoutContact): Promise<string> {
+  const token = `venue_${randomBytes(18).toString("base64url")}`;
+  await db().execute(sql`
+    update commerce.orders set email = ${contact.email},
+      billing_address = ${JSON.stringify({ name: contact.name, phone: contact.phone })}::jsonb
+    where store_id = ${storeId}::uuid and id = ${order.orderId}::uuid
+  `);
+  await db().execute(sql`
+    insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+    values (${storeId}::uuid, ${order.orderId}::uuid, 'venue', ${token}, ${order.balanceMinor}, ${order.currency}, 'pending')
+  `);
+  await completeOrderPayment(order.orderId, token);
+  const notify = async () => {
+    await sendOrderConfirmation(storeId, order.orderId);
+    await sendBookingStaffNotices(storeId, order.orderId);
+  };
+  try {
+    after(notify);
+  } catch {
+    // Not in a request (scripts, tests).
+    await notify();
+  }
+  return token;
 }
 
 /** How often a subscription's lines renew, as Stripe takes it. */
@@ -575,7 +643,14 @@ export async function startCheckout(
   origin: string,
   shippingLabel: string,
   consent: CheckoutConsent = {},
-  { customerId = null }: { customerId?: string | null } = {},
+  {
+    customerId = null,
+    contact = null,
+  }: {
+    customerId?: string | null;
+    /** Who books when nothing is paid online (D66): Stripe asks everyone else. */
+    contact?: CheckoutContact | null;
+  } = {},
 ): Promise<CheckoutStart> {
   const found = await getCheckoutAccount(shop.storeId);
   const stripe = found && platformStripe(found.mode);
@@ -622,6 +697,16 @@ export async function startCheckout(
   const placed = await placeOrder(shop, cartId, consent, { customerId });
   if (!placed.ok) return placed;
   const { order } = placed;
+  // Everything is paid at the venue (D66): no payment now, the booking is confirmed at once.
+  if (order.dueNowMinor === 0 && order.balanceMinor > 0) {
+    if (!contact) {
+      await cancelUnpaidOrder(order.orderId, "no contact details");
+      return { ok: false, problem: "contact" };
+    }
+    const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
+    const token = await confirmAtVenue(shop.storeId, order, contact);
+    return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
+  }
   // Renewals arrive as webhook events that older platform webhooks were not sent (D25).
   if (order.subscription) await ensureSubscriptionEvents(connection.mode);
 
@@ -629,7 +714,10 @@ export async function startCheckout(
     select legal_name, organisation_number from commerce.stores where id = ${shop.storeId}::uuid
   `);
   const feeBps = await storeFeeBps(shop.storeId);
-  const fee = saleFee(order.totalMinor, feeBps);
+  // Kaizen's fee is on what is paid through Stripe; the rest is paid at the venue (D66).
+  const fee = saleFee(order.dueNowMinor, feeBps);
+  const partial = order.balanceMinor > 0;
+  const depositLabel = t(shop.market.lang).booking.deposit;
   // Back to the store's own host once it has one (P7), whichever host the request came from.
   const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
   const currency = order.currency.toLowerCase();
@@ -646,8 +734,9 @@ export async function startCheckout(
   let session: Stripe.Checkout.Session;
   try {
     // A discount code (D31) reaches Stripe as a coupon for this checkout alone.
+    // With a part paid at the venue, each line is sent as what is due now, discount included.
     const coupon =
-      order.discount && order.discount.couponMinor > 0
+      !partial && order.discount && order.discount.couponMinor > 0
         ? await stripe.coupons.create(
             {
               amount_off: order.discount.couponMinor,
@@ -666,18 +755,31 @@ export async function startCheckout(
         metadata,
         ...(coupon && { discounts: [{ coupon: coupon.id }] }),
         integration_identifier: INTEGRATION_IDENTIFIER,
-        line_items: [
-          ...order.lines.map((line) => ({
-            quantity: line.quantity,
-            price_data: {
-              currency,
-              unit_amount: line.unitPriceMinor,
-              product_data: { name: line.title },
-              ...(line.recurring && order.subscription && { recurring: recurring(order.subscription) }),
-            },
-          })),
-          ...subscriptionShipping(order, currency, shippingLabel),
-        ],
+        line_items: partial
+          ? order.lines
+              .filter((line) => line.dueNowMinor > 0)
+              .map((line) => ({
+                quantity: 1,
+                price_data: {
+                  currency,
+                  unit_amount: line.dueNowMinor,
+                  product_data: {
+                    name: `${line.quantity > 1 ? `${line.quantity} × ` : ""}${line.title}${line.deposit ? ` (${depositLabel})` : ""}`,
+                  },
+                },
+              }))
+          : [
+              ...order.lines.map((line) => ({
+                quantity: line.quantity,
+                price_data: {
+                  currency,
+                  unit_amount: line.unitPriceMinor,
+                  product_data: { name: line.title },
+                  ...(line.recurring && order.subscription && { recurring: recurring(order.subscription) }),
+                },
+              })),
+              ...subscriptionShipping(order, currency, shippingLabel),
+            ],
         ...(order.subscription
           ? // A subscription (D25): Stripe Billing on the store's account charges
             // each renewal. Shipping can only be a line here: the part that
@@ -697,7 +799,10 @@ export async function startCheckout(
                 metadata,
                 description: `Order ${order.number}`,
                 ...(fee !== null && { application_fee_amount: fee }),
+                // A deposit keeps the card for a no-show fee staff may charge later (D66).
+                ...(order.lines.some((line) => line.deposit) && { setup_future_usage: "off_session" as const }),
               },
+              ...(order.lines.some((line) => line.deposit) && { customer_creation: "always" as const }),
             }),
         ...(order.ships && {
           shipping_address_collection: {
@@ -722,8 +827,10 @@ export async function startCheckout(
         // No payment_method_types: Stripe shows the methods the store has
         // turned on in its Stripe Dashboard that suit the shopper.
         // Subscriptions always get Stripe invoices; this is for single payments.
+        // An invoice for part of an order would mislead: the store invoices the whole at the venue.
         ...(connection.orderInvoices &&
-          !order.subscription && {
+          !order.subscription &&
+          !partial && {
           invoice_creation: {
             enabled: true,
             invoice_data: {
@@ -774,7 +881,7 @@ export async function startCheckout(
       store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status
     ) values (
       ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${connection.accountId},
-      ${ui === "custom" ? session.client_secret : null}, ${order.totalMinor}, ${order.currency}, 'pending'
+      ${ui === "custom" ? session.client_secret : null}, ${order.dueNowMinor}, ${order.currency}, 'pending'
     )
   `);
   if (ui === "custom") return session.client_secret ? { ok: true, url: `${base}/checkout` } : { ok: false, problem: "payment_error" };

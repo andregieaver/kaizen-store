@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { parsePaymentMode } from "@/lib/pay-later";
 import { parseProductAudience, withVat, withoutVat, type StoreAudience } from "@/lib/b2b";
 import { parseVatCategory, type VatCategory } from "@/lib/vat";
 import {
@@ -297,7 +298,7 @@ export async function getProductForEdit(
     `),
     db().execute<Row>(sql`
       select duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes, min_notice_minutes,
-        max_days_ahead, location_id
+        max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent
       from commerce.appointment_settings where store_id = ${store.id}::uuid and product_id = ${productId}::uuid
     `),
     db().execute<Row>(sql`
@@ -415,6 +416,10 @@ export async function getProductForEdit(
             maxDaysAhead: Number(appointment?.max_days_ahead ?? DEFAULT_APPOINTMENT.maxDaysAhead),
             locationId: appointment?.location_id ? String(appointment.location_id) : null,
             resourceIds: resources.map((row) => String(row.resource_id)),
+            payment: parsePaymentMode(appointment?.payment),
+            depositPercent: Number(appointment?.deposit_percent ?? DEFAULT_APPOINTMENT.depositPercent),
+            cancelHours: Number(appointment?.cancel_hours ?? DEFAULT_APPOINTMENT.cancelHours),
+            noShowPercent: Number(appointment?.no_show_percent ?? 0),
           }
         : null,
     taxCode: String(product.tax_code),
@@ -473,17 +478,19 @@ async function saveAppointment(tx: Tx, storeId: string, productId: string, input
   await tx.execute(sql`
     insert into commerce.appointment_settings (
       product_id, store_id, duration_minutes, buffer_before_minutes, buffer_after_minutes, step_minutes,
-      min_notice_minutes, max_days_ahead, location_id
+      min_notice_minutes, max_days_ahead, location_id, payment, deposit_percent, cancel_hours, no_show_percent
     ) values (
       ${productId}::uuid, ${storeId}::uuid, ${a.durationMinutes}, ${a.bufferBeforeMinutes}, ${a.bufferAfterMinutes},
       ${a.stepMinutes}, ${a.minNoticeMinutes}, ${a.maxDaysAhead},
-      (select id from commerce.store_locations where store_id = ${storeId}::uuid and id = ${a.locationId}::uuid)
+      (select id from commerce.store_locations where store_id = ${storeId}::uuid and id = ${a.locationId}::uuid),
+      ${a.payment}, ${a.depositPercent}, ${a.cancelHours}, ${a.noShowPercent}
     )
     on conflict (product_id) do update set
       duration_minutes = excluded.duration_minutes, buffer_before_minutes = excluded.buffer_before_minutes,
       buffer_after_minutes = excluded.buffer_after_minutes, step_minutes = excluded.step_minutes,
       min_notice_minutes = excluded.min_notice_minutes, max_days_ahead = excluded.max_days_ahead,
-      location_id = excluded.location_id
+      location_id = excluded.location_id, payment = excluded.payment, deposit_percent = excluded.deposit_percent,
+      cancel_hours = excluded.cancel_hours, no_show_percent = excluded.no_show_percent
   `);
   if (a.resourceIds.length > 0) {
     await tx.execute(sql`

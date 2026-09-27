@@ -136,7 +136,8 @@ async function Checkout({ store, market, m }: { store: Store; market: Market; m:
                 contact: m.contact,
                 delivery: m.delivery,
                 payment: m.payment,
-                pay: m.pay(money(order.totalMinor)),
+                // What Stripe takes now; a part paid at the appointment is not in it (D66).
+                pay: m.pay(money(order.totalMinor - order.balanceMinor)),
                 paying: m.paying,
                 loading: m.loadingPayment,
                 unavailable: m.paymentUnavailable,
@@ -279,6 +280,18 @@ function Summary({
             <div className="flex justify-between text-muted">
               <dt>{m.vatAmount}</dt>
               <dd>{money(order.taxMinor)}</dd>
+            </div>
+          </>
+        )}
+        {order.balanceMinor > 0 && (
+          <>
+            <div className="flex justify-between">
+              <dt>{m.booking.dueNow}</dt>
+              <dd>{money(order.totalMinor - order.balanceMinor)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>{m.booking.atVenue}</dt>
+              <dd>{money(order.balanceMinor)}</dd>
             </div>
           </>
         )}

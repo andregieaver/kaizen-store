@@ -443,6 +443,10 @@ describe("appointments (D65)", () => {
         locationId: null,
         // Another store's staff are left out.
         resourceIds: [String(staff.id), String(elsewhere.id)],
+        payment: "deposit",
+        depositPercent: 40,
+        cancelHours: 48,
+        noShowPercent: 100,
       },
       manufacturer: null,
       responsiblePerson: null,
@@ -454,7 +458,15 @@ describe("appointments (D65)", () => {
     const productId = (result as { productId: string }).productId;
 
     const saved = await getProductForEdit(store, context, productId);
-    expect(saved).toMatchObject({ kind: "appointment", appointment: { durationMinutes: 45, bufferAfterMinutes: 15, resourceIds: [String(staff.id)] } });
+    expect(saved).toMatchObject({ kind: "appointment", appointment: {
+      durationMinutes: 45,
+      bufferAfterMinutes: 15,
+      resourceIds: [String(staff.id)],
+      payment: "deposit",
+      depositPercent: 40,
+      cancelHours: 48,
+      noShowPercent: 100,
+    } });
     expect(saved?.variants.map((v) => v.delivery)).toEqual(["service"]);
     const [stock] = await db().execute<Row>(sql`
       select count(*)::int as n from commerce.inventory_levels l

@@ -42,6 +42,8 @@ export type OrderView = {
   discountCode: string | null;
   taxMinor: number;
   totalMinor: number;
+  /** Still to be paid at the venue (D66); 0 once staff mark it paid. */
+  balanceMinor: number;
   shippingAddress: Address;
   billingAddress: Address;
   lines: {
@@ -112,6 +114,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   discountCode: row.discount_code ? String(row.discount_code) : null,
   taxMinor: Number(row.tax_minor),
   totalMinor: Number(row.total_minor),
+  balanceMinor: Number(row.balance_minor ?? 0),
   shippingAddress: (row.shipping_address ?? {}) as Address,
   billingAddress: (row.billing_address ?? {}) as Address,
   lines: lines.map((line) => ({
@@ -247,7 +250,7 @@ export async function getShopperOrder(
     from commerce.payments pay
     left join commerce.stripe_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
-      and pay.provider = 'stripe' and pay.provider_reference = ${sessionId}
+      and pay.provider in ('stripe', 'venue') and pay.provider_reference = ${sessionId}
   `);
   if (!payment) return null;
 

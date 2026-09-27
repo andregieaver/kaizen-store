@@ -15,6 +15,7 @@ import {
   type SlotResource,
 } from "@/lib/booking-slots";
 import { defaultHours, parseOpeningHours } from "@/lib/opening-hours";
+import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 
 /**
  * Appointments for shoppers (D65): the free times of an appointment, and
@@ -36,6 +37,9 @@ export type AppointmentOffer = {
   /** Who does it, in the store's order; the shopper may choose one. */
   staff: { id: string; name: string }[];
   place: { name: string; address: string } | null;
+  /** How it is paid, and until how many hours before shoppers may cancel or move it (D66). */
+  payment: AppointmentPayment;
+  cancelHours: number;
 };
 
 type LoadedOffer = AppointmentOffer & { resources: Omit<SlotResource, "busy">[] };
@@ -43,7 +47,7 @@ type LoadedOffer = AppointmentOffer & { resources: Omit<SlotResource, "busy">[] 
 async function loadOffer(q: Queryable, storeId: string, productId: string): Promise<LoadedOffer | null> {
   const [row] = await q.execute<Row>(sql`
     select a.duration_minutes, a.buffer_before_minutes, a.buffer_after_minutes, a.step_minutes,
-      a.min_notice_minutes, a.max_days_ahead, s.time_zone,
+      a.min_notice_minutes, a.max_days_ahead, s.time_zone, a.payment, a.deposit_percent, a.cancel_hours,
       l.name as place_name, l.street, l.postal_code, l.city
     from commerce.appointment_settings a
     join commerce.products p on p.store_id = a.store_id and p.id = a.product_id and p.kind = 'appointment' and p.status = 'active'
@@ -71,6 +75,8 @@ async function loadOffer(q: Queryable, storeId: string, productId: string): Prom
       maxDaysAhead: Number(row.max_days_ahead),
     },
     staff: resources.map((r) => ({ id: String(r.id), name: String(r.name) })),
+    payment: { mode: parsePaymentMode(row.payment), depositPercent: Number(row.deposit_percent) },
+    cancelHours: Number(row.cancel_hours),
     place: row.street
       ? {
           name: String(row.place_name ?? ""),
@@ -89,7 +95,9 @@ async function loadOffer(q: Queryable, storeId: string, productId: string): Prom
 export async function getAppointmentOffer(storeId: string, productId: string): Promise<AppointmentOffer | null> {
   const offer = await loadOffer(db(), storeId, productId);
   if (!offer || offer.staff.length === 0) return null;
-  return { productId: offer.productId, timeZone: offer.timeZone, rules: offer.rules, staff: offer.staff, place: offer.place };
+  const { resources: _resources, ...shown } = offer;
+  void _resources;
+  return shown;
 }
 
 /** Times taken on these resources that overlap the range: confirmed, or held and not expired. */

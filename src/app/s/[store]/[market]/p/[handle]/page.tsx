@@ -272,6 +272,18 @@ async function AppointmentBooking({
           <dt className="sr-only">{m.booking.time}</dt>
           <dd>{facts.join(" · ")}</dd>
         </div>
+        <div className="flex gap-2">
+          <dt className="sr-only">{m.booking.atVenue}</dt>
+          <dd>
+            {[
+              offer.payment.mode === "deposit" && m.booking.payDeposit(offer.payment.depositPercent),
+              offer.payment.mode === "venue" && m.booking.payVenue,
+              m.booking.freeCancel(offer.cancelHours),
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          </dd>
+        </div>
         {offer.place && (
           <div className="flex gap-2">
             <dt className="font-medium">{m.booking.where}:</dt>

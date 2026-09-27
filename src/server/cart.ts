@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { buyerCookie, parseBuyer, parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { CART_TTL_DAYS, MAX_LINE_QUANTITY, settleQuantity, type LineOutcome } from "@/lib/cart";
 import type { Market } from "@/lib/markets";
+import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 
@@ -50,6 +51,8 @@ export type CartLine = {
   plan: (PlanTerms & { id: string; trialDays: number; minCycles: number; signupFeeMinor: number }) | null;
   /** An appointment's time (D65), with whom if the shopper chose, in the store's time zone. */
   booking: (LineBooking & { staff: string | null; timeZone: string }) | null;
+  /** How an appointment is paid (D66): null for goods, which are paid now. */
+  payment: AppointmentPayment | null;
 };
 
 /** The time an appointment is booked for (D65), and who with; null resource is whoever is free. */
@@ -86,7 +89,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
     select
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
       commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
-      cl.starts_at, cl.resource_id, br.name as staff, st.time_zone,
+      cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
       c.company_name, c.organisation_number,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
@@ -187,6 +190,9 @@ export async function getCart(shop: Shop): Promise<Cart> {
               staff: row.staff ? String(row.staff) : null,
               timeZone: String(row.time_zone),
             }
+          : null,
+        payment: row.payment
+          ? { mode: parsePaymentMode(row.payment), depositPercent: Number(row.deposit_percent) }
           : null,
       };
     }),

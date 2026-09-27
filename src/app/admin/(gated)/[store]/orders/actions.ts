@@ -10,9 +10,11 @@ import {
   addOrderNote,
   cancelOrder,
   CARRIERS,
+  markBalancePaid,
   markSent,
   refundOrder,
   updateOrderContact,
+  VENUE_METHODS,
 } from "@/server/order-admin";
 import { sendCancelled, sendOrderConfirmation, sendRefunded, sendShipped } from "@/server/shopper-emails";
 
@@ -103,6 +105,23 @@ export async function cancelOrderAction(
   if (form.get("notify") === "on") await sendCancelled(found.member.store.id, orderId, outcome.amountMinor);
   refresh();
   return done("The order is cancelled.");
+}
+
+/** Records what was left to pay at the venue as paid (D66): card terminal, cash or otherwise. */
+export async function markBalancePaidAction(
+  storeSlug: string,
+  orderId: string,
+  _previous: OrderActionState,
+  form: FormData,
+): Promise<OrderActionState> {
+  const found = await orderFor(storeSlug, orderId);
+  if (!found) return failed("This order no longer exists.");
+  const method = VENUE_METHODS.find((m) => m === form.get("method")) ?? "other";
+  if (!(await markBalancePaid(found.member.store.id, orderId, method, found.member.account.id))) {
+    return failed("Nothing is left to pay on this order.");
+  }
+  refresh();
+  return done("Marked as paid.");
 }
 
 /** Corrects the customer's email or delivery address. */

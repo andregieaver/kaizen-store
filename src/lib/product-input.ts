@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./pay-later";
 import { PRODUCT_AUDIENCES } from "./b2b";
 import { minorUnitDigits } from "./money";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
@@ -120,6 +121,11 @@ export const appointmentInput = z.object({
   maxDaysAhead: z.number().int().min(1, "Take bookings at least a day ahead.").max(730, "Take bookings at most two years ahead."),
   locationId: z.uuid().nullable(),
   resourceIds: z.array(z.uuid()).max(200),
+  /** How it is paid and the shopper's cancellation rule (D66). */
+  payment: z.enum(PAYMENT_MODES).default("now"),
+  depositPercent: z.number().int().min(1, "A deposit is at least 1 %.").max(99, "A deposit is at most 99 %; take it all now instead.").default(DEFAULT_DEPOSIT_PERCENT),
+  cancelHours: z.number().int().min(0).max(720, "Let shoppers cancel at most 30 days before.").default(DEFAULT_CANCEL_HOURS),
+  noShowPercent: z.number().int().min(0).max(100, "A no-show fee is at most the whole price.").default(0),
 });
 
 export const DEFAULT_APPOINTMENT: z.infer<typeof appointmentInput> = {
@@ -131,6 +137,10 @@ export const DEFAULT_APPOINTMENT: z.infer<typeof appointmentInput> = {
   maxDaysAhead: 60,
   locationId: null,
   resourceIds: [],
+  payment: "now",
+  depositPercent: DEFAULT_DEPOSIT_PERCENT,
+  cancelHours: DEFAULT_CANCEL_HOURS,
+  noShowPercent: 0,
 };
 
 export const productInput = z.object({

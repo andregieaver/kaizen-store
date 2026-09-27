@@ -81,7 +81,7 @@ function footer(store: EmailStore, text: EmailText): string[] {
 async function orderUrl(storeId: string, store: EmailStore, market: Market, orderId: string): Promise<string | null> {
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider = 'stripe'
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'venue')
     order by created_at limit 1
   `);
   if (!payment) return null;
@@ -119,6 +119,8 @@ function orderLines(
         : []),
       { label: text.total, value: money(order.totalMinor), strong: true },
       { label: text.vat, value: money(order.taxMinor), muted: true },
+      // Paid at the appointment (D66): what is still to pay there.
+      ...(order.balanceMinor > 0 ? [{ label: m.booking.atVenue, value: money(order.balanceMinor) }] : []),
       // Bought for a business (B2B): the total without VAT too.
       ...(order.company ? [{ label: m.totalExclVat, value: money(order.totalMinor - order.taxMinor), muted: true }] : []),
     ],

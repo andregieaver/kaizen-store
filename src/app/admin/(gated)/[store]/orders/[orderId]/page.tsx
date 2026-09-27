@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 
 import {
+  BalanceForm,
   CancelForm,
   ContactForm,
   NoteForm,
@@ -212,6 +213,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
               <div className="flex justify-between text-muted"><dt>VAT included (standard rate)</dt><dd>{money(order.taxMinor)}</dd></div>
+              {order.balanceMinor > 0 && (
+                <div className="flex justify-between"><dt>To pay at the appointment</dt><dd>{money(order.balanceMinor)}</dd></div>
+              )}
               {order.company && (
                 <div className="flex justify-between text-muted"><dt>Total excl. VAT</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
               )}
@@ -223,6 +227,17 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
             </dl>
           </section>
+
+          {order.balanceMinor > 0 && order.status !== "cancelled" && (
+            <section aria-labelledby="balance" className={card}>
+              <h2 id="balance" className="mb-1 font-medium">To pay at the appointment</h2>
+              <p className="mb-3 text-sm text-muted">
+                {money(order.balanceMinor)} is paid at the appointment, not online. Mark it paid when the customer has
+                paid you.
+              </p>
+              <BalanceForm {...ids} amountLabel={money(order.balanceMinor)} />
+            </section>
+          )}
 
           {paid && order.ships && (
             <section aria-labelledby="sending" className={card}>

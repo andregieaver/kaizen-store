@@ -78,6 +78,8 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     `),
     db().execute<Row>(sql`
       select coalesce(sum(amount_minor) filter (where status = 'captured'), 0)::bigint as paid,
+             -- Paid at the venue (D66) is paid back there too: only Stripe's can be refunded here.
+             coalesce(sum(amount_minor) filter (where status = 'captured' and provider = 'stripe'), 0)::bigint as online,
              bool_or(status = 'captured' and provider_account is not null) as connect
       from commerce.payments where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
     `),
@@ -94,6 +96,7 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
   const restockedBySku = new Map(restocks.map((r) => [String(r.sku), Number(r.quantity)]));
   const refunded = refundRows.filter((r) => r.status !== "failed").reduce((sum, r) => sum + r.amountMinor, 0);
   const paidMinor = Number(paid?.paid ?? 0);
+  const onlineMinor = Number(paid?.online ?? 0);
   return {
     ...order,
     lines: order.lines.map((line) => ({ ...line, restocked: restockedBySku.get(line.sku) ?? 0 })),
@@ -107,7 +110,7 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     refunds: refundRows,
     paidMinor,
     refundedMinor: refunded,
-    refundableMinor: Math.max(0, paidMinor - refunded),
+    refundableMinor: Math.max(0, onlineMinor - refunded),
     canRefund: Boolean(paid?.connect),
   };
 }
@@ -250,7 +253,7 @@ export async function refundOrder(
     select p.id, p.provider_reference, p.provider_account, a.mode
     from commerce.payments p
     join commerce.stripe_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
-    where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured'
+    where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured' and p.provider = 'stripe'
     order by p.created_at limit 1
   `);
   const stripe = payment ? platformStripe(payment.mode as PaymentModeName) : null;
@@ -358,7 +361,7 @@ export async function cancelOrder(
     if (!refunded.ok) return refunded;
   }
   await db().execute(sql`
-    update commerce.orders set status = 'cancelled' where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+    update commerce.orders set status = 'cancelled', balance_minor = 0 where store_id = ${storeId}::uuid and id = ${orderId}::uuid
   `);
   await db().execute(sql`
     update commerce.order_downloads set expires_at = now()
@@ -390,4 +393,50 @@ export async function updateOrderContact(
 
 export async function addOrderNote(storeId: string, orderId: string, note: string, by: string): Promise<void> {
   await event(storeId, orderId, "note.added", { note, by }, "staff");
+}
+
+export const VENUE_METHODS = ["card", "cash", "other"] as const;
+export type VenueMethod = (typeof VENUE_METHODS)[number];
+
+/**
+ * Records what was left to pay at the venue as paid (D66): an order paid
+ * entirely there keeps its one payment, now taken; after a deposit, the rest
+ * is a payment of its own. False if nothing was left to pay.
+ */
+export async function markBalancePaid(
+  storeId: string,
+  orderId: string,
+  method: VenueMethod,
+  accountId: string | null,
+): Promise<boolean> {
+  return db().transaction(async (tx) => {
+    const [order] = await tx.execute<Row>(sql`
+      select balance_minor, currency from commerce.orders
+      where store_id = ${storeId}::uuid and id = ${orderId}::uuid and status in ('paid', 'fulfilled') and balance_minor > 0
+      for update
+    `);
+    if (!order) return false;
+    const balance = Number(order.balance_minor);
+    const [waiting] = await tx.execute<Row>(sql`
+      update commerce.payments set status = 'captured', amount_minor = ${balance}, updated_at = now()
+      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider = 'venue' and status = 'pending'
+      returning id
+    `);
+    if (!waiting) {
+      await tx.execute(sql`
+        insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
+        values (${storeId}::uuid, ${orderId}::uuid, 'venue', ${`venue_${orderId}_${Date.now()}`}, ${balance},
+                ${String(order.currency)}, 'captured')
+      `);
+    }
+    await tx.execute(sql`
+      update commerce.orders set balance_minor = 0 where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+    `);
+    await tx.execute(sql`
+      insert into commerce.order_events (store_id, order_id, type, data, actor)
+      values (${storeId}::uuid, ${orderId}::uuid, 'order.balance_paid',
+              ${JSON.stringify({ amount: balance, method, by: accountId })}::jsonb, 'staff')
+    `);
+    return true;
+  });
 }

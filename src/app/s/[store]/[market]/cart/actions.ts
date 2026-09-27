@@ -88,6 +88,16 @@ export async function updateCartLine(formData: FormData): Promise<void> {
 
 export type CheckoutState = { problem: CheckoutProblem | null };
 
+const contactInput = z.object({
+  name: z.string().trim().min(1).max(120),
+  email: z.string().trim().max(200).pipe(z.email()),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .regex(/^\+?[0-9 ()-]{5,}$/),
+});
+
 /**
  * Places the order and sends the shopper to payment. On a problem (stock ran
  * out, payments not set up, ...) the cart page says what. `consent` holds
@@ -99,6 +109,8 @@ export async function checkoutAction(
   consent: CheckoutConsent = {},
   /** The company typed on the cart page (B2B), null for a private shopper, left out to keep the cart's. */
   company?: { name: string; number: string } | null,
+  /** Who books, when nothing is paid online (D66). */
+  contact: { name: string; email: string; phone: string } | null = null,
 ): Promise<CheckoutState> {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
@@ -118,6 +130,9 @@ export async function checkoutAction(
     }
   }
 
+  const who = contact ? contactInput.safeParse(contact) : null;
+  if (who && !who.success) return { problem: "contact" };
+
   const header = (await headers()).get("origin");
   const origin = header ? new URL(header).origin : siteUrl();
   const result = await startCheckout(
@@ -127,7 +142,7 @@ export async function checkoutAction(
     t(shop.market.lang).shipping,
     { digital: consent.digital === true, subscription: consent.subscription === true },
     // A signed-in customer's order is theirs from the start, and codes for one use each know them (D31).
-    { customerId: (await getCustomer(shop.store.id))?.id ?? null },
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null, contact: who?.success ? who.data : null },
   );
   if (result.ok) redirect(result.url);
   refresh();

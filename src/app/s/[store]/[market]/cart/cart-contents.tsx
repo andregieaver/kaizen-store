@@ -10,6 +10,7 @@ import { vatIncluded } from "@/lib/checkout";
 import { basketShipping } from "@/lib/subscriptions";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, type Messages } from "@/lib/i18n";
+import { venuePart } from "@/lib/pay-later";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { formatMoney } from "@/lib/money";
@@ -135,8 +136,12 @@ export async function CartContents({
     payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i), line.vatRate), 0) +
     fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
     vatIncluded((shipping ?? 0) - (applied?.shippingMinor ?? 0), checkout.vatRate);
-  // A signed-in business customer's saved company fills the fields in.
-  const saved = business && !cart.company ? await getCustomer(store.id) : null;
+  // Appointments paid at the venue, or the rest after a deposit (D66), as checkout will work it out.
+  const balance = payable.reduce((sum, line, i) => sum + venuePart(today(line) - lineDiscount(i), line.payment), 0);
+  // Nothing to pay online: the shopper tells who books instead of Stripe asking.
+  const atVenueOnly = balance > 0 && balance === total;
+  // A signed-in customer's saved company and details fill the fields in.
+  const saved = (business && !cart.company) || atVenueOnly ? await getCustomer(store.id) : null;
   const companyNeeded = companyRequired(store.audience, cart.lines.map((line) => line.audience));
   const company = cart.company ?? { name: saved?.companyName ?? "", number: saved?.organisationNumber ?? "" };
   // The subscription's terms, said the same way in the summary and the consent (D29).
@@ -310,6 +315,18 @@ export async function CartContents({
             <dt>{business ? m.toPay : m.total}</dt>
             <dd>{money(total)}</dd>
           </div>
+          {balance > 0 && (
+            <>
+              <div className="flex justify-between gap-4">
+                <dt>{m.booking.dueNow}</dt>
+                <dd>{money(total - balance)}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>{m.booking.atVenue}</dt>
+                <dd>{money(balance)}</dd>
+              </div>
+            </>
+          )}
         </dl>
         {(!business || shipping === null) && (
           <p className="text-sm text-muted">
@@ -336,7 +353,22 @@ export async function CartContents({
             store={store.slug}
             market={market.slug}
             disabled={blocked}
-            labels={checkoutLabels(m)}
+            labels={checkoutLabels(m, atVenueOnly ? m.booking.confirmBooking : undefined)}
+            contact={
+              atVenueOnly
+                ? {
+                    name: saved?.name ?? "",
+                    email: saved?.email ?? "",
+                    phone: saved?.phone ?? "",
+                    labels: {
+                      legend: m.booking.contactHeading,
+                      name: m.booking.contactName,
+                      email: m.booking.contactEmail,
+                      phone: m.booking.contactPhone,
+                    },
+                  }
+                : undefined
+            }
             company={{
               // Asked of businesses, and of anyone whose order needs it.
               ask: business || companyNeeded,

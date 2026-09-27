@@ -1427,6 +1427,13 @@ describe("bookings (D65)", () => {
     // Staff cancelling a paid order gives up its confirmed time too.
     await db.query("update commerce.orders set status = 'cancelled' where id = $1", [late]);
     expect(await status(kept)).toBe("cancelled");
+    // Paid later (D66): no more at the venue than the order costs, and only the modes the app knows.
+    await expect(db.query("update commerce.orders set balance_minor = total_minor + 1 where id = $1", [late])).rejects.toThrow(
+      /orders_balance/,
+    );
+    await expect(
+      db.query("insert into commerce.appointment_settings (product_id, store_id, payment) values ($1, $2, 'later')", [productId, store]),
+    ).rejects.toThrow(/appointment_settings_payment/);
     // Reminders go a set number of hours before, within a week.
     await expect(db.query("update commerce.stores set booking_reminder_hours = 200 where id = $1", [store])).rejects.toThrow(
       /stores_booking_reminder_hours/,
