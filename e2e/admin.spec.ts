@@ -62,6 +62,7 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/demo/articles",
     "/admin/demo/articles/new",
     "/admin/platform/articles",
+    "/admin/platform/stores/demo",
   ];
   for (const path of paths) {
     await page.goto(path);
@@ -89,7 +90,9 @@ test("admin pages send nothing of theirs to a visitor without a session, before 
   ];
   for (const path of paths) {
     const html = await (await request.get(path)).text();
-    expect(html, path).toContain("/admin/sign-in");
+    // Either the redirect itself, or a prerendered shell that only checks the
+    // session (the redirect then arrives with the rest; the test above follows it).
+    expect(html.includes("/admin/sign-in") || html.includes("Checking your session"), path).toBe(true);
     expect(html, path).not.toContain("text-2xl font-semibold");
   }
 });
