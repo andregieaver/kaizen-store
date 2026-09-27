@@ -2959,6 +2959,8 @@ export const bookings = commerce.table(
     remindedAt: timestamp("reminded_at", { withTimezone: true }),
     /** Raised each time the booking changes, for calendar files that replace the earlier event (D66). */
     sequence: integer("sequence").notNull().default(0),
+    /** When staff marked the shopper as not having come (D66); a fee may have been charged for it. */
+    noShowAt: timestamp("no_show_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

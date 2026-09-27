@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { defaultHours, openingHoursInput, parseOpeningHours, type OpeningHours } from "@/lib/opening-hours";
 
 import { audit, type Membership } from "./auth";
+import { noShowFeeFor } from "./no-show";
 
 type Row = Record<string, unknown>;
 
@@ -192,6 +193,10 @@ export type StoreBooking = {
   orderId: string | null;
   orderNumber: string | null;
   customer: string;
+  /** Marked as not having come (D66), and the fee a no-show would cost now (0 when none can be charged). */
+  noShowAt: string | null;
+  noShowFeeMinor: number;
+  currency: string | null;
 };
 
 /** Bookings between two instants, held ones only while their hold lasts, earliest first. */
@@ -199,12 +204,15 @@ export async function listBookings(storeId: string, from: Date, to: Date): Promi
   const rows = await db().execute<Row>(sql`
     select b.id, b.starts_at, b.ends_at, b.status, r.name as staff, b.resource_id,
       coalesce((select t.title from commerce.product_translations t where t.product_id = b.product_id order by t.locale limit 1), p.handle) as service,
-      o.id as order_id, o.number as order_number,
-      coalesce(nullif(o.billing_address ->> 'name', ''), o.email, '') as customer
+      o.id as order_id, o.number as order_number, o.currency, b.no_show_at,
+      coalesce(nullif(o.billing_address ->> 'name', ''), o.email, '') as customer,
+      ol.total_minor, ol.venue_minor, a.no_show_percent
     from commerce.bookings b
     join commerce.booking_resources r on r.store_id = b.store_id and r.id = b.resource_id
     join commerce.products p on p.store_id = b.store_id and p.id = b.product_id
     left join commerce.orders o on o.store_id = b.store_id and o.id = b.order_id
+    left join commerce.order_lines ol on ol.store_id = b.store_id and ol.id = b.order_line_id
+    left join commerce.appointment_settings a on a.store_id = b.store_id and a.product_id = b.product_id
     where b.store_id = ${storeId}::uuid
       and b.starts_at >= ${from.toISOString()}::timestamptz and b.starts_at < ${to.toISOString()}::timestamptz
       and (b.status = 'confirmed' or (b.status = 'held' and b.hold_expires_at > now()))
@@ -221,6 +229,15 @@ export async function listBookings(storeId: string, from: Date, to: Date): Promi
     orderId: row.order_id ? String(row.order_id) : null,
     orderNumber: row.order_number ? String(row.order_number) : null,
     customer: String(row.customer ?? ""),
+    noShowAt: row.no_show_at ? new Date(String(row.no_show_at)).toISOString() : null,
+    noShowFeeMinor:
+      row.total_minor === null
+        ? 0
+        : noShowFeeFor(
+            { totalMinor: Number(row.total_minor), venueMinor: Number(row.venue_minor) },
+            Number(row.no_show_percent ?? 0),
+          ),
+    currency: row.currency ? String(row.currency) : null,
   }));
 }
 

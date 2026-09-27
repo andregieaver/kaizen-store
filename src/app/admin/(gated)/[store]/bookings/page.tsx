@@ -3,8 +3,10 @@ import Link from "next/link";
 
 import { layoutDay, minuteOfDay, weekStart } from "@/lib/booking-calendar";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
+import { formatMoney } from "@/lib/money";
 import { hoursOn } from "@/lib/opening-hours";
 import { requireMember } from "@/server/auth";
+import { NoShowForm } from "@/components/admin/no-show-form";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
 
 import { cancelBookingAction } from "./actions";
@@ -14,6 +16,9 @@ export const metadata: Metadata = { title: "Bookings" };
 /** Height of an hour in the week grid, in pixels. */
 const HOUR = 48;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Now, for which bookings have started: the page is rendered per request. */
+const nowMs = () => Date.now();
 
 /** Today's date where the store is: the page is rendered per request. */
 const todayIn = (timeZone: string) => zonedDate(Date.now(), timeZone);
@@ -28,6 +33,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const query = await searchParams;
   const tz = store.timeZone;
   const today = todayIn(tz);
+  const now = nowMs();
   const monday = weekStart(typeof query.week === "string" && DATE.test(query.week) ? query.week : today);
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const [all, staff] = await Promise.all([
@@ -215,7 +221,22 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
                               </Link>
                             )
                           )}
-                          {b.status === "confirmed" && (
+                          {b.noShowAt && <span className="rounded bg-surface px-1.5 py-0.5 text-xs">No-show</span>}
+                          {b.status === "confirmed" && !b.noShowAt && Date.parse(b.startsAt) <= now && (
+                            <details className="text-left">
+                              <summary className="cursor-pointer text-right text-muted underline">No-show…</summary>
+                              <NoShowForm
+                                storeSlug={store.slug}
+                                bookingId={b.id}
+                                feeLabel={
+                                  b.noShowFeeMinor > 0 && b.currency
+                                    ? formatMoney(b.noShowFeeMinor, b.currency, store.markets[0]?.locale ?? "en-GB")
+                                    : null
+                                }
+                              />
+                            </details>
+                          )}
+                          {b.status === "confirmed" && Date.parse(b.startsAt) > now && (
                             <details className="text-left">
                               <summary className="cursor-pointer text-right text-muted underline">Cancel…</summary>
                               <form

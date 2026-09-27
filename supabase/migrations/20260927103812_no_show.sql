@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."bookings" ADD COLUMN "no_show_at" timestamp with time zone;

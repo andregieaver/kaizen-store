@@ -207,6 +207,8 @@ async function paymentIntentFor(
   const id = (value: string | { id: string } | null | undefined) =>
     typeof value === "string" ? value : (value?.id ?? null);
   let invoiceId: string | null = null;
+  // A charge made on its own, such as a no-show fee (D66).
+  if (reference.startsWith("pi_")) return reference;
   if (reference.startsWith("cs_")) {
     const session = await stripe.checkout.sessions.retrieve(reference, {}, options);
     if (session.payment_intent) return id(session.payment_intent);

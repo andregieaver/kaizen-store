@@ -339,7 +339,10 @@ of running `playwright install`.
   `src/server/booking-changes.ts`, access by the page's key or ownership):
   cancelling refunds what Stripe took for it and cancels an order left with
   nothing; moving goes through `commerce.move_booking()` (locked, raises
-  `bookings.sequence`, which calendar files carry).
+  `bookings.sequence`, which calendar files carry). Staff mark past
+  bookings as no-shows from the calendar (`markNoShow()` in
+  `src/server/no-show.ts`, `bookings.no_show_at`), charging the fee off
+  session to the card saved with the deposit only when they tick it.
 - Demo products: the template store has a clearly labelled demo product
   (`Demo: …`) of every kind, and new stores are copied with them
   (`clone_store()`). A new kind of product gets one in the same change: a

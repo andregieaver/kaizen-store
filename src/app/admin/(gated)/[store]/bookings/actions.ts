@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
 import { cancelBooking, removeResource, saveResource } from "@/server/bookings";
+import { markNoShow } from "@/server/no-show";
 import { sendBookingCancelled } from "@/server/shopper-emails";
 
 /** Adds or changes a member of staff who takes appointments (D65); a new one goes back to the list. */
@@ -49,4 +50,21 @@ export async function cancelBookingAction(storeSlug: string, bookingId: string, 
   if (!(await cancelBooking(member, bookingId))) return;
   if (formData.get("notify") === "on") await sendBookingCancelled(member.store.id, bookingId);
   refresh();
+}
+
+export type NoShowState = { ok: boolean; message: string | null };
+
+/** Marks a booking as a no-show (D66), charging its fee to the saved card when asked. */
+export async function noShowAction(
+  storeSlug: string,
+  bookingId: string,
+  _previous: NoShowState,
+  formData: FormData,
+): Promise<NoShowState> {
+  const member = await requireMember(storeSlug);
+  if (!z.uuid().safeParse(bookingId).success) return { ok: false, message: "This booking no longer exists." };
+  const result = await markNoShow(member, bookingId, formData.get("charge") === "on");
+  if (!result.ok) return { ok: false, message: result.problem };
+  refresh();
+  return { ok: true, message: result.chargedMinor > 0 ? "Marked as a no-show, and the fee is charged." : "Marked as a no-show." };
 }

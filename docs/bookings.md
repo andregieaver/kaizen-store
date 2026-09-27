@@ -102,8 +102,14 @@ appointment products), B1b (free times on the product page, times in the
 cart, held at checkout and confirmed on payment) and B1c (the week calendar
 where the store can cancel a booking, calendar files with the confirmation,
 a notice to the member of staff, reminders a set number of hours before,
-and cancellation emails). Moving a booking to another time is not built
-yet; for now the store cancels and the shopper books again. B2 is next.
+and cancellation emails).
+
+B2 is done (D66), in three parts: B2a (each appointment paid now, with a
+deposit, or at the venue; the venue's share as the order's balance, marked
+paid by staff), B2b (shoppers cancel and move their own bookings until the
+appointment's hours before, with refunds of what Stripe took) and B2c
+(staff mark no-shows and may charge the fee to the card saved with the
+deposit). B3 is next.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`

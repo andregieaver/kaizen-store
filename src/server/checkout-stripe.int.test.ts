@@ -8,13 +8,20 @@ type Row = Record<string, unknown>;
 
 /** A stand-in for Kaizen's platform Stripe client that records what it is asked. */
 const fake = vi.hoisted(() => {
-  const sessions = new Map<string, { status: string; payment_status: string }>();
+  const sessions = new Map<string, Record<string, unknown>>();
+  const charges: { params: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const created: { params: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const expired: string[] = [];
   const domains: { domain: string; account?: string }[] = [];
   const domainFailures = { create: false, list: false };
   let next = 0;
   const client = {
+    paymentIntents: {
+      create: async (params: Record<string, unknown>, options: Record<string, unknown>) => {
+        charges.push({ params, options });
+        return { id: `pi_charge_${charges.length}`, status: "succeeded" };
+      },
+    },
     paymentMethodDomains: {
       create: async (params: { domain_name: string }, options: { stripeAccount?: string }) => {
         if (domainFailures.create) throw new Error("already registered");
@@ -46,7 +53,7 @@ const fake = vi.hoisted(() => {
       },
     },
   };
-  return { client, created, expired, sessions, domains, domainFailures };
+  return { client, created, expired, sessions, domains, domainFailures, charges };
 });
 
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client }));
@@ -54,6 +61,7 @@ vi.mock("./stripe", () => ({ platformStripe: () => fake.client }));
 const { getOpenCheckout, startCheckout } = await import("./checkout");
 const { appointmentSlots } = await import("./appointments");
 const { markBalancePaid } = await import("./order-admin");
+const { markNoShow } = await import("./no-show");
 const { getShopperOrder } = await import("./orders");
 const { saleFee } = await import("@/lib/stripe-account");
 
@@ -444,5 +452,65 @@ describe("appointments paid later (D66)", () => {
       from commerce.orders o join commerce.payments p on p.order_id = o.id where o.id = ${String(order.id)}::uuid
     `);
     expect(after).toEqual({ balance: 0, status: "captured", amount: 89000 });
+  });
+
+  it("charges a no-show fee to the card saved with the deposit, less the deposit, only when staff ask", async () => {
+    const cartId = await bookingCart("deposit", 30);
+    expect((await startCheckout(shop(), cartId, "https://shop.test", "Frakt")).ok).toBe(true);
+    const [order] = await db().execute<Row>(sql`
+      select o.id, p.provider_reference as session, b.id as booking
+      from commerce.orders o join commerce.payments p on p.order_id = o.id join commerce.bookings b on b.order_id = o.id
+      where o.cart_id = ${cartId}::uuid
+    `);
+    const orderId = String(order.id);
+    const bookingId = String(order.booking);
+    // Paid: Stripe keeps the card on a customer of the store's account.
+    fake.sessions.set(String(order.session), {
+      status: "complete",
+      payment_status: "paid",
+      customer: "cus_kari",
+      payment_intent: { id: "pi_deposit", payment_method: "pm_card" },
+    });
+    await db().execute(sql`select commerce.complete_order_payment(${orderId}::uuid, ${String(order.session)})`);
+    await db().execute(sql`update commerce.payments set status = 'captured' where order_id = ${orderId}::uuid`);
+    await db().execute(sql`
+      update commerce.appointment_settings a set no_show_percent = 100
+      from commerce.products p where p.store_id = ${storeId}::uuid and p.handle = 'demo-massasje' and a.product_id = p.id
+    `);
+    const [account] = await db().execute<Row>(sql`
+      insert into commerce.accounts (email, name) values (${`staff-${run}@example.com`}, 'Staff') returning id
+    `);
+    const member = {
+      account: { id: String(account.id), email: "staff@example.com", name: "Staff", platformAdmin: false },
+      role: "owner" as const,
+      store: { id: storeId, slug } as import("./stores").Store,
+    };
+
+    expect(await markNoShow(member, bookingId, true)).toEqual({ ok: false, problem: "The appointment has not started yet." });
+    await db().execute(sql`
+      update commerce.bookings set starts_at = now() - interval '2 hours', ends_at = now() - interval '1 hour',
+        blocked_from = now() - interval '2 hours', blocked_to = now() - interval '1 hour'
+      where id = ${bookingId}::uuid
+    `);
+    expect(await markNoShow(member, bookingId, true)).toEqual({ ok: true, chargedMinor: 62300 });
+    expect(fake.charges[fake.charges.length - 1]).toMatchObject({
+      params: {
+        amount: 62300,
+        currency: "nok",
+        customer: "cus_kari",
+        payment_method: "pm_card",
+        off_session: true,
+        confirm: true,
+      },
+      options: { stripeAccount: accountId, idempotencyKey: `no-show-${bookingId}` },
+    });
+    const [after] = await db().execute<Row>(sql`
+      select o.balance_minor::int as balance, b.no_show_at is not null as marked,
+        (select sum(amount_minor)::int from commerce.payments where order_id = o.id and status = 'captured') as taken
+      from commerce.orders o join commerce.bookings b on b.order_id = o.id where o.id = ${orderId}::uuid
+    `);
+    // The deposit and the fee: the whole price, and nothing left for the venue.
+    expect(after).toEqual({ balance: 0, marked: true, taken: 89000 });
+    expect(await markNoShow(member, bookingId, true)).toEqual({ ok: false, problem: "This booking is already marked as a no-show." });
   });
 });
