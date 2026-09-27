@@ -6,7 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { vatIncluded } from "@/lib/checkout";
-import { t } from "@/lib/i18n";
+import { shownOptions, t } from "@/lib/i18n";
 import { parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import {
@@ -541,7 +541,7 @@ export type SwapChoice = {
 export async function swapChoices(storeId: string, subscriptionId: string): Promise<Map<string, SwapChoice[]>> {
   const rows = await db().execute<Row>(sql`
     select l.id as line_id, v.id as variant_id, v.sku, v.options, coalesce(v.tax_code, p.tax_code) as tax_code,
-      coalesce(tl.title, tf.title, p.handle) as title, cp.amount_minor, sp.discount_percent
+      coalesce(tl.title, tf.title, p.handle) as title, cp.amount_minor, sp.discount_percent, s.locale
     from commerce.subscription_lines l
     join commerce.subscriptions s on s.store_id = l.store_id and s.id = l.subscription_id
     join commerce.product_variants lv on lv.store_id = l.store_id and lv.id = l.variant_id
@@ -559,7 +559,8 @@ export async function swapChoices(storeId: string, subscriptionId: string): Prom
   `);
   const choices = new Map<string, SwapChoice[]>();
   for (const row of rows) {
-    const options = (row.options ?? {}) as Record<string, string>;
+    // Values in the subscriber's language, as checkout titled the first order (Stripe finds products by it).
+    const options = shownOptions(t(String(row.locale).split("-")[0]), (row.options ?? {}) as Record<string, string>);
     const named = Object.keys(options).length > 0;
     const choice: SwapChoice = {
       variantId: String(row.variant_id),

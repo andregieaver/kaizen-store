@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
 import { companyRequired, withoutVat } from "@/lib/b2b";
-import { bookingWhen, isRange } from "@/lib/booking-text";
+import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { cartSubtotal, MAX_LINE_QUANTITY } from "@/lib/cart";
 import { vatIncluded } from "@/lib/checkout";
 import { basketShipping } from "@/lib/subscriptions";
@@ -187,7 +187,7 @@ export async function CartContents({
                       {bookingWhen(line.booking, market.locale, m)}
                       {isRange(line.booking) && (
                         <span className="block text-muted">
-                          {line.booking.kind === "stay" ? m.stay.nights(line.quantity) : m.stay.days(line.quantity)}
+                          {rangeLength(line.booking.kind, line.booking.period, line.quantity, m)}
                         </span>
                       )}
                     </p>

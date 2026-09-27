@@ -61,8 +61,12 @@ test("the date picker fits a phone", async ({ page }) => {
   const slug = await newStore();
   await page.setViewportSize({ width: 360, height: 780 });
   await page.goto(`/s/${slug}/no/p/demo-sykkelutleie`);
-  await expect(page.getByRole("group", { name: "Velg datoer" }).getByRole("button", { name: /, ledig$/ }).first()).toBeVisible();
   await expect(page.getByText("Hentes fra 09:00, leveres innen 17:00.")).toBeVisible();
+  // It opens on the cheapest way to rent, by the hour: a day, then its hours.
+  const days = page.getByRole("group", { name: "Velg dag" });
+  await days.getByRole("button", { name: "Senere →" }).click();
+  await days.getByRole("button", { name: /, ledig$/ }).first().click();
+  await expect(page.getByRole("group", { name: "Velg tid" }).getByRole("button").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
 
@@ -90,4 +94,35 @@ test("a room's calendar is published at its secret address, as whole days, and n
   expect(body).toContain("SUMMARY:Blocked");
   expect(body).not.toContain("Eierens uke");
   expect((await request.get(`/api/calendar/${token}x.ics`)).status()).toBe(404);
+});
+
+test("a shopper rents a bike by the hour, then for half a day", async ({ page }) => {
+  const slug = await newStore();
+  await page.goto(`/s/${slug}/no/p/demo-sykkelutleie`);
+  const add = page.getByRole("button", { name: "Legg i handlekurven" });
+
+  await page.getByRole("radio", { name: "Leie: Per time" }).check();
+  const days = page.getByRole("group", { name: "Velg dag" });
+  await days.getByRole("button", { name: "Senere →" }).click();
+  await days.getByRole("button", { name: /, ledig$/ }).first().click();
+  const times = page.getByRole("group", { name: "Velg tid" });
+  await times.getByRole("button", { name: /^10[:.]00$/ }).click();
+  await page.getByLabel("Antall timer").selectOption("3");
+  await expect(add).toBeEnabled();
+  await add.click();
+  await expect(page.getByText("Lagt i handlekurven.")).toBeVisible();
+
+  await page.getByRole("radio", { name: "Leie: Halv dag" }).check();
+  await days.getByRole("button", { name: /, ledig$/ }).nth(1).click();
+  await times.getByRole("button", { name: /^13[:.]00–17[:.]00$/ }).click();
+  await add.click();
+  await expect(page.getByText("Lagt i handlekurven.")).toBeVisible();
+
+  await page.goto(`/s/${slug}/no/cart`);
+  const hourly = page.getByRole("listitem").filter({ hasText: "3 timer" });
+  await expect(hourly).toContainText(/Henting .*10[:.]00, levering .*13[:.]00/);
+  await expect(hourly).toContainText("360,00");
+  const half = page.getByRole("listitem").filter({ hasText: "Halv dag" });
+  await expect(half).toContainText(/Henting .*13[:.]00, levering .*17[:.]00/);
+  await expect(half).toContainText("300,00");
 });

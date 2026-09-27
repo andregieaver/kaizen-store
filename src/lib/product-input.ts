@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./pay-later";
 import { PRODUCT_AUDIENCES } from "./b2b";
+import { RENTAL_PERIODS } from "./booking-ranges";
 import { minorUnitDigits } from "./money";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
@@ -232,6 +233,8 @@ export const productInput = z.object({
           message: "Choose a country of origin.",
         }),
         delivery: z.enum(DELIVERIES).default("physical"),
+        /** A rental's variant: by the day, half day or hour (D69). Ignored for other kinds. */
+        rentalPeriod: z.enum(RENTAL_PERIODS).default("day"),
       }),
     )
     .min(1, "A product needs at least one variant.")

@@ -7,14 +7,14 @@ import { after } from "next/server";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
-import { formatRangeDates, rangeEndsAt } from "@/lib/booking-ranges";
+import { formatClock, formatRangeDates, parseRentalPeriod, rangeEndsAt } from "@/lib/booking-ranges";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeOrigin } from "@/lib/paths";
-import { t } from "@/lib/i18n";
+import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
 import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { applyDiscount } from "@/lib/discounts";
@@ -141,7 +141,7 @@ export async function placeOrder(
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
-        p.kind, aps.check_in_time, aps.check_out_time,
+        p.kind, aps.check_in_time, aps.check_out_time, v.rental_period,
         (p.status = 'active' and v.active and ${bookable}) as sellable
       from commerce.cart_lines cl
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -252,24 +252,23 @@ export async function placeOrder(
       const unit = recurring && trial ? 0 : renewUnit;
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
-        Object.keys(options).length > 0 ? `${line.title} (${variantLabel(options)})` : String(line.title);
+        Object.keys(options).length > 0 ? `${line.title} (${variantLabel(shownOptions(t(market.lang), options))})` : String(line.title);
       // An appointment's time (or a stay's or rental's dates) goes with it to Stripe, in the store's time zone (D65, D67).
       const startsAt = line.starts_at ? new Date(String(line.starts_at)).toISOString() : null;
       const range = line.kind === "stay" || line.kind === "rental" ? line.kind : null;
+      const period = parseRentalPeriod(line.rental_period);
       const tz = String(cart.time_zone);
+      const times = { checkInTime: String(line.check_in_time), checkOutTime: String(line.check_out_time) };
       const when = !startsAt
         ? null
-        : range
-          ? formatRangeDates(
-              startsAt,
-              rangeEndsAt(range, startsAt, quantity, { checkInTime: String(line.check_in_time), checkOutTime: String(line.check_out_time) }, tz),
-              market.locale,
-              tz,
-            )
-          : formatBookingTime(startsAt, market.locale, tz);
+        : range && (range === "stay" || period === "day")
+          ? formatRangeDates(startsAt, rangeEndsAt(range, startsAt, quantity, times, tz), market.locale, tz)
+          : range
+            ? `${formatBookingTime(startsAt, market.locale, tz)}–${formatClock(rangeEndsAt(range, startsAt, quantity, times, tz, period), market.locale, tz)}`
+            : formatBookingTime(startsAt, market.locale, tz);
       const delivery: Delivery = parseDelivery(line.delivery);
       const rate = Number(line.vat_rate ?? vatRate);
-      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when, range };
+      return { line, quantity, unit, renewUnit, discount: 0, total: unit * quantity, title, recurring, delivery, rate, startsAt, when, range, period };
     });
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
@@ -412,7 +411,7 @@ export async function placeOrder(
           holdMinutes: CHECKOUT_MINUTES + 5,
         };
         const held = p.range
-          ? await holdRange(tx, storeId, { ...hold, count: p.quantity })
+          ? await holdRange(tx, storeId, { ...hold, count: p.quantity, period: p.period })
           : await holdAppointment(tx, storeId, hold);
         if (!held) throw new SlotTaken();
       }

@@ -5,13 +5,16 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   freeUnits,
+  halfDays,
+  hourStarts,
   openDates,
-  rangeProblem,
-  rangeSpan,
+  periodProblem,
+  periodSpan,
   type RangeKind,
   type RangeProblem,
   type RangeRules,
   type RangeUnit,
+  type RentalPeriod,
 } from "@/lib/booking-ranges";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
@@ -126,6 +129,8 @@ export async function rangeDates(
   productId: string,
   from: string | null = null,
   now = Date.now(),
+  /** A rental's variant by the half day or hour opens a date with any free half or hour (D69). */
+  period: RentalPeriod = "day",
 ): Promise<RangeMonth | null> {
   const offer = await loadRange(db(), storeId, productId);
   if (!offer) return null;
@@ -141,7 +146,7 @@ export async function rangeDates(
     zonedTime(start, "00:00", tz),
     zonedTime(addDays(start, RANGE_DAYS + 1), "23:59", tz),
   );
-  return { from: start, today, last, dates: openDates(start, RANGE_DAYS, units, offer.rules, tz, now) };
+  return { from: start, today, last, dates: openDates(start, RANGE_DAYS, units, offer.rules, tz, now, period) };
 }
 
 export type RangeCheck =
@@ -149,24 +154,24 @@ export type RangeCheck =
   | { ok: false; problem: RangeProblem | "taken" | "unknown" };
 
 /**
- * Whether `count` nights (or days) from the store's date `startDate` can be
- * booked now, and in which rooms (or items): only `unitId` when given.
+ * Whether `count` nights, days, half days or hours (D67, D69) from
+ * `startsAt` can be booked now, and in which rooms or items: only `unitId`
+ * when given.
  */
-export async function freeUnitsFor(
+export async function checkRange(
   q: Queryable,
   storeId: string,
   productId: string,
-  startDate: string,
-  count: number,
-  unitId: string | null,
+  { startsAt, count, unitId = null, period = "day" }: { startsAt: string; count: number; unitId?: string | null; period?: RentalPeriod },
   now = Date.now(),
   exceptBookingId: string | null = null,
 ): Promise<RangeCheck> {
   const offer = await loadRange(q, storeId, productId);
-  if (!offer || offer.units.length === 0) return { ok: false, problem: "unknown" };
-  const problem = rangeProblem(startDate, count, offer.rules, offer.timeZone, now);
+  const start = Date.parse(startsAt);
+  if (!offer || offer.units.length === 0 || Number.isNaN(start)) return { ok: false, problem: "unknown" };
+  const problem = periodProblem(period, start, count, offer.rules, offer.timeZone, now);
   if (problem) return { ok: false, problem };
-  const span = rangeSpan(offer.kind, startDate, count, offer.rules, offer.timeZone);
+  const span = periodSpan(period, offer.kind, start, count, offer.rules, offer.timeZone)!;
   const units = (await unitsWithBusy(q, storeId, offer, span.startsAt, span.endsAt, exceptBookingId)).filter(
     (u) => !unitId || u.id === unitId,
   );
@@ -175,24 +180,43 @@ export async function freeUnitsFor(
   return { ok: true, offer, unitIds, startsAt: span.startsAt, endsAt: span.endsAt };
 }
 
-/** The store's date a stay or rental starting then begins on (its check-in day). */
-export function startDateOf(startsAt: string, timeZone: string): string {
-  return zonedDate(Date.parse(startsAt), timeZone);
-}
+/** A time on a date a rental by the half day or hour (D69) can start, and for how many periods it is free from then. */
+export type RentalTime = { startsAt: string; endsAt: string; free: number };
 
-/** A cart line's range from its check-in instant: the store's time zone decides the date. */
-export async function rangeFromLine(
-  q: Queryable,
+/**
+ * The times a rental's variant by the half day or hour can start on a date:
+ * the two halves, or each whole hour from pick-up, with how many hours in a
+ * row are free from each (0 when taken, too soon or too far ahead).
+ */
+export async function rentalTimes(
   storeId: string,
   productId: string,
-  startsAt: string,
-  count: number,
-  unitId: string | null,
+  date: string,
+  period: Exclude<RentalPeriod, "day">,
   now = Date.now(),
-): Promise<RangeCheck> {
-  const [row] = await q.execute<Row>(sql`select time_zone from commerce.stores where id = ${storeId}::uuid`);
-  if (!row) return { ok: false, problem: "unknown" };
-  return freeUnitsFor(q, storeId, productId, startDateOf(startsAt, String(row.time_zone)), count, unitId, now);
+): Promise<RentalTime[] | null> {
+  const offer = await loadRange(db(), storeId, productId);
+  if (!offer || offer.kind !== "rental") return null;
+  const tz = offer.timeZone;
+  const dayStart = zonedTime(date, "00:00", tz);
+  const units = await unitsWithBusy(db(), storeId, offer, dayStart, zonedTime(addDays(date, 1), "00:00", tz));
+  const allowed = (startsAt: number, count: number) =>
+    periodProblem(period, startsAt, count, offer.rules, tz, now) === null &&
+    freeUnits(units, periodSpan(period, "rental", startsAt, count, offer.rules, tz)!).length > 0;
+  if (period === "half_day") {
+    return halfDays(date, offer.rules, tz).map((half) => ({
+      startsAt: new Date(half.startsAt).toISOString(),
+      endsAt: new Date(half.endsAt).toISOString(),
+      free: allowed(half.startsAt, 1) ? 1 : 0,
+    }));
+  }
+  const starts = hourStarts(date, offer.rules, tz);
+  return starts.map((startsAt, i) => {
+    let free = 0;
+    // The same unit must be free for every hour, so each length is checked whole.
+    while (i + free < starts.length && allowed(startsAt, free + 1)) free += 1;
+    return { startsAt: new Date(startsAt).toISOString(), endsAt: new Date(startsAt + 3_600_000).toISOString(), free };
+  });
 }
 
 /**
@@ -208,13 +232,19 @@ export async function holdRange(
     variantId: string;
     startsAt: string;
     count: number;
+    period: RentalPeriod;
     resourceId: string | null;
     orderId: string;
     orderLineId: string;
     holdMinutes: number;
   },
 ): Promise<string | null> {
-  const free = await rangeFromLine(tx, storeId, line.productId, line.startsAt, line.count, line.resourceId);
+  const free = await checkRange(tx, storeId, line.productId, {
+    startsAt: line.startsAt,
+    count: line.count,
+    unitId: line.resourceId,
+    period: line.period,
+  });
   if (!free.ok) return null;
   const from = new Date(free.startsAt).toISOString();
   const to = new Date(free.endsAt).toISOString();

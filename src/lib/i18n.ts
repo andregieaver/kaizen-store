@@ -438,6 +438,13 @@ const messages = {
       rental: (from: string, to: string) => `Henting ${from}, levering ${to}`,
       nights: (n: number) => (n === 1 ? "1 natt" : `${n} netter`),
       days: (n: number) => (n === 1 ? "1 dag" : `${n} dager`),
+      hours: (n: number) => (n === 1 ? "1 time" : `${n} timer`),
+      halfDay: "Halv dag",
+      pickDay: "Velg dag.",
+      pickTime: "Velg tid.",
+      chooseTime: "Velg tid",
+      howLong: "Antall timer",
+      noTimes: "Ingen ledige tider denne dagen.",
       chooseDates: "Velg datoer",
       pickArrival: "Velg ankomstdag.",
       pickDeparture: "Velg avreisedag.",
@@ -466,7 +473,7 @@ const messages = {
       cancelUntil: (when: string) => `Kan avbestilles til ${when}.`,
     },
     storeSummary: (name: string, country: string) => `${name}: nettbutikk med levering i ${country}. Priser inkludert mva.`,
-    options: { colour: "Farge", ruling: "Linjer", white: "Hvit", black: "Svart", lined: "Linjert", dotted: "Prikket" },
+    options: { colour: "Farge", ruling: "Linjer", white: "Hvit", black: "Svart", lined: "Linjert", dotted: "Prikket", rental: "Leie", day: "Hele dager", halfDay: "Halv dag", hour: "Per time" },
   },
   sv: {
     checkout: "Till kassan",
@@ -903,6 +910,13 @@ const messages = {
       rental: (from: string, to: string) => `Hämtning ${from}, återlämning ${to}`,
       nights: (n: number) => (n === 1 ? "1 natt" : `${n} nätter`),
       days: (n: number) => (n === 1 ? "1 dag" : `${n} dagar`),
+      hours: (n: number) => (n === 1 ? "1 timme" : `${n} timmar`),
+      halfDay: "Halvdag",
+      pickDay: "Välj dag.",
+      pickTime: "Välj tid.",
+      chooseTime: "Välj tid",
+      howLong: "Antal timmar",
+      noTimes: "Inga lediga tider den här dagen.",
       chooseDates: "Välj datum",
       pickArrival: "Välj ankomstdag.",
       pickDeparture: "Välj avresedag.",
@@ -931,7 +945,7 @@ const messages = {
       cancelUntil: (when: string) => `Kan avbokas till ${when}.`,
     },
     storeSummary: (name: string, country: string) => `${name}: webbutik med leverans i ${country}. Priser inklusive moms.`,
-    options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad" },
+    options: { colour: "Färg", ruling: "Linjering", white: "Vit", black: "Svart", lined: "Linjerad", dotted: "Prickad", rental: "Hyra", day: "Hela dagar", halfDay: "Halvdag", hour: "Per timme" },
   },
   da: {
     checkout: "Til kassen",
@@ -1366,6 +1380,13 @@ const messages = {
       rental: (from: string, to: string) => `Afhentning ${from}, aflevering ${to}`,
       nights: (n: number) => (n === 1 ? "1 nat" : `${n} nætter`),
       days: (n: number) => (n === 1 ? "1 dag" : `${n} dage`),
+      hours: (n: number) => (n === 1 ? "1 time" : `${n} timer`),
+      halfDay: "Halv dag",
+      pickDay: "Vælg dag.",
+      pickTime: "Vælg tid.",
+      chooseTime: "Vælg tid",
+      howLong: "Antal timer",
+      noTimes: "Ingen ledige tider denne dag.",
       chooseDates: "Vælg datoer",
       pickArrival: "Vælg ankomstdag.",
       pickDeparture: "Vælg afrejsedag.",
@@ -1394,7 +1415,7 @@ const messages = {
       cancelUntil: (when: string) => `Kan afbestilles indtil ${when}.`,
     },
     storeSummary: (name: string, country: string) => `${name}: webshop med levering i ${country}. Priser inkl. moms.`,
-    options: { colour: "Farve", ruling: "Linjer", white: "Hvid", black: "Sort", lined: "Linjeret", dotted: "Prikket" },
+    options: { colour: "Farve", ruling: "Linjer", white: "Hvid", black: "Sort", lined: "Linjeret", dotted: "Prikket", rental: "Leje", day: "Hele dage", halfDay: "Halv dag", hour: "Pr. time" },
   },
   en: {
     checkout: "Checkout",
@@ -1829,6 +1850,13 @@ const messages = {
       rental: (from: string, to: string) => `Pick-up ${from}, return ${to}`,
       nights: (n: number) => (n === 1 ? "1 night" : `${n} nights`),
       days: (n: number) => (n === 1 ? "1 day" : `${n} days`),
+      hours: (n: number) => (n === 1 ? "1 hour" : `${n} hours`),
+      halfDay: "Half day",
+      pickDay: "Choose the day.",
+      pickTime: "Choose a time.",
+      chooseTime: "Choose a time",
+      howLong: "Hours",
+      noTimes: "No free times that day.",
       chooseDates: "Choose dates",
       pickArrival: "Choose the day you arrive.",
       pickDeparture: "Choose the day you leave.",
@@ -1857,7 +1885,7 @@ const messages = {
       cancelUntil: (when: string) => `Can be cancelled until ${when}.`,
     },
     storeSummary: (name: string, country: string) => `${name}: online store delivering in ${country}. Prices include VAT.`,
-    options: { colour: "Colour", ruling: "Ruling", white: "White", black: "Black", lined: "Lined", dotted: "Dotted" },
+    options: { colour: "Colour", ruling: "Ruling", white: "White", black: "Black", lined: "Lined", dotted: "Dotted", rental: "Rental", day: "Whole days", halfDay: "Half day", hour: "By the hour" },
   },
 };
 
@@ -1871,6 +1899,12 @@ export function t(lang: string): Messages {
 }
 
 /** Human label for a variant option such as `{ colour: "white" }`. */
+/** A variant's option values as the shopper reads them: the demo's "white" is "Hvit" in Norwegian. Names stay as they are. */
+export function shownOptions(m: Messages, options: Record<string, string>): Record<string, string> {
+  const labels = m.options as Record<string, string>;
+  return Object.fromEntries(Object.entries(options).map(([name, value]) => [name, labels[value] ?? value]));
+}
+
 export function optionLabel(m: Messages, options: Record<string, string>): string {
   const labels = m.options as Record<string, string>;
   return Object.entries(options)

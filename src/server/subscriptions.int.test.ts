@@ -93,7 +93,7 @@ describe("placing a subscription order", () => {
     // 129,00 less 10 % = 116,10 each; the tote is bought once.
     expect(order.lines).toEqual([
       { title: "Demo: Handlenett i lerret", unitPriceMinor: 19900, quantity: 1, recurring: false, dueNowMinor: 19900, deposit: false },
-      { title: "Demo: Notatbok A5 (lined)", unitPriceMinor: 11610, quantity: 2, recurring: true, dueNowMinor: 23220, deposit: false },
+      { title: "Demo: Notatbok A5 (Linjert)", unitPriceMinor: 11610, quantity: 2, recurring: true, dueNowMinor: 23220, deposit: false },
     ]);
     expect(order.subscription).toMatchObject({ interval: "month", intervalCount: 1, shippingMinor: 9900 });
     expect(order.shippingMinor).toBe(9900);

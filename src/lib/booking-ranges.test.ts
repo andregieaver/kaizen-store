@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import { freeUnits, occupiedDates, openDates, rangeCount, rangeOpen, rangeProblem, rangeSpan, type RangeRules } from "./booking-ranges";
+import {
+  freeUnits,
+  halfDays,
+  hourStarts,
+  occupiedDates,
+  openDates,
+  peakBusy,
+  periodProblem,
+  periodSpan,
+  rangeCount,
+  rangeEndsAt,
+  rangeOpen,
+  rangeProblem,
+  rangeSpan,
+  type RangeRules,
+} from "./booking-ranges";
+import { zonedTime } from "./booking-slots";
 
 const OSLO = "Europe/Oslo";
 const stay: RangeRules = {
@@ -80,5 +96,72 @@ describe("rangeOpen", () => {
   });
   it("leaves dates past the calendar to be checked when chosen", () => {
     expect(rangeOpen("stay", "2026-10-02", "2026-10-02", [])).toBe(true);
+  });
+});
+
+describe("renting by the half day or hour (D69)", () => {
+  const at = (date: string, time: string) => zonedTime(date, time, OSLO);
+  const now = Date.parse("2026-10-01T06:00:00Z");
+
+  it("splits a day at its middle, and offers whole hours from pick-up that end by return", () => {
+    expect(halfDays("2026-10-05", rental, OSLO)).toEqual([
+      { startsAt: at("2026-10-05", "09:00"), endsAt: at("2026-10-05", "13:00") },
+      { startsAt: at("2026-10-05", "13:00"), endsAt: at("2026-10-05", "17:00") },
+    ]);
+    expect(halfDays("2026-10-05", { checkInTime: "09:00", checkOutTime: "16:30" }, OSLO)[0].endsAt).toBe(at("2026-10-05", "12:45"));
+    const starts = hourStarts("2026-10-05", rental, OSLO);
+    expect(starts).toHaveLength(8);
+    expect([starts[0], starts[7]]).toEqual([at("2026-10-05", "09:00"), at("2026-10-05", "16:00")]);
+  });
+
+  it("takes only times a variant offers, and hours that end by return", () => {
+    expect(periodSpan("half_day", "rental", at("2026-10-05", "13:00"), 1, rental, OSLO)).toEqual({
+      startsAt: at("2026-10-05", "13:00"),
+      endsAt: at("2026-10-05", "17:00"),
+    });
+    expect(periodSpan("half_day", "rental", at("2026-10-05", "11:00"), 1, rental, OSLO)).toBeNull();
+    expect(periodSpan("half_day", "rental", at("2026-10-05", "09:00"), 2, rental, OSLO)).toBeNull();
+    expect(periodSpan("hour", "rental", at("2026-10-05", "14:00"), 3, rental, OSLO)).toEqual({
+      startsAt: at("2026-10-05", "14:00"),
+      endsAt: at("2026-10-05", "17:00"),
+    });
+    expect(periodSpan("hour", "rental", at("2026-10-05", "15:00"), 3, rental, OSLO)).toBeNull();
+    expect(periodSpan("hour", "rental", at("2026-10-05", "14:30"), 1, rental, OSLO)).toBeNull();
+    // Whole days start at pick-up.
+    expect(periodSpan("day", "rental", at("2026-10-05", "09:00"), 2, rental, OSLO)?.endsAt).toBe(at("2026-10-06", "17:00"));
+    expect(periodSpan("day", "rental", at("2026-10-05", "10:00"), 2, rental, OSLO)).toBeNull();
+    expect(rangeEndsAt("rental", new Date(at("2026-10-05", "10:00")).toISOString(), 2, rental, OSLO, "hour")).toBe(
+      new Date(at("2026-10-05", "12:00")).toISOString(),
+    );
+  });
+
+  it("keeps an hour's rental to the notice and how far ahead, but not to the shortest whole days", () => {
+    const rules = { ...rental, minNights: 2, minNoticeMinutes: 60, maxDaysAhead: 30 };
+    expect(periodProblem("hour", at("2026-10-05", "10:00"), 1, rules, OSLO, now)).toBeNull();
+    expect(periodProblem("day", at("2026-10-05", "09:00"), 1, rules, OSLO, now)).toBe("length");
+    expect(periodProblem("hour", at("2026-10-01", "09:00"), 1, { ...rules, minNoticeMinutes: 90 }, OSLO, now)).toBe("notice");
+    expect(periodProblem("hour", at("2026-11-15", "09:00"), 1, rules, OSLO, now)).toBe("ahead");
+    expect(periodProblem("hour", at("2026-10-05", "10:15"), 1, rules, OSLO, now)).toBe("length");
+  });
+
+  it("counts a unit's bookings at their busiest moment, so ones after another do not add up", () => {
+    const span = { startsAt: at("2026-10-05", "09:00"), endsAt: at("2026-10-05", "12:00") };
+    const hourly = [
+      { from: at("2026-10-05", "09:00"), to: at("2026-10-05", "10:00") },
+      { from: at("2026-10-05", "10:00"), to: at("2026-10-05", "11:00") },
+      { from: at("2026-10-05", "11:00"), to: at("2026-10-05", "12:00") },
+    ];
+    expect(peakBusy(hourly, span)).toBe(1);
+    expect(freeUnits([{ id: "bikes", capacity: 2, busy: hourly }], span)).toEqual(["bikes"]);
+    expect(peakBusy([...hourly, { from: at("2026-10-05", "10:30"), to: at("2026-10-05", "13:00") }], span)).toBe(2);
+    expect(peakBusy([], span)).toBe(0);
+  });
+
+  it("opens a date when some hour of it is free", () => {
+    const busyMorning = [{ from: at("2026-10-05", "09:00"), to: at("2026-10-05", "16:00") }];
+    const bike = { id: "bike", capacity: 1, busy: busyMorning };
+    expect(openDates("2026-10-05", 1, [bike], rental, OSLO, now, "day")[0].open).toBe(false);
+    expect(openDates("2026-10-05", 1, [bike], rental, OSLO, now, "half_day")[0].open).toBe(false);
+    expect(openDates("2026-10-05", 1, [bike], rental, OSLO, now, "hour")[0].open).toBe(true);
   });
 });

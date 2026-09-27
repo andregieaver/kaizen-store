@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useActionState, useState, useTransition, type ReactNode } from "react";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
-import { rangeDatesAction } from "@/app/s/[store]/[market]/p/actions";
-import { rangeCount, rangeOpen, type RangeCalendar, type RangeKind } from "@/lib/booking-ranges";
+import { rangeDatesAction, rentalTimesAction, type RentalTimeChoice } from "@/app/s/[store]/[market]/p/actions";
+import { rangeCount, rangeOpen, type RangeCalendar, type RangeKind, type RentalPeriod } from "@/lib/booking-ranges";
 import { addDays, zonedTime } from "@/lib/booking-slots";
 
 import type { AddToCartLabels } from "./add-to-cart";
@@ -30,6 +30,14 @@ export type RangePickerLabels = AddToCartLabels & {
   lengthMany: string;
   tooShort: string;
   tooLong: string;
+  /** Rentals by the half day or hour (D69). */
+  pickDay: string;
+  pickTime: string;
+  chooseTime: string;
+  howLong: string;
+  noTimes: string;
+  hourOne: string;
+  hourMany: string;
 };
 
 const initialState: AddToCartState = { outcome: "idle", quantity: 0 };
@@ -37,8 +45,9 @@ const initialState: AddToCartState = { outcome: "idle", quantity: 0 };
 /**
  * Choosing a stay's nights or a rental's days (D67): four weeks of dates,
  * the first and the last, then into the cart as that many nights or days
- * from check-in. The server says which dates are free and checks the whole
- * range again; checkout holds it.
+ * from check-in. A rental's variant by the half day or hour (D69) takes one
+ * date, then a half or a start time and how many hours. The server says
+ * what is free and checks it again; checkout holds it.
  */
 export function RangePicker({
   store,
@@ -60,7 +69,7 @@ export function RangePicker({
   cartHref: string;
   productId: string;
   kind: RangeKind;
-  variants: { id: string; label: string; price: ReactNode }[];
+  variants: { id: string; label: string; price: ReactNode; period: RentalPeriod }[];
   initial: RangeCalendar;
   checkInTime: string;
   timeZone: string;
@@ -75,29 +84,61 @@ export function RangePicker({
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
   const [loading, startLoading] = useTransition();
   const stay = kind === "stay";
+  const period: RentalPeriod = stay ? "day" : (variants.find((v) => v.id === variantId)?.period ?? "day");
+  const byDay = period === "day";
+  // A rental by the half day or hour: its date's times, the chosen one, and how many hours.
+  const [times, setTimes] = useState<RentalTimeChoice[] | null>(null);
+  const [time, setTime] = useState<string | null>(null);
+  const [hours, setHours] = useState(1);
 
-  async function fetchDates(from: string | null) {
-    const next = await rangeDatesAction(store, market, { productId, from });
+  async function fetchDates(from: string | null, forPeriod: RentalPeriod = period) {
+    const next = await rangeDatesAction(store, market, { productId, from, period: forPeriod });
     if (next) setCalendar(next);
   }
   const load = (from: string) => startLoading(() => fetchDates(from));
+
+  function clear() {
+    setStart(null);
+    setEnd(null);
+    setTimes(null);
+    setTime(null);
+    setHours(1);
+  }
+
+  function chooseVariant(id: string) {
+    const next = variants.find((v) => v.id === id)?.period ?? "day";
+    setVariantId(id);
+    if (next !== period) {
+      clear();
+      startLoading(() => fetchDates(calendar.from, next));
+    }
+  }
+
+  function chooseDay(date: string) {
+    clear();
+    setStart(date);
+    if (period === "day") return;
+    const forPeriod = period;
+    startLoading(async () => setTimes(await rentalTimesAction(store, market, { productId, date, period: forPeriod })));
+  }
 
   const [state, action, pending] = useActionState(async (previous: AddToCartState, form: FormData) => {
     const result = await addToCart(previous, form);
     // Taken meanwhile: show the dates as they are now, and choose again.
     if (result.outcome === "slot_taken") {
       await fetchDates(calendar.from);
-      setStart(null);
-      setEnd(null);
+      clear();
     }
     return result;
   }, initialState);
   useOpenCartAfterAdd(openCart, cartHref, state);
 
-  const count = start && end ? rangeCount(kind, start, end) : 0;
-  const lengthProblem = count > 0 && count < minNights ? labels.tooShort : count > maxNights ? labels.tooLong : null;
+  const count = byDay ? (start && end ? rangeCount(kind, start, end) : 0) : time ? (period === "hour" ? hours : 1) : 0;
+  const lengthProblem = byDay && count > 0 && count < minNights ? labels.tooShort : byDay && count > maxNights ? labels.tooLong : null;
+  const chosenTime = times?.find((t) => t.startsAt === time) ?? null;
 
   function choose(date: string) {
+    if (!byDay) return chooseDay(date);
     // A date that cannot end this range starts a new one.
     if (!start || end || date < start || (stay && date === start) || !rangeOpen(kind, start, date, calendar.dates)) {
       setStart(date);
@@ -110,12 +151,12 @@ export function RangePicker({
   /** Whether a date can be chosen now: a free first night or day, or an end the whole range fits (else it starts anew). */
   function selectable(d: { date: string; open: boolean }): boolean {
     if (d.date < calendar.today) return false;
-    if (!start || end || d.date < start) return d.open;
+    if (!byDay || !start || end || d.date < start) return d.open;
     if (stay && d.date === start) return true;
     return rangeOpen(kind, start, d.date, calendar.dates) || d.open;
   }
 
-  const inRange = (date: string) => Boolean(start && end && date >= start && date <= end);
+  const inRange = (date: string) => Boolean(byDay && start && end && date >= start && date <= end);
   const message =
     state.outcome === "added" || state.outcome === "capped"
       ? labels.added
@@ -126,8 +167,30 @@ export function RangePicker({
           : state.outcome === "error"
             ? labels.tryAgain
             : null;
-  const prompt = !start ? labels.pickStart : !end ? labels.pickEnd : lengthProblem;
-  const ready = Boolean(start && end && !lengthProblem && rangeOpen(kind, start, end, calendar.dates));
+  const prompt = byDay
+    ? !start
+      ? labels.pickStart
+      : !end
+        ? labels.pickEnd
+        : lengthProblem
+    : !start
+      ? labels.pickDay
+      : times && times.every((t) => t.free === 0)
+        ? labels.noTimes
+        : !time
+          ? labels.pickTime
+          : null;
+  const ready = byDay
+    ? Boolean(start && end && !lengthProblem && rangeOpen(kind, start, end, calendar.dates))
+    : Boolean(chosenTime && chosenTime.free >= count && count > 0);
+  const startsAt = byDay
+    ? ready && start
+      ? new Date(zonedTime(start, checkInTime, timeZone)).toISOString()
+      : null
+    : ready
+      ? time
+      : null;
+  const lengthLabel = (n: number, one: string, many: string) => (n === 1 ? one : many.replace("#", String(n)));
 
   return (
     <div className="flex flex-col gap-4" data-range-picker>
@@ -140,7 +203,7 @@ export function RangePicker({
               className="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg border border-border p-3 has-checked:border-foreground"
             >
               <span className="flex items-center gap-2">
-                <input type="radio" name="range-option" checked={variantId === variant.id} onChange={() => setVariantId(variant.id)} />
+                <input type="radio" name="range-option" checked={variantId === variant.id} onChange={() => chooseVariant(variant.id)} />
                 {variant.label}
               </span>
               {variant.price}
@@ -150,7 +213,7 @@ export function RangePicker({
       )}
 
       <fieldset className="flex flex-col gap-3" aria-busy={loading}>
-        <legend className="mb-2 font-medium">{labels.chooseDates}</legend>
+        <legend className="mb-2 font-medium">{byDay ? labels.chooseDates : labels.pickDay.replace(/\.$/, "")}</legend>
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
@@ -197,7 +260,7 @@ export function RangePicker({
         </div>
       </fieldset>
 
-      {start && (
+      {byDay && start && (
         <dl className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <dt className="text-muted">{labels.start}</dt>
@@ -207,8 +270,47 @@ export function RangePicker({
             <dt className="text-muted">{labels.end}</dt>
             <dd>{end ? (calendar.dates.find((d) => d.date === end)?.label ?? end) : "–"}</dd>
           </div>
-          {count > 0 && <dd className="col-span-2 font-medium">{count === 1 ? labels.lengthOne : labels.lengthMany.replace("#", String(count))}</dd>}
+          {count > 0 && <dd className="col-span-2 font-medium">{lengthLabel(count, labels.lengthOne, labels.lengthMany)}</dd>}
         </dl>
+      )}
+
+      {!byDay && start && times && (
+        <fieldset className="flex flex-col gap-3" aria-busy={loading}>
+          <legend className="mb-2 font-medium">{labels.chooseTime}</legend>
+          <div className={`grid gap-2 ${period === "half_day" ? "grid-cols-2" : "grid-cols-4 sm:grid-cols-5"}`}>
+            {times.map((t) => (
+              <button
+                key={t.startsAt}
+                type="button"
+                aria-pressed={t.startsAt === time}
+                disabled={loading || t.free === 0}
+                onClick={() => {
+                  setTime(t.startsAt);
+                  setHours((h) => Math.min(Math.max(1, h), t.free));
+                }}
+                className="min-h-11 rounded-button border border-border text-sm tabular-nums disabled:opacity-30 aria-pressed:bg-accent aria-pressed:text-accent-foreground"
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {period === "hour" && chosenTime && (
+            <label className="flex max-w-40 flex-col gap-1 text-sm">
+              <span className="font-medium">{labels.howLong}</span>
+              <select
+                value={hours}
+                onChange={(e) => setHours(Number(e.target.value))}
+                className="min-h-11 rounded-md border border-border bg-background px-2"
+              >
+                {Array.from({ length: chosenTime.free }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {lengthLabel(n, labels.hourOne, labels.hourMany)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </fieldset>
       )}
 
       <form action={action} className="flex flex-col items-start gap-1">
@@ -216,9 +318,7 @@ export function RangePicker({
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variantId} />
         <input type="hidden" name="quantity" value={Math.max(1, count)} />
-        {ready && start && (
-          <input type="hidden" name="startsAt" value={new Date(zonedTime(start, checkInTime, timeZone)).toISOString()} />
-        )}
+        {startsAt && <input type="hidden" name="startsAt" value={startsAt} />}
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
@@ -230,10 +330,7 @@ export function RangePicker({
           {start && (
             <button
               type="button"
-              onClick={() => {
-                setStart(null);
-                setEnd(null);
-              }}
+              onClick={clear}
               className="min-h-11 rounded-button border border-border px-3 text-sm"
             >
               {labels.clear}

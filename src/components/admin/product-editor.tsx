@@ -621,6 +621,7 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   hsCode: null,
   originCountry: null,
   delivery,
+  rentalPeriod: "day",
 });
 
 /** Variants for a new set of options, keeping what was typed for combinations that remain. */
@@ -837,6 +838,11 @@ function VariantsSection({
                   Delivery
                 </th>
               )}
+              {product.kind === "rental" && (
+                <th scope="col" className="py-2 pr-3 font-medium">
+                  Rented by
+                </th>
+              )}
               {!allDigital && (
                 <th scope="col" className="py-2 pr-3 font-medium">
                   Stock
@@ -869,6 +875,7 @@ function VariantsSection({
                   markets={context.markets}
                   countries={countries}
                   showDelivery={mixed}
+                  showPeriod={product.kind === "rental"}
                   showStock={!allDigital}
                   onChange={(change) => setVariant(index, change)}
                 />
@@ -896,6 +903,7 @@ function VariantRow({
   markets,
   countries,
   showDelivery,
+  showPeriod = false,
   showStock,
   onChange,
 }: {
@@ -904,13 +912,15 @@ function VariantRow({
   markets: EditorContext["markets"];
   countries: CountryOption[];
   showDelivery: boolean;
+  /** A rental's variants are each booked by the day, half day or hour (D69). */
+  showPeriod?: boolean;
   showStock: boolean;
   onChange: (change: Partial<VariantInput>) => void;
 }) {
   const cell = "min-h-9 w-full rounded-md border border-border bg-background px-2 text-sm";
   // Nothing to weigh or send through customs for a download or an appointment.
   const digital = variant.delivery !== "physical";
-  const columns = 3 + Number(showDelivery) + Number(showStock) + markets.length;
+  const columns = 3 + Number(showDelivery) + Number(showPeriod) + Number(showStock) + markets.length;
   return (
     <>
       <tr className="border-b border-border align-top">
@@ -936,6 +946,20 @@ function VariantRow({
             >
               <option value="physical">Physical</option>
               <option value="digital">Digital</option>
+            </select>
+          </td>
+        )}
+        {showPeriod && (
+          <td className="py-2 pr-3">
+            <select
+              value={variant.rentalPeriod}
+              onChange={(e) => onChange({ rentalPeriod: e.target.value as VariantInput["rentalPeriod"] })}
+              aria-label={`How ${name} is rented`}
+              className={`${cell} w-32`}
+            >
+              <option value="day">Whole days</option>
+              <option value="half_day">Half day</option>
+              <option value="hour">By the hour</option>
             </select>
           </td>
         )}
@@ -1690,7 +1714,7 @@ function RangeSection({
       <p className="mb-4 text-sm text-muted">
         {stay
           ? "Guests choose their arrival and departure dates. The price is per night, and each booking takes one of the rooms or homes below."
-          : "Shoppers choose the first and last day. The price is per day, and each booking takes one of the items below."}
+          : "Shoppers choose the first and last day, or, for a variant rented by the half day or hour (set under Variants), a day and a time. Each variant's price is per day, half day or hour, and each booking takes one of the items below. Half days split the day between pick-up and return; hours start on the hour from pick-up."}
       </p>
       <div className="grid gap-4 sm:grid-cols-3">
         <label className={label}>
@@ -1703,7 +1727,7 @@ function RangeSection({
         </label>
         <span />
         <label className={label}>
-          Shortest <span className={hint}>({nights})</span>
+          Shortest <span className={hint}>({stay ? nights : "whole days"})</span>
           <input
             type="number"
             min={1}
@@ -1714,7 +1738,7 @@ function RangeSection({
           />
         </label>
         <label className={label}>
-          Longest <span className={hint}>({nights})</span>
+          Longest <span className={hint}>({stay ? nights : "whole days"})</span>
           <input
             type="number"
             min={1}

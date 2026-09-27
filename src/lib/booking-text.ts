@@ -3,6 +3,7 @@
  * stay's check-in and check-out (a rental's pick-up and return) and which
  * room or item, in the store's time zone.
  */
+import type { RentalPeriod } from "./booking-ranges";
 import { formatBookingTime } from "./booking-slots";
 import type { Messages } from "./i18n";
 
@@ -29,3 +30,11 @@ export function bookingWhen(booking: ShownBooking, locale: string, m: Messages):
 /** Whether a booking is by the night or the day (D67), not a time. */
 export const isRange = (booking: { kind: ShownBooking["kind"] } | null | undefined): boolean =>
   booking?.kind === "stay" || booking?.kind === "rental";
+
+/** How long a stay or rental is, from its line's quantity: nights, days, a half day, or hours (D69). */
+export function rangeLength(kind: ShownBooking["kind"], period: RentalPeriod, quantity: number, m: Messages): string {
+  if (kind === "stay") return m.stay.nights(quantity);
+  if (period === "half_day") return m.stay.halfDay;
+  if (period === "hour") return m.stay.hours(quantity);
+  return m.stay.days(quantity);
+}

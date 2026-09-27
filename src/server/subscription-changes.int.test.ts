@@ -205,7 +205,7 @@ describe("changing a running subscription", () => {
         id: "si_notebook",
         quantity: 1,
         current_period_end: periodEnd,
-        price: { product: { id: "prod_notebook", name: "Demo: Notatbok A5 (lined)", deleted: false } },
+        price: { product: { id: "prod_notebook", name: "Demo: Notatbok A5 (Linjert)", deleted: false } },
       },
       {
         id: "si_shipping",

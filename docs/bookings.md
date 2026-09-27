@@ -123,14 +123,16 @@ Shoppers cancel, but do not move, stays and rentals. B3b is done (D68):
 blocked dates on each room, item or member of staff (time off), other
 sites' calendars read in every 15 minutes, and each room's or item's taken
 days published at a secret iCal address (`src/server/calendar-sync.ts`,
-pure parts in `src/lib/calendar-sync.ts`). B3c (seasonal prices, cleaning
+pure parts in `src/lib/calendar-sync.ts`). Rentals can also be offered by
+the half day or hour, per variant (D69). B3c (seasonal prices, cleaning
 fee) is next.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`
 with a member of staff (`commerce.add_demo_appointment()`), stays have
 `Demo: Hytte ved vannet` (`commerce.add_demo_stay()`) and rentals
-`Demo: Leie av elsykkel` with three bikes (`commerce.add_demo_rental()`).
+`Demo: Leie av elsykkel` with three bikes, rented by the day, half day or
+hour (`commerce.add_demo_rental()`, D69).
 
 Each phase ends with its migrations applied, tests and a decision entry, as
 before.

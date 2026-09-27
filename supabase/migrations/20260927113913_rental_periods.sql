@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."product_variants" ADD COLUMN "rental_period" text DEFAULT 'day' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."product_variants" ADD CONSTRAINT "product_variants_rental_period" CHECK ("commerce"."product_variants"."rental_period" in ('day', 'half_day', 'hour'));

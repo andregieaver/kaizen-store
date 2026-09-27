@@ -79,7 +79,7 @@ describe("placing an order", () => {
     const { order } = result;
     expect(order.number).toBe("1001");
     expect(order.lines).toEqual([
-      { title: "Demo: Keramikkopp (white)", unitPriceMinor: 24900, quantity: 2, recurring: false, dueNowMinor: 49800, deposit: false },
+      { title: "Demo: Keramikkopp (Hvit)", unitPriceMinor: 24900, quantity: 2, recurring: false, dueNowMinor: 49800, deposit: false },
     ]);
     expect(order).toMatchObject({ dueNowMinor: 59700, balanceMinor: 0 });
     expect(order.shippingMinor).toBe(9900);

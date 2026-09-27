@@ -701,6 +701,20 @@
       "when": 1790508070176,
       "tag": "20260927112110_calendar_sync_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1790509153610,
+      "tag": "20260927113913_rental_periods",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1790509155472,
+      "tag": "20260927113915_rental_periods_rules",
+      "breakpoints": true
     }
   ]
 }

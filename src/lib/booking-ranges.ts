@@ -33,11 +33,16 @@ export function rangeSpan(kind: RangeKind, startDate: string, count: number, rul
   return { startsAt, endsAt, endDate };
 }
 
-/** The units with room for the whole span: fewer overlapping bookings than their capacity. */
+/** The most bookings on a unit at any one moment of a span: counted where each one starts, or at the span's start. */
+export function peakBusy(busy: Busy[], span: { startsAt: number; endsAt: number }): number {
+  const overlapping = busy.filter((b) => b.from < span.endsAt && b.to > span.startsAt);
+  const points = [span.startsAt, ...overlapping.map((b) => Math.max(b.from, span.startsAt))];
+  return Math.max(0, ...points.map((point) => overlapping.filter((b) => b.from <= point && b.to > point).length));
+}
+
+/** The units with room for the whole span: at every moment, fewer bookings than their capacity. */
 export function freeUnits(units: RangeUnit[], span: { startsAt: number; endsAt: number }): string[] {
-  return units
-    .filter((unit) => unit.busy.filter((b) => b.from < span.endsAt && b.to > span.startsAt).length < unit.capacity)
-    .map((unit) => unit.id);
+  return units.filter((unit) => peakBusy(unit.busy, span) < unit.capacity).map((unit) => unit.id);
 }
 
 export type RangeProblem = "length" | "notice" | "ahead" | "order";
@@ -56,10 +61,113 @@ export function rangeProblem(startDate: string, count: number, rules: RangeRules
   return null;
 }
 
+/** How a rental's variant is booked (D69): whole days, half days or hours. Stays are always by the night. */
+export const RENTAL_PERIODS = ["day", "half_day", "hour"] as const;
+export type RentalPeriod = (typeof RENTAL_PERIODS)[number];
+export const parseRentalPeriod = (value: unknown): RentalPeriod =>
+  RENTAL_PERIODS.find((p) => p === value) ?? "day";
+
+const HOUR = 60 * MINUTE;
+const minutesOf = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
+const timeOf = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+type Times = Pick<RangeRules, "checkInTime" | "checkOutTime">;
+
 /**
- * For each date from `from`, whether some unit is free that night (a
- * stay) or day (a rental): for the calendar, which shows what is taken.
- * Whether a whole range is free is checked when it is chosen.
+ * A day's two halves between pick-up and return: the morning to the middle
+ * (on a quarter hour) and the afternoon from it. None when the day is shorter
+ * than an hour.
+ */
+export function halfDays(date: string, rules: Times, timeZone: string): { startsAt: number; endsAt: number }[] {
+  const open = minutesOf(rules.checkInTime);
+  const close = minutesOf(rules.checkOutTime);
+  if (close - open < 60) return [];
+  const middle = open + Math.floor((close - open) / 2 / 15) * 15;
+  const at = (minutes: number) => zonedTime(date, timeOf(minutes), timeZone);
+  return [
+    { startsAt: at(open), endsAt: at(middle) },
+    { startsAt: at(middle), endsAt: at(close) },
+  ];
+}
+
+/** The whole hours from pick-up that an hour's rental can start at, the last an hour before return. */
+export function hourStarts(date: string, rules: Times, timeZone: string): number[] {
+  const open = minutesOf(rules.checkInTime);
+  const close = minutesOf(rules.checkOutTime);
+  const starts: number[] = [];
+  for (let m = open; m + 60 <= close; m += 60) starts.push(zonedTime(date, timeOf(m), timeZone));
+  return starts;
+}
+
+/**
+ * The instants a rental of `count` periods from `startsAt` takes, or null
+ * when that is not a time its variant can be booked: days from pick-up on
+ * the first day, one half of a day, or whole hours from pick-up, ending by
+ * return time.
+ */
+export function periodSpan(
+  period: RentalPeriod,
+  kind: RangeKind,
+  startsAt: number,
+  count: number,
+  rules: Times,
+  timeZone: string,
+): { startsAt: number; endsAt: number } | null {
+  if (!Number.isInteger(count) || count < 1) return null;
+  const date = zonedDate(startsAt, timeZone);
+  if (kind === "stay" || period === "day") {
+    const span = rangeSpan(kind, date, count, rules, timeZone);
+    return span.startsAt === startsAt ? { startsAt: span.startsAt, endsAt: span.endsAt } : null;
+  }
+  if (period === "half_day") {
+    return count === 1 ? (halfDays(date, rules, timeZone).find((h) => h.startsAt === startsAt) ?? null) : null;
+  }
+  if (!hourStarts(date, rules, timeZone).includes(startsAt)) return null;
+  const endsAt = startsAt + count * HOUR;
+  return endsAt <= zonedTime(date, rules.checkOutTime, timeZone) ? { startsAt, endsAt } : null;
+}
+
+/**
+ * Whether a booking of `count` periods from `startsAt` keeps to the rules:
+ * whole days and nights as `rangeProblem()` says; half days and hours at a
+ * time the variant offers, the notice ahead of now, and not beyond how far
+ * ahead bookings are taken.
+ */
+export function periodProblem(
+  period: RentalPeriod,
+  startsAt: number,
+  count: number,
+  rules: RangeRules,
+  timeZone: string,
+  now: number,
+): RangeProblem | null {
+  const date = zonedDate(startsAt, timeZone);
+  if (rules.kind === "stay" || period === "day") {
+    const problem = rangeProblem(date, count, rules, timeZone, now);
+    if (problem) return problem;
+    return periodSpan(period, rules.kind, startsAt, count, rules, timeZone) ? null : "order";
+  }
+  if (!periodSpan(period, rules.kind, startsAt, count, rules, timeZone)) return "length";
+  if (startsAt < now + rules.minNoticeMinutes * MINUTE) return "notice";
+  if (date > addDays(zonedDate(now, timeZone), rules.maxDaysAhead)) return "ahead";
+  return null;
+}
+
+/** The spans a date offers for one period: its night or day, its two halves, or each of its hours. */
+function candidates(period: RentalPeriod, date: string, rules: RangeRules, timeZone: string) {
+  if (rules.kind === "stay" || period === "day") {
+    const span = rangeSpan(rules.kind, date, 1, rules, timeZone);
+    return [{ startsAt: span.startsAt, endsAt: span.endsAt }];
+  }
+  if (period === "half_day") return halfDays(date, rules, timeZone);
+  return hourStarts(date, rules, timeZone).map((startsAt) => ({ startsAt, endsAt: startsAt + HOUR }));
+}
+
+/**
+ * For each date from `from`, whether some unit is free that night (a stay),
+ * that day (a rental by the day), or for some half or hour of it: for the
+ * calendar, which shows what is taken. Whether a whole booking is free is
+ * checked when it is chosen.
  */
 export function openDates(
   from: string,
@@ -68,13 +176,17 @@ export function openDates(
   rules: RangeRules,
   timeZone: string,
   now: number,
+  period: RentalPeriod = "day",
 ): { date: string; open: boolean }[] {
+  const last = addDays(zonedDate(now, timeZone), rules.maxDaysAhead);
   return Array.from({ length: days }, (_, i) => {
     const date = addDays(from, i);
-    const span = rangeSpan(rules.kind, date, 1, rules, timeZone);
-    const tooSoon = span.startsAt < now + rules.minNoticeMinutes * MINUTE;
-    const tooFar = date > addDays(zonedDate(now, timeZone), rules.maxDaysAhead);
-    return { date, open: !tooSoon && !tooFar && freeUnits(units, span).length > 0 };
+    const open =
+      date <= last &&
+      candidates(period, date, rules, timeZone).some(
+        (span) => span.startsAt >= now + rules.minNoticeMinutes * MINUTE && freeUnits(units, span).length > 0,
+      );
+    return { date, open };
   });
 }
 
@@ -101,16 +213,21 @@ export function formatRangeDates(startsAt: string, endsAt: string, locale: strin
   return format.formatRange(new Date(startsAt), new Date(endsAt));
 }
 
-/** A stay's or rental's end from its check-in instant and length: check-out, or return. */
+/** A stay's or rental's end from its start and length: check-out, return, or the end of its half day or hours. */
 export function rangeEndsAt(
   kind: RangeKind,
   startsAt: string,
   count: number,
   rules: Pick<RangeRules, "checkInTime" | "checkOutTime">,
   timeZone: string,
+  period: RentalPeriod = "day",
 ): string {
-  const startDate = zonedDate(Date.parse(startsAt), timeZone);
-  return new Date(rangeSpan(kind, startDate, count, rules, timeZone).endsAt).toISOString();
+  const start = Date.parse(startsAt);
+  const span = periodSpan(period, kind, start, count, rules, timeZone);
+  if (span) return new Date(span.endsAt).toISOString();
+  // Not a time the variant offers (the cart will say so): its days, as a guess.
+  const startDate = zonedDate(start, timeZone);
+  return new Date(rangeSpan(kind, startDate, Math.max(1, count), rules, timeZone).endsAt).toISOString();
 }
 
 /** Four weeks of dates for the product page's calendar, labelled in the shopper's language. */
@@ -155,4 +272,9 @@ export function rangeOpen(kind: RangeKind, startDate: string, endDate: string, d
   const count = rangeCount(kind, startDate, endDate);
   for (let i = 0; i < count; i++) if (known.get(addDays(startDate, i)) === false) return false;
   return true;
+}
+
+/** An instant's time of day where the store is, as "13:00". */
+export function formatClock(iso: string, locale: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", timeZone }).format(new Date(iso));
 }

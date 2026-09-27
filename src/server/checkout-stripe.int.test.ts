@@ -137,7 +137,7 @@ describe("starting checkout", () => {
       integration_identifier: expect.stringMatching(/^kaizen-storefront-[a-z]{8}$/),
       shipping_address_collection: { allowed_countries: ["NO"] },
       line_items: [
-        { quantity: 2, price_data: { currency: "nok", unit_amount: 24900, product_data: { name: "Demo: Keramikkopp (white)" } } },
+        { quantity: 2, price_data: { currency: "nok", unit_amount: 24900, product_data: { name: "Demo: Keramikkopp (Hvit)" } } },
       ],
       shipping_options: [
         { shipping_rate_data: { type: "fixed_amount", display_name: "Frakt", fixed_amount: { amount: 9900, currency: "nok" } } },
@@ -211,12 +211,12 @@ describe("starting checkout", () => {
           metadata: { subscription_id: String(sub.id) },
         },
         line_items: [
-          { quantity: 1, price_data: { unit_amount: 24900, product_data: { name: "Demo: Keramikkopp (white)" } } },
+          { quantity: 1, price_data: { unit_amount: 24900, product_data: { name: "Demo: Keramikkopp (Hvit)" } } },
           {
             quantity: 1,
             price_data: {
               unit_amount: 11610,
-              product_data: { name: "Demo: Notatbok A5 (lined)" },
+              product_data: { name: "Demo: Notatbok A5 (Linjert)" },
               recurring: { interval: "week", interval_count: 2 },
             },
           },

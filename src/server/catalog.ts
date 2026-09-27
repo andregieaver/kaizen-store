@@ -6,6 +6,7 @@ import { connection } from "next/server";
 
 import { db, readDb } from "@/db/client";
 import { parseProductAudience, type ProductAudience } from "@/lib/b2b";
+import { parseRentalPeriod, type RentalPeriod } from "@/lib/booking-ranges";
 import { priceVat, priceView, type PriceView } from "@/lib/pricing";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
@@ -43,6 +44,8 @@ export type ProductVariant = {
   price: PriceView;
   /** Shipped, or downloaded after payment (D24). */
   delivery: Delivery;
+  /** How a rental's variant is booked (D69); "day" for everything else. */
+  rentalPeriod: RentalPeriod;
 };
 
 /** A purchase option for subscribing (D25). */
@@ -216,7 +219,7 @@ export async function getProduct(
       order by position
     `),
     readDb().execute<Row>(sql`
-      select v.id, v.sku, v.gtin, v.options, v.delivery, cp.amount_minor, cp.currency, cp.prior_30d_minor
+      select v.id, v.sku, v.gtin, v.options, v.delivery, v.rental_period, cp.amount_minor, cp.currency, cp.prior_30d_minor
       from commerce.product_variants v
       join commerce.current_prices cp
         on cp.variant_id = v.id and cp.market_code = ${marketCode}
@@ -262,6 +265,7 @@ export async function getProduct(
       options: (v.options ?? {}) as Record<string, string>,
       price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor), vat),
       delivery: parseDelivery(v.delivery),
+      rentalPeriod: parseRentalPeriod(v.rental_period),
     })),
     plans: plans.map((plan) => ({
       id: str(plan.id),

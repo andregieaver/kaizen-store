@@ -337,7 +337,12 @@ async function RangeBooking({
   m: Messages;
 }) {
   await connection();
-  const [offer, month] = await Promise.all([getRangeOffer(store.id, product.id), rangeDates(store.id, product.id)]);
+  // The calendar opens for the first variant: by the day, or (a rental, D69) by the half day or hour.
+  const firstPeriod = product.kind === "rental" ? (product.variants[0]?.rentalPeriod ?? "day") : "day";
+  const [offer, month] = await Promise.all([
+    getRangeOffer(store.id, product.id),
+    rangeDates(store.id, product.id, null, undefined, firstPeriod),
+  ]);
   if (!store.bookingsOn || !offer || !month) return <p>{m.booking.notBookable}</p>;
   const stay = offer.kind === "stay";
   const { rules } = offer;
@@ -384,6 +389,7 @@ async function RangeBooking({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
           price: <Price price={variant.price} locale={market.locale} m={m} />,
+          period: variant.rentalPeriod,
         }))}
         initial={rangeCalendar(month, market.locale)}
         checkInTime={rules.checkInTime}

@@ -333,6 +333,12 @@ of running `playwright install`.
   day), the server side is `src/server/ranges.ts` (`rangeDates()`,
   `freeUnitsFor()`, `holdRange()`); the cart line's quantity is the nights
   or days and `starts_at` the check-in, so prices and VAT need nothing new.
+  A rental's variant is rented by `day`, `half_day` or `hour`
+  (`product_variants.rental_period`, D69): `periodSpan()`/`periodProblem()`
+  say what a start and quantity take, `rentalTimes()` offers a day's halves
+  and hours, and capacity is counted at the busiest moment (`peakBusy()`,
+  `commerce.resource_peak()`). Pass the line's period wherever a span is
+  worked out (`checkRange()`, `holdRange()`, `rangeEndsAt()`).
   Show any booking with `bookingWhen()` (`src/lib/booking-text.ts`); stays
   and rentals are cancelled, never moved.
   Blocks (D68, `commerce.resource_blocks`) close a whole resource: set by

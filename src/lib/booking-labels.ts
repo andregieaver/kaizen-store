@@ -74,5 +74,12 @@ export function rangePickerLabels(m: Messages, stay: boolean, minNights: number,
     lengthMany: stay ? m.stay.nights(2).replace("2", "#") : m.stay.days(2).replace("2", "#"),
     tooShort: m.stay.tooShort(minNights, stay),
     tooLong: m.stay.tooLong(maxNights, stay),
+    pickDay: m.stay.pickDay,
+    pickTime: m.stay.pickTime,
+    chooseTime: m.stay.chooseTime,
+    howLong: m.stay.howLong,
+    noTimes: m.stay.noTimes,
+    hourOne: m.stay.hours(1),
+    hourMany: m.stay.hours(2).replace("2", "#"),
   };
 }

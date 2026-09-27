@@ -879,6 +879,21 @@ describe("new stores from the template", () => {
        where p.store_id = $1 and p.kind in ('stay', 'rental') order by p.kind`,
       [store],
     );
+    expect(
+      (
+        await db.query(
+          `select v.options, v.rental_period, p.amount_minor::int as price from commerce.product_variants v
+           join commerce.products pr on pr.id = v.product_id
+           join commerce.current_prices p on p.variant_id = v.id and p.market_code = 'NO'
+           where v.store_id = $1 and pr.handle = 'demo-sykkelutleie' order by p.amount_minor desc`,
+          [store],
+        )
+      ).rows,
+    ).toEqual([
+      { options: { rental: "day" }, rental_period: "day", price: 45000 },
+      { options: { rental: "halfDay" }, rental_period: "half_day", price: 30000 },
+      { options: { rental: "hour" }, rental_period: "hour", price: 12000 },
+    ]);
     expect(copied.rows).toEqual([
       {
         handle: "demo-sykkelutleie", kind: "rental", status: "active", vat_category: "standard", check_in_time: "09:00",
@@ -952,6 +967,29 @@ describe("stays and rentals (D67)", () => {
     );
     await db.query("delete from commerce.calendar_feeds where id = $1", [feed]);
     expect(await one("select count(*)::int as n from commerce.resource_blocks where resource_id = $1", [room])).toEqual({ n: 1 });
+  });
+
+  it("counts a resource at its busiest moment, so bookings one after another fit beside a longer one (D69)", async () => {
+    const { productId, variantId } = await createProduct();
+    const { id: bikes } = await one<{ id: string }>(
+      "insert into commerce.booking_resources (store_id, kind, name, hours, capacity) values ($1, 'item', 'Sykler', '{}', 2) returning id",
+      [store],
+    );
+    const hold = (from: string, to: string) =>
+      one<{ id: string | null }>(
+        "select commerce.hold_booking($1, $2, $3, $4, $5::timestamptz, $6::timestamptz, $5::timestamptz, $6::timestamptz, now() + interval '15 minutes', null) as id",
+        [store, productId, variantId, bikes, from, to],
+      );
+    expect((await hold("2030-06-01T08:00Z", "2030-06-01T09:00Z")).id).not.toBeNull();
+    expect((await hold("2030-06-01T10:00Z", "2030-06-01T11:00Z")).id).not.toBeNull();
+    // Two bookings in the span, never at once: a third across all of it fits.
+    expect((await hold("2030-06-01T08:00Z", "2030-06-01T11:00Z")).id).not.toBeNull();
+    // Now two at once from 08:00 to 09:00.
+    expect((await hold("2030-06-01T08:30Z", "2030-06-01T09:00Z")).id).toBeNull();
+    expect((await hold("2030-06-01T09:00Z", "2030-06-01T10:00Z")).id).not.toBeNull();
+    expect(
+      await one("select commerce.resource_peak($1, $2, '2030-06-01T07:00Z', '2030-06-01T12:00Z', null) as peak", [store, bikes]),
+    ).toEqual({ peak: 2 });
   });
 });
 
