@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."search_queries" ADD COLUMN "filters" jsonb;

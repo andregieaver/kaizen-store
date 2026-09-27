@@ -816,6 +816,8 @@ export const searchQueries = commerce.table(
     semanticBest: real("semantic_best"),
     /** Results only meaning found, not the words (D74). */
     meaningResults: integer("meaning_results").notNull().default(0),
+    /** What the store's text model understood the search as, when it changed anything (D75): checked filters. */
+    filters: jsonb("filters"),
     createdAt: createdAt(),
   },
   (t) => [

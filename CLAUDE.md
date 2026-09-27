@@ -103,6 +103,13 @@ of running `playwright install`.
   `refreshEmbeddings()` in the five-minute cron and `refreshStoreEmbeddings()`
   after a product is saved; `rankedSearch()` merges keyword and meaning by
   reciprocal rank fusion, and only compares vectors of the same `space`.
+  Query understanding (D75, `src/lib/query-understanding.ts`,
+  `src/server/query-understanding.ts`): the text model turns a search into
+  `SearchFilters`, always through `cleanFilters()` (the store's own slugs,
+  words the shopper typed, prices to minor units in code), applied by
+  `filterClause()`; the model never names products or prices. Change the
+  prompt or filters together with the eval (`src/lib/query-eval.ts`) and
+  run it from the AI pages.
 - AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`): never
   name a provider or model in code. Kaizen's are set at `/admin/platform/ai`,
   a store owner's own at `/admin/{store}/settings/ai` (`commerce.ai_providers`;

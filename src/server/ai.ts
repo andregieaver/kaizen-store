@@ -274,7 +274,7 @@ export type ChatMessage = { role: "system" | "user" | "assistant"; content: stri
 export async function completeText(
   connection: AiConnection,
   messages: ChatMessage[],
-  options: { maxTokens?: number; timeoutMs?: number } = {},
+  options: { maxTokens?: number; timeoutMs?: number; temperature?: number } = {},
 ): Promise<{ text: string; region: string | null }> {
   if (!connection.textModel) throw new AiError("No text model is set.");
   const limit = options.maxTokens ?? 1000;
@@ -286,6 +286,7 @@ export async function completeText(
       messages,
       // OpenAI's newer models take only the second name.
       ...(connection.provider === "openai" ? { max_completion_tokens: limit } : { max_tokens: limit }),
+      ...(options.temperature === undefined ? {} : { temperature: options.temperature }),
       ...gatewayOptions(connection, connection.textEuOnly),
     },
     options.timeoutMs ?? 30_000,

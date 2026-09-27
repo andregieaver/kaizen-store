@@ -3,10 +3,11 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import type { AiTestResult } from "@/components/admin/ai-provider-form";
+import type { AiEvalResult, AiTestResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
 import { ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
+import { runUnderstandingEval } from "@/server/query-understanding";
 
 /** Kaizen's AI provider and models (D73): the default for every store. */
 export async function savePlatformAiAction(_state: FormState, formData: FormData): Promise<FormState> {
@@ -28,4 +29,12 @@ export async function removePlatformAiAction(): Promise<{ ok: true } | { ok: fal
   await removeAiSettings(account.id, null);
   refresh();
   return { ok: true };
+}
+
+/** The query-understanding eval (D75) against Kaizen's saved text model. */
+export async function evalPlatformAiAction(): Promise<AiEvalResult> {
+  await requirePlatformAdmin();
+  const connection = await ownConnection(null);
+  if (!connection?.textModel) return { error: "Save a provider with a text model first." };
+  return runUnderstandingEval(connection);
 }

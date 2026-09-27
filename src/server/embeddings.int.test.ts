@@ -154,8 +154,10 @@ describe("search by meaning (S2, D74)", () => {
     // No product says "drikke" or "te": keyword search finds nothing.
     expect(await search.matchingIds({ storeId, market: no }, "noe å drikke te av", 10, false)).toEqual([]);
     const ranked = await search.rankedSearch({ storeId, market: no }, "noe å drikke te av", 10, await meaningOf("noe å drikke te av"));
-    expect(handles(ranked.ids)).toEqual(["demo-keramikkopp"]);
-    expect(ranked.meaningOnly).toBe(1);
+    // The mug, and nothing unrelated (the template may hold other drinks, such as coffee).
+    expect(handles(ranked.ids)).toContain("demo-keramikkopp");
+    expect(handles(ranked.ids).filter((h) => ["demo-bordlampe", "demo-hytte", "demo-notatbok", "demo-massasje"].includes(h!))).toEqual([]);
+    expect(ranked.meaningOnly).toBe(ranked.ids.length);
     expect(ranked.semanticBest).toBeGreaterThan(0.9);
 
     // "Ferie ved sjøen" finds the cabin, not by its words.
@@ -195,7 +197,7 @@ describe("search by meaning (S2, D74)", () => {
     expect((await search.rankedSearch({ storeId, market: no }, "noe å drikke te av", 10, after)).ids).toEqual([]);
     const total = await vectorCount();
     expect((await embeddings.refreshStoreEmbeddings(storeId)).embedded).toBe(total);
-    expect(handles((await search.rankedSearch({ storeId, market: no }, "noe å drikke te av", 10, after)).ids)).toEqual(["demo-keramikkopp"]);
+    expect(handles((await search.rankedSearch({ storeId, market: no }, "noe å drikke te av", 10, after)).ids)).toContain("demo-keramikkopp");
   });
 
   it("searches by keyword alone when the AI fails, and says so when embedding fails", async () => {
@@ -204,7 +206,7 @@ describe("search by meaning (S2, D74)", () => {
     });
     const found = await search.searchProducts({ storeId, market: no }, "xyzzyqwv", failing);
     expect(failing).toHaveBeenCalledOnce();
-    expect(found).toEqual({ products: [], semanticBest: null, meaningOnly: 0 });
+    expect(found).toEqual({ products: [], semanticBest: null, meaningOnly: 0, filters: null });
 
     await db().execute(sql`update commerce.product_translations set description = description || ' Ny.' where store_id = ${storeId}::uuid and locale = 'nb-NO'`);
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: { message: "Rate limited" } }, { status: 429 })));

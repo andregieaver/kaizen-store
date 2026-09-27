@@ -338,7 +338,7 @@ export async function listGridProducts(
           where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${ids(list)}::uuid[])
         )`;
   const given = filter.ids ? ids(filter.ids) : null;
-  const order = given
+  const order = given && filter.sort === "given"
     ? sql`array_position(${given}::uuid[], p.id)`
     : filter.sort === "oldest"
       ? sql`p.created_at, p.handle`

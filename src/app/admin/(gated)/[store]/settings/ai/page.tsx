@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 
-import { AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
+import { AiEvalButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { providerInfo } from "@/lib/ai-provider";
+import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { getAiSettings, type AiSettings } from "@/server/ai";
 import { requireMember } from "@/server/auth";
 
-import { removeStoreAiAction, saveStoreAiAction, testStoreAiAction } from "./actions";
+import { evalStoreAiAction, removeStoreAiAction, saveStoreAiAction, testStoreAiAction } from "./actions";
 
 export const metadata: Metadata = { title: "AI" };
 
@@ -75,6 +76,13 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
           <h2 id="test" className="mb-1 font-medium">Test</h2>
           <p className="mb-3 text-sm text-muted">Tries your saved models now, even while off.</p>
           <AiTestButton action={testStoreAiAction.bind(null, store.slug)} />
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-2 text-sm text-muted">
+              Searches such as &ldquo;lampe under 500 kr&rdquo; are read by the text model as filters. This runs the eval: {EVAL_CASES.length} searches in
+              Norwegian, Swedish, Danish and English, with the filters a good answer gives; a model passes at {Math.round(PASS_RATE * 100)} %.
+            </p>
+            <AiEvalButton action={evalStoreAiAction.bind(null, store.slug)} />
+          </div>
           <div className="mt-4">
             <DeleteDiscountButton
               action={removeStoreAiAction.bind(null, store.slug)}

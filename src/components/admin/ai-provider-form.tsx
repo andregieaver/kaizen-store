@@ -259,3 +259,45 @@ export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }
     </div>
   );
 }
+
+export type AiEvalResult =
+  | { model: string; passed: number; total: number; ok: boolean; ms: number; failures: { query: string; problems: string[] }[] }
+  | { error: string };
+
+/** Runs the query-understanding eval against the saved text model and shows how it did (D75). */
+export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }) {
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<AiEvalResult | null>(null);
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => start(async () => setResult(await action()))}
+        className="min-h-10 w-fit rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+      >
+        {pending ? "Checking … (up to a minute)" : "Check query understanding"}
+      </button>
+      <div role="status" className="text-sm">
+        {result && "error" in result && <p className="text-red-700 dark:text-red-400">✗ {result.error}</p>}
+        {result && !("error" in result) && (
+          <>
+            <p className={result.ok ? "" : "text-red-700 dark:text-red-400"}>
+              {result.ok ? "✓ Passes" : "✗ Does not pass"}: {result.model} understood {result.passed} of {result.total} searches (
+              {Math.round((result.passed / result.total) * 100)} %) in {(result.ms / 1000).toFixed(1)} s.
+            </p>
+            {result.failures.length > 0 && (
+              <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
+                {result.failures.map((failure) => (
+                  <li key={failure.query}>
+                    <span className="font-medium">“{failure.query}”</span>: {failure.problems.join("; ")}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

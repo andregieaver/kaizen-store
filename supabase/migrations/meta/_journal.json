@@ -862,6 +862,20 @@
       "when": 1790523896189,
       "tag": "20260927154456_search_meaning",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1790525434649,
+      "tag": "20260927161034_search_filters",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1790526004677,
+      "tag": "20260927162004_embeddings_product_idx",
+      "breakpoints": true
     }
   ]
 }

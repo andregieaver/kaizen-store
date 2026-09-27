@@ -1,10 +1,11 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 
 import { db, readDb } from "@/db/client";
-import { normalizeQuery, prefixQuery, reciprocalRankFusion } from "@/lib/search";
 import type { Market } from "@/lib/markets";
+import { hasFilters, worthUnderstanding, type SearchFilters } from "@/lib/query-understanding";
+import { normalizeQuery, prefixQuery, reciprocalRankFusion } from "@/lib/search";
 import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor } from "./ai";
@@ -27,8 +28,65 @@ type Shop = { storeId: string; market: Market };
 /** How close a title (or category name) must be to what was typed, from 0 to 1. */
 const CLOSE = 0.5;
 
+/**
+ * What a search's filters ask of a product `p` (D75), as SQL: in one of the
+ * categories (or below it), with one of the tags, of the kind, with a
+ * variant priced in the range in the market, in stock (goods: physical
+ * stock at an active place, or digital; bookings count as available), all
+ * with values the filters were checked to hold.
+ */
+function filterClause(filters: SearchFilters | null, market: Market): SQL {
+  if (!filters) return sql`true`;
+  const parts: SQL[] = [];
+  const list = (values: string[]) => sql`array[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]`;
+  if (filters.categories.length > 0) {
+    parts.push(sql`exists (
+      with recursive picked as (
+        select id from commerce.terms
+        where store_id = p.store_id and content_type = 'product' and kind = 'category' and slug = any(${list(filters.categories)})
+        union
+        select t.id from commerce.terms t join picked on t.parent_id = picked.id
+      )
+      select 1 from commerce.product_terms pt
+      where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id in (select id from picked)
+    )`);
+  }
+  if (filters.tags.length > 0) {
+    parts.push(sql`exists (
+      select 1 from commerce.product_terms pt join commerce.terms te on te.id = pt.term_id
+      where pt.store_id = p.store_id and pt.product_id = p.id and te.kind = 'tag' and te.slug = any(${list(filters.tags)})
+    )`);
+  }
+  if (filters.kind) parts.push(sql`p.kind = ${filters.kind}`);
+  if (filters.minPriceMinor !== null || filters.maxPriceMinor !== null) {
+    parts.push(sql`exists (
+      select 1 from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
+      where v.product_id = p.id and v.active and cp.market_code = ${market.code}
+        and cp.amount_minor >= ${filters.minPriceMinor ?? 0}
+        and cp.amount_minor <= ${filters.maxPriceMinor ?? Number.MAX_SAFE_INTEGER}
+    )`);
+  }
+  if (filters.inStock) {
+    parts.push(sql`(p.kind <> 'goods' or exists (
+      select 1 from commerce.product_variants v
+      where v.product_id = p.id and v.active and (v.delivery = 'digital' or (
+        select coalesce(sum(s.available), 0) from commerce.available_stock s
+        join commerce.inventory_locations l on l.store_id = s.store_id and l.id = s.location_id and l.active
+        where s.store_id = p.store_id and s.variant_id = v.id
+      ) > 0)
+    ))`);
+  }
+  return parts.length === 0 ? sql`true` : sql.join(parts, sql` and `);
+}
+
 /** The ids of the products a query finds, best first (while typing, `prefix`: words as starts of words). */
-export async function matchingIds(shop: Shop, query: string, limit: number, prefix: boolean): Promise<string[]> {
+export async function matchingIds(
+  shop: Shop,
+  query: string,
+  limit: number,
+  prefix: boolean,
+  filters: SearchFilters | null = null,
+): Promise<string[]> {
   const text = normalizeQuery(query);
   if (!text) return [];
   const { storeId, market } = shop;
@@ -76,6 +134,7 @@ export async function matchingIds(shop: Shop, query: string, limit: number, pref
           join commerce.product_variants v on v.id = cp.variant_id
           where v.product_id = p.id and v.active and cp.market_code = ${market.code}
         )
+        and ${filterClause(filters, market)}
       group by p.id, p.created_at
     )
     select id from scored where found
@@ -104,7 +163,12 @@ export type Meaning = {
  * translation, most similar first. The store's limit is applied by the
  * caller, so the closest similarity can be logged even when none pass it.
  */
-export async function meaningMatches(shop: Shop, meaning: Meaning, limit: number): Promise<{ id: string; similarity: number }[]> {
+export async function meaningMatches(
+  shop: Shop,
+  meaning: Meaning,
+  limit: number,
+  filters: SearchFilters | null = null,
+): Promise<{ id: string; similarity: number }[]> {
   const { storeId, market } = shop;
   const rows = await readDb().execute<Row>(sql`
     with q as (select ${vectorLiteral(meaning.vector)}::extensions.vector as v)
@@ -120,11 +184,34 @@ export async function meaningMatches(shop: Shop, meaning: Meaning, limit: number
         join commerce.product_variants v on v.id = cp.variant_id
         where v.product_id = p.id and v.active and cp.market_code = ${market.code}
       )
+      and ${filterClause(filters, market)}
     group by e.product_id
     order by similarity desc, e.product_id
     limit ${limit}
   `);
   return rows.map((row) => ({ id: String(row.product_id), similarity: Number(row.similarity) }));
+}
+
+/**
+ * Products that meet a search's filters alone, newest first: for searches
+ * that are only filters, such as "lamper under 500 kr" read as the
+ * lighting category under 500 kroner.
+ */
+export async function filteredIds(shop: Shop, filters: SearchFilters, limit: number): Promise<string[]> {
+  const { storeId, market } = shop;
+  const rows = await readDb().execute<Row>(sql`
+    select p.id from commerce.products p
+    where p.store_id = ${storeId}::uuid and p.status = 'active'
+      and exists (
+        select 1 from commerce.current_prices cp
+        join commerce.product_variants v on v.id = cp.variant_id
+        where v.product_id = p.id and v.active and cp.market_code = ${market.code}
+      )
+      and ${filterClause(filters, market)}
+    order by p.created_at desc, p.id
+    limit ${limit}
+  `);
+  return rows.map((row) => String(row.id));
 }
 
 export type Ranked = {
@@ -137,58 +224,88 @@ export type Ranked = {
 
 /**
  * A search's products, best first: by keyword, and by meaning when the
- * query's vector is given, merged by reciprocal rank fusion. Without a
- * vector it is keyword search alone.
+ * query's vector is given, merged by reciprocal rank fusion. With filters
+ * (D75), keywords are the words they leave, both lists keep to them, and a
+ * search that is only filters lists what meets them. Without a vector or
+ * filters it is keyword search alone.
  */
-export async function rankedSearch(shop: Shop, query: string, limit: number, meaning: Meaning | null): Promise<Ranked> {
+export async function rankedSearch(
+  shop: Shop,
+  query: string,
+  limit: number,
+  meaning: Meaning | null,
+  filters: SearchFilters | null = null,
+): Promise<Ranked> {
   const text = normalizeQuery(query);
   if (!text) return { ids: [], semanticBest: null, meaningOnly: 0 };
+  const words = filters ? filters.text : text;
   const [keyword, closest] = await Promise.all([
-    matchingIds(shop, text, KEYWORD_CANDIDATES, false),
-    meaning ? meaningMatches(shop, meaning, MEANING_CANDIDATES) : Promise.resolve([]),
+    words ? matchingIds(shop, words, KEYWORD_CANDIDATES, false, filters) : filters ? filteredIds(shop, filters, KEYWORD_CANDIDATES) : Promise.resolve([]),
+    meaning ? meaningMatches(shop, meaning, MEANING_CANDIDATES, filters) : Promise.resolve([]),
   ]);
   const semanticBest = meaning ? (closest[0]?.similarity ?? null) : null;
   const byMeaning = closest.filter((match) => match.similarity >= (meaning?.minSimilarity ?? 1));
   const ids = reciprocalRankFusion([keyword, byMeaning.map((match) => match.id)]).slice(0, limit);
-  const words = new Set(keyword);
-  return { ids, semanticBest, meaningOnly: ids.filter((id) => !words.has(id)).length };
+  const found = new Set(keyword);
+  return { ids, semanticBest, meaningOnly: ids.filter((id) => !found.has(id)).length };
 }
 
-export type SearchResult = { products: GridProduct[]; semanticBest: number | null; meaningOnly: number };
+export type SearchResult = {
+  products: GridProduct[];
+  semanticBest: number | null;
+  meaningOnly: number;
+  /** What the search was understood as, when the store's text model changed anything (D75). */
+  filters: SearchFilters | null;
+};
+
+type VectorFor = (storeId: string, space: string, text: string) => Promise<number[]>;
+type Understand = (storeId: string, textModel: string, market: { locale: string; currency: string }, text: string) => Promise<SearchFilters>;
+
+const skipped = (what: string) => (error: unknown) => {
+  console.warn(`${what} skipped: ${error instanceof Error ? error.message : String(error)}`);
+  return null;
+};
 
 /**
- * The products a search finds, as the store's product cards show them,
- * best first. Meaning is added when the store's AI has a search model and
- * answers in time (`vectorFor`); otherwise, or when it fails, the search is
- * by keyword alone.
+ * The products a search finds, as the store's product cards show them.
+ * With the store's AI, the search's vector (`vectorFor`) adds meaning, and
+ * its text model (`understand`) turns a search that may hold a price, an
+ * order or stock into filters; both are asked at once, and whatever fails
+ * or is late is left out, down to keyword search alone. `understand` is
+ * left out when the shopper asked for the words exactly as typed.
  */
 export async function searchProducts(
   shop: Shop,
   query: string,
-  vectorFor: (storeId: string, space: string, text: string) => Promise<number[]>,
+  vectorFor: VectorFor,
+  understand: Understand | null = null,
   limit = 48,
 ): Promise<SearchResult> {
   const text = normalizeQuery(query);
-  if (!text) return { products: [], semanticBest: null, meaningOnly: 0 };
-  let meaning: Meaning | null = null;
+  if (!text) return { products: [], semanticBest: null, meaningOnly: 0, filters: null };
   const ai = await aiFor(shop.storeId);
-  if (ai?.space) {
-    try {
-      meaning = { vector: await vectorFor(shop.storeId, ai.space, text), space: ai.space, minSimilarity: ai.minSimilarity };
-    } catch (error) {
-      console.warn(`Search by meaning skipped: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-  const ranked = await rankedSearch(shop, text, limit, meaning);
-  if (ranked.ids.length === 0) return { products: [], semanticBest: ranked.semanticBest, meaningOnly: 0 };
+  const textModel = understand && ai?.textModel && worthUnderstanding(text) ? ai.textModel : null;
+  const [vector, understood] = await Promise.all([
+    ai?.space ? vectorFor(shop.storeId, ai.space, text).catch(skipped("Search by meaning")) : null,
+    textModel && understand
+      ? understand(shop.storeId, textModel, { locale: shop.market.locale, currency: shop.market.currency }, text).catch(
+          skipped("Understanding the search"),
+        )
+      : null,
+  ]);
+  const meaning = vector && ai?.space ? { vector, space: ai.space, minSimilarity: ai.minSimilarity } : null;
+  const filters = understood && hasFilters(understood) ? understood : null;
+  const ranked = await rankedSearch(shop, text, limit, meaning, filters);
+  if (ranked.ids.length === 0) return { products: [], semanticBest: ranked.semanticBest, meaningOnly: 0, filters };
   const products = await listGridProducts(shop.storeId, shop.market.code, shop.market.locale, {
     categoryIds: [],
     tagIds: [],
-    sort: "given",
+    // The order asked for, or the search's own.
+    sort: filters?.sort === "priceLow" || filters?.sort === "priceHigh" ? filters.sort : filters?.sort === "newest" ? "newest" : "given",
     limit,
     ids: ranked.ids,
   });
-  return { products, semanticBest: ranked.semanticBest, meaningOnly: ranked.meaningOnly };
+  return { products, semanticBest: ranked.semanticBest, meaningOnly: ranked.meaningOnly, filters };
 }
 
 export type Suggestion = { handle: string; title: string; image: { url: string; alt: string } | null };
@@ -220,14 +337,15 @@ export async function logSearch(
   shop: Shop,
   query: string,
   results: number,
-  meaning: { semanticBest: number | null; meaningOnly: number } = { semanticBest: null, meaningOnly: 0 },
+  meaning: { semanticBest: number | null; meaningOnly: number; filters?: SearchFilters | null } = { semanticBest: null, meaningOnly: 0 },
 ): Promise<void> {
   const text = normalizeQuery(query).slice(0, 100);
   if (!text) return;
+  const filters = meaning.filters ? JSON.stringify(meaning.filters) : null;
   await db().execute(sql`
-    insert into commerce.search_queries (store_id, market_code, query, results, semantic_best, meaning_results)
+    insert into commerce.search_queries (store_id, market_code, query, results, semantic_best, meaning_results, filters)
     values (${shop.storeId}::uuid, ${shop.market.code}, ${text}, ${results}, ${meaning.semanticBest},
-      ${Math.min(meaning.meaningOnly, results)})
+      ${Math.min(meaning.meaningOnly, results)}, ${filters}::jsonb)
   `);
 }
 
