@@ -259,6 +259,28 @@ export function ProductEditor(props: Props) {
           create={createProductTermAction.bind(null, storeSlug)}
           manageHref={`/admin/${storeSlug}/products/categories`}
         />
+        {context.layouts.length > 0 && (
+          <label className={`${label} mt-4 max-w-sm`}>
+            Page layout
+            <select
+              value={product.layoutId ?? ""}
+              onChange={(e) => update((p) => ({ ...p, layoutId: e.target.value || null }))}
+              className={input}
+            >
+              <option value="">From its categories, tags or the store</option>
+              {context.layouts.map((layout) => (
+                <option key={layout.id} value={layout.id}>
+                  {layout.title}
+                  {layout.published ? "" : " (not published)"}
+                </option>
+              ))}
+            </select>
+            <span className={hint}>
+              How its page is laid out (Product layouts). Its own layout goes before its categories&apos;, tags&apos; and the
+              store&apos;s; one not yet published is not used.
+            </span>
+          </label>
+        )}
       </section>
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
       {(context.bookingsOn || isBooked(product.kind)) && <KindSection product={product} update={update} />}

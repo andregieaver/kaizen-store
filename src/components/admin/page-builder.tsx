@@ -39,7 +39,7 @@ import {
 import { ContentGridView } from "@/components/content-grid";
 import { FontLinks } from "@/components/font-links";
 
-import { PageBlockView, type ButtonLook } from "@/components/page-block";
+import { HEADING_SIZES as HEADING_SIZE_CLASS, PageBlockView, type ButtonLook } from "@/components/page-block";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
 import {
   BLOCKS_MAX,
@@ -110,6 +110,10 @@ import {
   type RowLayout,
   type Sides,
   type Spacing,
+  PRODUCT_PARTS,
+  RELATED_MAX,
+  type ProductBlock,
+  type ProductPart,
 } from "@/lib/page-content";
 import {
   copyBlock,
@@ -179,7 +183,7 @@ export const newId = () =>
 /** What is dragged, and what it is dropped on. */
 type DragData =
   | { kind: "palette-row"; layout: RowLayout }
-  | { kind: "palette-block"; type: BlockType }
+  | { kind: "palette-block"; type: BlockType; part?: ProductPart }
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
   | { kind: "column"; columnId: string; rowId: string }
@@ -332,9 +336,12 @@ export function PageBuilder({
   fonts,
   translate = null,
   library = [],
+  productParts = false,
 }: {
   rows: PageRow[];
   onRows: Rows;
+  /** A product layout (D79): its palette offers the product's parts. */
+  productParts?: boolean;
   grid: GridContext;
   fonts: BuilderFonts;
   /** Kaizen's saved parts, for a store's pages: a starter library to copy from, not to change (D56). */
@@ -368,9 +375,9 @@ export function PageBuilder({
   const addRow = (layout: RowLayout, index = rows.length) => {
     if (!rowsFull) onRows((current) => insertRow(current, newRow(layout, newId), index));
   };
-  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER) => {
+  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart) => {
     if (blocksFull) return;
-    const block = newBlock(type, newId);
+    const block = newBlock(type, newId, part);
     onRows((current) => {
       if (columnId && current.some((r) => r.columns.some((c) => c.id === columnId))) {
         return insertBlock(current, columnId, block, index);
@@ -494,7 +501,7 @@ export function PageBuilder({
     const columnId = to.columnId;
     const place = to.kind === "block" ? findBlock(rows, to.blockId) : null;
     if (from.kind === "palette-block") {
-      addBlock(from.type, columnId, place ? place.index + (after ? 1 : 0) : Number.MAX_SAFE_INTEGER);
+      addBlock(from.type, columnId, place ? place.index + (after ? 1 : 0) : Number.MAX_SAFE_INTEGER, from.part);
       setLastColumn(columnId);
     } else if (from.kind === "block") {
       onRows((current) => {
@@ -564,7 +571,8 @@ export function PageBuilder({
           tab={tab}
           onTab={setTab}
           onAddRow={(layout) => addRow(layout)}
-          onAddBlock={(type) => addBlock(type, lastColumn)}
+          onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
+          productParts={productParts}
           parts={parts}
           library={library}
           onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
@@ -593,7 +601,11 @@ export function PageBuilder({
         {dragging?.kind === "palette-row" ? (
           <Tile label={ROW_LAYOUTS[dragging.layout].label} preview={<LayoutPreview layout={dragging.layout} />} lifted />
         ) : dragging?.kind === "palette-block" ? (
-          <Tile label={blockLabels[dragging.type]} preview={<BlockIcon type={dragging.type} />} lifted />
+          <Tile
+            label={dragging.part ? PRODUCT_PARTS[dragging.part] : blockLabels[dragging.type]}
+            preview={<BlockIcon type={dragging.type} />}
+            lifted
+          />
         ) : dragging?.kind === "block" ? (
           <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
         ) : dragging?.kind === "saved" ? (
@@ -641,6 +653,7 @@ function Sidebar({
   onTab: setTab,
   onAddRow,
   onAddBlock,
+  productParts,
   parts,
   library,
   onOpenSaved,
@@ -651,7 +664,8 @@ function Sidebar({
   tab: Tab;
   onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
-  onAddBlock: (type: BlockType) => void;
+  onAddBlock: (type: BlockType, part?: ProductPart) => void;
+  productParts: boolean;
   parts: SavedPart[];
   library: SavedPart[];
   onOpenSaved: (partId: string) => void;
@@ -705,6 +719,25 @@ function Sidebar({
               <p className="text-xs text-muted">
                 Drag a component into a column, or press it to add it to the column you last worked in.
               </p>
+              {productParts && (
+                <>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">The product</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {PRODUCT_PART_KEYS.map((part) => (
+                      <PaletteTile
+                        key={part}
+                        id={`palette:product:${part}`}
+                        data={{ kind: "palette-block", type: "product", part }}
+                        label={PRODUCT_PARTS[part]}
+                        preview={<BlockIcon type="product" />}
+                        onAdd={() => onAddBlock("product", part)}
+                        disabled={blocksFull}
+                      />
+                    ))}
+                  </div>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Around it</h3>
+                </>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 {BLOCK_TYPES.map((type) => (
                   <PaletteTile
@@ -982,6 +1015,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <ButtonIcon />;
     case "contentGrid":
       return <GridIcon />;
+    case "product":
+      return <ProductIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
@@ -1457,6 +1492,8 @@ function BlockItem({
         <FontLinks families={blockFonts(block)} />
         {block.type === "contentGrid" ? (
           <GridPreview block={block} grid={actions.grid} />
+        ) : block.type === "product" ? (
+          <ProductStandIn block={block} />
         ) : blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (
@@ -1722,6 +1759,43 @@ function Dialogs({
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
                 />
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "product"}
+        onClose={onClose}
+        title={block?.type === "product" ? PRODUCT_PARTS[block.part] : "Product"}
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "product" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <ProductFields block={block} onChange={(patch) => onRows((current) => patchBlock<ProductBlock>(current, block.id, patch))} />
+            }
+            style={
+              <>
+                {fontField("Font", block.font, "The site's fonts", (font) =>
+                  onRows((current) => patchBlock<ProductBlock>(current, block.id, { font })),
+                )}
+                {ALIGNED_PARTS.includes(block.part) && (
+                  <TextAlignFields value={block.align} onChange={(align) => onRows((current) => patchBlock<ProductBlock>(current, block.id, { align }))} />
+                )}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2047,6 +2121,17 @@ function TranslateDialogs({
               />
             )}
             <TranslateText label={`Caption in ${name}`} value={b.caption} max={ALT_MAX} original={was("caption")} mainName={mainName} onChange={(caption) => set<ImageBlock>({ caption })} />
+          </div>
+        );
+      case "product":
+        return (
+          <div className="flex flex-col gap-5">
+            <p className="text-sm text-muted">
+              The product shows its own texts in {name}.{b.heading ? " Here is the component's own heading." : " This component has no text of its own."}
+            </p>
+            {b.heading && (
+              <TranslateText label={`Heading in ${name}`} value={b.heading} max={HEADING_MAX} original={was("heading")} mainName={mainName} onChange={(heading) => set<ProductBlock>({ heading })} />
+            )}
           </div>
         );
       case "contentGrid":
@@ -3793,5 +3878,218 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
     >
       {ICONS[name]}
     </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Product components (D79)
+// ---------------------------------------------------------------------------
+
+const PRODUCT_PART_KEYS = Object.keys(PRODUCT_PARTS) as ProductPart[];
+/** Parts whose text lines up left, centred or right. */
+const ALIGNED_PARTS: readonly ProductPart[] = ["back", "title", "price", "host", "description", "withdrawal", "safety"];
+/** What each part shows, for the owner choosing and setting it. */
+const PART_HELP: Record<ProductPart, string> = {
+  back: "A link back to the store's products.",
+  gallery: "The product's pictures: the main one swipes, with small ones to choose from.",
+  title: "The product's name, the page's main heading, with the heart that saves it to a wishlist.",
+  price: "The product's price, from the cheapest variant, with VAT as the shopper sees prices.",
+  notice: "For products sold only to businesses: tells a private shopper so, and lets them switch.",
+  host: "Who hosts a stay or rental listed for an outside host.",
+  buy: "Buying it: the variants with stock and Add to cart for goods, free times for appointments, dates for stays and rentals.",
+  description: "The product's description.",
+  withdrawal: "The line on the right of withdrawal, where the product has none (bookings, downloads, made to order).",
+  safety: "Product safety: the safety information, manufacturer and responsible person in the EU.",
+  related: "Products sharing the most of this one's categories and tags, as the store's product cards.",
+};
+const PART_HEADINGS: Partial<Record<ProductPart, string>> = { description: "Description", safety: "Safety and manufacturer", related: "You may also like" };
+
+function ProductIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 7h12l-1 13H7L6 7z" />
+        <path d="M9 7a3 3 0 0 1 6 0" />
+      </svg>
+    </span>
+  );
+}
+
+/** A product component's own settings (D79): only those its part has. */
+function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (patch: BlockPatch<ProductBlock>) => void }) {
+  const headed = block.part in PART_HEADINGS;
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted">
+        {PART_HELP[block.part]} It shows the product the layout is used for; a part the product has nothing for is left out.
+      </p>
+      {block.part === "title" && (
+        <>
+          <Check label="Wishlist heart" hint="Beside the title, to save the product." checked={block.wishlist !== false} onChange={(on) => onChange({ wishlist: on ? undefined : false })} />
+          <Choices
+            legend="Size"
+            options={[
+              { value: "standard" as const, label: "Standard" },
+              ...(Object.keys(HEADING_SIZES) as HeadingSize[]).map((size) => ({ value: size, label: HEADING_SIZES[size] })),
+            ]}
+            value={block.size ?? "standard"}
+            onChange={(size) => onChange({ size: size === "standard" ? undefined : size })}
+          />
+        </>
+      )}
+      {block.part === "price" && (
+        <Check label="Large" hint="The price at the size of a heading." checked={block.large !== false} onChange={(on) => onChange({ large: on ? undefined : false })} />
+      )}
+      {block.part === "gallery" && (
+        <Check label="Small pictures below" hint="With two or more pictures, to choose one." checked={block.thumbnails !== false} onChange={(on) => onChange({ thumbnails: on ? undefined : false })} />
+      )}
+      {headed && (
+        <>
+          <Check label="Heading" checked={block.showHeading !== false} onChange={(on) => onChange({ showHeading: on ? undefined : false })} />
+          {block.showHeading !== false && (
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Heading text
+              <input
+                value={block.heading ?? ""}
+                maxLength={HEADING_MAX}
+                onChange={(event) => onChange({ heading: event.target.value || undefined })}
+                placeholder={`${PART_HEADINGS[block.part]} (in the shopper's language)`}
+                className={field}
+              />
+              <span className="font-normal text-xs text-muted">Empty: Kaizen&apos;s own words, in each country&apos;s language.</span>
+            </label>
+          )}
+        </>
+      )}
+      {block.part === "related" && (
+        <>
+          <NumberField
+            label="How many"
+            hint={`1 to ${RELATED_MAX}`}
+            value={block.limit ?? 4}
+            max={RELATED_MAX}
+            onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
+          />
+          <ColumnsFields value={block.columns ?? { mobile: 2, tablet: 4, desktop: 4 }} onChange={(columns) => onChange({ columns })} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * How a product component looks on the canvas (D79): a sketch of its part,
+ * as no product is chosen yet; the layout's preview shows it with one.
+ */
+function ProductStandIn({ block }: { block: ProductBlock }) {
+  const lines = (n: number) => (
+    <span className="flex flex-col gap-1.5">
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} className={`h-2.5 rounded bg-foreground/10 ${i === n - 1 ? "w-2/3" : "w-full"}`} />
+      ))}
+    </span>
+  );
+  const heading = (fallback: string) =>
+    block.showHeading !== false && <span className="font-medium">{block.heading || fallback}</span>;
+  const body = (() => {
+    switch (block.part) {
+      case "back":
+        return <span className="text-sm underline">Back to products</span>;
+      case "gallery":
+        return (
+          <span className="flex flex-col gap-2">
+            <span className="flex aspect-square items-center justify-center rounded-lg bg-foreground/10 text-muted">
+              <svg viewBox="0 0 24 24" className="size-10" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <circle cx="9" cy="10" r="1.5" />
+                <path d="M21 16l-5-5-8 8" />
+              </svg>
+            </span>
+            {block.thumbnails !== false && (
+              <span className="flex gap-2">
+                {[0, 1, 2].map((i) => (
+                  <span key={i} className="size-12 rounded-md bg-foreground/10" />
+                ))}
+              </span>
+            )}
+          </span>
+        );
+      case "title":
+        return (
+          <span className="flex items-start justify-between gap-4">
+            <span className={`${block.size ? HEADING_SIZE_CLASS[block.size] : "text-3xl"} font-heading tracking-tight`}>Product name</span>
+            {block.wishlist !== false && <span className="size-11 shrink-0 rounded-full border border-border" />}
+          </span>
+        );
+      case "price":
+        return (
+          <span>
+            <span className={block.large !== false ? "text-2xl font-semibold" : "font-semibold"}>499,00</span>{" "}
+            <span className="text-sm text-muted">incl. VAT</span>
+          </span>
+        );
+      case "notice":
+        return <span className="block rounded-lg border border-border p-4 text-sm">Sold only to businesses. (Shown to private shoppers for such products.)</span>;
+      case "host":
+        return <span className="text-sm">Hosted by … (for outside hosts&apos; stays and rentals)</span>;
+      case "buy":
+        return (
+          <span className="flex flex-col gap-2">
+            <span className="font-medium">Variants</span>
+            <span className="divide-y divide-border rounded-lg border border-border">
+              {["Variant one", "Variant two"].map((name) => (
+                <span key={name} className="flex items-center justify-between gap-4 p-3 text-sm">
+                  <span>
+                    {name}
+                    <span className="block text-muted">In stock</span>
+                  </span>
+                  <span className="button-primary rounded-button px-4 py-2 text-sm">Add to cart</span>
+                </span>
+              ))}
+            </span>
+            <span className="text-xs text-muted">Appointments show free times here; stays and rentals, dates.</span>
+          </span>
+        );
+      case "description":
+        return (
+          <span className="flex flex-col gap-2">
+            {heading("Description")}
+            {lines(3)}
+          </span>
+        );
+      case "withdrawal":
+        return <span className="text-sm">No right of withdrawal … (only for products without one)</span>;
+      case "safety":
+        return (
+          <span className="flex flex-col gap-2 text-sm">
+            {heading("Safety and manufacturer")}
+            {lines(2)}
+          </span>
+        );
+      case "related": {
+        const columns = block.columns?.desktop ?? 4;
+        return (
+          <span className="flex flex-col gap-3">
+            {heading("You may also like")}
+            <span className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+              {Array.from({ length: Math.min(block.limit ?? 4, columns) }, (_, i) => (
+                <span key={i} className="flex flex-col gap-2">
+                  <span className="aspect-square rounded-lg bg-foreground/10" />
+                  {lines(1)}
+                </span>
+              ))}
+            </span>
+          </span>
+        );
+      }
+    }
+  })();
+  return (
+    <span className="relative block rounded-md outline-1 outline-offset-4 outline-border outline-dashed">
+      <span className="absolute -top-3 right-1 rounded bg-background px-1 text-[10px] font-medium tracking-wide text-muted uppercase">
+        {PRODUCT_PARTS[block.part]}
+      </span>
+      {body}
+    </span>
   );
 }

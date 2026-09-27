@@ -9,7 +9,7 @@ import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { ArticleView } from "@/components/article-view";
 import { PageArticle } from "@/components/page-article";
-import type { PageType } from "@/lib/page-content";
+import { termContentOf, type PageType } from "@/lib/page-content";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getPageForEdit, listPages } from "@/server/pages";
 import { listSavedParts } from "@/server/saved-parts";
@@ -31,6 +31,8 @@ const INTRO: Record<PageType, string> = {
   page: "Kaizen's own pages, each at its own address on the site, such as /about. Save a page as a draft while you work on it; publish it to put it on the site. Add pages to the menus under Header and footer.",
   article:
     "Kaizen's blog: articles at /blog/{address}, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
+  // Stores' own (D79); Kaizen has no products.
+  product_layout: "",
 };
 
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {
@@ -78,7 +80,7 @@ export async function PageTermsView({ type }: { type: PageType }) {
   await connection();
   await requirePlatformAdmin();
   const copy = PAGE_TYPE_COPY[type];
-  const terms = await listTerms({ storeId: null, contentType: type });
+  const terms = await listTerms({ storeId: null, contentType: termContentOf(type) });
   return (
     <>
       <div className="flex flex-col gap-1">
@@ -110,7 +112,7 @@ export async function NewPageView({ type }: { type: PageType }) {
   const admin = await requirePlatformAdmin();
   const [saved, terms, context] = await Promise.all([
     listSavedParts(null),
-    listTerms({ storeId: null, contentType: type }),
+    listTerms({ storeId: null, contentType: termContentOf(type) }),
     platformPageContext(type, admin.name ?? ""),
   ]);
   const gridTerms = await bothTerms(null);
@@ -136,7 +138,7 @@ export async function EditPageView({ type, params, searchParams }: { type: PageT
     load(type, params),
     searchParams,
     listSavedParts(null),
-    listTerms({ storeId: null, contentType: type }),
+    listTerms({ storeId: null, contentType: termContentOf(type) }),
     platformPageContext(type, admin.name ?? ""),
     bothTerms(null),
   ]);

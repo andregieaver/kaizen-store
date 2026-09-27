@@ -28,6 +28,7 @@ import type { Term } from "@/lib/taxonomy";
 
 import { aiFor } from "./ai";
 import { storedFileInfo, uploadsEnabled } from "./media";
+import { listLayoutChoices } from "./product-layouts";
 import type { Store } from "./stores";
 import { listTerms, scopedTermIds } from "./taxonomy";
 
@@ -63,12 +64,14 @@ export type EditorContext = {
   places: { id: string; name: string }[];
   /** The store's active hosts (D71), for its stays and rentals. */
   hosts: { id: string; name: string; vatRegistered: boolean }[];
+  /** The store's product layouts (D79), to choose one for the product. */
+  layouts: { id: string; title: string; published: boolean }[];
   /** The store's AI has a text model, so staff can ask it for texts (D76). */
   aiWriting: boolean;
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location], terms, rates, staff, places, hosts] = await Promise.all([
+  const [operators, [location], terms, rates, staff, places, hosts, layouts] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -100,6 +103,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       select id, name, vat_registered from commerce.hosts
       where store_id = ${store.id}::uuid and disabled_at is null order by lower(name)
     `),
+    listLayoutChoices(store.id),
   ]);
   const noVat: Record<VatCategory, number> = { standard: 0, accommodation: 0, exempt: 0 };
   const vatRates = new Map(
@@ -132,6 +136,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     })),
     places: places.map((row) => ({ id: String(row.id), name: String(row.name) })),
     hosts: hosts.map((row) => ({ id: String(row.id), name: String(row.name), vatRegistered: Boolean(row.vat_registered) })),
+    layouts,
     aiWriting: Boolean((await aiFor(store.id))?.textModel),
   };
 }
@@ -183,6 +188,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     vatCategory: "standard",
     kind: "goods",
     hostId: null,
+    layoutId: null,
     appointment: null,
     taxCode: GENERAL_TAX_CODE,
     withdrawalExclusion: "none",
@@ -273,7 +279,7 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id
+           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -443,6 +449,7 @@ export async function getProductForEdit(
     vatCategory: category,
     kind,
     hostId: product.host_id ? String(product.host_id) : null,
+    layoutId: product.product_layout_id ? String(product.product_layout_id) : null,
     appointment: isBooked(kind)
         ? {
             durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
@@ -612,6 +619,8 @@ export async function saveProduct(
       else Object.assign(file, { sizeBytes: stored.size, contentType: stored.type });
     }
   }
+  // Its own layout (D79) must be one of the store's product layouts; one deleted meanwhile is let go.
+  if (input.layoutId && !context.layouts.some((layout) => layout.id === input.layoutId)) input.layoutId = null;
   if (problems.length > 0) return { ok: false, problems };
   // Only the store's own product categories and tags; one deleted meanwhile is left out.
   const termScope = { storeId: store.id, contentType: "product" } as const;
@@ -693,7 +702,8 @@ async function upsertProduct(
         tax_code = ${input.taxCode}, withdrawal_exclusion = ${input.withdrawalExclusion},
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
         subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
-        vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)}, updated_at = now()
+        vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)},
+        product_layout_id = ${input.layoutId}::uuid, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -703,11 +713,12 @@ async function upsertProduct(
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
-      delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id
+      delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
-      ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)}
+      ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)},
+      ${input.layoutId}::uuid
     )
     returning id
   `);

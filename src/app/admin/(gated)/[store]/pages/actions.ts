@@ -6,8 +6,9 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { PageSaveState } from "@/components/admin/page-context";
+import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import type { GridData } from "@/lib/content-grid";
-import { PAGE_TYPES, pageBlockSchema, type PageType } from "@/lib/page-content";
+import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
@@ -72,7 +73,7 @@ export async function deleteStorePageAction(storeSlug: string, type: PageType, i
   pagesChanged(member);
   // A deleted front page (D54) gives the store its product list back.
   if (member.store.frontPageId === id) updateTag(storeTag(member.store.slug));
-  redirect(`/admin/${member.store.slug}/${type === "article" ? "articles" : "pages"}?deleted=1`);
+  redirect(`/admin/${member.store.slug}/${PAGE_TYPE_COPY[type].segment}?deleted=1`);
 }
 
 /** Chooses the page shown as the store's front page (D54), or the product list. */
@@ -110,7 +111,7 @@ export async function deleteStorePartAction(storeSlug: string, id: string): Prom
 
 // The store's page and article categories and tags (D50, D57).
 
-const termScope = (member: Membership, type: PageType) => ({ storeId: member.store.id, contentType: type }) as const;
+const termScope = (member: Membership, type: PageType) => ({ storeId: member.store.id, contentType: termContentOf(type) }) as const;
 
 function termsChanged(member: Membership, type: PageType, result: TermsResult): TermsResult {
   if (result.ok) {

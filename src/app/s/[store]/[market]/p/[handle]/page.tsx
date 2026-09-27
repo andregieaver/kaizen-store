@@ -2,16 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PageArticle } from "@/components/page-article";
-import { ProductJsonLdSection, ProductPartView, productPartShows, type ProductPageContext } from "@/components/product-parts";
+import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from "@/components/product-parts";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
-import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
+import { productLayoutFor } from "@/server/product-layouts";
 import { listIndexedProducts, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 
@@ -99,17 +98,10 @@ export default async function ProductPage({ params }: Props) {
   if (!loaded) notFound();
   const { store, market, product } = loaded;
   const ctx: ProductPageContext = { store, market, product, m: t(market.lang) };
-  const layout = localizePage(DEFAULT_PRODUCT_LAYOUT, market.locale);
 
   return (
     <div className="store-page py-8">
-      <PageArticle
-        content={{ ...layout, title: product.title }}
-        place={{ pageId: null, owner: store.id, market: market.code }}
-        renderBlock={(block) =>
-          block.type === "product" && productPartShows(block, product) ? <ProductPartView block={block} ctx={ctx} /> : null
-        }
-      />
+      <ProductLayoutView layout={(await productLayoutFor(store.id, product.id)) ?? DEFAULT_PRODUCT_LAYOUT} ctx={ctx} />
       <Suspense fallback={null}>
         <ProductJsonLdSection store={store} market={market} product={product} />
       </Suspense>

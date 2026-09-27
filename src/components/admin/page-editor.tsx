@@ -20,7 +20,8 @@ import {
   type PageType,
   type PageThumbnail,
 } from "@/lib/page-content";
-import { newBlock, newRow } from "@/lib/page-rows";
+import { copyRow, newBlock, newRow } from "@/lib/page-rows";
+import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import {
   localizePage,
   translationOf,
@@ -49,7 +50,9 @@ const STATE_TEXT: Record<PageState, string> = {
 };
 
 /** A new page starts with one full-width row holding an empty text block. */
-function startingRows(): PageRow[] {
+function startingRows(type: PageType): PageRow[] {
+  // A product layout (D79) starts as the standard one, to change from.
+  if (type === "product_layout") return DEFAULT_PRODUCT_LAYOUT.rows.map((row) => copyRow(row, newId));
   const row = newRow("1", newId);
   row.columns[0].blocks.push(newBlock("richText", newId));
   return [row];
@@ -89,11 +92,13 @@ export function PageEditor({
   const router = useRouter();
   const [saved, setSaved] = useState<EditablePage | null>(page);
   // What is being edited: a page, or an article in the blog (D57), which starts with its writer as author.
-  const noun = context.type === "article" ? "article" : "page";
+  const noun = context.type === "article" ? "article" : context.type === "product_layout" ? "layout" : "page";
+  // A product layout (D79) is only its name and its rows: no address, picture, search texts or categories.
+  const layout = context.type === "product_layout";
   const [content, setContent] = useState<PageContent>(
     page?.draft ?? {
       ...newPageContent(),
-      rows: startingRows(),
+      rows: startingRows(context.type),
       ...(context.type === "article" && context.defaultAuthor ? { author: context.defaultAuthor } : {}),
     },
   );
@@ -203,6 +208,7 @@ export function PageEditor({
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
         saved={savedParts}
         library={library}
+        productParts={layout}
         upload={upload}
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
         grid={{
@@ -223,9 +229,9 @@ export function PageEditor({
                 progress={(l) => translationProgress(content, l)}
               />
             )}
-            <section aria-label="Title and address" className={card}>
+            <section aria-label={layout ? "Name" : "Title and address"} className={card}>
               <label className={label}>
-                {translating ? `Title in ${language.name}` : "Title"}
+                {layout ? "Layout name" : translating ? `Title in ${language.name}` : "Title"}
                 <input
                   value={view.title}
                   maxLength={PAGE_TITLE_MAX}
@@ -234,11 +240,13 @@ export function PageEditor({
                     // The address is one for all languages, made from the main title.
                     change(slugFollows && !translating ? { title, slug: pageSlugFromTitle(title, reserved) } : { title });
                   }}
-                  placeholder={context.type === "article" ? "What we learned this spring" : "About us"}
+                  placeholder={context.type === "article" ? "What we learned this spring" : layout ? "Wide pictures" : "About us"}
                   className={`${input} min-h-12 text-xl font-semibold`}
                 />
               </label>
-              {translating ? (
+              {layout ? (
+                <p className={hint}>Only for you: shoppers see the product it is used for.</p>
+              ) : translating ? (
                 <p className={hint}>
                   The address, {content.slug}, is the same in every language. Change it in {main.name}.
                 </p>
@@ -259,14 +267,14 @@ export function PageEditor({
                 }}
               />
               )}
-              {moving && !translating && (
+              {moving && !translating && !layout && (
                 <p className="rounded-md bg-surface p-3 text-sm">
                   When you publish, <strong>{siteBase}/{liveSlug}</strong> will lead to <strong>{siteBase}/{content.slug}</strong> for good
                   (a permanent redirect), so links and search results keep working.
                 </p>
               )}
             </section>
-            {!translating && (
+            {!translating && !layout && (
             <>
             {context.type === "article" && (
               <section aria-labelledby="author-heading" className={card}>
@@ -347,6 +355,7 @@ export function PageEditor({
                 </label>
               </section>
             )}
+            {!layout && (
             <section aria-labelledby="search-heading" className={card}>
               <h2 id="search-heading" className="font-medium">
                 Search and sharing
@@ -365,6 +374,7 @@ export function PageEditor({
                 Empty fields use the title and the start of the text. When shared, the page shows its picture.
               </p>
             </section>
+            )}
           </>
         }
       />
@@ -407,7 +417,7 @@ export function PageEditor({
                 Preview draft{dirty ? " (last saved)" : ""}
               </a>
             )}
-            {liveSlug && (
+            {liveSlug && !layout && (
               <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
                 View {noun}
               </a>

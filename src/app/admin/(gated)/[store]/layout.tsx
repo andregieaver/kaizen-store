@@ -36,6 +36,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
     { href: `${base}/orders`, label: "Orders" },
     { href: `${base}/subscriptions`, label: "Subscriptions" },
     { href: `${base}/products`, label: "Products" },
+    { href: `${base}/product-layouts`, label: "Product layouts" },
     { href: `${base}/pages`, label: "Pages" },
     { href: `${base}/articles`, label: "Blog" },
     { href: `${base}/discounts`, label: "Coupons" },

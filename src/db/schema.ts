@@ -322,6 +322,11 @@ export const stores = commerce.table(
      * migration: deleting the page sets only this column back to null.
      */
     frontPageId: uuid("front_page_id"),
+    /**
+     * The store's own standard product layout (D79), for products no other
+     * layout is chosen for; null: Kaizen's. Foreign key in a custom migration.
+     */
+    productLayoutId: uuid("product_layout_id"),
     /** The store's analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
     /** The owner's own code for the storefront's head and body (D61): `CustomCode` in lib/custom-code, added only on the store's own host. */
@@ -725,6 +730,8 @@ export const products = commerce.table(
     hostId: uuid("host_id"),
     /** Category-specific attributes. */
     attributes: jsonb("attributes").notNull().default({}),
+    /** The product's own layout (D79), over its categories', tags' and the store's; foreign key in a custom migration. */
+    productLayoutId: uuid("product_layout_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -2645,7 +2652,9 @@ export const pages = commerce.table(
   },
   (t) => [
     unique("pages_store_slug_key").on(t.storeId, t.type, t.slug).nullsNotDistinct(),
-    check("pages_type", sql`${t.type} in ('page', 'article')`),
+    check("pages_type", sql`${t.type} in ('page', 'article', 'product_layout')`),
+    // Product layouts (D79) are a store's: Kaizen has no products of its own.
+    check("pages_product_layout_store", sql`${t.type} <> 'product_layout' or ${t.storeId} is not null`),
     // For stores' front pages (D54): a store can only choose a page of its own.
     unique("pages_store_id_key").on(t.storeId, t.id),
     index("pages_created_by_idx").on(t.createdBy),
@@ -2740,6 +2749,8 @@ export const terms = commerce.table(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     position: integer("position").notNull().default(0),
+    /** A product category's or tag's layout (D79) for its products; foreign key in a custom migration. */
+    productLayoutId: uuid("product_layout_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -2752,6 +2763,7 @@ export const terms = commerce.table(
     check("terms_content_type", sql`${t.contentType} in ('page', 'article', 'product')`),
     check("terms_kind", sql`${t.kind} in ('category', 'tag')`),
     check("terms_products_in_stores", sql`${t.contentType} <> 'product' or ${t.storeId} is not null`),
+    check("terms_product_layout", sql`${t.productLayoutId} is null or ${t.contentType} = 'product'`),
     check("terms_tags_flat", sql`${t.kind} = 'category' or ${t.parentId} is null`),
     check("terms_not_own_parent", sql`${t.parentId} is null or ${t.parentId} <> ${t.id}`),
     check("terms_name", sql`length(trim(${t.name})) between 1 and 80`),

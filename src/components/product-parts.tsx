@@ -6,6 +6,7 @@ import { AddToCart } from "@/components/add-to-cart";
 import { AppointmentPicker } from "@/components/appointment-picker";
 import { SwitchToBusiness } from "@/components/buyer";
 import { JsonLdScript } from "@/components/json-ld";
+import { PageArticle } from "@/components/page-article";
 import { HEADING_SIZES } from "@/components/page-block";
 import { Price, VatAmount } from "@/components/price";
 import { ProductBar } from "@/components/product-bar";
@@ -21,7 +22,8 @@ import { slotWeek } from "@/lib/booking-slots";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import type { ProductBlock } from "@/lib/page-content";
+import type { PageContent, ProductBlock } from "@/lib/page-content";
+import { localizePage } from "@/lib/page-translation";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { stockLevel } from "@/lib/pricing";
 import { productJsonLd } from "@/lib/structured-data";
@@ -627,6 +629,26 @@ export async function ProductJsonLd({
         inStock: (variantId) => bookable || (availability.get(variantId) ?? 0) > 0,
         shipping,
       })}
+    />
+  );
+}
+
+/**
+ * A product in a layout (D79): the layout's rows in the market's language,
+ * with the product's parts where its product components are and the
+ * layout's other components around them. The product's title is the page's
+ * title. Used by the product's page and by a layout's preview.
+ */
+export function ProductLayoutView({ layout, ctx }: { layout: PageContent; ctx: ProductPageContext }) {
+  const { store, market, product } = ctx;
+  const content = localizePage(layout, market.locale);
+  return (
+    <PageArticle
+      content={{ ...content, title: product.title }}
+      place={{ pageId: null, owner: store.id, market: market.code }}
+      renderBlock={(block) =>
+        block.type === "product" && productPartShows(block, product) ? <ProductPartView block={block} ctx={ctx} /> : null
+      }
     />
   );
 }

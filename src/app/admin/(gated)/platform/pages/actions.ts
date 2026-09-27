@@ -11,7 +11,7 @@ import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } f
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { gridData } from "@/server/content-grid";
 import type { GridData } from "@/lib/content-grid";
-import { PAGE_TYPES, pageBlockSchema, type PageType } from "@/lib/page-content";
+import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
 
 
@@ -92,7 +92,7 @@ export async function deleteSavedPartAction(id: string): Promise<SavedResult> {
 // Kaizen's page and article categories and tags (D50, D57)
 // ---------------------------------------------------------------------------
 
-const termScope = (type: PageType) => ({ storeId: null, contentType: type }) as const;
+const termScope = (type: PageType) => ({ storeId: null, contentType: termContentOf(type) }) as const;
 
 /** Listings and grids of pages show categories and tags. */
 function termsChanged(type: PageType, result: TermsResult): TermsResult {

@@ -315,6 +315,18 @@ of running `playwright install`.
   a store's in `blog/blog-listing.tsx`) are content grids of articles. New block kinds go in `PageBlock`, `pageInput`,
   `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
   builder's Components tab and its dialogs.
+- Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
+  `src/server/product-layouts.ts`): a product's page is a layout of rows
+  with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the
+  product; `ProductLayoutView` renders a layout for the site and the admin
+  preview. Layouts are pages of type `product_layout` (store only, no
+  terms; `savePage` refuses product blocks elsewhere), chosen by
+  `productLayoutFor()`: the product's, its nearest category's, a tag's, the
+  store's (`product_layout_id` on `products`, `terms`, `stores`), else
+  `DEFAULT_PRODUCT_LAYOUT`. A new part goes in `PRODUCT_PARTS`,
+  `ProductBlock`'s settings, `ProductPartView`, `productPartShows()` and the
+  builder's `ProductFields`/`ProductStandIn`. Keep the product's details
+  outside `<Suspense>`; only the buy part streams in.
 - Design themes (D60, `src/lib/theme.ts`, `src/server/themes.ts`): a store's
   look is `stores.theme` (template, saved theme, settings; `parseStoreTheme()`
   fills gaps from the template), edited at `/admin/{store}/settings/design`

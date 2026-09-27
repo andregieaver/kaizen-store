@@ -13,9 +13,11 @@ import {
   samePageContent,
   type PageContent,
   type PageType,
+  termContentOf
 } from "@/lib/page-content";
 
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
+import { productBlocks } from "@/lib/product-layout";
 
 import { audit, type Account } from "./auth";
 import { findFont, installFonts } from "./fonts";
@@ -167,6 +169,18 @@ const takenProblem = (slug: string, type: PageType) =>
     : `Another page already has the address /${slug}. Choose another.`;
 
 /**
+ * Product components (D79) show the product a layout is used for, so only a
+ * store's product layouts hold them, and a layout has no categories or tags.
+ */
+function productLayoutProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
+  const parts = productBlocks(content).length > 0;
+  if (type !== "product_layout") return parts ? "Product components belong in product layouts, which show a product." : null;
+  if (owner === null) return "Product layouts are a store's.";
+  if (content.categories.length > 0 || content.tags.length > 0) return "A product layout has no categories or tags.";
+  return null;
+}
+
+/**
  * Saves the editor's page as the draft, and with `publish` also as what
  * visitors see. A page not yet published takes its draft's address at
  * once; a published page keeps its live address until it is published
@@ -186,6 +200,8 @@ export async function savePage(
   if (slugProblem) return { ok: false, problems: [slugProblem] };
   const gridProblem = ownerGridProblem(owner, parsed.data.rows);
   if (gridProblem) return { ok: false, problems: [gridProblem] };
+  const layoutProblem = productLayoutProblem(owner, type, parsed.data);
+  if (layoutProblem) return { ok: false, problems: [layoutProblem] };
   // Blocks' own fonts (D59) come from Google Fonts and must be on Kaizen before the page shows them.
   const families = pageFonts(parsed.data);
   const unknown = families.filter((family) => !findFont(family));
@@ -193,7 +209,7 @@ export async function savePage(
   const installed = await installFonts(families);
   if (!installed.ok) return { ok: false, problems: [installed.problem] };
   // Only the owner's page (or article) categories and tags; one deleted meanwhile is left out.
-  const scope = { storeId: owner, contentType: type } as const;
+  const scope = { storeId: owner, contentType: termContentOf(type) } as const;
   // Texts in the owner's other languages (D55); Kaizen's pages are in English only.
   const translated = cleanTranslations(parsed.data, (await ownerLanguages(owner)).slice(1));
   if (!translated.ok) return { ok: false, problems: translated.problems };

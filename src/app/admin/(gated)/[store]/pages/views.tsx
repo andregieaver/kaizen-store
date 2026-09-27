@@ -9,9 +9,15 @@ import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { ArticleView } from "@/components/article-view";
 import { PageArticle } from "@/components/page-article";
-import type { PageType } from "@/lib/page-content";
+import { ProductLayoutView } from "@/components/product-parts";
+import { t } from "@/lib/i18n";
+import { termContentOf, type PageContent, type PageType } from "@/lib/page-content";
+import type { Term } from "@/lib/taxonomy";
 import { requireMember } from "@/server/auth";
-import { getPageForEdit, listPages } from "@/server/pages";
+import { getProduct, listProducts } from "@/server/catalog";
+import { getPageForEdit, listPages, type PageSummary } from "@/server/pages";
+import { layoutUses, type LayoutUse } from "@/server/product-layouts";
+import type { Store } from "@/server/stores";
 import { listSavedParts } from "@/server/saved-parts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 
@@ -31,6 +37,8 @@ const INTRO: Record<PageType, string> = {
   page: "Pages of your own, such as About us or Delivery, in every country your store sells to. Save a page as a draft while you work on it; publish it to put it in your store, and add it to your menus under Header and footer.",
   article:
     "Your blog: articles at /blog/{address} in every country your store sells to, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
+  product_layout:
+    "How your product pages are laid out: rows and columns of product components (pictures, title, price, buy, description …) with any other components around them. Publish a layout, then choose where it is used: for the whole store, for categories or tags, or for single products. Products without one use the standard layout.",
 };
 
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
@@ -47,9 +55,11 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           <p className="max-w-2xl text-sm text-muted">{INTRO[type]}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
-            Categories and tags
-          </Link>
+          {type !== "product_layout" && (
+            <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
+              Categories and tags
+            </Link>
+          )}
           <Link
             href={`${base}/new`}
             className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
@@ -67,6 +77,13 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
+      ) : type === "product_layout" ? (
+        <ProductLayoutsTable
+          layouts={pages}
+          adminBase={base}
+          uses={await layoutUses(store.id)}
+          terms={await listTerms({ storeId: store.id, contentType: "product" })}
+        />
       ) : (
         <PagesTable
           pages={pages}
@@ -90,7 +107,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
 export async function StorePageTermsView({ type, params }: { type: PageType; params: StoreParams }) {
   const { store } = await requireMember((await params).store);
   const copy = PAGE_TYPE_COPY[type];
-  const terms = await listTerms({ storeId: store.id, contentType: type });
+  const terms = await listTerms({ storeId: store.id, contentType: termContentOf(type) });
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -122,7 +139,7 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
     listSavedParts(store.id),
     // Kaizen's saved parts, to start from (D56).
     listSavedParts(null),
-    listTerms({ storeId: store.id, contentType: type }),
+    listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
   ]);
   return (
@@ -151,7 +168,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
     listSavedParts(store.id),
     // Kaizen's saved parts, to start from (D56).
     listSavedParts(null),
-    listTerms({ storeId: store.id, contentType: type }),
+    listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
   ]);
   if (!page) notFound();
@@ -163,7 +180,13 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         key={page.id}
         page={page}
         notice={
-          justSaved === "draft" ? "Draft saved." : justSaved === "published" ? `Published at ${context.siteBase}/${page.slug}.` : null
+          justSaved === "draft"
+            ? "Draft saved."
+            : justSaved === "published"
+              ? type === "product_layout"
+                ? "Published."
+                : `Published at ${context.siteBase}/${page.slug}.`
+              : null
         }
         savedParts={saved}
         library={library}
@@ -176,7 +199,16 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
 }
 
 /** The last saved draft of a store's page or article, as the store will show it once published. */
-export async function StorePreviewPageView({ type, params }: { type: PageType; params: PageParams }) {
+export async function StorePreviewPageView({
+  type,
+  params,
+  searchParams,
+}: {
+  type: PageType;
+  params: PageParams;
+  /** A product layout's preview (D79): `product`, the product it is shown with. */
+  searchParams?: Query;
+}) {
   const { store: storeSlug, pageId } = await params;
   const { store } = await requireMember(storeSlug);
   const page = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;
@@ -197,7 +229,9 @@ export async function StorePreviewPageView({ type, params }: { type: PageType; p
           Back to editing
         </Link>
       </p>
-      {type === "article" ? (
+      {type === "product_layout" ? (
+        <LayoutPreview store={store} layout={page.draft} asked={(await searchParams)?.product} />
+      ) : type === "article" ? (
         // As the blog will show it (D57), in the store's main language.
         <ArticleView
           content={page.draft}
@@ -259,5 +293,115 @@ function FrontPageForm({
         </p>
       )}
     </ActionForm>
+  );
+}
+
+/** A store's product layouts (D79): name, state and when published. */
+function ProductLayoutsTable({
+  layouts,
+  adminBase,
+  uses,
+  terms,
+}: {
+  layouts: PageSummary[];
+  adminBase: string;
+  uses: Map<string, LayoutUse>;
+  terms: Term[];
+}) {
+  const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
+  const names = (ids: string[]) => ids.map((id) => terms.find((term) => term.id === id)?.name).filter(Boolean).join(", ");
+  const usedFor = (id: string) => {
+    const use = uses.get(id);
+    if (!use) return "Not used yet";
+    return (
+      [
+        use.standard && "The store's standard",
+        use.categoryIds.length > 0 && `Categories: ${names(use.categoryIds)}`,
+        use.tagIds.length > 0 && `Tags: ${names(use.tagIds)}`,
+        use.products > 0 && (use.products === 1 ? "1 product" : `${use.products} products`),
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Not used yet"
+    );
+  };
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border bg-background">
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="border-b border-border">
+            <th scope="col" className="px-4 py-2 font-medium">
+              Layout
+            </th>
+            <th scope="col" className="px-4 py-2 font-medium">
+              State
+            </th>
+            <th scope="col" className="px-4 py-2 font-medium">
+              Used for
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {layouts.map((layout) => (
+            <tr key={layout.id} className="border-b border-border last:border-0">
+              <td className="px-4 py-2">
+                <Link href={`${adminBase}/${layout.id}`} className="font-medium underline">
+                  {layout.title || "Untitled"}
+                </Link>
+              </td>
+              <td className="px-4 py-2">
+                {LAYOUT_STATES[layout.state]}
+                {layout.publishedAt && <span className="block text-muted">Published {date.format(new Date(layout.publishedAt))}</span>}
+              </td>
+              <td className="px-4 py-2">
+                {usedFor(layout.id)}
+                <Link href={`${adminBase}/${layout.id}/assign`} className="block w-fit underline">
+                  Where it&apos;s used
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const LAYOUT_STATES: Record<PageSummary["state"], string> = {
+  draft: "Draft",
+  published: "Published",
+  changed: "Published, with unpublished changes",
+};
+
+/**
+ * A product layout's saved draft with one of the store's products (D79), in
+ * its main market: the first product unless one is chosen.
+ */
+async function LayoutPreview({ store, layout, asked }: { store: Store; layout: PageContent; asked: string | string[] | undefined }) {
+  const market = store.markets[0];
+  const products = market ? await listProducts(store.id, market.code, market.locale) : [];
+  const chosen = products.find((p) => p.handle === asked) ?? products[0];
+  const product = chosen && market ? await getProduct(store.id, market.code, market.locale, chosen.handle) : null;
+  if (!market || !product) return <p className="text-sm text-muted">Add a product with a price to see the layout with it.</p>;
+  return (
+    <>
+      <form className="flex flex-wrap items-end gap-2 text-sm">
+        <label className="flex flex-col gap-1 font-medium">
+          Shown with
+          <select name="product" defaultValue={product.handle} className="min-h-10 rounded-md border border-border bg-background px-3">
+            {products.map((p) => (
+              <option key={p.handle} value={p.handle}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className="min-h-10 rounded-md border border-border px-4 font-medium">
+          Show
+        </button>
+      </form>
+      <div className="rounded-lg border border-border py-8">
+        <ProductLayoutView layout={layout} ctx={{ store, market, product, m: t(market.lang) }} />
+      </div>
+    </>
   );
 }

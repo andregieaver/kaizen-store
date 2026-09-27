@@ -925,6 +925,20 @@
       "when": 1790540954403,
       "tag": "20260927202914_listing_filters",
       "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1790543332275,
+      "tag": "20260927210852_product_layouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1790543359169,
+      "tag": "20260927210919_product_layouts_rules",
+      "breakpoints": true
     }
   ]
 }

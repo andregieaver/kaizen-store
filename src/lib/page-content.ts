@@ -730,12 +730,28 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
 export const RESERVED_ARTICLE_SLUGS: readonly string[] = ["category", "page", "tag"];
 
 /** What is built in the page builder: pages, and articles in the blog (D57). */
-export const PAGE_TYPES = ["page", "article"] as const;
+export const PAGE_TYPES = ["page", "article", "product_layout"] as const;
 export type PageType = (typeof PAGE_TYPES)[number];
+
+/**
+ * The content whose categories and tags (D50) a page type uses: its own for
+ * pages and articles. Product layouts (D79) have none; they read as pages
+ * where a type is asked for, and saving one with any is refused.
+ */
+export const termContentOf = (type: PageType): "page" | "article" => (type === "article" ? "article" : "page");
 
 /** The addresses an owner's pages (Kaizen's with null, or a store's) or articles cannot take. */
 export const reservedPageSlugs = (storeId: string | null, type: PageType = "page"): readonly string[] =>
-  type === "article" ? RESERVED_ARTICLE_SLUGS : storeId === null ? RESERVED_PAGE_SLUGS : RESERVED_STORE_PAGE_SLUGS;
+  type === "product_layout"
+    ? NO_RESERVED_SLUGS
+    : type === "article"
+      ? RESERVED_ARTICLE_SLUGS
+      : storeId === null
+        ? RESERVED_PAGE_SLUGS
+        : RESERVED_STORE_PAGE_SLUGS;
+
+/** Product layouts (D79) have no address on the site: their name's own is only a key. */
+const NO_RESERVED_SLUGS: readonly string[] = [];
 
 /** Why an address is not well formed, or null. */
 function slugFormatProblem(slug: string): string | null {

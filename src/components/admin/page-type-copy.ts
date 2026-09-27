@@ -10,4 +10,6 @@ export const PAGE_TYPE_COPY: Record<
 > = {
   page: { list: "Pages", one: "page", One: "Page", many: "pages", segment: "pages", sitePrefix: "" },
   article: { list: "Blog", one: "article", One: "Article", many: "articles", segment: "articles", sitePrefix: "/blog" },
+  // A store's product layouts (D79): not at an address of their own, but where products are.
+  product_layout: { list: "Product layouts", one: "layout", One: "Layout", many: "layouts", segment: "product-layouts", sitePrefix: "/p" },
 };

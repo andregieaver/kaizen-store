@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ContentGridView } from "@/components/content-grid";
-import type { ContentGridBlock, PageType } from "@/lib/page-content";
+import { termContentOf, type ContentGridBlock, type PageType } from "@/lib/page-content";
 import { newBlock } from "@/lib/page-rows";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
 import { gridData } from "@/server/content-grid";
@@ -21,14 +21,14 @@ type Params = Promise<{ slug: string }>;
 const base = (type: PageType) => (type === "article" ? "/blog" : "");
 
 export async function termStaticParams(kind: TermKind, type: PageType = "page") {
-  const terms = (await siteTerms(null, type)).filter((t) => t.kind === kind);
+  const terms = (await siteTerms(null, termContentOf(type))).filter((t) => t.kind === kind);
   // Cache Components needs at least one entry; "_" simply renders a 404.
   return terms.length > 0 ? terms.map((term) => ({ slug: term.slug })) : [{ slug: "_" }];
 }
 
 async function load(kind: TermKind, params: Params, type: PageType) {
   const { slug } = await params;
-  const terms = await siteTerms(null, type);
+  const terms = await siteTerms(null, termContentOf(type));
   const term = terms.find((t) => t.kind === kind && t.slug === slug);
   return term ? { terms, term } : null;
 }

@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
-import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType } from "@/lib/page-content";
+import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType, termContentOf } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { summarize } from "@/lib/seo";
@@ -74,7 +74,7 @@ async function gridPages(
   const href = (slug: string) =>
     shop ? marketPath(shop.store.slug, shop.market.slug, `${prefix}/${slug}`) : `${prefix}/${slug}`;
   const language = shop ? { lang: shop.market.lang, locale: shop.market.locale } : { lang: "en", locale: "en-GB" };
-  const terms = await currentTerms(owner, type);
+  const terms = await currentTerms(owner, termContentOf(type));
   const categories = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tags = knownIds(terms, "tag", filter.tags);
   // Asked for, but all deleted since: nothing matches.

@@ -1381,6 +1381,59 @@ describe("pages", () => {
     );
   });
 
+  it("keeps product layouts a store's, chosen only as layouts, let go when deleted, and copied with their uses (D79)", async () => {
+    const template = await createStore("layouts-template", ["NO"]);
+    const layout = (slug: string, storeId: string | null = template, published = true) =>
+      one<{ id: string }>(
+        `insert into commerce.pages (store_id, type, slug, draft, published, published_at)
+         values ($1, 'product_layout', $2, '{"title": "Wide"}', case when $3 then '{"title": "Wide"}'::jsonb end, case when $3 then now() end)
+         returning id`,
+        [storeId, slug, published],
+      );
+    await expect(layout("kaizens", null)).rejects.toThrow(/pages_product_layout_store/);
+    const { id: wide } = await layout("wide");
+    const { id: draftOnly } = await layout("draft-only", template, false);
+    const { id: aPage } = await one<{ id: string }>("insert into commerce.pages (store_id, slug, draft) values ($1, 'about', '{}') returning id", [template]);
+    const { productId } = await createProduct({ storeId: template });
+    const { id: category } = await one<{ id: string }>(
+      "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'product', 'category', 'Lamps', 'lamps') returning id",
+      [template],
+    );
+    const { id: pageCategory } = await one<{ id: string }>(
+      "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'page', 'category', 'Help', 'help') returning id",
+      [template],
+    );
+
+    // Only a product layout, and only the store's own.
+    await expect(db.query("update commerce.products set product_layout_id = $1 where id = $2", [aPage, productId])).rejects.toThrow(/must be a product layout/);
+    const other = await createStore("layouts-other", ["SE"]);
+    const { id: theirs } = await layout("theirs", other);
+    await expect(db.query("update commerce.stores set product_layout_id = $1 where id = $2", [theirs, template])).rejects.toThrow(/stores_product_layout_fk/);
+    // Page categories have no layouts.
+    await expect(db.query("update commerce.terms set product_layout_id = $1 where id = $2", [wide, pageCategory])).rejects.toThrow(/terms_product_layout/);
+
+    await db.query("update commerce.stores set product_layout_id = $1 where id = $2", [wide, template]);
+    await db.query("update commerce.terms set product_layout_id = $1 where id = $2", [wide, category]);
+    await db.query("update commerce.products set product_layout_id = $1 where id = $2", [draftOnly, productId]);
+
+    // A new store copies the published layout, used where the template uses it; the unpublished one is not copied, so not used.
+    const owner = await createAccount("layouts-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'layouts-copy', 'Copy', $2) as id", [template, owner]);
+    const { id: copiedLayout } = await one<{ id: string }>(
+      "select id from commerce.pages where store_id = $1 and type = 'product_layout'",
+      [copy],
+    );
+    expect((await one<{ product_layout_id: string }>("select product_layout_id from commerce.stores where id = $1", [copy])).product_layout_id).toBe(copiedLayout);
+    expect(
+      (await one<{ product_layout_id: string }>("select product_layout_id from commerce.terms where store_id = $1 and slug = 'lamps'", [copy])).product_layout_id,
+    ).toBe(copiedLayout);
+
+    // Deleting a layout lets go of it everywhere, keeping the store id.
+    await db.query("delete from commerce.pages where id = $1", [wide]);
+    expect(await one("select id, product_layout_id from commerce.stores where id = $1", [template])).toEqual({ id: template, product_layout_id: null });
+    expect((await one<{ product_layout_id: string | null }>("select product_layout_id from commerce.terms where id = $1", [category])).product_layout_id).toBeNull();
+  });
+
   it("gives articles addresses of their own, beside pages, with their own reserved routes and redirects (D57)", async () => {
     const article = (slug: string, storeId: string | null = null) =>
       one<{ id: string }>(
