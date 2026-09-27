@@ -785,6 +785,13 @@
       "when": 1790515581887,
       "tag": "20260927132621_host_commissions_per_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1790516121246,
+      "tag": "20260927133521_payments_kaizen_fee",
+      "breakpoints": true
     }
   ]
 }

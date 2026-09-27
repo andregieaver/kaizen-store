@@ -949,10 +949,12 @@ export async function startCheckout(
   `);
   await db().execute(sql`
     insert into commerce.payments (
-      store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status
+      store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status,
+      kaizen_fee_minor
     ) values (
       ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${seller},
-      ${ui === "custom" ? session.client_secret : null}, ${order.dueNowMinor}, ${order.currency}, 'pending'
+      ${ui === "custom" ? session.client_secret : null}, ${order.dueNowMinor}, ${order.currency}, 'pending',
+      ${order.subscription ? 0 : (kaizenFee ?? 0)}
     )
   `);
   if (ui === "custom") return session.client_secret ? { ok: true, url: `${base}/checkout` } : { ok: false, problem: "payment_error" };

@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."payments" ADD COLUMN "kaizen_fee_minor" bigint DEFAULT 0 NOT NULL;

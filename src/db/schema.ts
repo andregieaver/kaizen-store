@@ -1720,6 +1720,12 @@ export const payments = commerce.table(
      */
     clientSecret: text("client_secret"),
     amountMinor: money("amount_minor"),
+    /**
+     * Kaizen's own fee in the charge's application fee (D17), without the
+     * store's commission on a host's charge (D71); shown to hosts. 0 when
+     * there was none, or for a subscription, whose fee is a percentage.
+     */
+    kaizenFeeMinor: money("kaizen_fee_minor").default(0),
     currency: char("currency", { length: 3 }).notNull(),
     status: paymentStatus("status").notNull().default("pending"),
     createdAt: createdAt(),

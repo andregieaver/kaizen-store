@@ -428,6 +428,15 @@ export async function reverseHostCommission(storeId: string, paymentId: string):
   `);
 }
 
+/**
+ * An application fee after refunds: Stripe gives back the refunded share of
+ * it (`refund_application_fee`), as the commission's is given back.
+ */
+export function feeAfterRefunds(feeMinor: number, paidMinor: number, refundedMinor: number): number {
+  if (feeMinor <= 0 || paidMinor <= 0) return 0;
+  return feeMinor - Math.min(feeMinor, Math.round((feeMinor * refundedMinor) / paidMinor));
+}
+
 export type HostEarning = {
   /** The payment: a booking's checkout, or a no-show fee charged later. */
   paymentId: string;
@@ -442,6 +451,8 @@ export type HostEarning = {
   refundedMinor: number;
   /** The store's commission, after refunds. */
   commissionMinor: number;
+  /** Kaizen's own fee, after refunds (Stripe gives back its refunded share). */
+  kaizenFeeMinor: number;
   /** Sent on to the store: the commission is settled. */
   sent: boolean;
   problem: string;
@@ -455,7 +466,7 @@ export type HostEarning = {
 export async function hostEarnings(storeId: string, hostId: string, limit = 50): Promise<HostEarning[]> {
   const rows = await db().execute<Row>(sql`
     select p.id as payment_id, left(p.provider_reference, 3) = 'cs_' as checkout, o.id, o.number, p.created_at, p.currency,
-      p.amount_minor as paid,
+      p.amount_minor as paid, p.kaizen_fee_minor,
       coalesce((select sum(r.amount_minor) from commerce.refunds r
         where r.store_id = p.store_id and r.payment_id = p.id and r.status <> 'failed'), 0)::bigint as refunded,
       coalesce(c.amount_minor - c.reversed_minor, 0) as commission, c.status, coalesce(c.last_error, '') as problem
@@ -468,6 +479,7 @@ export async function hostEarnings(storeId: string, hostId: string, limit = 50):
     limit ${limit}
   `);
   return rows.map((row) => ({
+    kaizenFeeMinor: feeAfterRefunds(Number(row.kaizen_fee_minor), Number(row.paid), Number(row.refunded)),
     paymentId: String(row.payment_id),
     kind: row.checkout ? "booking" : "no_show",
     orderId: String(row.id),

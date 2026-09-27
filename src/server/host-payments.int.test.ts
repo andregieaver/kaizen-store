@@ -145,6 +145,11 @@ beforeAll(async () => {
   await db().execute(sql`
     update commerce.payment_providers set enabled = true, active_mode = 'test', order_invoices = true where store_id = ${storeId}::uuid
   `);
+  // Kaizen takes 2 % of this store's sales, on top of the host's commission.
+  await db().execute(sql`
+    insert into commerce.store_billing (store_id, sale_fee_bps_override) values (${storeId}::uuid, 200)
+    on conflict (store_id) do update set sale_fee_bps_override = 200
+  `);
   await db().execute(sql`update commerce.platform_settings set checkout_ui = 'hosted'`);
   const [owner] = await db().execute<Row>(sql`
     insert into commerce.accounts (email, name) values (${`owner-${slug}@example.com`}, 'Owner') returning id
@@ -274,7 +279,16 @@ describe("paying hosts (D71)", () => {
     expect(fake.reversals).toEqual([{ id: String(paid.transfer_id), params: { amount: back, metadata: { order_id: orderId } } }]);
     Object.assign(paidOrder, { id: orderId, due, commission, half, back });
     expect(await payments.hostEarnings(storeId, hostId)).toEqual([
-      expect.objectContaining({ orderId, kind: "booking", paidMinor: due, refundedMinor: half, commissionMinor: commission - back, sent: true }),
+      expect.objectContaining({
+        orderId,
+        kind: "booking",
+        paidMinor: due,
+        refundedMinor: half,
+        commissionMinor: commission - back,
+        // Kaizen's 2 %, less the half Stripe gave back with the refund.
+        kaizenFeeMinor: Math.round(due * 0.02) - Math.round((Math.round(due * 0.02) * half) / due),
+        sent: true,
+      }),
     ]);
   });
 
@@ -376,7 +390,8 @@ describe("paying hosts (D71)", () => {
     const { params, options } = fake.charges.at(-1)!;
     expect(options).toMatchObject({ stripeAccount: hostAccount() });
     expect(params).toMatchObject({ amount: fee, payment_method: "pm_saved", customer: "cus_guest" });
-    expect(params.application_fee_amount).toBe((saleFee(fee, await storeFeeBps(storeId)) ?? 0) + commission);
+    expect(await storeFeeBps(storeId)).toBe(200);
+    expect(params.application_fee_amount).toBe((saleFee(fee, 200) ?? 0) + commission);
     const [owed] = await db().execute<Row>(sql`
       select c.kind, c.amount_minor, c.status, p.provider_reference from commerce.host_commissions c
       join commerce.payments p on p.id = c.payment_id where c.order_id = ${paidOrder.id}::uuid and c.kind = 'no_show'
@@ -386,10 +401,11 @@ describe("paying hosts (D71)", () => {
 
     // The host and the store see it next to the booking, newest first.
     const earnings = await payments.hostEarnings(storeId, hostId);
-    expect(earnings.map((e) => [e.kind, e.paidMinor, e.commissionMinor])).toEqual([
-      ["no_show", fee, commission],
-      ["booking", paidOrder.due, paidOrder.commission - paidOrder.back],
+    expect(earnings.map((e) => [e.kind, e.paidMinor, e.commissionMinor, e.kaizenFeeMinor])).toEqual([
+      ["no_show", fee, commission, Math.round(fee * 0.02)],
+      ["booking", paidOrder.due, paidOrder.commission - paidOrder.back, earnings[1].kaizenFeeMinor],
     ]);
+    expect(earnings[1].kaizenFeeMinor).toBeGreaterThan(0);
     // The tax report counts the fee as paid to the host, and the commission on it.
     const report = await dac7.dac7Report(storeId, Number(zonedDate(Date.now(), tz).slice(0, 4)), tz);
     const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);

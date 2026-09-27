@@ -58,8 +58,10 @@ export async function markNoShow(
     if (!charged.ok) return charged;
     reference = charged;
     const [payment] = await db().execute<Row>(sql`
-      insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
-      values (${store.id}::uuid, ${orderId}::uuid, 'stripe', ${charged.id}, ${charged.account}, ${amount}, ${String(row.currency)}, 'captured')
+      insert into commerce.payments
+        (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status, kaizen_fee_minor)
+      values (${store.id}::uuid, ${orderId}::uuid, 'stripe', ${charged.id}, ${charged.account}, ${amount}, ${String(row.currency)},
+        'captured', ${charged.kaizenFeeMinor})
       returning id
     `);
     // A host's booking (D71): the store's commission of the fee is owed to it, as of the booking.
@@ -96,7 +98,7 @@ async function chargeSavedCard(
   currency: string,
   orderNumber: string,
   hostId: string | null,
-): Promise<{ ok: true; id: string; account: string; commissionMinor: number } | { ok: false; problem: string }> {
+): Promise<{ ok: true; id: string; account: string; commissionMinor: number; kaizenFeeMinor: number } | { ok: false; problem: string }> {
   const [payment] = await db().execute<Row>(sql`
     select p.provider_reference, p.provider_account, a.mode
     from commerce.payments p
@@ -137,7 +139,13 @@ async function chargeSavedCard(
       { stripeAccount, idempotencyKey: `no-show-${bookingId}` },
     );
     if (charged.status !== "succeeded") return { ok: false, problem: `Stripe did not take the payment (${charged.status}).` };
-    return { ok: true, id: charged.id, account: stripeAccount, commissionMinor: commission > 0 ? (fee ?? 0) - (kaizenFee ?? 0) : 0 };
+    return {
+      ok: true,
+      id: charged.id,
+      account: stripeAccount,
+      commissionMinor: commission > 0 ? (fee ?? 0) - (kaizenFee ?? 0) : 0,
+      kaizenFeeMinor: kaizenFee ?? 0,
+    };
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === "authentication_required") {
