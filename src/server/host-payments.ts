@@ -258,8 +258,8 @@ export function commissionOf(dueNowMinor: number, commissionBps: number): number
  */
 export async function recordHostCommission(storeId: string, orderId: string): Promise<void> {
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.host_commissions (order_id, store_id, host_id, mode, currency, amount_minor)
-    select o.id, o.store_id, o.host_id, a.mode, o.currency, o.commission_minor
+    insert into commerce.host_commissions (store_id, order_id, payment_id, kind, host_id, mode, currency, amount_minor)
+    select o.store_id, o.id, p.id, 'booking', o.host_id, a.mode, o.currency, o.commission_minor
     from commerce.orders o
     join commerce.payments p on p.store_id = o.store_id and p.order_id = o.id and p.provider = 'stripe'
       and left(p.provider_reference, 3) = 'cs_'
@@ -268,39 +268,68 @@ export async function recordHostCommission(storeId: string, orderId: string): Pr
       and a.host_id = o.host_id
     order by p.created_at
     limit 1
-    on conflict (order_id) do nothing
-    returning order_id
+    on conflict (store_id, payment_id) do nothing
+    returning id
   `);
-  if (row) await payHostCommissions({ orderId });
+  if (row) await payHostCommissions({ id: String(row.id) });
+}
+
+/**
+ * A no-show fee charged to the card saved with a host's booking (D66): the
+ * store keeps its commission of it as of the booking, taken in the charge's
+ * application fee, and it is owed and sent the same way.
+ */
+export async function recordNoShowCommission(storeId: string, paymentId: string, amountMinor: number): Promise<void> {
+  if (amountMinor <= 0) return;
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.host_commissions (store_id, order_id, payment_id, kind, host_id, mode, currency, amount_minor)
+    select p.store_id, p.order_id, p.id, 'no_show', o.host_id, a.mode, p.currency, ${amountMinor}
+    from commerce.payments p
+    join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+    join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
+    where p.store_id = ${storeId}::uuid and p.id = ${paymentId}::uuid and a.host_id = o.host_id
+    on conflict (store_id, payment_id) do nothing
+    returning id
+  `);
+  if (row) await payHostCommissions({ id: String(row.id) });
+}
+
+/** A host's commission rate, for a charge made on their account. */
+export async function hostCommissionBps(storeId: string, hostId: string): Promise<number> {
+  const [row] = await db().execute<Row>(sql`
+    select commission_bps from commerce.hosts where store_id = ${storeId}::uuid and id = ${hostId}::uuid
+  `);
+  return Number(row?.commission_bps ?? 0);
 }
 
 /** How long a failed transfer waits before the next try: 5 minutes, doubling, at most 12 hours. */
 const RETRY = sql`make_interval(mins => least(5 * power(2, least(attempts, 10)), 720)::int)`;
 
 /**
- * Sends the commissions owed to stores (or one order's): a transfer from
+ * Sends the commissions owed to stores (or one of them): a transfer from
  * Kaizen's balance to the store's Stripe account. Stripe refuses until the
  * application fee is in Kaizen's available balance, and until the store's
  * account can receive transfers (asked for on the first refusal); both are
  * tried again later. Returns how many were sent.
  */
-export async function payHostCommissions({ orderId = null, limit = 20 }: { orderId?: string | null; limit?: number } = {}): Promise<number> {
+export async function payHostCommissions({ id = null, limit = 20 }: { id?: string | null; limit?: number } = {}): Promise<number> {
   const due = await db().execute<Row>(sql`
-    select c.order_id, c.store_id, c.host_id, c.mode, c.currency, c.amount_minor, c.reversed_minor, c.attempts,
+    select c.id, c.order_id, c.kind, c.store_id, c.host_id, c.mode, c.currency, c.amount_minor, c.reversed_minor, c.attempts,
       o.number, sa.account_id as store_account
     from commerce.host_commissions c
     join commerce.orders o on o.store_id = c.store_id and o.id = c.order_id
     left join commerce.stripe_accounts sa on sa.store_id = c.store_id and sa.mode = c.mode
     where c.status = 'pending'
-      and ${orderId ? sql`c.order_id = ${orderId}::uuid` : sql`c.updated_at <= now() - ${RETRY}`}
+      and ${id ? sql`c.id = ${id}::uuid` : sql`c.updated_at <= now() - ${RETRY}`}
     order by c.created_at
     limit ${limit}
   `);
   let sent = 0;
   for (const row of due) {
-    const id = String(row.order_id);
+    const commissionId = String(row.id);
+    const orderId = String(row.order_id);
     const amount = Number(row.amount_minor) - Number(row.reversed_minor);
-    const where = sql`order_id = ${id}::uuid and status = 'pending'`;
+    const where = sql`id = ${commissionId}::uuid and status = 'pending'`;
     if (amount <= 0) {
       // All of it was refunded before it was sent.
       await db().execute(sql`update commerce.host_commissions set status = 'paid', updated_at = now() where ${where}`);
@@ -318,17 +347,23 @@ export async function payHostCommissions({ orderId = null, limit = 20 }: { order
       continue;
     }
     const storeAccount = String(row.store_account);
+    const noShow = row.kind === "no_show";
     try {
       const transfer = await stripe.transfers.create(
         {
           amount,
           currency: String(row.currency).toLowerCase(),
           destination: storeAccount,
-          transfer_group: `order-${id}`,
-          description: `Commission, order ${String(row.number)}`,
-          metadata: { order_id: id, store_id: String(row.store_id), host_id: String(row.host_id), kind: "host_commission" },
+          transfer_group: `order-${orderId}`,
+          description: `Commission${noShow ? " on a no-show fee" : ""}, order ${String(row.number)}`,
+          metadata: {
+            order_id: orderId,
+            store_id: String(row.store_id),
+            host_id: String(row.host_id),
+            kind: noShow ? "host_commission_no_show" : "host_commission",
+          },
         },
-        { idempotencyKey: `host-commission-${id}-${amount}` },
+        { idempotencyKey: `host-commission-${commissionId}-${amount}` },
       );
       await db().execute(sql`
         update commerce.host_commissions set status = 'paid', transfer_id = ${transfer.id}, last_error = '',
@@ -350,24 +385,24 @@ export async function payHostCommissions({ orderId = null, limit = 20 }: { order
 }
 
 /**
- * After a refund of a host's order: Stripe gave back the refunded share of
- * the application fee, the commission's share with it, so the store gives
- * back the same share of its commission. Not yet sent, it is lowered;
- * sent, part of the transfer is reversed.
+ * After a refund of a payment on a host's account: Stripe gave back the
+ * refunded share of the application fee, the commission's share with it,
+ * so the store gives back the same share of its commission of that
+ * payment. Not yet sent, it is lowered; sent, part of the transfer is
+ * reversed.
  */
-export async function reverseHostCommission(storeId: string, orderId: string): Promise<void> {
+export async function reverseHostCommission(storeId: string, paymentId: string): Promise<void> {
   const [row] = await db().execute<Row>(sql`
-    select c.amount_minor, c.reversed_minor, c.status, c.transfer_id, c.mode, p.amount_minor as paid,
+    select c.id, c.order_id, c.amount_minor, c.reversed_minor, c.status, c.transfer_id, c.mode, p.amount_minor as paid,
       coalesce((select sum(r.amount_minor) from commerce.refunds r
         where r.store_id = p.store_id and r.payment_id = p.id and r.status <> 'failed'), 0)::bigint as refunded
     from commerce.host_commissions c
-    join commerce.payments p on p.store_id = c.store_id and p.order_id = c.order_id and p.provider = 'stripe'
-      and p.status = 'captured' and left(p.provider_reference, 3) = 'cs_'
-    where c.store_id = ${storeId}::uuid and c.order_id = ${orderId}::uuid
-    order by p.created_at
-    limit 1
+    join commerce.payments p on p.store_id = c.store_id and p.id = c.payment_id
+    where c.store_id = ${storeId}::uuid and c.payment_id = ${paymentId}::uuid
   `);
   if (!row) return;
+  const commissionId = String(row.id);
+  const orderId = String(row.order_id);
   const amount = Number(row.amount_minor);
   const paid = Number(row.paid);
   const target = paid > 0 ? Math.min(amount, Math.round((amount * Number(row.refunded)) / paid)) : 0;
@@ -380,7 +415,7 @@ export async function reverseHostCommission(storeId: string, orderId: string): P
       await stripe.transfers.createReversal(
         String(row.transfer_id),
         { amount: more, metadata: { order_id: orderId } },
-        { idempotencyKey: `host-commission-reversal-${orderId}-${target}` },
+        { idempotencyKey: `host-commission-reversal-${commissionId}-${target}` },
       );
     } catch (error) {
       await audit(null, storeId, "host.commission_reversal_failed", { orderId, amount: more, problem: stripeProblem(error) });
@@ -389,14 +424,18 @@ export async function reverseHostCommission(storeId: string, orderId: string): P
   }
   await db().execute(sql`
     update commerce.host_commissions set reversed_minor = ${target}, updated_at = now()
-    where order_id = ${orderId}::uuid and reversed_minor < ${target}
+    where id = ${commissionId}::uuid and reversed_minor < ${target}
   `);
 }
 
 export type HostEarning = {
+  /** The payment: a booking's checkout, or a no-show fee charged later. */
+  paymentId: string;
+  kind: "booking" | "no_show";
   orderId: string;
   number: string;
-  placedAt: string;
+  /** When it was paid. */
+  paidAt: string;
   currency: string;
   /** What the shopper paid online. */
   paidMinor: number;
@@ -408,25 +447,32 @@ export type HostEarning = {
   problem: string;
 };
 
-/** A host's paid orders, newest first: for the host's own area and the store's page about them. */
+/**
+ * A host's payments, newest first: their bookings' checkouts and any
+ * no-show fees, each with the store's commission. For the host's own area
+ * and the store's page about them.
+ */
 export async function hostEarnings(storeId: string, hostId: string, limit = 50): Promise<HostEarning[]> {
   const rows = await db().execute<Row>(sql`
-    select o.id, o.number, o.placed_at, o.currency, p.amount_minor as paid,
+    select p.id as payment_id, left(p.provider_reference, 3) = 'cs_' as checkout, o.id, o.number, p.created_at, p.currency,
+      p.amount_minor as paid,
       coalesce((select sum(r.amount_minor) from commerce.refunds r
         where r.store_id = p.store_id and r.payment_id = p.id and r.status <> 'failed'), 0)::bigint as refunded,
       coalesce(c.amount_minor - c.reversed_minor, 0) as commission, c.status, coalesce(c.last_error, '') as problem
     from commerce.orders o
-    join commerce.payments p on p.store_id = o.store_id and p.order_id = o.id and p.provider = 'stripe'
-      and p.status = 'captured' and left(p.provider_reference, 3) = 'cs_'
-    left join commerce.host_commissions c on c.store_id = o.store_id and c.order_id = o.id
+    join commerce.payments p on p.store_id = o.store_id and p.order_id = o.id and p.provider = 'stripe' and p.status = 'captured'
+    join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account and a.host_id = o.host_id
+    left join commerce.host_commissions c on c.store_id = p.store_id and c.payment_id = p.id
     where o.store_id = ${storeId}::uuid and o.host_id = ${hostId}::uuid
-    order by o.placed_at desc
+    order by p.created_at desc
     limit ${limit}
   `);
   return rows.map((row) => ({
+    paymentId: String(row.payment_id),
+    kind: row.checkout ? "booking" : "no_show",
     orderId: String(row.id),
     number: String(row.number),
-    placedAt: new Date(String(row.placed_at)).toISOString(),
+    paidAt: new Date(String(row.created_at)).toISOString(),
     currency: String(row.currency),
     paidMinor: Number(row.paid),
     refundedMinor: Number(row.refunded),

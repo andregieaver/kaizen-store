@@ -88,9 +88,10 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         {earnings.length > 0 && (
           <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
             {earnings.map((e) => (
-              <li key={e.orderId} className="flex flex-wrap justify-between gap-3 p-3">
+              <li key={e.paymentId} className="flex flex-wrap justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">
-                  {e.number} · {date.format(new Date(e.placedAt))}
+                  {e.number} · {date.format(new Date(e.paidAt))}
+                  {e.kind === "no_show" && <span className="block text-xs text-muted">No-show fee</span>}
                 </Link>
                 <span className="text-right tabular-nums">
                   Commission {formatMoney(e.commissionMinor, e.currency, locale)}

@@ -1089,14 +1089,28 @@ describe("hosts (D71)", () => {
        values ($1, 'H-1', 'DE', 'EUR', 'de-DE', '', 10000, 0, 0, 0, 10000, '{}', '{}', $2, 1250) returning id`,
       [store, host],
     );
-    const commission = (amount: number, reversed: number) =>
+    const payment = async (reference: string) =>
+      (
+        await one<{ id: string }>(
+          `insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
+           values ($1, $2, 'stripe', $3, 'acct_paidhost', 10000, 'EUR', 'captured') returning id`,
+          [store, orderId, reference],
+        )
+      ).id;
+    const checkout = await payment("cs_paidhost");
+    const noShow = await payment("pi_paidhost");
+    const commission = (paymentId: string, kind: string, amount: number, reversed: number) =>
       db.query(
-        `insert into commerce.host_commissions (order_id, store_id, host_id, mode, currency, amount_minor, reversed_minor)
-         values ($1, $2, $3, 'test', 'EUR', $4, $5)`,
-        [orderId, store, host, amount, reversed],
+        `insert into commerce.host_commissions (order_id, payment_id, kind, store_id, host_id, mode, currency, amount_minor, reversed_minor)
+         values ($1, $2, $3, $4, $5, 'test', 'EUR', $6, $7)`,
+        [orderId, paymentId, kind, store, host, amount, reversed],
       );
-    await expect(commission(1250, 1300)).rejects.toThrow(/host_commissions_amounts/);
-    await commission(1250, 0);
+    await expect(commission(checkout, "booking", 1250, 1300)).rejects.toThrow(/host_commissions_amounts/);
+    await expect(commission(checkout, "refund", 1250, 0)).rejects.toThrow(/host_commissions_kind/);
+    await commission(checkout, "booking", 1250, 0);
+    // One commission per payment: the booking's, and a no-show fee's on the same order.
+    await expect(commission(checkout, "booking", 1250, 0)).rejects.toThrow(/host_commissions_payment_key/);
+    await commission(noShow, "no_show", 500, 0);
     await expect(db.query("update commerce.host_commissions set status = 'sent' where order_id = $1", [orderId])).rejects.toThrow(
       /host_commissions_status/,
     );

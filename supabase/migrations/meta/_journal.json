@@ -778,6 +778,13 @@
       "when": 1790515106236,
       "tag": "20260927131826_host_payment_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1790515581887,
+      "tag": "20260927132621_host_commissions_per_payment",
+      "breakpoints": true
     }
   ]
 }

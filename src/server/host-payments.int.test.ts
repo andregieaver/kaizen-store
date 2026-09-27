@@ -30,6 +30,7 @@ const fake = vi.hoisted(() => {
   const refunds: { params: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const accountUpdates: { id: string; params: Record<string, unknown> }[] = [];
   const domains: { domain: string; account?: string }[] = [];
+  const charges: { params: Record<string, unknown>; options: Record<string, unknown> }[] = [];
   const state = { cardPayments: "pending", transferFails: false, accounts: 0, run: Date.now().toString(36) };
   const account = (id: string) => ({
     id,
@@ -70,9 +71,16 @@ const fake = vi.hoisted(() => {
         },
         retrieve: async (id: string, _params: unknown, options: { stripeAccount?: string }) => {
           if (!options?.stripeAccount) throw new Error("no connected account");
-          return { id, payment_intent: `pi_${id}`, ...sessions.get(id) };
+          // The deposit's card, saved for a no-show fee (D66).
+          return { id, payment_intent: { id: `pi_${id}`, payment_method: "pm_saved" }, customer: "cus_guest", ...sessions.get(id) };
         },
         expire: async (id: string) => ({ id }),
+      },
+    },
+    paymentIntents: {
+      create: async (params: Record<string, unknown>, options: Record<string, unknown>) => {
+        charges.push({ params, options });
+        return { id: `pi_noshow${charges.length}`, status: "succeeded" };
       },
     },
     transfers: {
@@ -93,7 +101,7 @@ const fake = vi.hoisted(() => {
       },
     },
   };
-  return { client, created, sessions, transfers, reversals, refunds, accountUpdates, domains, state };
+  return { client, created, sessions, transfers, reversals, refunds, accountUpdates, domains, charges, state };
 });
 
 vi.mock("./stripe", () => ({ platformStripe: () => fake.client, platformPublishableKey: () => null }));
@@ -102,6 +110,7 @@ const { changeLine } = await import("./cart");
 const { startCheckout } = await import("./checkout");
 const { getShopperOrder } = await import("./orders");
 const { refundOrder } = await import("./order-admin");
+const { markNoShow } = await import("./no-show");
 const { inviteHost } = await import("./hosts");
 const { storeFeeBps } = await import("./billing");
 const payments = await import("./host-payments");
@@ -118,7 +127,7 @@ let cabinVariant: string;
 let mugVariant: string;
 let tz: string;
 /** The host's paid order, half refunded, for the tax report. */
-const paidOrder = { id: "", due: 0, commission: 0, half: 0, back: 0 };
+const paidOrder = { id: "", due: 0, commission: 0, half: 0, back: 0, total: 0 };
 
 beforeAll(async () => {
   const [request] = await db().execute<Row>(sql`
@@ -248,10 +257,10 @@ describe("paying hosts (D71)", () => {
     expect((await db().execute(sql`select 1 from commerce.host_commissions where order_id = ${orderId}::uuid`)).length).toBe(1);
 
     fake.state.transferFails = false;
-    expect(await payments.payHostCommissions({ orderId })).toBe(1);
+    expect(await payments.payHostCommissions({ id: String(pending.id) })).toBe(1);
     expect(fake.transfers.at(-1)).toEqual({
       params: expect.objectContaining({ amount: commission, currency: "nok", destination: storeAccount }),
-      options: { idempotencyKey: `host-commission-${orderId}-${commission}` },
+      options: { idempotencyKey: `host-commission-${String(pending.id)}-${commission}` },
     });
     const [paid] = await db().execute<Row>(sql`select status, transfer_id, last_error from commerce.host_commissions where order_id = ${orderId}::uuid`);
     expect(paid).toEqual({ status: "paid", transfer_id: `tr_${fake.transfers.length}`, last_error: "" });
@@ -265,7 +274,7 @@ describe("paying hosts (D71)", () => {
     expect(fake.reversals).toEqual([{ id: String(paid.transfer_id), params: { amount: back, metadata: { order_id: orderId } } }]);
     Object.assign(paidOrder, { id: orderId, due, commission, half, back });
     expect(await payments.hostEarnings(storeId, hostId)).toEqual([
-      expect.objectContaining({ orderId, paidMinor: due, refundedMinor: half, commissionMinor: commission - back, sent: true }),
+      expect.objectContaining({ orderId, kind: "booking", paidMinor: due, refundedMinor: half, commissionMinor: commission - back, sent: true }),
     ]);
   });
 
@@ -309,6 +318,7 @@ describe("paying hosts (D71)", () => {
     const report = await dac7.dac7Report(storeId, year, tz);
     const quarter = (value: number) => [0, 1, 2, 3].map((i) => (i === q ? value : 0));
     const total = Number(row.total_minor);
+    paidOrder.total = total;
     expect(report.sellers).toEqual([
       expect.objectContaining({
         hostId,
@@ -335,6 +345,56 @@ describe("paying hosts (D71)", () => {
     expect(csv[0]).toMatch(/^Host,Email,Type,Legal name,Date of birth,Address,Country,TIN,/);
     expect(csv[1]).toContain(`Karis hytter,kari-${slug}@example.com,individual,Kari Nordmann,1980-05-17,"Storgata 1, 0155 Oslo",NO,01018012345,NO`);
     expect(dac7.dac7Csv(report, "properties")).toContain("Kari Nordmann,");
+  });
+
+  it("keeps the store's commission of a no-show fee charged to the guest's saved card, and reports the fee", async () => {
+    // The guest never came: the stay is past, and the listing charges the whole stay on a no-show.
+    const [booking] = await db().execute<Row>(sql`
+      update commerce.bookings set starts_at = now() - interval '3 days', ends_at = now() - interval '1 day',
+        blocked_from = now() - interval '3 days', blocked_to = now() - interval '1 day'
+      where order_id = ${paidOrder.id}::uuid returning id, product_id
+    `);
+    await db().execute(sql`
+      update commerce.appointment_settings set no_show_percent = 100 where product_id = ${String(booking.product_id)}::uuid
+    `);
+    const [line] = await db().execute<Row>(sql`
+      select venue_minor from commerce.order_lines where order_id = ${paidOrder.id}::uuid and variant_id is not null
+    `);
+    // The whole stay, less the deposit already paid: what was left for arrival.
+    const fee = Number(line.venue_minor);
+    expect(fee).toBeGreaterThan(0);
+    const [owner] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`owner-${slug}@example.com`}`);
+    const member: Membership = {
+      account: { id: String(owner.id), email: "", name: null, platformAdmin: false },
+      role: "owner",
+      store: { id: storeId, slug } as Store,
+    };
+    expect(await markNoShow(member, String(booking.id), true)).toEqual({ ok: true, chargedMinor: fee });
+
+    // Charged on the host's account, with Kaizen's fee and the store's 12.5 % in the application fee.
+    const commission = Math.round(fee * 0.125);
+    const { params, options } = fake.charges.at(-1)!;
+    expect(options).toMatchObject({ stripeAccount: hostAccount() });
+    expect(params).toMatchObject({ amount: fee, payment_method: "pm_saved", customer: "cus_guest" });
+    expect(params.application_fee_amount).toBe((saleFee(fee, await storeFeeBps(storeId)) ?? 0) + commission);
+    const [owed] = await db().execute<Row>(sql`
+      select c.kind, c.amount_minor, c.status, p.provider_reference from commerce.host_commissions c
+      join commerce.payments p on p.id = c.payment_id where c.order_id = ${paidOrder.id}::uuid and c.kind = 'no_show'
+    `);
+    expect(owed).toEqual({ kind: "no_show", amount_minor: String(commission), status: "paid", provider_reference: `pi_noshow${fake.charges.length}` });
+    expect(fake.transfers.at(-1)?.params).toMatchObject({ amount: commission, destination: storeAccount, description: expect.stringMatching(/no-show fee/) });
+
+    // The host and the store see it next to the booking, newest first.
+    const earnings = await payments.hostEarnings(storeId, hostId);
+    expect(earnings.map((e) => [e.kind, e.paidMinor, e.commissionMinor])).toEqual([
+      ["no_show", fee, commission],
+      ["booking", paidOrder.due, paidOrder.commission - paidOrder.back],
+    ]);
+    // The tax report counts the fee as paid to the host, and the commission on it.
+    const report = await dac7.dac7Report(storeId, Number(zonedDate(Date.now(), tz).slice(0, 4)), tz);
+    const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
+    expect(sum(report.sellers[0].considerationMinor)).toBe(paidOrder.total - paidOrder.half + fee);
+    expect(sum(report.sellers[0].feesMinor)).toBe(paidOrder.commission - paidOrder.back + commission);
   });
 
   it("registers the site's domain on the host's account for wallets on Kaizen's checkout page, once", async () => {

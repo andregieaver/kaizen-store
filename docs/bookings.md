@@ -132,8 +132,9 @@ B3 is done. B4 (hosts, D71) is under way: B4a is done (hosts added by the
 store's owners with a commission, their own area at `/admin/hosting/{store}`
 with their listings, bookings and calendars, and no VAT for hosts not VAT
 registered). B4b is done: hosts' bookings are charged on their own Stripe
-accounts with the store's commission in the application fee, sent on to
-the store and given back in part with refunds (`src/server/host-payments.ts`).
+accounts with the store's commission in the application fee (no-show fees
+too), sent on to the store and given back in part with refunds
+(`src/server/host-payments.ts`).
 B4c is done: hosts give their tax details and their homes' addresses in
 their area, and the store's owners download the year's DAC7 report
 (`src/server/dac7.ts`, pure parts in `src/lib/dac7.ts`) to file by 31

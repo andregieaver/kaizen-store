@@ -314,7 +314,7 @@ export async function refundOrder(
     return id;
   });
   // A host's order (D71): the store gives back the refunded share of its commission.
-  if (input.amountMinor > 0 && status !== "failed") await reverseHostCommission(storeId, orderId);
+  if (input.amountMinor > 0 && status !== "failed") await reverseHostCommission(storeId, String(payment.id));
   return { ok: true, refundId, amountMinor: input.amountMinor };
 }
 

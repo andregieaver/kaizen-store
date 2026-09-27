@@ -387,8 +387,10 @@ of running `playwright install`.
   `host_mix`); `startCheckout` charges a host's order on the host's account
   (`hostCheckoutAccount()`) with Kaizen's fee plus `commissionOf()` as the
   application fee; `applySession` records the commission
-  (`recordHostCommission()`), sent by `payHostCommissions()` (also from the
-  five-minute cron) and reduced by `reverseHostCommission()` after refunds.
+  (`recordHostCommission()`; a no-show fee's through
+  `recordNoShowCommission()` from `markNoShow()`), one per payment, sent by
+  `payHostCommissions()` (also from the five-minute cron) and reduced by
+  `reverseHostCommission()` after a refund of that payment.
   Queries joining a payment's `provider_account` to its store and mode use
   `commerce.connected_accounts` (stores' and hosts' accounts), never
   `stripe_accounts` alone.

@@ -49,7 +49,7 @@ export function HostPayouts({
         </p>
         <p className="text-sm text-muted">
           Guests pay your own Stripe account: you are the seller, and refunds come from it. The store keeps{" "}
-          {commissionPercent} % of each payment as its commission.
+          {commissionPercent} % of each payment as its commission, no-show fees included.
           {mode === "test" && " The store is in test mode, so no real money moves: Kaizen set up a test account for you."}
         </p>
       </div>
@@ -75,7 +75,7 @@ export function HostPayouts({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Paid bookings</h3>
+        <h3 className="text-sm font-medium">Payments</h3>
         {earnings.length === 0 ? (
           <p className="text-sm text-muted">None yet.</p>
         ) : (
@@ -84,6 +84,7 @@ export function HostPayouts({
               <thead className="text-left text-muted">
                 <tr>
                   <th className="py-1 pr-3 font-normal">Order</th>
+                  <th className="py-1 pr-3 font-normal">For</th>
                   <th className="py-1 pr-3 font-normal">Paid</th>
                   <th className="py-1 pr-3 text-right font-normal">Guest paid</th>
                   <th className="py-1 pr-3 text-right font-normal">Refunded</th>
@@ -92,9 +93,10 @@ export function HostPayouts({
               </thead>
               <tbody className="divide-y divide-border">
                 {earnings.map((e) => (
-                  <tr key={e.orderId}>
+                  <tr key={e.paymentId}>
                     <td className="py-1 pr-3">{e.number}</td>
-                    <td className="py-1 pr-3">{date.format(new Date(e.placedAt))}</td>
+                    <td className="py-1 pr-3">{e.kind === "no_show" ? "No-show fee" : "Booking"}</td>
+                    <td className="py-1 pr-3">{date.format(new Date(e.paidAt))}</td>
                     <td className="py-1 pr-3 text-right tabular-nums">{formatMoney(e.paidMinor, e.currency, locale)}</td>
                     <td className="py-1 pr-3 text-right tabular-nums">
                       {e.refundedMinor > 0 ? formatMoney(e.refundedMinor, e.currency, locale) : "–"}

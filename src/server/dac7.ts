@@ -155,7 +155,8 @@ export type Dac7Report = { year: number; sellers: SellerReport[]; properties: Pr
 /**
  * The year's report: for every host paid in it, their details and, per
  * quarter of payment (where the store is), what shoppers paid (refunds
- * taken off in the quarter they were made), the store's commission and the
+ * taken off in the quarter they were made, no-show fees in theirs), the
+ * store's commission (bookings' and no-show fees') and the
  * number of bookings; and for every room or home booked, its address, its
  * bookings and nights. Amounts are per currency, as they were paid.
  */
@@ -164,15 +165,28 @@ export async function dac7Report(storeId: string, year: number, timeZone: string
     sql`extract(year from ${column} at time zone ${timeZone})::int = ${year}`;
   const paid = sql`(select min(e.created_at) from commerce.order_events e
     where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid')`;
-  const [orders, refunds, lines, hosts] = await Promise.all([
+  const [orders, fees, noShows, refunds, lines, hosts] = await Promise.all([
     db().execute<Row>(sql`
-      select o.id, o.host_id, o.currency, o.total_minor, o.commission_minor - coalesce(c.reversed_minor, 0) as fees, p.paid_at,
+      select o.id, o.host_id, o.currency, o.total_minor, p.paid_at,
         (select count(*)::int from commerce.order_lines ol
           where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null) as activities
       from commerce.orders o
       cross join lateral (select ${paid} as paid_at) p
-      left join commerce.host_commissions c on c.store_id = o.store_id and c.order_id = o.id
       where o.store_id = ${storeId}::uuid and o.host_id is not null and p.paid_at is not null and ${inYear(sql`p.paid_at`)}
+    `),
+    // The store's commissions, on bookings and no-show fees alike, less what refunds gave back.
+    db().execute<Row>(sql`
+      select c.host_id, c.currency, c.amount_minor - c.reversed_minor as fees, c.created_at
+      from commerce.host_commissions c
+      where c.store_id = ${storeId}::uuid and ${inYear(sql`c.created_at`)}
+    `),
+    // No-show fees charged later to a host's guest's card (D66): paid to the host too.
+    db().execute<Row>(sql`
+      select o.host_id, p.currency, p.amount_minor, p.created_at
+      from commerce.payments p
+      join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+      where p.store_id = ${storeId}::uuid and o.host_id is not null and p.provider = 'stripe' and p.status = 'captured'
+        and left(p.provider_reference, 3) = 'pi_' and ${inYear(sql`p.created_at`)}
     `),
     db().execute<Row>(sql`
       select o.host_id, o.currency, r.amount_minor, r.created_at
@@ -226,8 +240,15 @@ export async function dac7Report(storeId: string, year: number, timeZone: string
     const s = seller(String(o.host_id), String(o.currency));
     const q = quarterOf(new Date(String(o.paid_at)).toISOString(), timeZone) - 1;
     s.considerationMinor[q] += Number(o.total_minor);
-    s.feesMinor[q] += Number(o.fees);
     s.activities[q] += Number(o.activities);
+  }
+  for (const f of fees) {
+    const q = quarterOf(new Date(String(f.created_at)).toISOString(), timeZone) - 1;
+    seller(String(f.host_id), String(f.currency)).feesMinor[q] += Number(f.fees);
+  }
+  for (const n of noShows) {
+    const q = quarterOf(new Date(String(n.created_at)).toISOString(), timeZone) - 1;
+    seller(String(n.host_id), String(n.currency)).considerationMinor[q] += Number(n.amount_minor);
   }
   for (const r of refunds) {
     const q = quarterOf(new Date(String(r.created_at)).toISOString(), timeZone) - 1;

@@ -9,6 +9,7 @@ import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Membership } from "./auth";
 import { storeFeeBps } from "./billing";
+import { commissionOf, hostCommissionBps, recordNoShowCommission } from "./host-payments";
 import { platformStripe } from "./stripe";
 
 type Row = Record<string, unknown>;
@@ -35,7 +36,7 @@ export async function markNoShow(
 ): Promise<NoShowResult> {
   const [row] = await db().execute<Row>(sql`
     select b.status, b.no_show_at, b.starts_at <= now() as started, b.order_id,
-      ol.total_minor, ol.venue_minor, a.no_show_percent, o.currency, o.number
+      ol.total_minor, ol.venue_minor, a.no_show_percent, o.currency, o.number, o.host_id
     from commerce.bookings b
     join commerce.orders o on o.store_id = b.store_id and o.id = b.order_id
     join commerce.order_lines ol on ol.store_id = b.store_id and ol.id = b.order_line_id
@@ -52,13 +53,17 @@ export async function markNoShow(
 
   let reference: { id: string; account: string } | null = null;
   if (amount > 0) {
-    const charged = await chargeSavedCard(store.id, orderId, bookingId, amount, String(row.currency), String(row.number));
+    const hostId = row.host_id ? String(row.host_id) : null;
+    const charged = await chargeSavedCard(store.id, orderId, bookingId, amount, String(row.currency), String(row.number), hostId);
     if (!charged.ok) return charged;
     reference = charged;
-    await db().execute(sql`
+    const [payment] = await db().execute<Row>(sql`
       insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
       values (${store.id}::uuid, ${orderId}::uuid, 'stripe', ${charged.id}, ${charged.account}, ${amount}, ${String(row.currency)}, 'captured')
+      returning id
     `);
+    // A host's booking (D71): the store's commission of the fee is owed to it, as of the booking.
+    if (charged.commissionMinor > 0) await recordNoShowCommission(store.id, String(payment.id), charged.commissionMinor);
   }
   await db().execute(sql`
     update commerce.bookings set no_show_at = now(), updated_at = now()
@@ -80,7 +85,8 @@ export async function markNoShow(
 
 /**
  * Charges the card saved with the order's deposit, off session, on the
- * store's own Stripe account, with Kaizen's fee as for any sale.
+ * account that took the deposit (the store's own, or a host's, D71), with
+ * Kaizen's fee as for any sale and, for a host, the store's commission.
  */
 async function chargeSavedCard(
   storeId: string,
@@ -89,7 +95,8 @@ async function chargeSavedCard(
   amount: number,
   currency: string,
   orderNumber: string,
-): Promise<{ ok: true; id: string; account: string } | { ok: false; problem: string }> {
+  hostId: string | null,
+): Promise<{ ok: true; id: string; account: string; commissionMinor: number } | { ok: false; problem: string }> {
   const [payment] = await db().execute<Row>(sql`
     select p.provider_reference, p.provider_account, a.mode
     from commerce.payments p
@@ -112,7 +119,9 @@ async function chargeSavedCard(
     const paymentMethod = typeof method === "string" ? method : (method?.id ?? null);
     const customer = typeof session.customer === "string" ? session.customer : (session.customer?.id ?? null);
     if (!paymentMethod || !customer) return { ok: false, problem: "No card was saved with this booking." };
-    const fee = saleFee(amount, await storeFeeBps(storeId));
+    const kaizenFee = saleFee(amount, await storeFeeBps(storeId));
+    const commission = hostId ? commissionOf(amount, await hostCommissionBps(storeId, hostId)) : 0;
+    const fee = commission > 0 ? Math.min(amount, (kaizenFee ?? 0) + commission) : kaizenFee;
     const charged = await stripe.paymentIntents.create(
       {
         amount,
@@ -128,7 +137,7 @@ async function chargeSavedCard(
       { stripeAccount, idempotencyKey: `no-show-${bookingId}` },
     );
     if (charged.status !== "succeeded") return { ok: false, problem: `Stripe did not take the payment (${charged.status}).` };
-    return { ok: true, id: charged.id, account: stripeAccount };
+    return { ok: true, id: charged.id, account: stripeAccount, commissionMinor: commission > 0 ? (fee ?? 0) - (kaizenFee ?? 0) : 0 };
   } catch (error) {
     const code = (error as { code?: string }).code;
     if (code === "authentication_required") {

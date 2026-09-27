@@ -2972,16 +2972,20 @@ export const hostTaxDetails = commerce.table(
 );
 
 /**
- * The store's commission of a host's order (D71), sent from Kaizen's
- * balance to the store's Stripe account once the order is paid; tried
- * again from the cron until it goes through, and reversed in part with
- * refunds.
+ * The store's commission of a host's payment (D71): the booking's checkout,
+ * or a no-show fee charged later to the card saved with it. Sent from
+ * Kaizen's balance to the store's Stripe account once paid; tried again
+ * from the cron until it goes through, and reversed in part with refunds.
  */
 export const hostCommissions = commerce.table(
   "host_commissions",
   {
-    orderId: uuid("order_id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    paymentId: uuid("payment_id").notNull(),
+    /** What was paid: `booking` (at checkout) or `no_show` (a no-show fee). */
+    kind: text("kind").notNull().default("booking"),
     hostId: uuid("host_id").notNull(),
     mode: paymentMode("mode").notNull(),
     currency: char("currency", { length: 3 }).notNull(),
@@ -2998,12 +3002,20 @@ export const hostCommissions = commerce.table(
   (t) => [
     orderRef("host_commissions_order_fk", t),
     foreignKey({
+      name: "host_commissions_payment_fk",
+      columns: [t.storeId, t.paymentId],
+      foreignColumns: [payments.storeId, payments.id],
+    }),
+    unique("host_commissions_payment_key").on(t.storeId, t.paymentId),
+    foreignKey({
       name: "host_commissions_host_fk",
       columns: [t.storeId, t.hostId],
       foreignColumns: [hosts.storeId, hosts.id],
     }),
+    index("host_commissions_order_idx").on(t.storeId, t.orderId),
     index("host_commissions_host_idx").on(t.storeId, t.hostId),
     index("host_commissions_due_idx").on(t.status).where(sql`${t.status} = 'pending'`),
+    check("host_commissions_kind", sql`${t.kind} in ('booking', 'no_show')`),
     check("host_commissions_status", sql`${t.status} in ('pending', 'paid')`),
     check("host_commissions_amounts", sql`${t.amountMinor} >= 0 and ${t.reversedMinor} between 0 and ${t.amountMinor}`),
   ],
