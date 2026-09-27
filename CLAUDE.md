@@ -392,6 +392,11 @@ of running `playwright install`.
   Queries joining a payment's `provider_account` to its store and mode use
   `commerce.connected_accounts` (stores' and hosts' accounts), never
   `stripe_accounts` alone.
+  DAC7 (`src/server/dac7.ts`, `src/lib/dac7.ts`): hosts give their tax
+  details (`host_tax_details`) and homes' addresses in their area; the
+  store's report (`dac7Report()`, `/admin/{store}/hosts/dac7`, CSV for
+  owners only) counts orders by the quarter of their `order.paid` event in
+  the store's time zone. Text for spreadsheets goes through `toCsv()`.
 - Demo products: the template store has a clearly labelled demo product
   (`Demo: …`) of every kind, and new stores are copied with them
   (`clone_store()`). A new kind of product gets one in the same change: a

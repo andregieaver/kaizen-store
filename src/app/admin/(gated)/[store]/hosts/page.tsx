@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireMember } from "@/server/auth";
+import { hostTaxStatus } from "@/server/dac7";
 import { listHosts } from "@/server/hosts";
 
 import { inviteHostAction } from "./actions";
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Hosts" };
  */
 export default async function HostsPage({ params }: PageProps<"/admin/[store]/hosts">) {
   const { store, role } = await requireMember((await params).store);
-  const hosts = await listHosts(store.id);
+  const [hosts, taxes] = await Promise.all([listHosts(store.id), hostTaxStatus(store.id)]);
   const base = `/admin/${store.slug}/hosts`;
 
   return (
@@ -27,6 +28,13 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
           product and under Rooms and items; the host then keeps their calendar and sees their bookings in their own area.
         </p>
       </div>
+      {hosts.length > 0 && (
+        <p className="text-sm">
+          <Link href={`${base}/dac7`} className="underline">
+            Yearly tax report (DAC7)
+          </Link>
+        </p>
+      )}
       {hosts.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No hosts yet.</p>
       ) : (
@@ -43,6 +51,11 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
                   {h.commissionBps / 100} % commission · {h.listings === 1 ? "1 listing" : `${h.listings} listings`} ·{" "}
                   {h.vatRegistered ? "VAT registered" : "No VAT"} · {h.signedInBefore ? "Has signed in" : "Not signed in yet"}
                 </span>
+                {(!taxes.get(h.id)?.details || (taxes.get(h.id)?.missingAddresses.length ?? 0) > 0) && (
+                  <span className="block text-xs text-red-700 dark:text-red-400">
+                    {taxes.get(h.id)?.details ? "Addresses missing for the tax report" : "Tax details missing for the tax report"}
+                  </span>
+                )}
               </div>
               <Link href={`${base}/${h.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-surface">
                 Edit <span className="sr-only">{h.name}</span>

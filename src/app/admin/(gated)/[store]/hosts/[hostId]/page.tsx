@@ -6,6 +6,7 @@ import { z } from "zod";
 import { formatMoney } from "@/lib/money";
 import { accountStage } from "@/lib/stripe-account";
 import { requireMember } from "@/server/auth";
+import { getHostTaxDetails, hostTaxStatus } from "@/server/dac7";
 import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
 
@@ -20,12 +21,15 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   if (!z.uuid().safeParse(hostId).success) notFound();
   const host = await getHost(store.id, hostId);
   if (!host) notFound();
-  const [listings, mode, accounts, earnings] = await Promise.all([
+  const [listings, mode, accounts, earnings, tax, taxes] = await Promise.all([
     hostListings(store.id, host.id),
     storePaymentMode(store.id),
     getHostStripeAccounts(store.id, host.id),
     hostEarnings(store.id, host.id),
+    getHostTaxDetails(store.id, host.id),
+    hostTaxStatus(store.id),
   ]);
+  const missing = taxes.get(host.id)?.missingAddresses ?? [];
   const owner = role === "owner";
   const stage = mode ? accountStage(accounts[mode] ?? null) : null;
   const locale = store.markets[0]?.locale ?? "en-GB";
@@ -98,6 +102,23 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
             ))}
           </ul>
         )}
+      </section>
+      <section aria-labelledby="tax-heading" className="flex flex-col gap-1 text-sm">
+        <h2 id="tax-heading" className="font-medium">
+          Tax details (DAC7)
+        </h2>
+        {tax ? (
+          <p>
+            {tax.legalName} · {tax.kind === "entity" ? `Business ${tax.businessNumber}` : "Private person"} · TIN ending{" "}
+            {tax.tin.slice(-4)} ({tax.tinCountry})
+          </p>
+        ) : (
+          <p className="text-red-700 dark:text-red-400">Not given yet. The host gives them in their area.</p>
+        )}
+        {missing.length > 0 && <p className="text-red-700 dark:text-red-400">No address yet for: {missing.join(", ")}.</p>}
+        <Link href={`/admin/${store.slug}/hosts/dac7`} className="underline">
+          Yearly tax report
+        </Link>
       </section>
       {owner && (
         <form action={setHostDisabledAction.bind(null, store.slug, host.id, !host.disabled)}>

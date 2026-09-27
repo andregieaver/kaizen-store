@@ -15,6 +15,7 @@ import {
   resourceOfFeed,
   syncFeed,
 } from "@/server/calendar-sync";
+import { saveHostTaxDetails, saveUnitProperty } from "@/server/dac7";
 import { createHostAccountSession, createHostStripeAccount, refreshHostStripeAccount } from "@/server/host-payments";
 import { hostOwnsResource, requireHost, type Hosting } from "@/server/hosts";
 
@@ -112,4 +113,41 @@ export async function hostRefreshStripeAccountAction(storeSlug: string, modeName
   const parsed = mode.safeParse(modeName);
   if (parsed.success) await refreshHostStripeAccount(store.id, host.id, parsed.data);
   refresh();
+}
+
+// ---------------------------------------------------------------------------
+// DAC7 details (D71)
+// ---------------------------------------------------------------------------
+
+const text = (formData: FormData, name: string) => String(formData.get(name) ?? "");
+
+export async function hostSaveTaxDetailsAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const hosting = await requireHost(storeSlug);
+  const result = await saveHostTaxDetails(hosting, {
+    kind: formData.get("kind"),
+    legalName: text(formData, "legalName"),
+    dateOfBirth: text(formData, "dateOfBirth"),
+    address: text(formData, "address"),
+    country: text(formData, "country"),
+    tin: text(formData, "tin"),
+    tinCountry: text(formData, "tinCountry"),
+    vatNumber: text(formData, "vatNumber"),
+    businessNumber: text(formData, "businessNumber"),
+    iban: text(formData, "iban"),
+  });
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: ["Saved. Thank you."] };
+}
+
+export async function hostSavePropertyAction(storeSlug: string, resourceId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const hosting = await owned(storeSlug, resourceId);
+  if (!hosting) return gone;
+  const result = await saveUnitProperty(hosting, resourceId, {
+    address: text(formData, "address"),
+    landRegistryNumber: text(formData, "landRegistryNumber"),
+  });
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: ["Saved."] };
 }

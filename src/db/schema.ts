@@ -2930,6 +2930,46 @@ export const hostStripeAccounts = commerce.table(
 );
 
 /**
+ * What the store, as platform operator under DAC7, must know of a host
+ * (D71), given by the host in their area: who they are (a person, with
+ * their date of birth, or a business, with its registration number), their
+ * address, tax identification number and where it was issued, VAT number,
+ * and the bank account they are paid to. Reported yearly with what they
+ * earned.
+ */
+export const hostTaxDetails = commerce.table(
+  "host_tax_details",
+  {
+    hostId: uuid("host_id").primaryKey(),
+    storeId: storeId(),
+    kind: text("kind").notNull().default("individual"),
+    /** A person's full name, or a business's legal name. */
+    legalName: text("legal_name").notNull(),
+    dateOfBirth: date("date_of_birth"),
+    address: text("address").notNull(),
+    country: char("country", { length: 2 }).notNull(),
+    tin: text("tin").notNull(),
+    tinCountry: char("tin_country", { length: 2 }).notNull(),
+    vatNumber: text("vat_number").notNull().default(""),
+    businessNumber: text("business_number").notNull().default(""),
+    iban: text("iban").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "host_tax_details_host_fk",
+      columns: [t.storeId, t.hostId],
+      foreignColumns: [hosts.storeId, hosts.id],
+    }).onDelete("cascade"),
+    index("host_tax_details_store_idx").on(t.storeId, t.hostId),
+    check("host_tax_details_kind", sql`${t.kind} in ('individual', 'entity')`),
+    check("host_tax_details_person", sql`${t.kind} = 'entity' or ${t.dateOfBirth} is not null`),
+    check("host_tax_details_business", sql`${t.kind} = 'individual' or ${t.businessNumber} <> ''`),
+  ],
+);
+
+/**
  * The store's commission of a host's order (D71), sent from Kaizen's
  * balance to the store's Stripe account once the order is paid; tried
  * again from the cron until it goes through, and reversed in part with
@@ -2989,6 +3029,9 @@ export const bookingResources = commerce.table(
     calendarToken: text("calendar_token").unique("booking_resources_calendar_token_key"),
     /** The host whose room or item it is (D71), who keeps its calendar; null for the store's own. */
     hostId: uuid("host_id"),
+    /** Where a room or home is, and its land registry number if any, for the DAC7 report (D71). */
+    propertyAddress: text("property_address").notNull().default(""),
+    landRegistryNumber: text("land_registry_number").notNull().default(""),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

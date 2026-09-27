@@ -69,7 +69,7 @@ hosts are its sellers.
 Stripe Connect has one platform: Kaizen. Stores are its connected accounts
 (D17), and a store cannot be a platform of its own. So hosts become Kaizen's
 connected accounts too, linked to the store that lists them, and money
-moves like this (**to confirm before building**):
+moves like this (D71):
 
 - A booking with a host is a **direct charge on the host's account**: the
   host is the seller of record, refunds and chargebacks come from the host.
@@ -77,15 +77,16 @@ moves like this (**to confirm before building**):
   fee; Kaizen then **transfers the store's commission** to the store's
   account. One checkout pays one host, as one checkout starts one
   subscription today.
-- Hosts sign up to a store, onboard with Stripe (Express-style accounts,
-  the store's branding), and manage their listings, calendar and bookings in
-  a host area of the admin with only their own data.
-- **VAT**: a host who is not VAT registered charges none; the store's
-  commission carries VAT. Products get the category `none` for this.
+- The store's owners add hosts; hosts onboard with Stripe (their own
+  account, full Dashboard) and keep their calendars and see their bookings
+  and payments in a host area of the admin with only their own data. The
+  store writes their listings.
+- **VAT**: a host who is not VAT registered charges none (their listings
+  are kept `exempt`); the store's commission carries VAT.
 - **DAC7**: a platform that facilitates rentals of property must collect
   each host's identity and tax details and report what it paid them each
   year (by 31 January). The store is the platform operator; whether Kaizen
-  is too needs legal advice. Hosts' tax details are collected at onboarding.
+  is too needs legal advice. Hosts give their tax details in their area.
 
 ## Order of work
 
@@ -133,7 +134,10 @@ with their listings, bookings and calendars, and no VAT for hosts not VAT
 registered). B4b is done: hosts' bookings are charged on their own Stripe
 accounts with the store's commission in the application fee, sent on to
 the store and given back in part with refunds (`src/server/host-payments.ts`).
-B4c (DAC7) is next.
+B4c is done: hosts give their tax details and their homes' addresses in
+their area, and the store's owners download the year's DAC7 report
+(`src/server/dac7.ts`, pure parts in `src/lib/dac7.ts`) to file by 31
+January. B4 is done.
 
 Every new kind comes with a demo product in the template store, which new
 stores are copied with: appointments have `Demo: Massasje, 60 minutter`

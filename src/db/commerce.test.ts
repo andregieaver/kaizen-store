@@ -1102,6 +1102,27 @@ describe("hosts (D71)", () => {
     );
   });
 
+  it("keeps a host's DAC7 details whole: a person's birth date, a business's number, country codes", async () => {
+    const { id: accountId } = await one<{ id: string }>("insert into commerce.accounts (email) values ('taxed-host@example.com') returning id");
+    const { id: host } = await one<{ id: string }>(
+      "insert into commerce.hosts (store_id, account_id, name) values ($1, $2, 'Taxed host') returning id",
+      [store, accountId],
+    );
+    const details = (kind: string, dateOfBirth: string | null, businessNumber: string, country = "NO") =>
+      db.query(
+        `insert into commerce.host_tax_details (host_id, store_id, kind, legal_name, date_of_birth, address, country, tin, tin_country, business_number)
+         values ($1, $2, $3, 'Kari', $4, 'Storgata 1', $5, '123', 'NO', $6)`,
+        [host, store, kind, dateOfBirth, country, businessNumber],
+      );
+    await expect(details("individual", null, "")).rejects.toThrow(/host_tax_details_person/);
+    await expect(details("entity", null, "")).rejects.toThrow(/host_tax_details_business/);
+    await expect(details("individual", "1980-05-17", "", "no")).rejects.toThrow(/host_tax_details_countries/);
+    await details("individual", "1980-05-17", "");
+    // Taken with the host.
+    await db.query("delete from commerce.hosts where id = $1", [host]);
+    expect((await db.query("select 1 from commerce.host_tax_details where host_id = $1", [host])).rows).toEqual([]);
+  });
+
   it("keeps 'hosting' free of store addresses", async () => {
     await expect(
       db.query("insert into commerce.stores (slug, name) values ('hosting', 'Hosting')"),

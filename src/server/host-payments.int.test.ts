@@ -95,6 +95,7 @@ const { refundOrder } = await import("./order-admin");
 const { inviteHost } = await import("./hosts");
 const { storeFeeBps } = await import("./billing");
 const payments = await import("./host-payments");
+const dac7 = await import("./dac7");
 const { saleFee } = await import("@/lib/stripe-account");
 
 const run = Date.now().toString(36);
@@ -106,6 +107,8 @@ let hostId: string;
 let cabinVariant: string;
 let mugVariant: string;
 let tz: string;
+/** The host's paid order, half refunded, for the tax report. */
+const paidOrder = { id: "", due: 0, commission: 0, half: 0, back: 0 };
 
 beforeAll(async () => {
   const [request] = await db().execute<Row>(sql`
@@ -248,9 +251,78 @@ describe("paying hosts (D71)", () => {
     expect(fake.refunds.at(-1)?.options).toMatchObject({ stripeAccount: hostAccount() });
     const back = Math.round((commission * half) / due);
     expect(fake.reversals).toEqual([{ id: String(paid.transfer_id), params: { amount: back, metadata: { order_id: orderId } } }]);
+    Object.assign(paidOrder, { id: orderId, due, commission, half, back });
     expect(await payments.hostEarnings(storeId, hostId)).toEqual([
       expect.objectContaining({ orderId, paidMinor: due, refundedMinor: half, commissionMinor: commission - back, sent: true }),
     ]);
+  });
+
+  it("reports the host, what they were paid and the home they rented out for DAC7", async () => {
+    const [row] = await db().execute<Row>(sql`
+      select h.account_id, b.resource_id, o.total_minor from commerce.hosts h, commerce.bookings b, commerce.orders o
+      where h.id = ${hostId}::uuid and b.order_id = ${paidOrder.id}::uuid and o.id = b.order_id
+    `);
+    const resourceId = String(row.resource_id);
+    await db().execute(sql`update commerce.booking_resources set host_id = ${hostId}::uuid where id = ${resourceId}::uuid`);
+    const hosting = {
+      account: { id: String(row.account_id), email: "", name: null, platformAdmin: false },
+      store: { id: storeId, slug } as Store,
+      host: { id: hostId, name: "Karis hytter", commissionBps: 1250 },
+    };
+    const [unit] = await db().execute<Row>(sql`select name from commerce.booking_resources where id = ${resourceId}::uuid`);
+    expect(await dac7.hostTaxStatus(storeId)).toEqual(new Map([[hostId, { details: false, missingAddresses: [String(unit.name)] }]]));
+
+    expect(await dac7.saveHostTaxDetails(hosting, { kind: "individual", legalName: "Kari Nordmann", dateOfBirth: "", address: "x" })).toMatchObject({
+      ok: false,
+    });
+    expect(
+      await dac7.saveHostTaxDetails(hosting, {
+        kind: "individual",
+        legalName: "Kari Nordmann",
+        dateOfBirth: "1980-05-17",
+        address: "Storgata 1, 0155 Oslo",
+        country: "NO",
+        tin: "01018012345",
+        tinCountry: "NO",
+        vatNumber: "",
+        businessNumber: "",
+        iban: "NO9386011117947",
+      }),
+    ).toEqual({ ok: true });
+    expect(await dac7.saveUnitProperty(hosting, resourceId, { address: "Hytteveien 3, 3864 Rauland", landRegistryNumber: "1/2" })).toEqual({ ok: true });
+    expect(await dac7.hostTaxStatus(storeId)).toEqual(new Map([[hostId, { details: true, missingAddresses: [] }]]));
+
+    const year = Number(zonedDate(Date.now(), tz).slice(0, 4));
+    const q = Math.floor((Number(zonedDate(Date.now(), tz).slice(5, 7)) - 1) / 3);
+    const report = await dac7.dac7Report(storeId, year, tz);
+    const quarter = (value: number) => [0, 1, 2, 3].map((i) => (i === q ? value : 0));
+    const total = Number(row.total_minor);
+    expect(report.sellers).toEqual([
+      expect.objectContaining({
+        hostId,
+        currency: "NOK",
+        details: expect.objectContaining({ legalName: "Kari Nordmann", tin: "01018012345", dateOfBirth: "1980-05-17" }),
+        // The whole booking, deposit and what is paid on arrival, less the refund.
+        considerationMinor: quarter(total - paidOrder.half),
+        feesMinor: quarter(paidOrder.commission - paidOrder.back),
+        activities: quarter(1),
+      }),
+    ]);
+    expect(report.properties).toEqual([
+      expect.objectContaining({
+        resourceId,
+        address: "Hytteveien 3, 3864 Rauland",
+        landRegistryNumber: "1/2",
+        considerationMinor: quarter(total),
+        activities: quarter(1),
+        nights: 2,
+      }),
+    ]);
+    expect((await dac7.dac7Report(storeId, year - 1, tz)).sellers).toEqual([]);
+    const csv = dac7.dac7Csv(report, "sellers").split("\r\n");
+    expect(csv[0]).toMatch(/^Host,Email,Type,Legal name,Date of birth,Address,Country,TIN,/);
+    expect(csv[1]).toContain(`Karis hytter,kari-${slug}@example.com,individual,Kari Nordmann,1980-05-17,"Storgata 1, 0155 Oslo",NO,01018012345,NO`);
+    expect(dac7.dac7Csv(report, "properties")).toContain("Kari Nordmann,");
   });
 
   it("takes the store's commission as a share of what is paid online", () => {

@@ -6,6 +6,7 @@ import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { marketPath, storeHref } from "@/lib/paths";
 import { listBookings } from "@/server/bookings";
 import { requestIp } from "@/server/connect";
+import { hostTaxStatus } from "@/server/dac7";
 import { ensureHostTestAccount, getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { hostListings, hostResources, requireHost } from "@/server/hosts";
 
@@ -26,14 +27,16 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
   const { store, host } = await requireHost((await params).store);
   const tz = store.timeZone;
   const today = todayIn(tz);
-  const [listings, resources, bookings, mode, accounts, earnings] = await Promise.all([
+  const [listings, resources, bookings, mode, accounts, earnings, taxes] = await Promise.all([
     hostListings(store.id, host.id),
     hostResources(store.id, host.id),
     listBookings(store.id, new Date(zonedTime(today, "00:00", tz)), new Date(zonedTime(addDays(today, AHEAD_DAYS), "00:00", tz)), ["unit", "item"], host.id),
     storePaymentMode(store.id),
     getHostStripeAccounts(store.id, host.id),
     hostEarnings(store.id, host.id),
+    hostTaxStatus(store.id),
   ]);
+  const tax = taxes.get(host.id);
   // In test mode Kaizen makes the host's test account, as it does the store's (D20).
   if (mode === "test" && accounts.test?.cardPayments !== "active") {
     const ip = await requestIp();
@@ -62,6 +65,23 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
           locale={store.markets[0]?.locale ?? "en-GB"}
         />
       )}
+
+      <section aria-labelledby="tax-heading" className="flex flex-col gap-1 rounded-lg border border-border bg-background p-5 text-sm">
+        <h2 id="tax-heading" className="font-medium">
+          Tax details
+        </h2>
+        {tax?.details ? (
+          <p>Given. The store reports them once a year with what you were paid (DAC7).</p>
+        ) : (
+          <p role="alert">The store must report its hosts to the tax authority each year (DAC7): give your details.</p>
+        )}
+        {tax && tax.missingAddresses.length > 0 && (
+          <p>Add the address of: {tax.missingAddresses.join(", ")} (under Calendar).</p>
+        )}
+        <Link href={`${base}/tax`} className="underline">
+          {tax?.details ? "Change your tax details" : "Give your tax details"}
+        </Link>
+      </section>
 
       <section aria-labelledby="bookings-heading" className="flex flex-col gap-2">
         <h2 id="bookings-heading" className="font-medium">
