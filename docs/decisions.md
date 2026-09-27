@@ -217,6 +217,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20260926224408_bookings_order_line_idx.sql` | `20260926230005` |
 | `20260926230303_booking_reminders.sql` | `20260927002943` |
 | `20260926230305_booking_reminders_rules.sql` | `20260927003033` |
+| `20260927003723_demo_appointment.sql` | `20260927011301` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

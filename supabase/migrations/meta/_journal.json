@@ -638,6 +638,13 @@
       "when": 1790463785122,
       "tag": "20260926230305_booking_reminders_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1790469443403,
+      "tag": "20260927003723_demo_appointment",
+      "breakpoints": true
     }
   ]
 }

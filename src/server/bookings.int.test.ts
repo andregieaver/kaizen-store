@@ -76,7 +76,8 @@ describe("staff (D65)", () => {
     const added = await bookings.saveResource(member, null, staffForm({ email: "kari@example.com" }));
     if (!added.ok) throw new Error(added.problems.join(" "));
     expect(await bookings.saveResource(member, added.id, staffForm({ name: "Kari N.", capacity: "3" }))).toEqual({ ok: true, id: added.id });
-    const [kari] = await bookings.listResources(storeId);
+    // New stores start with the template's demo staff; Kari is the one added here.
+    const kari = (await bookings.listResources(storeId)).find((r) => r.id === added.id)!;
     expect(kari).toMatchObject({ name: "Kari N.", capacity: 3, active: true, services: 0, upcoming: 0 });
     expect(kari.hours.week.mon).toEqual({ open: "09:00", close: "17:00" });
   });

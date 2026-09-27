@@ -825,6 +825,43 @@ describe("new stores from the template", () => {
     );
     expect(after).toEqual({ status: "pending", accounts: 0 });
   });
+
+  it("has a demo of every kind of product, and new stores get it ready to book (D65)", async () => {
+    const { id: demo } = await one<{ id: string }>("select commerce.add_demo_appointment($1) as id", [template]);
+    // Once only.
+    expect(await one("select commerce.add_demo_appointment($1) as id", [template])).toEqual({ id: demo });
+    await db.query("update commerce.products set vat_category = 'exempt', audience = 'businesses' where id = $1", [demo]);
+    const kinds = await db.query<{ kind: string }>(
+      "select distinct kind from commerce.products where store_id = $1 and status = 'active' order by kind",
+      [template],
+    );
+    expect(kinds.rows.map((r) => r.kind)).toEqual(["appointment", "goods"]);
+
+    const { store_id: store } = await approve(await request("mia@example.com"), "mias-massasje");
+    expect(await one("select modules, time_zone, booking_reminder_hours from commerce.stores where id = $1", [store])).toEqual({
+      modules: ["bookings"],
+      time_zone: "Europe/Oslo",
+      booking_reminder_hours: 24,
+    });
+    const copy = await one<{ id: string }>(
+      `select id, status, kind, vat_category, audience from commerce.products where store_id = $1 and handle = 'demo-massasje'`,
+      [store],
+    );
+    expect(copy).toMatchObject({ status: "active", kind: "appointment", vat_category: "exempt", audience: "businesses" });
+    expect(
+      await one(
+        `select a.duration_minutes, a.buffer_after_minutes, a.location_id, r.name, r.hours -> 'week' -> 'sat' as saturday
+         from commerce.appointment_settings a
+         join commerce.product_resources pr on pr.product_id = a.product_id
+         join commerce.booking_resources r on r.id = pr.resource_id and r.store_id = $1
+         where a.store_id = $1 and a.product_id = $2`,
+        [store, copy.id],
+      ),
+    ).toEqual({ duration_minutes: 60, buffer_after_minutes: 15, location_id: null, name: "Demo: Kari", saturday: { open: "10:00", close: "14:00" } });
+    expect(
+      await one("select v.delivery, p.amount_minor::int from commerce.product_variants v join commerce.current_prices p on p.variant_id = v.id where v.product_id = $1 and p.market_code = 'NO'", [copy.id]),
+    ).toEqual({ delivery: "service", amount_minor: 89000 });
+  });
 });
 
 describe("paying for an order", () => {

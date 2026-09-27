@@ -105,5 +105,10 @@ a notice to the member of staff, reminders a set number of hours before,
 and cancellation emails). Moving a booking to another time is not built
 yet; for now the store cancels and the shopper books again. B2 is next.
 
+Every new kind comes with a demo product in the template store, which new
+stores are copied with: appointments have `Demo: Massasje, 60 minutter`
+with a member of staff (`commerce.add_demo_appointment()`); stays and
+rentals get theirs in B3.
+
 Each phase ends with its migrations applied, tests and a decision entry, as
 before.

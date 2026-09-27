@@ -1,5 +1,5 @@
 -- The template store (docs/platform.md, P4): the demo store every new store
--- is copied from, with four clearly labelled sample products. Safe to run
+-- is copied from, with clearly labelled sample products, one of each kind. Safe to run
 -- more than once; it does nothing if a template store already exists.
 --
 -- Demo products cannot be deleted later (price history is append-only), so
@@ -205,6 +205,10 @@ BEGIN
   INSERT INTO commerce.inventory_levels (store_id, variant_id, location_id, on_hand) VALUES (v_store, v_variant, v_location, 0);
 
   UPDATE commerce.products SET status = 'active' WHERE id = v_product;
+
+  -- 5. An appointment (D65), with a member of staff to book: every kind of
+  -- product has a demo, from the same function production's template used.
+  PERFORM commerce.add_demo_appointment(v_store);
 
   -- Categories and tags (D50), with the demo's products in them; a lamp is
   -- in Belysning, inside Hjem, so it shows under Hjem too.

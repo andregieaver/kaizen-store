@@ -325,6 +325,13 @@ of running `playwright install`.
   `bookings.reminded_at`) and cancellations. A cancelled order gives up its
   times; the store cancels one from the week calendar (`cancelBooking()`,
   layout in `src/lib/booking-calendar.ts`) and refunds from the order.
+- Demo products: the template store has a clearly labelled demo product
+  (`Demo: …`) of every kind, and new stores are copied with them
+  (`clone_store()`). A new kind of product gets one in the same change: a
+  function adding it to a store (as `commerce.add_demo_appointment()`,
+  with whatever it needs to be bought, such as staff), called by the
+  migration for production's template and by `supabase/seed.sql`, a picture
+  in `public/demo/`, and `clone_store()` copying its new tables and columns.
 - Sites' icons (D62) are `navigation.favicon` (a 512 and a 64 pixel PNG made
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and
