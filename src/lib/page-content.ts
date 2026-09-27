@@ -267,6 +267,14 @@ export type Sides = { top: number; right: number; bottom: number; left: number }
 /** A row's, column's or block's margin (outside) and padding (inside); none when left out. */
 export type Spacing = { margin?: Sides; padding?: Sides };
 export const SPACING_MAX = 240;
+/**
+ * A row's padding until it is given its own: 20 px on each side, so rows
+ * keep off the window's edges now that the page adds no room of its own at
+ * the sides. A row set to 0 keeps 0.
+ */
+export const ROW_PADDING: Sides = { top: 20, right: 20, bottom: 20, left: 20 };
+/** A row's spacing as drawn: its own, with the default padding where it has none. */
+export const rowSpacing = (style: Spacing | undefined): Spacing => ({ ...style, padding: style?.padding ?? ROW_PADDING });
 
 /** A colour as `#rrggbb`. */
 export type Color = string;

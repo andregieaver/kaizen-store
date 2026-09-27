@@ -289,7 +289,10 @@ of running `playwright install`.
   `<PageBlockView>` (`src/components/page-block.tsx`) on the canvas and
   the site. Rows, columns and blocks take optional settings (D47–D49:
   spacing, border, corners, shadow, id and classes, backgrounds, widths,
-  column links, text alignment, picture shape; `frameStyle()`), changed with `patchRow()`/`patchColumn()`/`patchBlock()` in
+  column links, text alignment, picture shape; `frameStyle()`; a row's
+  padding is 20 px until set, `ROW_PADDING`/`rowSpacing()`, and the page
+  adds no room at the sides, nor above or below a row with a background,
+  `pageRoomClass()`), changed with `patchRow()`/`patchColumn()`/`patchBlock()` in
   settings dialogs with General, Style and Advanced tabs, and drawn by the
   shared helpers in `src/components/page-parts.tsx` (the canvas leaves out
   ids, classes and links). Copies drop a custom id the page already uses

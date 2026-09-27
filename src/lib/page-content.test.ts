@@ -7,6 +7,7 @@ import {
   blockFonts,
   blockHasContent,
   frameStyle,
+  rowSpacing,
   spacingStyle,
   cleanRichText,
   isLinkAddress,
@@ -206,6 +207,17 @@ describe("pictures and spacing (D47)", () => {
     for (const bad of [-4, 241, 2.5]) {
       expect(pageInput.safeParse(page([], { style: { margin: { ...sides, top: bad } } })).success).toBe(false);
     }
+  });
+
+  it("gives rows 20 px of padding until they have their own, and keeps a row set to none", () => {
+    expect(spacingStyle(rowSpacing(undefined))).toEqual({ paddingTop: "20px", paddingRight: "20px", paddingBottom: "20px", paddingLeft: "20px" });
+    const margin = { top: 8, right: 0, bottom: 0, left: 0 };
+    expect(rowSpacing({ margin })).toEqual({ margin, padding: { top: 20, right: 20, bottom: 20, left: 20 } });
+    const none = { top: 0, right: 0, bottom: 0, left: 0 };
+    expect(spacingStyle(rowSpacing({ padding: none }))).toEqual({});
+    expect(pageInput.parse(page([])).rows[0].style).toBeUndefined();
+    const parsed = pageInput.parse({ ...page([]), rows: [{ ...page([]).rows[0], style: { padding: none } }] });
+    expect(parsed.rows[0].style).toEqual({ padding: none });
   });
 });
 

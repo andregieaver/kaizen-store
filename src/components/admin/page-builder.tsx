@@ -66,6 +66,7 @@ import {
   HTML_ID_MAX,
   IMAGE_SHAPES,
   RADIUS_MAX,
+  ROW_PADDING,
   SHADOWS,
   SPACING_MAX,
   blockFonts,
@@ -1594,6 +1595,7 @@ function Dialogs({
   const spacingFields = (target: Styled) => (
     <SpacingFields
       value={spacingOf(rows, target)}
+      defaults={target.kind === "row" ? { padding: ROW_PADDING } : undefined}
       onChange={(style) => onRows((current) => setSpacing(current, target, style))}
     />
   );
@@ -2181,15 +2183,25 @@ const NO_SIDES: Sides = { top: 0, right: 0, bottom: 0, left: 0 };
 /**
  * Margin (space outside) and padding (space inside), each for the top,
  * right, bottom and left, in pixels (D47). Changes show on the canvas at once.
+ * `defaults` is what a part has until given its own (a row's padding); set
+ * to 0 there, it is kept, so the default does not come back.
  */
-function SpacingFields({ value, onChange }: { value: Spacing | undefined; onChange: (value: Spacing) => void }) {
+function SpacingFields({
+  value,
+  defaults,
+  onChange,
+}: {
+  value: Spacing | undefined;
+  defaults?: Spacing;
+  onChange: (value: Spacing) => void;
+}) {
   const id = useId();
   const set = (kind: "margin" | "padding", side: (typeof SIDES)[number], text: string) => {
     const number = Math.max(0, Math.min(SPACING_MAX, Math.round(Number(text) || 0)));
-    const sides = { ...NO_SIDES, ...value?.[kind], [side]: number };
+    const sides = { ...NO_SIDES, ...(value?.[kind] ?? defaults?.[kind]), [side]: number };
     const empty = SIDES.every((s) => sides[s] === 0);
     const next: Spacing = { ...value };
-    if (empty) delete next[kind];
+    if (empty && !defaults?.[kind]) delete next[kind];
     else next[kind] = sides;
     onChange(next);
   };
@@ -2214,7 +2226,7 @@ function SpacingFields({ value, onChange }: { value: Spacing | undefined; onChan
                   min={0}
                   max={SPACING_MAX}
                   step={4}
-                  value={value?.[kind]?.[side] ?? 0}
+                  value={value?.[kind]?.[side] ?? defaults?.[kind]?.[side] ?? 0}
                   onChange={(event) => set(kind, side, event.target.value)}
                   className="min-h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
                 />

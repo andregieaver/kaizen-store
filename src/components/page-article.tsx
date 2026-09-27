@@ -67,7 +67,7 @@ function Row({ row, place, renderBlock }: { row: PageRow; place: GridPlace; rend
   const box = rowBox(row, "site");
   const grid = rowGrid(row);
   return (
-    <div className={row.width === "full" ? undefined : "mx-auto w-full max-w-(--content-width) px-4"}>
+    <div className={row.width === "full" ? undefined : "mx-auto w-full max-w-(--content-width)"}>
       <div id={box.id} className={box.className} style={box.style}>
         <PartBackground background={row.background} />
         <div className={rowInnerClass(row, "site")}>

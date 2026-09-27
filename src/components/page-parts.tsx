@@ -5,6 +5,7 @@ import {
   ROW_LAYOUTS,
   blockText,
   frameStyle,
+  rowSpacing,
   spacingStyle,
   type Background,
   type PageBlock,
@@ -57,14 +58,14 @@ export function rowBox(row: PageRow, mode: PartsMode): Box {
       clips(row) && "overflow-hidden",
       mode === "site" && row.className,
     ),
-    style: { ...spacingStyle(row.style), ...frameStyle(row), ...colorStyle(row.background) },
+    style: { ...spacingStyle(rowSpacing(row.style)), ...frameStyle(row), ...colorStyle(row.background) },
   };
 }
 
 /** Inside the row: in a full-width row, what it holds keeps to the content's width unless set to spread. */
 export function rowInnerClass(row: PageRow, mode: PartsMode): string {
   const keep = row.width === "full" && row.contentWidth !== "full";
-  return cx("flex flex-1 flex-col", keep && (mode === "site" ? "mx-auto w-full max-w-(--content-width) px-4" : "px-6"));
+  return cx("flex flex-1 flex-col", keep && (mode === "site" ? "mx-auto w-full max-w-(--content-width)" : "px-6"));
 }
 
 /** The row's columns: side by side by its layout, stacked on phones (last first when reversed). */
