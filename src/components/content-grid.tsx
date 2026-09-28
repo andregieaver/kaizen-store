@@ -7,6 +7,7 @@ import { fontClass } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
 import { frameStyle, gridImageShape, type ContentGridBlock } from "@/lib/page-content";
 
+import { Carousel } from "./carousel";
 import { HEADING_SIZES, SHAPES, buttonLook } from "./page-block";
 import { Price } from "./price";
 
@@ -34,14 +35,22 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
     ...(tile?.background && { backgroundColor: tile.background }),
     ...(tile?.padding && { padding: `${tile.padding}px` }),
   };
-  return (
+  const carousel = block.display === "carousel";
+  const list = (
     <ul
-      className="grid grid-cols-[repeat(var(--grid-mobile),minmax(0,1fr))] md:grid-cols-[repeat(var(--grid-tablet),minmax(0,1fr))] lg:grid-cols-[repeat(var(--grid-desktop),minmax(0,1fr))]"
+      data-carousel-track={carousel ? "" : undefined}
+      className={
+        carousel
+          ? undefined
+          : "grid grid-cols-[repeat(var(--grid-mobile),minmax(0,1fr))] md:grid-cols-[repeat(var(--grid-tablet),minmax(0,1fr))] lg:grid-cols-[repeat(var(--grid-desktop),minmax(0,1fr))]"
+      }
       style={
         {
           "--grid-mobile": block.columns.mobile,
           "--grid-tablet": block.columns.tablet,
           "--grid-desktop": block.columns.desktop,
+          "--gap": `${block.gap}px`,
+          ...(carousel && block.peek && { "--peek": 0.25 }),
           gap: `${block.gap}px`,
         } as CSSProperties
       }
@@ -113,4 +122,5 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
       ))}
     </ul>
   );
+  return carousel ? <Carousel>{list}</Carousel> : list;
 }

@@ -3754,7 +3754,24 @@ function ContentGridFields({
           </span>
         </label>
       )}
-      <div className="border-t border-border pt-4">
+      <div className="flex flex-col gap-4 border-t border-border pt-4">
+        <Choices
+          legend="Show as"
+          options={[
+            { value: "grid", label: "Grid" },
+            { value: "carousel", label: "Carousel" },
+          ]}
+          value={block.display ?? "grid"}
+          onChange={(display) => onChange({ display: display === "carousel" ? "carousel" : undefined, ...(display === "grid" && { peek: undefined }) })}
+        />
+        {block.display === "carousel" && (
+          <>
+            <p className="text-xs text-muted">
+              The tiles in one row that scrolls sideways, with arrows; as many to a screen as the columns below. Nothing moves by itself.
+            </p>
+            <Check label="Show part of the next tile" checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
+          </>
+        )}
         <ColumnsFields value={block.columns} onChange={(columns) => onChange({ columns })} />
       </div>
       <fieldset className="flex flex-col gap-2 border-t border-border pt-4">

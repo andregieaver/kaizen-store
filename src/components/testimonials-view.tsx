@@ -1,5 +1,8 @@
+import type { CSSProperties } from "react";
+
 import type { TestimonialColumns, TestimonialLook } from "@/lib/page-content";
 
+import { Carousel } from "./carousel";
 import { StarRating } from "./star-rating";
 
 /** One testimonial as drawn: written in by the owner, or a Google review. */
@@ -37,14 +40,25 @@ export function TestimonialCards({
   columns = 3,
   look = "cards",
   showRating = true,
+  carousel = false,
 }: {
   entries: TestimonialEntry[];
   columns?: TestimonialColumns;
   look?: TestimonialLook;
   showRating?: boolean;
+  /** In a row that scrolls sideways, the columns as many to a screen. */
+  carousel?: boolean;
 }) {
-  return (
-    <div className={`grid grid-cols-1 gap-6 ${COLUMNS[columns]}`}>
+  const list = (
+    <div
+      data-carousel-track={carousel ? "" : undefined}
+      className={carousel ? undefined : `grid grid-cols-1 gap-6 ${COLUMNS[columns]}`}
+      style={
+        carousel
+          ? ({ "--grid-mobile": 1, "--grid-tablet": Math.min(2, columns), "--grid-desktop": columns, "--gap": "24px", "--peek": 0.15, gap: "24px" } as CSSProperties)
+          : undefined
+      }
+    >
       {entries.map((entry) => (
         <figure key={entry.key} className={`flex flex-col gap-4 ${LOOKS[look]}`}>
           {showRating && entry.rating !== undefined && <StarRating stars={entry.rating} />}
@@ -79,4 +93,5 @@ export function TestimonialCards({
       ))}
     </div>
   );
+  return carousel ? <Carousel>{list}</Carousel> : list;
 }

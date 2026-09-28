@@ -346,6 +346,7 @@ function Testimonials({ block }: { block: TestimonialsBlock }) {
       columns={block.columns}
       look={block.look}
       showRating={block.showRating !== false}
+      carousel={block.display === "carousel"}
     />
   );
 }

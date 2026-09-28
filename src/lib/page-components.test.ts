@@ -243,3 +243,12 @@ describe("testimonials", () => {
     ]);
   });
 });
+
+describe("carousels", () => {
+  it("shows a content grid or testimonials as a carousel, and nothing else", () => {
+    const grid = { ...newBlock("contentGrid", () => "g"), display: "carousel", peek: true };
+    expect(parse(grid)).toMatchObject({ display: "carousel", peek: true });
+    expect(problems({ ...grid, display: "slider" })).toEqual(["A content grid is shown in an unknown way."]);
+    expect(parse({ ...newBlock("testimonials", () => "t"), display: "carousel" })).toMatchObject({ display: "carousel" });
+  });
+});

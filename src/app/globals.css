@@ -275,3 +275,34 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
   inset-inline: 0;
   top: 100%;
 }
+
+/*
+ * A carousel's row (D91, `Carousel`): tiles side by side, as many to a
+ * screen as the grid's columns (and a part of the next with `--peek`),
+ * scrolled sideways and snapping to a tile, without a scroll bar.
+ */
+[data-carousel-track] {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  --cols: var(--grid-mobile, 1);
+}
+[data-carousel-track]::-webkit-scrollbar {
+  display: none;
+}
+[data-carousel-track] > * {
+  flex: 0 0 calc((100% - (var(--cols) - 1 + var(--peek, 0)) * var(--gap, 0px)) / (var(--cols) + var(--peek, 0)));
+  scroll-snap-align: start;
+}
+@media (width >= 48rem) {
+  [data-carousel-track] {
+    --cols: var(--grid-tablet, 2);
+  }
+}
+@media (width >= 64rem) {
+  [data-carousel-track] {
+    --cols: var(--grid-desktop, 3);
+  }
+}

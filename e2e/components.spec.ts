@@ -244,3 +244,40 @@ test("Google reviews not set up show nothing, and the page around them still sho
   await expect(page.getByRole("heading", { name: "Etter anmeldelsene" })).toBeVisible();
   await expect(page.locator("main figure")).toHaveCount(0);
 });
+
+test("a content grid as a carousel scrolls a screenful at a time with its arrows, which are off at either end", async ({ page }) => {
+  const address = await storePageWith("carousel", [
+    {
+      id: "grid",
+      type: "contentGrid",
+      source: { type: "products" },
+      categories: [],
+      tags: [],
+      sort: "newest",
+      limit: 12,
+      columns: { mobile: 1, tablet: 2, desktop: 2 },
+      show: { image: false, heading: true, excerpt: false, price: false, button: false },
+      buttonLabel: "",
+      emptyText: "",
+      headingLevel: 3,
+      excerptLines: 3,
+      gap: 24,
+      display: "carousel",
+      peek: true,
+    },
+  ]);
+  await page.goto(address);
+  const track = page.locator("main [data-carousel-track]");
+  await expect(track.locator("li").first()).toBeVisible();
+  expect(await track.locator("li").count()).toBeGreaterThan(2);
+  const previous = page.getByRole("button", { name: "Forrige" });
+  const next = page.getByRole("button", { name: "Neste" });
+  await expect(previous).toBeDisabled();
+  await next.click();
+  await expect.poll(() => track.evaluate((element) => element.scrollLeft)).toBeGreaterThan(100);
+  await expect(previous).toBeEnabled();
+  // Two tiles to a screen, and a quarter of the next.
+  const [first, row] = await Promise.all([track.locator("li").first().boundingBox(), track.boundingBox()]);
+  expect(first!.width).toBeLessThan(row!.width / 2);
+  expect(first!.width).toBeGreaterThan(row!.width / 3);
+});

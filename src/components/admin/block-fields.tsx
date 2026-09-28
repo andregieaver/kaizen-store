@@ -1091,7 +1091,16 @@ function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<Testimoni
   return (
     <>
       <Choices
-        legend="Columns"
+        legend="Show as"
+        options={[
+          { value: "grid", label: "Grid" },
+          { value: "carousel", label: "Carousel" },
+        ]}
+        value={block.display ?? "grid"}
+        onChange={(display) => onChange({ display: display === "carousel" ? "carousel" : undefined })}
+      />
+      <Choices
+        legend={block.display === "carousel" ? "To a screen" : "Columns"}
         hint="one on phones"
         options={TESTIMONIAL_COLUMNS.map((n) => ({ value: String(n), label: String(n) }))}
         value={String(block.columns ?? 3)}

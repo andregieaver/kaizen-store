@@ -509,6 +509,10 @@ export type ContentGridBlock = PartBase & {
   tile?: GridTile;
   /** Space between tiles, in pixels. */
   gap: number;
+  /** Tiles in a row that scrolls sideways (`Carousel`), the columns as many to a screen; a grid unless set. */
+  display?: "carousel";
+  /** A carousel shows part of the next tile, so it is seen to scroll. */
+  peek?: boolean;
 };
 
 /**
@@ -845,6 +849,8 @@ export type TestimonialsBlock = PartBase & {
   look?: TestimonialLook;
   /** Stars show unless off. */
   showRating?: boolean;
+  /** Side by side in a row that scrolls sideways (`Carousel`), the columns as many to a screen. */
+  display?: "carousel";
   font?: string;
 };
 
@@ -1429,6 +1435,8 @@ const contentGridBlock = z.object({
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
   emptyText: z.string().trim().max(300, "Keep the text for an empty grid under 300 characters.").default(""),
   filters: z.boolean().optional(),
+  display: z.literal("carousel", "A content grid is shown in an unknown way.").optional(),
+  peek: z.boolean().optional(),
   imageShape: z.enum(["original", "theme", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
   headingLevel: z.literal([2, 3, 4, 5, 6], "A tile's heading has an unknown level."),
   headingSize: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
@@ -1658,6 +1666,7 @@ const testimonialsBlock = z.object({
     .optional(),
   look: z.enum(Object.keys(TESTIMONIAL_LOOKS) as [TestimonialLook, ...TestimonialLook[]]).optional(),
   showRating: z.boolean().optional(),
+  display: z.literal("carousel", "Testimonials are shown in an unknown way.").optional(),
   font: blockFont,
   ...partBase,
 });
