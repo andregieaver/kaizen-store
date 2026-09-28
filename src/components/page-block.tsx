@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import {
   HEADING_DEFAULT_SIZE,
+  type AccordionBlock,
   buttonShows,
   frameStyle,
   type ButtonBlock,
@@ -79,6 +80,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Separator block={block} />;
     case "dualButton":
       return <DualButton block={block} />;
+    case "accordion":
+      return <Accordion block={block} />;
     case "image":
       if (!block.image) return null;
       return (
@@ -206,5 +209,39 @@ function SideButton({ side, block }: { side: DualButtonSide; block: DualButtonBl
       {side.label}
       {side.newTab && <span className="sr-only"> (opens in a new tab)</span>}
     </a>
+  );
+}
+
+/**
+ * An accordion (D91): each section the browser's own `details`, so it
+ * opens without script and the browser's find opens the one holding what
+ * was searched for; sections sharing a `name` close each other.
+ */
+function Accordion({ block }: { block: AccordionBlock }) {
+  const items = block.items.filter((item) => item.title.trim() !== "");
+  const boxed = block.look === "boxed";
+  return (
+    <div className={boxed ? "flex flex-col gap-3" : "divide-y divide-border border-y border-border"}>
+      {items.map((item, index) => (
+        <details
+          key={item.id}
+          name={block.single ? `accordion-${block.id}` : undefined}
+          open={Boolean(block.openFirst) && index === 0}
+          className={`group ${boxed ? "rounded-lg border border-border px-4" : ""}`}
+        >
+          <summary
+            className={`flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-medium [&::-webkit-details-marker]:hidden ${HEADING_SIZES[block.titleSize ?? "sm"]}`}
+          >
+            <span>{item.title}</span>
+            <svg aria-hidden viewBox="0 0 24 24" className="size-5 shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <div className="pb-4">
+            <RichText doc={item.body} />
+          </div>
+        </details>
+      ))}
+    </div>
   );
 }

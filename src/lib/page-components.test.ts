@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { blockHasContent, blockText, newPageContent, pageInput } from "./page-content";
+import { blockHasContent, blockText, newPageContent, pageInput, type RichTextDoc } from "./page-content";
 import { newBlock } from "./page-rows";
-import { blockTextFields } from "./page-translation";
+import { blockTextFields, localizePage } from "./page-translation";
+
+const doc = (text: string): RichTextDoc => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
 /** The newer page components (D91): what each keeps, refuses and shows. */
 
@@ -49,5 +51,49 @@ describe("dual buttons", () => {
       "A button's address must be https://…, a page like /about, mailto: or tel:.",
     ]);
     expect(problems({ ...ready, gap: 100 })).toEqual(["Keep the space between the buttons at 64 pixels or less."]);
+  });
+});
+
+describe("accordions", () => {
+  const accordion = {
+    id: "a",
+    type: "accordion",
+    items: [
+      { id: "i1", title: "Levering", body: doc("Vi sender innen to dager.") },
+      { id: "i2", title: "", body: doc("Uten tittel.") },
+    ],
+    openFirst: true,
+    single: true,
+    look: "boxed",
+  };
+
+  it("keeps its sections, shows once one has a title, and gives their words to the page", () => {
+    const fresh = newBlock("accordion", () => "x");
+    expect(fresh).toMatchObject({ type: "accordion", items: [{ title: "" }] });
+    expect(blockHasContent(fresh)).toBe(false);
+    const parsed = parse(accordion);
+    expect(parsed).toMatchObject({ openFirst: true, single: true, look: "boxed", items: [{ id: "i1", title: "Levering" }, { id: "i2" }] });
+    expect(blockHasContent(parsed)).toBe(true);
+    expect(blockText(parsed)).toBe("Levering Vi sender innen to dager. Uten tittel.");
+  });
+
+  it("refuses too many sections, a section's id twice and a title too long", () => {
+    const many = Array.from({ length: 31 }, (_, i) => ({ id: `i${i}`, title: "T", body: doc("x") }));
+    expect(problems({ ...accordion, items: many })).toEqual(["A component holds at most 30 items."]);
+    expect(problems({ ...accordion, items: [accordion.items[0], accordion.items[0]] })).toEqual(["Two items have the same id. Reload the page and try again."]);
+    expect(problems({ ...accordion, items: [{ id: "i1", title: "x".repeat(201), body: doc("x") }] })).toEqual(["Keep a title under 200 characters."]);
+  });
+
+  it("translates each section's title and text by the section", () => {
+    const fields = blockTextFields(parse(accordion));
+    expect(fields.map((field) => [field.key, field.label])).toEqual([
+      ["block.a.i1.title", "Section 1: title"],
+      ["block.a.i1.body", "Section 1: text"],
+      ["block.a.i2.title", "Section 2: title"],
+      ["block.a.i2.body", "Section 2: text"],
+    ]);
+    const content = { ...pageInput.parse(page([accordion])), translations: { "sv-SE": { "block.a.i1.title": "Leverans", "block.a.i1.body": doc("Vi skickar inom två dagar.") } } };
+    const swedish = localizePage(pageInput.parse(content), "sv-SE").rows[0].columns[0].blocks[0];
+    expect(swedish).toMatchObject({ items: [{ title: "Leverans", body: doc("Vi skickar inom två dagar.") }, { title: "" }] });
   });
 });

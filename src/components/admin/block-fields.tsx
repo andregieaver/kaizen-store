@@ -3,8 +3,14 @@
 import { useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
+import { RichTextEditor } from "./rich-text-editor";
 
 import {
+  ACCORDION_LOOKS,
+  EMPTY_DOC,
+  HEADING_SIZES,
+  ITEM_TITLE_MAX,
+  ITEMS_MAX,
   BUTTON_SHAPES,
   BUTTON_SIZES,
   BUTTON_LABEL_MAX,
@@ -15,7 +21,10 @@ import {
   SEPARATOR_LINES,
   SEPARATOR_POSITIONS,
   SEPARATOR_THICKNESS_MAX,
+  type AccordionBlock,
   type BlockType,
+  type HeadingSize,
+  type PanelItem,
   type ButtonShape,
   type ButtonSize,
   type ButtonVariant,
@@ -61,6 +70,12 @@ type Editors = { [K in BlockType]?: BlockEditor<Extract<PageBlock, { type: K }>>
 /** The components edited through the generic dialog. */
 export const BLOCK_EDITORS: Editors = {
   separator: { title: "Separator line", General: SeparatorFields },
+  accordion: {
+    title: "Accordion",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: AccordionFields,
+    Style: AccordionStyleFields,
+  },
   dualButton: {
     title: "Dual button",
     font: { label: "Font", fallback: "The site's body font" },
@@ -650,6 +665,68 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
         onChange={(stackOnPhones) => onChange({ stackOnPhones: stackOnPhones || undefined })}
       />
       <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
+    </>
+  );
+}
+
+/** A new item's id, as the builder makes ids. */
+const newItemId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `id${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+/** Titled pieces of rich text (D91): an accordion's sections, or tabs. */
+function PanelItemsFields({
+  items,
+  noun,
+  onChange,
+}: {
+  items: PanelItem[];
+  /** What one is called: "Section", "Tab". */
+  noun: string;
+  onChange: (items: PanelItem[]) => void;
+}) {
+  return (
+    <ItemsEditor
+      label={`${noun}s`}
+      items={items}
+      max={ITEMS_MAX}
+      addLabel={`Add a ${noun.toLowerCase()}`}
+      nameOf={(item, index) => item.title.trim() || `${noun} ${index + 1} (no title yet)`}
+      newItem={() => ({ id: newItemId(), title: "", body: EMPTY_DOC })}
+      onChange={onChange}
+    >
+      {(item, change) => (
+        <>
+          <TextField label="Title" value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
+          <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label="Text" />
+        </>
+      )}
+    </ItemsEditor>
+  );
+}
+
+/** An accordion's sections (D91). */
+function AccordionFields({ block, onChange }: BlockEditorProps<AccordionBlock>) {
+  return (
+    <>
+      <PanelItemsFields items={block.items} noun="Section" onChange={(items) => onChange({ items })} />
+      <p className="text-xs text-muted">A section without a title is left out on the site.</p>
+    </>
+  );
+}
+
+/** How an accordion opens and looks (D91). */
+function AccordionStyleFields({ block, onChange }: BlockEditorProps<AccordionBlock>) {
+  return (
+    <>
+      <Check label="First section open" hint="Shown open when the page loads." checked={Boolean(block.openFirst)} onChange={(openFirst) => onChange({ openFirst: openFirst || undefined })} />
+      <Check label="One open at a time" hint="Opening a section closes the one that was open." checked={Boolean(block.single)} onChange={(single) => onChange({ single: single || undefined })} />
+      <Choices legend="Look" options={optionsOf(ACCORDION_LOOKS)} value={block.look ?? "lines"} onChange={(look) => onChange({ look: look === "lines" ? undefined : look })} />
+      <Choices
+        legend="Title size"
+        options={optionsOf(HEADING_SIZES)}
+        value={block.titleSize ?? "sm"}
+        onChange={(titleSize: HeadingSize) => onChange({ titleSize: titleSize === "sm" ? undefined : titleSize })}
+      />
     </>
   );
 }

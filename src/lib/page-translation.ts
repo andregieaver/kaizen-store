@@ -6,6 +6,7 @@ import {
   type PageContent,
   type PageText,
   type PageTranslation,
+  type PanelItem,
 } from "./page-content";
 
 /**
@@ -64,6 +65,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return b;
     case "separator":
       return b;
+    case "accordion":
+      return { ...b, items: mapPanelItems(b.items, visit, key, "Section") };
     case "dualButton":
       return {
         ...b,
@@ -71,6 +74,15 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         second: { ...b.second, label: str("second.label", b.second.label, 100, "Second button's text") },
       };
   }
+}
+
+/** Titled items' texts (D91): each title and its rich text, by the item's id. */
+function mapPanelItems(items: PanelItem[], visit: Visit, key: (field: string) => string, noun: string): PanelItem[] {
+  return items.map((item, index) => {
+    const title = visit(key(`${item.id}.title`), item.title, 200, `${noun} ${index + 1}: title`);
+    const body = visit(key(`${item.id}.body`), item.body, 0, `${noun} ${index + 1}: text`);
+    return { ...item, title: typeof title === "string" ? title : item.title, body: typeof body === "string" ? item.body : body };
+  });
 }
 
 /**

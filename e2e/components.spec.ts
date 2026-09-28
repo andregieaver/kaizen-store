@@ -53,3 +53,47 @@ test("a dual button shows its two buttons side by side, one under another on pho
   expect(d!.y).toBeGreaterThan(c!.y + c!.height);
   expect(Math.round(c!.width)).toBe(Math.round(d!.width));
 });
+
+test("an accordion opens its sections without script, one at a time if set, and find opens the one holding a word", async ({ page }) => {
+  const text = (words: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] });
+  const address = await storePageWith("accordion", [
+    {
+      id: "acc",
+      type: "accordion",
+      openFirst: true,
+      single: true,
+      items: [
+        { id: "a", title: "Levering", body: text("Vi sender innen to dager.") },
+        { id: "b", title: "Retur", body: text("Du kan returnere i 30 dager.") },
+        { id: "c", title: "", body: text("Uten tittel vises ikke.") },
+      ],
+    },
+  ]);
+  await page.goto(address);
+  const delivery = page.locator("main details").filter({ hasText: "Levering" });
+  const returns = page.locator("main details").filter({ hasText: "Retur" });
+  await expect(page.locator("main details")).toHaveCount(2);
+  await expect(page.getByText("Vi sender innen to dager.")).toBeVisible();
+  await expect(page.getByText("Du kan returnere i 30 dager.")).toBeHidden();
+  // Opening the second closes the first.
+  await returns.locator("summary").click();
+  await expect(page.getByText("Du kan returnere i 30 dager.")).toBeVisible();
+  await expect(delivery).not.toHaveAttribute("open");
+  // The text is in the page for search engines and the browser's find, even while closed.
+  expect(await page.content()).toContain("Vi sender innen to dager.");
+});
+
+test.describe("without script", () => {
+  test.use({ javaScriptEnabled: false });
+
+  test("an accordion's sections still open", async ({ page }) => {
+    const text = (words: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] });
+    const address = await storePageWith("accordion-nojs", [
+      { id: "acc", type: "accordion", items: [{ id: "a", title: "Levering", body: text("Vi sender innen to dager.") }] },
+    ]);
+    await page.goto(address);
+    await expect(page.getByText("Vi sender innen to dager.")).toBeHidden();
+    await page.locator("main summary").click();
+    await expect(page.getByText("Vi sender innen to dager.")).toBeVisible();
+  });
+});

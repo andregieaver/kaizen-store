@@ -262,9 +262,10 @@ const blockLabels: Record<BlockType, string> = {
   menu: "Menu",
   separator: "Separator line",
   dualButton: "Dual button",
+  accordion: "Accordion",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "accordion", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -277,6 +278,7 @@ const blockThis: Record<BlockType, string> = {
   menu: "this menu",
   separator: "this separator line",
   dualButton: "these buttons",
+  accordion: "this accordion",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1079,9 +1081,24 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SeparatorIcon />;
     case "dualButton":
       return <DualButtonIcon />;
+    case "accordion":
+      return <AccordionIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function AccordionIcon() {
+  return (
+    <span aria-hidden className="flex h-9 flex-col justify-center gap-0.5 rounded-sm bg-foreground/75 px-3 text-background">
+      {["▾", "▸", "▸"].map((mark, i) => (
+        <span key={i} className="flex items-center justify-between border-b border-current/40 text-[8px] leading-[10px]">
+          <span className="h-0.5 w-6 rounded-full bg-current" />
+          {mark}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function DualButtonIcon() {
@@ -1601,6 +1618,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   menu: "A menu: double-click or use the wrench to choose which.",
   separator: "Separator line.",
   dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
+  accordion: "An accordion: its sections need titles. Double-click or use the wrench.",
 };
 
 export { ColorField };

@@ -683,6 +683,34 @@ export const DUAL_GAP_MAX = 64;
 /** Whether a button (or a dual button's side) shows: it has its text and its address. */
 export const buttonShows = (button: { label: string; href: string }) => button.label.trim() !== "" && button.href.trim() !== "";
 
+/** Items a component holds at most (tabs, sections, questions, testimonials). */
+export const ITEMS_MAX = 30;
+export const ITEM_TITLE_MAX = 200;
+
+/** A titled piece of rich text: an accordion's section or a tab (D91). Its id keeps its texts' translations. */
+export type PanelItem = { id: string; title: string; body: RichTextDoc };
+
+export const ACCORDION_LOOKS = { lines: "Lines between", boxed: "Boxes" } as const;
+export type AccordionLook = keyof typeof ACCORDION_LOOKS;
+
+/**
+ * An accordion (D91): sections that open and close under their titles,
+ * drawn as the browser's own `details`, so they work without script and
+ * the browser's find opens the one holding what was searched for. The
+ * first may start open, and only one may be open at a time if set.
+ */
+export type AccordionBlock = PartBase & BlockFont & {
+  id: string;
+  type: "accordion";
+  items: PanelItem[];
+  openFirst?: boolean;
+  /** Opening one closes the others. */
+  single?: boolean;
+  look?: AccordionLook;
+  /** The titles' size; medium unless set. */
+  titleSize?: HeadingSize;
+};
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -694,7 +722,8 @@ export type PageBlock =
   | SiteBlock
   | MenuBlock
   | SeparatorBlock
-  | DualButtonBlock;
+  | DualButtonBlock
+  | AccordionBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -775,6 +804,8 @@ export function blockHasContent(block: PageBlock): boolean {
       return true;
     case "dualButton":
       return buttonShows(block.first) || buttonShows(block.second);
+    case "accordion":
+      return block.items.some((item) => item.title.trim() !== "");
   }
 }
 
@@ -791,6 +822,8 @@ export function blockText(block: PageBlock): string {
       return [block.image?.alt, block.caption].filter(Boolean).join(" ");
     case "heading":
       return block.text;
+    case "accordion":
+      return panelText(block.items);
     case "button":
     case "contentGrid":
     case "product":
@@ -801,6 +834,9 @@ export function blockText(block: PageBlock): string {
       return "";
   }
 }
+
+/** Titled items' words: each title and its text. */
+const panelText = (items: PanelItem[]) => items.map((item) => `${item.title} ${richTextPlain(item.body)}`.trim()).join(" ");
 
 /** CSS for a part's border, rounded corners and shadow (D49); nothing for what it does not have. */
 export function frameStyle(part: Pick<PartBase, "border" | "radius" | "shadow">): Record<string, string> {
@@ -1338,6 +1374,29 @@ const dualButtonBlock = z.object({
   ...partBase,
 });
 
+const panelItems = z
+  .array(
+    z.object({
+      id: itemId,
+      title: z.string().trim().max(ITEM_TITLE_MAX, `Keep a title under ${ITEM_TITLE_MAX} characters.`),
+      body: richTextBlock.shape.doc,
+    }),
+  )
+  .max(ITEMS_MAX, `A component holds at most ${ITEMS_MAX} items.`)
+  .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again.");
+
+const accordionBlock = z.object({
+  id: itemId,
+  type: z.literal("accordion"),
+  items: panelItems,
+  openFirst: z.boolean().optional(),
+  single: z.boolean().optional(),
+  look: z.enum(Object.keys(ACCORDION_LOOKS) as [AccordionLook, ...AccordionLook[]]).optional(),
+  titleSize: headingBlock.shape.size,
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1350,6 +1409,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   menuBlock,
   separatorBlock,
   dualButtonBlock,
+  accordionBlock,
 ]);
 
 export const pageColumnSchema = z.object({
