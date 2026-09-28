@@ -658,6 +658,12 @@ of running `playwright install`.
   read `prefers-color-scheme` directly (use `showsDark()`/`useShowsDark()`).
   The admin's is the account's (`accounts.color_mode`, Your account and the
   headers' switch); a store's visitors choose where `visitorSwitch` is on.
+- Owners' own CSS (D100, `src/lib/custom-css.ts`, `CssPanel`): a page's
+  (`PageContent.css`) and the site's (`stores.custom_css`,
+  `platform_settings.custom_css`, `saveSiteCss()`), edited in the builder's
+  Custom CSS panel. Draw it only through `<CustomCss>` on the site and
+  `<ScopedCss>` in the admin (kept inside its box), which check it with
+  `cssProblem()` again; never put owner CSS in a page any other way.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

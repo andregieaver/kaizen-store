@@ -126,6 +126,13 @@ describe("page input", () => {
     expect(pageExcerpt(parsed)).toBe("Hello there");
   });
 
+  it("keeps the page's own CSS when it can be used, and says why when not (D100)", () => {
+    expect(pageInput.parse({ ...valid, css: "  h1 { color: red; }  " }).css).toBe("h1 { color: red; }");
+    expect(pageInput.parse({ ...valid, css: "   " }).css).toBeUndefined();
+    const bad = pageInput.safeParse({ ...valid, css: "h1 {} </style><script>" });
+    expect(bad.error?.issues.map((i) => i.message)).toEqual([expect.stringMatching(/^Custom CSS: CSS cannot contain "</)]);
+  });
+
   it("names every problem", () => {
     const result = pageInput.safeParse({
       ...valid,

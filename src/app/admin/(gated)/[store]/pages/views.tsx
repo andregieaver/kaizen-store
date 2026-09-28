@@ -11,6 +11,7 @@ import { ArticleView } from "@/components/article-view";
 import { PageArticle } from "@/components/page-article";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { ProductLayoutView } from "@/components/product-parts";
+import { ScopedCss } from "@/components/custom-css";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { withoutRecipients } from "@/lib/forms";
 import { t } from "@/lib/i18n";
@@ -268,6 +269,10 @@ export async function StorePreviewPageView({
           Back to editing
         </Link>
       </p>
+      {/* The store's own CSS and the page's (D100), kept inside the preview. */}
+      {/* Whatever it draws stays inside the preview, even `position: fixed`. */}
+      <div data-site-css="" className="flex flex-col gap-6 [contain:paint]">
+      <ScopedCss css={[store.customCss, page.draft.css]} root="[data-site-css]" />
       {type === "product_layout" ? (
         <LayoutPreview store={store} layout={page.draft} asked={(await searchParams)?.product} />
       ) : (type === "header" || type === "footer") && store.markets[0] ? (
@@ -288,10 +293,12 @@ export async function StorePreviewPageView({
           lang={store.markets[0]?.lang ?? "en"}
           locale={store.markets[0]?.locale ?? "en-GB"}
           place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }}
+          inAdmin
         />
       ) : (
-        <PageArticle content={page.draft} place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }} />
+        <PageArticle content={page.draft} place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }} inAdmin />
       )}
+      </div>
     </div>
   );
 }
@@ -491,7 +498,7 @@ async function LayoutPreview({ store, layout, asked }: { store: Store; layout: P
         </button>
       </form>
       <div className="rounded-lg border border-border py-8">
-        <ProductLayoutView layout={layout} ctx={{ store, market, product, m: t(market.lang) }} />
+        <ProductLayoutView layout={layout} ctx={{ store, market, product, m: t(market.lang) }} inAdmin />
       </div>
     </>
   );

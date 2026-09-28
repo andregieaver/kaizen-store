@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { cssProblem } from "./custom-css";
 import { fontFamily } from "./fonts";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
@@ -1261,6 +1262,8 @@ export type PageContent = {
    * that differ from the page's own (`src/lib/page-translation.ts`).
    */
   translations?: Record<string, PageTranslation>;
+  /** The owner's own CSS for this page, header, footer or layout (D100), checked by `cssProblem()`. */
+  css?: string;
 };
 
 /**
@@ -2112,6 +2115,15 @@ export const pageInput = z.preprocess(
           textColor: color.optional(),
         })
         .optional(),
+      css: z
+        .string()
+        .trim()
+        .superRefine((css, ctx) => {
+          const problem = cssProblem(css);
+          if (problem) ctx.addIssue({ code: "custom", message: `Custom CSS: ${problem}` });
+        })
+        .optional()
+        .transform((css) => css || undefined),
       // Checked against the page and its owner's languages when saved (`cleanTranslations`).
       translations: z
         .record(

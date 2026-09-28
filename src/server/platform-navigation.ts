@@ -50,6 +50,8 @@ export type PlatformChrome = {
   tracking: TrackingSettings;
   /** Kaizen's heading and body fonts (D59). */
   fonts: SiteFonts;
+  /** Kaizen's own CSS for every one of its pages (D100). */
+  customCss: string;
 };
 
 async function loadSettings(): Promise<{
@@ -60,12 +62,13 @@ async function loadSettings(): Promise<{
   business: BusinessDetails;
   tracking: TrackingSettings;
   fonts: SiteFonts;
+  customCss: string;
 }> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLATFORM_NAVIGATION_TAG);
   const [[row], menus] = await Promise.all([
-    readDb().execute<Row>(sql`select navigation, business, tracking, fonts, header_menu_id, footer_menu_id from commerce.platform_settings`),
+    readDb().execute<Row>(sql`select navigation, business, tracking, fonts, custom_css, header_menu_id, footer_menu_id from commerce.platform_settings`),
     readDb().execute<Row>(sql`select id, name, items from commerce.menus where store_id is null order by name`),
   ]);
   return {
@@ -76,6 +79,7 @@ async function loadSettings(): Promise<{
     business: parseBusinessDetails(row?.business),
     tracking: parseTracking(row?.tracking),
     fonts: parseSiteFonts(row?.fonts),
+    customCss: String(row?.custom_css ?? ""),
   };
 }
 

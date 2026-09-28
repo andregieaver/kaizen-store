@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { SiteConsent } from "@/components/consent/site-consent";
+import { CustomCss } from "@/components/custom-css";
 import { FontLinks } from "@/components/font-links";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { KaizenChat } from "@/components/site-chat";
@@ -48,6 +49,10 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
       >
         {/* Kaizen's own fonts, from its copies (D59). */}
         <FontLinks families={siteFontFamilies(chrome.fonts)} />
+        {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}
+        <CustomCss css={chrome.customCss} name="kaizen" />
+        <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
+        <CustomCss css={footerLayout?.content.css} name={`footer-${footerLayout?.id}`} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"

@@ -8,6 +8,7 @@ import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreChat } from "@/components/site-chat";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
+import { CustomCss } from "@/components/custom-css";
 import { StoreColorScript } from "@/components/store-color-switch";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
@@ -100,6 +101,10 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         <StoreColorScript store={store} />
         {/* The store's own fonts (D59) and theme (D60). */}
         <StoreThemeStyles store={store} />
+        {/* The owner's own CSS for every page, and the header's and footer's (D100), after the theme. */}
+        <CustomCss css={store.customCss} name={`store-${store.id}`} />
+        <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
+        <CustomCss css={footerLayout?.content.css} name={`footer-${footerLayout?.id}`} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"

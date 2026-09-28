@@ -5,6 +5,7 @@ import { blockFonts, blockHasContent, type PageBlock, type PageContent, type Pag
 import type { GridPlace } from "@/server/content-grid";
 
 import { ContentGridSection } from "./content-grid-section";
+import { CustomCss } from "./custom-css";
 import { MenuSection } from "./menu-section";
 import { FontLinks } from "./font-links";
 import { FormSection } from "./form-section";
@@ -25,6 +26,7 @@ export function PageArticle({
   place = { pageId: null, owner: null },
   titled = false,
   renderBlock,
+  inAdmin = false,
 }: {
   content: PageContent;
   /** Where the page is shown: for its content grids (D51, D53). */
@@ -33,6 +35,8 @@ export function PageArticle({
   titled?: boolean;
   /** Draws blocks the page itself knows, such as a product layout's product components (D79); null leaves one out. */
   renderBlock?: (block: PageBlock) => ReactNode;
+  /** Shown in the admin (a preview), which draws the page's own CSS (D100) itself, kept inside the preview. */
+  inAdmin?: boolean;
 }) {
   const rows = content.rows.filter(rowShows);
   // A heading component at level 1, or a product's title (D79), is the page's main heading (D49); else the title is, for screen readers.
@@ -43,6 +47,8 @@ export function PageArticle({
   );
   return (
     <article className="flex flex-col gap-8">
+      {/* The page's own CSS (D100), for the whole page. */}
+      {!inAdmin && <CustomCss css={content.css} name={`page-${place.pageId ?? "layout"}`} />}
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
         <PageRowView key={row.id} row={row} place={place} renderBlock={renderBlock} />

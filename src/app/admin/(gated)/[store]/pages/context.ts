@@ -20,6 +20,7 @@ import {
   createStorePartAction,
   deleteStorePageAction,
   deleteStorePartAction,
+  saveStoreCssAction,
   saveStorePageAction,
   storeGridPreviewAction,
   storeGridTermsAction,
@@ -65,6 +66,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
+    siteCss: store.customCss,
     actions: {
       save: typed(saveStorePageAction),
       unpublish: typed(unpublishStorePageAction),
@@ -76,6 +78,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       gridPreview: bind(storeGridPreviewAction),
       gridTerms: bind(storeGridTermsAction),
       installFont: bind(installStoreFontAction),
+      saveSiteCss: bind(saveStoreCssAction),
     },
   };
 }

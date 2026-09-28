@@ -19,6 +19,7 @@ export function ArticleView({
   lang,
   locale,
   place,
+  inAdmin = false,
 }: {
   content: PageContent;
   /** When it was first published; a draft's preview has none yet. */
@@ -28,6 +29,8 @@ export function ArticleView({
   lang: string;
   locale: string;
   place: GridPlace;
+  /** Shown in the admin (a preview), where its own CSS stays inside it (D100). */
+  inAdmin?: boolean;
 }) {
   const m = t(lang);
   const day = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
@@ -56,7 +59,7 @@ export function ArticleView({
           />
         )}
       </header>
-      <PageArticle content={content} place={place} titled />
+      <PageArticle content={content} place={place} titled inAdmin={inAdmin} />
     </article>
   );
 }

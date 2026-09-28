@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { CustomCss } from "@/components/custom-css";
 import { StoreColorScript } from "@/components/store-color-switch";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
@@ -70,6 +71,7 @@ export default async function ChooserLayout({ children, params }: Props) {
         <StoreColorScript store={store} />
         {/* The store's own fonts (D59) and theme (D60), as in its markets. */}
         <StoreThemeStyles store={store} />
+        <CustomCss css={store.customCss} name={`store-${store.id}`} />
         {children}
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* The front door asks and loads as the store's markets do (D58, D61), in its first market's language. */}

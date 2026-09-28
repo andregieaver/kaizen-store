@@ -158,6 +158,7 @@ import type { GridData } from "@/lib/content-grid";
 import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
+import { ScopedCss } from "@/components/custom-css";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
@@ -376,6 +377,7 @@ export function PageBuilder({
   onRows,
   saved: parts,
   onSaved: setParts,
+  css = [],
   upload,
   startVideo = null,
   aside,
@@ -409,6 +411,8 @@ export function PageBuilder({
   saved: SavedPart[];
   /** The saved parts changed: one saved, changed or deleted here. */
   onSaved: (parts: SavedPart[]) => void;
+  /** The site's and the page's own CSS (D100), drawn on the canvas and kept inside it. */
+  css?: string[];
   aside: ReactNode;
 }) {
   const sensors = useSensors(
@@ -653,11 +657,15 @@ export function PageBuilder({
         {/* The canvas draws with the site's own fonts (D59) and a store's theme (D60), as the site does. */}
         <div
           style={fonts.style}
-          className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""}`}
+          // With owners' CSS (D100), whatever it draws stays inside the canvas, even `position: fixed`.
+          className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""} ${css.some((c) => c.trim()) ? "[contain:paint]" : ""}`}
           {...(fonts.theme && { ...fonts.theme.attributes, "data-theme-canvas": "" })}
+          data-custom-css=""
         >
           <FontLinks families={siteFontFamilies(fonts.site)} />
           {fonts.theme && <style>{fonts.theme.css}</style>}
+          {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin. */}
+          <ScopedCss css={css} root="[data-custom-css]" />
           <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
         </div>
 

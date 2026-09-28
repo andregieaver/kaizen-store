@@ -63,6 +63,7 @@ async function createStore(slug: string): Promise<Store> {
     productsPageId: null,
     tracking: {},
     customCode: {},
+    customCss: "",
     fonts: {},
     theme: { base: "minimal", savedId: null, settings: templateSettings("minimal") },
   };

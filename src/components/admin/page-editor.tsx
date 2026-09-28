@@ -45,6 +45,7 @@ import { globalsOf, type SavedPart } from "@/lib/saved-parts";
 import type { Term } from "@/lib/taxonomy";
 import type { EditablePage, PageState } from "@/server/pages";
 
+import { CssPanel } from "./css-panel";
 import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
 import { ColorField, newId, PageBuilder } from "./page-builder";
@@ -140,6 +141,9 @@ export function PageEditor({
   // The language being written (D55): the main one builds the page; another only says its texts.
   const [main, ...others] = context.languages;
   const [locale, setLocale] = useState(main.locale);
+  // The CSS panel (D100): the page's own CSS, and the site's as written there (saved from the panel).
+  const [cssOpen, setCssOpen] = useState(false);
+  const [siteCss, setSiteCss] = useState(context.siteCss);
   const language = context.languages.find((l) => l.locale === locale) ?? main;
   const translating = language.locale !== main.locale;
 
@@ -163,6 +167,12 @@ export function PageEditor({
     setMessage(null);
   };
   const change = (next: Partial<PageContent>) => edit((current) => ({ ...current, ...next }));
+  // The page's CSS is the same in every language, so it changes the page itself, also while translating.
+  const changeCss = (css: string) => {
+    setContent((current) => ({ ...current, css: css || undefined }));
+    setDirty(true);
+    setMessage(null);
+  };
   // Rows change by function: a text block's editor reports from an earlier render.
   const changeRows = (update: (rows: PageRow[]) => PageRow[]) => edit((current) => ({ ...current, rows: update(current.rows) }));
   /** The page as the language being written reads. */
@@ -252,6 +262,7 @@ export function PageEditor({
         rows={view.rows}
         onRows={changeRows}
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
+        css={[siteCss, content.css ?? ""]}
         saved={parts}
         onSaved={(next) => {
           // A global changed or deleted under Saved (the server has changed the pages using it): its uses here follow.
@@ -475,6 +486,18 @@ export function PageEditor({
         </div>
       )}
 
+      <CssPanel
+        open={cssOpen}
+        onClose={() => setCssOpen(false)}
+        noun={noun}
+        siteName={context.owner === null ? "Kaizen's site" : "your store"}
+        pageCss={content.css ?? ""}
+        onPageCss={changeCss}
+        siteCss={siteCss}
+        onSiteCss={setSiteCss}
+        saveSiteCss={actions.saveSiteCss}
+      />
+
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           <button
@@ -496,6 +519,17 @@ export function PageEditor({
           <p role="status" aria-live="polite" className="text-sm">
             {message ?? (dirty ? "Unsaved changes." : state ? STATE_TEXT[state] : "Not saved yet.")}
           </p>
+          <button
+            type="button"
+            onClick={() => setCssOpen((open) => !open)}
+            aria-expanded={cssOpen}
+            aria-controls="css-panel"
+            className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium hover:bg-surface"
+          >
+            <span aria-hidden className="font-mono">{"{ }"}</span>
+            Custom CSS
+            {(content.css || siteCss.trim()) && <span className="size-2 rounded-full bg-violet-600" title="Has custom CSS" />}
+          </button>
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
             {saved && (
               <a href={`${adminBase}/${saved.id}/preview`} target="_blank" rel="noopener" className="underline">

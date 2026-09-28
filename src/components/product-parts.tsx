@@ -670,13 +670,14 @@ export async function ProductJsonLd({
  * layout's other components around them. The product's title is the page's
  * title. Used by the product's page and by a layout's preview.
  */
-export function ProductLayoutView({ layout, ctx }: { layout: PageContent; ctx: ProductPageContext }) {
+export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: PageContent; ctx: ProductPageContext; inAdmin?: boolean }) {
   const { store, market, product } = ctx;
   const content = localizePage(layout, market.locale);
   return (
     <PageArticle
       content={{ ...content, title: product.title }}
       place={{ pageId: null, owner: store.id, market: market.code }}
+      inAdmin={inAdmin}
       renderBlock={(block) =>
         block.type === "product" && productPartShows(block, product) ? <ProductPartView block={block} ctx={ctx} /> : null
       }

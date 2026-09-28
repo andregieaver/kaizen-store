@@ -10,6 +10,7 @@ import { TermsManager } from "@/components/admin/terms";
 import { ArticleView } from "@/components/article-view";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { PageArticle } from "@/components/page-article";
+import { ScopedCss } from "@/components/custom-css";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { requirePlatformAdmin } from "@/server/auth";
@@ -210,7 +211,9 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
           Back to editing
         </Link>
       </p>
-      <div className="py-6">
+      {/* Kaizen's own CSS and the page's (D100), kept inside the preview. */}
+      <div className="py-6 [contain:paint]" data-site-css="">
+        <ScopedCss css={[(await getPlatformChrome()).customCss, page.draft.css]} root="[data-site-css]" />
         {type === "header" || type === "footer" ? (
           // As Kaizen's pages draw it (D80), with its logo, menus and details.
           <div className="overflow-hidden rounded-lg border border-border">
@@ -229,9 +232,10 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
             lang="en"
             locale="en-GB"
             place={{ pageId: page.id, owner: null }}
+            inAdmin
           />
         ) : (
-          <PageArticle content={page.draft} place={{ pageId: page.id, owner: null }} />
+          <PageArticle content={page.draft} place={{ pageId: page.id, owner: null }} inAdmin />
         )}
       </div>
     </>

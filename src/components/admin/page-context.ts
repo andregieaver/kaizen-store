@@ -58,6 +58,8 @@ export type PageOwnerContext = {
   standardMenus: StandardMenus;
   /** Where the owner's menus are edited. */
   menusHref: string;
+  /** The owner's own CSS for every page of its site (D100), edited in the builder's CSS panel. */
+  siteCss: string;
   /** A store's theme for the canvas (D60): CSS for `[data-theme-canvas]` and its attributes; null for Kaizen. */
   theme: { css: string; attributes: Record<string, string> } | null;
   actions: {
@@ -71,6 +73,8 @@ export type PageOwnerContext = {
     gridPreview: (block: unknown, pageId: string | null) => Promise<GridData | { problem: string }>;
     /** A store's product categories and tags, for a grid of its products. */
     gridTerms: (storeId: string) => Promise<Term[]>;
+    /** Saves the owner's CSS for every page (D100); it is live at once. */
+    saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
     /** Copies a Google Fonts family to Kaizen before a block uses it (D59). */
     installFont: (family: string) => Promise<{ ok: true } | { ok: false; problem: string }>;
   };

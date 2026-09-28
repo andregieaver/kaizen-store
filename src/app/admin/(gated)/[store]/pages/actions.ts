@@ -14,6 +14,7 @@ import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setProductsPage, unpublishPage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
+import { saveSiteCss } from "@/server/site-css";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import { storeTag } from "@/server/stores";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
@@ -120,6 +121,14 @@ export async function chooseStoreSiteLayoutAction(
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(pagesTag(member.store.id));
   return { status: "ok", messages: [choice ? `Saved. Your store shows this ${type} now.` : `Saved. Your store shows the standard ${type} now.`] };
+}
+
+/** The store's own CSS for every page of its storefront (D100): live at once. */
+export async function saveStoreCssAction(storeSlug: string, css: unknown): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const member = await requireMember(storeSlug);
+  const result = await saveSiteCss(member.account, member.store.id, css);
+  if (result.ok) updateTag(storeTag(member.store.slug));
+  return result;
 }
 
 // Saved rows, columns and components: the store's own (D46, D53).

@@ -10,6 +10,8 @@ import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage } from "
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import type { FormState } from "@/components/admin/action-form";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
+import { saveSiteCss } from "@/server/site-css";
+import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { gridData } from "@/server/content-grid";
 import type { GridData } from "@/lib/content-grid";
@@ -67,6 +69,14 @@ export async function deletePageAction(type: PageType, id: string): Promise<{ pr
   await deletePage(admin, null, id, type);
   updateTag(PAGES_TAG);
   redirect(`${listOf(type)}?deleted=1`);
+}
+
+/** Kaizen's own CSS for every one of its pages (D100): live at once. */
+export async function savePlatformCssAction(css: unknown): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const admin = await requirePlatformAdmin();
+  const result = await saveSiteCss(admin, null, css);
+  if (result.ok) updateTag(PLATFORM_NAVIGATION_TAG);
+  return result;
 }
 
 // ---------------------------------------------------------------------------

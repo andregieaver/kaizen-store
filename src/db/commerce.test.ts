@@ -1551,6 +1551,20 @@ describe("pages", () => {
   });
 });
 
+describe("owners' own CSS (D100)", () => {
+  it("keeps a store's and Kaizen's CSS, empty until written and at most 50,000 characters", async () => {
+    const shop = await createStore("css-test", ["NO"]);
+    expect((await one<{ custom_css: string }>("select custom_css from commerce.stores where id = $1", [shop])).custom_css).toBe("");
+    await db.query("update commerce.stores set custom_css = $2 where id = $1", [shop, "h1 { color: red; }"]);
+    await expect(db.query("update commerce.stores set custom_css = $2 where id = $1", [shop, "x".repeat(50_001)])).rejects.toThrow(
+      /stores_custom_css/,
+    );
+    await expect(db.query("update commerce.platform_settings set custom_css = $1", ["x".repeat(50_001)])).rejects.toThrow(
+      /platform_settings_custom_css/,
+    );
+  });
+});
+
 describe("saved parts", () => {
   const save = (kind: string, name: string) =>
     db.query("insert into commerce.saved_parts (kind, name, content) values ($1, $2, '{}')", [kind, name]);

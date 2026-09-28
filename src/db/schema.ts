@@ -359,6 +359,8 @@ export const stores = commerce.table(
     tracking: jsonb("tracking").notNull().default({}),
     /** The owner's own code for the storefront's head and body (D61): `CustomCode` in lib/custom-code, added only on the store's own host. */
     customCode: jsonb("custom_code").notNull().default({}),
+    /** The owner's own CSS for every page of the storefront (D100), checked by `cssProblem()` in lib/custom-css. */
+    customCss: text("custom_css").notNull().default(""),
     /** Before themes (D60), the store's fonts (D59); now in `theme`. Kept until the code no longer reads it. */
     fonts: jsonb("fonts").notNull().default({}),
     /** The storefront's design (D60): `StoreTheme` in lib/theme, its template, the saved theme it came from and every setting. */
@@ -370,6 +372,7 @@ export const stores = commerce.table(
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check("stores_modules", sql`${t.modules} <@ array['bookings']::text[]`),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
+    check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
     check(
       "stores_slug_format",
       sql`${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$'`,
@@ -451,6 +454,8 @@ export const platformSettings = commerce.table(
     tracking: jsonb("tracking").notNull().default({}),
     /** Heading and body fonts from Google Fonts, self-hosted (D59). */
     fonts: jsonb("fonts").notNull().default({}),
+    /** Kaizen's own CSS for every one of its pages (D100), checked by `cssProblem()` in lib/custom-css. */
+    customCss: text("custom_css").notNull().default(""),
     /**
      * When stores' domains last asked for a new deployment (P8): routing to
      * custom domains is built into each deployment, so a change needs one.
@@ -469,6 +474,7 @@ export const platformSettings = commerce.table(
     check("platform_settings_single_row", sql`${t.id}`),
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
+    check("platform_settings_custom_css", sql`length(${t.customCss}) <= 50000`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),
     index("platform_settings_header_menu_idx").on(t.headerMenuId),
     index("platform_settings_footer_menu_idx").on(t.footerMenuId),

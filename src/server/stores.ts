@@ -59,6 +59,8 @@ export type Store = {
   tracking: TrackingSettings;
   /** The owner's own code for the head and body (D61), as saved; `liveCustomCode()` says whether it is added. */
   customCode: CustomCode;
+  /** The owner's own CSS for every page of the storefront (D100), checked when saved. */
+  customCss: string;
   /** The storefront's design (D60): colours, fonts and the rest, from a template. */
   theme: StoreTheme;
   /** The theme's heading and body fonts (D59), self-hosted. */
@@ -99,7 +101,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.theme,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.audience, s.business_popup, s.open_cart_on_add, s.modules, s.time_zone, s.booking_reminder_hours,
       exists (
         select 1 from commerce.payment_providers p
@@ -168,6 +170,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     productsPageId: text(row.products_page_id),
     tracking: parseTracking(row.tracking),
     customCode: parseCustomCode(row.custom_code),
+    customCss: String(row.custom_css ?? ""),
     ...themed(row.theme),
   };
 }

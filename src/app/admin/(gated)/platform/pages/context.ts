@@ -19,6 +19,7 @@ import {
   createSavedPartAction,
   deletePageAction,
   deleteSavedPartAction,
+  savePlatformCssAction,
   gridPreviewAction,
   gridTermsAction,
   savePageAction,
@@ -48,6 +49,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
     theme: null,
+    siteCss: chrome.customCss,
     actions: {
       save: savePageAction.bind(null, type),
       unpublish: unpublishPageAction.bind(null, type),
@@ -59,6 +61,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       gridPreview: gridPreviewAction,
       gridTerms: gridTermsAction,
       installFont: installPlatformFontAction,
+      saveSiteCss: savePlatformCssAction,
     },
   };
 }
