@@ -138,3 +138,78 @@ test("a mega menu opens its links side by side across the header, in columns wit
   expect(Math.abs((first?.y ?? 0) - (second?.y ?? 1))).toBeLessThan(200);
   expect(second!.x).toBeGreaterThan(first!.x + 200);
 });
+
+test("in a header built in the page builder, a mega menu opens along the header's bottom edge, across the content's width (D87)", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const slug = `mega-top-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${slug}@example.com`}, 'Per', 'Pers Butikk') returning id`;
+    const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Pers Butikk', null) as id`;
+    const items = [
+      { label: { "nb-NO": "Produkter" }, link: { kind: "products" }, depth: 0, mega: { columns: 4 } },
+      { label: { "nb-NO": "Kopper" }, link: { kind: "product", handle: "demo-keramikkopp" }, depth: 1 },
+      { label: { "nb-NO": "Lamper" }, link: { kind: "product", handle: "demo-bordlampe" }, depth: 1 },
+    ];
+    const [menu] = await sql`
+      update commerce.menus set items = ${sql.json(items)}
+      where id = (select header_menu_id from commerce.stores where id = ${id}) returning id`;
+    // Logo, the menu in the middle column, the cart: the layout a header built from the standard one has.
+    const header = {
+      title: "Topp",
+      slug: "topp",
+      thumbnail: null,
+      seo: { title: "", description: "" },
+      searchEngines: true,
+      aiAssistants: true,
+      categories: [],
+      tags: [],
+      rows: [
+        {
+          id: "h",
+          type: "row",
+          layout: "fit-sides",
+          sideBySide: true,
+          align: "middle",
+          style: { padding: { top: 10, right: 16, bottom: 10, left: 16 } },
+          columns: [
+            { id: "h-logo", blocks: [{ id: "logo", type: "site", part: "logo" }] },
+            { id: "h-menu", blocks: [{ id: "menu", type: "menu", menuId: menu.id }] },
+            { id: "h-tools", blocks: [{ id: "cart", type: "site", part: "cart" }] },
+          ],
+        },
+      ],
+    };
+    const [layout] = await sql`
+      insert into commerce.pages (store_id, type, slug, draft, published, published_at)
+      values (${id}, 'header', 'topp', ${sql.json(header)}, ${sql.json(header)}, now()) returning id`;
+    await sql`update commerce.stores set header_id = ${layout.id} where id = ${id}`;
+  } finally {
+    await sql.end();
+  }
+
+  await page.goto(`/s/${slug}/no`);
+  const top = page.locator("header.site-header");
+  await top.getByRole("link", { name: "Produkter" }).hover();
+  const kopper = top.getByRole("link", { name: "Kopper" });
+  await expect(kopper).toBeVisible();
+  const panel = page.locator("[data-mega-panel]");
+  const [panelBox, headerBox, columnsBox] = await Promise.all([
+    panel.boundingBox(),
+    top.boundingBox(),
+    panel.locator("ul").first().boundingBox(),
+  ]);
+  // Along the header's whole bottom edge, not under the menu's column.
+  expect(panelBox?.x).toBe(0);
+  expect(panelBox?.width).toBe(1280);
+  expect(Math.abs((panelBox?.y ?? 0) - ((headerBox?.y ?? 0) + (headerBox?.height ?? 0)))).toBeLessThan(2);
+  // Its columns take the content's width, as the page's content does.
+  const content = await page.evaluate(() => getComputedStyle(document.body).getPropertyValue("--content-width"));
+  expect(columnsBox?.width).toBe(Math.min(1280, parseFloat(content) * (content.includes("rem") ? 16 : 1)));
+  // Four columns: two links side by side, each a quarter of the content's width less the gaps.
+  const [first, second] = await Promise.all([kopper.boundingBox(), top.getByRole("link", { name: "Lamper" }).boundingBox()]);
+  expect(Math.round(second!.y)).toBe(Math.round(first!.y));
+  expect(second!.x - first!.x).toBeGreaterThan(columnsBox!.width / 4 - 40);
+});

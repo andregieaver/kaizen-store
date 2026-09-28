@@ -94,6 +94,7 @@ export function HidingHeader({ children, overlay }: { children: ReactNode; overl
     <div
       onFocus={onFocus}
       data-header-wrap={overlay ? "" : undefined}
+      data-hiding-header
       data-at-top={overlay && atTop ? "" : undefined}
       style={overlay?.textColor ? ({ "--header-overlay-text": overlay.textColor } as CSSProperties) : undefined}
       className={`sticky top-0 z-30 ${slide} ${hidden ? "-translate-y-full" : "translate-y-0"}`}

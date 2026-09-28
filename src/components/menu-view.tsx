@@ -99,8 +99,9 @@ export function MenuTreeView({
       return (
         <li key={node.key} className="group/menu" data-mega-menu>
           {/* The link reaches down to the panel's edge, so the panel stays open on the way to it. */}
-          {anchor(node, `${linkClassName} relative gap-1 after:absolute after:inset-x-0 after:top-full after:h-5`, true)}
-          <div className="invisible absolute inset-x-0 top-full z-40 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
+          {anchor(node, `${linkClassName} relative gap-1 after:absolute after:inset-x-0 after:top-full after:h-6`, true)}
+          {/* In a header, globals.css lays it along the whole header's bottom edge (`data-mega-panel`). */}
+          <div data-mega-panel className="invisible absolute inset-x-0 top-full z-40 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
             <div className="border-y border-border bg-background text-foreground shadow-lg">
               <ul
                 className={`mx-auto flex max-w-[var(--content-width,64rem)] flex-wrap gap-6 px-4 py-6 ${mega.center ? "justify-center text-center" : ""}`}

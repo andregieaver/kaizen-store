@@ -258,3 +258,16 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
   backdrop-filter: none;
   color: var(--header-overlay-text, inherit);
 }
+
+/*
+ * A mega menu in a header (D87) opens along the header's whole bottom edge,
+ * whichever column its menu sits in: fixed, it is placed against the moving
+ * header's wrapper (its translate holds fixed descendants), or against the
+ * header itself where its background blurs what is behind. Its columns sit
+ * within the content's width. Elsewhere it opens under the row it is in.
+ */
+[data-hiding-header] [data-mega-panel] {
+  position: fixed;
+  inset-inline: 0;
+  top: 100%;
+}
