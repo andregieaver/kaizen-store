@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { onVariantPicture } from "./variant-picture";
+
 type GalleryImage = { url: string; thumbnailUrl: string; alt: string };
 
 /** Words from the page, per picture where they name one ("Show picture 2", "2 of 5"). */
@@ -22,14 +24,20 @@ const smooth = () =>
  * screens), with a strip of thumbnails beneath. Choosing a thumbnail shows
  * that picture; swiping highlights and centres its thumbnail. Swiping is
  * the browser's own scroll snapping, so it feels native and needs no library.
+ *
+ * Choosing a variant with a picture of its own (D82) moves to that picture
+ * where it is among the product's; else it takes the first place until
+ * another variant is chosen, so the count and the words stay the same.
  */
 export function ProductGallery({
-  images,
+  images: own,
+  productId,
   title,
   labels,
   thumbnails = true,
 }: {
   images: GalleryImage[];
+  productId: string;
   title: string;
   labels: GalleryLabels;
   /** The strip of small pictures beneath; a product layout can leave it out (D79). */
@@ -38,6 +46,9 @@ export function ProductGallery({
   const main = useRef<HTMLDivElement>(null);
   const strip = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  // A chosen variant's picture shown in the first place, when it is not one of the product's.
+  const [lead, setLead] = useState<GalleryImage | null>(null);
+  const images = lead && own.length > 0 ? [lead, ...own.slice(1)] : own;
   const many = images.length > 1;
 
   const show = useCallback((index: number) => {
@@ -45,6 +56,20 @@ export function ProductGallery({
     if (!el) return;
     el.scrollTo({ left: index * el.clientWidth, behavior: smooth() });
   }, []);
+
+  useEffect(
+    () =>
+      onVariantPicture(productId, (picture) => {
+        if (!picture) {
+          setLead(null);
+          return;
+        }
+        const at = own.findIndex((image) => image.url === picture.url || image.thumbnailUrl === picture.thumbnailUrl);
+        setLead(at >= 0 ? null : { ...picture, alt: "" });
+        show(Math.max(0, at));
+      }),
+    [productId, own, show],
+  );
 
   // The picture in view is the one whose slide is mostly showing.
   useEffect(() => {

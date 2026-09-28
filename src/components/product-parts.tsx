@@ -76,21 +76,24 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           {ctx.back ? m.backTo(ctx.back.title) : m.backToProducts}
         </Link>
       );
-    case "gallery":
+    case "gallery": {
+      const images = galleryImages(product);
       return (
         <ProductGallery
-          images={product.images}
+          images={images}
+          productId={product.id}
           title={product.title}
           thumbnails={block.thumbnails !== false}
           labels={{
             label: m.galleryLabel,
             previous: m.galleryPrevious,
             next: m.galleryNext,
-            show: product.images.map((_, i) => m.galleryShow(i + 1)),
-            slide: product.images.map((_, i) => m.gallerySlide(i + 1, product.images.length)),
+            show: images.map((_, i) => m.galleryShow(i + 1)),
+            slide: images.map((_, i) => m.gallerySlide(i + 1, images.length)),
           }}
         />
       );
+    }
     case "title":
       return (
         <div className="flex items-start justify-between gap-4">
@@ -188,11 +191,18 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
   }
 }
 
+/** The product's pictures, or its variants' own (D82) when it has none. */
+function galleryImages(product: ProductDetail): ProductDetail["images"] {
+  if (product.images.length > 0) return product.images;
+  const pictures = product.variants.flatMap((variant) => (variant.image ? [{ ...variant.image, alt: "" }] : []));
+  return pictures.filter((picture, i) => pictures.findIndex((p) => p.url === picture.url) === i);
+}
+
 /** Whether a part has anything to show for this product; one that has not is left out, space and all. */
 export function productPartShows(block: ProductBlock, product: ProductDetail): boolean {
   switch (block.part) {
     case "gallery":
-      return product.images.length > 0;
+      return galleryImages(product).length > 0;
     case "notice":
       return product.audience === "businesses";
     case "host":
@@ -333,7 +343,7 @@ async function AppointmentBooking({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
           price: <Price price={variant.price} locale={market.locale} m={m} />,
-          image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
+          image: variant.image,
         }))}
         staff={offer.staff}
         initial={slotWeek(week, market.locale, store.timeZone)}
@@ -456,7 +466,7 @@ async function RangeBooking({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
           price: <Price price={variant.price} locale={market.locale} m={m} />,
-          image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
+          image: variant.image,
           period: variant.rentalPeriod,
           base: { amountMinor: variant.price.amountMinor, currency: variant.price.currency, vat: variant.price.vat },
         }))}
@@ -517,7 +527,11 @@ async function VariantsWithStock({
       subscriptionOnly={product.subscriptionOnly}
       labels={{ legend: m.purchaseOptions, oneTime: m.oneTimePurchase }}
     >
-      <VariantChoice initial={(product.variants.find(available) ?? product.variants[0]).id}>
+      <VariantChoice
+        initial={(product.variants.find(available) ?? product.variants[0]).id}
+        productId={product.id}
+        pictures={Object.fromEntries(product.variants.map((variant) => [variant.id, variant.image]))}
+      >
         <VariantPurchase
           store={store.slug}
           market={market.slug}

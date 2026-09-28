@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useEffect, useState, useTransition, type ReactNode } from "react";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 import { rangeDatesAction, rentalTimesAction, type RentalTimeChoice } from "@/app/s/[store]/[market]/p/actions";
@@ -15,6 +15,7 @@ import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { Dropdown } from "./dropdown";
 import { VatAmount } from "./price";
+import { showVariantPicture, type VariantPicture } from "./variant-picture";
 
 export type RangePickerLabels = AddToCartLabels & {
   chooseDates: string;
@@ -85,7 +86,7 @@ export function RangePicker({
     id: string;
     label: string;
     price: ReactNode;
-    image?: { url: string; alt: string } | null;
+    image?: VariantPicture | null;
     period: RentalPeriod;
     /** The price of a night, day, half day or hour before seasons (D70), kept with VAT, and how it is shown (B2B). */
     base: { amountMinor: number; currency: string; vat: PriceVat };
@@ -106,6 +107,8 @@ export function RangePicker({
   const [end, setEnd] = useState<string | null>(null);
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
   const [loading, startLoading] = useTransition();
+  // The gallery shows the chosen option's picture (D82).
+  useEffect(() => showVariantPicture(productId, variants.find((v) => v.id === variantId)?.image ?? null), [productId, variants, variantId]);
   const stay = kind === "stay";
   const period: RentalPeriod = stay ? "day" : (variants.find((v) => v.id === variantId)?.period ?? "day");
   const byDay = period === "day";
@@ -238,7 +241,7 @@ export function RangePicker({
                 <input type="radio" name="range-option" checked={variantId === variant.id} onChange={() => chooseVariant(variant.id)} />
                 {variant.image && (
                   // eslint-disable-next-line @next/next/no-img-element -- the store's own small picture
-                  <img src={variant.image.url} alt={variant.image.alt} className="size-10 rounded-md bg-surface object-cover" />
+                  <img src={variant.image.thumbnailUrl} alt="" className="size-10 rounded-md bg-surface object-cover" />
                 )}
                 {variant.label}
               </span>

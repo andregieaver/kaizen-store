@@ -1,17 +1,34 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { AddToCart, type AddToCartLabels } from "./add-to-cart";
 import { Dropdown } from "./dropdown";
+import { showVariantPicture, type VariantPicture } from "./variant-picture";
 
 type Choice = [string, (id: string) => void];
 
 const ChosenVariant = createContext<Choice | null>(null);
 
-/** The variant chosen on a product page, shared by its picker and the phone's bottom bar, so both add the same one. */
-export function VariantChoice({ initial, children }: { initial: string; children: ReactNode }) {
+/**
+ * The variant chosen on a product page, shared by its picker and the phone's
+ * bottom bar, so both add the same one; choosing one shows its picture in
+ * the gallery (D82).
+ */
+export function VariantChoice({
+  initial,
+  productId,
+  pictures,
+  children,
+}: {
+  initial: string;
+  productId: string;
+  pictures: Record<string, VariantPicture | null>;
+  children: ReactNode;
+}) {
   const choice = useState(initial);
+  const chosen = choice[0];
+  useEffect(() => showVariantPicture(productId, pictures[chosen] ?? null), [productId, pictures, chosen]);
   return <ChosenVariant.Provider value={choice}>{children}</ChosenVariant.Provider>;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useEffect, useState, useTransition, type ReactNode } from "react";
 
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 import { appointmentWeekAction } from "@/app/s/[store]/[market]/p/actions";
@@ -11,6 +11,7 @@ import type { ChangeOutcome } from "@/server/booking-changes";
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { Dropdown } from "./dropdown";
+import { showVariantPicture, type VariantPicture } from "./variant-picture";
 
 export type AppointmentPickerLabels = AddToCartLabels & {
   chooseTime: string;
@@ -65,7 +66,7 @@ export function AppointmentPicker({
   cartHref: string;
   productId: string;
   /** The appointment's options (a longer session, a package), each with its price drawn by the page. */
-  variants: { id: string; label: string; price: ReactNode; image?: { url: string; alt: string } | null }[];
+  variants: { id: string; label: string; price: ReactNode; image?: VariantPicture | null }[];
   staff: { id: string; name: string }[];
   initial: SlotWeek;
   openCart?: boolean;
@@ -79,6 +80,10 @@ export function AppointmentPicker({
   const [resourceId, setResourceId] = useState<string | null>(null);
   const [variantId, setVariantId] = useState(variants[0]?.id ?? "");
   const [loading, startLoading] = useTransition();
+  // The gallery shows the chosen option's picture (D82); not while moving a booking, which has none.
+  useEffect(() => {
+    if (!reschedule) showVariantPicture(productId, variants.find((v) => v.id === variantId)?.image ?? null);
+  }, [productId, variants, variantId, reschedule]);
 
   async function fetchWeek(from: string | null, who: string | null) {
     const next = await appointmentWeekAction(store, market, { productId, from, resourceId: who });
@@ -135,7 +140,7 @@ export function AppointmentPicker({
                 />
                 {variant.image && (
                   // eslint-disable-next-line @next/next/no-img-element -- the store's own small picture
-                  <img src={variant.image.url} alt={variant.image.alt} className="size-10 rounded-md bg-surface object-cover" />
+                  <img src={variant.image.thumbnailUrl} alt="" className="size-10 rounded-md bg-surface object-cover" />
                 )}
                 {variant.label}
               </span>

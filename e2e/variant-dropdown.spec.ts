@@ -54,3 +54,18 @@ test("a sold-out variant is shown but cannot be chosen", async ({ page }) => {
   await dotted.click({ force: true });
   await expect(choose).toContainText("Linjert");
 });
+
+test("the gallery shows the chosen variant's picture", async ({ page }) => {
+  await page.goto("/s/demo/no/p/demo-keramikkopp");
+  const gallery = page.getByRole("region", { name: "Bilder" });
+  const choose = page.getByRole("region", { name: "Varianter" }).getByRole("combobox", { name: "Velg variant" });
+  // The black mug is chosen first; its picture is its own, not one of the product's.
+  await expect(choose).toContainText("Farge: Svart");
+  await expect(gallery.locator("img").first()).toHaveAttribute("src", "/demo/mug-black.svg");
+
+  // The white mug's picture is the product's own.
+  await choose.click();
+  await page.locator('[role="option"]').filter({ hasText: "Farge: Hvit" }).first().click();
+  await expect(gallery.locator("img")).toHaveCount(1);
+  await expect(gallery.locator("img").first()).toHaveAttribute("src", "/demo/mug.svg");
+});

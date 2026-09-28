@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { pageRoomClass } from "@/components/page-article";
 import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from "@/components/product-parts";
+import { HeaderOverlayMark } from "@/components/store-chrome";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
@@ -118,6 +119,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className={`store-page ${pageRoomClass(layout, "pt-8", "pb-8")}`} data-header-overlay={over ? "" : undefined}>
+      {over && <HeaderOverlayMark />}
       <ProductLayoutView layout={layout} ctx={ctx} />
       <Suspense fallback={null}>
         <ProductJsonLdSection store={store} market={market} product={product} />

@@ -227,7 +227,8 @@ body:has([data-product-bar]) [data-default-bar] {
 
 /*
  * A header over the page (D80): a page whose header may lie over it marks
- * itself `data-header-overlay` (`headerOverlays()`); the header then leaves
+ * itself `data-header-overlay` (`headerOverlays()`) and renders
+ * `HeaderOverlayMark`; the header then leaves
  * the flow, so the page's first row, with its background, runs up behind
  * it, and is see-through while the page is at its top. Scrolled, it has its
  * background again, so its links stay readable over the page.
@@ -243,12 +244,15 @@ body:has([data-product-bar]) [data-default-bar] {
     transition: none;
   }
 }
-body:has([data-header-overlay]) [data-header-wrap] {
+/* Before scripts run, the page's mark; after, the document's (`HeaderOverlayMark`), as pages visited stay in it, hidden. */
+html:not([data-overlay-live]) body:has([data-header-overlay]) [data-header-wrap],
+html[data-overlay-on] [data-header-wrap] {
   position: fixed;
   inset-inline: 0;
   top: 0;
 }
-body:has([data-header-overlay]) [data-header-wrap][data-at-top] .site-header {
+html:not([data-overlay-live]) body:has([data-header-overlay]) [data-header-wrap][data-at-top] .site-header,
+html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
   background-color: transparent;
   border-color: transparent;
   backdrop-filter: none;

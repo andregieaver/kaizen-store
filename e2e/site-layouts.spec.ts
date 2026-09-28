@@ -80,3 +80,48 @@ test("a store's own header and footer show its parts, and the header lies over a
   await expect(page.getByRole("heading", { name: "Om oss" })).toBeVisible();
   await expect(top).toHaveCSS("position", "sticky");
 });
+
+test("a header over the front page only stays above other pages, also after visiting the front page", async ({ page }) => {
+  const slug = `front-over-${Date.now()}`;
+  const header = content("Topp", [row("h", [{ id: "logo", type: "site", part: "logo" }, { id: "cart", type: "site", part: "cart" }], { sideBySide: true })], {
+    overlay: { where: "front", categories: [], tags: [] },
+  });
+  const footer = content("Bunn", [row("f", [{ id: "b", type: "site", part: "business" }, { id: "k", type: "site", part: "cookies" }])]);
+  const hero = content("Velkommen", [
+    row("hero", [{ id: "t", type: "heading", text: "Velkommen", level: 1 }], { background: { type: "color", color: "#123456" }, style: { padding: { top: 200, right: 20, bottom: 200, left: 20 } } }),
+  ]);
+  // Another page that starts with a background: the header stays above it all the same.
+  const other = content("Sommer", [
+    row("sommer", [{ id: "s", type: "heading", text: "Sommer ved vannet", level: 1 }], { background: { type: "color", color: "#345678" } }),
+  ]);
+  const sql = testDb();
+  try {
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${slug}@example.com`}, 'Siri', 'Siris Butikk') returning id`;
+    const [{ id: storeId }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Siris Butikk', null) as id`;
+    const add = (type: string, value: ReturnType<typeof content>) => sql`
+      insert into commerce.pages (store_id, type, slug, draft, published, published_at)
+      values (${storeId}, ${type}, ${value.slug}, ${sql.json(value as never)}, ${sql.json(value as never)}, now()) returning id`;
+    const [[{ id: headerId }], [{ id: footerId }], [{ id: frontId }]] = await Promise.all([add("header", header), add("footer", footer), add("page", hero), add("page", other)]);
+    await sql`update commerce.stores set header_id = ${headerId}, footer_id = ${footerId}, front_page_id = ${frontId} where id = ${storeId}`;
+  } finally {
+    await sql.end();
+  }
+
+  const top = page.locator("[data-header-wrap]");
+  await page.goto(`/s/${slug}/no/sommer`);
+  await expect(page.getByRole("heading", { level: 1, name: "Sommer ved vannet" })).toBeVisible();
+  await expect(top).toHaveCSS("position", "sticky");
+
+  // To the front page by the logo, in the browser: the header lies over it.
+  await page.locator(".site-header a[href$='/no']").first().click();
+  await expect(page).toHaveURL(new RegExp(`/s/${slug}/no$`));
+  await expect(page.getByRole("heading", { level: 1, name: "Velkommen" })).toBeVisible();
+  await expect(top).toHaveCSS("position", "fixed");
+
+  // Back again: the front page stays in the document, hidden, but the header is above the page once more.
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1, name: "Sommer ved vannet" })).toBeVisible();
+  await expect(top).toHaveCSS("position", "sticky");
+});

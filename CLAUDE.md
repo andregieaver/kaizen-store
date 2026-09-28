@@ -169,7 +169,9 @@ of running `playwright install`.
   a themed select-only combobox with pictures), never a native `<select>`.
   A variant's picture is `product_variants.image_url`/`image_thumbnail_url`
   (`ProductVariant.image`); the product page and the phone's bar share the
-  chosen variant through `VariantChoice`.
+  chosen variant through `VariantChoice`. The gallery shows the chosen
+  variant's picture (D84): anything choosing a variant calls
+  `showVariantPicture()` (`src/components/variant-picture.ts`).
 - The template store's product pages are prerendered at build time, so their
   content is plain HTML; stock and add-to-cart stream in and need JavaScript.
   Keep the details outside a `<Suspense>` boundary: React moves a finished
@@ -375,7 +377,9 @@ of running `playwright install`.
   footers, the owner's own parts, and the business details and cookies link
   in footers. A header's `overlay` lies over pages that `headerOverlays()`
   covers (only over a first row with a background): pages mark themselves
-  `data-header-overlay`, and globals.css does the rest. A new part goes in
+  `data-header-overlay` and render `HeaderOverlayMark` (visited pages stay in
+  the document hidden, so the shown one marks `<html data-overlay-on>`), and
+  globals.css does the rest. A new part goes in
   `SITE_PARTS`, `SiteBlock`, `SitePartView`/`sitePartShows()` and the
   builder's `SiteFields`/`SiteStandIn`.
 - Design themes (D60, `src/lib/theme.ts`, `src/server/themes.ts`): a store's

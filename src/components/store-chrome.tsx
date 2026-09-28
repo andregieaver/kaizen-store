@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 
 /**
  * The storefront's moving parts (D30): a header that slides away while the
@@ -59,6 +59,23 @@ function useFocusShows() {
   const { direction } = useScroll();
   const [focusedWhile, setFocusedWhile] = useState<Scroll["direction"] | "never">("never");
   return { focused: focusedWhile === direction, onFocus: () => setFocusedWhile(direction) };
+}
+
+/**
+ * Rendered by a page the header lies over (D80): marks the document while
+ * the page is shown. Next keeps pages visited in the document, hidden, and
+ * React takes a hidden page's effects away, so the mark follows the page
+ * actually shown; before scripts run, the page's own `data-header-overlay`
+ * does (globals.css).
+ */
+export function HeaderOverlayMark() {
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-overlay-live", "");
+    root.setAttribute("data-overlay-on", "");
+    return () => root.removeAttribute("data-overlay-on");
+  }, []);
+  return null;
 }
 
 const slide = "transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none";

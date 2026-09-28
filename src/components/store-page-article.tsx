@@ -4,6 +4,7 @@ import type { GridPlace } from "@/server/content-grid";
 import { siteLayoutFor } from "@/server/site-layouts";
 
 import { PageArticle, pageRoomClass } from "./page-article";
+import { HeaderOverlayMark } from "./store-chrome";
 
 /**
  * A store's page (D54) inside the storefront's `<main>`, which keeps to the
@@ -17,6 +18,7 @@ export async function StorePageArticle({ content, place, front = false }: { cont
   const over = headerOverlays(header?.content.overlay, { front, categories: content.categories, tags: content.tags, rows: content.rows });
   return (
     <div className={`store-page ${pageRoomClass(content, "pt-8", "pb-8")}`} data-header-overlay={over ? "" : undefined}>
+      {over && <HeaderOverlayMark />}
       <PageArticle content={content} place={place} />
     </div>
   );
