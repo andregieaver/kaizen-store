@@ -2143,6 +2143,45 @@ describe("the media library (D88)", () => {
   });
 });
 
+describe("alt texts in the media library (D89)", () => {
+  it("are by whoever wrote them, found by either address in a language, else the main one", async () => {
+    const owner = await createStore("alt-owner", ["NO"]);
+    const { rows } = await db.query(
+      `insert into commerce.media (store_id, kind, url, thumbnail_url, bucket, path, file_name, content_type)
+       values ($1, 'image', 'https://x/alt.webp', 'https://x/alt-480.webp', 'product-media', 'alt.webp', 'alt.webp', 'image/webp') returning id`,
+      [owner],
+    );
+    const id = (rows[0] as { id: string }).id;
+    const alt = (url: string | null, locale: string) =>
+      one<{ alt: string | null }>("select commerce.media_alt($1, $2) as alt", [url, locale]).then((row) => row.alt);
+    expect(await alt("https://x/alt.webp", "nb-NO")).toBeNull();
+
+    // An alt text needs its writer, and a writer an alt text.
+    await expect(db.query("update commerce.media set alt = 'En kopp' where id = $1", [id])).rejects.toThrow(/media_alt_written/);
+    await expect(db.query("update commerce.media set alt_source = 'ai' where id = $1", [id])).rejects.toThrow(/media_alt_written/);
+    await expect(db.query("update commerce.media set alt = 'En kopp', alt_source = 'robot' where id = $1", [id])).rejects.toThrow(/media_alt_source/);
+    await expect(db.query("update commerce.media set alt_translations = '[]', alt_source = 'ai' where id = $1", [id])).rejects.toThrow(/media_alt_translations/);
+    await db.query(
+      `update commerce.media set alt = 'En hvit kopp', alt_translations = '{"sv-SE": "En vit kopp", "en": ""}', alt_source = 'ai' where id = $1`,
+      [id],
+    );
+
+    expect(await alt("https://x/alt.webp", "nb-NO")).toBe("En hvit kopp");
+    expect(await alt("https://x/alt-480.webp", "sv-SE")).toBe("En vit kopp");
+    // A language without its own, or with an empty one, reads the main language's.
+    expect(await alt("https://x/alt.webp", "en")).toBe("En hvit kopp");
+    expect(await alt("https://x/other.webp", "nb-NO")).toBeNull();
+    expect(await alt(null, "nb-NO")).toBeNull();
+
+    // The library's search reads every language.
+    const { n } = await one<{ n: number }>(
+      "select count(*)::int as n from commerce.media where id = $1 and search @@ to_tsquery('simple', 'vit')",
+      [id],
+    );
+    expect(n).toBe(1);
+  });
+});
+
 describe("variant pictures", () => {
   it("keeps a variant's picture with its small copy, and copies them with the template's variants", async () => {
     const template = await createStore("pictures-template", ["NO"]);

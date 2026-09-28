@@ -65,7 +65,7 @@ export function ProductGallery({
           return;
         }
         const at = own.findIndex((image) => image.url === picture.url || image.thumbnailUrl === picture.thumbnailUrl);
-        setLead(at >= 0 ? null : { ...picture, alt: "" });
+        setLead(at >= 0 ? null : { ...picture, alt: picture.alt ?? "" });
         show(Math.max(0, at));
       }),
     [productId, own, show],

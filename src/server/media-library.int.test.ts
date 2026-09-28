@@ -6,10 +6,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { aiFormValues } from "@/lib/ai-provider";
 import { mediaQuery } from "@/lib/media-query";
+import { siteUrl } from "@/lib/site";
 
 type Row = Record<string, unknown>;
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, refresh: () => {} }));
 // Storage is Supabase's: here, removing a file always works.
 const removed: string[][] = [];
 vi.mock("./media", async (original) => ({
@@ -23,6 +25,7 @@ process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const ai = await import("./ai");
 const library = await import("./media-library");
+const stores = await import("./stores");
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -57,11 +60,12 @@ async function addMedia(values: { store: string | null; name: string; alt?: stri
   const kind = values.kind ?? "image";
   const path = `${values.store ?? "platform"}/${run}-${values.name}`;
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.media (store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, alt)
+    insert into commerce.media (store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, alt, alt_source)
     values (${values.store}::uuid, ${kind}, ${`${base}/${path}`}, ${kind === "image" ? `${base}/${path}-480` : null},
       ${kind === "image" ? "product-media" : "page-videos"}, ${path}, ${kind === "image" ? `${path}-480` : null},
       ${values.name}, ${kind === "image" ? "image/webp" : "video/mp4"}, ${values.size ?? 1000},
-      ${values.width === undefined ? 800 : values.width}, ${values.width === null ? null : 600}, ${values.alt ?? ""})
+      ${values.width === undefined ? 800 : values.width}, ${values.width === null ? null : 600}, ${values.alt ?? ""},
+      ${values.alt ? "staff" : null})
     returning id, url, thumbnail_url
   `);
   return { id: String(row.id), url: String(row.url), thumbnailUrl: row.thumbnail_url ? String(row.thumbnail_url) : null };
@@ -145,7 +149,7 @@ describe("the media library (D88)", () => {
     expect(names(found.items)).toEqual(["keramikk-kopp.webp"]);
 
     // A new description is embedded again.
-    expect(await library.describeMedia(owner(), accountId, bike.id, "Terrengsykkel og hjelm")).toBe(true);
+    expect(await library.describeMedia(owner(), accountId, bike.id, { alt: "Terrengsykkel og hjelm", translations: {} })).toBe(true);
     fakeModel();
     expect((await library.embedMedia(owner(), (await ai.aiFor(storeId))!)).embedded).toBe(1);
     expect(names((await library.listMedia(owner(), mediaQuery({ q: "hjelm" }))).items)).toEqual(["sykkel_i_skogen.webp"]);
@@ -162,7 +166,8 @@ describe("the media library (D88)", () => {
     `);
     const content = { title: "Om oss", rows: [{ id: "r", columns: [{ id: "c", blocks: [{ id: "i", type: "image", url: mug.thumbnailUrl }] }] }] };
     const [page] = await db().execute<Row>(sql`
-      insert into commerce.pages (store_id, slug, draft) values (${storeId}::uuid, ${`om-${run}`}, ${JSON.stringify(content)}::jsonb) returning id
+      insert into commerce.pages (store_id, slug, draft, published, published_at)
+      values (${storeId}::uuid, ${`om-${run}`}, ${JSON.stringify(content)}::jsonb, ${JSON.stringify(content)}::jsonb, now()) returning id
     `);
     const [menu] = await db().execute<Row>(sql`
       insert into commerce.menus (store_id, name, items)
@@ -174,14 +179,25 @@ describe("the media library (D88)", () => {
     `);
 
     const uses = (await library.mediaUses(owner(), [mug.id, bike.id])).get(mug.id)!;
+    // Each with where to change it and, where visitors see it, its address on the store's site in its main market (D89).
+    const market = (await stores.getStore(storeSlug))!.markets[0];
+    const site = `${siteUrl()}/s/${storeSlug}/${market.slug}`;
     expect(uses).toEqual(
       expect.arrayContaining([
-        { label: `Product: ${String(product.title)}`, href: `/admin/${storeSlug}/products/${String(product.id)}` },
-        { label: "Page: Om oss", href: `/admin/${storeSlug}/pages/${String(page.id)}` },
-        { label: "Menu: Mega", href: `/admin/${storeSlug}/menus?menu=${String(menu.id)}` },
-        { label: "Logo and icon (Header and footer)", href: `/admin/${storeSlug}/settings/navigation` },
+        {
+          label: `Product: ${String(product.title)}`,
+          href: `/admin/${storeSlug}/products/${String(product.id)}`,
+          siteUrl: `${site}/p/demo-keramikkopp`,
+        },
+        { label: "Page: Om oss", href: `/admin/${storeSlug}/pages/${String(page.id)}`, siteUrl: `${site}/om-${run}` },
+        { label: "Menu: Mega", href: `/admin/${storeSlug}/menus?menu=${String(menu.id)}`, siteUrl: null },
+        { label: "Logo and icon (Header and footer)", href: `/admin/${storeSlug}/settings/navigation`, siteUrl: site },
       ]),
     );
+    // A page not published is not on the site.
+    await db().execute(sql`update commerce.pages set published = null, published_at = null where id = ${String(page.id)}::uuid`);
+    const drafted = (await library.mediaUses(owner(), [mug.id])).get(mug.id)!;
+    expect(drafted.find((use) => use.label === "Page: Om oss")?.siteUrl).toBeNull();
     expect(uses).toHaveLength(4);
     expect((await library.mediaUses(owner(), [bike.id])).get(bike.id)).toEqual([]);
     // Kaizen's library does not see a store's uses.
@@ -202,7 +218,7 @@ describe("the media library (D88)", () => {
   });
 
   it("deletes a file from Storage and the library, only the owner's, and records who did", async () => {
-    expect(await library.describeMedia({ storeId: null, storeSlug: null }, accountId, film.id, "Nope")).toBe(false);
+    expect(await library.describeMedia({ storeId: null, storeSlug: null }, accountId, film.id, { alt: "Nope", translations: {} })).toBe(false);
     expect(await library.deleteMedia({ storeId: null, storeSlug: null }, accountId, film.id)).toEqual({
       ok: false,
       problem: "That file is no longer in the library.",

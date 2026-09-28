@@ -2798,18 +2798,30 @@ export const media = commerce.table(
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
     width: integer("width"),
     height: integer("height"),
+    /** Its alt text in the owner's main language (D89), also what the library's search reads. */
     alt: text("alt").notNull().default(""),
+    /** Its alt text in the owner's other languages, by locale; a language without one shows the main one. */
+    altTranslations: jsonb("alt_translations").$type<Record<string, string>>().notNull().default({}),
+    /** Who wrote the alt text: `ai` (D89) or `staff`; null while there is none. AI never replaces staff's. */
+    altSource: text("alt_source"),
+    altWrittenAt: timestamp("alt_written_at", { withTimezone: true }),
+    /** When the AI last tried to write one, so a picture it could not describe waits a day. */
+    altTriedAt: timestamp("alt_tried_at", { withTimezone: true }),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("media_url_key").on(t.url),
+    // The site finds a picture's alt text by either address (D89).
+    index("media_thumbnail_url_idx").on(t.thumbnailUrl),
     index("media_store_created_idx").on(t.storeId, t.createdAt),
     index("media_created_by_idx").on(t.createdBy),
     check("media_kind", sql`${t.kind} in ('image', 'video')`),
     check("media_file_name", sql`length(trim(${t.fileName})) between 1 and 255`),
     check("media_alt", sql`length(${t.alt}) <= 500`),
+    check("media_alt_translations", sql`jsonb_typeof(${t.altTranslations}) = 'object'`),
+    check("media_alt_source", sql`${t.altSource} in ('ai', 'staff')`),
     check("media_size", sql`${t.sizeBytes} >= 0`),
     check(
       "media_dimensions",

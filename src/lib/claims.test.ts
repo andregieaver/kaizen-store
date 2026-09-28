@@ -22,6 +22,9 @@ describe("claims filter (D76)", () => {
     expect(findClaims("Greenland wool and a Greenwich-style clock")).toEqual([]);
     // A colour is still flagged: staff decide, the filter only lists.
     expect(kinds("En grønn kopp")).toEqual(["green:grønn"]);
+    // An alt text (D89) names colours; the stems still count there.
+    expect(findClaims("En grønn kopp", { colours: false })).toEqual([]);
+    expect(findClaims("En grønn og bærekraftig kopp", { colours: false }).map((f) => f.phrase)).toEqual(["bærekraftig"]);
   });
 
   it("finds false urgency and scarcity", () => {

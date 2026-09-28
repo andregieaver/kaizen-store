@@ -11,6 +11,7 @@ import { toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
 import { pageExcerpt } from "@/lib/page-content";
+import { pageImageUrls } from "@/lib/page-images";
 import { localizePage } from "@/lib/page-translation";
 import {
   AI_ASSISTANT_BOTS,
@@ -386,11 +387,10 @@ export async function platformSitemap(): Promise<string> {
     ...["/", "/sign-up", ...(articles.length > 0 ? ["/blog"] : [])].map((path) => `<url><loc>${origin}${path}</loc></url>`),
     ...listed.map(
       ({ page, path }) =>
-        `<url><loc>${xml(`${origin}${path}`)}</loc><lastmod>${page.publishedAt}</lastmod>${
-          page.content.thumbnail
-            ? `<image:image><image:loc>${xml(absoluteUrl(page.content.thumbnail.url, origin))}</image:loc></image:image>`
-            : ""
-        }</url>`,
+        `<url><loc>${xml(`${origin}${path}`)}</loc><lastmod>${page.publishedAt}</lastmod>${pageImageUrls(page.content)
+          .slice(0, 10)
+          .map((url) => `<image:image><image:loc>${xml(absoluteUrl(url, origin))}</image:loc></image:image>`)
+          .join("")}</url>`,
     ),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join("\n")}\n</urlset>\n`;
@@ -451,7 +451,8 @@ export async function storeSitemap(slug: string): Promise<string | null> {
       .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId)
       .flatMap((page) => {
         const versions = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/${page.slug}` }));
-        const image = page.content.thumbnail ? [page.content.thumbnail.url] : [];
+        // Every picture on the page (D89), its own first, so search engines tie each to the page it is on.
+        const image = pageImageUrls(page.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image }));
       }),
     // Its blog (D57): the list in every market, and each article open to search engines.
@@ -465,7 +466,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
       .filter((article) => article.content.searchEngines)
       .flatMap((article) => {
         const versions = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/blog/${article.slug}` }));
-        const image = article.content.thumbnail ? [article.content.thumbnail.url] : [];
+        const image = pageImageUrls(article.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
       }),
   ];

@@ -1037,6 +1037,20 @@
       "when": 1790593984380,
       "tag": "20260928111304_media_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1790596377728,
+      "tag": "20260928115257_media_alt_texts",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1790596381066,
+      "tag": "20260928115301_media_alt_texts_rules",
+      "breakpoints": true
     }
   ]
 }

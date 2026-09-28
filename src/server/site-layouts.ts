@@ -7,6 +7,7 @@ import { db, readDb } from "@/db/client";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
+import { withPageAlts } from "./media-alts";
 import { pagesTag } from "./pages";
 
 type Row = Record<string, unknown>;
@@ -37,7 +38,9 @@ export async function siteLayoutFor(storeId: string | null, type: SiteLayoutType
              where s.id = ${storeId}::uuid and p.published_at is not null`,
   );
   const content = row ? parsePageContent(row.published) : null;
-  return row && content ? { id: String(row.id), content } : null;
+  if (!row || !content) return null;
+  const [layout] = await withPageAlts([{ id: String(row.id), content }]);
+  return layout;
 }
 
 /** Which header and footer a site has chosen (D80), published or not, for the admin. */

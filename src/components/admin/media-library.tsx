@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 
+import type { AltLanguage } from "@/lib/alt-text";
 import { describeType, formatBytes } from "@/lib/image-size";
 import { MEDIA_PAGE, MEDIA_SORTS, mediaAddress, type MediaQuery, type MediaSort } from "@/lib/media-query";
+import type { AltResult, AltRun } from "@/server/alt-texts";
 import type { MediaItem } from "@/server/media-library";
 
 import { uploadPicture, type Upload } from "./image-upload";
@@ -14,7 +16,11 @@ import { uploadVideoFile, type StartVideo } from "./video-upload";
 
 /** What the library can ask of its owner's server (bound to the store, or Kaizen's). */
 export type MediaActions = {
-  describe: (id: string, alt: string) => Promise<{ ok: boolean }>;
+  describe: (id: string, texts: { alt: string; translations: Record<string, string> }) => Promise<{ ok: boolean }>;
+  /** Writes one picture's alt texts with the site's AI (D89). */
+  writeAlt: (id: string) => Promise<AltResult>;
+  /** Writes a batch of the pictures' alt texts that need one; called until none remain. */
+  writeAlts: (run: { since: string; rewrite: boolean }) => Promise<AltRun>;
   remove: (id: string) => Promise<{ ok: true } | { ok: false; problem: string }>;
   measure: (id: string, width: number, height: number) => Promise<void>;
 };
@@ -29,6 +35,9 @@ const AT_ONCE = 3;
 const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
 const button = "min-h-10 rounded-md border border-border px-4 text-sm font-medium disabled:opacity-50";
 
+/** Whether a file has an alt text in any language. */
+const hasAlt = (item: MediaItem) => item.alt !== "" || Object.keys(item.altTranslations).length > 0;
+
 const dimensions = (item: Pick<MediaItem, "width" | "height">) => (item.width && item.height ? `${item.width} × ${item.height} px` : null);
 /** The file's address for saving it, named as it was uploaded (Storage sends it as an attachment). */
 const downloadHref = (item: MediaItem) => `${item.url}${item.url.includes("?") ? "&" : "?"}download=${encodeURIComponent(item.fileName)}`;
@@ -40,7 +49,8 @@ const downloadHref = (item: MediaItem) => `${item.url}${item.url.includes("?") ?
  * the site's AI, by meaning; opened to see them large with their name,
  * type, size, measurements and everywhere they are used, to describe,
  * download or delete them (after a confirmation that says where they are
- * used).
+ * used). Pictures' alt texts (D89) are written by staff in each of the
+ * site's languages, or by the site's AI, one picture or all of them.
  */
 export function MediaLibrary({
   items,
@@ -52,6 +62,9 @@ export function MediaLibrary({
   upload,
   startVideo,
   actions,
+  languages,
+  altAi,
+  altMissing,
 }: {
   items: MediaItem[];
   total: number;
@@ -64,6 +77,12 @@ export function MediaLibrary({
   upload: Upload | null;
   startVideo: StartVideo | null;
   actions: MediaActions;
+  /** The site's languages, its main one first, for alt texts. */
+  languages: AltLanguage[];
+  /** Whether the site's AI has a text model to write alt texts with. */
+  altAi: boolean;
+  /** How many pictures have no alt text. */
+  altMissing: number;
 }) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -100,6 +119,8 @@ export function MediaLibrary({
     <div className="flex flex-col gap-6">
       <Uploader upload={upload} startVideo={startVideo} onDone={() => router.refresh()} />
 
+      <AltTexts missing={altMissing} ai={altAi} writeAlts={actions.writeAlts} onChanged={() => router.refresh()} />
+
       <form
         role="search"
         action={basePath}
@@ -123,7 +144,7 @@ export function MediaLibrary({
             type="search"
             name="q"
             defaultValue={query.q}
-            placeholder="A name, a description, or what is in it"
+            placeholder="A name, an alt text, or what is in it"
             className={`${input} font-normal`}
           />
         </label>
@@ -155,8 +176,8 @@ export function MediaLibrary({
         )}
         <p className="basis-full text-xs text-muted">
           {meaning
-            ? "Searches by the words in a file's name and description, and by meaning with your AI: what it shows, and what uses it. Best matches first."
-            : "Searches by the words in a file's name and description. Set up an AI with an embedding model to search by meaning too."}
+            ? "Searches by the words in a file's name and alt text, and by meaning with your AI: what it shows, and what uses it. Best matches first."
+            : "Searches by the words in a file's name and alt text. Set up an AI with an embedding model to search by meaning too."}
         </p>
       </form>
 
@@ -180,7 +201,7 @@ export function MediaLibrary({
                 type="button"
                 onClick={() => setOpenId(item.id)}
                 className="flex w-full flex-col overflow-hidden rounded-lg border border-border bg-background text-left hover:border-foreground/40 focus-visible:outline-2"
-                aria-label={`${item.fileName}, ${describeType(item.contentType)}, ${formatBytes(item.sizeBytes)}${item.uses.length === 0 ? ", not in use" : `, used in ${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}`}`}
+                aria-label={`${item.fileName}, ${describeType(item.contentType)}, ${formatBytes(item.sizeBytes)}${item.uses.length === 0 ? ", not in use" : `, used in ${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}`}${item.kind === "image" && !hasAlt(item) ? ", no alt text" : ""}`}
               >
                 <Preview item={item} small />
                 <span className="flex flex-col gap-0.5 p-2 text-xs">
@@ -189,8 +210,13 @@ export function MediaLibrary({
                     {describeType(item.contentType)} · {formatBytes(item.sizeBytes)}
                   </span>
                   <span className="text-muted">{dimensions(item) ?? " "}</span>
-                  <span className={`mt-1 w-fit rounded-full px-2 py-0.5 ${item.uses.length > 0 ? "bg-foreground text-background" : "bg-surface text-muted"}`}>
-                    {item.uses.length > 0 ? `In use (${item.uses.length})` : "Not in use"}
+                  <span className="mt-1 flex flex-wrap gap-1">
+                    <span className={`w-fit rounded-full px-2 py-0.5 ${item.uses.length > 0 ? "bg-foreground text-background" : "bg-surface text-muted"}`}>
+                      {item.uses.length > 0 ? `In use (${item.uses.length})` : "Not in use"}
+                    </span>
+                    {item.kind === "image" && !hasAlt(item) && (
+                      <span className="w-fit rounded-full border border-amber-700 px-2 py-0.5 text-amber-800 dark:text-amber-300">No alt text</span>
+                    )}
                   </span>
                 </span>
               </button>
@@ -205,12 +231,14 @@ export function MediaLibrary({
         </Link>
       )}
 
-      {/* Keyed by the file, so each one opens from its own description with nothing pending. */}
+      {/* Keyed by the file, so each one opens from its own alt texts with nothing pending. */}
       {open && (
         <Details
           key={open.id}
           item={open}
           actions={actions}
+          languages={languages}
+          altAi={altAi}
           onClose={() => setOpenId(null)}
           onDeleted={() => {
             setOpenId(null);
@@ -252,18 +280,19 @@ function Preview({ item, small = false }: { item: MediaItem; small?: boolean }) 
 function Details({
   item,
   actions,
+  languages,
+  altAi,
   onClose,
   onDeleted,
 }: {
   item: MediaItem;
   actions: MediaActions;
+  languages: AltLanguage[];
+  altAi: boolean;
   onClose: () => void;
   onDeleted: () => void;
 }) {
-  const router = useRouter();
   const id = useId();
-  const [alt, setAlt] = useState(item.alt);
-  const [saved, setSaved] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -323,41 +352,7 @@ function Details({
             </h3>
             <Uses item={item} />
           </section>
-          <form
-            className="flex flex-col gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              start(async () => {
-                const outcome = await actions.describe(item.id, alt);
-                setSaved(outcome.ok ? "Description saved." : "The description could not be saved.");
-                if (outcome.ok) router.refresh();
-              });
-            }}
-          >
-            <label htmlFor={`${id}-alt`} className="text-sm font-medium">
-              Description
-            </label>
-            <textarea
-              id={`${id}-alt`}
-              value={alt}
-              maxLength={500}
-              rows={2}
-              onChange={(event) => {
-                setAlt(event.target.value);
-                setSaved(null);
-              }}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-            />
-            <span className="text-xs text-muted">What the file shows, in a sentence. The library&apos;s search finds files by it.</span>
-            <div className="flex items-center gap-3">
-              <button type="submit" disabled={pending || alt === item.alt} className={button}>
-                {pending ? "Saving …" : "Save description"}
-              </button>
-              <p role="status" className="text-sm">
-                {saved}
-              </p>
-            </div>
-          </form>
+          {item.kind === "image" && <AltTextForm item={item} languages={languages} altAi={altAi} actions={actions} />}
         </div>
       </Modal>
 
@@ -414,13 +409,13 @@ function Details({
   );
 }
 
-/** Where a file is used, each with a link to change it there. */
+/** Where a file is used, each with a link to change it there and, while visitors see it, its address on the site (D89). */
 function Uses({ item }: { item: MediaItem }) {
   if (item.uses.length === 0) return <p className="text-sm text-muted">Not used anywhere on the site.</p>;
   return (
-    <ul className="flex flex-col gap-1 text-sm">
+    <ul className="flex flex-col gap-2 text-sm">
       {item.uses.map((use, index) => (
-        <li key={`${use.label}-${index}`}>
+        <li key={`${use.label}-${index}`} className="flex flex-col">
           {use.href ? (
             <Link href={use.href} className="underline">
               {use.label}
@@ -428,9 +423,221 @@ function Uses({ item }: { item: MediaItem }) {
           ) : (
             use.label
           )}
+          {use.siteUrl && (
+            <a href={use.siteUrl} target="_blank" rel="noreferrer" className="break-all text-xs text-muted underline">
+              {use.siteUrl}
+              <span className="sr-only"> (on the site, opens in a new tab)</span>
+            </a>
+          )}
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * A picture's alt text in each of the site's languages (D89): what it
+ * shows, for people who cannot see it and for search engines and AI
+ * assistants. Written here, or by the site's AI; the site shows it wherever
+ * the picture has no alt text of its own.
+ */
+function AltTextForm({
+  item,
+  languages,
+  altAi,
+  actions,
+}: {
+  item: MediaItem;
+  languages: AltLanguage[];
+  altAi: boolean;
+  actions: MediaActions;
+}) {
+  const router = useRouter();
+  const id = useId();
+  const main = languages[0]?.locale ?? "";
+  const textsOf = (alt: string, translations: Record<string, string>) =>
+    Object.fromEntries(languages.map((language, index) => [language.locale, index === 0 ? alt : (translations[language.locale] ?? "")]));
+  const [texts, setTexts] = useState<Record<string, string>>(() => textsOf(item.alt, item.altTranslations));
+  const [source, setSource] = useState(item.altSource);
+  const [status, setStatus] = useState<{ text: string; problem?: boolean } | null>(null);
+  const [pending, start] = useTransition();
+  const [writing, write] = useTransition();
+  const initial = textsOf(item.alt, item.altTranslations);
+  const changed = languages.some((language) => (texts[language.locale] ?? "") !== (initial[language.locale] ?? ""));
+
+  return (
+    <form
+      className="flex flex-col gap-3"
+      aria-labelledby={`${id}-heading`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        start(async () => {
+          const { [main]: alt = "", ...translations } = texts;
+          const outcome = await actions.describe(item.id, { alt, translations });
+          setStatus(outcome.ok ? { text: "Alt text saved." } : { text: "The alt text could not be saved.", problem: true });
+          if (outcome.ok) {
+            setSource(Object.values(texts).some((text) => text.trim()) ? "staff" : null);
+            router.refresh();
+          }
+        });
+      }}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 id={`${id}-heading`} className="text-sm font-medium">
+          Alt text
+        </h3>
+        {source && (
+          <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">{source === "ai" ? "Written by AI" : "Written by staff"}</span>
+        )}
+      </div>
+      <p className="text-xs text-muted">
+        What the picture shows, in a sentence, for people who cannot see it and for search engines and AI assistants. The site
+        shows it wherever the picture has no alt text of its own; a language left empty shows the first one.
+      </p>
+      {languages.map((language, index) => (
+        <label key={language.locale} className="flex flex-col gap-1 text-sm">
+          <span className="font-medium">
+            {language.name}
+            {languages.length > 1 && index === 0 ? " (main language)" : ""}
+          </span>
+          <textarea
+            value={texts[language.locale] ?? ""}
+            maxLength={300}
+            rows={2}
+            lang={language.locale}
+            onChange={(event) => {
+              setTexts((all) => ({ ...all, [language.locale]: event.target.value }));
+              setStatus(null);
+            }}
+            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-normal"
+          />
+        </label>
+      ))}
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending || writing || !changed} className={button}>
+          {pending ? "Saving …" : "Save alt text"}
+        </button>
+        {altAi && (
+          <button
+            type="button"
+            disabled={pending || writing}
+            onClick={() =>
+              write(async () => {
+                setStatus({ text: "The AI is looking at the picture …" });
+                const outcome = await actions.writeAlt(item.id);
+                if (!outcome.ok) {
+                  setStatus({ text: outcome.problem, problem: true });
+                  return;
+                }
+                setTexts(textsOf(outcome.alt, outcome.translations));
+                setSource("ai");
+                setStatus({ text: "The AI wrote and saved the alt text. Check it, change it if need be, and save." });
+                router.refresh();
+              })
+            }
+            className={button}
+          >
+            {writing ? "Writing …" : "Write with AI"}
+          </button>
+        )}
+        <p role="status" aria-live="polite" className={`text-sm ${status?.problem ? "text-red-700" : ""}`}>
+          {status?.text}
+        </p>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * Writes alt texts with the site's AI for every picture without one (D89),
+ * or also writes the AI's earlier ones again, a batch at a time until none
+ * remain, with the progress shown and a way to stop.
+ */
+function AltTexts({
+  missing,
+  ai,
+  writeAlts,
+  onChanged,
+}: {
+  missing: number;
+  ai: boolean;
+  writeAlts: MediaActions["writeAlts"];
+  onChanged: () => void;
+}) {
+  const [rewrite, setRewrite] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<{ written: number; failed: number; remaining: number; problem: string | null } | null>(null);
+  const stop = useRef(false);
+
+  const run = async () => {
+    stop.current = false;
+    setRunning(true);
+    const since = new Date().toISOString();
+    let written = 0;
+    let failed = 0;
+    let problem: string | null = null;
+    let remaining = Infinity;
+    try {
+      while (remaining > 0 && !stop.current) {
+        const batch = await writeAlts({ since, rewrite });
+        written += batch.written;
+        failed += batch.failed;
+        remaining = batch.remaining;
+        problem = batch.problem ?? problem;
+        setProgress({ written, failed, remaining, problem });
+        // Nothing done in a batch: the AI cannot, or nothing is left that it can.
+        if (batch.written + batch.failed === 0) break;
+        if (batch.written === 0 && batch.problem) break;
+      }
+    } catch {
+      setProgress({ written, failed, remaining: 0, problem: "The run stopped. Try again." });
+    }
+    setRunning(false);
+    onChanged();
+  };
+
+  return (
+    <section aria-label="Alt texts" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+      <p className="text-sm">
+        <span className="font-medium">Alt texts.</span>{" "}
+        {missing === 0
+          ? "Every picture has an alt text."
+          : `${missing === 1 ? "1 picture has" : `${missing} pictures have`} no alt text.`}{" "}
+        {ai
+          ? "Your AI can look at each picture and write one in every language of the site; new pictures get theirs within a few minutes of being added."
+          : "Set up an AI with a text model that sees pictures under AI settings, and it can write them for you."}
+      </p>
+      {ai && (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={running || (missing === 0 && !rewrite)}
+            onClick={() => void run()}
+            className={`${button} bg-foreground text-background`}
+          >
+            {running ? "Writing alt texts …" : rewrite ? "Write alt texts with AI" : "Write missing alt texts with AI"}
+          </button>
+          {running ? (
+            <button type="button" onClick={() => (stop.current = true)} className={button}>
+              Stop
+            </button>
+          ) : (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={rewrite} onChange={(event) => setRewrite(event.target.checked)} />
+              Also write the AI&apos;s earlier ones again (staff&apos;s are kept)
+            </label>
+          )}
+        </div>
+      )}
+      {progress && (
+        <p role="status" aria-live="polite" className="text-sm">
+          {running
+            ? `Writing: ${progress.written} done${progress.remaining > 0 ? `, ${progress.remaining} to go` : ""}.`
+            : `${progress.written === 1 ? "1 alt text" : `${progress.written} alt texts`} written${progress.failed > 0 ? `, ${progress.failed} could not be` : ""}.`}
+          {progress.problem && <span className="block text-red-700">{progress.problem}</span>}
+        </p>
+      )}
+    </section>
   );
 }
 

@@ -1,5 +1,5 @@
-/** A variant's own picture (D82): the full size for the gallery and its thumbnail. */
-export type VariantPicture = { url: string; thumbnailUrl: string };
+/** A variant's own picture (D82): the full size for the gallery and its thumbnail, and its alt text (D89). */
+export type VariantPicture = { url: string; thumbnailUrl: string; alt?: string };
 
 const EVENT = "kaizen:variant-picture";
 

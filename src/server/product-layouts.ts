@@ -8,6 +8,7 @@ import { parsePageContent, type PageContent } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
 import { CATALOG_TAG, catalogTag } from "./catalog";
+import { withPageAlts } from "./media-alts";
 import { pagesTag } from "./pages";
 import { termsTag } from "./taxonomy";
 
@@ -53,7 +54,10 @@ export async function productLayoutFor(storeId: string, productId: string): Prom
       (select product_layout_id from commerce.stores where id = ${storeId}::uuid and product_layout_id in (select id from live))
     )
   `);
-  return row ? parsePageContent(row.published) : null;
+  const content = row ? parsePageContent(row.published) : null;
+  if (!content) return null;
+  const [layout] = await withPageAlts([{ content }]);
+  return layout.content;
 }
 
 /** Where a layout is used (D79): as the store's standard, for categories and tags, and for single products. */

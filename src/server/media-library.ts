@@ -6,13 +6,17 @@ import { sql } from "drizzle-orm";
 
 import { db, readDb } from "@/db/client";
 import { imageSize } from "@/lib/image-size";
+import { ALT_MAX } from "@/lib/page-content";
 import type { MediaKind, MediaQuery } from "@/lib/media-query";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { normalizeQuery, prefixQuery, reciprocalRankFusion } from "@/lib/search";
+import { siteUrl } from "@/lib/site";
 import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor, AiError, embedTexts, type AiConnection } from "./ai";
 import { audit } from "./auth";
 import { removeStoredFiles, uploadProductImage, type UploadResult } from "./media";
+import { getStore } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -26,8 +30,12 @@ type Row = Record<string, unknown>;
  * (D74); without AI, keyword alone.
  */
 
-/** Where an item is used, for people: what it is and where to change it. */
-export type MediaUse = { label: string; href: string | null };
+/**
+ * Where an item is used, for people: what it is, where to change it, and
+ * (D89) its full address on the site while visitors see it there, on the
+ * store's own domain in its main market.
+ */
+export type MediaUse = { label: string; href: string | null; siteUrl?: string | null };
 
 export type MediaItem = {
   id: string;
@@ -39,7 +47,11 @@ export type MediaItem = {
   sizeBytes: number;
   width: number | null;
   height: number | null;
+  /** Its alt text in the owner's main language, and in the others by locale (D89). */
   alt: string;
+  altTranslations: Record<string, string>;
+  /** Who wrote it: the site's AI or staff; null while there is none. */
+  altSource: "ai" | "staff" | null;
   createdAt: string;
   uses: MediaUse[];
 };
@@ -109,7 +121,17 @@ export async function registerVideo(
 // Where items are used
 // ---------------------------------------------------------------------------
 
-type UseRow = { media_id: string; source: string; ref_id: string | null; label: string | null; type: string | null };
+type UseRow = {
+  media_id: string;
+  source: string;
+  ref_id: string | null;
+  label: string | null;
+  type: string | null;
+  /** A product's handle or a page's address, for its address on the site. */
+  slug: string | null;
+  /** Whether visitors see it there: an active product, a published page with the item, the chosen header or footer. */
+  live: boolean | null;
+};
 
 /** The admin's segment for each page type, as `PAGE_TYPE_COPY` has them. */
 const PAGE_SEGMENTS: Record<string, string> = {
@@ -140,7 +162,8 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
       where ${owned(storeId)} and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
     )
     select m.id as media_id, 'product' as source, p.id::text as ref_id,
-      (select title from commerce.product_translations t where t.product_id = p.id order by t.locale limit 1) as label, null as type
+      (select title from commerce.product_translations t where t.product_id = p.id order by t.locale limit 1) as label, null as type,
+      p.handle as slug, p.status = 'active' as live
     from m join commerce.products p on ${owned(storeId, sql`p.store_id`)} and p.status <> 'archived'
     where exists (
       select 1 from commerce.product_media pm where pm.product_id = p.id and (pm.url in (m.url, m.thumbnail_url) or pm.thumbnail_url in (m.url, m.thumbnail_url))
@@ -148,42 +171,101 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
       select 1 from commerce.product_variants v where v.product_id = p.id and (v.image_url in (m.url, m.thumbnail_url) or v.image_thumbnail_url in (m.url, m.thumbnail_url))
     )
     union all
-    select m.id, 'page', pg.id::text, coalesce(nullif(pg.draft ->> 'title', ''), pg.slug), pg.type
+    select m.id, 'page', pg.id::text, coalesce(nullif(pg.draft ->> 'title', ''), pg.slug), pg.type, pg.slug,
+      pg.published is not null and ${found(sql`pg.published::text`)} and (pg.type not in ('header', 'footer') or pg.id in (
+        ${storeId ? sql`select unnest(array[s.header_id, s.footer_id]) from commerce.stores s where s.id = ${storeId}::uuid` : sql`select unnest(array[k.header_id, k.footer_id]) from commerce.platform_settings k`}
+      ))
     from m join commerce.pages pg on ${owned(storeId, sql`pg.store_id`)}
     where ${found(sql`pg.draft::text`)} or (pg.published is not null and ${found(sql`pg.published::text`)})
     union all
-    select m.id, 'menu', mn.id::text, mn.name, null from m join commerce.menus mn on ${owned(storeId, sql`mn.store_id`)} where ${found(sql`mn.items::text`)}
+    select m.id, 'menu', mn.id::text, mn.name, null, null, null from m join commerce.menus mn on ${owned(storeId, sql`mn.store_id`)} where ${found(sql`mn.items::text`)}
     union all
-    select m.id, 'saved', sp.id::text, sp.name, null from m join commerce.saved_parts sp on ${owned(storeId, sql`sp.store_id`)} where ${found(sql`sp.content::text`)}
+    select m.id, 'saved', sp.id::text, sp.name, null, null, null from m join commerce.saved_parts sp on ${owned(storeId, sql`sp.store_id`)} where ${found(sql`sp.content::text`)}
     union all
-    select m.id, 'chat', null, null, null from m join commerce.chat_agents c on ${owned(storeId, sql`c.store_id`)} where ${found(sql`coalesce(c.avatar::text, '')`)}
+    select m.id, 'chat', null, null, null, null, null from m join commerce.chat_agents c on ${owned(storeId, sql`c.store_id`)} where ${found(sql`coalesce(c.avatar::text, '')`)}
     union all
     ${
       storeId
         ? sql`
-    select m.id, 'navigation', null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.navigation::text`)}
+    select m.id, 'navigation', null, null, null, null, true from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.navigation::text`)}
     union all
-    select m.id, 'seo', null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.seo::text`)}
+    select m.id, 'seo', null, null, null, null, true from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.seo::text`)}
     union all
-    select m.id, 'theme', null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.theme::text`)}
+    select m.id, 'theme', null, null, null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.theme::text`)}
     `
         : sql`
-    select m.id, 'navigation', null, null, null from m join commerce.platform_settings k on true where ${found(sql`k.navigation::text`)}
+    select m.id, 'navigation', null, null, null, null, true from m join commerce.platform_settings k on true where ${found(sql`k.navigation::text`)}
     union all
-    select m.id, 'seo', null, null, null from m join commerce.platform_settings k on true where ${found(sql`k.seo::text`)}
+    select m.id, 'seo', null, null, null, null, true from m join commerce.platform_settings k on true where ${found(sql`k.seo::text`)}
     `
     }
   `);
   const base = storeId ? `/admin/${owner.storeSlug}` : "/admin/platform";
+  const site = rows.length > 0 ? await siteAddresses(owner) : null;
   for (const raw of rows as unknown as UseRow[]) {
     const list = uses.get(String(raw.media_id));
     if (!list) continue;
-    list.push(describeUse(raw, base, storeId !== null));
+    list.push(describeUse(raw, base, storeId !== null, site));
   }
   return uses;
 }
 
-function describeUse(row: UseRow, base: string, store: boolean): MediaUse {
+/**
+ * Where the owner's site is, for uses' addresses on it (D89): the store's
+ * own domain (P7, P8) and its main market, or Kaizen's site.
+ */
+type SiteAddresses = { origin: string; base: string; frontPageId: string | null; productsPageId: string | null };
+
+async function siteAddresses(owner: MediaOwner): Promise<SiteAddresses | null> {
+  if (!owner.storeId) return { origin: siteUrl(), base: "", frontPageId: null, productsPageId: null };
+  const store = owner.storeSlug ? await getStore(owner.storeSlug) : null;
+  const market = store?.markets[0];
+  if (!store || !market) return null;
+  return {
+    origin: storeSiteUrl(store.slug),
+    base: marketPath(store.slug, market.slug),
+    frontPageId: store.frontPageId,
+    productsPageId: store.productsPageId,
+  };
+}
+
+/** A use's full address on the site while visitors see it there, else null. */
+function siteUrlOf(row: UseRow, site: SiteAddresses | null, store: boolean): string | null {
+  if (!site || !row.live) return null;
+  const at = (path: string) => `${site.origin}${site.base}${path}` || "/";
+  const home = at(site.base ? "" : "/");
+  switch (row.source) {
+    case "product":
+      return store && row.slug ? at(`/p/${row.slug}`) : null;
+    case "page":
+      switch (row.type) {
+        case "page":
+          if (row.ref_id === site.frontPageId) return home;
+          if (row.ref_id === site.productsPageId) return at("/products");
+          return row.slug ? at(`/${row.slug}`) : null;
+        case "article":
+          return row.slug ? at(`/blog/${row.slug}`) : null;
+        case "header":
+        case "footer":
+          // On every page: its front page stands for them.
+          return home;
+        default:
+          return null;
+      }
+    case "navigation":
+    case "seo":
+      return home;
+    default:
+      return null;
+  }
+}
+
+function describeUse(row: UseRow, base: string, store: boolean, site: SiteAddresses | null): MediaUse {
+  const use = describePlace(row, base, store);
+  return { ...use, siteUrl: siteUrlOf(row, site, store) };
+}
+
+function describePlace(row: UseRow, base: string, store: boolean): MediaUse {
   const label = row.label ?? "";
   switch (row.source) {
     case "product":
@@ -227,8 +309,15 @@ const toItem = (row: Row): Omit<MediaItem, "uses"> => ({
   width: row.width === null ? null : Number(row.width),
   height: row.height === null ? null : Number(row.height),
   alt: String(row.alt ?? ""),
+  altTranslations: stringRecord(row.alt_translations),
+  altSource: row.alt_source === "ai" || row.alt_source === "staff" ? row.alt_source : null,
   createdAt: new Date(String(row.created_at)).toISOString(),
 });
+
+function stringRecord(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+}
 
 /** The ids a query finds by keyword, best first. */
 async function keywordIds(storeId: string | null, text: string, limit: number): Promise<string[]> {
@@ -327,10 +416,32 @@ export async function listMedia(owner: MediaOwner, query: MediaQuery): Promise<{
 // Changing and deleting
 // ---------------------------------------------------------------------------
 
-/** Changes an item's description (for search, D88); false if it is not the owner's. */
-export async function describeMedia(owner: MediaOwner, accountId: string, id: string, alt: string): Promise<boolean> {
+/** A language code as the site's markets have them: `nb-NO`, `en`. */
+const LOCALE = /^[a-z]{2,3}(?:-[A-Z]{2})?$/;
+
+/**
+ * Staff's alt text for an item (D89): its main language's and the others'
+ * by locale, kept as staff's (the AI never writes over it). All empty
+ * clears it. False if the item is not the owner's.
+ */
+export async function describeMedia(
+  owner: MediaOwner,
+  accountId: string,
+  id: string,
+  texts: { alt: string; translations: Record<string, string> },
+): Promise<boolean> {
+  const clean = (value: string) => value.replace(/\s+/g, " ").trim().slice(0, ALT_MAX);
+  const alt = clean(texts.alt);
+  const translations = Object.fromEntries(
+    Object.entries(texts.translations)
+      .filter(([locale, value]) => LOCALE.test(locale) && typeof value === "string")
+      .map(([locale, value]) => [locale, clean(value)] as const)
+      .filter(([, value]) => value !== ""),
+  );
+  const written = alt !== "" || Object.keys(translations).length > 0;
   const rows = await db().execute<Row>(sql`
-    update commerce.media set alt = ${alt.trim().slice(0, 500)}, updated_at = now()
+    update commerce.media set alt = ${alt}, alt_translations = ${JSON.stringify(translations)}::jsonb,
+      alt_source = ${written ? "staff" : null}, alt_written_at = ${written ? sql`now()` : null}, updated_at = now()
     where id = ${id}::uuid and ${owned(owner.storeId)} returning id
   `);
   if (rows.length === 0) return false;

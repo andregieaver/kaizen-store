@@ -294,7 +294,20 @@ export async function embedTexts(connection: AiConnection, texts: string[], time
 const TUNING = ["temperature", "reasoning_effort"];
 const refusedTuning = new Map<string, Set<string>>();
 
-export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+export type ChatMessage = { role: "system" | "user" | "assistant"; content: string | ContentPart[] };
+
+/** Part of a message: words, or a picture for a model that sees them (D89), in the provider's own form (`imagePart()`). */
+export type ContentPart = { type: "text"; text: string } | { type: "image_url"; image_url: string | { url: string } };
+
+/**
+ * A picture as part of a message, from its bytes as a `data:` address, so
+ * the provider never fetches anything of ours. Mistral takes the address
+ * itself; the others an object holding it.
+ */
+export function imagePart(connection: AiConnection, bytes: Uint8Array, contentType: string): ContentPart {
+  const url = `data:${contentType};base64,${Buffer.from(bytes).toString("base64")}`;
+  return { type: "image_url", image_url: connection.provider === "mistral" ? url : { url } };
+}
 
 /** A reply from the connection's text model, as plain text. */
 export async function completeText(

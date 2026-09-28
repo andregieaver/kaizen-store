@@ -46,8 +46,11 @@ export type ProductVariant = {
   delivery: Delivery;
   /** How a rental's variant is booked (D69); "day" for everything else. */
   rentalPeriod: RentalPeriod;
-  /** Its own picture, shown where shoppers choose a variant; `thumbnailUrl` is the small copy, or the picture itself. */
-  image: { url: string; thumbnailUrl: string } | null;
+  /**
+   * Its own picture, shown where shoppers choose a variant; `thumbnailUrl` is the small copy, or the
+   * picture itself; `alt` the media library's alt text for it (D89).
+   */
+  image: { url: string; thumbnailUrl: string; alt: string } | null;
 };
 
 /** A purchase option for subscribing (D25). */
@@ -119,7 +122,7 @@ export async function listProducts(
       p.handle,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url,
-      coalesce(m.alt ->> ${locale}, '') as image_alt,
+      coalesce(nullif(m.alt ->> ${locale}, ''), commerce.media_alt(m.url, ${locale}), '') as image_alt,
       pr.min_amount,
       pr.max_amount,
       pr.currency,
@@ -218,13 +221,14 @@ export async function getProduct(
 
   const [media, variants, plans] = await Promise.all([
     readDb().execute<Row>(sql`
-      select url, thumbnail_url, coalesce(alt ->> ${locale}, '') as alt
+      select url, thumbnail_url, coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
       from commerce.product_media
       where product_id = ${product.id}
       order by position
     `),
     readDb().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.delivery, v.rental_period, v.image_url, v.image_thumbnail_url,
+        coalesce(commerce.media_alt(v.image_url, ${locale}), '') as image_alt,
         cp.amount_minor, cp.currency, cp.prior_30d_minor
       from commerce.product_variants v
       join commerce.current_prices cp
@@ -272,7 +276,7 @@ export async function getProduct(
       price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor), vat),
       delivery: parseDelivery(v.delivery),
       rentalPeriod: parseRentalPeriod(v.rental_period),
-      image: v.image_url ? { url: str(v.image_url), thumbnailUrl: str(v.image_thumbnail_url ?? v.image_url) } : null,
+      image: v.image_url ? { url: str(v.image_url), thumbnailUrl: str(v.image_thumbnail_url ?? v.image_url), alt: str(v.image_alt) } : null,
     })),
     plans: plans.map((plan) => ({
       id: str(plan.id),
@@ -361,7 +365,7 @@ export async function listGridProducts(
       coalesce(tl.title, tf.title) as title,
       coalesce(nullif(tl.description, ''), tf.description, '') as description,
       coalesce(m.thumbnail_url, m.url) as image_url,
-      coalesce(m.alt ->> ${locale}, '') as image_alt,
+      coalesce(nullif(m.alt ->> ${locale}, ''), commerce.media_alt(m.url, ${locale}), '') as image_alt,
       pr.min_amount,
       pr.max_amount,
       pr.currency,

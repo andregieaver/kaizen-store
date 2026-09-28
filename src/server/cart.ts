@@ -119,7 +119,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       -- A purchase option still offered, or buying once where that is allowed.
       (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
       coalesce(tl.title, tf.title) as title,
-      coalesce(m.thumbnail_url, m.url) as image_url, coalesce(m.alt ->> ${market.locale}, '') as image_alt,
+      coalesce(m.thumbnail_url, m.url) as image_url, coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
       cp.amount_minor,
       (p.status = 'active' and v.active and ${bookable}) as sellable,
       avail.available

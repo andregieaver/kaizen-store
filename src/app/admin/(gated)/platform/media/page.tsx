@@ -6,11 +6,18 @@ import { MediaLibrary } from "@/components/admin/media-library";
 import { mediaQuery } from "@/lib/media-query";
 import { requirePlatformAdmin } from "@/server/auth";
 import { aiFor } from "@/server/ai";
+import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
 import { listMedia } from "@/server/media-library";
 
 import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../actions";
-import { deletePlatformMediaAction, describePlatformMediaAction, measurePlatformMediaAction } from "./actions";
+import {
+  deletePlatformMediaAction,
+  describePlatformMediaAction,
+  measurePlatformMediaAction,
+  writePlatformAltTextAction,
+  writePlatformAltTextsAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Media library" };
 
@@ -25,7 +32,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
         <h1 className="text-2xl font-semibold">Media library</h1>
         <p className="max-w-2xl text-sm text-muted">
           Every picture and video uploaded for Kaizen&apos;s own site, here or in any editor. Add many at once, find them by
-          name or description, and see where each one is used before you delete it.
+          name or alt text, give pictures alt texts (or let the AI write them), and see where each one is used on the site.
         </p>
       </div>
       {/* The search in the address is read per request. */}
@@ -39,7 +46,13 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
 async function Library({ searchParams }: { searchParams: PageProps<"/admin/platform/media">["searchParams"] }) {
   await requirePlatformAdmin();
   const query = mediaQuery(await searchParams);
-  const [{ items, total, searched }, ai] = await Promise.all([listMedia({ storeId: null, storeSlug: null }, query), aiFor(null)]);
+  const owner = { storeId: null, storeSlug: null };
+  const [{ items, total, searched }, ai, site, altMissing] = await Promise.all([
+    listMedia(owner, query),
+    aiFor(null),
+    altSite(owner),
+    missingAltTexts(owner),
+  ]);
   return (
     <MediaLibrary
       items={items}
@@ -50,7 +63,16 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
       basePath="/admin/platform/media"
       upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       startVideo={uploadsEnabled() ? startPlatformVideoUploadAction : null}
-      actions={{ describe: describePlatformMediaAction, remove: deletePlatformMediaAction, measure: measurePlatformMediaAction }}
+      actions={{
+        describe: describePlatformMediaAction,
+        writeAlt: writePlatformAltTextAction,
+        writeAlts: writePlatformAltTextsAction,
+        remove: deletePlatformMediaAction,
+        measure: measurePlatformMediaAction,
+      }}
+      languages={site?.languages ?? []}
+      altAi={Boolean(ai?.textModel)}
+      altMissing={altMissing}
     />
   );
 }

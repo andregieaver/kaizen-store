@@ -22,6 +22,7 @@ import { siteLayoutProblem } from "@/lib/site-layout";
 
 import { audit, type Account } from "./auth";
 import { findFont, installFonts } from "./fonts";
+import { withPageAlts } from "./media-alts";
 import { scopedTermIds } from "./taxonomy";
 
 /**
@@ -376,10 +377,13 @@ export async function listPublishedPages(owner: PageOwner = null, type: PageType
     where ${ownedBy(owner, type)} and published_at is not null
     order by ${type === "article" ? sql`coalesce(first_published_at, published_at) desc, slug` : sql`created_at`}
   `);
-  return rows.flatMap((row) => {
-    const content = parsePageContent(row.published);
-    return content ? [published(row, content)] : [];
-  });
+  // Pictures without alt texts of their own are described by the media library's (D89).
+  return withPageAlts(
+    rows.flatMap((row) => {
+      const content = parsePageContent(row.published);
+      return content ? [published(row, content)] : [];
+    }),
+  );
 }
 
 /** The published page at an address, or where a page that was there went, or null. */
@@ -405,7 +409,9 @@ export async function findPublishedPage(
   if (!row) return null;
   if (row.moved) return { redirect: String(row.slug) };
   const content = parsePageContent(row.published);
-  return content ? { page: published(row, content) } : null;
+  if (!content) return null;
+  const [page] = await withPageAlts([published(row, content)]);
+  return { page };
 }
 
 /**

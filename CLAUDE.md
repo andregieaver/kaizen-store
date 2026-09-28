@@ -575,6 +575,18 @@ of running `playwright install`.
   (`media_embeddings`, SQL only, `embedMedia()` in the five-minute cron),
   fused as the storefront's; the address is read by `mediaQuery()`.
   Deleting removes the file from Storage (`removeStoredFiles()`) and the row.
+  Alt texts (D89, `src/server/alt-texts.ts`, `src/lib/alt-text.ts`): a
+  picture's in the main language (`media.alt`) and the others
+  (`alt_translations`), by `alt_source` `ai` or `staff` (the AI never writes
+  over staff's). The AI sees the picture's small copy (`imagePart()`) and
+  what uses it, and its texts pass `parseAltTexts()` (claims filter, colours
+  allowed); the library runs it on one or all pictures, the five-minute
+  cron on new ones. The site shows them where a picture has no alt text of
+  its own: SQL reads of product and variant pictures through
+  `commerce.media_alt(url, locale)`, page loaders through `withPageAlts()`;
+  a new place that draws a library picture does the same, and changes call
+  `updateTag()` for the pages and catalogue tags. Uses carry `siteUrl`, the
+  address on the site.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
   store's `NavigationEditor` (logos, icon, which menus, and business
   details); menu links take platform kinds (`PlatformMenuLink`: a page by

@@ -72,7 +72,7 @@ const WORDS: { kind: ClaimKind; words: string[] }[] = [
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
 
 /** Whole words: no letter or digit just before; the stem's own endings allowed after. */
-const PATTERNS: { kind: ClaimKind; pattern: RegExp }[] = [
+const PATTERNS: { kind: ClaimKind; pattern: RegExp; colour?: true }[] = [
   ...(Object.entries(STEMS) as [Exclude<ClaimKind, "price">, string[]][]).map(([kind, stems]) => ({
     kind,
     pattern: new RegExp(`(?<![\\p{L}\\p{N}])(?:${[...new Set(stems)].map(escape).join("|")})\\p{L}*`, "giu"),
@@ -80,6 +80,7 @@ const PATTERNS: { kind: ClaimKind; pattern: RegExp }[] = [
   ...WORDS.map(({ kind, words }) => ({
     kind,
     pattern: new RegExp(`(?<![\\p{L}\\p{N}])(?:${words.join("|")})(?![\\p{L}\\p{N}])`, "giu"),
+    colour: true as const,
   })),
   // "Only 3 left", "bare 2 igjen", "endast 5 kvar", "kun 4 tilbage".
   { kind: "urgency", pattern: /(?<![\p{L}\p{N}])(?:only|bare|kun|endast|nur)\s+\d+\s+(?:left|igjen|kvar|tilbage|übrig)(?![\p{L}\p{N}])/giu },
@@ -91,9 +92,11 @@ const PATTERNS: { kind: ClaimKind; pattern: RegExp }[] = [
 ];
 
 /** Every phrase the filter finds, in the order they come. */
-export function findClaims(text: string): ClaimFinding[] {
+export function findClaims(text: string, options: { colours?: boolean } = {}): ClaimFinding[] {
   const found: ClaimFinding[] = [];
-  for (const { kind, pattern } of PATTERNS) {
+  for (const { kind, pattern, colour } of PATTERNS) {
+    // A picture's alt text (D89) names its colours: "a green lamp" says what it looks like.
+    if (colour && options.colours === false) continue;
     for (const match of text.matchAll(pattern)) {
       found.push({ kind, phrase: match[0].trim(), index: match.index ?? 0 });
     }
