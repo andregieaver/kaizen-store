@@ -81,6 +81,8 @@ test("admin pages send nothing of theirs to a visitor without a session, before 
     "/admin/platform/customers",
     "/admin/platform/stores",
     "/admin/platform/stores/demo",
+    // A route with parameters no build knows, served from a prerendered shell.
+    "/admin/platform/stores/demo/invoices/00000000-0000-0000-0000-000000000000",
     "/admin/platform/plans",
     "/admin/platform/emails",
     "/admin/platform/plan-reminders",
@@ -93,9 +95,7 @@ test("admin pages send nothing of theirs to a visitor without a session, before 
   ];
   for (const path of paths) {
     const html = await (await request.get(path)).text();
-    // Either the redirect itself, or a prerendered shell that only checks the
-    // session (the redirect then arrives with the rest; the test above follows it).
-    expect(html.includes("/admin/sign-in") || html.includes("Checking your session"), path).toBe(true);
+    expect(html, path).toContain("/admin/sign-in");
     expect(html, path).not.toContain("text-2xl font-semibold");
   }
 });

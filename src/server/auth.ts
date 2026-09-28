@@ -2,6 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 
 import { db } from "@/db/client";
@@ -38,6 +39,10 @@ const toAccount = (row: Row): Account => ({
  * (not just read from the cookie) and must belong to an active account.
  */
 export const getAccount = cache(async (): Promise<Account | null> => {
+  // Who is signed in is known only per request: never decided while
+  // prerendering, even where Supabase is not configured and nothing below
+  // would read the request (else a page's shell is built with no account).
+  await connection();
   let supabase;
   try {
     supabase = await createClient();
