@@ -41,6 +41,8 @@ import { t } from "@/lib/i18n";
 import { FontLinks } from "@/components/font-links";
 
 import { HEADING_SIZES as HEADING_SIZE_CLASS, PageBlockView } from "@/components/page-block";
+import { SiteForm } from "@/components/site-form";
+import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
 import {
   BLOCKS_MAX,
@@ -270,9 +272,11 @@ const blockLabels: Record<BlockType, string> = {
   testimonials: "Testimonials",
   socialLinks: "Social media",
   iconList: "Icon list",
+  emailForm: "Email form",
+  newsletter: "Newsletter",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "socialLinks", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -293,6 +297,8 @@ const blockThis: Record<BlockType, string> = {
   testimonials: "these testimonials",
   socialLinks: "these social media links",
   iconList: "this icon list",
+  emailForm: "this form",
+  newsletter: "this newsletter sign-up",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -348,6 +354,8 @@ type Actions = {
   onAddBlock: (type: BlockType, columnId: string) => void;
   onColumn: (columnId: string) => void;
   blocksFull: boolean;
+  /** The language the page is shown in, for words the site fills in (a form's usual labels, D93). */
+  lang: string | undefined;
 };
 
 /** The site's own fonts for the canvas, and installing a family a block chooses (D59). */
@@ -372,7 +380,10 @@ export function PageBuilder({
   library = [],
   productParts = false,
   siteParts = null,
+  lang,
 }: {
+  /** The language the page is shown in (its main one, or the one it is translated into). */
+  lang?: string;
   rows: PageRow[];
   onRows: Rows;
   /** A product layout (D79): its palette offers the product's parts. */
@@ -576,6 +587,7 @@ export function PageBuilder({
     },
     onColumn: setLastColumn,
     blocksFull,
+    lang,
   };
 
   return (
@@ -1111,9 +1123,34 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SocialIcon />;
     case "iconList":
       return <IconListIcon />;
+    case "emailForm":
+      return <FormIcon />;
+    case "newsletter":
+      return <NewsletterIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function FormIcon() {
+  return (
+    <span aria-hidden className="flex h-9 flex-col justify-center gap-1 rounded-sm bg-foreground/75 px-2 text-background">
+      <span className="h-1.5 w-full rounded-[2px] border border-current" />
+      <span className="h-2.5 w-full rounded-[2px] border border-current" />
+      <span className="h-1.5 w-3 rounded-[2px] bg-current" />
+    </span>
+  );
+}
+
+function NewsletterIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3 7 9 6 9-6" />
+      </svg>
+    </span>
+  );
 }
 
 function IconListIcon() {
@@ -1692,6 +1729,15 @@ function BlockItem({
           <SiteStandIn block={block} />
         ) : block.type === "menu" && blockHasContent(block) ? (
           <MenuStandIn block={block} menus={actions.grid.menus} />
+        ) : block.type === "emailForm" || block.type === "newsletter" ? (
+          <div className="flex flex-col gap-2">
+            {block.recipients.length === 0 && (
+              <p className="rounded-md bg-surface p-3 text-sm text-muted">
+                Not shown on the site until it has an address to send to. Double-click or use the wrench.
+              </p>
+            )}
+            <SiteForm form={publicForm(block)} store={null} lang={actions.lang} preview />
+          </div>
         ) : block.type === "testimonials" && block.source === "google" ? (
           <p className="rounded-md bg-surface p-3 text-sm text-muted">
             Google reviews of your business show here on the site, as Google has them when the page is shown.
@@ -1726,6 +1772,8 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   testimonials: "Testimonials: each needs what the person said. Double-click or use the wrench.",
   socialLinks: "Social media: each link needs its address. Double-click or use the wrench.",
   iconList: "An icon list: each line needs its words. Double-click or use the wrench.",
+  emailForm: "An email form: it needs its questions and where to send. Double-click or use the wrench.",
+  newsletter: "A newsletter sign-up: it needs where to send. Double-click or use the wrench.",
 };
 
 export { ColorField };

@@ -3788,3 +3788,49 @@ export const chatUsage = commerce.table(
   },
   (t) => [unique("chat_usage_key").on(t.storeId, t.bucket, t.window).nullsNotDistinct(), check("chat_usage_count", sql`${t.count} >= 0`)],
 );
+
+/**
+ * What visitors send with a page's forms (D93): an email form's message or
+ * a newsletter sign-up, found by the form's block id in the owner's
+ * published pages (a store's, or Kaizen's with a null store). A message
+ * is emailed to the form's recipients at once; a sign-up waits
+ * (`pending`) until the visitor opens the link emailed to them, whose
+ * token is kept only as a hash, and its details (`payload`) only until
+ * then. Rows count visitors' and forms' sends for the limits, and go after
+ * 30 days.
+ */
+export const formSubmissions = commerce.table(
+  "form_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    blockId: text("block_id").notNull(),
+    /** `message` or `subscription`. */
+    kind: text("kind").notNull(),
+    /** A daily hash of the visitor's address, for the limits. */
+    visitor: text("visitor").notNull(),
+    /** How emailing it to the recipients went; `pending` while a sign-up waits to be confirmed, `expired` if its link was opened too late. */
+    status: text("status").notNull(),
+    /** A sign-up's email address, lower case, so the same one is not sent twice a day. */
+    email: text("email"),
+    /** sha256 of the confirmation link's token, hex; gone once used. */
+    tokenHash: text("token_hash"),
+    /** A waiting sign-up's name, consent and language, for the email once confirmed. */
+    payload: jsonb("payload"),
+    /** The page it was sent from, a path on the site. */
+    path: text("path").notNull(),
+    locale: text("locale").notNull(),
+    createdAt: createdAt(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("form_submissions_token_idx").on(t.tokenHash),
+    index("form_submissions_block_idx").on(t.storeId, t.blockId, t.createdAt),
+    index("form_submissions_visitor_idx").on(t.visitor, t.createdAt),
+    index("form_submissions_created_idx").on(t.createdAt),
+    check("form_submissions_kind", sql`${t.kind} in ('message', 'subscription')`),
+    check("form_submissions_status", sql`${t.status} in ('pending', 'sent', 'logged', 'failed', 'expired')`),
+    check("form_submissions_token", sql`${t.tokenHash} is null or ${t.tokenHash} ~ '^[0-9a-f]{64}$'`),
+    check("form_submissions_path", sql`left(${t.path}, 1) = '/' and length(${t.path}) <= 500`),
+  ],
+);

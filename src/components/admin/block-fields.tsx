@@ -4,6 +4,8 @@ import { useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
 import { ListIcon } from "@/components/list-icon";
+import { isEmail } from "@/lib/forms";
+import { t } from "@/lib/i18n";
 import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
@@ -25,6 +27,19 @@ import {
   SOCIAL_SHAPES,
   type SocialLink,
   type SocialLinksBlock,
+  FORM_FIELD_KINDS,
+  FORM_FIELDS_MAX,
+  FORM_LABEL_MAX,
+  FORM_OPTIONS_MAX,
+  FORM_RECIPIENTS_MAX,
+  FORM_TEXT_MAX,
+  LABELLED_KINDS,
+  NEWSLETTER_LAYOUTS,
+  type EmailFormBlock,
+  type FormButton,
+  type FormField,
+  type FormFieldKind,
+  type NewsletterBlock,
   ICON_LIST_LAYOUTS,
   ICON_LIST_TEXT_MAX,
   type IconListBlock,
@@ -139,6 +154,18 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: FaqFields,
     Style: FaqStyleFields,
+  },
+  emailForm: {
+    title: "Email form",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: EmailFormFields,
+    Style: FormStyleFields,
+  },
+  newsletter: {
+    title: "Newsletter",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: NewsletterFields,
+    Style: FormStyleFields,
   },
   dualButton: {
     title: "Dual button",
@@ -1298,6 +1325,224 @@ function IconListStyleFields({ block, onChange }: BlockEditorProps<IconListBlock
       <Choices legend="Icon size" options={optionsOf(BUTTON_SIZES)} value={block.iconSize ?? "md"} onChange={(iconSize) => onChange({ iconSize: iconSize === "md" ? undefined : iconSize })} />
       <OptionalColor label="Icon colour" hint="The theme's accent unless chosen." value={block.iconColor} fallback="#2563eb" onChange={(iconColor) => onChange({ iconColor })} />
       <NumberField label="Space between lines" value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
+    </>
+  );
+}
+
+/** Where a form sends (D93): addresses one per line, kept as typed until they are all addresses. */
+function RecipientsField({ value, onChange }: { value: string[]; onChange: (recipients: string[]) => void }) {
+  const [text, setText] = useState(value.join("\n"));
+  const typed = text
+    .split(/[\s,;]+/)
+    .map((address) => address.trim().toLowerCase())
+    .filter(Boolean);
+  const wrong = typed.filter((address) => !isEmail(address));
+  return (
+    <TextField
+      label="Send to"
+      value={text}
+      max={1500}
+      multiline
+      placeholder="you@example.com"
+      hint={
+        wrong.length > 0
+          ? `Not email addresses: ${wrong.join(", ")}`
+          : typed.length > FORM_RECIPIENTS_MAX
+            ? `A form sends to at most ${FORM_RECIPIENTS_MAX} addresses.`
+            : `Up to ${FORM_RECIPIENTS_MAX} email addresses, one per line. They are never shown on the site; until there is one, the form does not show there.`
+      }
+      onChange={(next) => {
+        setText(next);
+        onChange([
+          ...new Set(
+            next
+              .split(/[\s,;]+/)
+              .map((address) => address.trim().toLowerCase())
+              .filter(Boolean),
+          ),
+        ]);
+      }}
+    />
+  );
+}
+
+/** What a form says once sent, and its button's words; empty, the page's language's usual words. */
+function FormTexts({
+  block,
+  onChange,
+  usual,
+}: {
+  block: Pick<EmailFormBlock, "submitLabel" | "successMessage">;
+  onChange: (patch: { submitLabel?: string; successMessage?: string }) => void;
+  usual: { submit: string; success: string; when?: string };
+}) {
+  return (
+    <>
+      <TextField label="Button text" value={block.submitLabel} max={BUTTON_LABEL_MAX} placeholder={usual.submit} hint="Empty, the usual words in the page's language." onChange={(submitLabel) => onChange({ submitLabel })} />
+      <TextField
+        label="Thank-you message"
+        value={block.successMessage}
+        max={FORM_TEXT_MAX}
+        multiline
+        placeholder={usual.success}
+        hint={`${usual.when ?? "Shown in place of the form once sent."} Empty, the usual words in the page's language.`}
+        onChange={(successMessage) => onChange({ successMessage })}
+      />
+    </>
+  );
+}
+
+const LABEL_HINTS: Partial<Record<FormFieldKind, string>> = { name: "Name", email: "Email", phone: "Phone", textarea: "Message" };
+
+/** An email form's questions and where it sends (D93). */
+function EmailFormFields({ block, onChange }: BlockEditorProps<EmailFormBlock>) {
+  const en = t("en").form;
+  return (
+    <>
+      <RecipientsField value={block.recipients} onChange={(recipients) => onChange({ recipients })} />
+      <TextField
+        label="Email subject"
+        value={block.subject}
+        max={FORM_LABEL_MAX}
+        placeholder={en.messageSubject("the site's name")}
+        hint="What the emails you get are called. Visitors never see it."
+        onChange={(subject) => onChange({ subject })}
+      />
+      <ItemsEditor<FormField>
+        label="Questions"
+        items={block.fields}
+        max={FORM_FIELDS_MAX}
+        addLabel="Add a question"
+        nameOf={(field, index) => field.label.trim() || LABEL_HINTS[field.kind] || `Question ${index + 1} (${FORM_FIELD_KINDS[field.kind].toLowerCase()}, no words yet)`}
+        newItem={() => ({ id: newItemId(), kind: "text", label: "" })}
+        onChange={(fields) => onChange({ fields })}
+      >
+        {(field, change) => (
+          <>
+            <Choices
+              legend="Kind"
+              options={optionsOf(FORM_FIELD_KINDS)}
+              value={field.kind}
+              onChange={(kind) => change({ kind, ...(kind === "select" && !field.options?.length && { options: [""] }) })}
+            />
+            <TextField
+              label={LABELLED_KINDS.includes(field.kind) ? "Question" : "Question (optional)"}
+              value={field.label}
+              max={FORM_LABEL_MAX}
+              placeholder={LABEL_HINTS[field.kind]}
+              hint={LABELLED_KINDS.includes(field.kind) ? undefined : "Empty, the usual word in the page's language."}
+              onChange={(label) => change({ label })}
+            />
+            {field.kind === "select" && (
+              <OptionsField value={field.options ?? []} onChange={(options) => change({ options })} />
+            )}
+            {field.kind !== "checkbox" && field.kind !== "select" && (
+              <TextField label="Hint inside the field (optional)" value={field.placeholder ?? ""} max={FORM_LABEL_MAX} onChange={(placeholder) => change({ placeholder: placeholder || undefined })} />
+            )}
+            <Check
+              label={field.kind === "checkbox" ? "Must be ticked" : "Must be answered"}
+              hint={field.kind === "email" ? "The first email address asked for is the one your reply goes to." : undefined}
+              checked={Boolean(field.required)}
+              onChange={(required) => change({ required: required || undefined })}
+            />
+          </>
+        )}
+      </ItemsEditor>
+      <Check
+        label="Ask for consent"
+        hint="A tick box visitors must tick to send, such as agreeing to how their message is used."
+        checked={block.consent !== undefined}
+        onChange={(on) => onChange({ consent: on ? "" : undefined })}
+      />
+      {block.consent !== undefined && (
+        <div className="pl-7">
+          <TextField label="The tick box's words" value={block.consent} max={FORM_TEXT_MAX} multiline placeholder="I agree that you store my message to answer it." onChange={(consent) => onChange({ consent })} />
+        </div>
+      )}
+      <FormTexts block={block} onChange={onChange} usual={{ submit: en.send, success: en.sent }} />
+    </>
+  );
+}
+
+/** A choice's options, one per line. */
+function OptionsField({ value, onChange }: { value: string[]; onChange: (options: string[]) => void }) {
+  const [text, setText] = useState(value.join("\n"));
+  return (
+    <TextField
+      label="Choices"
+      value={text}
+      max={FORM_OPTIONS_MAX * (FORM_LABEL_MAX + 1)}
+      multiline
+      hint={`One per line, up to ${FORM_OPTIONS_MAX}.`}
+      onChange={(next) => {
+        setText(next);
+        onChange(
+          next
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, FORM_OPTIONS_MAX),
+        );
+      }}
+    />
+  );
+}
+
+/** A form's button (D93). */
+function FormStyleFields({ block, onChange }: BlockEditorProps<EmailFormBlock> | BlockEditorProps<NewsletterBlock>) {
+  const look = block.button ?? {};
+  const set = (patch: Partial<FormButton>) => {
+    const next = { ...look, ...patch };
+    const kept = Object.fromEntries(Object.entries(next).filter(([, value]) => value !== undefined)) as FormButton;
+    (onChange as (patch: { button?: FormButton }) => void)({ button: Object.keys(kept).length ? kept : undefined });
+  };
+  return (
+    <>
+      {block.type === "newsletter" && (
+        <Choices
+          legend="Field and button"
+          options={optionsOf(NEWSLETTER_LAYOUTS)}
+          value={block.layout ?? "inline"}
+          onChange={(layout) => (onChange as (patch: Partial<NewsletterBlock>) => void)({ layout: layout === "inline" ? undefined : layout })}
+        />
+      )}
+      <ButtonLookFields look={look} onChange={set} />
+      <Check label="Button as wide as the form" checked={Boolean(look.fullWidth)} onChange={(fullWidth) => set({ fullWidth: fullWidth || undefined })} />
+    </>
+  );
+}
+
+/** A newsletter sign-up (D93). */
+function NewsletterFields({ block, onChange }: BlockEditorProps<NewsletterBlock>) {
+  const en = t("en").form;
+  return (
+    <>
+      <RecipientsField value={block.recipients} onChange={(recipients) => onChange({ recipients })} />
+      <Check
+        label="Confirm the address first (double opt-in)"
+        hint="The visitor gets an email with a link, and the sign-up is sent to you only once they open it. Recommended: it proves the consent and keeps out addresses typed by others."
+        checked={block.confirm !== false}
+        onChange={(confirm) => onChange({ confirm: confirm ? undefined : false })}
+      />
+      <Check label="Ask for a name too" hint="Never required." checked={Boolean(block.askName)} onChange={(askName) => onChange({ askName: askName || undefined })} />
+      <TextField label="Hint inside the email field" value={block.placeholder} max={FORM_LABEL_MAX} placeholder={en.emailPlaceholder} onChange={(placeholder) => onChange({ placeholder })} />
+      <TextField
+        label="Consent"
+        value={block.consent}
+        max={FORM_TEXT_MAX}
+        multiline
+        placeholder={en.newsletterConsent}
+        hint="The words visitors tick to sign up; sent to you with each sign-up. Empty, the usual words in the page's language."
+        onChange={(consent) => onChange({ consent })}
+      />
+      <FormTexts block={block} onChange={onChange} usual={{
+          submit: en.subscribe,
+          success: block.confirm === false ? en.subscribed : en.confirmed,
+          when:
+            block.confirm === false
+              ? "Shown in place of the form once signed up."
+              : "Shown when the visitor comes back from the link in their email; right after signing up, they are asked to check their email.",
+        }} />
     </>
   );
 }

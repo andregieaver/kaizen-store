@@ -312,3 +312,48 @@ describe("icon lists", () => {
     ]);
   });
 });
+
+describe("email forms and newsletters (D93)", () => {
+  const form = {
+    id: "f",
+    type: "emailForm",
+    recipients: ["Post@Example.com", "salg@example.com"],
+    subject: "Fra nettsiden",
+    fields: [
+      { id: "a", kind: "name", label: "", required: true },
+      { id: "b", kind: "select", label: "Hva gjelder det?", options: ["Bestilling", "Annet"] },
+    ],
+    submitLabel: "",
+    successMessage: "Takk!",
+  };
+
+  it("keeps its questions, shows only with somewhere to send, and translates what it asks and says", () => {
+    expect(newBlock("emailForm", () => "n")).toMatchObject({ recipients: [], fields: [{ kind: "name" }, { kind: "email" }, { kind: "textarea" }] });
+    const parsed = parse(form);
+    expect(parsed).toMatchObject({ recipients: ["post@example.com", "salg@example.com"] });
+    expect(blockHasContent(parsed)).toBe(true);
+    expect(blockHasContent({ ...parsed, recipients: [] } as typeof parsed)).toBe(false);
+    // A form's questions are not what the page says; where it sends is never text to translate.
+    expect(blockText(parsed)).toBe("");
+    expect(blockTextFields(parsed).map((field) => field.label)).toEqual([
+      "Email subject",
+      "Question 1",
+      "Question 2",
+      "Question 2: choice 1",
+      "Question 2: choice 2",
+      "Button text",
+      "Thank-you message",
+    ]);
+    const newsletter = parse({ ...newBlock("newsletter", () => "n"), recipients: ["liste@example.com"] });
+    expect(blockTextFields(newsletter).map((field) => field.label)).toEqual(["Email field's hint", "Button text", "Thank-you message", "Consent"]);
+  });
+
+  it("refuses addresses that are not, too many, a choice without choices and a question without words", () => {
+    expect(problems({ ...form, recipients: ["nobody"] })).toEqual(["A form sends to an address that is not an email address."]);
+    expect(problems({ ...form, recipients: ["a@x.no", "A@x.no"] })).toEqual(["A form sends to the same address twice."]);
+    expect(problems({ ...form, recipients: ["a", "b", "c", "d", "e", "f"].map((n) => `${n}@x.no`) })).toEqual(["A form sends to at most 5 addresses."]);
+    expect(problems({ ...form, fields: [{ id: "a", kind: "select", label: "Hva?", options: [] }] })).toEqual(["A choice from a list needs at least one choice."]);
+    expect(problems({ ...form, fields: [{ id: "a", kind: "checkbox", label: "" }] })).toEqual(["A question needs its words."]);
+    expect(problems({ ...form, fields: [{ id: "a", kind: "password", label: "x" }] })).toEqual(["A question is of an unknown kind."]);
+  });
+});

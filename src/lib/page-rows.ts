@@ -75,6 +75,22 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, items: [{ id: id(), quote: "", name: "", role: "", picture: null }] };
     case "dualButton":
       return { id: id(), type, first: { label: "", href: "" }, second: { label: "", href: "", variant: "outline" } };
+    case "emailForm":
+      return {
+        id: id(),
+        type,
+        recipients: [],
+        subject: "",
+        fields: [
+          { id: id(), kind: "name", label: "", required: true },
+          { id: id(), kind: "email", label: "", required: true },
+          { id: id(), kind: "textarea", label: "", required: true },
+        ],
+        submitLabel: "",
+        successMessage: "",
+      };
+    case "newsletter":
+      return { id: id(), type, recipients: [], placeholder: "", submitLabel: "", successMessage: "", consent: "" };
     case "richText":
       return { id: id(), type, doc: EMPTY_DOC };
     case "image":

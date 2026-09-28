@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { storePageWith } from "./db";
+import { storePageWith, testDb } from "./db";
 
 /** The newer page components (D91), as the site shows them. */
 
@@ -325,4 +325,89 @@ test("an icon list shows its lines after their icons, a line with an address as 
   await expect(page.getByRole("link", { name: "Fri frakt over 500 kr" })).toHaveAttribute("href", "/levering");
   await expect(page.getByText("30 dagers retur")).toBeVisible();
   await expect(lines.first().locator("svg")).toHaveAttribute("aria-hidden", "true");
+});
+
+test("an email form checks its answers, sends them to its recipients, and never shows where it sends", async ({ page, request }) => {
+  const stamp = Date.now().toString(36);
+  const recipient = `post-${stamp}@example.com`;
+  const address = await storePageWith("form", [
+    {
+      id: `form-${stamp}`,
+      type: "emailForm",
+      recipients: [recipient],
+      subject: "Hemmelig emne",
+      fields: [
+        { id: "name", kind: "name", label: "", required: true },
+        { id: "mail", kind: "email", label: "", required: true },
+        { id: "topic", kind: "select", label: "Hva gjelder det?", options: ["Bestilling", "Annet"] },
+        { id: "msg", kind: "textarea", label: "", required: true },
+      ],
+      submitLabel: "",
+      successMessage: "Takk, vi svarer snart.",
+    },
+  ]);
+  // Not in the page, nor in what the browser is sent to draw it.
+  const html = await (await request.get(address)).text();
+  expect(html).not.toContain(recipient);
+  expect(html).not.toContain("Hemmelig emne");
+
+  await page.goto(address);
+  const form = page.locator("main form");
+  await form.getByRole("button", { name: "Send" }).click();
+  await expect(form.getByLabel("Navn")).toHaveAttribute("aria-invalid", "true");
+  await expect(form.getByText("Fyll ut dette feltet.").first()).toBeVisible();
+
+  await form.getByLabel("Navn").fill("Kari Nordmann");
+  await form.getByLabel("E-post").fill(`kari-${stamp}@example.com`);
+  await form.getByRole("combobox", { name: /Hva gjelder det/ }).click();
+  await page.getByRole("option", { name: "Annet" }).click();
+  await form.getByLabel("Melding").fill("Har dere gavekort?");
+  // People take a moment: a form sent at once is taken for a robot's.
+  await page.waitForTimeout(2100);
+  await form.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("status")).toHaveText("Takk, vi svarer snart.");
+
+  const sql = testDb();
+  try {
+    const [email] = await sql`select subject, text from commerce.email_messages where to_address = ${recipient}`;
+    expect(email.subject).toBe("Hemmelig emne");
+    expect(email.text).toContain("Hva gjelder det?:\nAnnet");
+    expect(email.text).toContain("Har dere gavekort?");
+  } finally {
+    await sql.end();
+  }
+});
+
+test("a newsletter sign-up is confirmed by email, then sent to its recipients, and the page says so", async ({ page }) => {
+  const stamp = Date.now().toString(36);
+  const list = `liste-${stamp}@example.com`;
+  const subscriber = `ny-${stamp}@example.com`;
+  const address = await storePageWith("newsletter", [
+    { id: `news-${stamp}`, type: "newsletter", recipients: [list], placeholder: "", submitLabel: "", successMessage: "", consent: "" },
+  ]);
+  await page.goto(address);
+  const form = page.locator("main form");
+  await form.getByRole("textbox", { name: "E-post" }).fill(subscriber);
+  await page.waitForTimeout(2100);
+  await form.getByRole("button", { name: "Meld meg på" }).click();
+  // Not without consent.
+  await expect(form.getByText("Kryss av for å fortsette.")).toBeVisible();
+  await form.getByLabel(/send meg nyhetsbrev/).check();
+  await form.getByRole("button", { name: "Meld meg på" }).click();
+  await expect(page.getByRole("status")).toContainText("Vi har sendt deg en e-post");
+
+  const sql = testDb();
+  let link: string;
+  try {
+    const [email] = await sql`select text from commerce.email_messages where to_address = ${subscriber}`;
+    link = String(email.text).match(/\/api\/forms\/confirm\?t=[A-Za-z0-9_-]+/)![0];
+    expect(await sql`select 1 from commerce.email_messages where to_address = ${list}`).toHaveLength(0);
+    await page.goto(link);
+    await expect(page).toHaveURL(/newsletter=confirmed/);
+    await expect(page.getByRole("status")).toHaveText("Takk! E-postadressen er bekreftet, og du er påmeldt.");
+    const [relayed] = await sql`select text from commerce.email_messages where to_address = ${list}`;
+    expect(relayed.text).toContain(subscriber);
+  } finally {
+    await sql.end();
+  }
 });

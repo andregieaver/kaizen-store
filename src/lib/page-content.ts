@@ -927,6 +927,98 @@ export type IconListBlock = PartBase & {
 /** A line that shows: it has words. */
 export const iconItemShows = (item: IconListItem) => item.text.trim() !== "";
 
+/** Kinds of question a form asks (D93). */
+export const FORM_FIELD_KINDS = {
+  name: "Name",
+  text: "Short text",
+  email: "Email address",
+  phone: "Phone number",
+  textarea: "Long text",
+  select: "Choice from a list",
+  checkbox: "Tick box",
+} as const;
+export type FormFieldKind = keyof typeof FORM_FIELD_KINDS;
+export const FORM_FIELDS_MAX = 20;
+export const FORM_OPTIONS_MAX = 20;
+export const FORM_LABEL_MAX = 200;
+export const FORM_TEXT_MAX = 500;
+export const FORM_RECIPIENTS_MAX = 5;
+
+/** Kinds whose words must be written: the others have their usual name in the page's language. */
+export const LABELLED_KINDS: readonly FormFieldKind[] = ["text", "select", "checkbox"];
+
+/**
+ * One question: its kind, the words beside it (a name's, email's, phone's
+ * or message's usual name in the page's language unless written), whether it must be answered, the
+ * greyed hint inside it, and a choice's options.
+ */
+export type FormField = {
+  id: string;
+  kind: FormFieldKind;
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: string[];
+};
+
+/** How a form's button looks: a button's look (D49). */
+export type FormButton = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor" | "fullWidth">;
+
+/**
+ * An email form (D93): the owner's questions; what a visitor sends is
+ * emailed to the owner's `recipients` (never shown on the site), with the
+ * visitor's email address to reply to when the form asks for one.
+ * Texts left empty read in the page's language.
+ */
+export type EmailFormBlock = PartBase &
+  BlockFont & {
+    id: string;
+    type: "emailForm";
+    /** Where submissions are emailed: 1 to 5 addresses. */
+    recipients: string[];
+    /** The email's subject; the page's title unless written. */
+    subject: string;
+    fields: FormField[];
+    submitLabel: string;
+    /** Shown in place of the form once sent. */
+    successMessage: string;
+    /** A tick box the visitor must tick to send, such as agreeing to how their message is used. */
+    consent?: string;
+    button?: FormButton;
+  };
+
+export const NEWSLETTER_LAYOUTS = { inline: "Side by side", stacked: "One under another" } as const;
+export type NewsletterLayout = keyof typeof NEWSLETTER_LAYOUTS;
+
+/**
+ * A newsletter sign-up (D93): an email address (and a name if asked),
+ * with the visitor's consent in words they tick. Unless switched off, the
+ * address is confirmed first (double opt-in): the visitor gets an email
+ * with a link, and only then is the sign-up emailed to the `recipients`,
+ * with the words consented to and when.
+ */
+export type NewsletterBlock = PartBase &
+  BlockFont & {
+    id: string;
+    type: "newsletter";
+    recipients: string[];
+    askName?: boolean;
+    /** The email field's greyed hint; the language's "Your email address" unless written. */
+    placeholder: string;
+    submitLabel: string;
+    successMessage: string;
+    /** The words the visitor ticks; the language's usual consent unless written. */
+    consent: string;
+    /** Double opt-in, on unless switched off. */
+    confirm?: boolean;
+    layout?: NewsletterLayout;
+    button?: FormButton;
+  };
+
+/** A form that shows: it has somewhere to send to, and something to ask. */
+export const formShows = (block: EmailFormBlock | NewsletterBlock) =>
+  block.recipients.length > 0 && (block.type === "newsletter" || block.fields.length > 0);
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -946,7 +1038,9 @@ export type PageBlock =
   | HtmlBlock
   | TestimonialsBlock
   | SocialLinksBlock
-  | IconListBlock;
+  | IconListBlock
+  | EmailFormBlock
+  | NewsletterBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -1040,6 +1134,9 @@ export function blockHasContent(block: PageBlock): boolean {
       return block.links.some(socialLinkShows);
     case "iconList":
       return block.items.some(iconItemShows);
+    case "emailForm":
+    case "newsletter":
+      return formShows(block);
     case "testimonials":
       // Google's reviews are known only when the page is shown.
       return block.source === "google" || block.items.some(testimonialShows);
@@ -1086,6 +1183,9 @@ export function blockText(block: PageBlock): string {
     case "separator":
     case "dualButton":
     case "socialLinks":
+    // A form's words are questions, not what the page says.
+    case "emailForm":
+    case "newsletter":
     // Its words are in its own frame, not the page's.
     case "html":
       return "";
@@ -1810,6 +1910,78 @@ const iconListBlock = z.object({
   ...partBase,
 });
 
+const formText = (what: string, max = FORM_TEXT_MAX) => z.string().trim().max(max, `Keep ${what} under ${max} characters.`);
+
+const recipients = z
+  .array(z.email("A form sends to an address that is not an email address.").trim().toLowerCase().max(254))
+  .max(FORM_RECIPIENTS_MAX, `A form sends to at most ${FORM_RECIPIENTS_MAX} addresses.`)
+  .refine((list) => new Set(list).size === list.length, "A form sends to the same address twice.");
+
+const formButton = z
+  .object({
+    variant: buttonBlock.shape.variant,
+    size: buttonBlock.shape.size,
+    shape: buttonBlock.shape.shape,
+    fill: color.optional(),
+    textColor: color.optional(),
+    fullWidth: z.boolean().optional(),
+  })
+  .optional();
+
+const emailFormBlock = z.object({
+  id: itemId,
+  type: z.literal("emailForm"),
+  recipients,
+  subject: formText("a form's subject", FORM_LABEL_MAX).default(""),
+  fields: z
+    .array(
+      z
+        .object({
+          id: itemId,
+          kind: z.enum(Object.keys(FORM_FIELD_KINDS) as [FormFieldKind, ...FormFieldKind[]], "A question is of an unknown kind."),
+          label: formText("a question", FORM_LABEL_MAX),
+          required: z.boolean().optional(),
+          placeholder: formText("a hint", FORM_LABEL_MAX).optional(),
+          options: z
+            .array(formText("a choice", FORM_LABEL_MAX).min(1, "A choice needs its words."))
+            .max(FORM_OPTIONS_MAX, `A question offers at most ${FORM_OPTIONS_MAX} choices.`)
+            .optional(),
+        })
+        .refine((field) => field.kind !== "select" || (field.options?.length ?? 0) > 0, {
+          message: "A choice from a list needs at least one choice.",
+          path: ["options"],
+        })
+        .refine((field) => !LABELLED_KINDS.includes(field.kind) || field.label !== "", {
+          message: "A question needs its words.",
+          path: ["label"],
+        }),
+    )
+    .max(FORM_FIELDS_MAX, `A form asks at most ${FORM_FIELDS_MAX} questions.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two questions have the same id. Reload the page and try again."),
+  submitLabel: formText("a button's text", BUTTON_LABEL_MAX).default(""),
+  successMessage: formText("the thank-you message").default(""),
+  consent: formText("the tick box's words").optional(),
+  button: formButton,
+  font: blockFont,
+  ...partBase,
+});
+
+const newsletterBlock = z.object({
+  id: itemId,
+  type: z.literal("newsletter"),
+  recipients,
+  askName: z.boolean().optional(),
+  placeholder: formText("a hint", FORM_LABEL_MAX).default(""),
+  submitLabel: formText("a button's text", BUTTON_LABEL_MAX).default(""),
+  successMessage: formText("the thank-you message").default(""),
+  consent: formText("the consent's words").default(""),
+  confirm: z.boolean().optional(),
+  layout: z.enum(Object.keys(NEWSLETTER_LAYOUTS) as [NewsletterLayout, ...NewsletterLayout[]]).optional(),
+  button: formButton,
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1830,6 +2002,8 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   testimonialsBlock,
   socialLinksBlock,
   iconListBlock,
+  emailFormBlock,
+  newsletterBlock,
 ]);
 
 export const pageColumnSchema = z.object({

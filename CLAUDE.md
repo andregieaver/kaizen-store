@@ -369,6 +369,13 @@ of running `playwright install`.
   them in the media library). A new design goes in `PATTERNS` and
   `sectionRows()`; the model only chooses designs and fills words, links
   only to `SiteFacts.links`, and every text passes the claims filter.
+  Forms (D93, `src/lib/forms.ts`, `src/server/forms.ts`, `SiteForm`): the
+  email form and newsletter keep their `recipients` in the page, never in
+  the browser (`publicForm()`, drawn on the site by `FormSection`); `/api/forms`
+  finds the form in its owner's published pages and emails each recipient,
+  never the visitor; sign-ups are confirmed by email first unless switched
+  off (`/api/forms/confirm`). Anything else that copies a page for another
+  owner drops recipients (`withoutRecipients()`, `clone_page_content()`).
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
   `src/server/product-layouts.ts`): a product's page is a layout of rows
   with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the

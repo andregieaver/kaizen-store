@@ -722,6 +722,32 @@ describe("new stores from the template", () => {
       [requestId, slug, admin],
     );
 
+  it("copies pages' forms without the template's recipients (D93)", async () => {
+    const content = {
+      rows: [
+        {
+          columns: [
+            {
+              blocks: [
+                { id: "f", type: "emailForm", recipients: ["owner@example.com", "sales@example.com"], subject: "Hei", fields: [] },
+                { id: "n", type: "newsletter", recipients: ["list@example.com"], consent: "" },
+                { id: "t", type: "heading", text: "recipients: [kept]" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const { copy } = await one<{ copy: typeof content }>("select commerce.clone_page_content(gen_random_uuid(), $1, $2::jsonb) as copy", [
+      template,
+      JSON.stringify(content),
+    ]);
+    const blocks = copy.rows[0].columns[0].blocks as Record<string, unknown>[];
+    expect(blocks.map((b) => b.recipients)).toEqual([[], [], undefined]);
+    expect(blocks[0].subject).toBe("Hei");
+    expect(blocks[2].text).toBe("recipients: [kept]");
+  });
+
   it("copies the template's markets, catalogue, prices and stock into a store the requester owns", async () => {
     const { store_id: store } = await approve(await request("kari@example.com"), "karis-kopper");
 

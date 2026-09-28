@@ -88,6 +88,33 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
     case "html":
       // The HTML itself is code, the same in every language; its title names the frame.
       return { ...b, title: str("title", b.title, 200, "HTML title") };
+    case "emailForm":
+      // Where it sends is the same in every language; what it asks and says is translated.
+      return {
+        ...b,
+        subject: str("subject", b.subject, 200, "Email subject"),
+        fields: b.fields.map((field, index) => ({
+          ...field,
+          label: str(`${field.id}.label`, field.label, 200, `Question ${index + 1}`),
+          ...(field.placeholder !== undefined && {
+            placeholder: str(`${field.id}.placeholder`, field.placeholder, 200, `Question ${index + 1}: hint`),
+          }),
+          ...(field.options && {
+            options: field.options.map((option, n) => str(`${field.id}.option${n}`, option, 200, `Question ${index + 1}: choice ${n + 1}`)),
+          }),
+        })),
+        submitLabel: str("submitLabel", b.submitLabel, 100, "Button text"),
+        successMessage: str("successMessage", b.successMessage, 500, "Thank-you message"),
+        ...(b.consent !== undefined && { consent: str("consent", b.consent, 500, "Tick box") }),
+      };
+    case "newsletter":
+      return {
+        ...b,
+        placeholder: str("placeholder", b.placeholder, 200, "Email field's hint"),
+        submitLabel: str("submitLabel", b.submitLabel, 100, "Button text"),
+        successMessage: str("successMessage", b.successMessage, 500, "Thank-you message"),
+        consent: str("consent", b.consent, 500, "Consent"),
+      };
     case "faq":
       return { ...b, items: mapPanelItems(b.items, visit, key, "Question", { title: "Question", body: "Answer" }) };
     case "dualButton":

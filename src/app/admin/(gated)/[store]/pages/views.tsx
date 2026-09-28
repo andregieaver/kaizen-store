@@ -12,6 +12,7 @@ import { PageArticle } from "@/components/page-article";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { ProductLayoutView } from "@/components/product-parts";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
+import { withoutRecipients } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { LAYOUT_TYPES, termContentOf, type PageContent, type PageType } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
@@ -176,7 +177,7 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
   const [saved, library, terms, gridTerms] = await Promise.all([
     listSavedParts(store.id),
     // Kaizen's saved parts, to start from (D56).
-    listSavedParts(null),
+    listSavedParts(null).then(withoutRecipients),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
   ]);
@@ -205,7 +206,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
     searchParams,
     listSavedParts(store.id),
     // Kaizen's saved parts, to start from (D56).
-    listSavedParts(null),
+    listSavedParts(null).then(withoutRecipients),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
   ]);

@@ -110,6 +110,10 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <SocialLinksView block={block} />;
     case "iconList":
       return <IconListView block={block} />;
+    case "emailForm":
+    case "newsletter":
+      // Sent from the site (`SiteForm`, drawn by the page's rows with the site's owner, D93); the editor shows it itself.
+      return null;
     case "testimonials":
       // Google's reviews are fetched where they are shown (`GoogleReviewsSection`); the editor shows a stand-in.
       return block.source === "google" ? null : <Testimonials block={block} />;

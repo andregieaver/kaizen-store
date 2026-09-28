@@ -7,6 +7,7 @@ import type { GridPlace } from "@/server/content-grid";
 import { ContentGridSection } from "./content-grid-section";
 import { MenuSection } from "./menu-section";
 import { FontLinks } from "./font-links";
+import { FormSection } from "./form-section";
 import { GoogleReviewsSection } from "./google-reviews-section";
 import { PageBlockView } from "./page-block";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "./page-parts";
@@ -106,6 +107,8 @@ export function PageRowView({
                           <ContentGridSection block={block} place={place} />
                         ) : block.type === "menu" ? (
                           <MenuSection block={block} place={place} />
+                        ) : block.type === "emailForm" || block.type === "newsletter" ? (
+                          <FormSection block={block} place={place} />
                         ) : block.type === "testimonials" && block.source === "google" ? (
                           // Asked of Google as the page is shown (never kept): the rest of the page does not wait.
                           <Suspense fallback={null}>

@@ -210,6 +210,7 @@ export function PageEditor({
       <PageBuilder
         // A new language starts with its dialogs closed.
         key={locale}
+        lang={language.locale.split("-")[0]}
         rows={view.rows}
         onRows={changeRows}
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}

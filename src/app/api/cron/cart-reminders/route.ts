@@ -8,6 +8,7 @@ import { catalogTag } from "@/server/catalog";
 import { pruneChatUsage } from "@/server/chat-agent";
 import { cronAuthorised } from "@/server/cron-auth";
 import { refreshEmbeddings } from "@/server/embeddings";
+import { pruneFormSubmissions } from "@/server/forms";
 import { pruneSearchCache } from "@/server/search-cache";
 import { refreshKnowledge } from "@/server/knowledge";
 import { refreshMediaEmbeddings } from "@/server/media-library";
@@ -33,7 +34,7 @@ import { sendDueBookingReminders } from "@/server/shopper-emails";
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -46,13 +47,14 @@ async function run(request: Request) {
     pruneChatUsage(),
     refreshMediaEmbeddings(),
     refreshAltTexts(),
+    pruneFormSubmissions(),
   ]);
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
