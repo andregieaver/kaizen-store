@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
 import { audit, requireAccount } from "@/server/auth";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
+import { LINK_COOKIE, linkStart, unlinkLife } from "@/server/kaizen-life-link";
 
 async function origin(): Promise<string> {
   const header = (await headers()).get("origin");
@@ -81,5 +82,27 @@ export async function revokeAppAction(formData: FormData): Promise<void> {
     await (await createClient()).auth.oauth.revokeGrant({ clientId });
     await audit(account.id, null, "account.oauth_revoked", { clientId });
   }
+  redirect("/admin/account");
+}
+
+/** Connects Kaizen Life for the assistant (D96): off to Kaizen Life's consent, back to the callback. Owners only. */
+export async function connectLifeAssistantAction(): Promise<void> {
+  const account = await requireAccount();
+  const start = (await isOwner(account)) ? linkStart(account.id) : null;
+  if (!start) redirect("/admin/account");
+  (await cookies()).set(LINK_COOKIE, start.cookie, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/admin/account/kaizen-life",
+    maxAge: 600,
+  });
+  redirect(start.url);
+}
+
+/** Forgets Kaizen Life for the assistant. */
+export async function disconnectLifeAssistantAction(): Promise<void> {
+  const account = await requireAccount();
+  if (await unlinkLife(account.id)) await audit(account.id, null, "account.kaizen_life_assistant_disconnected");
   redirect("/admin/account");
 }

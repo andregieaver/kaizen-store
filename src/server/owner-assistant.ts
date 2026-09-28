@@ -5,8 +5,9 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { approvalSummary, OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type GateCategory } from "@/lib/owner-tools";
 
-import { AiError, aiFor, canSpeak, streamWithTools, type AiConnection, type ToolChatMessage } from "./ai";
+import { AiError, aiFor, canSpeak, streamWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import type { Membership } from "./auth";
+import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { OwnerToolError, runOwnerTool, type OwnerToolContext } from "./owner-tools";
 
 type Row = Record<string, unknown>;
@@ -141,7 +142,25 @@ export async function kaizenLifeConversation({ store, account }: Membership): Pr
 
 // The prompt ------------------------------------------------------------------------
 
-export function assistantPrompt(member: Membership, now = new Date()): string {
+/**
+ * Asking Kaizen Life's assistant (D96), offered only while the owner has
+ * connected Kaizen Life and the question is not Kaizen Life's own, so the
+ * two never ask each other in a loop. Not an owner tool: `/api/mcp` never
+ * serves it.
+ */
+export const ASK_KAIZEN_LIFE: ToolDefinition = {
+  name: "ask_kaizen_life",
+  description:
+    "Asks the owner's own assistant in Kaizen Life, their personal-life app, in words: their calendar, tasks and plans, or to note something there for them. Send only what the owner asked to pass on; it answers in words.",
+  parameters: {
+    type: "object",
+    properties: { question: { type: "string", maxLength: 4000, description: "The question or request, complete in itself." } },
+    required: ["question"],
+    additionalProperties: false,
+  },
+};
+
+export function assistantPrompt(member: Membership, now = new Date(), withLife = false): string {
   const { store, account } = member;
   const today = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: store.timeZone }).format(now);
   const countries = store.markets.map((m) => `${m.name} (${m.currency}, ${m.lang})`).join(", ");
@@ -157,6 +176,11 @@ export function assistantPrompt(member: Membership, now = new Date()): string {
     "- Notes on orders and reading anything are fine without asking.",
     "- If a tool refuses or fails, say what it said. If no tool can do what is asked, say so and point to the admin page that can.",
     "- Answer in the language the owner writes in. Keep answers short and concrete, in plain text: short lines or simple lists, no tables and no HTML.",
+    ...(withLife
+      ? [
+          "- The owner has connected Kaizen Life, their personal-life app: ask_kaizen_life asks its assistant about their calendar, tasks and plans. Use it only when the owner asks about those or asks you to pass something on. Pass its answer on as said, and never send it customers' details unless the owner asks you to.",
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -219,9 +243,10 @@ export async function runTurn(input: TurnInput): Promise<void> {
   await addMessage(store.id, conversationId, "user", text);
 
   const ctx: OwnerToolContext = { account: member.account, store, invalidate: input.invalidate };
-  const tools = OWNER_TOOLS.map(toolDefinition);
+  const withLife = !input.fromKaizenLife && lifeLinkOn() && (await lifeLink(member.account.id)) !== null;
+  const tools = [...OWNER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
   const messages: ToolChatMessage[] = [
-    { role: "system", content: assistantPrompt(member) },
+    { role: "system", content: assistantPrompt(member, new Date(), withLife) },
     ...history.map((row) => ({ role: row.role === "user" ? ("user" as const) : ("assistant" as const), content: String(row.content) })),
     { role: "user", content: text },
   ];
@@ -242,7 +267,10 @@ export async function runTurn(input: TurnInput): Promise<void> {
       messages.push({ role: "assistant", content: answer.content, tool_calls: answer.toolCalls });
       for (const call of answer.toolCalls) {
         if (input.signal?.aborted) throw new AiError("Stopped.");
-        const result = await callTool(ctx, conversationId, call.function.name, call.function.arguments, emit);
+        const result =
+          withLife && call.function.name === ASK_KAIZEN_LIFE.name
+            ? await askKaizenLife(member, call.function.arguments)
+            : await callTool(ctx, conversationId, call.function.name, call.function.arguments, emit);
         trail.push({ name: call.function.name, ok: !("error" in result) });
         messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result).slice(0, RESULT_MAX) });
       }
@@ -257,6 +285,25 @@ export async function runTurn(input: TurnInput): Promise<void> {
   }
   const saved = await addMessage(store.id, conversationId, "assistant", reply.trim() || "(No answer.)", trail);
   emit({ type: "done", message: saved });
+}
+
+/** Kaizen Life's assistant's answer for the model, or why there is none. */
+async function askKaizenLife(member: Membership, rawArgs: string): Promise<Record<string, unknown>> {
+  let question = "";
+  try {
+    const args = JSON.parse(rawArgs || "{}") as { question?: unknown };
+    question = typeof args.question === "string" ? args.question.trim() : "";
+  } catch {
+    return { error: "The arguments were not valid JSON." };
+  }
+  if (!question) return { error: "Ask a question in words." };
+  try {
+    return { kaizen_life_says: await askLife(member.account.id, question, member.store.name) };
+  } catch (error) {
+    if (error instanceof LifeLinkError) return { error: error.message };
+    console.error("[owner-assistant] ask_kaizen_life", error);
+    return { error: "Kaizen Life did not answer." };
+  }
 }
 
 /** One tool call: run, or kept for approval if it is gated; its answer (or error) for the model. */

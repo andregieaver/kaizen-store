@@ -238,6 +238,21 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // Only while an owner connects Kaizen Life for the assistant (D96).
+    name: "kaizen_life_link",
+    pattern: /^kaizen_life_link$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    purpose: {
+      en: "Checks, for the ten minutes it takes, that a store owner connecting Kaizen Life comes back from the sign-in they started.",
+      nb: "Sjekker, i de ti minuttene det tar, at en butikkeier som kobler til Kaizen Life kommer tilbake fra innloggingen de startet.",
+      sv: "Kontrollerar, under de tio minuter det tar, att en butiksägare som ansluter Kaizen Life kommer tillbaka från inloggningen de startade.",
+      da: "Kontrollerer, i de ti minutter det tager, at en butiksejer, der forbinder Kaizen Life, kommer tilbage fra det login, de startede.",
+    },
+  },
+  {
     name: "__stripe_mid, __stripe_sid",
     pattern: /^__stripe_(mid|sid)$/,
     provider: "Stripe",

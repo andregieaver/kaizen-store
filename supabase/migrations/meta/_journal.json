@@ -1114,6 +1114,20 @@
       "when": 1790619578226,
       "tag": "20260928181938_assistant_kaizen_life",
       "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1790621416610,
+      "tag": "20260928185016_kaizen_life_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1790621420268,
+      "tag": "20260928185020_kaizen_life_links_rules",
+      "breakpoints": true
     }
   ]
 }

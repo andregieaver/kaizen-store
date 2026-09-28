@@ -3866,6 +3866,24 @@ export const assistantConversations = commerce.table(
   ],
 );
 
+/**
+ * An owner's Kaizen Life account, connected for the assistant (D96): tokens
+ * from Kaizen Life's OAuth server, encrypted with SETTINGS_ENCRYPTION_KEY,
+ * with which the owner assistant asks Kaizen Life's. One per account.
+ */
+export const kaizenLifeLinks = commerce.table("kaizen_life_links", {
+  accountId: uuid("account_id")
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  /** The Kaizen Life account's email, from its token, shown to the owner. */
+  lifeEmail: text("life_email"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 /** One turn of a conversation: what the owner wrote, or the assistant's answer with the tools it used. */
 export const assistantMessages = commerce.table(
   "assistant_messages",

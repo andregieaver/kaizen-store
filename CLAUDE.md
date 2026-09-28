@@ -397,7 +397,11 @@ of running `playwright install`.
   `store` argument, gated tools only kept (`keepForApproval()`) in the
   owner's Kaizen Life conversation (`kaizenLifeConversation()`), and
   `ask_store_assistant` runs a turn there with `fromKaizenLife`. A new owner
-  tool is served there too.
+  tool is served there too. The other way, an owner connects Kaizen Life
+  for the assistant under Your account (`src/server/kaizen-life-link.ts`,
+  tokens encrypted in `kaizen_life_links`); the assistant then has
+  `ask_kaizen_life` (`ASK_KAIZEN_LIFE`, not an owner tool), never in turns
+  Kaizen Life asked for.
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
   `src/server/product-layouts.ts`): a product's page is a layout of rows
   with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the

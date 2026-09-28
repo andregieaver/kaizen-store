@@ -6,8 +6,16 @@ import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { requireAccount } from "@/server/auth";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
+import { lifeLink, lifeLinkOn } from "@/server/kaizen-life-link";
 
-import { connectKaizenLifeAction, disconnectKaizenLifeAction, revokeAppAction, setPasswordAction } from "./actions";
+import {
+  connectKaizenLifeAction,
+  connectLifeAssistantAction,
+  disconnectKaizenLifeAction,
+  disconnectLifeAssistantAction,
+  revokeAppAction,
+  setPasswordAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Your account" };
 
@@ -15,12 +23,15 @@ const smallButton = "min-h-10 rounded-md border border-border bg-background px-4
 
 export default async function AccountPage({ searchParams }: PageProps<"/admin/account">) {
   const account = await requireAccount();
-  const status = (await searchParams)["kaizen-life"];
+  const query = await searchParams;
+  const status = query["kaizen-life"];
+  const assistantStatus = query["life-assistant"];
   const owner = await isOwner(account);
   const supabase = await createClient();
-  const [identity, grants] = await Promise.all([
+  const [identity, grants, link] = await Promise.all([
     owner && kaizenLifeSignInOn() ? kaizenLifeIdentity(supabase) : null,
     owner ? supabase.auth.oauth.listGrants().then(({ data }) => data ?? [], () => []) : [],
+    owner && lifeLinkOn() ? lifeLink(account.id) : null,
   ]);
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8">
@@ -91,6 +102,44 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
               <form action={connectKaizenLifeAction}>
                 <button type="submit" className={smallButton}>
                   Connect Kaizen Life
+                </button>
+              </form>
+            </>
+          )}
+        </section>
+      )}
+
+      {owner && lifeLinkOn() && (
+        <section aria-labelledby="life-assistant-heading" className="flex max-w-md flex-col gap-3">
+          <h2 id="life-assistant-heading" className="font-medium">
+            Kaizen Life for your assistant
+          </h2>
+          {assistantStatus === "failed" && (
+            <p role="alert" className="text-sm">
+              Kaizen Life was not connected. Try again.
+            </p>
+          )}
+          {link ? (
+            <>
+              <p className="text-sm">
+                Connected{link.email ? ` as ${link.email}` : ""}: your store assistant can ask your Kaizen Life assistant about
+                your calendar, tasks and plans when you ask it to.
+              </p>
+              <form action={disconnectLifeAssistantAction}>
+                <button type="submit" className={smallButton}>
+                  Disconnect it from your assistant
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted">
+                Let your store assistant ask your Kaizen Life assistant about your calendar, tasks and plans. Kaizen Life asks
+                you first, and your store works just the same without it.
+              </p>
+              <form action={connectLifeAssistantAction}>
+                <button type="submit" className={smallButton}>
+                  Connect it to your assistant
                 </button>
               </form>
             </>
