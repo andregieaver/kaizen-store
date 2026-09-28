@@ -9,6 +9,7 @@ import {
   ITEM_TITLE_MAX,
   PAGE_SLUG_MAX,
   PAGE_TITLE_MAX,
+  ROW_LAYOUTS,
   newPageContent,
   pageSlugFromTitle,
   pageSlugProblem,
@@ -721,12 +722,20 @@ const sides = (top: number, bottom: number, x = 20): Sides => ({ top, right: x, 
 
 type Ctx = { id: NewId; facts: SiteFacts; allowLink: (href: string) => boolean; pictures: PictureJob[] };
 
+/**
+ * A row with exactly the columns its layout has, as the page's own check
+ * asks: a row short of items (the last of five features in threes) gets
+ * empty columns, so its columns keep the others' widths; any more than the
+ * layout has go into its last column.
+ */
 function row(ctx: Ctx, layout: RowLayout, columns: PageBlock[][], extra: Partial<PageRow> = {}): PageRow {
+  const count = ROW_LAYOUTS[layout].widths.length;
+  const fitted = Array.from({ length: count }, (_, index) => (index < count - 1 ? (columns[index] ?? []) : columns.slice(index).flat()));
   return {
     id: ctx.id(),
     type: "row",
     layout,
-    columns: columns.map((blocks): PageColumn => ({ id: ctx.id(), blocks })),
+    columns: fitted.map((blocks): PageColumn => ({ id: ctx.id(), blocks })),
     ...extra,
   };
 }

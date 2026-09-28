@@ -4,6 +4,7 @@ import { findClaims } from "./claims";
 import {
   EMPTY_BRIEF,
   EMPTY_COPY,
+  PATTERNS,
   availablePatterns,
   buildPage,
   checkPlan,
@@ -23,7 +24,7 @@ import {
   type SectionCopy,
   type SiteFacts,
 } from "./page-ai";
-import { blockHasContent, pageBlocks, pageInput, RESERVED_STORE_PAGE_SLUGS, type PageBlock } from "./page-content";
+import { blockHasContent, pageBlocks, pageInput, RESERVED_STORE_PAGE_SLUGS, ROW_LAYOUTS, type PageBlock } from "./page-content";
 
 const facts: SiteFacts = {
   kind: "store",
@@ -260,6 +261,54 @@ describe("building the page", () => {
     expect(picturePrompt(pic("beans"), { ...EMPTY_BRIEF, pictures: "warm, analog film look" })).toBe(
       "A photo of beans, soft daylight, realistic. Style: warm, analog film look. No text, letters, numbers, logos or watermarks anywhere in the picture.",
     );
+  });
+});
+
+describe("every design, with any number of items", () => {
+  const everywhere = { ...facts, can: { pictures: true, productGrid: true, articleGrid: true, googleReviews: true } };
+  const variants = (key: string) => {
+    const info = PATTERNS[key as keyof typeof PATTERNS] as { variants?: Record<string, string> };
+    return info.variants ? Object.keys(info.variants) : [undefined];
+  };
+
+  it("builds rows the page's own check takes: each with as many columns as its layout", () => {
+    for (const key of Object.keys(PATTERNS)) {
+      for (const variant of variants(key)) {
+        for (let count = 0; count <= 12; count++) {
+          for (const tinted of [false, true]) {
+            const pictures = key === "gallery" ? Array.from({ length: Math.min(4, Math.max(2, count)) }, (_, i) => pic(`shot ${i}`)) : undefined;
+            const planned = plan([
+              { pattern: key, variant, name: "S", tinted, picture: pic("a thing"), pictures, video: "https://youtu.be/dQw4w9WgXcQ", links: ["/s/kaffe/no/products"] },
+            ]);
+            const { plan: checked } = checkPlan(planned, everywhere, "https://youtu.be/dQw4w9WgXcQ");
+            const words = copy({
+              heading: "Overskrift",
+              text: "Tekst.",
+              items: Array.from({ length: count }, (_, i) => ({ title: `Punkt ${i + 1}`, text: "Tekst.", icon: "check" as const })),
+              buttons: [{ label: "Se", href: "/s/kaffe/no/products" }],
+              captions: ["A", "B"],
+            });
+            const built = buildPage(checked, [words], everywhere, { newId, takenSlugs: [], reservedSlugs: RESERVED_STORE_PAGE_SLUGS });
+            const result = pageInput.safeParse(built.content);
+            const where = `${key} ${variant ?? ""} with ${count} items${tinted ? ", tinted" : ""}`;
+            expect(result.success ? "" : `${where}: ${result.error.issues.map((i) => i.message).join("; ")}`).toBe("");
+            for (const r of built.content.rows) expect(r.columns.length, where).toBe(ROW_LAYOUTS[r.layout].widths.length);
+          }
+        }
+      }
+    }
+  });
+
+  it("keeps five features in columns of equal width: three, then two and an empty one", () => {
+    const built = buildPage(
+      plan([{ pattern: "features", name: "Hvorfor oss" }]),
+      [copy({ heading: "Hvorfor", items: Array.from({ length: 5 }, (_, i) => ({ title: `P${i}`, text: "T" })) })],
+      facts,
+      { newId, takenSlugs: [], reservedSlugs: RESERVED_STORE_PAGE_SLUGS },
+    );
+    const [, first, second] = built.content.rows;
+    expect([first.layout, first.columns.map((c) => c.blocks.length)]).toEqual(["3", [2, 2, 2]]);
+    expect([second.layout, second.columns.map((c) => c.blocks.length)]).toEqual(["3", [2, 2, 0]]);
   });
 });
 
