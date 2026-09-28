@@ -13,6 +13,7 @@ import type { SiteLayout } from "@/server/site-layouts";
 import type { Store } from "@/server/stores";
 
 import { BuyerSwitch } from "./buyer";
+import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView, rowShows } from "./page-article";
@@ -40,7 +41,7 @@ const COLUMN_LINK = "inline-flex min-h-10 items-center hover:underline";
 /** Whether a part has anything to show here: its owner's, with links or countries to show. */
 export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
   if (ctx.kind === "kaizen") {
-    if (["search", "wishlist", "cart", "markets", "buyerSwitch"].includes(block.part)) return false;
+    if (["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode"].includes(block.part)) return false;
     return true;
   }
   const { store } = ctx;
@@ -51,6 +52,9 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
       return store.markets.length > 1;
     case "buyerSwitch":
       return store.audience === "both";
+    case "colorMode":
+      // Only while the store lets visitors choose (D99).
+      return store.theme.settings.visitorSwitch;
     default:
       return true;
   }
@@ -142,6 +146,8 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
       );
     case "buyerSwitch":
       return <BuyerSwitch storeId={store.id} labels={m.buyer} />;
+    case "colorMode":
+      return <StoreColorSwitch store={store} labels={m.colorMode} />;
     case "business": {
       const details = store.details;
       const legal = [details.legalName ?? store.name, details.organisationNumber && `Org. ${details.organisationNumber}`]

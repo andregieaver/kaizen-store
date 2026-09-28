@@ -603,6 +603,13 @@ describe("webhook events", () => {
 });
 
 describe("accounts and members", () => {
+  it("keeps an account's light or dark for the admin, their device's until chosen (D99)", async () => {
+    const id = await createAccount("colours@example.com");
+    expect((await one<{ color_mode: string }>("select color_mode from commerce.accounts where id = $1", [id])).color_mode).toBe("system");
+    await db.query("update commerce.accounts set color_mode = 'dark' where id = $1", [id]);
+    await expect(db.query("update commerce.accounts set color_mode = 'sepia' where id = $1", [id])).rejects.toThrow(/accounts_color_mode/);
+  });
+
   it("always keeps at least one active owner per store", async () => {
     const shop = await createStore("owner-test", ["NO"]);
     const owner = await createAccount("owner@example.com");

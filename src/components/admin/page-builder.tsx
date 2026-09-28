@@ -4571,6 +4571,7 @@ const SITE_HELP: Record<SitePart, string> = {
   cart: "A link to the cart, with how many products are in it.",
   markets: "The countries the store sells to, to switch between. Shown only with two or more.",
   buyerSwitch: "For stores selling to both: whether prices are shown for a business or a private buyer.",
+  colorMode: "A button for visitors to switch between light and dark colours. Shown while Let visitors choose light or dark is on under Design.",
   signUp: "The Start your store button.",
   business: "Who runs the site: name, organisation number, address and email, required on every page.",
   cookies: "A link to the cookies page, where visitors change their choice.",
@@ -4682,6 +4683,8 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
         return block.display === "list" ? links(["Norge", "Sverige", "Danmark"]) : <span className="text-sm">Norge ▾</span>;
       case "buyerSwitch":
         return <span className="rounded-full border border-border px-3 py-1 text-xs">Private · Business</span>;
+      case "colorMode":
+        return icon("M12 3a6 6 0 009 9 9 9 0 11-9-9z");
       case "signUp":
         return <span className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background">Start your store</span>;
       case "business":

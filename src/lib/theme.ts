@@ -69,6 +69,8 @@ export type CardAlign = keyof typeof CARD_ALIGNS;
 
 export type ThemeSettings = {
   mode: ColorMode;
+  /** Visitors may choose light or dark for themselves (D99), over the store's mode; the header shows a switch. */
+  visitorSwitch: boolean;
   light: Palette;
   dark: Palette;
   fonts: SiteFonts;
@@ -86,6 +88,7 @@ const optionalFamily = z.preprocess((v) => (v === "" || v === null ? undefined :
 
 export const themeSettingsSchema = z.object({
   mode: z.enum(keys(COLOR_MODES)),
+  visitorSwitch: z.boolean().default(false),
   light: palette,
   dark: palette,
   fonts: z.object({ heading: optionalFamily, body: optionalFamily }),
@@ -119,6 +122,7 @@ export const THEME_TEMPLATES = {
     description: "Quiet and neutral: system fonts, black and white, pill buttons. Follows the visitor's light or dark mode.",
     settings: {
       mode: "auto",
+      visitorSwitch: false,
       light: {
         background: "#ffffff",
         surface: "#f5f5f4",
@@ -150,6 +154,7 @@ export const THEME_TEMPLATES = {
     description: "Cream paper and terracotta, Playfair Display headings over Lora, softly rounded bordered cards and a centred logo.",
     settings: {
       mode: "light",
+      visitorSwitch: false,
       light: {
         background: "#faf6ef",
         surface: "#f1e8da",
@@ -181,6 +186,7 @@ export const THEME_TEMPLATES = {
     description: "High contrast: a black header, square corners, a bright orange accent, Archivo headings in spaced capitals and edge-to-edge product pictures.",
     settings: {
       mode: "auto",
+      visitorSwitch: false,
       light: {
         background: "#ffffff",
         surface: "#f0f0f0",
@@ -278,11 +284,14 @@ const paletteVars = (p: Palette, scheme: "light" | "dark") =>
 
 /**
  * The CSS for a theme under `selector`: its colours as the variables the
- * storefront's classes read (light, dark, or each by the visitor's device),
- * and its sizes. `mode` forces one colour set, for the admin's preview.
- * Every value comes from the validated settings, never from free text.
+ * storefront's classes read, and its sizes. The store's mode sets the
+ * colours (light, dark, or each by the visitor's device); a visitor's own
+ * choice (D99, `data-color-mode` on the element or around it, where it has
+ * no mode of its own) takes the other set. `preview` shows one set only,
+ * for the admin's preview. Every value comes from the validated settings,
+ * never from free text.
  */
-export function themeCss(settings: ThemeSettings, selector: string, mode: ColorMode = settings.mode): string {
+export function themeCss(settings: ThemeSettings, selector: string, preview?: "light" | "dark"): string {
   const sizes = [
     `--button-radius: ${BUTTON_RADIUS[settings.buttons.corners]}`,
     `--radius-lg: ${CARD_RADIUS[settings.corners.cards]}`,
@@ -291,13 +300,23 @@ export function themeCss(settings: ThemeSettings, selector: string, mode: ColorM
     `--card-aspect: ${ASPECT[settings.productCards.image]}`,
     `--heading-weight: ${HEADING_WEIGHTS[settings.headings.weight]}`,
   ].join("; ");
-  const first = mode === "dark" ? settings.dark : settings.light;
-  let css = `${selector} { ${paletteVars(first, mode === "dark" ? "dark" : "light")}; ${sizes}; }`;
-  if (mode === "auto") css += `\n@media (prefers-color-scheme: dark) { ${selector} { ${paletteVars(settings.dark, "dark")}; } }`;
+  const colors = (scheme: "light" | "dark") => paletteVars(settings[scheme], scheme);
+  if (preview) return `${selector} { ${colors(preview)}; ${sizes}; }`;
+  const base = settings.mode === "dark" ? "dark" : "light";
+  const other = base === "dark" ? "light" : "dark";
+  let css = `${selector} { ${colors(base)}; ${sizes}; }`;
+  if (settings.mode === "auto") {
+    css += `\n@media (prefers-color-scheme: dark) { ${selector}:not([data-color-mode="light"], [data-color-mode="light"] *) { ${colors("dark")}; } }`;
+  }
+  css += `\n${selector}[data-color-mode="${other}"], :where([data-color-mode="${other}"]) ${selector}:not([data-color-mode]) { ${colors(other)}; }`;
   return css;
 }
 
-/** The data attributes globals.css draws a theme's choices from, on `<html>` (or the preview's box). */
+/**
+ * The data attributes globals.css draws a theme's choices from, on `<html>`
+ * (or the preview's box); a store always light or dark says so, so that
+ * everything drawn by the device's mode (`dark:`) follows it too (D99).
+ */
 export function themeAttributes(settings: ThemeSettings): Record<string, string> {
   return {
     "data-store-theme": "",
@@ -305,6 +324,7 @@ export function themeAttributes(settings: ThemeSettings): Record<string, string>
     "data-heading-case": settings.headings.case,
     "data-card-style": settings.productCards.style,
     "data-card-align": settings.productCards.align,
+    ...(settings.mode !== "auto" && { "data-color-mode": settings.mode }),
   };
 }
 
@@ -332,7 +352,8 @@ export function contrastRatio(a: string, b: string): number {
  * owner can work through a palette.
  */
 export function themeWarnings(settings: ThemeSettings): string[] {
-  const sets = settings.mode === "auto" ? (["light", "dark"] as const) : ([settings.mode] as const);
+  // Both sets show where the device decides or the visitor may choose (D99).
+  const sets = settings.mode === "auto" || settings.visitorSwitch ? (["light", "dark"] as const) : ([settings.mode] as const);
   const pairs: [PaletteKey, PaletteKey, string][] = [
     ["text", "background", "Text on the background"],
     ["muted", "background", "Secondary text on the background"],
@@ -372,15 +393,14 @@ function behindLogo(settings: ThemeSettings, place: LogoPlace, set: Palette): st
 }
 
 /**
- * Whether the colour behind a logo is dark, for visitors whose device is
- * light and for those whose device is dark: where it is, a store's logo for
+ * Whether the colour behind a logo is dark in the theme's light colours and
+ * in its dark ones (whichever the page shows: the store's mode, the
+ * device's or the visitor's choice, D99): where it is, a store's logo for
  * dark backgrounds takes the place of its logo (D60).
  */
 export function darkBehindLogo(settings: ThemeSettings, place: LogoPlace): { light: boolean; dark: boolean } {
-  const shown = (scheme: "light" | "dark") =>
-    settings.mode === "auto" ? settings[scheme] : settings[settings.mode];
   return {
-    light: isDarkColor(behindLogo(settings, place, shown("light"))),
-    dark: isDarkColor(behindLogo(settings, place, shown("dark"))),
+    light: isDarkColor(behindLogo(settings, place, settings.light)),
+    dark: isDarkColor(behindLogo(settings, place, settings.dark)),
   };
 }

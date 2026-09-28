@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."accounts" ADD COLUMN "color_mode" text DEFAULT 'system' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."accounts" ADD CONSTRAINT "accounts_color_mode" CHECK ("commerce"."accounts"."color_mode" in ('system', 'light', 'dark'));

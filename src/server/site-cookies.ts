@@ -66,8 +66,11 @@ export async function siteCookies(
   storeId: string | null,
   tracking: TrackingSettings,
   code: CustomCode = {},
-  /** The store sells to both private shoppers and businesses, so keeps their choice (D63). */
-  options: { buyers?: boolean } = {},
+  /**
+   * The store sells to both private shoppers and businesses, so keeps their
+   * choice (D63); it lets visitors choose light or dark (D99).
+   */
+  options: { buyers?: boolean; colorMode?: boolean } = {},
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[] }> {
   const listed = new Map<string, ListedCookie>();
   const list = ({ name, provider, category, days, purpose }: KnownCookie) =>

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import type { AccountStage } from "@/lib/stripe-account";
+import { showsDark } from "@/lib/color-mode";
 
 /**
  * Server actions already bound to the account: a store's (the owner's) or a
@@ -40,7 +41,8 @@ export default function StripeConnectEmbed({
   const [managing, setManaging] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [connect] = useState(() => {
-    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // The admin's colours: the account's choice, else the device's (D99).
+    const dark = showsDark();
     return loadConnectAndInitialize({
       publishableKey,
       fetchClientSecret: async () => {

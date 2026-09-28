@@ -592,12 +592,13 @@ export const SITE_PARTS = {
   cart: "Cart",
   markets: "Countries",
   buyerSwitch: "Business or private",
+  colorMode: "Light or dark",
   signUp: "Start your store",
   business: "Business details",
   cookies: "Cookies link",
 } as const;
 export type SitePart = keyof typeof SITE_PARTS;
-const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch"];
+const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode"];
 const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];
 
 /** The site parts an owner's headers and footers offer: a store's (with a store id) or Kaizen's (null). */

@@ -51,6 +51,8 @@ const messages = {
     seeOrder: "Se bestillingen",
     previewNotice: "Forhåndsvisning: Denne butikken er ikke åpnet ennå.",
     skipToContent: "Hopp til innhold",
+    /** The light or dark switch (D99). */
+    colorMode: { toDark: "Bytt til mørke farger", toLight: "Bytt til lyse farger" },
     menu: "Meny",
     openMenu: "Åpne menyen",
     closeMenu: "Lukk menyen",
@@ -668,6 +670,8 @@ const messages = {
     seeOrder: "Se beställningen",
     previewNotice: "Förhandsvisning: Den här butiken har inte öppnat ännu.",
     skipToContent: "Hoppa till innehåll",
+    /** The light or dark switch (D99). */
+    colorMode: { toDark: "Byt till mörka färger", toLight: "Byt till ljusa färger" },
     menu: "Meny",
     openMenu: "Öppna menyn",
     closeMenu: "Stäng menyn",
@@ -1286,6 +1290,8 @@ const messages = {
     seeOrder: "Se bestillingen",
     previewNotice: "Forhåndsvisning: Denne butik er ikke åbnet endnu.",
     skipToContent: "Spring til indhold",
+    /** The light or dark switch (D99). */
+    colorMode: { toDark: "Skift til mørke farver", toLight: "Skift til lyse farver" },
     menu: "Menu",
     openMenu: "Åbn menuen",
     closeMenu: "Luk menuen",
@@ -1902,6 +1908,8 @@ const messages = {
     seeOrder: "See the order",
     previewNotice: "Preview: this store is not open yet.",
     skipToContent: "Skip to content",
+    /** The light or dark switch (D99). */
+    colorMode: { toDark: "Switch to dark colours", toLight: "Switch to light colours" },
     menu: "Menu",
     openMenu: "Open the menu",
     closeMenu: "Close the menu",

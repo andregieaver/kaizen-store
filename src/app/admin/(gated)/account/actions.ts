@@ -9,7 +9,8 @@ import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
-import { audit, requireAccount } from "@/server/auth";
+import { isColorChoice } from "@/lib/color-mode";
+import { audit, requireAccount, saveColorMode } from "@/server/auth";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { LINK_COOKIE, linkStart, unlinkLife } from "@/server/kaizen-life-link";
@@ -69,6 +70,12 @@ export async function accountAvatarAction(form: FormData): Promise<AvatarPickerS
   await audit(account.id, null, "account.avatar_set");
   refresh();
   return { ok: true, message: "Picture saved." };
+}
+
+/** Keeps the account's light or dark for the admin (D99); the page has applied it already. */
+export async function colorModeAction(choice: unknown): Promise<void> {
+  const account = await requireAccount();
+  if (isColorChoice(choice) && choice !== account.colorMode) await saveColorMode(account.id, choice);
 }
 
 /** Connects the account's Kaizen Life account (D95): off to Kaizen Life, back to Your account. Owners only. */

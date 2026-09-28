@@ -8,6 +8,7 @@ import { SiteConsent } from "@/components/consent/site-consent";
 import { StoreChat } from "@/components/site-chat";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
+import { StoreColorScript } from "@/components/store-color-switch";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
 import { liveCustomCode } from "@/lib/custom-code";
@@ -88,7 +89,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
       className="h-full antialiased"
       {...themeAttributes(store.theme.settings)}
       data-buyer={store.audience === "businesses" ? "business" : undefined}
-      suppressHydrationWarning={store.audience === "both"}
+      suppressHydrationWarning={store.audience === "both" || store.theme.settings.visitorSwitch}
     >
       {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
       <body
@@ -96,6 +97,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         style={siteFontStyle(store.fonts)}
       >
         {store.audience === "both" && <script dangerouslySetInnerHTML={{ __html: buyerScript(store.id) }} />}
+        <StoreColorScript store={store} />
         {/* The store's own fonts (D59) and theme (D60). */}
         <StoreThemeStyles store={store} />
         <a

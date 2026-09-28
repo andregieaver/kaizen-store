@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { after } from "next/server";
 
+import { AdminColorSwitch } from "@/components/admin/admin-colors";
 import { AdminTrail, SignOutForm } from "@/components/admin/admin-trail";
 import { StoreSidebar, StoreTabs, type NavGroup, type NavItem } from "@/components/admin/store-admin-nav";
 import { StoreMain } from "@/components/admin/store-main";
@@ -12,6 +13,7 @@ import { avatarFor } from "@/server/avatars";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 import { countPendingRequests } from "@/server/platform";
 
+import { colorModeAction } from "../account/actions";
 import { signOut } from "../actions";
 
 /**
@@ -149,6 +151,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
                   <Avatar avatar={avatar} size={28} />
                   <span className="truncate">{account.email}</span>
                 </Link>
+                <AdminColorSwitch save={colorModeAction} />
                 <SignOutForm action={signOut} />
               </div>
             </div>
@@ -184,6 +187,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
               {account.email} <span className="text-muted">({role})</span>
             </span>
           </Link>
+          <AdminColorSwitch save={colorModeAction} className="flex size-10 items-center justify-center rounded-md border border-border hover:bg-surface" />
           <SignOutForm action={signOut} />
         </div>
       </MobileMenu>

@@ -6,6 +6,7 @@ import { connection } from "next/server";
 import { cache } from "react";
 
 import { db } from "@/db/client";
+import { isColorChoice, type ColorChoice } from "@/lib/color-mode";
 import { createClient } from "@/lib/supabase/server";
 
 import { getStore, type Store } from "./stores";
@@ -20,6 +21,8 @@ export type Account = {
   platformAdmin: boolean;
   /** Their own profile picture in the avatars bucket (D97), if they chose one. */
   avatarPath?: string | null;
+  /** The admin's colours for them (D99): their device's, light or dark. */
+  colorMode?: ColorChoice;
 };
 
 /** An account's access to one store. */
@@ -35,6 +38,7 @@ const toAccount = (row: Row): Account => ({
   name: row.name ? String(row.name) : null,
   platformAdmin: Boolean(row.platform_admin),
   avatarPath: row.avatar_path ? String(row.avatar_path) : null,
+  colorMode: isColorChoice(row.color_mode) ? row.color_mode : "system",
 });
 
 /**
@@ -57,7 +61,7 @@ export const getAccount = cache(async (): Promise<Account | null> => {
   if (error || typeof userId !== "string") return null;
 
   const [row] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode from commerce.accounts
     where auth_user_id = ${userId}::uuid and disabled_at is null
   `);
   return row ? toAccount(row) : null;
@@ -165,9 +169,14 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
      where lower(email) = lower(${email})
        and disabled_at is null
        and (auth_user_id is null or auth_user_id = ${authUserId}::uuid)
-    returning id, email, name, platform_admin, avatar_path
+    returning id, email, name, platform_admin, avatar_path, color_mode
   `);
   return row ? toAccount(row) : null;
+}
+
+/** Keeps the account's light or dark for the admin (D99), so it follows them to any device. */
+export async function saveColorMode(accountId: string, choice: ColorChoice): Promise<void> {
+  await db().execute(sql`update commerce.accounts set color_mode = ${choice} where id = ${accountId}::uuid`);
 }
 
 /** Records a staff, settings or platform change. Never pass secrets in `details`. */

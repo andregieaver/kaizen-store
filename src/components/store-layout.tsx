@@ -15,6 +15,7 @@ import { CartLink, CartLinkShell } from "./cart-link";
 import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
 import { LogoPicture } from "./logo-picture";
+import { StoreColorSwitch } from "./store-color-switch";
 import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
@@ -184,6 +185,7 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
   const tools = (
     <div className={`flex items-center gap-1 ${centred ? "justify-end" : "ml-auto"}`}>
       <MarketChoice store={store} market={market} m={m} />
+      {store.theme.settings.visitorSwitch && <StoreColorSwitch store={store} labels={m.colorMode} />}
       <Link href={`${base}/search`} className="flex size-11 items-center justify-center rounded-full hover:bg-current/5">
         <Icon name="search" />
         <span className="sr-only">{m.search.title}</span>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ADMIN_COLOR_KEY, colorModeScript } from "@/lib/color-mode";
 import { siteIcons } from "@/lib/site-icons";
 import { getPlatformFavicon } from "@/server/platform-navigation";
 
@@ -16,7 +17,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
   return (
-    <html lang="en" className="h-full scroll-pt-20 antialiased">
+    // The account's light or dark (D99) is on <html> before the page is drawn, so it never flashes the other colours.
+    <html lang="en" className="h-full scroll-pt-20 antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: colorModeScript(ADMIN_COLOR_KEY) }} />
+      </head>
       <body className="min-h-full bg-surface font-sans">{children}</body>
     </html>
   );

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { StoreColorScript } from "@/components/store-color-switch";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
@@ -59,8 +60,14 @@ export default async function ChooserLayout({ children, params }: Props) {
   if (!store) notFound();
   const market = store.markets[0];
   return (
-    <html lang={market?.lang ?? "en"} className="h-full antialiased" {...themeAttributes(store.theme.settings)}>
+    <html
+      lang={market?.lang ?? "en"}
+      className="h-full antialiased"
+      {...themeAttributes(store.theme.settings)}
+      suppressHydrationWarning={store.theme.settings.visitorSwitch}
+    >
       <body className="flex min-h-full flex-col font-sans" style={siteFontStyle(store.fonts)}>
+        <StoreColorScript store={store} />
         {/* The store's own fonts (D59) and theme (D60), as in its markets. */}
         <StoreThemeStyles store={store} />
         {children}

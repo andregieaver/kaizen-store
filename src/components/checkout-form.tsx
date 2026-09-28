@@ -14,6 +14,8 @@ import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent 
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
 import { captureCheckoutEmailAction, checkoutRemindersAction } from "@/app/s/[store]/[market]/checkout/actions";
 
+import { useShowsDark } from "./color-mode-switch";
+
 export type CheckoutFormLabels = {
   contact: string;
   delivery: string;
@@ -101,11 +103,8 @@ export function CheckoutForm({
 }) {
   // Stripe runs in the browser only; the server sends the waiting state.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
-  const dark = useSyncExternalStore(
-    noSubscribe,
-    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
-    () => false,
-  );
+  // Stripe's fields in the colours the page shows: the store's, the device's or the visitor's choice (D99).
+  const dark = useShowsDark();
   const stripe = useMemo(
     () => (inBrowser ? loadStripe(publishableKey, { stripeAccount, locale: locale as StripeElementLocale }) : null),
     [inBrowser, publishableKey, stripeAccount, locale],

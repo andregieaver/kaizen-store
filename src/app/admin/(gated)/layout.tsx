@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { AdminColorSwitch, AdminColorSync } from "@/components/admin/admin-colors";
 import { SignOutForm } from "@/components/admin/admin-trail";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { Avatar } from "@/components/avatar";
@@ -9,6 +10,7 @@ import { getAccount } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { countPendingRequests } from "@/server/platform";
 
+import { colorModeAction } from "./account/actions";
 import { signOut } from "./actions";
 
 export default function GatedLayout({ children }: LayoutProps<"/admin">) {
@@ -28,6 +30,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <SessionKeeper />
+      <AdminColorSync saved={account.colorMode ?? "system"} />
       {/* A store's admin has its own header, with the same links (D39). */}
       <OutsideStoreAdmin>
         <header className="border-b border-border bg-background">
@@ -49,6 +52,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
                 <Avatar avatar={avatarFor(account)} size={28} />
                 {account.email}
               </Link>
+              <AdminColorSwitch save={colorModeAction} />
               <SignOutForm action={signOut} />
             </div>
           </div>

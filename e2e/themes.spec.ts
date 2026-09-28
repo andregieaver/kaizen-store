@@ -140,9 +140,58 @@ test("the logo for dark backgrounds is shown where the background is dark", asyn
     const page = await context.newPage();
     await page.goto(`/s/${slug}/no`);
     const shown = (area: string) =>
-      page.locator(area).first().locator("img").first().evaluate((img: HTMLImageElement) => new URL(img.currentSrc).pathname);
+      // Both logos are there when they differ; the one for the colours shown is visible (D99).
+      page.locator(area).first().locator("img:visible").first().evaluate((img: HTMLImageElement) => new URL(img.currentSrc).pathname);
     await expect.poll(() => shown("header")).toBe(`/demo/${header}`);
     await expect.poll(() => shown("footer")).toBe(`/demo/${footer}`);
     await context.close();
   }
+});
+
+test("visitors choose light or dark where the store lets them, and the choice stays (D99)", async ({ page }) => {
+  const slug = `switch-${Date.now()}`;
+  const plain = `noswitch-${Date.now()}`;
+  const sql = testDb();
+  try {
+    for (const [store, visitorSwitch] of [
+      [slug, true],
+      [plain, false],
+    ] as const) {
+      const [request] = await sql`
+        insert into commerce.access_requests (email, name, store_name)
+        values (${`${store}@example.com`}, 'Kari', 'Karis Kopper') returning id`;
+      await sql`select commerce.approve_access_request(${request.id}, ${store}, 'Karis Kopper', null)`;
+      // Always light, with Minimal's dark colours for visitors who choose them.
+      await sql`update commerce.stores set theme = ${sql.json({ base: "minimal", settings: { mode: "light", visitorSwitch } })} where slug = ${store}`;
+    }
+  } finally {
+    await sql.end();
+  }
+
+  const background = () => page.locator("html").evaluate((el) => getComputedStyle(el).getPropertyValue("--background").trim());
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto(`/s/${plain}/no`);
+  await expect(page.getByRole("button", { name: "Bytt til mørke farger" })).toHaveCount(0);
+
+  await page.goto(`/s/${slug}/no`);
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("data-color-mode", "light");
+  expect(await background()).toBe("#ffffff");
+  await page.getByRole("button", { name: "Bytt til mørke farger" }).click();
+  await expect(html).toHaveAttribute("data-color-mode", "dark");
+  expect(await background()).toBe("#0a0a0a");
+  // Tailwind's dark: follows the choice, not the device.
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe("dark");
+
+  // The next page opens dark before anything is drawn.
+  await page.goto(`/s/${slug}/no/p/demo-keramikkopp`);
+  await expect(html).toHaveAttribute("data-color-mode", "dark");
+  expect(await background()).toBe("#0a0a0a");
+  // Back to the store's own light forgets the choice.
+  await page.getByRole("button", { name: "Bytt til lyse farger" }).click();
+  await expect(html).toHaveAttribute("data-color-mode", "light");
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("color_mode_")))).toEqual([]);
+  // The cookie page lists what it kept.
+  await page.goto(`/s/${slug}/no/cookies`);
+  await expect(page.getByText("color_mode_…")).toBeVisible();
 });

@@ -231,6 +231,8 @@ export const accounts = commerce.table(
     name: text("name"),
     /** Their profile picture (D97): a path in the `avatars` bucket; without one, Gravatar, then initials. */
     avatarPath: text("avatar_path"),
+    /** The admin's colours for them (D99): `system` (their device's), `light` or `dark`. */
+    colorMode: text("color_mode").notNull().default("system"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
     /** The owner asked Kaizen for no reminders about plans left unpaid (D33). */
@@ -238,7 +240,10 @@ export const accounts = commerce.table(
     createdAt: createdAt(),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
   },
-  (t) => [uniqueIndex("accounts_email_idx").on(sql`lower(${t.email})`)],
+  (t) => [
+    uniqueIndex("accounts_email_idx").on(sql`lower(${t.email})`),
+    check("accounts_color_mode", sql`${t.colorMode} in ('system', 'light', 'dark')`),
+  ],
 );
 
 /** Someone asking to join the beta (docs/platform.md, P3). */

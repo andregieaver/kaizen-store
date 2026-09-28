@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
+import { AppearanceField } from "@/components/admin/admin-colors";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
@@ -12,6 +13,7 @@ import { lifeLink, lifeLinkOn } from "@/server/kaizen-life-link";
 
 import {
   accountAvatarAction,
+  colorModeAction,
   connectKaizenLifeAction,
   connectLifeAssistantAction,
   disconnectKaizenLifeAction,
@@ -62,6 +64,14 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
             unreadable: "That file could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.",
           }}
         />
+      </section>
+
+      <section aria-labelledby="appearance-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="appearance-heading" className="font-medium">
+          Light or dark
+        </h2>
+        <p className="text-sm text-muted">How the admin looks for you. Your stores keep the colours set under Design.</p>
+        <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} />
       </section>
 
       <section aria-labelledby="password-heading" className="flex max-w-md flex-col gap-3">

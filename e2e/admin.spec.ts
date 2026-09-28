@@ -132,3 +132,19 @@ test("someone from Kaizen Life without a store asks for one with what Kaizen Lif
   await page.goto("/sign-up");
   await expect(page.getByLabel("Email")).toHaveValue("");
 });
+
+test("the admin opens in the light or dark someone chose, before it is drawn (D99)", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/admin/sign-in");
+  const html = page.locator("html");
+  await expect(html).not.toHaveAttribute("data-color-mode", /./);
+  await page.evaluate(() => localStorage.setItem("kaizen_admin_color_mode", "dark"));
+  await page.reload();
+  await expect(html).toHaveAttribute("data-color-mode", "dark");
+  expect(await html.evaluate((el) => getComputedStyle(el).getPropertyValue("--background").trim())).toBe("#0a0a0a");
+  // Dark by choice on a light device, and light by choice on a dark one.
+  await page.evaluate(() => localStorage.setItem("kaizen_admin_color_mode", "light"));
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.reload();
+  expect(await html.evaluate((el) => getComputedStyle(el).getPropertyValue("--background").trim())).toMatch(/^#f{3}(f{3})?$/);
+});

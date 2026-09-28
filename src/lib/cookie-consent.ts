@@ -128,6 +128,8 @@ export type KnownCookie = {
   buyers?: boolean;
   /** Set only on sites whose chat agent is on (D81). */
   chat?: boolean;
+  /** Set only in stores that let visitors choose light or dark (D99). */
+  colorMode?: boolean;
 };
 
 /**
@@ -136,6 +138,37 @@ export type KnownCookie = {
  * site's cookie page and should be reviewed with the other legal texts.
  */
 export const KNOWN_COOKIES: KnownCookie[] = [
+  {
+    // In local storage, not a cookie: only once a visitor chooses light or dark (D99).
+    name: "color_mode_…",
+    pattern: /^color_mode_[0-9a-f-]{36}$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "store",
+    colorMode: true,
+    purpose: {
+      en: "Remembers whether you chose light or dark colours for this store; kept in your browser until you choose again.",
+      nb: "Husker om du valgte lyse eller mørke farger for denne butikken; lagres i nettleseren til du velger på nytt.",
+      sv: "Kommer ihåg om du valde ljusa eller mörka färger för den här butiken; sparas i webbläsaren tills du väljer igen.",
+      da: "Husker, om du valgte lyse eller mørke farver til denne butik; gemmes i din browser, indtil du vælger igen.",
+    },
+  },
+  {
+    // In local storage, not a cookie: set in Kaizen's admin by someone signed in who chooses light or dark (D99).
+    name: "kaizen_admin_color_mode",
+    pattern: /^kaizen_admin_color_mode$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    purpose: {
+      en: "In Kaizen's admin: remembers whether you chose light or dark colours, so pages open in them.",
+      nb: "I Kaizens administrasjon: husker om du valgte lyse eller mørke farger, så sidene åpnes med dem.",
+      sv: "I Kaizens administration: kommer ihåg om du valde ljusa eller mörka färger, så att sidorna öppnas med dem.",
+      da: "I Kaizens administration: husker, om du valgte lyse eller mørke farver, så siderne åbner med dem.",
+    },
+  },
   {
     // In the tab's session storage, not a cookie: only once a visitor writes to the chat agent (D81).
     name: "kaizen_chat",
@@ -357,13 +390,14 @@ export const cookiePurpose = (cookie: Pick<KnownCookie, "purpose">, lang: string
 export function declaredCookies(
   site: "platform" | "store",
   tracking: TrackingSettings,
-  { buyers = false, chat = false }: { buyers?: boolean; chat?: boolean } = {},
+  { buyers = false, chat = false, colorMode = false }: { buyers?: boolean; chat?: boolean; colorMode?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
       (cookie.on === site || cookie.on === "both") &&
       (!cookie.buyers || buyers) &&
       (!cookie.chat || chat) &&
+      (!cookie.colorMode || colorMode) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );
 }

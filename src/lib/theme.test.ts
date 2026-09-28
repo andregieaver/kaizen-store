@@ -61,17 +61,42 @@ describe("design themes (D60)", () => {
     expect(auto).toContain("html[data-store-theme] { color-scheme: light; --background: #faf6ef;");
     expect(auto).toContain("--accent: #a84a26; --accent-foreground: #fffaf3");
     expect(auto).toContain("--button-radius: 0.375rem; --radius-lg: 0.25rem; --radius-md: 0.375rem; --content-width: 64rem; --card-aspect: 3 / 4; --heading-weight: 600");
-    expect(auto).toContain("@media (prefers-color-scheme: dark) { html[data-store-theme] { color-scheme: dark; --background: #1c1612;");
+    // The device decides, unless the visitor chose light (D99)…
+    expect(auto).toContain(
+      '@media (prefers-color-scheme: dark) { html[data-store-theme]:not([data-color-mode="light"], [data-color-mode="light"] *) { color-scheme: dark; --background: #1c1612;',
+    );
+    // …or dark.
+    expect(auto).toContain('html[data-store-theme][data-color-mode="dark"], :where([data-color-mode="dark"]) html[data-store-theme]:not([data-color-mode]) { color-scheme: dark; --background: #1c1612;');
+    // Always light: no device's mode, and dark only by the visitor's choice.
     const light = themeCss(warm, "x");
     expect(light).not.toContain("@media");
+    expect(light).toMatch(/^x \{ color-scheme: light;/);
+    expect(light).toContain('x[data-color-mode="dark"], :where([data-color-mode="dark"]) x:not([data-color-mode]) { color-scheme: dark;');
+    // Always dark: light by choice.
+    expect(themeCss({ ...warm, mode: "dark" }, "x")).toContain('x[data-color-mode="light"]');
+    // The admin's preview shows one set only.
+    expect(themeCss(warm, "x", "dark")).toBe(`x { ${themeCss(warm, "x", "dark").slice(4, -2)} }`);
     expect(themeCss(warm, "x", "dark")).toContain("--background: #1c1612");
+    expect(themeCss(warm, "x", "dark")).not.toContain("data-color-mode");
     expect(themeAttributes(warm)).toEqual({
       "data-store-theme": "",
       "data-button-style": "filled",
       "data-heading-case": "normal",
       "data-card-style": "bordered",
       "data-card-align": "center",
+      // Always light says so, so that `dark:` does not follow the device (D99).
+      "data-color-mode": "light",
     });
+    expect(themeAttributes({ ...warm, mode: "auto" })).not.toHaveProperty("data-color-mode");
+  });
+
+  it("lets visitors choose light or dark only where the owner says so (D99)", () => {
+    expect(templateSettings("minimal").visitorSwitch).toBe(false);
+    expect(parseStoreTheme({ base: "warm", settings: { visitorSwitch: true } }).settings.visitorSwitch).toBe(true);
+    // A store always light warns about its dark colours too once visitors may choose them.
+    const pale = { ...templateSettings("warm"), dark: { ...templateSettings("warm").dark, muted: templateSettings("warm").dark.background } };
+    expect(themeWarnings(pale)).toEqual([]);
+    expect(themeWarnings({ ...pale, visitorSwitch: true })).toEqual([expect.stringMatching(/in the dark colours is hard to read/)]);
   });
 
   it("measures contrast as WCAG does, and names the pairs that are hard to read", () => {
@@ -82,15 +107,16 @@ describe("design themes (D60)", () => {
     expect(themeWarnings(pale)).toEqual([expect.stringMatching(/^Secondary text on the background in the light colours is hard to read/)]);
   });
 
-  it("knows where a logo sits on a dark background, by device and theme", () => {
-    // Minimal follows the device: dark behind the logo only in dark mode.
+  it("knows where a logo sits on a dark background, in the theme's light and dark colours", () => {
+    // Minimal: dark behind the logo only in its dark colours.
     expect(darkBehindLogo(templateSettings("minimal"), "header")).toEqual({ light: false, dark: true });
-    // Warm classic is always light.
-    expect(darkBehindLogo(templateSettings("warm"), "header")).toEqual({ light: false, dark: false });
+    // Warm classic is always light, but its dark colours show where a visitor chooses dark (D99).
+    expect(darkBehindLogo(templateSettings("warm"), "header")).toEqual({ light: false, dark: true });
     // Bold modern's inverted header is black in light mode and light in dark mode; its page the other way round.
     expect(darkBehindLogo(templateSettings("bold"), "header")).toEqual({ light: true, dark: false });
     expect(darkBehindLogo(templateSettings("bold"), "page")).toEqual({ light: false, dark: true });
     const accentHeader = { ...templateSettings("warm"), layout: { ...templateSettings("warm").layout, headerBackground: "accent" as const } };
-    expect(darkBehindLogo(accentHeader, "header")).toEqual({ light: true, dark: true });
+    // Its accent is dark in its light colours and light in its dark ones.
+    expect(darkBehindLogo(accentHeader, "header")).toEqual({ light: true, dark: false });
   });
 });

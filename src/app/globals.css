@@ -1,6 +1,23 @@
 @import "tailwindcss";
 
+/*
+ * Light and dark (D99): a choice on <html data-color-mode>, else the
+ * device's. Tailwind's `dark:` follows the same, so the admin, Kaizen's
+ * site and stores are dark exactly when their colours are.
+ */
+@custom-variant dark {
+  &:where([data-color-mode="dark"], [data-color-mode="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:not([data-color-mode="light"], [data-color-mode="light"] *)) {
+      @slot;
+    }
+  }
+}
+
 :root {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
   --muted: #525252;
@@ -32,12 +49,44 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-color-mode="light"]) {
+    color-scheme: dark;
     --background: #0a0a0a;
     --foreground: #ededed;
     --muted: #a3a3a3;
     --surface: #1c1c1c;
     --border: #2e2e2e;
+  }
+}
+:root[data-color-mode="dark"] {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --muted: #a3a3a3;
+  --surface: #1c1c1c;
+  --border: #2e2e2e;
+}
+
+/*
+ * A logo for each set of colours (D60, D99): the one for dark colours shows
+ * while they do. Hidden pictures load lazily, so only the shown one is
+ * fetched. Unlayered, so these win over the logo's own display utility.
+ */
+.for-dark-colors {
+  display: none;
+}
+[data-color-mode="dark"] .for-light-colors {
+  display: none;
+}
+[data-color-mode="dark"] .for-dark-colors {
+  display: revert-layer;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-color-mode="light"]) .for-light-colors {
+    display: none;
+  }
+  :root:not([data-color-mode="light"]) .for-dark-colors {
+    display: revert-layer;
   }
 }
 

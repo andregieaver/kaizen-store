@@ -27,6 +27,7 @@ export default async function StoreCookiesPage({ params }: Props) {
   if (!shop) notFound();
   const { cookies, categories } = await siteCookies(shop.store.id, shop.store.tracking, liveCustomCode(shop.store.customCode), {
     buyers: shop.store.audience === "both",
+    colorMode: shop.store.theme.settings.visitorSwitch,
   });
   return <CookiePolicy lang={shop.market.lang} cookies={cookies} categories={categories} />;
 }

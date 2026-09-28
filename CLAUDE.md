@@ -652,6 +652,12 @@ of running `playwright install`.
   `<Avatar avatar={avatarFor(person)} />`: their picture, else their
   Gravatar through the signed `/api/gravatar/{hash}` proxy (never link to
   Gravatar from a page), else their initials.
+- Light and dark (D99, `src/lib/color-mode.ts`): a person's choice is
+  `data-color-mode` on `<html>`, else the device's; globals.css, `dark:`,
+  store themes (`themeCss()`) and logos (`LogoPicture`) follow it, so never
+  read `prefers-color-scheme` directly (use `showsDark()`/`useShowsDark()`).
+  The admin's is the account's (`accounts.color_mode`, Your account and the
+  headers' switch); a store's visitors choose where `visitorSwitch` is on.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

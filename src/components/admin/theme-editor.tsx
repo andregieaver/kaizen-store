@@ -156,6 +156,8 @@ function Preview({ settings, storeName, mode }: { settings: ThemeSettings; store
   return (
     <div
       {...themeAttributes(settings)}
+      // The colours shown, so that everything drawn by light or dark inside follows them (D99).
+      data-color-mode={mode}
       data-theme-preview=""
       aria-label={`Preview in ${mode} colours`}
       role="img"
@@ -436,8 +438,31 @@ export function ThemeEditor({
               set({ mode });
               if (mode !== "auto") setPreviewMode(mode);
             }} />
-            <PaletteFields title={settings.mode === "dark" ? "Light colours (not shown)" : "Light colours"} value={settings.light} onChange={(light) => set({ light })} />
-            <PaletteFields title={settings.mode === "light" ? "Dark colours (not shown)" : "Dark colours"} value={settings.dark} onChange={(dark) => set({ dark })} />
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={settings.visitorSwitch}
+                onChange={(event) => set({ visitorSwitch: event.target.checked })}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">Let visitors choose light or dark</span>
+                <span className="block text-xs text-muted">
+                  A button in the header switches to the other colours for that visitor, and their browser remembers it. With a
+                  header of your own, add its Light or dark component.
+                </span>
+              </span>
+            </label>
+            <PaletteFields
+              title={settings.mode === "dark" && !settings.visitorSwitch ? "Light colours (not shown)" : "Light colours"}
+              value={settings.light}
+              onChange={(light) => set({ light })}
+            />
+            <PaletteFields
+              title={settings.mode === "light" && !settings.visitorSwitch ? "Dark colours (not shown)" : "Dark colours"}
+              value={settings.dark}
+              onChange={(dark) => set({ dark })}
+            />
             {warnings.length > 0 && (
               <ul className="list-disc rounded-md border border-amber-600 p-3 pl-8 text-sm" aria-label="Readability">
                 {warnings.map((w) => (
@@ -507,7 +532,7 @@ export function ThemeEditor({
         <aside className="flex flex-col gap-3 lg:sticky lg:top-4" aria-label="Preview">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-medium">Preview</h2>
-            {settings.mode === "auto" && (
+            {(settings.mode === "auto" || settings.visitorSwitch) && (
               <div className="flex gap-1" role="group" aria-label="Preview colours">
                 {(["light", "dark"] as const).map((mode) => (
                   <button
@@ -523,7 +548,7 @@ export function ThemeEditor({
               </div>
             )}
           </div>
-          <Preview settings={settings} storeName={storeName} mode={settings.mode === "auto" ? previewMode : settings.mode} />
+          <Preview settings={settings} storeName={storeName} mode={settings.mode === "auto" || settings.visitorSwitch ? previewMode : settings.mode} />
         </aside>
       </div>
     </div>
