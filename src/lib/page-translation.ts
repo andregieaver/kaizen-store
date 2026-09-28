@@ -64,6 +64,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       // The site's logo, menus and details have their own texts in each language already (D80, D85).
       return b;
     case "separator":
+    // Networks' names are theirs in every language.
+    case "socialLinks":
       return b;
     case "accordion":
       return { ...b, items: mapPanelItems(b.items, visit, key, "Section") };

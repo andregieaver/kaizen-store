@@ -252,3 +252,34 @@ describe("carousels", () => {
     expect(parse({ ...newBlock("testimonials", () => "t"), display: "carousel" })).toMatchObject({ display: "carousel" });
   });
 });
+
+describe("social media buttons", () => {
+  const social = {
+    id: "s",
+    type: "socialLinks",
+    links: [
+      { id: "a", network: "instagram", href: "instagram.com/kaizen" },
+      { id: "b", network: "email", href: "" },
+    ],
+    look: "filled",
+    shape: "rounded",
+  };
+
+  it("starts with two links to fill in, and shows once one has an address", () => {
+    const fresh = newBlock("socialLinks", () => "n");
+    expect(fresh).toMatchObject({ type: "socialLinks", links: [{ network: "facebook" }, { network: "instagram" }] });
+    expect(blockHasContent(fresh)).toBe(false);
+    const parsed = parse(social);
+    expect(parsed).toMatchObject({ look: "filled", shape: "rounded" });
+    expect(blockHasContent(parsed)).toBe(true);
+    expect(blockText(parsed)).toBe("");
+    expect(blockTextFields(parsed)).toEqual([]);
+  });
+
+  it("refuses an address that is not one, and an unknown network", () => {
+    expect(problems({ ...social, links: [{ id: "a", network: "email", href: "nobody" }] })).toEqual([
+      "A link has an address that is not one. Use the profile's web address, or an email address or phone number for those.",
+    ]);
+    expect(problems({ ...social, links: [{ id: "a", network: "myspace", href: "https://myspace.com" }] })).toEqual(["Choose a network for each link."]);
+  });
+});

@@ -33,6 +33,7 @@ import { embedUrl } from "@/lib/video-embed";
 import { HtmlFrame } from "./html-frame";
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
+import { SocialLinksView } from "./social-links-view";
 import { TabsView } from "./tabs-view";
 import { TestimonialCards } from "./testimonials-view";
 import { EmbeddedVideo, UploadedVideo } from "./video-view";
@@ -104,6 +105,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Faq block={block} />;
     case "video":
       return <Video block={block} />;
+    case "socialLinks":
+      return <SocialLinksView block={block} />;
     case "testimonials":
       // Google's reviews are fetched where they are shown (`GoogleReviewsSection`); the editor shows a stand-in.
       return block.source === "google" ? null : <Testimonials block={block} />;

@@ -281,3 +281,28 @@ test("a content grid as a carousel scrolls a screenful at a time with its arrows
   expect(first!.width).toBeLessThan(row!.width / 2);
   expect(first!.width).toBeGreaterThan(row!.width / 3);
 });
+
+test("social media buttons link to the profiles, each named for screen readers, opening in a new tab", async ({ page }) => {
+  const address = await storePageWith("social", [
+    {
+      id: "social",
+      type: "socialLinks",
+      links: [
+        { id: "a", network: "instagram", href: "instagram.com/kaizen" },
+        { id: "b", network: "linkedin", href: "https://www.linkedin.com/company/kaizen" },
+        { id: "c", network: "email", href: "post@example.com" },
+        { id: "d", network: "facebook", href: "" },
+      ],
+      look: "filled",
+    },
+  ]);
+  await page.goto(address);
+  const instagram = page.getByRole("link", { name: "Instagram" });
+  await expect(instagram).toHaveAttribute("href", "https://instagram.com/kaizen");
+  await expect(instagram).toHaveAttribute("target", "_blank");
+  await expect(instagram).toHaveAttribute("rel", "me noopener noreferrer");
+  await expect(page.getByRole("link", { name: "LinkedIn" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Email" })).toHaveAttribute("href", "mailto:post@example.com");
+  await expect(page.getByRole("link", { name: "Email" })).not.toHaveAttribute("target", "_blank");
+  await expect(page.getByRole("link", { name: "Facebook" })).toHaveCount(0);
+});

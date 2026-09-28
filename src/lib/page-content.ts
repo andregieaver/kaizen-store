@@ -4,6 +4,7 @@ import { fontFamily } from "./fonts";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { termIdsSchema } from "./taxonomy";
+import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "./social-links";
 import { embedUrl } from "./video-embed";
 
 /**
@@ -857,6 +858,44 @@ export type TestimonialsBlock = PartBase & {
 /** A testimonial that shows: it has its words. */
 export const testimonialShows = (item: Testimonial) => item.quote.trim() !== "";
 
+export const SOCIAL_LOOKS = { plain: "Icons", filled: "Filled", outline: "Outlined" } as const;
+export type SocialLook = keyof typeof SOCIAL_LOOKS;
+export const SOCIAL_SHAPES = { circle: "Circle", rounded: "Rounded", square: "Square" } as const;
+export type SocialShape = keyof typeof SOCIAL_SHAPES;
+export const SOCIAL_COLORS = { brand: "Each network's own", theme: "The site's", custom: "Chosen" } as const;
+export type SocialColors = keyof typeof SOCIAL_COLORS;
+export const SOCIAL_GAP_MAX = 48;
+
+/** One link: the network and what the owner typed (an address; an email address or phone number for those). */
+export type SocialLink = { id: string; network: SocialNetwork; href: string };
+
+/**
+ * Social media buttons (D91): links to the business's profiles, each its
+ * network's logo named for screen readers (and in words if set), opening
+ * in a new tab, as plain icons or in a filled or outlined circle, rounded
+ * or square, in each network's own colour, the site's or one chosen.
+ */
+export type SocialLinksBlock = PartBase & {
+  id: string;
+  type: "socialLinks";
+  links: SocialLink[];
+  look?: SocialLook;
+  shape?: SocialShape;
+  colors?: SocialColors;
+  /** With `colors: "custom"`. */
+  color?: string;
+  size?: ButtonSize;
+  /** Pixels between; 12 unless set. */
+  gap?: number;
+  position?: SeparatorPosition;
+  /** The network's name beside its logo. */
+  showNames?: boolean;
+  font?: string;
+};
+
+/** A link that shows: its address is one. */
+export const socialLinkShows = (link: SocialLink) => socialHref(link.network, link.href) !== null;
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -874,7 +913,8 @@ export type PageBlock =
   | FaqBlock
   | VideoBlock
   | HtmlBlock
-  | TestimonialsBlock;
+  | TestimonialsBlock
+  | SocialLinksBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -964,6 +1004,8 @@ export function blockHasContent(block: PageBlock): boolean {
       return block.source === "upload" ? block.video !== null : embedUrl(block.source, block.link) !== null;
     case "html":
       return block.html.trim() !== "";
+    case "socialLinks":
+      return block.links.some(socialLinkShows);
     case "testimonials":
       // Google's reviews are known only when the page is shown.
       return block.source === "google" || block.items.some(testimonialShows);
@@ -1004,6 +1046,7 @@ export function blockText(block: PageBlock): string {
     case "menu":
     case "separator":
     case "dualButton":
+    case "socialLinks":
     // Its words are in its own frame, not the page's.
     case "html":
       return "";
@@ -1671,6 +1714,36 @@ const testimonialsBlock = z.object({
   ...partBase,
 });
 
+const socialLinksBlock = z.object({
+  id: itemId,
+  type: z.literal("socialLinks"),
+  links: z
+    .array(
+      z
+        .object({
+          id: itemId,
+          network: z.enum(Object.keys(SOCIAL_NETWORKS) as [SocialNetwork, ...SocialNetwork[]], "Choose a network for each link."),
+          href: z.string().trim().max(500, "Keep an address under 500 characters."),
+        })
+        .refine((link) => link.href === "" || socialHref(link.network, link.href) !== null, {
+          message: "A link has an address that is not one. Use the profile's web address, or an email address or phone number for those.",
+          path: ["href"],
+        }),
+    )
+    .max(ITEMS_MAX, `A component holds at most ${ITEMS_MAX} items.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
+  look: z.enum(Object.keys(SOCIAL_LOOKS) as [SocialLook, ...SocialLook[]]).optional(),
+  shape: z.enum(Object.keys(SOCIAL_SHAPES) as [SocialShape, ...SocialShape[]]).optional(),
+  colors: z.enum(Object.keys(SOCIAL_COLORS) as [SocialColors, ...SocialColors[]]).optional(),
+  color: color.optional(),
+  size: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
+  gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
+  position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
+  showNames: z.boolean().optional(),
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1689,6 +1762,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   videoBlock,
   htmlBlock,
   testimonialsBlock,
+  socialLinksBlock,
 ]);
 
 export const pageColumnSchema = z.object({

@@ -3,6 +3,7 @@
 import { useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
+import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
 import { RichTextEditor } from "./rich-text-editor";
@@ -16,6 +17,12 @@ import {
   HTML_HEIGHT_MAX,
   HTML_MAX,
   type HtmlBlock,
+  SOCIAL_COLORS,
+  SOCIAL_GAP_MAX,
+  SOCIAL_LOOKS,
+  SOCIAL_SHAPES,
+  type SocialLink,
+  type SocialLinksBlock,
   TESTIMONIAL_COLUMNS,
   TESTIMONIAL_LOOKS,
   TESTIMONIAL_NAME_MAX,
@@ -103,6 +110,12 @@ export const BLOCK_EDITORS: Editors = {
   },
   video: { title: "Video", General: VideoFields, Style: VideoStyleFields },
   html: { title: "HTML", General: HtmlFields, Style: HtmlStyleFields },
+  socialLinks: {
+    title: "Social media",
+    font: { label: "Font of the names", fallback: "The site's body font" },
+    General: SocialLinksFields,
+    Style: SocialLinksStyleFields,
+  },
   testimonials: {
     title: "Testimonials",
     font: { label: "Font", fallback: "The site's body font" },
@@ -1108,6 +1121,88 @@ function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<Testimoni
       />
       <Choices legend="Look" options={optionsOf(TESTIMONIAL_LOOKS)} value={block.look ?? "cards"} onChange={(look) => onChange({ look: look === "cards" ? undefined : look })} />
       <Check label="Show stars" checked={block.showRating !== false} onChange={(show) => onChange({ showRating: show ? undefined : false })} />
+    </>
+  );
+}
+
+/** The profiles social media buttons link to (D91). */
+function SocialLinksFields({ block, onChange }: BlockEditorProps<SocialLinksBlock>) {
+  const networkId = useId();
+  return (
+    <>
+      <ItemsEditor<SocialLink>
+        label="Links"
+        items={block.links}
+        max={ITEMS_MAX}
+        addLabel="Add a link"
+        nameOf={(link) => `${SOCIAL_NETWORKS[link.network]}${link.href.trim() ? "" : " (no address yet)"}`}
+        newItem={() => ({ id: newItemId(), network: "facebook", href: "" })}
+        onChange={(links) => onChange({ links })}
+      >
+        {(link, change) => {
+          const typed = link.href.trim();
+          const works = typed === "" || socialHref(link.network, typed) !== null;
+          return (
+            <>
+              <div className="flex flex-col gap-1">
+                <label htmlFor={`${networkId}-${link.id}`} className="text-sm font-medium">
+                  Network
+                </label>
+                <select
+                  id={`${networkId}-${link.id}`}
+                  value={link.network}
+                  onChange={(event) => change({ network: event.target.value as SocialNetwork })}
+                  className={fieldClass}
+                >
+                  {(Object.keys(SOCIAL_NETWORKS) as SocialNetwork[]).map((network) => (
+                    <option key={network} value={network}>
+                      {SOCIAL_NETWORKS[network]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <TextField
+                label={link.network === "email" ? "Email address" : link.network === "phone" ? "Phone number" : "Address of the profile"}
+                value={link.href}
+                max={500}
+                placeholder={socialPlaceholder(link.network)}
+                hint={works ? undefined : "That is not an address this link can go to."}
+                onChange={(href) => change({ href })}
+              />
+            </>
+          );
+        }}
+      </ItemsEditor>
+      <p className="text-xs text-muted">Links open in a new tab. A link without an address is left out on the site.</p>
+    </>
+  );
+}
+
+/** How social media buttons look (D91). */
+function SocialLinksStyleFields({ block, onChange }: BlockEditorProps<SocialLinksBlock>) {
+  const look = block.look ?? "plain";
+  return (
+    <>
+      <Choices legend="Look" options={optionsOf(SOCIAL_LOOKS)} value={look} onChange={(value) => onChange({ look: value === "plain" ? undefined : value })} />
+      {look !== "plain" && (
+        <Choices legend="Shape" options={optionsOf(SOCIAL_SHAPES)} value={block.shape ?? "circle"} onChange={(shape) => onChange({ shape: shape === "circle" ? undefined : shape })} />
+      )}
+      <Choices
+        legend="Colours"
+        options={optionsOf(SOCIAL_COLORS)}
+        value={block.colors ?? "brand"}
+        onChange={(colors) => onChange({ colors: colors === "brand" ? undefined : colors, ...(colors !== "custom" && { color: undefined }) })}
+      />
+      {block.colors === "custom" && <ColorField label="Colour" value={block.color ?? "#111111"} onChange={(color) => onChange({ color })} />}
+      <Choices legend="Size" options={optionsOf(BUTTON_SIZES)} value={block.size ?? "md"} onChange={(size) => onChange({ size: size === "md" ? undefined : size })} />
+      <NumberField label="Space between" value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
+      <Choices
+        legend="Place"
+        options={optionsOf(SEPARATOR_POSITIONS)}
+        value={block.position ?? "left"}
+        onChange={(position) => onChange({ position: position === "left" ? undefined : position })}
+      />
+      <Check label="Show the networks' names" checked={Boolean(block.showNames)} onChange={(showNames) => onChange({ showNames: showNames || undefined })} />
     </>
   );
 }
