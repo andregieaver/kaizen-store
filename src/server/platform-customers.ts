@@ -31,6 +31,8 @@ export type PlatformCustomerRow = {
   id: string;
   email: string;
   name: string;
+  /** Their own profile picture (D97), if they chose one. */
+  avatarPath: string | null;
   createdAt: string;
   disabled: boolean;
   stores: PlatformCustomerStore[];
@@ -48,6 +50,7 @@ function toRow(row: Row): PlatformCustomerRow {
     id: String(row.id),
     email: String(row.email),
     name: String(row.name ?? ""),
+    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
     createdAt: new Date(String(row.created_at)).toISOString(),
     disabled: row.disabled_at !== null && row.disabled_at !== undefined,
     stores,
@@ -60,7 +63,7 @@ export async function listPlatformCustomers({ q = "", limit = 100 }: { q?: strin
   const search = q.trim().toLowerCase().slice(0, 100);
   const like = `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const rows = await db().execute<Row>(sql`
-    select a.id, a.email, a.name, a.created_at, a.disabled_at, ${storesJson} as stores,
+    select a.id, a.email, a.name, a.avatar_path, a.created_at, a.disabled_at, ${storesJson} as stores,
       count(*) filter (where b.status in (${onPlan}))::int as on_plan
     from commerce.accounts a
     join commerce.store_members m on m.account_id = a.id and m.disabled_at is null
@@ -85,7 +88,7 @@ export type PlatformCustomer = PlatformCustomerRow & {
 
 export async function getPlatformCustomer(accountId: string): Promise<PlatformCustomer | null> {
   const [row] = await db().execute<Row>(sql`
-    select a.id, a.email, a.name, a.created_at, a.disabled_at, a.platform_admin,
+    select a.id, a.email, a.name, a.avatar_path, a.created_at, a.disabled_at, a.platform_admin,
       a.plan_reminders_opted_out_at is not null as opted_out, ${storesJson} as stores,
       count(*) filter (where b.status in (${onPlan}))::int as on_plan
     from commerce.accounts a
@@ -117,15 +120,21 @@ export async function getPlatformCustomer(accountId: string): Promise<PlatformCu
   };
 }
 
-export type StorePerson = { id: string; email: string; name: string; role: string };
+export type StorePerson = { id: string; email: string; name: string; role: string; avatarPath: string | null };
 
 /** The people who run a store, owners first: who the platform's subscription and invoices belong to. */
 export async function listStorePeople(storeId: string): Promise<StorePerson[]> {
   const rows = await db().execute<Row>(sql`
-    select a.id, a.email, a.name, m.role from commerce.store_members m
+    select a.id, a.email, a.name, a.avatar_path, m.role from commerce.store_members m
     join commerce.accounts a on a.id = m.account_id
     where m.store_id = ${storeId}::uuid and m.disabled_at is null
     order by m.role = 'owner' desc, lower(a.email)
   `);
-  return rows.map((row) => ({ id: String(row.id), email: String(row.email), name: String(row.name ?? ""), role: String(row.role) }));
+  return rows.map((row) => ({
+    id: String(row.id),
+    email: String(row.email),
+    name: String(row.name ?? ""),
+    role: String(row.role),
+    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
+  }));
 }

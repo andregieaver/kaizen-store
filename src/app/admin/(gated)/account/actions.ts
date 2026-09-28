@@ -1,13 +1,16 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
+import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
 import { audit, requireAccount } from "@/server/auth";
+import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { LINK_COOKIE, linkStart, unlinkLife } from "@/server/kaizen-life-link";
 
@@ -42,6 +45,30 @@ export async function setPasswordAction(_state: FormState, formData: FormData): 
     status: "ok",
     messages: ["Password saved. Next time, sign in with your email and this password."],
   };
+}
+
+const AVATAR_PROBLEMS = {
+  off: "Uploads are not set up on this server.",
+  invalid: "Use a JPEG, PNG, WebP or AVIF picture.",
+  failed: "The picture could not be uploaded. Try again.",
+} as const;
+
+/** Sets (`picture`) or takes away (`remove`) the signed-in account's profile picture (D97). */
+export async function accountAvatarAction(form: FormData): Promise<AvatarPickerState> {
+  const account = await requireAccount();
+  if (form.get("remove") === "1") {
+    await removeAccountAvatar(account.id);
+    await audit(account.id, null, "account.avatar_removed");
+    refresh();
+    return { ok: true, message: "Picture removed." };
+  }
+  const picture = form.get("picture");
+  if (!(picture instanceof File)) return { ok: false, message: AVATAR_PROBLEMS.invalid };
+  const outcome = await setAccountAvatar(account.id, picture);
+  if (!outcome.ok) return { ok: false, message: AVATAR_PROBLEMS[outcome.reason] };
+  await audit(account.id, null, "account.avatar_set");
+  refresh();
+  return { ok: true, message: "Picture saved." };
 }
 
 /** Connects the account's Kaizen Life account (D95): off to Kaizen Life, back to Your account. Owners only. */

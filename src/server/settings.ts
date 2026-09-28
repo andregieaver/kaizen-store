@@ -144,6 +144,9 @@ export async function recentAudit(storeId: string, limit = 20): Promise<AuditEnt
 export type StaffMember = {
   accountId: string;
   email: string;
+  name: string | null;
+  /** Their own profile picture (D97), if they chose one. */
+  avatarPath: string | null;
   role: Role;
   signedInBefore: boolean;
   disabled: boolean;
@@ -151,7 +154,7 @@ export type StaffMember = {
 
 export async function listStaff(storeId: string): Promise<StaffMember[]> {
   const rows = await db().execute<Row>(sql`
-    select a.id, a.email, m.role, a.auth_user_id is not null as linked,
+    select a.id, a.email, a.name, a.avatar_path, m.role, a.auth_user_id is not null as linked,
            (m.disabled_at is not null or a.disabled_at is not null) as disabled
     from commerce.store_members m
     join commerce.accounts a on a.id = m.account_id
@@ -161,6 +164,8 @@ export async function listStaff(storeId: string): Promise<StaffMember[]> {
   return rows.map((row) => ({
     accountId: String(row.id),
     email: String(row.email),
+    name: row.name ? String(row.name) : null,
+    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
     role: row.role as Role,
     signedInBefore: Boolean(row.linked),
     disabled: Boolean(row.disabled),

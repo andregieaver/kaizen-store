@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
 import { chooseBusinessBuyer } from "./b2b";
+import { removeAvatarFiles } from "./media";
 import type { Address } from "./orders";
 
 type Row = Record<string, unknown>;
@@ -409,6 +410,8 @@ export type Customer = {
   phone: string;
   address: Address;
   hasPassword: boolean;
+  /** Their own profile picture (D97), if they chose one. */
+  avatarPath: string | null;
   /** The company they buy for (B2B), empty unless saved; with a number, they buy as a business. */
   companyName: string;
   organisationNumber: string;
@@ -420,7 +423,7 @@ export async function getCustomer(storeId: string): Promise<Customer | null> {
   if (!token || token.length > 100) return null;
   const [row] = await db().execute<Row>(sql`
     select c.id, c.email, c.name, c.phone, c.address, c.password_hash is not null as has_password,
-      c.company_name, c.organisation_number
+      c.company_name, c.organisation_number, c.avatar_path
     from commerce.customer_sessions s
     join commerce.customers c on c.store_id = s.store_id and c.id = s.customer_id
     where s.store_id = ${storeId}::uuid and s.token_hash = ${sha256(token)} and s.expires_at > now()
@@ -433,6 +436,7 @@ export async function getCustomer(storeId: string): Promise<Customer | null> {
     phone: String(row.phone),
     address: (row.address ?? {}) as Address,
     hasPassword: Boolean(row.has_password),
+    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
     companyName: String(row.company_name ?? ""),
     organisationNumber: String(row.organisation_number ?? ""),
   };
@@ -453,16 +457,20 @@ export async function updateCustomerDetails(
 }
 
 /**
- * Deletes the account: details, password and sessions go. Orders stay, as
- * bookkeeping law requires, but no longer belong to an account.
+ * Deletes the account: details, password, profile picture and sessions go.
+ * Orders stay, as bookkeeping law requires, but no longer belong to an account.
  */
 export async function deleteCustomer(storeId: string, customerId: string): Promise<void> {
-  await db().transaction(async (tx) => {
+  const picture = await db().transaction(async (tx) => {
     await tx.execute(sql`update commerce.orders set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);
     await tx.execute(sql`update commerce.subscriptions set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);
     await tx.execute(sql`update commerce.carts set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);
-    await tx.execute(sql`delete from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid`);
+    const [row] = await tx.execute<Row>(sql`
+      delete from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid returning avatar_path
+    `);
+    return row?.avatar_path ? String(row.avatar_path) : null;
   });
+  if (picture) await removeAvatarFiles([picture]);
 }
 
 // ---------------------------------------------------------------------------

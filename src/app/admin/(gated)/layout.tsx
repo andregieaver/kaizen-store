@@ -3,8 +3,10 @@ import { Suspense } from "react";
 
 import { SignOutForm } from "@/components/admin/admin-trail";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
+import { Avatar } from "@/components/avatar";
 import { OutsideStoreAdmin } from "@/components/admin/store-admin-nav";
 import { getAccount } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 import { countPendingRequests } from "@/server/platform";
 
 import { signOut } from "./actions";
@@ -41,9 +43,10 @@ async function Gate({ children }: { children: React.ReactNode }) {
               )}
               <Link
                 href="/admin/account"
-                className="text-muted underline"
+                className="flex items-center gap-2 text-muted underline"
                 title="Your account"
               >
+                <Avatar avatar={avatarFor(account)} size={28} />
                 {account.email}
               </Link>
               <SignOutForm action={signOut} />

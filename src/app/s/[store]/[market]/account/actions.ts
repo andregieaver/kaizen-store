@@ -5,10 +5,12 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 
+import type { AvatarPickerState } from "@/components/avatar-picker";
 import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { t } from "@/lib/i18n";
 import { passwordProblem } from "@/lib/password";
 import { marketPath } from "@/lib/paths";
+import { removeCustomerAvatar, setCustomerAvatar } from "@/server/avatars";
 import { chooseBusinessBuyer } from "@/server/b2b";
 import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
@@ -151,6 +153,24 @@ export async function saveDetailsAction(
   if (company?.number && found.shop.store.audience === "both") await chooseBusinessBuyer(found.shop.store.id);
   refresh();
   return { ok: true, message: found.m.saved };
+}
+
+/** Sets (`picture`) or takes away (`remove`) the signed-in customer's profile picture (D97). */
+export async function avatarAction(storeSlug: string, marketSlug: string, form: FormData): Promise<AvatarPickerState> {
+  const found = await signedIn(storeSlug, marketSlug);
+  if (!found) return { ok: false, message: null };
+  const { shop, customer, m } = found;
+  if (form.get("remove") === "1") {
+    await removeCustomerAvatar(shop.store.id, customer.id);
+    refresh();
+    return { ok: true, message: m.pictureRemoved };
+  }
+  const picture = form.get("picture");
+  if (!(picture instanceof File)) return { ok: false, message: m.pictureUnreadable };
+  const outcome = await setCustomerAvatar(shop.store.id, customer.id, picture);
+  if (!outcome.ok) return { ok: false, message: outcome.reason === "invalid" ? m.pictureUnreadable : m.pictureFailed };
+  refresh();
+  return { ok: true, message: m.pictureSaved };
 }
 
 export async function setPasswordAction(

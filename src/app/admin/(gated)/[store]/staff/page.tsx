@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { Avatar } from "@/components/avatar";
 import { requireMember } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 import { listStaff } from "@/server/settings";
 
 import { disableStaffAction, inviteStaffAction } from "../../actions";
@@ -30,12 +32,15 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
         <ul className="divide-y divide-border">
           {members.map((member) => (
             <li key={member.accountId} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-              <div>
-                <p className="font-medium">{member.email}</p>
-                <p className="text-muted">
-                  {member.role}
-                  {member.disabled ? " · access removed" : member.signedInBefore ? "" : " · not signed in yet"}
-                </p>
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar avatar={avatarFor(member)} size={40} />
+                <div className="min-w-0">
+                  <p className="font-medium">{member.name ? `${member.name} (${member.email})` : member.email}</p>
+                  <p className="text-muted">
+                    {member.role}
+                    {member.disabled ? " · access removed" : member.signedInBefore ? "" : " · not signed in yet"}
+                  </p>
+                </div>
               </div>
               {isOwner && !member.disabled && member.accountId !== account.id && (
                 <ActionForm

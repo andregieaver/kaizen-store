@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { z } from "zod";
 
+import { Avatar } from "@/components/avatar";
 import { InvoiceList } from "@/components/admin/plan-invoices";
 import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listStoreInvoices } from "@/server/billing";
@@ -11,6 +12,7 @@ import { listEmails } from "@/server/email";
 import { getPlatformCustomer } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
 import { requirePlatformAdmin } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -48,7 +50,10 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
         <Link href="/admin/platform/customers" className="text-sm underline">
           Customers
         </Link>
-        <h1 className="text-2xl font-semibold">{customer.name || customer.email}</h1>
+        <h1 className="flex items-center gap-3 text-2xl font-semibold">
+          <Avatar avatar={avatarFor(customer)} size={48} />
+          <span className="min-w-0 break-words">{customer.name || customer.email}</span>
+        </h1>
         <p className="text-sm text-muted">
           <a href={`mailto:${customer.email}`} className="underline">
             {customer.email}

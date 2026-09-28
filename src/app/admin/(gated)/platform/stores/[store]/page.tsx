@@ -63,6 +63,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             href: `/admin/platform/customers/${owner.id}`,
             name: owner.name,
             email: owner.email,
+            avatarPath: owner.avatarPath,
             account: "verified",
             badge: `Owner of ${store.name}`,
             facts: [people.length === 1 ? "Runs the store alone" : `${people.length} people run the store`],

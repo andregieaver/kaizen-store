@@ -1,12 +1,16 @@
 import Link from "next/link";
 
+import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
+import { avatarFor } from "@/server/avatars";
 
 export type CustomerBarData = {
   /** Where the customer's page is. */
   href: string;
   name: string;
   email: string;
+  /** Their own profile picture (D97), if they chose one; else Gravatar or initials. */
+  avatarPath?: string | null;
   account: "verified" | "unverified" | null;
   /** "3 orders · 1 active subscription · 1 249,00 kr spent". */
   facts: string[];
@@ -26,12 +30,6 @@ export function moneyByCurrency(minor: Record<string, number>, locale: string): 
     .join(" + ");
 }
 
-function initials(name: string, email: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length >= 2) return `${words[0][0]}${words.at(-1)![0]}`.toUpperCase();
-  return (words[0]?.[0] ?? email[0] ?? "?").toUpperCase();
-}
-
 /**
  * Who an order, subscription or invoice belongs to (D35), at the top of
  * its page: the same bar everywhere, one click from the customer's page,
@@ -43,12 +41,7 @@ export function CustomerBar({ customer }: { customer: CustomerBarData }) {
       aria-label="Customer"
       className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-background p-4"
     >
-      <span
-        aria-hidden="true"
-        className="flex size-11 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background"
-      >
-        {initials(customer.name, customer.email)}
-      </span>
+      <Avatar avatar={avatarFor(customer)} size={44} className="bg-foreground font-semibold text-background" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">
           {customer.name || customer.email}
@@ -78,6 +71,7 @@ export function storeCustomerBar(
     key: string;
     name: string;
     email: string;
+    avatarPath: string | null;
     account: CustomerBarData["account"];
     orders: number;
     liveSubscriptions: number;
@@ -90,6 +84,7 @@ export function storeCustomerBar(
     href: `/admin/${storeSlug}/customers/${customer.key}`,
     name: customer.name,
     email: customer.email,
+    avatarPath: customer.avatarPath,
     account: customer.account,
     facts: [
       customer.orders === 1 ? "1 order" : `${customer.orders} orders`,

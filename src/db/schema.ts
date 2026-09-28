@@ -229,6 +229,8 @@ export const accounts = commerce.table(
     email: text("email").notNull(),
     authUserId: uuid("auth_user_id").unique(),
     name: text("name"),
+    /** Their profile picture (D97): a path in the `avatars` bucket; without one, Gravatar, then initials. */
+    avatarPath: text("avatar_path"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
     /** The owner asked Kaizen for no reminders about plans left unpaid (D33). */
@@ -1306,6 +1308,8 @@ export const customers = commerce.table(
     /** Business customers (B2B): the company they buy for, filled in at checkout or in My account. */
     companyName: text("company_name").notNull().default(""),
     organisationNumber: text("organisation_number").notNull().default(""),
+    /** Their profile picture (D97): a path in the `avatars` bucket; without one, Gravatar, then initials. */
+    avatarPath: text("avatar_path"),
     /** scrypt hash, when the customer has chosen a password; sign-in by emailed code always works. */
     passwordHash: text("password_hash"),
     failedSignIns: integer("failed_sign_ins").notNull().default(0),

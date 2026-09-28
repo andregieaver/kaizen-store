@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
+import { Avatar } from "@/components/avatar";
 import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listPlatformCustomers } from "@/server/platform-customers";
 import { requirePlatformAdmin } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -63,13 +65,18 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
               {customers.map((c) => (
                 <tr key={c.id} className="border-b border-border align-top last:border-0">
                   <td className="px-4 py-2">
-                    <Link href={`/admin/platform/customers/${c.id}`} className="font-medium underline-offset-2 hover:underline">
-                      {c.name || c.email}
-                    </Link>
-                    <span className="block text-xs text-muted">
-                      {c.name && `${c.email}`}
-                      {c.disabled && " · disabled"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <Avatar avatar={avatarFor(c)} size={32} />
+                      <div className="min-w-0">
+                        <Link href={`/admin/platform/customers/${c.id}`} className="font-medium underline-offset-2 hover:underline">
+                          {c.name || c.email}
+                        </Link>
+                        <span className="block text-xs text-muted">
+                          {c.name && `${c.email}`}
+                          {c.disabled && " · disabled"}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-2">
                     <ul className="flex flex-col gap-0.5">

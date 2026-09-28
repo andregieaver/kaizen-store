@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { requireAccount } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { lifeLink, lifeLinkOn } from "@/server/kaizen-life-link";
 
 import {
+  accountAvatarAction,
   connectKaizenLifeAction,
   connectLifeAssistantAction,
   disconnectKaizenLifeAction,
@@ -41,6 +44,25 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           Signed in as {account.name ? `${account.name} (${account.email})` : account.email}.
         </p>
       </div>
+
+      <section aria-labelledby="picture-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="picture-heading" className="font-medium">
+          Profile picture
+        </h2>
+        <AvatarPicker
+          avatar={avatarFor(account)}
+          ownPicture={Boolean(account.avatarPath)}
+          action={accountAvatarAction}
+          labels={{
+            choose: "Choose a picture",
+            change: "Change picture",
+            remove: "Remove picture",
+            working: "Saving …",
+            hint: "Shown to you and to the people you work with. Without a picture of your own, your Gravatar is shown if your email has one, else your initials.",
+            unreadable: "That file could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.",
+          }}
+        />
+      </section>
 
       <section aria-labelledby="password-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="password-heading" className="font-medium">

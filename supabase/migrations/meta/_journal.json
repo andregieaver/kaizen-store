@@ -1128,6 +1128,20 @@
       "when": 1790621420268,
       "tag": "20260928185020_kaizen_life_links_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1790629338724,
+      "tag": "20260928210218_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1790629341313,
+      "tag": "20260928210221_avatars_bucket",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
+import { Avatar } from "@/components/avatar";
 import { requireMember } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
 
 export const metadata: Metadata = { title: "Customers" };
@@ -67,13 +69,18 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
               {customers.map((c) => (
                 <tr key={c.key} className="border-b border-border last:border-0">
                   <td className="px-4 py-2">
-                    <Link href={`${base}/${c.key}`} className="font-medium underline-offset-2 hover:underline">
-                      {c.name || c.email}
-                    </Link>
-                    <span className="block text-xs text-muted">
-                      {c.name && `${c.email} · `}
-                      {accountLabel(c.account)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <Avatar avatar={avatarFor(c)} size={32} />
+                      <div className="min-w-0">
+                        <Link href={`${base}/${c.key}`} className="font-medium underline-offset-2 hover:underline">
+                          {c.name || c.email}
+                        </Link>
+                        <span className="block text-xs text-muted">
+                          {c.name && `${c.email} · `}
+                          {accountLabel(c.account)}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-2">
                     {c.orders}

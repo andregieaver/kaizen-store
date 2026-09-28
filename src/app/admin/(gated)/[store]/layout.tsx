@@ -4,9 +4,11 @@ import { after } from "next/server";
 import { AdminTrail, SignOutForm } from "@/components/admin/admin-trail";
 import { StoreSidebar, StoreTabs, type NavGroup, type NavItem } from "@/components/admin/store-admin-nav";
 import { StoreMain } from "@/components/admin/store-main";
+import { Avatar } from "@/components/avatar";
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { requireMember } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 import { countPendingRequests } from "@/server/platform";
 
@@ -31,6 +33,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const pending = account.platformAdmin ? await countPendingRequests() : 0;
 
   const base = `/admin/${store.slug}`;
+  const avatar = avatarFor(account);
   const tabs: NavItem[] = [
     { href: base, label: "Overview", exact: true },
     // The owner assistant (D94), for owners.
@@ -142,8 +145,9 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
               </Link>
               <div className="hidden items-center gap-3 lg:flex">
                 {platform}
-                <Link href="/admin/account" className="max-w-56 truncate text-muted underline" title={`Your account (${role})`}>
-                  {account.email}
+                <Link href="/admin/account" className="flex max-w-64 items-center gap-2 text-muted underline" title={`Your account (${role})`}>
+                  <Avatar avatar={avatar} size={28} />
+                  <span className="truncate">{account.email}</span>
                 </Link>
                 <SignOutForm action={signOut} />
               </div>
@@ -174,8 +178,11 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
             All your stores
           </Link>
           {platform}
-          <Link href="/admin/account" className="truncate underline">
-            {account.email} <span className="text-muted">({role})</span>
+          <Link href="/admin/account" className="flex items-center gap-2 underline">
+            <Avatar avatar={avatar} size={28} />
+            <span className="truncate">
+              {account.email} <span className="text-muted">({role})</span>
+            </span>
           </Link>
           <SignOutForm action={signOut} />
         </div>

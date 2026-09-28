@@ -5,10 +5,13 @@ import { Suspense } from "react";
 
 import { DeleteAccountButton, DetailsForm, PasswordForm, SignOutButton } from "@/components/account-forms";
 import { AccountAccess } from "@/components/account-sign-in";
+import { Avatar } from "@/components/avatar";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { renewalState, type PlanInterval } from "@/lib/subscriptions";
+import { avatarFor } from "@/server/avatars";
 import {
   getCustomer,
   type CustomerSubscription,
@@ -17,6 +20,8 @@ import {
   listCustomerSubscriptions,
 } from "@/server/customers";
 import { resolveShop } from "@/server/shop";
+
+import { avatarAction } from "./actions";
 
 type Props = PageProps<"/s/[store]/[market]/account">;
 
@@ -95,13 +100,18 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
   const base = marketPath(store.slug, market.slug);
   // Until the customer saves their own, the address their last order went to.
   const address = lastAddress ?? customer.address;
+  const avatar = avatarFor(customer);
+  const avatarColours = "bg-accent text-accent-foreground";
 
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-heading tracking-tight">{a.hello(customer.name.split(" ")[0] ?? "")}</h1>
-          <p className="text-sm text-muted">{a.signedInAs(customer.email)}</p>
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar avatar={avatar} size={56} className={avatarColours} />
+          <div className="min-w-0">
+            <h1 className="text-3xl font-heading tracking-tight">{a.hello(customer.name.split(" ")[0] ?? "")}</h1>
+            <p className="break-words text-sm text-muted">{a.signedInAs(customer.email)}</p>
+          </div>
         </div>
         <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
       </div>
@@ -191,6 +201,25 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
               ? undefined
               : { name: customer.companyName, number: customer.organisationNumber, labels: m.company }
           }
+        />
+      </section>
+
+      <section aria-labelledby="picture-heading" className="flex flex-col gap-3">
+        <h2 id="picture-heading" className="text-xl font-heading">{a.pictureTitle}</h2>
+        <AvatarPicker
+          avatar={avatar}
+          ownPicture={Boolean(customer.avatarPath)}
+          action={avatarAction.bind(null, store.slug, market.slug)}
+          avatarClassName={avatarColours}
+          buttonClassName="min-h-11 rounded-button border border-border px-5 disabled:opacity-40"
+          labels={{
+            choose: a.pictureChoose,
+            change: a.pictureChange,
+            remove: a.pictureRemove,
+            working: a.pictureWorking,
+            hint: a.pictureHint,
+            unreadable: a.pictureUnreadable,
+          }}
         />
       </section>
 

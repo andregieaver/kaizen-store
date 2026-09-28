@@ -640,6 +640,12 @@ of running `playwright install`.
   details); menu links take platform kinds (`PlatformMenuLink`: a page by
   id, home, sign-up, sign-in, a web address); `getPlatformChrome()` feeds
   `src/components/platform-layout.tsx`.
+- Profile pictures (D97, `src/server/avatars.ts`, `src/lib/avatar.ts`,
+  `src/lib/gravatar.ts`): accounts and customers have `avatar_path` in the
+  public `avatars` bucket, set with `AvatarPicker`. Draw anyone with
+  `<Avatar avatar={avatarFor(person)} />`: their picture, else their
+  Gravatar through the signed `/api/gravatar/{hash}` proxy (never link to
+  Gravatar from a page), else their initials.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

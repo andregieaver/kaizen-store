@@ -62,6 +62,7 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
             href: `/admin/platform/customers/${owner.id}`,
             name: owner.name,
             email: owner.email,
+            avatarPath: owner.avatarPath,
             account: "verified",
             badge: `${owner.role === "owner" ? "Owner" : "Staff"} of ${store.name}`,
             facts: [billing?.planName ? `${billing.planName}, ${SUBSCRIPTION_LABELS[billing.status ?? ""] ?? billing.status}` : "No plan"],

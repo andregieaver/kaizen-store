@@ -212,3 +212,47 @@ export async function signedDownloadUrl(path: string, name: string): Promise<str
   const { data } = await storage.createSignedUrl(path, 60, { download: name });
   return data?.signedUrl ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Profile pictures (D97)
+// ---------------------------------------------------------------------------
+
+const AVATARS_BUCKET = "avatars";
+const AVATAR_MAX_BYTES = 512 * 1024;
+const AVATAR_TYPES: Record<string, string> = { "image/webp": "webp", "image/jpeg": "jpg" };
+
+export type AvatarUpload = { ok: true; path: string } | { ok: false; reason: "off" | "invalid" | "failed" };
+
+function avatarStorage() {
+  const secret = secretKey();
+  if ("problem" in secret) return null;
+  return createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(AVATARS_BUCKET);
+}
+
+/**
+ * Stores a profile picture (already cropped to a small square by the
+ * browser) under a new name in `folder` of the public avatars bucket.
+ */
+export async function uploadAvatarFile(folder: string, file: File): Promise<AvatarUpload> {
+  const extension = AVATAR_TYPES[file.type];
+  if (!extension || file.size === 0 || file.size > AVATAR_MAX_BYTES) return { ok: false, reason: "invalid" };
+  const storage = avatarStorage();
+  if (!storage) return { ok: false, reason: "off" };
+  const path = `${folder}/${randomUUID()}.${extension}`;
+  const { error } = await storage.upload(path, file, { contentType: file.type, cacheControl: "31536000", upsert: false });
+  if (error) {
+    console.error("[media] profile picture upload failed:", error.message);
+    return { ok: false, reason: "failed" };
+  }
+  return { ok: true, path };
+}
+
+/** Removes profile pictures no longer used; a failure only leaves a file behind. */
+export async function removeAvatarFiles(paths: string[]): Promise<void> {
+  const storage = paths.length > 0 ? avatarStorage() : null;
+  if (!storage) return;
+  const { error } = await storage.remove(paths);
+  if (error) console.error("[media] profile pictures could not be removed:", error.message);
+}

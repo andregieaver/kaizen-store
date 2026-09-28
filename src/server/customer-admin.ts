@@ -60,6 +60,8 @@ async function keyFor(storeId: string, email: string, customerId: string | null)
 
 export type CustomerSummary = CustomerRef & {
   name: string;
+  /** Their own profile picture (D97), if they have an account and chose one. */
+  avatarPath: string | null;
   /** `verified` when the email is proven, `unverified` for a password account not yet proven, null for a guest. */
   account: "verified" | "unverified" | null;
   orders: number;
@@ -74,6 +76,7 @@ export async function customerSummary(storeId: string, id: string): Promise<Cust
   const [row] = await db().execute<Row>(sql`
     select
       (select c.name from commerce.customers c where c.id = ${ref.customerId}::uuid) as account_name,
+      (select c.avatar_path from commerce.customers c where c.id = ${ref.customerId}::uuid) as avatar_path,
       (select c.email_verified_at is not null from commerce.customers c where c.id = ${ref.customerId}::uuid) as verified,
       (select o.shipping_address ->> 'name' from commerce.orders o
        where o.store_id = ${storeId}::uuid and lower(o.email) = ${ref.email} and o.shipping_address ->> 'name' <> ''
@@ -91,6 +94,7 @@ export async function customerSummary(storeId: string, id: string): Promise<Cust
   return {
     ...ref,
     name: String(row.account_name || row.order_name || ""),
+    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
     account: ref.customerId ? (row.verified ? "verified" : "unverified") : null,
     orders: Number(row.orders),
     liveSubscriptions: Number(row.live),
@@ -102,6 +106,8 @@ export type CustomerListRow = {
   key: string;
   email: string;
   name: string;
+  /** Their own profile picture (D97), if they have an account and chose one. */
+  avatarPath: string | null;
   account: "verified" | "unverified" | null;
   orders: number;
   liveSubscriptions: number;
@@ -141,11 +147,11 @@ export async function listCustomers(storeId: string, { q = "", limit = 100 }: { 
       where s.store_id = ${storeId}::uuid and s.status in ${LIVE} group by 1
     ),
     accounts as (
-      select id, lower(email) as email, nullif(name, '') as name, created_at, email_verified_at is not null as verified
+      select id, lower(email) as email, nullif(name, '') as name, avatar_path, created_at, email_verified_at is not null as verified
       from commerce.customers where store_id = ${storeId}::uuid
     )
     select coalesce(a.email, b.email) as email, a.id as customer_id, b.latest_order,
-      coalesce(a.name, b.name, '') as name, a.verified,
+      coalesce(a.name, b.name, '') as name, a.avatar_path, a.verified,
       coalesce(b.orders, 0) as orders, coalesce(s.live, 0) as live, coalesce(sp.spent, '{}') as spent,
       b.last_order, least(a.created_at, b.first_order) as since
     from accounts a
@@ -160,6 +166,7 @@ export async function listCustomers(storeId: string, { q = "", limit = 100 }: { 
     key: String(row.customer_id ?? row.latest_order),
     email: String(row.email),
     name: String(row.name ?? ""),
+    avatarPath: row.avatar_path ? String(row.avatar_path) : null,
     account: row.customer_id ? (row.verified ? "verified" : "unverified") : null,
     orders: Number(row.orders),
     liveSubscriptions: Number(row.live),

@@ -18,6 +18,8 @@ export type Account = {
   email: string;
   name: string | null;
   platformAdmin: boolean;
+  /** Their own profile picture in the avatars bucket (D97), if they chose one. */
+  avatarPath?: string | null;
 };
 
 /** An account's access to one store. */
@@ -32,6 +34,7 @@ const toAccount = (row: Row): Account => ({
   email: String(row.email),
   name: row.name ? String(row.name) : null,
   platformAdmin: Boolean(row.platform_admin),
+  avatarPath: row.avatar_path ? String(row.avatar_path) : null,
 });
 
 /**
@@ -54,7 +57,7 @@ export const getAccount = cache(async (): Promise<Account | null> => {
   if (error || typeof userId !== "string") return null;
 
   const [row] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin from commerce.accounts
+    select id, email, name, platform_admin, avatar_path from commerce.accounts
     where auth_user_id = ${userId}::uuid and disabled_at is null
   `);
   return row ? toAccount(row) : null;
@@ -162,7 +165,7 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
      where lower(email) = lower(${email})
        and disabled_at is null
        and (auth_user_id is null or auth_user_id = ${authUserId}::uuid)
-    returning id, email, name, platform_admin
+    returning id, email, name, platform_admin, avatar_path
   `);
   return row ? toAccount(row) : null;
 }

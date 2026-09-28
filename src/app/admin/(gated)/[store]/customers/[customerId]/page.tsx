@@ -4,10 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
+import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requireMember } from "@/server/auth";
+import { avatarFor } from "@/server/avatars";
 import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 
@@ -48,7 +50,10 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
         <Link href={`${base}/customers`} className="text-sm underline">
           Customers
         </Link>
-        <h1 className="text-2xl font-semibold">{customer.name || customer.email}</h1>
+        <h1 className="mt-2 flex items-center gap-3 text-2xl font-semibold">
+          <Avatar avatar={avatarFor(customer)} size={48} />
+          <span className="min-w-0 break-words">{customer.name || customer.email}</span>
+        </h1>
         <p className="text-sm text-muted">
           {accountLabel(customer.account)}
           {customer.firstOrderAt && ` · first order ${date(customer.firstOrderAt)}`}
