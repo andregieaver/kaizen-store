@@ -1565,6 +1565,19 @@ describe("owners' own CSS (D100)", () => {
   });
 });
 
+describe("integrations with Slack (D101)", () => {
+  it("take Slack beside Zapier and Make, and no other service", async () => {
+    const shop = await createStore("slack-test", ["NO"]);
+    const connect = (provider: string) =>
+      db.query(
+        "insert into commerce.store_integrations (store_id, provider, enabled, webhook_url_encrypted, webhook_hint, events) values ($1, $2, true, 'x', 'hint', '{order.paid}')",
+        [shop, provider],
+      );
+    await expect(connect("slack")).resolves.toBeDefined();
+    await expect(connect("teams")).rejects.toThrow(/store_integrations_provider/);
+  });
+});
+
 describe("saved parts", () => {
   const save = (kind: string, name: string) =>
     db.query("insert into commerce.saved_parts (kind, name, content) values ($1, $2, '{}')", [kind, name]);

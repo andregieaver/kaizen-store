@@ -1,11 +1,13 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { isProvider } from "@/lib/integrations";
 import { requireMember, type Membership } from "@/server/auth";
 import { removeIntegration, saveIntegration, sendTest } from "@/server/integrations";
+import { SLACK_COOKIE, SLACK_COOKIE_PATH, slackStart } from "@/server/slack";
 
 /** Integrations send shoppers' details to another company, so only an owner connects or changes them (D41). */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
@@ -41,7 +43,9 @@ export async function sendTestAction(storeSlug: string, provider: string): Promi
   return {
     ok: false,
     message: outcome.status
-      ? `The service answered ${outcome.status}${outcome.error ? `: ${outcome.error}` : ""}. Check the address and that the Zap or scenario is listening.`
+      ? `The service answered ${outcome.status}${outcome.error ? `: ${outcome.error}` : ""}. ${
+          provider === "slack" ? "Check the address, and that the channel and the app still exist." : "Check the address and that the Zap or scenario is listening."
+        }`
       : (outcome.error ?? "The test could not be sent."),
   };
 }
@@ -52,4 +56,19 @@ export async function removeIntegrationAction(storeSlug: string, provider: strin
   if (!isProvider(provider)) return { ok: false, problems: ["Unknown integration."] };
   await removeIntegration(owner, provider);
   redirect(`/admin/${storeSlug}/integrations`);
+}
+
+/** "Add to Slack" (D101): off to Slack to pick a channel, back to `/api/integrations/slack/callback`. Owners only. */
+export async function connectSlackAction(storeSlug: string): Promise<void> {
+  const owner = await asOwner(storeSlug);
+  const start = typeof owner === "string" ? null : slackStart(owner.store.slug, owner.account.id);
+  if (!start) redirect(`/admin/${storeSlug}/integrations/slack`);
+  (await cookies()).set(SLACK_COOKIE, start.cookie, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: SLACK_COOKIE_PATH,
+    maxAge: 600,
+  });
+  redirect(start.url);
 }

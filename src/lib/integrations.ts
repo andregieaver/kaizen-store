@@ -1,9 +1,10 @@
 /**
  * Integrations (D41): the automation services a store can connect, the
  * store events Kaizen sends them, and the webhook addresses each accepts.
+ * Slack (D101) takes the same events as messages in a channel.
  */
 
-export type Provider = "zapier" | "make";
+export type Provider = "zapier" | "make" | "slack";
 
 export type IntegrationInfo = {
   id: Provider | "tripletex";
@@ -47,6 +48,19 @@ export const INTEGRATIONS: IntegrationInfo[] = [
     docs: "https://www.make.com/en/help/tools/webhooks",
   },
   {
+    id: "slack",
+    name: "Slack",
+    summary: "Get a message in a Slack channel when an order is paid, sent, cancelled or refunded, and for new customers and subscriptions.",
+    steps: [
+      "At api.slack.com/apps, choose Create New App, From scratch, and pick your workspace.",
+      "Under Incoming Webhooks, switch them on and choose Add New Webhook to Workspace.",
+      "Pick the channel for Kaizen's messages and allow it.",
+      "Copy the webhook URL Slack shows, paste it below, and send a test.",
+    ],
+    example: "https://hooks.slack.com/services/…",
+    docs: "https://api.slack.com/messaging/webhooks",
+  },
+  {
     id: "tripletex",
     name: "Tripletex",
     summary: "Orders, customers and payments straight into your Norwegian accounting.",
@@ -54,7 +68,7 @@ export const INTEGRATIONS: IntegrationInfo[] = [
   },
 ];
 
-export const PROVIDERS: Provider[] = ["zapier", "make"];
+export const PROVIDERS: Provider[] = ["zapier", "make", "slack"];
 
 export const isProvider = (value: string): value is Provider => (PROVIDERS as string[]).includes(value);
 
@@ -94,14 +108,18 @@ export function checkWebhookUrl(provider: Provider, text: string): { ok: true; u
   const hostOk =
     provider === "zapier"
       ? url.hostname === "hooks.zapier.com" && url.pathname.startsWith("/hooks/")
-      : /^hook\.[a-z0-9-]+\.make\.com$/.test(url.hostname) || url.hostname === "hook.integromat.com";
+      : provider === "slack"
+        ? url.hostname === "hooks.slack.com" && /^\/services\/[A-Z0-9]+\/[A-Z0-9]+\/[A-Za-z0-9]+$/.test(url.pathname) && !url.search
+        : /^hook\.[a-z0-9-]+\.make\.com$/.test(url.hostname) || url.hostname === "hook.integromat.com";
   if (url.protocol !== "https:" || url.port || url.username || url.password || !hostOk) {
     return {
       ok: false,
       problem:
         provider === "zapier"
           ? "That is not a Zapier webhook address. It starts with https://hooks.zapier.com/hooks/."
-          : "That is not a Make webhook address. It starts with https://hook. and ends in make.com.",
+          : provider === "slack"
+            ? "That is not a Slack webhook address. It starts with https://hooks.slack.com/services/."
+            : "That is not a Make webhook address. It starts with https://hook. and ends in make.com.",
     };
   }
   return { ok: true, url: url.toString() };
@@ -112,7 +130,7 @@ export function webhookHint(url: string): string {
   const parsed = new URL(url);
   const segments = parsed.pathname.split("/").filter(Boolean);
   // Only the service's own words stay; the rest is the secret.
-  const known = segments.filter((segment) => segment === "hooks" || segment === "catch");
+  const known = segments.filter((segment) => segment === "hooks" || segment === "catch" || segment === "services");
   const tail = (segments.at(-1) ?? "").slice(-4);
   return [parsed.hostname, ...known, `…${tail}`].join("/");
 }

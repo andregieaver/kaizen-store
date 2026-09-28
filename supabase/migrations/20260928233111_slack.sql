@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."store_integrations" DROP CONSTRAINT "store_integrations_provider";--> statement-breakpoint
+ALTER TABLE "commerce"."store_integrations" ADD CONSTRAINT "store_integrations_provider" CHECK ("commerce"."store_integrations"."provider" in ('zapier', 'make', 'slack'));

@@ -2,6 +2,7 @@
 const TONES: Record<string, string> = {
   zapier: "bg-orange-600 text-white",
   make: "bg-violet-700 text-white",
+  slack: "bg-fuchsia-900 text-white",
   tripletex: "bg-sky-800 text-white",
 };
 

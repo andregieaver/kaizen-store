@@ -63,6 +63,7 @@ describe("cookie consent (D58)", () => {
       "consent_…",
       "sb-…-auth-token",
       "kaizen_life_link",
+      "kaizen_slack_connect",
     ]);
     // A visitor's light or dark only in stores that let them choose (D99).
     expect(declaredCookies("store", {}, { colorMode: true }).map((c) => c.name)).toContain("color_mode_…");

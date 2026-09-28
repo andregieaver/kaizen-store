@@ -286,6 +286,21 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // Only while an owner adds Kaizen's Slack app to a channel (D101).
+    name: "kaizen_slack_connect",
+    pattern: /^kaizen_slack_connect$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    purpose: {
+      en: "Checks, for the ten minutes it takes, that a store owner connecting Slack comes back from the Slack page they started from.",
+      nb: "Sjekker, i de ti minuttene det tar, at en butikkeier som kobler til Slack kommer tilbake fra Slack-siden de startet fra.",
+      sv: "Kontrollerar, under de tio minuter det tar, att en butiksägare som ansluter Slack kommer tillbaka från Slack-sidan de startade från.",
+      da: "Kontrollerer, i de ti minutter det tager, at en butiksejer, der forbinder Slack, kommer tilbage fra den Slack-side, de startede fra.",
+    },
+  },
+  {
     name: "__stripe_mid, __stripe_sid",
     pattern: /^__stripe_(mid|sid)$/,
     provider: "Stripe",

@@ -2578,15 +2578,15 @@ export const storeLocations = commerce.table(
 );
 
 /**
- * A store's connection to an automation service (D41): Zapier or Make.
- * Kaizen sends the store's events it asks for to its webhook address,
- * which is kept encrypted (it is all a sender needs).
+ * A store's connection to an automation service (D41): Zapier or Make, or
+ * a Slack channel (D101). Kaizen sends the store's events it asks for to
+ * its webhook address, which is kept encrypted (it is all a sender needs).
  */
 export const storeIntegrations = commerce.table(
   "store_integrations",
   {
     storeId: storeId().references(() => stores.id),
-    /** `zapier` or `make`. */
+    /** `zapier`, `make` or `slack`. */
     provider: text("provider").notNull(),
     enabled: boolean("enabled").notNull().default(false),
     webhookUrlEncrypted: text("webhook_url_encrypted").notNull(),
@@ -2600,7 +2600,7 @@ export const storeIntegrations = commerce.table(
   (t) => [
     primaryKey({ columns: [t.storeId, t.provider] }),
     index("store_integrations_updated_by_idx").on(t.updatedBy),
-    check("store_integrations_provider", sql`${t.provider} in ('zapier', 'make')`),
+    check("store_integrations_provider", sql`${t.provider} in ('zapier', 'make', 'slack')`),
   ],
 );
 

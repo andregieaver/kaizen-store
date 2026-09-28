@@ -13,6 +13,7 @@ import {
 import { minorUnitDigits } from "@/lib/money";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
+import { slackMessage } from "@/lib/slack";
 
 import { audit, type Membership } from "./auth";
 import { getOrder, type Address } from "./orders";
@@ -26,7 +27,8 @@ type Row = Record<string, unknown>;
  * to send. The database queues each event as it happens (see the rules
  * migration); a job every minute builds its content and sends it, trying
  * again later when the service does not take it. Deliveries are kept 30
- * days, for the log and retries.
+ * days, for the log and retries. Slack (D101) gets the same events as
+ * messages (`slackMessage()`), and only those are kept for it.
  */
 
 /** When to try again after each failed try; after the last, the delivery has failed. */
@@ -115,10 +117,46 @@ export async function saveIntegration(
     return { ok: false, problems: ["Paste the webhook address from the service."] };
   }
   if (events.length === 0) return { ok: false, problems: ["Choose at least one event to send."] };
+  await keepIntegration({ account, store }, provider, { encrypted, hint, events, enabled: input.enabled });
+  return { ok: true };
+}
 
+/** The events a newly connected service gets until the owner chooses. */
+export const DEFAULT_EVENTS: IntegrationEvent[] = ["order.paid", "order.sent", "order.refunded", "customer.created"];
+
+/**
+ * Connects Slack with the webhook Slack made when the owner added Kaizen's
+ * Slack app to a channel (D101): switched on, with the events it had or the
+ * usual ones, and the channel as its hint.
+ */
+export async function connectSlackWebhook(
+  { account, store }: Membership,
+  webhook: { url: string; channel: string; team: string },
+): Promise<SaveResult> {
+  const checked = checkWebhookUrl("slack", webhook.url);
+  if (!checked.ok) return { ok: false, problems: [checked.problem] };
+  const key = encryptionKey();
+  if (!key) return { ok: false, problems: ["Kaizen cannot keep the address safe right now, so it was not saved. Try again later."] };
+  const existing = await getIntegration(store.id, "slack");
+  const channel = webhook.channel.trim() || "a channel";
+  const hint = webhook.team.trim() ? `${channel} in ${webhook.team.trim()}` : channel;
+  await keepIntegration({ account, store }, "slack", {
+    encrypted: encryptSecret(checked.url, key),
+    hint: hint.slice(0, 120),
+    events: existing?.events.length ? existing.events : DEFAULT_EVENTS,
+    enabled: true,
+  });
+  return { ok: true };
+}
+
+async function keepIntegration(
+  { account, store }: Pick<Membership, "account" | "store">,
+  provider: Provider,
+  { encrypted, hint, events, enabled }: { encrypted: string | null; hint: string | null; events: IntegrationEvent[]; enabled: boolean },
+): Promise<void> {
   await db().execute(sql`
     insert into commerce.store_integrations (store_id, provider, enabled, webhook_url_encrypted, webhook_hint, events, updated_by)
-    values (${store.id}::uuid, ${provider}, ${input.enabled}, ${encrypted ?? ""}, ${hint ?? ""},
+    values (${store.id}::uuid, ${provider}, ${enabled}, ${encrypted ?? ""}, ${hint ?? ""},
       array[${sql.join(events.map((event) => sql`${event}`), sql`, `)}]::text[], ${account.id}::uuid)
     on conflict (store_id, provider) do update set
       enabled = excluded.enabled,
@@ -126,8 +164,7 @@ export async function saveIntegration(
       webhook_hint = coalesce(nullif(excluded.webhook_hint, ''), store_integrations.webhook_hint),
       events = excluded.events, updated_at = now(), updated_by = excluded.updated_by
   `);
-  await audit(account.id, store.id, "integration.saved", { provider, enabled: input.enabled, events, newAddress: Boolean(encrypted) });
-  return { ok: true };
+  await audit(account.id, store.id, "integration.saved", { provider, enabled, events, newAddress: Boolean(encrypted) });
 }
 
 /** Disconnects the service: its address and settings go; deliveries waiting are dropped. */
@@ -310,9 +347,13 @@ const SAMPLE_ORDER = {
 
 export type DeliveryStatus = "pending" | "delivered" | "failed";
 
-type Outcome = { ok: boolean; status: number | null; error: string | null };
+/** `final`: the service said it never will take it (Slack's channel or webhook is gone), so it is not tried again. */
+type Outcome = { ok: boolean; status: number | null; error: string | null; final?: boolean };
 
-async function post(url: string, deliveryId: string, event: string, payload: Record<string, unknown>): Promise<Outcome> {
+/** Slack's answers that trying again cannot change: a bad message, or a webhook, channel or app gone. */
+const SLACK_FINAL = new Set([400, 403, 404, 410]);
+
+async function post(provider: Provider, url: string, deliveryId: string, event: string, payload: Record<string, unknown>): Promise<Outcome> {
   try {
     const response = await fetch(url, {
       method: "POST",
@@ -330,7 +371,12 @@ async function post(url: string, deliveryId: string, event: string, payload: Rec
     });
     if (response.ok) return { ok: true, status: response.status, error: null };
     const text = (await response.text().catch(() => "")).slice(0, 200);
-    return { ok: false, status: response.status, error: text || response.statusText || "Not accepted" };
+    return {
+      ok: false,
+      status: response.status,
+      error: text || response.statusText || "Not accepted",
+      ...(provider === "slack" && SLACK_FINAL.has(response.status) && { final: true }),
+    };
   } catch (error) {
     const name = (error as Error).name;
     return { ok: false, status: null, error: name === "TimeoutError" ? "No answer within 10 seconds" : "Could not reach the service" };
@@ -342,6 +388,8 @@ type Claimed = {
   storeId: string;
   storeSlug: string;
   storeName: string;
+  /** The store's main language, for amounts in Slack's messages. */
+  locale: string;
   provider: Provider;
   event: string;
   subjectId: string | null;
@@ -371,6 +419,10 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
       { id: delivery.id, event: delivery.event, subjectId: delivery.subjectId, createdAt: delivery.createdAt },
     );
     if (!payload) return fail("What it was about no longer exists");
+    if (delivery.provider === "slack") {
+      payload = slackMessage(payload, delivery.locale);
+      if (!payload) return fail("Slack is not sent this event");
+    }
     await db().execute(sql`
       update commerce.integration_deliveries set payload = ${JSON.stringify(payload)}::jsonb where id = ${delivery.id}::uuid
     `);
@@ -381,9 +433,9 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
   } catch {
     return fail("Kaizen could not read the address");
   }
-  const outcome = await post(url, delivery.id, delivery.event, payload);
+  const outcome = await post(delivery.provider, url, delivery.id, delivery.event, payload);
   const tries = delivery.attempts + 1;
-  const wait = RETRY_SECONDS[tries - 1];
+  const wait = outcome.final ? undefined : RETRY_SECONDS[tries - 1];
   await db().execute(sql`
     update commerce.integration_deliveries set
       attempts = ${tries},
@@ -399,7 +451,12 @@ async function attempt(delivery: Claimed): Promise<Outcome> {
 
 const claimedColumns = sql`
   d.id, d.store_id, s.slug, s.name, d.provider, d.event, d.subject_id, d.payload, d.attempts, d.created_at,
-  i.webhook_url_encrypted, coalesce(i.enabled, false) as enabled
+  i.webhook_url_encrypted, coalesce(i.enabled, false) as enabled,
+  coalesce((
+    select m.default_locale from commerce.markets m
+    where m.store_id = s.id and m.active
+    order by (m.code = s.country) desc nulls last, m.created_at, m.code limit 1
+  ), 'en') as locale
 `;
 
 function toClaimed(row: Row): Claimed {
@@ -408,6 +465,7 @@ function toClaimed(row: Row): Claimed {
     storeId: String(row.store_id),
     storeSlug: String(row.slug),
     storeName: String(row.name),
+    locale: String(row.locale),
     provider: row.provider as Provider,
     event: String(row.event),
     subjectId: row.subject_id ? String(row.subject_id) : null,
@@ -451,7 +509,7 @@ export async function deliverDue(limit = 50): Promise<{ delivered: number; retry
     const delivery = toClaimed(row);
     const outcome = await attempt(delivery);
     if (outcome.ok) counts.delivered++;
-    else if (RETRY_SECONDS[delivery.attempts] !== undefined && delivery.encryptedUrl && delivery.enabled) counts.retrying++;
+    else if (!outcome.final && RETRY_SECONDS[delivery.attempts] !== undefined && delivery.encryptedUrl && delivery.enabled) counts.retrying++;
     else counts.failed++;
   }
   await db().execute(sql`delete from commerce.integration_deliveries where created_at < now() - make_interval(days => ${KEEP_DAYS})`);

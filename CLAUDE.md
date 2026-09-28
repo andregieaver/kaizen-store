@@ -664,6 +664,14 @@ of running `playwright install`.
   Custom CSS panel. Draw it only through `<CustomCss>` on the site and
   `<ScopedCss>` in the admin (kept inside its box), which check it with
   `cssProblem()` again; never put owner CSS in a page any other way.
+- Slack (D101, `src/lib/slack.ts`, `src/server/slack.ts`): a third
+  integration (`store_integrations.provider` `slack`) with D41's events,
+  queue and retries, sent as messages by `slackMessage()`: never shoppers'
+  emails, phones or addresses, and everything they or staff wrote through
+  `escapeSlack()`/`slackLink()`. Owners connect with "Add to Slack" (only
+  the `incoming-webhook` scope, `SLACK_CLIENT_ID`/`_SECRET`, callback
+  `/api/integrations/slack/callback`) or paste a webhook; Kaizen keeps no
+  Slack token. A new event gets a message there too.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

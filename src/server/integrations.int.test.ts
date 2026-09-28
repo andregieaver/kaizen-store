@@ -23,6 +23,9 @@ vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
 
 const integrations = await import("./integrations");
 
+/** A made-up Slack webhook, put together here so secret scanners do not take it for a real one. */
+const slackHook = (team: string, bot: string, secret: string) => ["https://hooks.slack.com/services", team, bot, secret].join("/");
+
 const run = Date.now().toString(36);
 const ZAP = "https://hooks.zapier.com/hooks/catch/1234567/abcdefg/";
 let storeId: string;
@@ -176,5 +179,76 @@ describe("a test (D41)", () => {
       ["test", "failed"],
       ["test", "delivered"],
     ]);
+  });
+});
+
+describe("Slack (D101)", () => {
+  const SLACK = slackHook("T0123ABCD", "B0456EFGH", "abcdEFGH1234ijklMNOP5678");
+
+  it("gets the events as messages for people, without shoppers' emails or addresses", async () => {
+    expect(await integrations.saveIntegration(member, "slack", { url: SLACK, events: ["order.paid", "customer.created"], enabled: true })).toEqual({ ok: true });
+    expect(await integrations.getIntegration(storeId, "slack")).toMatchObject({ hint: "hooks.slack.com/services/…5678" });
+    const orderId = await order(`S1-${run}`);
+    await db().execute(sql`update commerce.orders set status = 'paid' where id = ${orderId}::uuid`);
+    await db().execute(sql`insert into commerce.customers (store_id, email, name) values (${storeId}::uuid, ${`sl-${run}@example.com`}, 'Siri')`);
+
+    expect(await integrations.deliverDue()).toMatchObject({ delivered: 2 });
+    expect(sent.map((s) => s.url)).toEqual([SLACK, SLACK]);
+    const [paid, customer] = sent.map((s) => s.body);
+    // Amounts as the store's main language writes them.
+    expect(String(paid.text).replace(/\s/g, " ")).toMatch(new RegExp(`^New order #S1-${run} · 497[,.]00 (kr|NOK) · Kari Nordmann$`));
+    expect(JSON.stringify(paid)).toContain("Handlenett");
+    expect(JSON.stringify(paid)).toContain(`/admin/int-${run}/orders/${orderId}|Open the order in Kaizen>`);
+    expect(JSON.stringify(paid)).not.toContain(`kari-${run}@example.com`);
+    expect(JSON.stringify(paid)).not.toContain("Storgata");
+    expect(customer).toMatchObject({ text: "New customer account: Siri" });
+    expect(JSON.stringify(customer)).not.toContain(`sl-${run}@example.com`);
+
+    // What is kept is what Slack got.
+    const kept = await db().execute<Row>(sql`
+      select payload from commerce.integration_deliveries where store_id = ${storeId}::uuid and provider = 'slack' and event = 'order.paid'
+    `);
+    expect(kept[0].payload).toEqual(paid);
+  });
+
+  it("is not tried again when Slack says the webhook or channel is gone", async () => {
+    await db().execute(sql`insert into commerce.customers (store_id, email, name) values (${storeId}::uuid, ${`gone-${run}@example.com`}, 'Per')`);
+    answers.push(404);
+    expect(await integrations.deliverDue()).toMatchObject({ delivered: 0, retrying: 0, failed: 1 });
+    expect(await pending()).toEqual([]);
+    const [latest] = await integrations.listDeliveries(storeId, "slack");
+    expect(latest).toMatchObject({ event: "customer.created", status: "failed", lastStatus: 404 });
+
+    // A server error at Slack is tried again, as for the other services.
+    await db().execute(sql`insert into commerce.customers (store_id, email) values (${storeId}::uuid, ${`later-${run}@example.com`})`);
+    answers.push(503);
+    expect(await integrations.deliverDue()).toMatchObject({ retrying: 1 });
+    await db().execute(sql`delete from commerce.integration_deliveries where store_id = ${storeId}::uuid and status = 'pending'`);
+  });
+
+  it("posts a test to the channel", async () => {
+    expect(await integrations.sendTest(member, "slack")).toEqual({ ok: true, status: 200, error: null });
+    expect(String(sent[0].body.text)).toMatch(/^Test: New order #/);
+  });
+
+  it("is connected with the webhook Slack made for a channel, keeping the events chosen", async () => {
+    expect(
+      await integrations.connectSlackWebhook(member, { url: "https://example.com/hook", channel: "#orders", team: "Acme" }),
+    ).toMatchObject({ ok: false });
+    expect(
+      await integrations.connectSlackWebhook(member, {
+        url: slackHook("T0123ABCD", "B0999ZZZZ", "newSecret1234"),
+        channel: "#orders",
+        team: "Acme",
+      }),
+    ).toEqual({ ok: true });
+    expect(await integrations.getIntegration(storeId, "slack")).toMatchObject({
+      enabled: true,
+      hint: "#orders in Acme",
+      events: ["order.paid", "customer.created"],
+    });
+    await integrations.sendTest(member, "slack");
+    expect(sent.at(-1)?.url).toBe(slackHook("T0123ABCD", "B0999ZZZZ", "newSecret1234"));
+    expect(await integrations.removeIntegration(member, "slack")).toBe(true);
   });
 });

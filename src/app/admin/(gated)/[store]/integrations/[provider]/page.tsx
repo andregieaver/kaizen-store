@@ -8,9 +8,10 @@ import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
 import { EVENTS, INTEGRATIONS, isProvider } from "@/lib/integrations";
 import { requireMember } from "@/server/auth";
-import { getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
+import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
+import { slackAppOn } from "@/server/slack";
 
-import { removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
+import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
 
 export const metadata: Metadata = { title: "Integration" };
 
@@ -21,9 +22,17 @@ const STATUS: Record<DeliveryRow["status"], { text: string; tone: string }> = {
   failed: { text: "Failed", tone: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" },
 };
 
-/** One integration (D41): how to connect it, what it gets, a test, and what was sent lately. */
-export default async function IntegrationPage({ params }: PageProps<"/admin/[store]/integrations/[provider]">) {
+/** What came back from "Add to Slack" (D101). */
+const SLACK_RETURN: Record<string, { ok: boolean; text: string }> = {
+  connected: { ok: true, text: "Slack is connected. Send a test to see a message arrive." },
+  cancelled: { ok: false, text: "Slack was not connected: it was cancelled in Slack." },
+  failed: { ok: false, text: "Slack could not be connected. Try again, or paste a webhook address below." },
+};
+
+/** One integration (D41, Slack D101): how to connect it, what it gets, a test, and what was sent lately. */
+export default async function IntegrationPage({ params, searchParams }: PageProps<"/admin/[store]/integrations/[provider]">) {
   const { store: slug, provider } = await params;
+  const returned = provider === "slack" ? SLACK_RETURN[String((await searchParams).slack ?? "")] : undefined;
   const { store, role } = await requireMember(slug);
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
@@ -31,7 +40,9 @@ export default async function IntegrationPage({ params }: PageProps<"/admin/[sto
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const owner = role === "owner";
-  const chosen = new Set(integration?.events ?? ["order.paid", "order.sent", "order.refunded", "customer.created"]);
+  const chosen = new Set(integration?.events ?? DEFAULT_EVENTS);
+  const slack = provider === "slack";
+  const addToSlack = slack && owner && slackAppOn();
   const eventLabel = (id: string) => (id === "test" ? "Test" : (EVENTS.find((e) => e.id === id)?.label ?? id));
 
   return (
@@ -51,15 +62,40 @@ export default async function IntegrationPage({ params }: PageProps<"/admin/[sto
         </div>
       </div>
 
+      {returned && (
+        <p
+          role={returned.ok ? "status" : "alert"}
+          className={`rounded-md px-4 py-3 text-sm ${returned.ok ? "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"}`}
+        >
+          {returned.text}
+        </p>
+      )}
+
+      {addToSlack && (
+        <section aria-labelledby="add-to-slack" className={card}>
+          <h2 id="add-to-slack" className="mb-1 font-medium">
+            {integration ? "Change the channel" : "Add to Slack"}
+          </h2>
+          <p className="mb-3 text-sm text-muted">
+            Slack asks which channel Kaizen may post to. Kaizen can post there and nothing else: it cannot read your messages.
+          </p>
+          <form action={connectSlackAction.bind(null, store.slug)}>
+            <button type="submit" className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background">
+              {integration ? "Choose another channel in Slack" : "Add to Slack"}
+            </button>
+          </form>
+        </section>
+      )}
+
       <section aria-labelledby="how" className={card}>
-        <h2 id="how" className="mb-2 font-medium">How to connect</h2>
+        <h2 id="how" className="mb-2 font-medium">{addToSlack ? "Or make a webhook yourself" : "How to connect"}</h2>
         <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
           {info.steps?.map((step) => <li key={step}>{step}</li>)}
         </ol>
         {info.docs && (
           <p className="mt-3 text-sm">
             <a href={info.docs} target="_blank" rel="noreferrer" className="underline">
-              {info.name}&apos;s guide to webhooks
+              {info.name}&apos;s guide to {slack ? "incoming webhooks" : "webhooks"}
             </a>
           </p>
         )}
@@ -68,8 +104,9 @@ export default async function IntegrationPage({ params }: PageProps<"/admin/[sto
       <section aria-labelledby="settings" className={card}>
         <h2 id="settings" className="mb-1 font-medium">Settings</h2>
         <p className="mb-4 text-sm text-muted">
-          Kaizen sends shoppers&apos; names, emails and addresses to {info.name}. Make sure your agreement with {info.name} covers
-          personal data (a data processing agreement).
+          {slack
+            ? "Messages name the shopper and what they bought, never their email or address: open the order in Kaizen for those. Everyone in the channel sees them, so choose one for the people who handle orders, and make sure your agreement with Slack covers personal data (a data processing agreement)."
+            : `Kaizen sends shoppers’ names, emails and addresses to ${info.name}. Make sure your agreement with ${info.name} covers personal data (a data processing agreement).`}
         </p>
         {owner ? (
           <ActionForm action={saveIntegrationAction.bind(null, store.slug, provider)} className="flex flex-col gap-5">
@@ -122,8 +159,9 @@ export default async function IntegrationPage({ params }: PageProps<"/admin/[sto
         <section aria-labelledby="test" className={card}>
           <h2 id="test" className="mb-1 font-medium">Test</h2>
           <p className="mb-3 text-sm text-muted">
-            Sends your latest order (or a sample one) now, marked as a test, so {info.name} can learn the fields. It is sent even while
-            the integration is off.
+            {slack
+              ? "Posts your latest order (or a sample one) to the channel now, marked as a test. It is sent even while Slack is off here."
+              : `Sends your latest order (or a sample one) now, marked as a test, so ${info.name} can learn the fields. It is sent even while the integration is off.`}
           </p>
           <TestSendButton action={sendTestAction.bind(null, store.slug, provider)} />
         </section>
@@ -173,7 +211,11 @@ export default async function IntegrationPage({ params }: PageProps<"/admin/[sto
         <DeleteDiscountButton
           action={removeIntegrationAction.bind(null, store.slug, provider)}
           code={info.name}
-          question={`Disconnect ${info.name}? Kaizen stops sending to it and forgets the address.`}
+          question={
+            slack
+              ? "Disconnect Slack? Kaizen stops posting and forgets the webhook. You can remove the app from your workspace in Slack too."
+              : `Disconnect ${info.name}? Kaizen stops sending to it and forgets the address.`
+          }
           label={`Disconnect ${info.name}`}
         />
       )}

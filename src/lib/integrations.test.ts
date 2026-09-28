@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { checkWebhookUrl, webhookHint } from "./integrations";
 
+/** A made-up Slack webhook, put together here so secret scanners do not take it for a real one. */
+const slackHook = (team: string, bot: string, secret: string) => ["https://hooks.slack.com/services", team, bot, secret].join("/");
+
 describe("webhook addresses (D41)", () => {
   it("takes the services' own addresses", () => {
     expect(checkWebhookUrl("zapier", " https://hooks.zapier.com/hooks/catch/1234567/abcdefg/ ")).toEqual({
@@ -32,5 +35,29 @@ describe("webhook addresses (D41)", () => {
   it("shows only where the address points, not its secret part", () => {
     expect(webhookHint("https://hooks.zapier.com/hooks/catch/1234567/abcdefg/")).toBe("hooks.zapier.com/hooks/catch/…defg");
     expect(webhookHint("https://hook.eu2.make.com/abcdefghijklmnop")).toBe("hook.eu2.make.com/…mnop");
+  });
+});
+
+describe("Slack's webhook addresses (D101)", () => {
+  const SLACK = slackHook("T0123ABCD", "B0456EFGH", "abcdEFGH1234ijklMNOP5678");
+
+  it("takes a Slack incoming webhook and hides its secret", () => {
+    expect(checkWebhookUrl("slack", ` ${SLACK} `)).toEqual({ ok: true, url: SLACK });
+    expect(webhookHint(SLACK)).toBe("hooks.slack.com/services/…5678");
+  });
+
+  it("takes nothing else: other hosts, other Slack addresses, extra parts or the other services'", () => {
+    for (const url of [
+      slackHook("T0123ABCD", "B0456EFGH", "abcd").replace("https:", "http:"),
+      slackHook("T0123ABCD", "B0456EFGH", "abcd").replace("hooks.slack.com", "hooks.slack.com.evil.example"),
+      "https://hooks.slack.com/triggers/T0123ABCD/123/abcd",
+      `${slackHook("T0123ABCD", "B0456EFGH", "abcd")}/more`,
+      `${slackHook("T0123ABCD", "B0456EFGH", "abcd")}?x=1`,
+      "https://slack.com/api/chat.postMessage",
+      "https://hooks.zapier.com/hooks/catch/1234567/abcdefg/",
+    ]) {
+      expect(checkWebhookUrl("slack", url).ok, url).toBe(false);
+    }
+    expect(checkWebhookUrl("zapier", SLACK).ok).toBe(false);
   });
 });
