@@ -38,8 +38,13 @@ type Ask = { messages: { role: string; content: unknown }[] };
 const asked: Ask[] = [];
 let blind = false;
 const WORDS: Record<string, Record<string, string>> = {
-  kopp: { "nb-NO": "En hvit kopp på et trebord", "sv-SE": "En vit kopp på ett träbord", "da-DK": "En hvid kop på et træbord" },
-  lampe: { "nb-NO": "En grønn bordlampe", "sv-SE": "En grön bordslampa", "da-DK": "En grøn bordlampe – kun i dag" },
+  kopp: {
+    "nb-NO": "En hvit kopp på et trebord",
+    "sv-SE": "En vit kopp på ett träbord",
+    "da-DK": "En hvid kop på et træbord",
+    en: "A white mug on a wooden table",
+  },
+  lampe: { "nb-NO": "En grønn bordlampe", "sv-SE": "En grön bordslampa", "da-DK": "En grøn bordlampe – kun i dag", en: "A green desk lamp" },
 };
 function fakeAi() {
   asked.length = 0;
@@ -118,9 +123,12 @@ describe("alt texts written by the store's AI (D89)", () => {
     const site = await altTexts.altSite(owner());
     expect(site?.name).toBe("Olas Butikk");
     expect(site?.languages[0]).toEqual({ locale: "nb-NO", name: "Norwegian Bokmål (Norway)" });
-    expect(site?.languages.map((language) => language.locale).sort()).toEqual(
-      [...new Set((await stores.getStore(storeSlug))!.markets.map((market) => market.locale))].sort(),
-    );
+    // The store's languages, and English last for search and AI assistants.
+    expect(site?.languages.map((language) => language.locale)).toEqual([
+      ...new Set((await stores.getStore(storeSlug))!.markets.map((market) => market.locale)),
+      "en",
+    ]);
+    expect(site?.languages.at(-1)).toEqual({ locale: "en", name: "English", extra: true });
     expect(await altTexts.altSite({ storeId: null, storeSlug: null })).toEqual({ name: "Kaizen", languages: [{ locale: "en", name: "English" }] });
   });
 
@@ -136,11 +144,15 @@ describe("alt texts written by the store's AI (D89)", () => {
 
     expect(await altOf(kopp.id)).toEqual({
       alt: "En hvit kopp på et trebord",
-      translations: { "sv-SE": "En vit kopp på ett träbord", "da-DK": "En hvid kop på et træbord" },
+      translations: { "sv-SE": "En vit kopp på ett träbord", "da-DK": "En hvid kop på et træbord", en: "A white mug on a wooden table" },
       source: "ai",
     });
     // A colour is what a picture looks like; urgency is a claim, and that language is left out.
-    expect(await altOf(lampe.id)).toEqual({ alt: "En grønn bordlampe", translations: { "sv-SE": "En grön bordslampa" }, source: "ai" });
+    expect(await altOf(lampe.id)).toEqual({
+      alt: "En grønn bordlampe",
+      translations: { "sv-SE": "En grön bordslampa", en: "A green desk lamp" },
+      source: "ai",
+    });
     expect(await altOf(beskrevet.id)).toEqual({ alt: "Staff's own words", translations: {}, source: "staff" });
     for (const untouched of [borte, tegning, film]) expect((await altOf(untouched.id)).source).toBeNull();
 
@@ -156,6 +168,17 @@ describe("alt texts written by the store's AI (D89)", () => {
     expect(await altTexts.writeAltTexts(owner(), { since })).toEqual({ written: 0, failed: 0, remaining: 0, problem: null });
     expect(asked).toHaveLength(0);
     expect(await altTexts.missingAltTexts(owner())).toBe(2);
+  });
+
+  it("writes the AI's texts again when the site gains a language, and waits a day on one it left out", async () => {
+    // As though English were new: the kopp's texts lack it.
+    await db().execute(sql`update commerce.media set alt_translations = alt_translations - 'en' where id = ${kopp.id}::uuid`);
+    fakeAi();
+    const result = await altTexts.writeAltTexts(owner(), { since: new Date(Date.now() - 24 * 60 * 60 * 1000) });
+    expect(result.written).toBe(1);
+    expect((await altOf(kopp.id)).translations).toMatchObject({ en: "A white mug on a wooden table" });
+    // The lamp's Danish carried a claim: it is not asked again within the day.
+    expect(asked.some((ask) => JSON.stringify(ask).includes("File name: lampe"))).toBe(false);
   });
 
   it("writes one picture again when asked, even staff's, and the AI's again in a new run only when asked", async () => {

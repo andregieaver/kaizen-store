@@ -40,7 +40,10 @@ export async function altSite(owner: MediaOwner): Promise<AltSite | null> {
   if (!owner.storeId) return { name: "Kaizen", languages: [language("en")] };
   const store = owner.storeSlug ? await getStore(owner.storeSlug) : null;
   if (!store || store.markets.length === 0) return null;
-  return { name: store.name, languages: [...new Set(store.markets.map((market) => market.locale))].map(language) };
+  const locales = [...new Set(store.markets.map((market) => market.locale))];
+  // English too, last, where the store sells in none: what people search the library in, and AI assistants read.
+  const english = locales.some((locale) => locale.split("-")[0] === "en") ? [] : [{ ...language("en"), extra: true as const }];
+  return { name: store.name, languages: [...locales.map(language), ...english] };
 }
 
 export type AltResult =
@@ -132,10 +135,12 @@ export async function writeAltText(
     await tried();
     return { ok: false, problem: "The AI's alt text could not be used (it was missing, or made a claim the site does not allow)." };
   }
+  // A language left out (a claim) waits a day before it is tried again; a whole answer needs no retry.
+  const complete = locales.every((locale) => texts[locale]);
   // Staff may have written one meanwhile: theirs stays unless asked to replace it.
   const saved = await db().execute<Row>(sql`
     update commerce.media set alt = ${alt}, alt_translations = ${JSON.stringify(translations)}::jsonb, alt_source = 'ai',
-      alt_written_at = now(), alt_tried_at = now(), updated_at = now()
+      alt_written_at = now(), alt_tried_at = ${complete ? null : sql`now()`}, updated_at = now()
     where id = ${id}::uuid and (${Boolean(options.replace)} or alt_source is distinct from 'staff')
     returning id
   `);
@@ -156,12 +161,11 @@ export async function writeAltTexts(
   owner: MediaOwner,
   options: { since: Date; rewrite?: boolean; limit?: number },
 ): Promise<AltRun> {
-  const connection = await aiFor(owner.storeId);
-  const due = await dueForAltText(owner, options.since, Boolean(options.rewrite));
+  const [connection, site] = await Promise.all([aiFor(owner.storeId), altSite(owner)]);
+  const due = await dueForAltText(owner, options.since, Boolean(options.rewrite), site);
   if (!connection?.textModel) {
     return { written: 0, failed: 0, remaining: due.length, problem: "Set up an AI text model under AI settings to write alt texts." };
   }
-  const site = await altSite(owner);
   const batch = due.slice(0, options.limit ?? ALT_BATCH);
   let written = 0;
   let failed = 0;
@@ -185,14 +189,22 @@ export async function writeAltTexts(
   return { written, failed, remaining: due.length - written - failed, problem };
 }
 
-/** The owner's pictures an alt-text run should write, oldest first. */
-async function dueForAltText(owner: MediaOwner, since: Date, rewrite: boolean): Promise<string[]> {
+/**
+ * The owner's pictures an alt-text run should write, oldest first: those
+ * without any, those the AI wrote without one of the site's languages
+ * (a market added since, or English), and with `rewrite` all the AI's.
+ */
+async function dueForAltText(owner: MediaOwner, since: Date, rewrite: boolean, site: AltSite | null): Promise<string[]> {
+  const others = (site?.languages ?? []).slice(1).map((language) => language.locale);
+  const at = since.toISOString();
   const rows = await db().execute<Row>(sql`
     select id from commerce.media
     where ${owner.storeId ? sql`store_id = ${owner.storeId}::uuid` : sql`store_id is null`}
       and kind = 'image' and content_type <> 'image/svg+xml'
-      and (alt_tried_at is null or alt_tried_at < ${since.toISOString()}::timestamptz)
-      and (alt_source is null ${rewrite ? sql`or (alt_source = 'ai' and alt_written_at < ${since.toISOString()}::timestamptz)` : sql``})
+      and (alt_tried_at is null or alt_tried_at < ${at}::timestamptz)
+      and (alt_source is null
+        ${others.length > 0 ? sql`or (alt_source = 'ai' and not alt_translations ?& array[${sql.join(others.map((locale) => sql`${locale}`), sql`, `)}]::text[])` : sql``}
+        ${rewrite ? sql`or (alt_source = 'ai' and alt_written_at < ${at}::timestamptz)` : sql``})
     order by created_at
   `);
   return rows.map((row) => String(row.id));
@@ -200,26 +212,27 @@ async function dueForAltText(owner: MediaOwner, since: Date, rewrite: boolean): 
 
 /**
  * The five-minute cron's part (D89): new pictures get their alt texts
- * without anyone asking, a few per site and a few sites per run (those
+ * without anyone asking (and the AI's texts a language added since), a few per site and a few sites per run (those
  * waiting longest first), on sites whose AI has a text model. A picture
  * that could not be described waits a day. Returns the owners whose texts
  * changed, for their caches.
  */
 export async function refreshAltTexts(perSite = 4, sitesPerRun = 5): Promise<{ owners: MediaOwner[]; written: number }> {
-  const due = await db().execute<Row>(sql`
+  const sites = await db().execute<Row>(sql`
     select m.store_id, s.slug from commerce.media m
     left join commerce.stores s on s.id = m.store_id
-    where m.kind = 'image' and m.alt_source is null and m.content_type <> 'image/svg+xml'
+    where m.kind = 'image' and m.content_type <> 'image/svg+xml' and (m.alt_source is null or m.alt_source = 'ai')
       and (m.alt_tried_at is null or m.alt_tried_at < now() - interval '1 day')
     group by m.store_id, s.slug
     order by min(m.created_at)
   `);
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const owners: MediaOwner[] = [];
-  for (const site of due) {
+  for (const row of sites) {
     if (owners.length >= sitesPerRun) break;
-    const owner = { storeId: site.store_id ? String(site.store_id) : null, storeSlug: site.slug ? String(site.slug) : null };
-    if ((await aiFor(owner.storeId))?.textModel) owners.push(owner);
+    const owner = { storeId: row.store_id ? String(row.store_id) : null, storeSlug: row.slug ? String(row.slug) : null };
+    if (!(await aiFor(owner.storeId))?.textModel) continue;
+    if ((await dueForAltText(owner, since, false, await altSite(owner))).length > 0) owners.push(owner);
   }
   const runs = await Promise.all(owners.map((owner) => writeAltTexts(owner, { since, limit: perSite })));
   return {

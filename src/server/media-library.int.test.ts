@@ -203,9 +203,12 @@ describe("the media library (D88)", () => {
     // Kaizen's library does not see a store's uses.
     expect((await library.mediaUses({ storeId: null, storeSlug: null }, [mug.id])).get(mug.id)).toEqual([]);
     // What a file is used for is part of what search by meaning reads.
-    expect(library.mediaDocument("keramikk-kopp.webp", "Hvit kopp", [{ label: "Product: Demo: Kopp", href: null }, { label: "Menu: Mega", href: null }])).toBe(
-      "keramikk kopp\nHvit kopp\nUsed in: Product: Demo: Kopp; Menu: Mega",
+    const uses2 = [{ label: "Product: Demo: Kopp", href: null }, { label: "Menu: Mega", href: null }];
+    expect(library.mediaDocument("keramikk-kopp.webp", "Hvit kopp", { en: "A white mug", "sv-SE": "Hvit kopp" }, uses2)).toBe(
+      "Hvit kopp\nA white mug\nkeramikk kopp\nUsed in: Product: Demo: Kopp; Menu: Mega",
     );
+    // A file named by an id and without alt texts has nothing to be found by.
+    expect(library.mediaDocument("d58a9064-875d-450f-aceb-4e6b17a0716c.webp", "", {}, uses2)).toBe("");
   });
 
   it("keeps measurements taken in the browser only for files without them", async () => {
@@ -233,5 +236,36 @@ describe("the media library (D88)", () => {
     `);
     expect(left).toEqual({ media: 0, vectors: 0, logged: 1 });
     expect((await library.listMedia(owner(), mediaQuery({}))).total).toBe(2);
+  });
+
+  it("finds a file by its whole name alone, and pictures by their alt texts in any language", async () => {
+    const uuid = (n: number) => `${String(n).repeat(8)}-875d-450f-aceb-4e6b17a0716c`;
+    const inside = await addMedia({ store: storeId, name: `${uuid(1)}.webp` });
+    await addMedia({ store: storeId, name: `${uuid(2)}.webp` });
+    await addMedia({ store: storeId, name: `${uuid(3)}.webp` });
+    await db().execute(sql`
+      update commerce.media set alt = 'Interiør i bil med svarte seter', alt_source = 'ai',
+        alt_translations = '{"en": "The inside of a car with black seats"}'
+      where id = ${inside.id}::uuid
+    `);
+    fakeModel();
+    const find = async (q: string) => names((await library.listMedia(owner(), mediaQuery({ q }))).items);
+    // The whole name, with or without its ending, or its start: that file, and never files merely named alike.
+    expect(await find(`${uuid(2)}.webp`)).toEqual([`${uuid(2)}.webp`]);
+    expect(await find(uuid(3).toUpperCase())).toEqual([`${uuid(3)}.webp`]);
+    expect(await find("22222222-875d")).toEqual([`${uuid(2)}.webp`]);
+    expect(requests).toBe(0);
+    // Words find alt texts in any of their languages.
+    expect(await find("car")).toEqual([`${uuid(1)}.webp`]);
+    expect(await find("bil")).toEqual([`${uuid(1)}.webp`]);
+    // Only the described one gets a vector: ids alone say nothing of what a file shows.
+    fakeModel();
+    await library.embedMedia(owner(), (await ai.aiFor(storeId))!);
+    const [vectors] = await db().execute<Row>(sql`
+      select count(*) filter (where m.alt <> '')::int as described, count(*) filter (where m.alt = '')::int as bare
+      from commerce.media_embeddings e join commerce.media m on m.id = e.media_id
+      where m.store_id = ${storeId}::uuid and m.file_name like '%-875d-%'
+    `);
+    expect(vectors).toEqual({ described: 1, bare: 0 });
   });
 });

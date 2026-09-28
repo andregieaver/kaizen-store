@@ -1051,6 +1051,13 @@
       "when": 1790596381066,
       "tag": "20260928115301_media_alt_texts_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1790598520121,
+      "tag": "20260928122840_media_alt_retry",
+      "breakpoints": true
     }
   ]
 }

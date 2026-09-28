@@ -7,7 +7,7 @@ import { sql } from "drizzle-orm";
 import { db, readDb } from "@/db/client";
 import { imageSize } from "@/lib/image-size";
 import { ALT_MAX } from "@/lib/page-content";
-import type { MediaKind, MediaQuery } from "@/lib/media-query";
+import { fileNameKey, isFileNameQuery, readableFileName, type MediaKind, type MediaQuery } from "@/lib/media-query";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { normalizeQuery, prefixQuery, reciprocalRankFusion } from "@/lib/search";
 import { siteUrl } from "@/lib/site";
@@ -319,6 +319,29 @@ function stringRecord(value: unknown): Record<string, string> {
   return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
 }
 
+/**
+ * The ids a search for a file name finds (`isFileNameQuery()`): that file,
+ * then files whose names start with it, then those holding it; by name
+ * alone.
+ */
+async function fileNameIds(storeId: string | null, text: string, limit: number): Promise<string[]> {
+  const key = fileNameKey(text);
+  const name = sql`lower(regexp_replace(m.file_name, '\.[a-z0-9]+$', '', 'i'))`;
+  const rows = await readDb().execute<Row>(sql`
+    select m.id from commerce.media m
+    where ${owned(storeId, sql`m.store_id`)} and (${name} = ${key} or position(${key} in ${name}) > 0)
+    order by ${name} = ${key} desc, starts_with(${name}, ${key}) desc, m.created_at desc
+    limit ${limit}
+  `);
+  return rows.map((row) => String(row.id));
+}
+
+/** A file's name without its ending and ids, for likeness to what was typed: a stored file's id is like anything. */
+const wordsOfName = sql`lower(regexp_replace(
+  regexp_replace(m.file_name, '\.[a-z0-9]+$', '', 'i'),
+  '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', ' ', 'gi'
+))`;
+
 /** The ids a query finds by keyword, best first. */
 async function keywordIds(storeId: string | null, text: string, limit: number): Promise<string[]> {
   const words = prefixQuery(text);
@@ -330,11 +353,11 @@ async function keywordIds(storeId: string | null, text: string, limit: number): 
     )
     select m.id,
       coalesce(ts_rank_cd(m.search, q.full_q), 0) * 4 + coalesce(ts_rank_cd(m.search, q.prefix_q), 0) * 2
-        + extensions.word_similarity(q.text, lower(m.file_name)) as score
+        + extensions.word_similarity(q.text, ${wordsOfName}) as score
     from commerce.media m cross join q
     where ${owned(storeId, sql`m.store_id`)}
       and (m.search @@ q.full_q or (q.prefix_q is not null and m.search @@ q.prefix_q)
-        or extensions.word_similarity(q.text, lower(m.file_name)) >= 0.4)
+        or extensions.word_similarity(q.text, ${wordsOfName}) >= 0.4)
     order by score desc, m.created_at desc
     limit ${limit}
   `);
@@ -380,8 +403,10 @@ export async function listMedia(owner: MediaOwner, query: MediaQuery): Promise<{
   if (text) {
     // Both lists deep enough that the kind filter still leaves a page.
     const depth = Math.max(query.limit * 2, 100);
-    const [keyword, meaning] = await Promise.all([keywordIds(storeId, text, depth), meaningIds(storeId, text, depth)]);
-    const ranked = reciprocalRankFusion([keyword, meaning]);
+    // A file's name finds that file by its name alone; anything else by keyword and meaning.
+    const ranked = isFileNameQuery(text)
+      ? await fileNameIds(storeId, text, depth)
+      : reciprocalRankFusion(await Promise.all([keywordIds(storeId, text, depth), meaningIds(storeId, text, depth)]));
     if (ranked.length === 0) return { items: [], total: 0, searched: true };
     const found = await readDb().execute<Row>(sql`
       select m.* from commerce.media m
@@ -487,11 +512,26 @@ export async function deleteMedia(owner: MediaOwner, accountId: string, id: stri
 const BATCH = 32;
 const PER_RUN = 128;
 
-/** What an item's vector is made from: its name in words, its description and the names of what uses it. */
-export function mediaDocument(fileName: string, alt: string, uses: MediaUse[]): string {
-  const name = fileName.replace(/\.[a-z0-9]+$/i, "").replace(/[._-]+/g, " ").trim();
-  return [name, alt.trim(), uses.length > 0 ? `Used in: ${uses.map((use) => use.label).join("; ")}` : ""].filter(Boolean).join("\n");
+/**
+ * What an item's vector is made from: its alt text in every language (what
+ * it shows, D89), its name where it is words rather than an id, and the
+ * names of what uses it. Empty when there is nothing that says what it is.
+ */
+export function mediaDocument(fileName: string, alt: string, translations: Record<string, string>, uses: MediaUse[]): string {
+  const alts = [...new Set([alt, ...Object.values(translations)].map((text) => text.trim()).filter(Boolean))];
+  const name = readableFileName(fileName);
+  if (alts.length === 0 && !name) return "";
+  return [...alts, name, uses.length > 0 ? `Used in: ${uses.map((use) => use.label).join("; ")}` : ""].filter(Boolean).join("\n");
 }
+
+/**
+ * Whether an item has words to be found by meaning: an alt text, or a
+ * name that is not only an id (as `readableFileName()`, in SQL).
+ */
+const described = sql`(m.alt <> '' or m.alt_translations <> '{}'::jsonb or regexp_replace(
+  regexp_replace(m.file_name, '\.[a-z0-9]+$', '', 'i'),
+  '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', ' ', 'gi'
+) ~ '(^|[^[:alnum:]])[[:alpha:]]{2,}([^[:alnum:]]|$)')`;
 
 /**
  * Gives a site's items vectors from its AI where they have none from its
@@ -501,20 +541,27 @@ export function mediaDocument(fileName: string, alt: string, uses: MediaUse[]): 
 export async function embedMedia(owner: MediaOwner, connection: AiConnection, limit = PER_RUN): Promise<{ embedded: number; failed: string | null }> {
   const space = connection.space;
   if (!space) return { embedded: 0, failed: null };
+  // Items with nothing that says what they are have no vector: an id's likeness to other ids means nothing.
+  await db().execute(sql`
+    delete from commerce.media_embeddings e using commerce.media m
+    where e.media_id = m.id and ${owned(owner.storeId, sql`m.store_id`)} and not ${described}
+  `);
   const stale = await db().execute<Row>(sql`
-    select m.id, m.file_name, m.alt, e.content_hash from commerce.media m
+    select m.id, m.file_name, m.alt, m.alt_translations, e.content_hash from commerce.media m
     left join commerce.media_embeddings e on e.media_id = m.id
-    where ${owned(owner.storeId, sql`m.store_id`)}
+    where ${owned(owner.storeId, sql`m.store_id`)} and ${described}
       and (e.media_id is null or e.space <> ${space} or e.updated_at < m.updated_at or e.updated_at < now() - interval '1 day')
     order by e.updated_at nulls first, m.created_at
     limit ${limit}
   `);
   if (stale.length === 0) return { embedded: 0, failed: null };
   const uses = await mediaUses(owner, stale.map((row) => String(row.id)));
-  const docs = stale.map((row) => {
-    const text = mediaDocument(String(row.file_name), String(row.alt), uses.get(String(row.id)) ?? []);
-    return { id: String(row.id), text, previous: row.content_hash ? String(row.content_hash) : null };
-  });
+  const docs = stale
+    .map((row) => {
+      const text = mediaDocument(String(row.file_name), String(row.alt), stringRecord(row.alt_translations), uses.get(String(row.id)) ?? []);
+      return { id: String(row.id), text, previous: row.content_hash ? String(row.content_hash) : null };
+    })
+    .filter((doc) => doc.text !== "");
   const hash = (text: string) => createHash("md5").update(`${space}\u001f${text}`).digest("hex");
   // Unchanged texts only have their date moved on; the rest are embedded.
   const unchanged = docs.filter((doc) => doc.previous === hash(doc.text));

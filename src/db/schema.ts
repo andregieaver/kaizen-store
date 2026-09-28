@@ -2805,7 +2805,7 @@ export const media = commerce.table(
     /** Who wrote the alt text: `ai` (D89) or `staff`; null while there is none. AI never replaces staff's. */
     altSource: text("alt_source"),
     altWrittenAt: timestamp("alt_written_at", { withTimezone: true }),
-    /** When the AI last tried to write one, so a picture it could not describe waits a day. */
+    /** When the AI last failed to write one (or a language of it), so that picture waits a day. */
     altTriedAt: timestamp("alt_tried_at", { withTimezone: true }),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),

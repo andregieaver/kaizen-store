@@ -573,7 +573,9 @@ of running `playwright install`.
   used is worked out on request by `mediaUses()`, so a new place that keeps a
   picture's address goes there too. Search is keyword plus meaning
   (`media_embeddings`, SQL only, `embedMedia()` in the five-minute cron),
-  fused as the storefront's; the address is read by `mediaQuery()`.
+  fused as the storefront's (a file's name is searched by name alone,
+  `isFileNameQuery()`; vectors come from alt texts, never ids, D90); the
+  address is read by `mediaQuery()`.
   Deleting removes the file from Storage (`removeStoredFiles()`) and the row.
   Alt texts (D89, `src/server/alt-texts.ts`, `src/lib/alt-text.ts`): a
   picture's in the main language (`media.alt`) and the others

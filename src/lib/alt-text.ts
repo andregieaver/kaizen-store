@@ -21,7 +21,8 @@ export const ALT_TEXT_MAX = 250;
 /** What the model is asked to stay under: what screen readers and search engines read in full. */
 export const ALT_TEXT_AIM = 125;
 
-export type AltLanguage = { locale: string; name: string };
+/** A language alt texts are written in; `extra` when the site does not sell in it (English, for search and AI assistants). */
+export type AltLanguage = { locale: string; name: string; extra?: true };
 
 export type AltTextContext = {
   /** The store's name, or Kaizen's. */

@@ -150,7 +150,7 @@ export function MediaLibrary({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Type
-          <select name="kind" defaultValue={query.kind} className={`${input} font-normal`}>
+          <select name="kind" defaultValue={query.kind} onChange={(event) => event.currentTarget.form?.requestSubmit()} className={`${input} font-normal`}>
             <option value="all">Pictures and videos</option>
             <option value="image">Pictures</option>
             <option value="video">Videos</option>
@@ -158,7 +158,13 @@ export function MediaLibrary({
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Order
-          <select name="sort" defaultValue={query.sort} disabled={Boolean(query.q)} className={`${input} font-normal`}>
+          <select
+            name="sort"
+            defaultValue={query.sort}
+            disabled={Boolean(query.q)}
+            onChange={(event) => event.currentTarget.form?.requestSubmit()}
+            className={`${input} font-normal`}
+          >
             {Object.entries(MEDIA_SORTS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -181,19 +187,38 @@ export function MediaLibrary({
         </p>
       </form>
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
       <p role="status" className="text-sm text-muted">
         {searched
           ? total === 0
             ? `Nothing found for “${query.q}”.`
             : `${total === 1 ? "1 file" : `${total} files`} found for “${query.q}”.`
           : total === 0
-            ? "No files yet. Add pictures or videos above; everything you upload anywhere in the admin is kept here too."
+            ? query.kind !== "all"
+              ? `No ${query.kind === "image" ? "pictures" : "videos"} yet.`
+              : "No files yet. Add pictures or videos above; everything you upload anywhere in the admin is kept here too."
             : total === 1
               ? "1 file."
               : `${total} files.`}
       </p>
+        <nav aria-label="Show files as" className="flex overflow-hidden rounded-md border border-border text-sm">
+          {(["grid", "list"] as const).map((view) => (
+            <Link
+              key={view}
+              href={address({ view })}
+              scroll={false}
+              aria-current={query.view === view ? "true" : undefined}
+              className={`min-h-9 content-center px-3 ${query.view === view ? "bg-foreground text-background" : "hover:bg-surface"}`}
+            >
+              {view === "grid" ? "Grid" : "List"}
+            </Link>
+          ))}
+        </nav>
+      </div>
 
-      {items.length > 0 && (
+      {items.length > 0 && query.view === "list" && <FileList items={items} onOpen={setOpenId} />}
+
+      {items.length > 0 && query.view === "grid" && (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" aria-label="Files">
           {items.map((item) => (
             <li key={item.id}>
@@ -246,6 +271,64 @@ export function MediaLibrary({
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** The files as a list, a row each with its details, alt text and uses; a row's name opens it. */
+function FileList({ items, onOpen }: { items: MediaItem[]; onOpen: (id: string) => void }) {
+  const cell = "px-3 py-2 align-middle";
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border bg-background">
+      <table className="w-full min-w-[40rem] text-left text-sm">
+        <caption className="sr-only">Files</caption>
+        <thead className="border-b border-border text-xs text-muted">
+          <tr>
+            <th scope="col" className={`${cell} w-16`}>
+              <span className="sr-only">Preview</span>
+            </th>
+            <th scope="col" className={cell}>Name</th>
+            <th scope="col" className={cell}>Type</th>
+            <th scope="col" className={`${cell} text-right`}>Size</th>
+            <th scope="col" className={`${cell} hidden md:table-cell`}>Width and height</th>
+            <th scope="col" className={`${cell} hidden lg:table-cell`}>Alt text</th>
+            <th scope="col" className={cell}>In use</th>
+            <th scope="col" className={`${cell} hidden md:table-cell`}>Added</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id} className="border-b border-border last:border-0 hover:bg-surface/60">
+              <td className={cell}>
+                <div className="size-12 overflow-hidden rounded-md">
+                  <Preview item={item} small />
+                </div>
+              </td>
+              <th scope="row" className={`${cell} max-w-64 font-medium`}>
+                <button type="button" onClick={() => onOpen(item.id)} className="max-w-full truncate text-left underline-offset-2 hover:underline">
+                  {item.fileName}
+                </button>
+              </th>
+              <td className={`${cell} whitespace-nowrap text-muted`}>{describeType(item.contentType)}</td>
+              <td className={`${cell} whitespace-nowrap text-right text-muted`}>{formatBytes(item.sizeBytes)}</td>
+              <td className={`${cell} hidden whitespace-nowrap text-muted md:table-cell`}>{dimensions(item) ?? "–"}</td>
+              <td className={`${cell} hidden max-w-80 lg:table-cell`}>
+                {item.kind !== "image" ? (
+                  <span className="text-muted">–</span>
+                ) : hasAlt(item) ? (
+                  <span className="line-clamp-2 text-muted">{item.alt || Object.values(item.altTranslations)[0]}</span>
+                ) : (
+                  <span className="rounded-full border border-amber-700 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-300">No alt text</span>
+                )}
+              </td>
+              <td className={`${cell} whitespace-nowrap text-muted`}>{item.uses.length > 0 ? `${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}` : "Not in use"}</td>
+              <td className={`${cell} hidden whitespace-nowrap text-muted md:table-cell`}>
+                {new Date(item.createdAt).toLocaleDateString("en-GB", { dateStyle: "medium" })}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -499,6 +582,7 @@ function AltTextForm({
           <span className="font-medium">
             {language.name}
             {languages.length > 1 && index === 0 ? " (main language)" : ""}
+            {language.extra ? " (for search and AI assistants)" : ""}
           </span>
           <textarea
             value={texts[language.locale] ?? ""}
