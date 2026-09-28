@@ -3,11 +3,16 @@
 import { useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
+import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
+
 import { RichTextEditor } from "./rich-text-editor";
 
 import {
   ACCORDION_LOOKS,
   TABS_ALIGNS,
+  VIDEO_RATIOS,
+  VIDEO_SOURCES,
+  VIDEO_TITLE_MAX,
   TABS_LOOKS,
   EMPTY_DOC,
   HEADING_SIZES,
@@ -29,6 +34,7 @@ import {
   type FaqBlock,
   type PanelItem,
   type TabsBlock,
+  type VideoBlock,
   type ButtonShape,
   type ButtonSize,
   type ButtonVariant,
@@ -41,8 +47,8 @@ import {
   type TextAlignments,
 } from "@/lib/page-content";
 
-import type { Upload } from "./image-upload";
-import type { StartVideo } from "./video-upload";
+import { ImageUploadButton, type Upload } from "./image-upload";
+import { VideoUploadButton, type StartVideo } from "./video-upload";
 
 /**
  * The page builder's settings for the newer kinds of component, one entry
@@ -86,6 +92,7 @@ export const BLOCK_EDITORS: Editors = {
     General: TabsFields,
     Style: TabsStyleFields,
   },
+  video: { title: "Video", General: VideoFields, Style: VideoStyleFields },
   faq: {
     title: "FAQs",
     font: { label: "Font", fallback: "The site's body font" },
@@ -802,6 +809,107 @@ function FaqStyleFields({ block, onChange }: BlockEditorProps<FaqBlock>) {
         checked={block.structuredData !== false}
         onChange={(on) => onChange({ structuredData: on ? undefined : false })}
       />
+    </>
+  );
+}
+
+/** A video (D91): where it comes from, the video, its title and the picture shown before it plays. */
+function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>) {
+  const embedded = block.source !== "upload";
+  const link = block.link.trim();
+  const found = embedded && link !== "" && embedUrl(block.source as "youtube" | "vimeo", link) !== null;
+  return (
+    <>
+      <Choices legend="Video from" options={optionsOf(VIDEO_SOURCES)} value={block.source} onChange={(source) => onChange({ source })} />
+      {embedded ? (
+        <TextField
+          label={`Address on ${EMBED_NAMES[block.source as "youtube" | "vimeo"]}`}
+          value={block.link}
+          max={500}
+          placeholder={block.source === "youtube" ? "https://www.youtube.com/watch?v=…" : "https://vimeo.com/…"}
+          hint={
+            link === ""
+              ? "Paste the address from the video's Share button."
+              : found
+                ? `Found. Nothing loads from ${EMBED_NAMES[block.source as "youtube" | "vimeo"]} until a visitor presses play.`
+                : `That is not the address of a video on ${EMBED_NAMES[block.source as "youtube" | "vimeo"]}.`
+          }
+          onChange={(value) => onChange({ link: value })}
+        />
+      ) : (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium">Video</p>
+          {block.video && <p className="break-all text-sm text-muted">{block.video.url.split("/").pop()}</p>}
+          <div className="flex flex-wrap items-center gap-3">
+            <VideoUploadButton
+              startVideo={context.startVideo}
+              upload={context.upload}
+              label={block.video ? "Choose another video" : "Upload a video"}
+              onUploaded={({ video, poster }) => onChange({ video, ...(poster && !block.poster ? { poster } : {}) })}
+            />
+            {block.video && (
+              <button type="button" onClick={() => onChange({ video: null })} className={smallButton}>
+                Remove
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted">MP4 or WebM, up to 50 MB. A still from the video is kept as its picture.</p>
+        </div>
+      )}
+      <TextField
+        label="Title"
+        value={block.title}
+        max={VIDEO_TITLE_MAX}
+        hint="What the video is, for people using screen readers and in the player."
+        onChange={(title) => onChange({ title })}
+      />
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium">Picture before it plays</p>
+        {block.poster && (
+          // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
+          <img src={block.poster.url} alt="" className="h-24 w-fit rounded-md border border-border object-cover" />
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <ImageUploadButton upload={context.upload} label={block.poster ? "Choose another picture" : "Choose a picture"} onUploaded={(poster) => onChange({ poster })} />
+          {block.poster && (
+            <button type="button" onClick={() => onChange({ poster: null })} className={smallButton}>
+              Remove
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-muted">
+          {embedded
+            ? "Shown with a play button; without one, a plain dark panel. YouTube's and Vimeo's own pictures are not used, as loading them would tell those sites about every visitor."
+            : "Shown until the video plays."}
+        </p>
+      </div>
+    </>
+  );
+}
+
+/** A video's shape and, uploaded, how it plays (D91). */
+function VideoStyleFields({ block, onChange }: BlockEditorProps<VideoBlock>) {
+  return (
+    <>
+      <Choices legend="Shape" options={optionsOf(VIDEO_RATIOS)} value={block.ratio ?? "16:9"} onChange={(ratio) => onChange({ ratio: ratio === "16:9" ? undefined : ratio })} />
+      {block.source === "upload" && (
+        <>
+          <Check
+            label="Start by itself"
+            hint="Starts muted and loops, as browsers only start videos without sound; stays still for visitors who prefer less motion."
+            checked={Boolean(block.autoplay)}
+            onChange={(autoplay) => onChange({ autoplay: autoplay || undefined })}
+          />
+          <Check label="Loop" checked={Boolean(block.loop) || Boolean(block.autoplay)} disabled={Boolean(block.autoplay)} onChange={(loop) => onChange({ loop: loop || undefined })} />
+          <Check
+            label="Show the player's controls"
+            hint="A video that does not start by itself always has them, so it can be played."
+            checked={block.controls !== false || !block.autoplay}
+            disabled={!block.autoplay}
+            onChange={(controls) => onChange({ controls: controls ? undefined : false })}
+          />
+        </>
+      )}
     </>
   );
 }

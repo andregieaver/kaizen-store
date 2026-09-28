@@ -49,6 +49,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
     case "tabs":
     case "faq":
       return { id: id(), type, items: [{ id: id(), title: "", body: EMPTY_DOC }] };
+    case "video":
+      return { id: id(), type, source: "youtube", video: null, link: "", poster: null, title: "" };
     case "dualButton":
       return { id: id(), type, first: { label: "", href: "" }, second: { label: "", href: "", variant: "outline" } };
     case "richText":

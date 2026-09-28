@@ -4,6 +4,7 @@ import { fontFamily } from "./fonts";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { termIdsSchema } from "./taxonomy";
+import { embedUrl } from "./video-embed";
 
 /**
  * A page built from blocks (D42): its title, address, picture, search texts,
@@ -751,6 +752,39 @@ export type FaqBlock = PartBase & BlockFont & {
 /** A question that shows: it has both its question and an answer. */
 export const faqShows = (item: PanelItem) => item.title.trim() !== "" && !richTextIsEmpty(item.body);
 
+export const VIDEO_SOURCES = { upload: "Uploaded video", youtube: "YouTube", vimeo: "Vimeo" } as const;
+export type VideoSource = keyof typeof VIDEO_SOURCES;
+export const VIDEO_RATIOS = { "16:9": "16:9", "4:3": "4:3", "1:1": "Square", "9:16": "Upright 9:16", "21:9": "Wide 21:9" } as const;
+export type VideoRatio = keyof typeof VIDEO_RATIOS;
+export const VIDEO_TITLE_MAX = 200;
+
+/**
+ * A video (D91): one uploaded to the site, played by the browser with or
+ * without controls (and, if set, starting muted and looping, still for
+ * those who prefer less motion); or one on YouTube or Vimeo, shown as its
+ * poster and a play button, whose player loads only when pressed. Its
+ * title names it to screen readers and the player.
+ */
+export type VideoBlock = PartBase & {
+  id: string;
+  type: "video";
+  source: VideoSource;
+  /** The uploaded video. */
+  video: { url: string } | null;
+  /** A YouTube or Vimeo address. */
+  link: string;
+  /** Shown before it plays: an uploaded video's still, or a picture chosen. */
+  poster: { url: string; width: number; height: number } | null;
+  title: string;
+  /** 16:9 unless set. */
+  ratio?: VideoRatio;
+  /** An uploaded video: the browser's controls, on unless off. */
+  controls?: boolean;
+  /** An uploaded video: starts by itself, muted, looping. */
+  autoplay?: boolean;
+  loop?: boolean;
+};
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -765,7 +799,8 @@ export type PageBlock =
   | DualButtonBlock
   | AccordionBlock
   | TabsBlock
-  | FaqBlock;
+  | FaqBlock
+  | VideoBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -851,6 +886,8 @@ export function blockHasContent(block: PageBlock): boolean {
       return block.items.some((item) => item.title.trim() !== "");
     case "faq":
       return block.items.some(faqShows);
+    case "video":
+      return block.source === "upload" ? block.video !== null : embedUrl(block.source, block.link) !== null;
   }
 }
 
@@ -872,6 +909,8 @@ export function blockText(block: PageBlock): string {
       return panelText(block.items);
     case "faq":
       return panelText(block.items.filter(faqShows));
+    case "video":
+      return block.title;
     case "button":
     case "contentGrid":
     case "product":
@@ -1468,6 +1507,32 @@ const faqBlock = z.object({
   ...partBase,
 });
 
+const videoBlock = z
+  .object({
+    id: itemId,
+    type: z.literal("video"),
+    source: z.enum(Object.keys(VIDEO_SOURCES) as [VideoSource, ...VideoSource[]], "A video comes from an unknown place."),
+    video: z.object({ url: z.url({ protocol: /^https?$/, error: "A video has an invalid address." }).max(1000) }).nullable(),
+    link: z.string().trim().max(500).default(""),
+    poster: z
+      .object({
+        url: z.url({ protocol: /^https?$/, error: "A video's picture has an invalid address." }).max(1000),
+        width: z.number().int().min(1).max(10_000),
+        height: z.number().int().min(1).max(10_000),
+      })
+      .nullable(),
+    title: z.string().trim().max(VIDEO_TITLE_MAX, `Keep a video's title under ${VIDEO_TITLE_MAX} characters.`).default(""),
+    ratio: z.enum(Object.keys(VIDEO_RATIOS) as [VideoRatio, ...VideoRatio[]]).optional(),
+    controls: z.boolean().optional(),
+    autoplay: z.boolean().optional(),
+    loop: z.boolean().optional(),
+    ...partBase,
+  })
+  .refine((block) => block.source === "upload" || block.link === "" || embedUrl(block.source, block.link) !== null, {
+    message: "Use the address of a video on YouTube or Vimeo, as its Share button gives it.",
+    path: ["link"],
+  });
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1483,6 +1548,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   accordionBlock,
   tabsBlock,
   faqBlock,
+  videoBlock,
 ]);
 
 export const pageColumnSchema = z.object({

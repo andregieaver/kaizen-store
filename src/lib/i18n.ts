@@ -121,6 +121,9 @@ const messages = {
     noProducts: "Ingen produkter ennå.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Les mer",
+    /** Videos (D91): the play button, and where a YouTube or Vimeo video plays from. */
+    playVideo: "Spill av video",
+    playsFrom: (source: string) => `Spilles av fra ${source}`,
     viewProduct: "Se produktet",
     nothingHere: "Ingenting her ennå.",
     blog: "Blogg",
@@ -670,6 +673,8 @@ const messages = {
     noProducts: "Inga produkter ännu.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Läs mer",
+    playVideo: "Spela upp video",
+    playsFrom: (source: string) => `Spelas upp från ${source}`,
     viewProduct: "Visa produkten",
     nothingHere: "Inget här ännu.",
     blog: "Blogg",
@@ -1221,6 +1226,8 @@ const messages = {
     noProducts: "Ingen produkter endnu.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Læs mere",
+    playVideo: "Afspil video",
+    playsFrom: (source: string) => `Afspilles fra ${source}`,
     viewProduct: "Se produktet",
     nothingHere: "Intet her endnu.",
     blog: "Blog",
@@ -1770,6 +1777,8 @@ const messages = {
     noProducts: "No products yet.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Read more",
+    playVideo: "Play video",
+    playsFrom: (source: string) => `Plays from ${source}`,
     viewProduct: "View product",
     nothingHere: "Nothing here yet.",
     blog: "Blog",

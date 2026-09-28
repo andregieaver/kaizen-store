@@ -22,13 +22,16 @@ import {
   type PageBlock,
   type SeparatorBlock,
   type TabsBlock,
+  type VideoBlock,
 } from "@/lib/page-content";
 
 import { faqJsonLd } from "@/lib/seo";
+import { embedUrl } from "@/lib/video-embed";
 
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
 import { TabsView } from "./tabs-view";
+import { EmbeddedVideo, UploadedVideo } from "./video-view";
 
 // Written out whole so Tailwind finds every class.
 
@@ -95,6 +98,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Tabs block={block} />;
     case "faq":
       return <Faq block={block} />;
+    case "video":
+      return <Video block={block} />;
     case "image":
       if (!block.image) return null;
       return (
@@ -293,4 +298,26 @@ function Tabs({ block }: { block: TabsBlock }) {
       ))}
     />
   );
+}
+
+/** A video (D91): uploaded, or from YouTube or Vimeo, in its shape (16:9 unless set). */
+function Video({ block }: { block: VideoBlock }) {
+  const style = { aspectRatio: (block.ratio ?? "16:9").replace(":", " / ") };
+  if (block.source === "upload") {
+    if (!block.video) return null;
+    return (
+      <UploadedVideo
+        src={block.video.url}
+        poster={block.poster?.url}
+        title={block.title}
+        controls={block.controls !== false}
+        autoplay={Boolean(block.autoplay)}
+        loop={Boolean(block.loop)}
+        style={style}
+      />
+    );
+  }
+  const player = embedUrl(block.source, block.link);
+  if (!player) return null;
+  return <EmbeddedVideo source={block.source} player={player} poster={block.poster?.url} title={block.title} style={style} />;
 }

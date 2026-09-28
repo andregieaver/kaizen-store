@@ -150,3 +150,29 @@ describe("FAQs", () => {
     });
   });
 });
+
+describe("videos", () => {
+  const youtube = { id: "v", type: "video", source: "youtube", video: null, link: "https://youtu.be/dQw4w9WgXcQ", poster: null, title: "Slik lager vi koppene" };
+
+  it("starts empty and shows once it has a video", () => {
+    const fresh = newBlock("video", () => "n");
+    expect(fresh).toMatchObject({ type: "video", source: "youtube", video: null, link: "" });
+    expect(blockHasContent(fresh)).toBe(false);
+    expect(blockHasContent(parse(youtube))).toBe(true);
+    expect(blockHasContent(parse({ ...youtube, source: "upload" }))).toBe(false);
+    expect(blockHasContent(parse({ ...youtube, source: "upload", video: { url: "https://example.com/film.mp4" } }))).toBe(true);
+  });
+
+  it("takes only a YouTube or Vimeo video's address", () => {
+    expect(parse({ ...youtube, source: "vimeo", link: "https://vimeo.com/76979871" })).toMatchObject({ link: "https://vimeo.com/76979871" });
+    expect(problems({ ...youtube, link: "https://example.com/film" })).toEqual(["Use the address of a video on YouTube or Vimeo, as its Share button gives it."]);
+    expect(problems({ ...youtube, source: "vimeo" })).toHaveLength(1);
+    expect(problems({ ...youtube, ratio: "2:1" })).toHaveLength(1);
+  });
+
+  it("gives its title to the page's words and to translation", () => {
+    const parsed = parse(youtube);
+    expect(blockText(parsed)).toBe("Slik lager vi koppene");
+    expect(blockTextFields(parsed).map((field) => [field.key, field.label])).toEqual([["block.v.title", "Video title"]]);
+  });
+});

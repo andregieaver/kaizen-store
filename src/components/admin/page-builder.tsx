@@ -265,9 +265,10 @@ const blockLabels: Record<BlockType, string> = {
   accordion: "Accordion",
   tabs: "Tabs",
   faq: "FAQs",
+  video: "Video",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "tabs", "accordion", "faq", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -283,6 +284,7 @@ const blockThis: Record<BlockType, string> = {
   accordion: "this accordion",
   tabs: "these tabs",
   faq: "these questions",
+  video: "this video",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1091,9 +1093,22 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <TabsIcon />;
     case "faq":
       return <LetterIcon letter="?" bold />;
+    case "video":
+      return <VideoIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function VideoIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m10 9 5 3-5 3z" fill="currentColor" />
+      </svg>
+    </span>
+  );
 }
 
 function TabsIcon() {
@@ -1642,6 +1657,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   accordion: "An accordion: its sections need titles. Double-click or use the wrench.",
   tabs: "Tabs: each needs a title. Double-click or use the wrench.",
   faq: "Questions and answers: each needs both. Double-click or use the wrench.",
+  video: "No video yet. Double-click or use the wrench to upload one or give a YouTube or Vimeo address.",
 };
 
 export { ColorField };

@@ -69,6 +69,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return { ...b, items: mapPanelItems(b.items, visit, key, "Section") };
     case "tabs":
       return { ...b, items: mapPanelItems(b.items, visit, key, "Tab") };
+    case "video":
+      return { ...b, title: str("title", b.title, 200, "Video title") };
     case "faq":
       return { ...b, items: mapPanelItems(b.items, visit, key, "Question", { title: "Question", body: "Answer" }) };
     case "dualButton":

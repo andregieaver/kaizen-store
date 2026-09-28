@@ -161,3 +161,23 @@ test.describe("without script", () => {
     await expect(page.getByText("Vi sender innen to dager.")).toBeVisible();
   });
 });
+
+test("a YouTube video loads nothing from YouTube until the visitor presses play", async ({ page }) => {
+  const address = await storePageWith("video", [
+    { id: "yt", type: "video", source: "youtube", video: null, link: "https://youtu.be/dQw4w9WgXcQ", poster: null, title: "Slik lager vi koppene" },
+  ]);
+  const outside: string[] = [];
+  page.on("request", (request) => {
+    if (/youtube|ytimg|googlevideo/.test(new URL(request.url()).hostname)) outside.push(request.url());
+  });
+  // The player itself is not needed here, only its address.
+  await page.route(/youtube-nocookie\.com/, (route) => route.fulfill({ body: "<html></html>", contentType: "text/html" }));
+  await page.goto(address);
+  const play = page.getByRole("button", { name: "Slik lager vi koppene (Spilles av fra YouTube)" });
+  await expect(play).toBeVisible();
+  await expect(page.locator("main iframe")).toHaveCount(0);
+  expect(outside).toEqual([]);
+  await play.click();
+  await expect(page.locator("main iframe")).toHaveAttribute("src", /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?autoplay=1/);
+  await expect(page.locator("main iframe")).toHaveAttribute("title", "Slik lager vi koppene");
+});
