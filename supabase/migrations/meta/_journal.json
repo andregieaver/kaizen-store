@@ -1009,6 +1009,20 @@
       "when": 1790581642619,
       "tag": "20260928074722_products_page_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1790586680375,
+      "tag": "20260928091120_menus",
+      "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1790586690736,
+      "tag": "20260928091130_menus_rules",
+      "breakpoints": true
     }
   ]
 }

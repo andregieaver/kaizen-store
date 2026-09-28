@@ -42,6 +42,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, part: part in PRODUCT_PARTS ? (part as ProductPart) : "title" };
     case "site":
       return { id: id(), type, part: part in SITE_PARTS ? (part as SitePart) : "logo" };
+    case "menu":
+      return { id: id(), type };
     case "richText":
       return { id: id(), type, doc: EMPTY_DOC };
     case "image":

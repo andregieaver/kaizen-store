@@ -207,19 +207,25 @@ describe("search engines, AI assistants and menus", () => {
     expect(robots).not.toContain(`Disallow: /${open}`);
   });
 
-  it("links menus to pages by id, so a link follows its page and waits until it is published", async () => {
+  it("links menus to pages by id, so a link follows its page and waits until it is published (D85)", async () => {
+    const menus = await import("./menus");
     const id = await saved(await pages.savePage(admin, null, null, content(`menu-${run}`), { publish: false }));
-    const input = {
-      logo: null,
-      header: [{ label: {}, link: { kind: "page", pageId: id } }],
-      footer: [{ label: { en: "Docs" }, link: { kind: "url", url: "https://example.com" } }],
-      business: { legalName: "Kaizen AS", organisationNumber: "123 456 789", postalAddress: "Oslo", contactEmail: "hei@example.com" },
-    };
+    const menu = await menus.savePlatformMenu(admin, null, {
+      name: `Kaizen ${run}`,
+      items: [
+        { label: {}, link: { kind: "page", pageId: id }, depth: 0 },
+        { label: { en: "Docs" }, link: { kind: "url", url: "https://example.com" }, depth: 1 },
+      ],
+    });
+    if (!menu.ok) throw new Error(menu.problems.join(" "));
     const original = await nav.getPlatformNavigationForEdit();
+    const business = { legalName: "Kaizen AS", organisationNumber: "123 456 789", postalAddress: "Oslo", contactEmail: "hei@example.com" };
     try {
-      expect(await nav.savePlatformNavigation(admin, input)).toEqual({ ok: true });
+      expect(await nav.savePlatformNavigation(admin, { logo: null, headerMenuId: menu.id, business })).toEqual({ ok: true });
       let chrome = await nav.getPlatformChrome();
       expect(chrome.business.legalName).toBe("Kaizen AS");
+      expect(chrome.headerMenuId).toBe(menu.id);
+      expect(chrome.menus.find((m) => m.id === menu.id)?.items).toHaveLength(2);
       expect(chrome.pages.has(id)).toBe(false);
 
       await pages.savePage(admin, null, id, content(`menu-moved-${run}`), { publish: true });
@@ -227,13 +233,14 @@ describe("search engines, AI assistants and menus", () => {
       expect(chrome.pages.get(id)).toMatchObject({ slug: `menu-moved-${run}`, title: `Page menu-moved-${run}` });
 
       expect(
-        await nav.savePlatformNavigation(admin, {
-          ...input,
-          header: [{ label: {}, link: { kind: "page", pageId: "00000000-0000-4000-8000-000000000000" } }],
+        await menus.savePlatformMenu(admin, menu.id, {
+          name: `Kaizen ${run}`,
+          items: [{ label: {}, link: { kind: "page", pageId: "00000000-0000-4000-8000-000000000000" }, depth: 0 }],
         }),
-      ).toEqual({ ok: false, problems: ["A menu links to a page that no longer exists. Choose another."] });
+      ).toEqual({ ok: false, problems: ["A link goes to a page that no longer exists. Choose another."] });
     } finally {
-      await nav.savePlatformNavigation(admin, { ...original.navigation, business: original.business });
+      await nav.savePlatformNavigation(admin, { ...original.navigation, ...original, business: original.business });
+      await menus.deleteMenu(admin.id, null, menu.id);
     }
   });
 });
@@ -310,7 +317,7 @@ describe("a store's front page and menu links (D54)", () => {
   let otherId: string;
   const slug = `front-${run}`;
   const stores = import("./stores");
-  const navigation = import("./navigation");
+  const menus = import("./menus");
 
   beforeAll(async () => {
     const insert = async (name: string) => {
@@ -378,12 +385,12 @@ describe("a store's front page and menu links (D54)", () => {
 
     const store = (await (await stores).getStore(`front-${run}`))!;
     const member = { account: admin, store, role: "owner" as const };
-    const menu = (pageSlug: string) => ({ logo: null, header: [{ label: {}, link: { kind: "page", slug: pageSlug } }], footer: [] });
-    expect(await (await navigation).saveNavigation(member, menu(`about-${run}`))).toEqual({ ok: true });
+    const menu = (pageSlug: string) => ({ name: `Menu ${pageSlug}`, items: [{ label: {}, link: { kind: "page", slug: pageSlug }, depth: 0 }] });
+    expect((await (await menus).saveStoreMenu(member, null, menu(`about-${run}`))).ok).toBe(true);
     // Another store's page is not one of this store's.
-    expect(await (await navigation).saveNavigation(member, menu(slug))).toEqual({
+    expect(await (await menus).saveStoreMenu(member, null, menu(slug))).toEqual({
       ok: false,
-      problems: ["A menu links to a page that no longer exists. Choose another."],
+      problems: ["A link goes to a page that no longer exists. Choose another."],
     });
   });
 });

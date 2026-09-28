@@ -6,13 +6,14 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, readDb } from "@/db/client";
 import {
   businessDetailsSchema,
-  cleanLabels,
   parseBusinessDetails,
+  parsePlatformMenuItems,
   parsePlatformNavigation,
   platformNavigationSchema,
   type BusinessDetails,
   type Favicon,
   type MenuPage,
+  type PlatformMenu,
   type PlatformNavigation,
   termNames,
   type TermNames,
@@ -21,6 +22,7 @@ import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
 import { parseSiteFonts, type SiteFonts } from "@/lib/fonts";
 
 import { audit, type Account } from "./auth";
+import { ownMenus, standardMenusInput } from "./navigation";
 import { listPublishedPages } from "./pages";
 import { siteTerms } from "./taxonomy";
 import type { SaveResult } from "./settings";
@@ -33,6 +35,10 @@ export const PLATFORM_NAVIGATION_TAG = "platform-navigation";
 /** Everything Kaizen's header and footer show (D42). */
 export type PlatformChrome = {
   navigation: PlatformNavigation;
+  /** Kaizen's menus (D85), and those its standard header (and phone menu) and footer show. */
+  menus: PlatformMenu[];
+  headerMenuId: string | null;
+  footerMenuId: string | null;
   business: BusinessDetails;
   /** Published pages by id, so menu links follow a page to a new address. */
   pages: Map<string, MenuPage>;
@@ -48,6 +54,9 @@ export type PlatformChrome = {
 
 async function loadSettings(): Promise<{
   navigation: PlatformNavigation;
+  menus: PlatformMenu[];
+  headerMenuId: string | null;
+  footerMenuId: string | null;
   business: BusinessDetails;
   tracking: TrackingSettings;
   fonts: SiteFonts;
@@ -55,9 +64,15 @@ async function loadSettings(): Promise<{
   "use cache";
   cacheLife("hours");
   cacheTag(PLATFORM_NAVIGATION_TAG);
-  const [row] = await readDb().execute<Row>(sql`select navigation, business, tracking, fonts from commerce.platform_settings`);
+  const [[row], menus] = await Promise.all([
+    readDb().execute<Row>(sql`select navigation, business, tracking, fonts, header_menu_id, footer_menu_id from commerce.platform_settings`),
+    readDb().execute<Row>(sql`select id, name, items from commerce.menus where store_id is null order by name`),
+  ]);
   return {
     navigation: parsePlatformNavigation(row?.navigation),
+    menus: menus.map((m) => ({ id: String(m.id), name: String(m.name), items: parsePlatformMenuItems(m.items) })),
+    headerMenuId: row?.header_menu_id ? String(row.header_menu_id) : null,
+    footerMenuId: row?.footer_menu_id ? String(row.footer_menu_id) : null,
     business: parseBusinessDetails(row?.business),
     tracking: parseTracking(row?.tracking),
     fonts: parseSiteFonts(row?.fonts),
@@ -93,68 +108,51 @@ export async function getPlatformChrome(): Promise<PlatformChrome> {
 }
 
 /** For the editor: the saved settings, read fresh. */
-export async function getPlatformNavigationForEdit(): Promise<{ navigation: PlatformNavigation; business: BusinessDetails }> {
-  const [row] = await db().execute<Row>(sql`select navigation, business from commerce.platform_settings`);
-  return { navigation: parsePlatformNavigation(row?.navigation), business: parseBusinessDetails(row?.business) };
+export async function getPlatformNavigationForEdit(): Promise<{
+  navigation: PlatformNavigation;
+  business: BusinessDetails;
+  headerMenuId: string | null;
+  footerMenuId: string | null;
+}> {
+  const [row] = await db().execute<Row>(sql`select navigation, business, header_menu_id, footer_menu_id from commerce.platform_settings`);
+  return {
+    navigation: parsePlatformNavigation(row?.navigation),
+    business: parseBusinessDetails(row?.business),
+    headerMenuId: row?.header_menu_id ? String(row.header_menu_id) : null,
+    footerMenuId: row?.footer_menu_id ? String(row.footer_menu_id) : null,
+  };
 }
 
-/**
- * Saves Kaizen's logo, menus and business details. Links to pages must
- * name a page that exists (a draft shows once published); a web address
- * needs a text.
- */
+/** Saves Kaizen's logo, icon and business details, and the menus its standard header and footer show (D85). */
 export async function savePlatformNavigation(account: Account, input: unknown): Promise<SaveResult> {
   const parsed = platformNavigationSchema.safeParse(input);
+  const menus = standardMenusInput.safeParse(input);
   const business = businessDetailsSchema.safeParse((input as { business?: unknown } | null)?.business ?? {});
-  if (!parsed.success || !business.success) {
-    const issues = [...(parsed.error?.issues ?? []), ...(business.error?.issues ?? [])];
+  if (!parsed.success || !business.success || !menus.success) {
+    const issues = [...(parsed.error?.issues ?? []), ...(business.error?.issues ?? []), ...(menus.error?.issues ?? [])];
     return { ok: false, problems: [...new Set(issues.map((i) => i.message))] };
   }
-  const items = [...parsed.data.header, ...parsed.data.footer];
-  const ids = [...new Set(items.flatMap((i) => (i.link.kind === "page" || i.link.kind === "article" ? [i.link.pageId] : [])))];
-  // Page and article links name one of Kaizen's own, of that type (D57).
-  const existing = new Set<string>();
-  if (ids.length > 0) {
-    const rows = await db().execute<Row>(sql`
-      select type || ':' || id as key from commerce.pages
-      where store_id is null and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
-    `);
-    for (const row of rows) existing.add(String(row.key));
+  const { headerMenuId, footerMenuId } = menus.data;
+  const own = await ownMenus(null, [headerMenuId, footerMenuId]);
+  if ((headerMenuId && !own.has(headerMenuId)) || (footerMenuId && !own.has(footerMenuId))) {
+    return { ok: false, problems: ["That menu no longer exists. Choose another."] };
   }
-
-  const problems: string[] = [];
-  const clean = (item: PlatformNavigation["header"][number]) => {
-    const label = cleanLabels(item.label, ["en"]);
-    if (item.link.kind === "page" && !existing.has(`page:${item.link.pageId}`)) {
-      problems.push("A menu links to a page that no longer exists. Choose another.");
-    }
-    if (item.link.kind === "article" && !existing.has(`article:${item.link.pageId}`)) {
-      problems.push("A menu links to an article that no longer exists. Choose another.");
-    }
-    if (item.link.kind === "url" && !label.en) problems.push("Give each web address link a text.");
-    return { label, link: item.link };
-  };
-  const navigation: PlatformNavigation = {
-    logo: parsed.data.logo,
-    logoDark: parsed.data.logoDark,
-    favicon: parsed.data.favicon,
-    header: parsed.data.header.map(clean),
-    footer: parsed.data.footer.map(clean),
-  };
-  if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
+  const navigation: PlatformNavigation = { logo: parsed.data.logo, logoDark: parsed.data.logoDark, favicon: parsed.data.favicon };
 
   await db().execute(sql`
     update commerce.platform_settings set
       navigation = ${JSON.stringify(navigation)}::jsonb,
       business = ${JSON.stringify(business.data)}::jsonb,
+      header_menu_id = ${headerMenuId}::uuid,
+      footer_menu_id = ${footerMenuId}::uuid,
       updated_at = now(), updated_by = ${account.id}::uuid
   `);
   await audit(account.id, null, "platform.navigation_updated", {
     logo: navigation.logo !== null,
     logoDark: navigation.logoDark !== null,
     favicon: navigation.favicon !== null,
-    header: navigation.header.length,
-    footer: navigation.footer.length,
+    headerMenuId,
+    footerMenuId,
   });
   return { ok: true };
 }

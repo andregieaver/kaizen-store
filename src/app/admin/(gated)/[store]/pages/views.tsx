@@ -60,7 +60,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const copy = PAGE_TYPE_COPY[type];
   const [pages, query] = await Promise.all([listPages(store.id, type), searchParams]);
   const base = storePagesBase(store, type);
-  const context = storePageContext(store, type);
+  const context = await storePageContext(store, type);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -185,7 +185,7 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
         library={library}
         terms={terms}
         gridTerms={gridTerms}
-        context={storePageContext(store, type, account.name ?? "")}
+        context={await storePageContext(store, type, account.name ?? "")}
       />
     </>
   );
@@ -205,7 +205,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
     bothTerms(store.id),
   ]);
   if (!page) notFound();
-  const context = storePageContext(store, type, account.name ?? "");
+  const context = await storePageContext(store, type, account.name ?? "");
   return (
     <>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>

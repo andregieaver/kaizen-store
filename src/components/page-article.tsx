@@ -5,6 +5,7 @@ import { blockFonts, blockHasContent, type PageBlock, type PageContent, type Pag
 import type { GridPlace } from "@/server/content-grid";
 
 import { ContentGridSection } from "./content-grid-section";
+import { MenuSection } from "./menu-section";
 import { FontLinks } from "./font-links";
 import { PageBlockView } from "./page-block";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "./page-parts";
@@ -102,6 +103,8 @@ export function PageRowView({
                           own
                         ) : block.type === "contentGrid" ? (
                           <ContentGridSection block={block} place={place} />
+                        ) : block.type === "menu" ? (
+                          <MenuSection block={block} place={place} />
                         ) : (
                           <PageBlockView block={block} />
                         )}

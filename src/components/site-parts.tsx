@@ -16,9 +16,9 @@ import { BuyerSwitch } from "./buyer";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView, rowShows } from "./page-article";
-import { BUILT_IN, Brand as KaizenBrand, MenuLinks as KaizenMenuLinks } from "./platform-layout";
+import { BUILT_IN, Brand as KaizenBrand } from "./platform-layout";
 import { HidingHeader } from "./store-chrome";
-import { HEADER_BACKGROUND, Brand as StoreBrand, MarketChoice, MenuLinks as StoreMenuLinks } from "./store-layout";
+import { HEADER_BACKGROUND, Brand as StoreBrand, MarketChoice } from "./store-layout";
 import { WishlistCount } from "./wishlist-heart";
 
 /**
@@ -35,22 +35,18 @@ export type SiteContext =
   | { kind: "kaizen"; chrome: PlatformChrome; place: "header" | "footer" };
 
 const ICON_LINK = "flex size-11 items-center justify-center rounded-full hover:bg-current/5";
-const ROW_LINK = "flex min-h-11 items-center rounded-button px-3 text-sm font-medium hover:bg-current/5";
 const COLUMN_LINK = "inline-flex min-h-10 items-center hover:underline";
 
 /** Whether a part has anything to show here: its owner's, with links or countries to show. */
 export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
   if (ctx.kind === "kaizen") {
     if (["search", "wishlist", "cart", "markets", "buyerSwitch"].includes(block.part)) return false;
-    if (block.part === "menu") return ctx.chrome.navigation[block.menu ?? "header"].length > 0;
     return true;
   }
   const { store } = ctx;
   switch (block.part) {
     case "signUp":
       return false;
-    case "menu":
-      return store.navigation[block.menu ?? "header"].length > 0;
     case "markets":
       return store.markets.length > 1;
     case "buyerSwitch":
@@ -92,20 +88,6 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
   switch (block.part) {
     case "logo":
       return <StoreBrand store={store} market={market} size={place} height={logoHeight(block)} />;
-    case "menu": {
-      const which = block.menu ?? "header";
-      return (
-        <nav aria-label={which === "header" ? m.mainMenu : m.footerMenu}>
-          <StoreMenuLinks
-            items={store.navigation[which]}
-            store={store}
-            market={market}
-            className={column ? "flex flex-col gap-1" : "flex flex-wrap items-center gap-1"}
-            linkClassName={column ? COLUMN_LINK : ROW_LINK}
-          />
-        </nav>
-      );
-    }
     case "menuButton":
       return <MenuButton label={m.openMenu} />;
     case "search":
@@ -185,20 +167,6 @@ function KaizenPart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext
   switch (block.part) {
     case "logo":
       return <KaizenBrand chrome={chrome} size={place} height={logoHeight(block)} />;
-    case "menu": {
-      const which = block.menu ?? "header";
-      const column = block.direction === "column";
-      return (
-        <nav aria-label={which === "header" ? m.mainMenu : m.footerMenu}>
-          <KaizenMenuLinks
-            items={chrome.navigation[which]}
-            chrome={chrome}
-            className={column ? "flex flex-col gap-1" : "flex flex-wrap items-center gap-1"}
-            linkClassName={column ? COLUMN_LINK : ROW_LINK}
-          />
-        </nav>
-      );
-    }
     case "menuButton":
       return <MenuButton label={m.openMenu} />;
     case "account":

@@ -1,14 +1,16 @@
 import { z } from "zod";
 
 /**
- * A store's header and footer (D30): its logo and two menus the owner
- * edits. Kept on the store as one JSON value, loaded with the store, so
- * pages need no extra query. Shared by the admin editor and the storefront.
+ * A site's logo and icon (D30), kept on the store as one JSON value, and its
+ * menus (D85): lists of links the owner edits under Menus, shown wherever
+ * one is chosen. Shared by the admin editors and the storefront.
  */
 
-export const MENU_LIMITS = { header: 8, footer: 12 } as const;
-export type MenuName = keyof typeof MENU_LIMITS;
 export const LABEL_MAX = 60;
+/** A menu's items at most, and how deep one can sit under another (three levels). */
+export const MENU_MAX_ITEMS = 100;
+export const MENU_MAX_DEPTH = 2;
+export const MENU_NAME_MAX = 80;
 
 export const LINK_KINDS = ["home", "products", "page", "product", "category", "tag", "blog", "article", "blogCategory", "account", "cart", "url"] as const;
 export type LinkKind = (typeof LINK_KINDS)[number];
@@ -54,11 +56,9 @@ export type StoreNavigation = {
   logo: Logo | null;
   logoDark: Logo | null;
   favicon: Favicon | null;
-  header: MenuItem[];
-  footer: MenuItem[];
 };
 
-export const EMPTY_NAVIGATION: StoreNavigation = { logo: null, logoDark: null, favicon: null, header: [], footer: [] };
+export const EMPTY_NAVIGATION: StoreNavigation = { logo: null, logoDark: null, favicon: null };
 
 /**
  * A menu's web address: http(s), or a path in the store (`/p/notatbok`,
@@ -118,6 +118,29 @@ const link = z.discriminatedUnion("kind", [
 
 const item = z.object({ label, link });
 
+/** Where an item sits: how deep under the items before it (0 at the top), and whether it opens in a new tab. */
+const placing = { depth: z.number().int().min(0).max(MENU_MAX_DEPTH), newTab: z.boolean().optional() };
+
+/** A menu's items: at most `MENU_MAX_ITEMS`, the first at the top and each at most one deeper than the one before. */
+function itemsSchema<T extends z.ZodType<{ depth: number }>>(entry: T) {
+  return z
+    .array(entry)
+    .max(MENU_MAX_ITEMS, `A menu takes at most ${MENU_MAX_ITEMS} links.`)
+    .refine(
+      (items) => items.every((it, i) => it.depth <= (i === 0 ? 0 : items[i - 1].depth + 1)),
+      "A link can only sit under the link before it.",
+    );
+}
+
+const menuName = z
+  .string()
+  .trim()
+  .min(1, "Give the menu a name.")
+  .max(MENU_NAME_MAX, `Keep the menu's name under ${MENU_NAME_MAX} characters.`);
+
+/** A store's menu as the editor saves it. */
+export const menuInput = z.object({ name: menuName, items: itemsSchema(item.extend(placing)) });
+
 const logoSchema = z.object({
   url: z.string().trim().max(1000).refine(isMenuAddress, "The logo has an invalid address."),
   width: z.number().int().min(1).max(10_000),
@@ -135,11 +158,9 @@ export const navigationSchema = z.object({
     })
     .nullable()
     .default(null),
-  header: z.array(item).max(MENU_LIMITS.header, `The header menu takes at most ${MENU_LIMITS.header} links.`),
-  footer: z.array(item).max(MENU_LIMITS.footer, `The footer menu takes at most ${MENU_LIMITS.footer} links.`),
 });
 
-/** The stored value, or an empty header and footer if it is missing or damaged. */
+/** The stored value, or no logo or icon if it is missing or damaged. */
 export function parseNavigation(value: unknown): StoreNavigation {
   const parsed = navigationSchema.safeParse(value);
   return parsed.success ? parsed.data : EMPTY_NAVIGATION;
@@ -278,15 +299,9 @@ export type PlatformMenuLink =
 
 export type PlatformMenuItem = { label: Record<string, string>; link: PlatformMenuLink };
 
-export type PlatformNavigation = {
-  logo: Logo | null;
-  logoDark: Logo | null;
-  favicon: Favicon | null;
-  header: PlatformMenuItem[];
-  footer: PlatformMenuItem[];
-};
+export type PlatformNavigation = StoreNavigation;
 
-export const EMPTY_PLATFORM_NAVIGATION: PlatformNavigation = { logo: null, logoDark: null, favicon: null, header: [], footer: [] };
+export const EMPTY_PLATFORM_NAVIGATION: PlatformNavigation = EMPTY_NAVIGATION;
 
 /** Any menu link, store or platform: what the shared menu editor works with. */
 export type AnyMenuLink = MenuLink | PlatformMenuLink;
@@ -311,14 +326,72 @@ const platformLink = z.discriminatedUnion("kind", [
 
 const platformItem = z.object({ label, link: platformLink });
 
-export const platformNavigationSchema = navigationSchema.extend({
-  header: z.array(platformItem).max(MENU_LIMITS.header, `The header menu takes at most ${MENU_LIMITS.header} links.`),
-  footer: z.array(platformItem).max(MENU_LIMITS.footer, `The footer menu takes at most ${MENU_LIMITS.footer} links.`),
-});
+/** Kaizen's menu as the editor saves it. */
+export const platformMenuInput = z.object({ name: menuName, items: itemsSchema(platformItem.extend(placing)) });
 
-export function parsePlatformNavigation(value: unknown): PlatformNavigation {
-  const parsed = platformNavigationSchema.safeParse(value);
-  return parsed.success ? parsed.data : EMPTY_PLATFORM_NAVIGATION;
+export const platformNavigationSchema = navigationSchema;
+export const parsePlatformNavigation = parseNavigation;
+
+// ---------------------------------------------------------------------------
+// Menus (D85)
+// ---------------------------------------------------------------------------
+
+/** An item in a menu: its link and texts, how deep it sits under the items before it, and whether it opens a new tab. */
+export type MenuEntry = MenuItem & { depth: number; newTab?: boolean };
+export type PlatformMenuEntry = PlatformMenuItem & { depth: number; newTab?: boolean };
+export type AnyMenuEntry = AnyMenuItem & { depth: number; newTab?: boolean };
+
+/** A menu: a store's (`MenuEntry`) or Kaizen's (`PlatformMenuEntry`). */
+export type Menu<E extends AnyMenuEntry = MenuEntry> = { id: string; name: string; items: E[] };
+export type PlatformMenu = Menu<PlatformMenuEntry>;
+
+/** Depths made sound: the first at the top, none more than one deeper than the one before, none too deep. */
+export function soundDepths<E extends { depth: number }>(items: E[]): E[] {
+  let before = -1;
+  return items.map((it) => {
+    const depth = Math.max(0, Math.min(it.depth, before + 1, MENU_MAX_DEPTH));
+    before = depth;
+    return depth === it.depth ? it : { ...it, depth };
+  });
+}
+
+/** Stored items, each checked on its own: one that is damaged is left out, and depths made sound. */
+function parseItems<E extends { depth: number }>(value: unknown, entry: z.ZodType<E>): E[] {
+  if (!Array.isArray(value)) return [];
+  return soundDepths(value.slice(0, MENU_MAX_ITEMS).flatMap((raw) => {
+    const parsed = entry.safeParse(raw);
+    return parsed.success ? [parsed.data] : [];
+  }));
+}
+
+const storeEntry = item.extend({ depth: z.number().int().min(0).catch(0), newTab: z.boolean().optional().catch(undefined) });
+const platformEntry = platformItem.extend({ depth: z.number().int().min(0).catch(0), newTab: z.boolean().optional().catch(undefined) });
+
+/** A store's stored menu items. */
+export const parseMenuItems = (value: unknown): MenuEntry[] => parseItems(value, storeEntry);
+/** Kaizen's stored menu items. */
+export const parsePlatformMenuItems = (value: unknown): PlatformMenuEntry[] => parseItems(value, platformEntry);
+
+/** An item with the items under it. */
+export type MenuNode<E> = { item: E; children: MenuNode<E>[] };
+
+/**
+ * The items as a tree. `keep` leaves an item out (a page no longer
+ * published); the items under it take its place.
+ */
+export function menuTree<E extends { depth: number }>(items: E[], keep: (item: E) => boolean = () => true): MenuNode<E>[] {
+  const roots: MenuNode<E>[] = [];
+  // The open nodes by depth: where the next item's parent is.
+  const open: (MenuNode<E> | null)[] = [];
+  for (const item of items) {
+    open.length = item.depth;
+    const node: MenuNode<E> = { item, children: [] };
+    let parent: MenuNode<E> | null = null;
+    for (let d = item.depth - 1; d >= 0 && !parent; d--) parent = open[d] ?? null;
+    if (keep(item)) (parent ? parent.children : roots).push(node);
+    open[item.depth] = keep(item) ? node : parent;
+  }
+  return roots;
 }
 
 /** A published page as the menus know it. */

@@ -8,22 +8,33 @@ import {
   type PageRow,
   type PageType,
   type HeaderOverlay,
+  type MenuBlock,
   type SiteBlock,
   type SitePart,
 } from "./page-content";
 
 /**
  * Headers and footers (D80): a site's top and bottom built in the page
- * builder, with site components (`SiteBlock`) where its logo, menus and
- * details go. Until one is chosen a site shows its standard header and
+ * builder, with site components (`SiteBlock`) where its logo, tools and
+ * details go, and menu components (`MenuBlock`, D85) for its menus. Until one is chosen a site shows its standard header and
  * footer; a new one starts from these, which look much the same.
  */
 
 const part = (id: string, name: SitePart, extra: Partial<SiteBlock> = {}): SiteBlock => ({ id, type: "site", part: name, ...extra });
+/** A menu component (D85) showing `menuId`, if the site has one to show. */
+const menu = (id: string, menuId: string | null, extra: Partial<MenuBlock> = {}): MenuBlock => ({
+  id,
+  type: "menu",
+  ...(menuId && { menuId }),
+  ...extra,
+});
 const sides = (vertical: number, horizontal: number) => ({ top: vertical, right: horizontal, bottom: vertical, left: horizontal });
 
+/** The menus a site's standard header and footer show (D85), which a new header or footer starts with. */
+export type StandardMenus = { header: string | null; footer: string | null };
+
 /** A header: the logo (after the phone's menu button), the menu, then the site's tools, on one line on phones too. */
-export function defaultHeader(storeId: string | null): PageContent {
+export function defaultHeader(storeId: string | null, menus: StandardMenus = { header: null, footer: null }): PageContent {
   const tools: SiteBlock[] =
     storeId === null
       ? [part("header-account", "account"), part("header-sign-up", "signUp", { hideOnPhones: true })]
@@ -43,7 +54,7 @@ export function defaultHeader(storeId: string | null): PageContent {
     style: { padding: sides(10, 16) },
     columns: [
       { id: "header-brand", inline: true, blocks: [part("header-menu-button", "menuButton"), part("header-logo", "logo")] },
-      { id: "header-nav", blocks: [part("header-menu", "menu", { hideOnPhones: true })] },
+      { id: "header-nav", blocks: [menu("header-menu", menus.header, { hideOnPhones: true })] },
       { id: "header-tools", inline: true, justify: "end", blocks: tools },
     ],
   };
@@ -51,13 +62,13 @@ export function defaultHeader(storeId: string | null): PageContent {
 }
 
 /** A footer: who runs the site and the cookies link, the footer menu, and a store's countries. */
-export function defaultFooter(storeId: string | null): PageContent {
+export function defaultFooter(storeId: string | null, menus: StandardMenus = { header: null, footer: null }): PageContent {
   const columns: PageColumn[] = [
     {
       id: "footer-about",
       blocks: [part("footer-logo", "logo"), part("footer-business", "business"), part("footer-cookies", "cookies")],
     },
-    { id: "footer-menu", blocks: [part("footer-links", "menu", { menu: "footer", direction: "column" })] },
+    { id: "footer-menu", blocks: [menu("footer-links", menus.footer, { direction: "column" })] },
   ];
   if (storeId !== null) {
     columns.push({ id: "footer-markets", blocks: [part("footer-countries", "markets", { display: "list", direction: "column" })] });

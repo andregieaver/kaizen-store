@@ -265,8 +265,16 @@ BEGIN
    WHERE p.store_id = v_store AND p.type = 'article' AND p.slug = 'nye-produkter'
      AND t.store_id = v_store AND t.content_type = 'article' AND t.slug = 'nyheter';
 
-  -- The demo's logo and menus (D30), copied to new stores with the catalogue.
-  UPDATE commerce.stores SET navigation = '{"logo": {"url": "/demo/logo.svg", "width": 180, "height": 40}, "header": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Notatbok", "sv-SE": "Anteckningsbok", "da-DK": "Notesbog"}, "link": {"kind": "product", "handle": "demo-notatbok"}}, {"label": {"nb-NO": "Kopp", "sv-SE": "Kopp", "da-DK": "Krus"}, "link": {"kind": "product", "handle": "demo-keramikkopp"}}, {"label": {"nb-NO": "Bordlampe", "sv-SE": "Bordslampa", "da-DK": "Bordlampe"}, "link": {"kind": "product", "handle": "demo-bordlampe"}}], "footer": [{"label": {}, "link": {"kind": "home"}}, {"label": {"nb-NO": "Handlenett", "sv-SE": "Tygkasse", "da-DK": "Mulepose"}, "link": {"kind": "product", "handle": "demo-handlenett"}}, {"label": {"nb-NO": "Hjem og kjøkken", "sv-SE": "Hem och kök", "da-DK": "Hjem og køkken"}, "link": {"kind": "category", "slug": "hjem"}}, {"label": {}, "link": {"kind": "page", "slug": "om-oss"}}, {"label": {}, "link": {"kind": "blog"}}, {"label": {"nb-NO": "Laget med Kaizen", "sv-SE": "Byggd med Kaizen", "da-DK": "Lavet med Kaizen"}, "link": {"kind": "url", "url": "https://kaizenstore.cloud"}}]}'::jsonb WHERE id = v_store;
+  -- The demo's logo (D30), copied to new stores with the catalogue.
+  UPDATE commerce.stores SET navigation = '{"logo": {"url": "/demo/logo.svg", "width": 180, "height": 40}}'::jsonb WHERE id = v_store;
+  -- Its menus (D85), in the standard header and footer.
+  INSERT INTO commerce.menus (store_id, name, items)
+  VALUES (v_store, 'Main menu', '[{"label": {}, "link": {"kind": "home"}, "depth": 0}, {"label": {"nb-NO": "Notatbok", "sv-SE": "Anteckningsbok", "da-DK": "Notesbog"}, "link": {"kind": "product", "handle": "demo-notatbok"}, "depth": 0}, {"label": {"nb-NO": "Kopp", "sv-SE": "Kopp", "da-DK": "Krus"}, "link": {"kind": "product", "handle": "demo-keramikkopp"}, "depth": 0}, {"label": {"nb-NO": "Bordlampe", "sv-SE": "Bordslampa", "da-DK": "Bordlampe"}, "link": {"kind": "product", "handle": "demo-bordlampe"}, "depth": 0}]'::jsonb),
+         (v_store, 'Footer menu', '[{"label": {}, "link": {"kind": "home"}, "depth": 0}, {"label": {"nb-NO": "Handlenett", "sv-SE": "Tygkasse", "da-DK": "Mulepose"}, "link": {"kind": "product", "handle": "demo-handlenett"}, "depth": 0}, {"label": {"nb-NO": "Hjem og kjøkken", "sv-SE": "Hem och kök", "da-DK": "Hjem og køkken"}, "link": {"kind": "category", "slug": "hjem"}, "depth": 0}, {"label": {}, "link": {"kind": "page", "slug": "om-oss"}, "depth": 0}, {"label": {}, "link": {"kind": "blog"}, "depth": 0}, {"label": {"nb-NO": "Laget med Kaizen", "sv-SE": "Byggd med Kaizen", "da-DK": "Lavet med Kaizen"}, "link": {"kind": "url", "url": "https://kaizenstore.cloud"}, "depth": 0}]'::jsonb);
+  UPDATE commerce.stores s
+     SET header_menu_id = (SELECT id FROM commerce.menus WHERE store_id = v_store AND name = 'Main menu'),
+         footer_menu_id = (SELECT id FROM commerce.menus WHERE store_id = v_store AND name = 'Footer menu')
+   WHERE s.id = v_store;
 END;
 $$;
 

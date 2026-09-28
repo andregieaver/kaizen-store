@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
-import { linkExists, menuHref, menuLabel, termNames, type MenuItem } from "@/lib/navigation";
+import { linkExists, menuHref, menuLabel, menuTree, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
 import { marketPath } from "@/lib/paths";
 import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
 import { publishedPageNames } from "@/server/pages";
@@ -15,6 +15,7 @@ import { CartLink, CartLinkShell } from "./cart-link";
 import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
 import { LogoPicture } from "./logo-picture";
+import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 /**
@@ -25,17 +26,28 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 type Props = { store: Store; market: Market };
 
+/** A store's menu by id (D85): its items, or none. */
+export function storeMenu(store: Store, id: string | null | undefined): MenuEntry[] {
+  return (id && store.menus.find((menu) => menu.id === id)?.items) || [];
+}
+
+/**
+ * A store's menu (D85) in the shopper's language: page, article, category
+ * and tag links (D50, D54, D57) named after them, and left out once they are
+ * gone (the links under one take its place).
+ */
 export async function MenuLinks({
   items,
   store,
   market,
-  className,
+  layout,
   linkClassName,
-}: Props & { items: MenuItem[]; className?: string; linkClassName: string }) {
+  justify,
+}: Props & { items: MenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string }) {
+  if (items.length === 0) return null;
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
   const builtIn = { home: store.frontPageId ? m.home : m.allProducts, products: m.allProducts, account: m.account.title, cart: m.cart, blog: m.blog };
-  // Page, article, category and tag links (D50, D54, D57) are named after them, and left out once they are gone.
   const [terms, pages, articles, blogTerms] = await Promise.all([
     siteTerms(store.id, "product"),
     publishedPageNames(store.id, market.locale),
@@ -48,27 +60,20 @@ export async function MenuLinks({
     article: new Map(articles),
     blogCategory: termNames(blogTerms).category,
   };
-  return (
-    <ul className={className}>
-      {items.filter((item) => linkExists(item.link, names)).map((item, index) => {
-        const { href, external } = menuHref(item.link, base, names);
-        const text = menuLabel(item, market.locale, builtIn, names);
-        return (
-          <li key={`${index}-${href}`}>
-            {external ? (
-              <a href={href} rel="noopener" className={linkClassName}>
-                {text}
-              </a>
-            ) : (
-              <Link href={href} className={linkClassName}>
-                {text}
-              </Link>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
+  const toNode = ({ item, children }: MenuNode<MenuEntry>, index: number): MenuLinkNode => {
+    const { href, external } = menuHref(item.link, base, names);
+    return {
+      key: `${index}-${href}`,
+      href,
+      external,
+      newTab: Boolean(item.newTab),
+      text: menuLabel(item, market.locale, builtIn, names),
+      children: children.map(toNode),
+    };
+  };
+  // A link with nothing to say (no text of its own and no name to take) is left out too.
+  const nodes = menuTree(items, (item) => linkExists(item.link, names) && menuLabel(item, market.locale, builtIn, names) !== "").map(toNode);
+  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} />;
 }
 
 /**
@@ -144,7 +149,7 @@ export const HEADER_BACKGROUND: Record<HeaderBackground, string> = {
 export function StoreHeader({ store, market, notice }: Props & { notice: string | null }) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
-  const header = store.navigation.header;
+  const header = storeMenu(store, store.headerMenuId);
   const layout = store.theme.settings.layout;
   // The logo on the left with the menu beside it, or in the middle with the menu below (D60).
   const centred = layout.headerAlign === "center";
@@ -168,7 +173,8 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
           items={header}
           store={store}
           market={market}
-          className={`flex flex-wrap items-center gap-1 ${centred ? "justify-center" : ""}`}
+          layout="row"
+          justify={centred ? "justify-center" : ""}
           linkClassName="flex min-h-11 items-center rounded-button px-3 text-sm font-medium hover:bg-current/5"
         />
       </nav>
@@ -235,7 +241,7 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
 export function StoreMenu({ store, market }: Props) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
-  const header = store.navigation.header;
+  const header = storeMenu(store, store.headerMenuId);
   return (
     <MobileMenu
       title={<Brand store={store} market={market} size="header" place="page" />}
@@ -247,7 +253,7 @@ export function StoreMenu({ store, market }: Props) {
             items={header}
             store={store}
             market={market}
-            className="flex flex-col"
+            layout="drawer"
             linkClassName="flex min-h-12 items-center border-b border-border text-lg"
           />
         </nav>
@@ -294,7 +300,7 @@ export function StoreMenu({ store, market }: Props) {
  */
 export function StoreFooter({ store, market }: Props) {
   const m = t(market.lang);
-  const d = store.navigation;
+  const footer = storeMenu(store, store.footerMenuId);
   const details = store.details;
   const legal = [details.legalName ?? store.name, details.organisationNumber && `Org. ${details.organisationNumber}`]
     .filter(Boolean)
@@ -318,13 +324,13 @@ export function StoreFooter({ store, market }: Props) {
             {m.cookies}
           </Link>
         </div>
-        {d.footer.length > 0 && (
+        {footer.length > 0 && (
           <nav aria-label={m.footerMenu}>
             <MenuLinks
-              items={d.footer}
+              items={footer}
               store={store}
               market={market}
-              className="flex flex-col gap-1"
+              layout="column"
               linkClassName="inline-flex min-h-10 items-center hover:underline"
             />
           </nav>

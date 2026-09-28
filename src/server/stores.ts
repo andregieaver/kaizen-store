@@ -10,7 +10,7 @@ import { isStoreSlug } from "@/lib/paths";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
 import { parseCustomCode, type CustomCode } from "@/lib/custom-code";
 import type { SiteFonts } from "@/lib/fonts";
-import { parseNavigation, type StoreNavigation } from "@/lib/navigation";
+import { parseMenuItems, parseNavigation, type Menu, type StoreNavigation } from "@/lib/navigation";
 import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
 
@@ -47,6 +47,10 @@ export type Store = {
   seo: StoreSeo;
   /** Logo and menus for the storefront's header and footer (D30). */
   navigation: StoreNavigation;
+  /** The store's menus (D85), and those its standard header (and phone menu) and footer show. */
+  menus: Menu[];
+  headerMenuId: string | null;
+  footerMenuId: string | null;
   /** The store's own page shown as its front page (D54), or null for the product list. */
   frontPageId: string | null;
   /** The page shown as its All products page at /products (D83), or null for the standard list. */
@@ -95,7 +99,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.theme,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.theme,
       s.audience, s.business_popup, s.open_cart_on_add, s.modules, s.time_zone, s.booking_reminder_hours,
       exists (
         select 1 from commerce.payment_providers p
@@ -115,7 +119,11 @@ async function loadStore(slug: string): Promise<Store | null> {
         ) order by (m.code = s.country) desc nulls last, m.created_at, m.code)
           filter (where m.code is not null),
         '[]'
-      ) as markets
+      ) as markets,
+      (
+        select coalesce(json_agg(json_build_object('id', mn.id, 'name', mn.name, 'items', mn.items) order by mn.name), '[]')
+        from commerce.menus mn where mn.store_id = s.id
+      ) as menus
     from commerce.stores s
     left join commerce.markets m on m.store_id = s.id and m.active
     where s.slug = ${slug}
@@ -153,6 +161,9 @@ async function loadStore(slug: string): Promise<Store | null> {
     ),
     seo: parseStoreSeo(row.seo),
     navigation: parseNavigation(row.navigation),
+    menus: (row.menus as { id: string; name: string; items: unknown }[]).map((m) => ({ id: m.id, name: m.name, items: parseMenuItems(m.items) })),
+    headerMenuId: text(row.header_menu_id),
+    footerMenuId: text(row.footer_menu_id),
     frontPageId: text(row.front_page_id),
     productsPageId: text(row.products_page_id),
     tracking: parseTracking(row.tracking),

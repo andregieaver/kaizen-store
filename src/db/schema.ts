@@ -341,6 +341,13 @@ export const stores = commerce.table(
      */
     headerId: uuid("header_id"),
     footerId: uuid("footer_id"),
+    /**
+     * The store's menus (D85) in its standard header (and the phone's
+     * slide-out menu) and footer; null: none. Foreign keys in a custom
+     * migration: deleting the menu sets these back to null.
+     */
+    headerMenuId: uuid("header_menu_id"),
+    footerMenuId: uuid("footer_menu_id"),
     /** The store's analytics and marketing tools (D58), loaded only with consent: `TrackingSettings` in lib/cookie-consent. */
     tracking: jsonb("tracking").notNull().default({}),
     /** The owner's own code for the storefront's head and body (D61): `CustomCode` in lib/custom-code, added only on the store's own host. */
@@ -370,6 +377,8 @@ export const stores = commerce.table(
     index("stores_country_idx").on(t.country),
     index("stores_front_page_idx").on(t.id, t.frontPageId),
     index("stores_products_page_idx").on(t.id, t.productsPageId),
+    index("stores_header_menu_idx").on(t.id, t.headerMenuId),
+    index("stores_footer_menu_idx").on(t.id, t.footerMenuId),
   ],
 );
 
@@ -443,6 +452,9 @@ export const platformSettings = commerce.table(
     /** Kaizen's own header and footer (D80), its pages of type `header` and `footer`; null: the standard ones. Foreign keys in a custom migration. */
     headerId: uuid("header_id"),
     footerId: uuid("footer_id"),
+    /** Kaizen's menus (D85) in its standard header and footer; null: none. */
+    headerMenuId: uuid("header_menu_id"),
+    footerMenuId: uuid("footer_menu_id"),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
@@ -451,6 +463,8 @@ export const platformSettings = commerce.table(
     check("platform_settings_sale_fee_range", sql`${t.saleFeeBps} between 0 and 2000`),
     check("platform_settings_checkout_ui", sql`${t.checkoutUi} in ('custom', 'hosted')`),
     index("platform_settings_updated_by_idx").on(t.updatedBy),
+    index("platform_settings_header_menu_idx").on(t.headerMenuId),
+    index("platform_settings_footer_menu_idx").on(t.footerMenuId),
   ],
 );
 
@@ -2753,6 +2767,36 @@ export const savedParts = commerce.table(
     index("saved_parts_updated_by_idx").on(t.updatedBy),
     check("saved_parts_kind", sql`${t.kind} in ('row', 'column', 'block')`),
     check("saved_parts_name", sql`length(trim(${t.name})) between 1 and 80`),
+  ],
+);
+
+/**
+ * A menu (D85): Kaizen's (`store_id` null) or a store's, edited under Menus
+ * and shown wherever it is chosen: a menu component in any page, header or
+ * footer, and the standard header and footer. Its items are a list in
+ * order, each with its depth under the one before (`MenuEntry` in
+ * lib/navigation), so a link can have links under it.
+ */
+export const menus = commerce.table(
+  "menus",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizen's own. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    items: jsonb("items").notNull().default([]),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("menus_store_name_key").on(t.storeId, t.name).nullsNotDistinct(),
+    unique("menus_store_id_key").on(t.storeId, t.id),
+    index("menus_created_by_idx").on(t.createdBy),
+    index("menus_updated_by_idx").on(t.updatedBy),
+    check("menus_name", sql`length(trim(${t.name})) between 1 and 80`),
+    check("menus_items", sql`jsonb_typeof(${t.items}) = 'array'`),
   ],
 );
 

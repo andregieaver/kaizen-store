@@ -20,14 +20,23 @@ describe("headers and footers (D80)", () => {
     expect(siteBlocks(defaultHeader("store")).map((b) => b.part)).toEqual([
       "menuButton",
       "logo",
-      "menu",
       "markets",
       "search",
       "account",
       "wishlist",
       "cart",
     ]);
-    expect(siteBlocks(defaultHeader(null)).map((b) => b.part)).toEqual(["menuButton", "logo", "menu", "account", "signUp"]);
+    expect(siteBlocks(defaultHeader(null)).map((b) => b.part)).toEqual(["menuButton", "logo", "account", "signUp"]);
+  });
+
+  it("starts headers and footers with the menus of the standard ones (D85)", () => {
+    const menus = { header: "00000000-0000-4000-8000-000000000001", footer: "00000000-0000-4000-8000-000000000002" };
+    const menuOf = (content: PageContent) => content.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks)).find((b) => b.type === "menu");
+    expect(menuOf(defaultHeader("store", menus))).toMatchObject({ type: "menu", menuId: menus.header, hideOnPhones: true });
+    expect(menuOf(defaultFooter(null, menus))).toMatchObject({ type: "menu", menuId: menus.footer, direction: "column" });
+    // Without a menu chosen, the component waits for one.
+    expect(menuOf(defaultHeader("store"))).toEqual({ id: "header-menu", type: "menu", hideOnPhones: true });
+    expect(pageInput.safeParse(defaultHeader("store", menus)).success).toBe(true);
   });
 
   it("offers a store's parts to stores and Kaizen's to Kaizen", () => {
@@ -62,7 +71,12 @@ describe("headers and footers (D80)", () => {
     expect(pageInput.safeParse(layout({ part: "logo", height: 56, hideOnPhones: true })).success).toBe(true);
     expect(pageInput.safeParse(layout({ part: "logo", height: 400 })).success).toBe(false);
     expect(pageInput.safeParse(layout({ part: "basket" })).success).toBe(false);
-    expect(pageInput.safeParse(layout({ part: "menu", menu: "footer", direction: "column" })).success).toBe(true);
+    // Menus are menu components now (D85), in any page.
+    expect(pageInput.safeParse(layout({ part: "menu", menu: "footer" })).success).toBe(false);
+    const menu = (block: Record<string, unknown>) => withBlocks(defaultHeader("store"), [{ id: "m", type: "menu", ...block }]);
+    expect(pageInput.safeParse(menu({ menuId: "00000000-0000-4000-8000-000000000001", direction: "column" })).success).toBe(true);
+    expect(pageInput.safeParse(menu({ menuId: "main" })).success).toBe(false);
+    expect(siteLayoutProblem("store", "page", menu({}))).toBeNull();
   });
 
   it("lays the header over a page only where asked and only over a first row with a background", () => {

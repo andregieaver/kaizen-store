@@ -2031,6 +2031,65 @@ describe("the All products page (D83)", () => {
   });
 });
 
+describe("menus (D85)", () => {
+  it("are the owner's own, let go of when deleted, and copied to new stores with the pages using them", async () => {
+    const template = await createStore("menus-template", ["NO"]);
+    const other = await createStore("menus-other", ["NO"]);
+    const menu = (storeId: string | null, name: string) =>
+      one<{ id: string }>(
+        `insert into commerce.menus (store_id, name, items) values ($1, $2, '[{"label": {}, "link": {"kind": "home"}, "depth": 0}]') returning id`,
+        [storeId, name],
+      );
+    const { id: main } = await menu(template, "Main menu");
+    const { id: footer } = await menu(template, "Footer menu");
+    const { id: theirs } = await menu(other, "Main menu");
+    const { id: kaizens } = await menu(null, "Kaizen menu");
+    await expect(menu(template, "Main menu")).rejects.toThrow(/menus_store_name_key/);
+    await expect(menu(template, " ")).rejects.toThrow(/menus_name/);
+
+    // A store's standard header shows only its own menus; Kaizen's only Kaizen's.
+    await expect(db.query("update commerce.stores set header_menu_id = $1 where id = $2", [theirs, template])).rejects.toThrow(/stores_header_menu_fk/);
+    await db.query("update commerce.stores set header_menu_id = $1, footer_menu_id = $2 where id = $3", [main, footer, template]);
+    await db.query("insert into commerce.platform_settings (id) values (true) on conflict do nothing");
+    await expect(db.query("update commerce.platform_settings set footer_menu_id = $1 where id", [main])).rejects.toThrow(/only show Kaizen's own menus/);
+    await db.query("update commerce.platform_settings set header_menu_id = $1 where id", [kaizens]);
+
+    // A page with a menu component showing the main menu.
+    const content = JSON.stringify({
+      title: "Om",
+      rows: [{ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks: [{ id: "m", type: "menu", menuId: main }] }] }],
+    });
+    await db.query(
+      "insert into commerce.pages (store_id, slug, draft, published, published_at) values ($1, 'om', $2, $2, now())",
+      [template, content],
+    );
+
+    // A new store gets copies, used where the template's were, in its standard header and footer and its pages.
+    const owner = await createAccount("menus-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'menus-copy', 'Copy', $2) as id", [template, owner]);
+    const copied = await one<{ header_menu_id: string; footer_menu_id: string }>(
+      "select header_menu_id, footer_menu_id from commerce.stores where id = $1",
+      [copy],
+    );
+    expect(await one("select store_id, name from commerce.menus where id = $1", [copied.header_menu_id])).toEqual({ store_id: copy, name: "Main menu" });
+    expect((await one<{ name: string }>("select name from commerce.menus where id = $1", [copied.footer_menu_id])).name).toBe("Footer menu");
+    const { published } = await one<{ published: { rows: { columns: { blocks: { menuId: string }[] }[] }[] } }>(
+      "select published from commerce.pages where store_id = $1 and slug = 'om'",
+      [copy],
+    );
+    expect(published.rows[0].columns[0].blocks[0].menuId).toBe(copied.header_menu_id);
+
+    // Deleting a menu lets the standard header go, and keeps the store; Kaizen's too.
+    await db.query("delete from commerce.menus where id in ($1, $2)", [main, kaizens]);
+    expect(await one("select id, header_menu_id, footer_menu_id from commerce.stores where id = $1", [template])).toEqual({
+      id: template,
+      header_menu_id: null,
+      footer_menu_id: footer,
+    });
+    expect((await one<{ header_menu_id: string | null }>("select header_menu_id from commerce.platform_settings where id")).header_menu_id).toBeNull();
+  });
+});
+
 describe("variant pictures", () => {
   it("keeps a variant's picture with its small copy, and copies them with the template's variants", async () => {
     const template = await createStore("pictures-template", ["NO"]);

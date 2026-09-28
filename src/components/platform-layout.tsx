@@ -1,11 +1,12 @@
 import Link from "next/link";
 
 import { t } from "@/lib/i18n";
-import { platformMenuLink, type PlatformMenuItem } from "@/lib/navigation";
+import { menuTree, platformMenuLink, type MenuNode, type PlatformMenuEntry } from "@/lib/navigation";
 import type { PlatformChrome } from "@/server/platform-navigation";
 
 import { Icon } from "./icons";
 import { LogoPicture } from "./logo-picture";
+import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 /**
@@ -20,31 +21,26 @@ type Props = { chrome: PlatformChrome };
 const m = t("en");
 export const BUILT_IN = { home: "Home", signUp: "Start your store", signIn: "Sign in", blog: "Blog" };
 
+/** One of Kaizen's menus by id (D85): its items, or none. */
+export function platformMenu(chrome: PlatformChrome, id: string | null | undefined): PlatformMenuEntry[] {
+  return (id && chrome.menus.find((menu) => menu.id === id)?.items) || [];
+}
+
+/** One of Kaizen's menus (D85); links to pages not published, or categories gone, are left out (the links under one take its place). */
 export function MenuLinks({
   items,
   chrome,
-  className,
+  layout,
   linkClassName,
-}: Props & { items: PlatformMenuItem[]; className?: string; linkClassName: string }) {
-  const links = items.flatMap((item) => platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms, chrome.blog) ?? []);
-  if (links.length === 0) return null;
-  return (
-    <ul className={className}>
-      {links.map(({ href, text, external }, index) => (
-        <li key={`${index}-${href}`}>
-          {external ? (
-            <a href={href} rel="noopener" className={linkClassName}>
-              {text}
-            </a>
-          ) : (
-            <Link href={href} className={linkClassName}>
-              {text}
-            </Link>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
+  justify,
+}: Props & { items: PlatformMenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string }) {
+  const resolved = new Map(items.map((item) => [item, platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms, chrome.blog)]));
+  const toNode = ({ item, children }: MenuNode<PlatformMenuEntry>, index: number): MenuLinkNode => {
+    const link = resolved.get(item)!;
+    return { key: `${index}-${link.href}`, ...link, newTab: Boolean(item.newTab), children: children.map(toNode) };
+  };
+  const nodes = menuTree(items, (item) => resolved.get(item) !== null).map(toNode);
+  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} />;
 }
 
 /** The logo, or Kaizen's name without one; `height` is one set in a header or footer layout (D80). */
@@ -71,7 +67,7 @@ export function Brand({ chrome, size, height }: Props & { size: "header" | "foot
 }
 
 export function PlatformHeader({ chrome }: Props) {
-  const header = chrome.navigation.header;
+  const header = platformMenu(chrome, chrome.headerMenuId);
   return (
     <HidingHeader>
       <header className="border-b border-border bg-background/95 backdrop-blur">
@@ -94,7 +90,7 @@ export function PlatformHeader({ chrome }: Props) {
               <MenuLinks
                 items={header}
                 chrome={chrome}
-                className="flex flex-wrap items-center gap-1"
+                layout="row"
                 linkClassName="flex min-h-11 items-center rounded-full px-3 text-sm font-medium hover:bg-surface"
               />
             </nav>
@@ -122,12 +118,12 @@ export function PlatformHeader({ chrome }: Props) {
 export function PlatformMenu({ chrome }: Props) {
   return (
     <MobileMenu title={<Brand chrome={chrome} size="header" />} labels={{ close: m.closeMenu, menu: m.menu }}>
-      {chrome.navigation.header.length > 0 && (
+      {platformMenu(chrome, chrome.headerMenuId).length > 0 && (
         <nav aria-label={m.mainMenu}>
           <MenuLinks
-            items={chrome.navigation.header}
+            items={platformMenu(chrome, chrome.headerMenuId)}
             chrome={chrome}
-            className="flex flex-col"
+            layout="drawer"
             linkClassName="flex min-h-12 items-center border-b border-border text-lg"
           />
         </nav>
@@ -173,12 +169,12 @@ export function PlatformFooter({ chrome }: Props) {
             {m.cookies}
           </Link>
         </div>
-        {chrome.navigation.footer.length > 0 && (
+        {platformMenu(chrome, chrome.footerMenuId).length > 0 && (
           <nav aria-label={m.footerMenu} className="sm:col-span-2">
             <MenuLinks
-              items={chrome.navigation.footer}
+              items={platformMenu(chrome, chrome.footerMenuId)}
               chrome={chrome}
-              className="flex flex-col gap-1"
+              layout="column"
               linkClassName="inline-flex min-h-10 items-center hover:underline"
             />
           </nav>

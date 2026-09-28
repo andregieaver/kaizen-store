@@ -315,9 +315,14 @@ export type PartBase = {
   htmlId?: string;
   className?: string;
 };
-/** A row's or column's background (D48): a colour, or a picture with an optional colour over it. */
+/**
+ * A row's or column's background (D48): a colour, or a picture with an
+ * optional colour over it. A colour can be see-through (`opacity` 0–99; solid
+ * when left out), so what is behind shows through it, blurred if the part
+ * has `backdropBlur` (D86).
+ */
 export type Background =
-  | { type: "color"; color: Color }
+  | { type: "color"; color: Color; opacity?: number }
   | {
       type: "image";
       image: { url: string; width: number; height: number };
@@ -565,7 +570,6 @@ export type ProductBlock = PartBase & BlockFont & {
  */
 export const SITE_PARTS = {
   logo: "Logo",
-  menu: "Menu",
   menuButton: "Phone menu button",
   search: "Search",
   account: "Account or sign in",
@@ -589,9 +593,9 @@ export const LOGO_HEIGHT = { min: 16, max: 160, header: 40, footer: 32 } as cons
 
 /**
  * A part of the site's header or footer (D80). Each takes only the settings
- * that concern it, all optional: the logo's height, which menu and whether
- * its links go side by side or one under another, and the countries as a
- * drop-down list or as links.
+ * that concern it, all optional: the logo's height, and the countries as a
+ * drop-down list or as links, side by side or one under another. Menus are
+ * menu components (`MenuBlock`, D85), which any page can have.
  */
 export type SiteBlock = PartBase & BlockFont & {
   id: string;
@@ -600,9 +604,7 @@ export type SiteBlock = PartBase & BlockFont & {
   align?: TextAlignments;
   /** The logo's height in pixels; the header's or footer's usual one unless set. */
   height?: number;
-  /** The menu: the header's (the default) or the footer's. */
-  menu?: "header" | "footer";
-  /** The menu's links, or the countries as links: side by side (the default) or one under another. */
+  /** The countries as links: side by side (the default) or one under another. */
   direction?: "row" | "column";
   /** The countries: a drop-down list (the default) or links to each. */
   display?: "dropdown" | "list";
@@ -610,8 +612,24 @@ export type SiteBlock = PartBase & BlockFont & {
   hideOnPhones?: boolean;
 };
 
+/**
+ * One of the owner's menus (D85), chosen by id, in any page, header or
+ * footer: its links side by side (links under a link open below it) or one
+ * under another, optionally left out on phones (where the phone's menu has
+ * the main one).
+ */
+export type MenuBlock = PartBase & BlockFont & {
+  id: string;
+  type: "menu";
+  /** The menu; none chosen yet shows nothing. */
+  menuId?: string;
+  direction?: "row" | "column";
+  align?: TextAlignments;
+  hideOnPhones?: boolean;
+};
+
 /** One piece of a page's content. */
-export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock | ProductBlock | SiteBlock;
+export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock | ProductBlock | SiteBlock | MenuBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -625,6 +643,8 @@ export type PageColumn = PartBase & {
   id: string;
   blocks: PageBlock[];
   background?: Background;
+  /** What is behind the column blurred, in pixels (D86); only with no background or a colour. */
+  backdropBlur?: number;
   link?: ColumnLink;
   /** Its components side by side, wrapping as needed, rather than one under another (D80). */
   inline?: boolean;
@@ -654,6 +674,8 @@ export type PageRow = PartBase & {
   /** Where columns' content sits, top (the default), middle or bottom. */
   align?: VerticalAlign;
   background?: RowBackground;
+  /** What is behind the row blurred, in pixels (D86): a header over a picture, say. Only with no background or a colour. */
+  backdropBlur?: number;
 };
 
 /** Whether a rich-text document holds nothing but empty paragraphs. */
@@ -679,8 +701,11 @@ export function blockHasContent(block: PageBlock): boolean {
       // The product decides what shows: a part it has nothing for draws nothing.
       return true;
     case "site":
-      // The site decides: a menu with no links, or a store's countries with one, draws nothing.
+      // The site decides: a store's countries with one draws nothing.
       return true;
+    case "menu":
+      // A menu with no links draws nothing.
+      return Boolean(block.menuId);
   }
 }
 
@@ -701,6 +726,7 @@ export function blockText(block: PageBlock): string {
     case "contentGrid":
     case "product":
     case "site":
+    case "menu":
       return "";
   }
 }
@@ -999,7 +1025,9 @@ const picture = z.object({
 });
 const overlay = z.object({ color, opacity: z.number().int().min(0).max(100) }).nullable();
 const blur = z.number().int().min(1).max(BLUR_MAX).optional();
-const colorBackground = z.object({ type: z.literal("color"), color });
+const colorBackground = z.object({ type: z.literal("color"), color, opacity: z.number().int().min(0).max(99).optional() });
+/** How much what is behind a part is blurred (D86), with no background or a colour. */
+const backdropBlur = z.number().int().min(1).max(BLUR_MAX).optional();
 const imageBackground = z.object({ type: z.literal("image"), image: picture, overlay, blur });
 const videoBackground = z.object({
   type: z.literal("video"),
@@ -1181,9 +1209,19 @@ const siteBlock = z.object({
     .min(LOGO_HEIGHT.min, `Make the logo at least ${LOGO_HEIGHT.min} pixels tall.`)
     .max(LOGO_HEIGHT.max, `Keep the logo at most ${LOGO_HEIGHT.max} pixels tall.`)
     .optional(),
-  menu: z.enum(["header", "footer"]).optional(),
   direction: z.enum(["row", "column"]).optional(),
   display: z.enum(["dropdown", "list"]).optional(),
+  hideOnPhones: z.boolean().optional(),
+  font: blockFont,
+  ...partBase,
+});
+
+const menuBlock = z.object({
+  id: itemId,
+  type: z.literal("menu"),
+  menuId: z.uuid("Choose a menu for each menu component.").optional(),
+  direction: z.enum(["row", "column"]).optional(),
+  align: textAlignments,
   hideOnPhones: z.boolean().optional(),
   font: blockFont,
   ...partBase,
@@ -1198,12 +1236,14 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   contentGridBlock,
   productBlock,
   siteBlock,
+  menuBlock,
 ]);
 
 export const pageColumnSchema = z.object({
   id: itemId,
   blocks: z.array(pageBlockSchema),
   background,
+  backdropBlur,
   link: z
     .object({
       href: z
@@ -1232,6 +1272,7 @@ export const pageRowSchema = z
     equalHeight: z.boolean().optional(),
     align: z.enum(["top", "middle", "bottom"]).optional(),
     background: rowBackground,
+    backdropBlur,
     ...partBase,
   })
   .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {

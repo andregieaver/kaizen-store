@@ -73,6 +73,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         { href: `${base}/search`, label: "Search" },
         { href: `${base}/chat`, label: "Chat agent" },
         { href: `${base}/settings/seo`, label: "SEO & Reach" },
+        { href: `${base}/menus`, label: "Menus" },
         { href: `${base}/settings/navigation`, label: "Header and footer" },
         { href: `${base}/headers`, label: "Headers" },
         { href: `${base}/footers`, label: "Footers" },

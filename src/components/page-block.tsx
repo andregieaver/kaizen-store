@@ -68,6 +68,9 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "site":
       // The site's header or footer draws it with the site (`SitePartView`, D80); the editor shows a stand-in.
       return null;
+    case "menu":
+      // Its links are looked up where it is shown (`MenuSection`, D85); the editor shows a stand-in.
+      return null;
     case "image":
       if (!block.image) return null;
       return (

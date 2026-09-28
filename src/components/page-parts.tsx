@@ -56,8 +56,25 @@ const TEXT_ALIGN = {
 const clips = (part: PageRow | PageColumn) =>
   Boolean(part.radius) && (part.background?.type === "image" || part.background?.type === "video");
 
-const colorStyle = (background: RowBackground | undefined): CSSProperties =>
-  background?.type === "color" ? { backgroundColor: background.color } : {};
+/**
+ * A part's colour, see-through if it has an opacity, and what is behind it
+ * blurred (D86): frosted glass, such as a header over a picture.
+ */
+const colorStyle = (part: PageRow | PageColumn): CSSProperties => {
+  const background = part.background;
+  const css: CSSProperties =
+    background?.type === "color"
+      ? {
+          backgroundColor:
+            background.opacity === undefined ? background.color : `color-mix(in srgb, ${background.color} ${background.opacity}%, transparent)`,
+        }
+      : {};
+  if (part.backdropBlur && (!background || background.type === "color")) {
+    css.backdropFilter = `blur(${part.backdropBlur}px)`;
+    css.WebkitBackdropFilter = `blur(${part.backdropBlur}px)`;
+  }
+  return css;
+};
 
 /** The row itself: its background, height, margin and padding. */
 export function rowBox(row: PageRow, mode: PartsMode): Box {
@@ -69,7 +86,7 @@ export function rowBox(row: PageRow, mode: PartsMode): Box {
       clips(row) && "overflow-hidden",
       mode === "site" && row.className,
     ),
-    style: { ...spacingStyle(rowSpacing(row.style)), ...frameStyle(row), ...colorStyle(row.background) },
+    style: { ...spacingStyle(rowSpacing(row.style)), ...frameStyle(row), ...colorStyle(row) },
   };
 }
 
@@ -125,7 +142,7 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
       mode === "site" && column.link && "[&_.rich-text_a]:relative [&_.rich-text_a]:z-[2]",
       mode === "site" && column.className,
     ),
-    style: { ...spacingStyle(column.style), ...frameStyle(column), ...colorStyle(column.background) },
+    style: { ...spacingStyle(column.style), ...frameStyle(column), ...colorStyle(column) },
   };
 }
 
@@ -155,6 +172,7 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
       block.type !== "button" && Boolean(block.radius) && "overflow-hidden",
       // A site's phone menu button is for phones; a part set so is left out on them, leaving no gap (D80).
       mode === "site" && block.type === "site" && (block.part === "menuButton" ? "md:hidden" : block.hideOnPhones && "max-md:hidden"),
+      mode === "site" && block.type === "menu" && block.hideOnPhones && "max-md:hidden",
       mode === "site" && block.className,
     ),
     // A button's border, corners and shadow are the button's own (`PageBlockView`).

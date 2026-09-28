@@ -319,7 +319,8 @@ of running `playwright install`.
   or a picture with a colour and blur over it, `PartBackground`; rows also
   a video, uploaded from the browser to the `page-videos` bucket with a
   still for its poster, `VideoUploadButton`, and drawn by `BackgroundVideo`,
-  without controls, still for reduced motion), widths,
+  without controls, still for reduced motion; with none or a colour, which
+  can be see-through, `backdropBlur` blurs what is behind, D86), widths,
   column links, text alignment, picture shape; `frameStyle()`; a row's
   padding is 20 px until set, `ROW_PADDING`/`rowSpacing()`, and the page
   adds no room at the sides, nor above or below a row with a background,
@@ -373,7 +374,8 @@ of running `playwright install`.
   `SiteContext`, a store's in its country or Kaizen's); `siteLayoutFor()`
   gives the chosen one (`header_id`/`footer_id` on `stores` and
   `platform_settings`), else the layouts draw the standard `StoreHeader`/
-  `PlatformHeader`. `siteLayoutProblem()` keeps site blocks in headers and
+  `PlatformHeader`. Menus in them are `menu` blocks (D85), not site parts.
+  `siteLayoutProblem()` keeps site blocks in headers and
   footers, the owner's own parts, and the business details and cookies link
   in footers. A header's `overlay` lies over pages that `headerOverlays()`
   covers (only over a first row with a background): pages mark themselves
@@ -541,10 +543,30 @@ of running `playwright install`.
   in the browser by `squareIcon()`), linked by `siteIcons()` in every root
   layout's metadata; `/favicon.ico` redirects to the site's icon, and
   Kaizen's default is `public/kaizen/favicon.ico`.
+- Menus (D85, `commerce.menus`, `src/server/menus.ts`, `MenuEditor`): each
+  owner's (a store's, or Kaizen's with a null store) named lists of links,
+  edited at `/admin/{store}/menus` and `/admin/platform/menus` after
+  WordPress's editor (add from pages, products, categories, tags, articles,
+  the site's own links or a custom link; order by dragging, a link under the
+  one before it by dragging right or the Move buttons). Items are a flat list
+  with `depth` (0–`MENU_MAX_DEPTH`, each at most one deeper than the one
+  before; `MenuEntry`), turned into a tree by `menuTree()`; moves are the
+  pure functions in `src/lib/menu-structure.ts`. Menus know nothing of
+  places: the standard header (and the phone's menu) and footer show the
+  ones chosen under Header and footer (`header_menu_id`/`footer_menu_id` on
+  `stores` and `platform_settings`), and a `menu` block (`MenuBlock`,
+  `MenuSection`) shows one by id in any page, header or footer. Store menus
+  come with the store (`store.menus`, saves `updateTag(storeTag)`); Kaizen's
+  with `getPlatformChrome()`. Draw any menu with `MenuLinks` (store or
+  platform), which renders `MenuTreeView` (`src/components/menu-view.tsx`:
+  side by side with lists opening below on hover or focus, a column, or the
+  phone's drawer). `clone_store()` copies menus and `clone_page_content()`
+  swaps their ids in copied pages.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
-  store's `NavigationEditor` with platform link kinds (`PlatformMenuLink`: a
-  page by id, home, sign-up, sign-in, a web address) and business details;
-  `getPlatformChrome()` feeds `src/components/platform-layout.tsx`.
+  store's `NavigationEditor` (logos, icon, which menus, and business
+  details); menu links take platform kinds (`PlatformMenuLink`: a page by
+  id, home, sign-up, sign-in, a web address); `getPlatformChrome()` feeds
+  `src/components/platform-layout.tsx`.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

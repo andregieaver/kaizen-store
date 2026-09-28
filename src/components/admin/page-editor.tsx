@@ -25,7 +25,7 @@ import {
 } from "@/lib/page-content";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
-import { defaultFooter, defaultHeader } from "@/lib/site-layout";
+import { defaultFooter, defaultHeader, type StandardMenus } from "@/lib/site-layout";
 import {
   localizePage,
   translationOf,
@@ -54,11 +54,11 @@ const STATE_TEXT: Record<PageState, string> = {
 };
 
 /** A new page starts with one full-width row holding an empty text block. */
-function startingRows(type: PageType, owner: string | null): PageRow[] {
+function startingRows(type: PageType, owner: string | null, menus: StandardMenus): PageRow[] {
   // A product layout (D79), header or footer (D80) starts as the standard one, to change from.
   if (type === "product_layout") return DEFAULT_PRODUCT_LAYOUT.rows.map((row) => copyRow(row, newId));
-  if (type === "header") return defaultHeader(owner).rows.map((row) => copyRow(row, newId));
-  if (type === "footer") return defaultFooter(owner).rows.map((row) => copyRow(row, newId));
+  if (type === "header") return defaultHeader(owner, menus).rows.map((row) => copyRow(row, newId));
+  if (type === "footer") return defaultFooter(owner, menus).rows.map((row) => copyRow(row, newId));
   const row = newRow("1", newId);
   row.columns[0].blocks.push(newBlock("richText", newId));
   return [row];
@@ -105,7 +105,7 @@ export function PageEditor({
   const [content, setContent] = useState<PageContent>(
     page?.draft ?? {
       ...newPageContent(),
-      rows: startingRows(context.type, context.owner),
+      rows: startingRows(context.type, context.owner, context.standardMenus),
       ...(context.type === "article" && context.defaultAuthor ? { author: context.defaultAuthor } : {}),
     },
   );
@@ -226,6 +226,8 @@ export function PageEditor({
           pageTerms: context.type === "page" ? terms : (gridTerms.page ?? []),
           articleTerms: context.type === "article" ? terms : (gridTerms.article ?? []),
           stores: context.gridStores,
+          menus: context.menus,
+          menusHref: context.menusHref,
           actions,
         }}
         aside={

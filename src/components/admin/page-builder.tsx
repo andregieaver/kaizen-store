@@ -120,6 +120,7 @@ import {
   RELATED_MAX,
   type ProductBlock,
   type ProductPart,
+  type MenuBlock,
   type SiteBlock,
   type SitePart,
   type ColumnJustify,
@@ -163,6 +164,7 @@ import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
+import type { MenuPreview } from "@/server/menus";
 
 import { FontPicker, type InstallFont } from "./font-picker";
 import { ImageUploadButton, type Upload } from "./image-upload";
@@ -263,9 +265,10 @@ const blockLabels: Record<BlockType, string> = {
   contentGrid: "Content grid",
   product: "Product",
   site: "Site",
+  menu: "Menu",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid", "menu"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -275,6 +278,7 @@ const blockThis: Record<BlockType, string> = {
   contentGrid: "this content grid",
   product: "this product component",
   site: "this site component",
+  menu: "this menu",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -306,6 +310,9 @@ export type GridContext = {
   /** The owner's article categories and tags (D57), for a grid of articles. */
   articleTerms: Term[];
   stores: GridStore[];
+  /** The owner's menus (D85), for menu components, and where they are edited. */
+  menus: MenuPreview[];
+  menusHref: string;
   actions: PageOwnerContext["actions"];
 };
 
@@ -1068,6 +1075,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <ProductIcon />;
     case "site":
       return <SiteIcon />;
+    case "menu":
+      return <MenuIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
@@ -1547,6 +1556,8 @@ function BlockItem({
           <ProductStandIn block={block} />
         ) : block.type === "site" ? (
           <SiteStandIn block={block} />
+        ) : block.type === "menu" && blockHasContent(block) ? (
+          <MenuStandIn block={block} menus={actions.grid.menus} />
         ) : blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (
@@ -1566,6 +1577,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   contentGrid: "Content grid.",
   product: "Product component.",
   site: "Site component.",
+  menu: "A menu: double-click or use the wrench to choose which.",
 };
 
 // ---------------------------------------------------------------------------
@@ -1895,6 +1907,50 @@ function Dialogs({
       </Modal>
 
       <Modal
+        open={block?.type === "menu"}
+        onClose={onClose}
+        title="Menu"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "menu" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <MenuFields
+                block={block}
+                menus={grid.menus}
+                menusHref={grid.menusHref}
+                onChange={(patch) => onRows((current) => patchBlock<MenuBlock>(current, block.id, patch))}
+              />
+            }
+            style={
+              <>
+                <TextAlignFields
+                  what="Position"
+                  value={block.align}
+                  onChange={(align) => onRows((current) => patchBlock<MenuBlock>(current, block.id, { align }))}
+                />
+                {fontField("Font", block.font, "The site's fonts", (font) =>
+                  onRows((current) => patchBlock<MenuBlock>(current, block.id, { font })),
+                )}
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
         open={block?.type === "contentGrid"}
         onClose={onClose}
         title="Content grid"
@@ -2002,6 +2058,8 @@ function Dialogs({
                   onChange={(background) =>
                     onRows((current) => patchColumn(current, column.id, { background: background?.type === "video" ? undefined : background }))
                   }
+                  backdropBlur={column.backdropBlur}
+                  onBackdropBlur={(backdropBlur) => onRows((current) => patchColumn(current, column.id, { backdropBlur }))}
                 />
                 {spacingFields({ kind: "column", id: column.id })}
                 {frameFields({ kind: "column", id: column.id })}
@@ -2029,6 +2087,8 @@ function Dialogs({
                   upload={upload}
                   startVideo={startVideo}
                   onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
+                  backdropBlur={row.backdropBlur}
+                  onBackdropBlur={(backdropBlur) => onRows((current) => patchRow(current, row.id, { backdropBlur }))}
                 />
                 {spacingFields({ kind: "row", id: row.id })}
                 {frameFields({ kind: "row", id: row.id })}
@@ -2577,24 +2637,31 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
 /**
  * A row's or column's background (D48): none, a colour, or a picture (or,
  * for rows, given `startVideo`, a video) with a colour and blur over it,
- * previewed as the page draws it.
+ * previewed as the page draws it. With none or a colour (see-through if
+ * wanted), what is behind the part can be blurred (D86).
  */
 function BackgroundFields({
   value,
   upload,
   startVideo,
   onChange,
+  backdropBlur,
+  onBackdropBlur,
 }: {
   value: RowBackground | undefined;
   upload: Upload | null;
   /** Given for rows, which alone take a video; null where uploads are not set up. */
   startVideo?: StartVideo | null;
   onChange: (background: RowBackground | undefined) => void;
+  backdropBlur: number | undefined;
+  onBackdropBlur: (blur: number | undefined) => void;
 }) {
   // A picture or video chosen as the kind waits for its upload before it is kept.
   const [kind, setKind] = useState<"none" | RowBackground["type"]>(value?.type ?? "none");
   const choose = (next: typeof kind) => {
     setKind(next);
+    // A picture or video is drawn over what is behind, so blurring that would show nothing.
+    if ((next === "image" || next === "video") && backdropBlur) onBackdropBlur(undefined);
     if (next === "none") onChange(undefined);
     if (next === "color") onChange({ type: "color", color: value?.type === "color" ? value.color : "#f3f4f6" });
     if (next === "image") onChange(value?.type === "image" ? value : undefined);
@@ -2616,7 +2683,48 @@ function BackgroundFields({
         onChange={choose}
       />
       {kind === "color" && value?.type === "color" && (
-        <ColorField label="Background colour" value={value.color} onChange={(color) => onChange({ type: "color", color })} />
+        <div className="flex flex-wrap items-end gap-6">
+          <ColorField label="Background colour" value={value.color} onChange={(color) => onChange({ ...value, color })} />
+          <RangeField
+            label="Opacity"
+            min={0}
+            max={100}
+            step={5}
+            value={value.opacity ?? 100}
+            shown={`${value.opacity ?? 100}%`}
+            onChange={(opacity) => {
+              const next: RowBackground = { type: "color", color: value.color };
+              onChange(opacity >= 100 ? next : { ...next, opacity });
+            }}
+          />
+        </div>
+      )}
+      {(kind === "none" || kind === "color") && (
+        <>
+          <Check
+            label="Blur what is behind"
+            hint={
+              kind === "none"
+                ? "Frosted glass: whatever lies behind shows through, blurred, such as a picture under a header that lies over the page."
+                : "Frosted glass: with a see-through colour, whatever lies behind shows through it, blurred."
+            }
+            checked={Boolean(backdropBlur)}
+            onChange={(on) => onBackdropBlur(on ? 12 : undefined)}
+          />
+          {backdropBlur ? (
+            <div className="pl-7">
+              <RangeField
+                label="Blur"
+                min={1}
+                max={BLUR_MAX}
+                step={1}
+                value={backdropBlur}
+                shown={`${backdropBlur} px`}
+                onChange={onBackdropBlur}
+              />
+            </div>
+          ) : null}
+        </>
       )}
       {(kind === "image" || kind === "video") && (
         <div className="flex flex-col gap-3">
@@ -4045,6 +4153,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Product component: change its settings where it is used in a layout.</p>
                     ) : block.type === "site" ? (
                       <p className="text-sm text-muted">Site component: change its settings where it is used in a header or footer.</p>
+                    ) : block.type === "menu" ? (
+                      <p className="text-sm text-muted">Menu: change its settings where it is used.</p>
                     ) : (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     )}
@@ -4125,13 +4235,119 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
 }
 
 // ---------------------------------------------------------------------------
+// Menu components (D85)
+// ---------------------------------------------------------------------------
+
+function MenuIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 6h16M4 12h10M4 18h13" />
+      </svg>
+    </span>
+  );
+}
+
+/** A menu component's settings: which of the owner's menus, and how its links are laid out. */
+function MenuFields({
+  block,
+  menus,
+  menusHref,
+  onChange,
+}: {
+  block: MenuBlock;
+  menus: MenuPreview[];
+  menusHref: string;
+  onChange: (patch: BlockPatch<MenuBlock>) => void;
+}) {
+  const id = useId();
+  const chosen = menus.find((menu) => menu.id === block.menuId);
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted">
+        One of your menus, with its links as they are set under{" "}
+        <a href={menusHref} target="_blank" rel="noopener" className="underline">
+          Menus
+        </a>
+        : a change there shows wherever the menu is used.
+      </p>
+      {menus.length === 0 ? (
+        <p className="text-sm">
+          There are no menus yet.{" "}
+          <a href={menusHref} target="_blank" rel="noopener" className="underline">
+            Create one under Menus
+          </a>
+          .
+        </p>
+      ) : (
+        <label htmlFor={`${id}-menu`} className="flex flex-col gap-1 text-sm font-medium">
+          Menu
+          <select
+            id={`${id}-menu`}
+            value={chosen ? chosen.id : ""}
+            onChange={(event) => onChange({ menuId: event.target.value || undefined })}
+            className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
+          >
+            <option value="">Choose a menu</option>
+            {menus.map((menu) => (
+              <option key={menu.id} value={menu.id}>
+                {menu.name} ({menu.items.length === 1 ? "1 link" : `${menu.items.length} links`})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {block.menuId && !chosen && <p className="text-sm text-red-700">The menu this showed no longer exists. Choose another.</p>}
+      <Choices
+        legend="Links"
+        options={[
+          { value: "row" as const, label: "Side by side" },
+          { value: "column" as const, label: "One under another" },
+        ]}
+        value={block.direction ?? "row"}
+        onChange={(direction) => onChange({ direction: direction === "row" ? undefined : direction })}
+      />
+      <Check
+        label="Hide on phones"
+        hint="Phones have the menu button and the slide-out menu, with the main menu."
+        checked={Boolean(block.hideOnPhones)}
+        onChange={(hideOnPhones) => onChange({ hideOnPhones: hideOnPhones || undefined })}
+      />
+    </div>
+  );
+}
+
+/** A menu component on the canvas: its links' texts as the site shows them; links under a link side by side are shown in a list under it on the site. */
+function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] }) {
+  const menu = menus.find((m) => m.id === block.menuId);
+  const column = block.direction === "column";
+  if (!menu) return <p className="rounded-md bg-surface p-3 text-sm text-muted">The menu this showed no longer exists. Choose another.</p>;
+  if (menu.items.length === 0) return <p className="rounded-md bg-surface p-3 text-sm text-muted">{menu.name} has no links yet.</p>;
+  // Side by side, only the top links show on the line; a mark says a link has links under it.
+  const shown = column ? menu.items : menu.items.filter((item) => item.depth === 0);
+  const hasUnder = (index: number) => menu.items[menu.items.indexOf(shown[index]) + 1]?.depth > shown[index].depth;
+  return (
+    <div>
+      <ul className={`flex gap-x-4 gap-y-1 text-sm ${column ? "flex-col" : "flex-wrap items-center"}`}>
+        {shown.map((item, index) => (
+          <li key={index} style={column ? { paddingLeft: `${item.depth}rem` } : undefined} className="flex min-h-9 items-center gap-1 font-medium">
+            {item.text}
+            {!column && hasUnder(index) && <span aria-label="with links under it">▾</span>}
+          </li>
+        ))}
+      </ul>
+      {block.hideOnPhones && <span className="block text-[10px] text-muted">Not on phones</span>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Site components (D80)
 // ---------------------------------------------------------------------------
 
 /** What each site part shows, for the owner choosing and setting it. */
 const SITE_HELP: Record<SitePart, string> = {
   logo: "The site's logo, linking to its front page; its name where there is no logo. The logo is set under Header and footer.",
-  menu: "One of the site's menus, set under Header and footer.",
   menuButton: "The button that opens the menu on phones. It shows on phones only.",
   search: "A link to the store's search.",
   account: "A link to the shopper's account (sign in on Kaizen's site).",
@@ -4157,7 +4373,7 @@ function SiteIcon() {
 
 /** A site component's own settings (D80): only those its part has. */
 function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: BlockPatch<SiteBlock>) => void }) {
-  const lined = block.part === "menu" || (block.part === "markets" && block.display === "list");
+  const lined = block.part === "markets" && block.display === "list";
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted">{SITE_HELP[block.part]} A part with nothing to show is left out.</p>
@@ -4168,17 +4384,6 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
           value={block.height ?? 0}
           max={LOGO_HEIGHT.max}
           onChange={(height) => onChange({ height: height >= LOGO_HEIGHT.min ? height : undefined })}
-        />
-      )}
-      {block.part === "menu" && (
-        <Choices
-          legend="Which menu"
-          options={[
-            { value: "header" as const, label: "Header menu" },
-            { value: "footer" as const, label: "Footer menu" },
-          ]}
-          value={block.menu ?? "header"}
-          onChange={(menu) => onChange({ menu: menu === "header" ? undefined : menu })}
         />
       )}
       {block.part === "markets" && (
@@ -4243,8 +4448,6 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
             <span className="aspect-square h-full min-h-6 rounded-md bg-foreground/80" /> Logo
           </span>
         );
-      case "menu":
-        return links(block.menu === "footer" ? ["Footer link", "Footer link", "Footer link"] : ["Menu link", "Menu link", "Menu link"]);
       case "menuButton":
         return (
           <span className="flex items-center gap-2 text-xs text-muted">

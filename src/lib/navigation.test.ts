@@ -6,10 +6,12 @@ import {
   linkExists,
   menuHref,
   menuLabel,
+  menuInput,
   navigationSchema,
+  parseMenuItems,
   parseNavigation,
+  platformMenuInput,
   platformMenuLink,
-  platformNavigationSchema,
   termNames,
 } from "./navigation";
 
@@ -52,17 +54,38 @@ describe("addresses and stored values", () => {
     expect(isMenuAddress("")).toBe(false);
   });
 
-  it("limits the menus and falls back to empty on a damaged value", () => {
-    const item = { label: {}, link: { kind: "home" } };
-    expect(navigationSchema.safeParse({ logo: null, header: Array(9).fill(item), footer: [] }).success).toBe(false);
-    expect(navigationSchema.safeParse({ logo: null, header: Array(8).fill(item), footer: [] }).success).toBe(true);
-    expect(parseNavigation({ header: "nope" })).toEqual(EMPTY_NAVIGATION);
+  it("limits menus (D85) and falls back to no logo on a damaged value", () => {
+    const item = { label: {}, link: { kind: "home" }, depth: 0 };
+    expect(menuInput.safeParse({ name: "Main", items: Array(101).fill(item) }).success).toBe(false);
+    expect(menuInput.safeParse({ name: "Main", items: Array(100).fill(item) }).success).toBe(true);
+    expect(menuInput.safeParse({ name: " ", items: [] }).success).toBe(false);
+    // A link sits at most one level under the one before it, and at most three levels deep.
+    expect(menuInput.safeParse({ name: "Main", items: [{ ...item, depth: 1 }] }).success).toBe(false);
+    expect(menuInput.safeParse({ name: "Main", items: [item, { ...item, depth: 1 }, { ...item, depth: 2 }] }).success).toBe(true);
+    expect(menuInput.safeParse({ name: "Main", items: [item, { ...item, depth: 1 }, { ...item, depth: 2 }, { ...item, depth: 3 }] }).success).toBe(false);
+    expect(parseNavigation({ logo: "nope" })).toEqual(EMPTY_NAVIGATION);
     expect(parseNavigation(null)).toEqual(EMPTY_NAVIGATION);
+  });
+
+  it("reads stored menu items one by one, leaving out a damaged one and making depths sound (D85)", () => {
+    expect(
+      parseMenuItems([
+        { label: {}, link: { kind: "home" }, depth: 1 },
+        { label: {}, link: { kind: "nope" }, depth: 0 },
+        { label: { "nb-NO": "Kopp" }, link: { kind: "product", handle: "kopp" }, depth: 4, newTab: true },
+        { label: {}, link: { kind: "cart" } },
+      ]),
+    ).toEqual([
+      { label: {}, link: { kind: "home" }, depth: 0 },
+      { label: { "nb-NO": "Kopp" }, link: { kind: "product", handle: "kopp" }, depth: 1, newTab: true },
+      { label: {}, link: { kind: "cart" }, depth: 0 },
+    ]);
+    expect(parseMenuItems("nope")).toEqual([]);
   });
 
   it("reads menus saved before the logo for dark backgrounds as having none (D60)", () => {
     const logo = { url: "/demo/logo.svg", width: 120, height: 32 };
-    expect(parseNavigation({ logo, header: [], footer: [] })).toEqual({ logo, logoDark: null, favicon: null, header: [], footer: [] });
+    expect(parseNavigation({ logo, header: [], footer: [] })).toEqual({ logo, logoDark: null, favicon: null });
     const logoDark = { ...logo, url: "/demo/logo-light.svg" };
     expect(parseNavigation({ logo, logoDark, header: [], footer: [] }).logoDark).toEqual(logoDark);
     expect(navigationSchema.safeParse({ logo, logoDark: { ...logoDark, url: "javascript:alert(1)" }, header: [], footer: [] }).success).toBe(false);
@@ -103,10 +126,10 @@ describe("category and tag links (D50)", () => {
   });
 
   it("need an address", () => {
-    const menu = (link: unknown) => ({ logo: null, header: [{ label: {}, link }], footer: [] });
-    expect(navigationSchema.safeParse(menu({ kind: "category", slug: "kopper" })).success).toBe(true);
-    expect(navigationSchema.safeParse(menu({ kind: "category", slug: "" })).success).toBe(false);
-    expect(platformNavigationSchema.safeParse(menu({ kind: "tag", slug: "Not Ok" })).success).toBe(false);
+    const menu = (link: unknown) => ({ name: "Menu", items: [{ label: {}, link: link, depth: 0 }] });
+    expect(menuInput.safeParse(menu({ kind: "category", slug: "kopper" })).success).toBe(true);
+    expect(menuInput.safeParse(menu({ kind: "category", slug: "" })).success).toBe(false);
+    expect(platformMenuInput.safeParse(menu({ kind: "tag", slug: "Not Ok" })).success).toBe(false);
   });
 });
 
@@ -134,10 +157,10 @@ describe("links to a store's pages (D54)", () => {
     expect(linkExists({ kind: "page", slug: "utkast" }, names)).toBe(false);
     // Kaizen's page links are by id, and checked where its menus are drawn.
     expect(linkExists({ kind: "page", pageId: "00000000-0000-4000-8000-000000000000" }, names)).toBe(true);
-    const menu = (link: unknown) => ({ logo: null, header: [{ label: {}, link }], footer: [] });
-    expect(navigationSchema.safeParse(menu({ kind: "page", slug: "om-oss" })).success).toBe(true);
-    expect(navigationSchema.safeParse(menu({ kind: "page", slug: "" })).success).toBe(false);
-    expect(navigationSchema.safeParse(menu({ kind: "page", pageId: "00000000-0000-4000-8000-000000000000" })).success).toBe(false);
+    const menu = (link: unknown) => ({ name: "Menu", items: [{ label: {}, link: link, depth: 0 }] });
+    expect(menuInput.safeParse(menu({ kind: "page", slug: "om-oss" })).success).toBe(true);
+    expect(menuInput.safeParse(menu({ kind: "page", slug: "" })).success).toBe(false);
+    expect(menuInput.safeParse(menu({ kind: "page", pageId: "00000000-0000-4000-8000-000000000000" })).success).toBe(false);
   });
 });
 
@@ -157,9 +180,9 @@ describe("links to the blog (D57)", () => {
     expect(menuLabel({ label: {}, link: { kind: "blogCategory", slug: "nyheter" } }, "nb-NO", builtIn, names)).toBe("Nyheter");
     expect(linkExists({ kind: "article", slug: "utkast" }, names)).toBe(false);
     expect(linkExists({ kind: "blogCategory", slug: "borte" }, names)).toBe(false);
-    const menu = (link: unknown) => ({ logo: null, header: [{ label: {}, link }], footer: [] });
-    expect(navigationSchema.safeParse(menu({ kind: "article", slug: "hei" })).success).toBe(true);
-    expect(navigationSchema.safeParse(menu({ kind: "blog" })).success).toBe(true);
+    const menu = (link: unknown) => ({ name: "Menu", items: [{ label: {}, link: link, depth: 0 }] });
+    expect(menuInput.safeParse(menu({ kind: "article", slug: "hei" })).success).toBe(true);
+    expect(menuInput.safeParse(menu({ kind: "blog" })).success).toBe(true);
   });
 
   it("lead to Kaizen's blog and its articles by id, left out while not published", () => {
@@ -174,8 +197,8 @@ describe("links to the blog (D57)", () => {
     expect(link({ kind: "article", pageId: id })).toEqual({ href: "/blog/welcome", text: "Welcome", external: false });
     expect(link({ kind: "article", pageId: "00000000-0000-4000-8000-000000000002" })).toBeNull();
     expect(link({ kind: "blogCategory", slug: "news" })).toEqual({ href: "/blog/category/news", text: "News", external: false });
-    const menu = (l: unknown) => ({ logo: null, header: [{ label: {}, link: l }], footer: [] });
-    expect(platformNavigationSchema.safeParse(menu({ kind: "article", pageId: id })).success).toBe(true);
-    expect(platformNavigationSchema.safeParse(menu({ kind: "article", slug: "welcome" })).success).toBe(false);
+    const menu = (l: unknown) => ({ name: "Menu", items: [{ label: {}, link: l, depth: 0 }] });
+    expect(platformMenuInput.safeParse(menu({ kind: "article", pageId: id })).success).toBe(true);
+    expect(platformMenuInput.safeParse(menu({ kind: "article", slug: "welcome" })).success).toBe(false);
   });
 });

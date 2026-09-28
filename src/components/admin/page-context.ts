@@ -5,7 +5,9 @@ import type { SiteFonts } from "@/lib/fonts";
 import type { PageType } from "@/lib/page-content";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { Term, TermKind } from "@/lib/taxonomy";
+import type { StandardMenus } from "@/lib/site-layout";
 import type { GridStore } from "@/server/content-grid";
+import type { MenuPreview } from "@/server/menus";
 import type { EditablePage } from "@/server/pages";
 import type { SavedResult } from "@/server/saved-parts";
 import type { TermsResult } from "@/server/taxonomy";
@@ -51,6 +53,11 @@ export type PageOwnerContext = {
   gridStores: GridStore[];
   /** The owner's own fonts, and the style that sets them, for the canvas (D59). */
   fonts: { site: SiteFonts; style: CSSProperties | undefined };
+  /** The owner's menus (D85), for menu components, and those its standard header and footer show (new headers and footers start with them). */
+  menus: MenuPreview[];
+  standardMenus: StandardMenus;
+  /** Where the owner's menus are edited. */
+  menusHref: string;
   /** A store's theme for the canvas (D60): CSS for `[data-theme-canvas]` and its attributes; null for Kaizen. */
   theme: { css: string; attributes: Record<string, string> } | null;
   actions: {

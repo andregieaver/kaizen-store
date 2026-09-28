@@ -8,7 +8,8 @@ import { siteUrl } from "@/lib/site";
 import { listGridStores } from "@/server/content-grid";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
-import { getPlatformFonts } from "@/server/platform-navigation";
+import { platformMenuPreviews } from "@/server/menus";
+import { getPlatformChrome, getPlatformFonts } from "@/server/platform-navigation";
 import { PLATFORM_DEFAULTS } from "@/server/seo";
 
 import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../actions";
@@ -28,7 +29,7 @@ import {
 /** The page editor's context for Kaizen's own pages (D42, D53) or articles (D57); `author` starts a new article. */
 export async function platformPageContext(type: PageType = "page", author = ""): Promise<PageOwnerContext> {
   const copy = PAGE_TYPE_COPY[type];
-  const [gridStores, fonts] = await Promise.all([listGridStores(), getPlatformFonts()]);
+  const [gridStores, fonts, menus, chrome] = await Promise.all([listGridStores(), getPlatformFonts(), platformMenuPreviews(), getPlatformChrome()]);
   return {
     owner: null,
     type,
@@ -43,6 +44,9 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,
     gridStores,
     fonts: { site: fonts, style: siteFontStyle(fonts) },
+    menus,
+    standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
+    menusHref: "/admin/platform/menus",
     theme: null,
     actions: {
       save: savePageAction.bind(null, type),
