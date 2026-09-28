@@ -97,3 +97,24 @@ describe("accordions", () => {
     expect(swedish).toMatchObject({ items: [{ title: "Leverans", body: doc("Vi skickar inom två dagar.") }, { title: "" }] });
   });
 });
+
+describe("tabs", () => {
+  it("keeps its tabs and look, and translates each tab by the tab", () => {
+    const tabs = {
+      id: "t",
+      type: "tabs",
+      items: [
+        { id: "a", title: "Beskrivelse", body: doc("En hvit kopp.") },
+        { id: "b", title: "Mål", body: doc("8 cm høy.") },
+      ],
+      look: "pills",
+      tabsAlign: "center",
+    };
+    expect(newBlock("tabs", () => "n")).toMatchObject({ type: "tabs", items: [{ title: "" }] });
+    const parsed = parse(tabs);
+    expect(parsed).toMatchObject({ look: "pills", tabsAlign: "center" });
+    expect(blockText(parsed)).toBe("Beskrivelse En hvit kopp. Mål 8 cm høy.");
+    expect(blockTextFields(parsed).map((field) => field.label)).toEqual(["Tab 1: title", "Tab 1: text", "Tab 2: title", "Tab 2: text"]);
+    expect(problems({ ...tabs, look: "cards" })).toHaveLength(1);
+  });
+});

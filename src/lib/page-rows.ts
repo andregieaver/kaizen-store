@@ -46,6 +46,7 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
     case "separator":
       return { id: id(), type };
     case "accordion":
+    case "tabs":
       return { id: id(), type, items: [{ id: id(), title: "", body: EMPTY_DOC }] };
     case "dualButton":
       return { id: id(), type, first: { label: "", href: "" }, second: { label: "", href: "", variant: "outline" } };

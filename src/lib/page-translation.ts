@@ -67,6 +67,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return b;
     case "accordion":
       return { ...b, items: mapPanelItems(b.items, visit, key, "Section") };
+    case "tabs":
+      return { ...b, items: mapPanelItems(b.items, visit, key, "Tab") };
     case "dualButton":
       return {
         ...b,

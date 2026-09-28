@@ -83,6 +83,42 @@ test("an accordion opens its sections without script, one at a time if set, and 
   expect(await page.content()).toContain("Vi sender innen to dager.");
 });
 
+test("tabs show one panel at a time, chosen by clicking or the arrow keys, with every panel in the page", async ({ page }) => {
+  const text = (words: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] });
+  const address = await storePageWith("tabs", [
+    {
+      id: "tabs",
+      type: "tabs",
+      items: [
+        { id: "a", title: "Beskrivelse", body: text("En hvit kopp i steingods.") },
+        { id: "b", title: "Mål", body: text("Åtte centimeter høy.") },
+        { id: "c", title: "Stell", body: text("Tåler oppvaskmaskin.") },
+        { id: "d", title: "", body: text("Uten tittel.") },
+      ],
+    },
+  ]);
+  await page.goto(address);
+  const tabs = page.getByRole("tab");
+  await expect(tabs).toHaveCount(3);
+  await expect(page.getByRole("tab", { name: "Beskrivelse" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel")).toHaveText("En hvit kopp i steingods.");
+  // Every panel is in the page for search engines, the others hidden.
+  expect(await page.content()).toContain("Tåler oppvaskmaskin.");
+  await expect(page.getByText("Tåler oppvaskmaskin.")).toBeHidden();
+
+  await page.getByRole("tab", { name: "Mål" }).click();
+  await expect(page.getByRole("tabpanel")).toHaveText("Åtte centimeter høy.");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Stell" })).toBeFocused();
+  await expect(page.getByRole("tabpanel")).toHaveText("Tåler oppvaskmaskin.");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "Beskrivelse" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab", { name: "Stell" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "Stell" })).toHaveAttribute("tabindex", "0");
+  await expect(page.getByRole("tab", { name: "Mål" })).toHaveAttribute("tabindex", "-1");
+});
+
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 

@@ -711,6 +711,24 @@ export type AccordionBlock = PartBase & BlockFont & {
   titleSize?: HeadingSize;
 };
 
+export const TABS_LOOKS = { underline: "Underline", pills: "Pills", boxed: "Boxed" } as const;
+export type TabsLook = keyof typeof TABS_LOOKS;
+export const TABS_ALIGNS = { start: "Start", center: "Centre", stretch: "Spread across" } as const;
+export type TabsAlign = keyof typeof TABS_ALIGNS;
+
+/**
+ * Tabs (D91): titled pieces of rich text, one shown at a time under a row
+ * of tabs, as the ARIA tabs pattern has them. Each panel is in the page,
+ * so search engines read them all; tabs without a title are left out.
+ */
+export type TabsBlock = PartBase & BlockFont & {
+  id: string;
+  type: "tabs";
+  items: PanelItem[];
+  look?: TabsLook;
+  tabsAlign?: TabsAlign;
+};
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -723,7 +741,8 @@ export type PageBlock =
   | MenuBlock
   | SeparatorBlock
   | DualButtonBlock
-  | AccordionBlock;
+  | AccordionBlock
+  | TabsBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -805,6 +824,7 @@ export function blockHasContent(block: PageBlock): boolean {
     case "dualButton":
       return buttonShows(block.first) || buttonShows(block.second);
     case "accordion":
+    case "tabs":
       return block.items.some((item) => item.title.trim() !== "");
   }
 }
@@ -823,6 +843,7 @@ export function blockText(block: PageBlock): string {
     case "heading":
       return block.text;
     case "accordion":
+    case "tabs":
       return panelText(block.items);
     case "button":
     case "contentGrid":
@@ -1397,6 +1418,16 @@ const accordionBlock = z.object({
   ...partBase,
 });
 
+const tabsBlock = z.object({
+  id: itemId,
+  type: z.literal("tabs"),
+  items: panelItems,
+  look: z.enum(Object.keys(TABS_LOOKS) as [TabsLook, ...TabsLook[]]).optional(),
+  tabsAlign: z.enum(Object.keys(TABS_ALIGNS) as [TabsAlign, ...TabsAlign[]]).optional(),
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1410,6 +1441,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   separatorBlock,
   dualButtonBlock,
   accordionBlock,
+  tabsBlock,
 ]);
 
 export const pageColumnSchema = z.object({

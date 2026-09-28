@@ -263,9 +263,10 @@ const blockLabels: Record<BlockType, string> = {
   separator: "Separator line",
   dualButton: "Dual button",
   accordion: "Accordion",
+  tabs: "Tabs",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "accordion", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "tabs", "accordion", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -279,6 +280,7 @@ const blockThis: Record<BlockType, string> = {
   separator: "this separator line",
   dualButton: "these buttons",
   accordion: "this accordion",
+  tabs: "these tabs",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1083,9 +1085,24 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <DualButtonIcon />;
     case "accordion":
       return <AccordionIcon />;
+    case "tabs":
+      return <TabsIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function TabsIcon() {
+  return (
+    <span aria-hidden className="flex h-9 flex-col justify-center rounded-sm bg-foreground/75 px-2 text-background">
+      <span className="flex gap-0.5">
+        <span className="h-2 w-5 rounded-t-sm border-2 border-b-0 border-current" />
+        <span className="mt-1 h-1 w-4 rounded-t-sm bg-current opacity-60" />
+        <span className="mt-1 h-1 w-4 rounded-t-sm bg-current opacity-60" />
+      </span>
+      <span className="h-3.5 w-full rounded-sm rounded-tl-none border-2 border-current" />
+    </span>
+  );
 }
 
 function AccordionIcon() {
@@ -1619,6 +1636,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   separator: "Separator line.",
   dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
   accordion: "An accordion: its sections need titles. Double-click or use the wrench.",
+  tabs: "Tabs: each needs a title. Double-click or use the wrench.",
 };
 
 export { ColorField };

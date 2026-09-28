@@ -17,9 +17,11 @@ import {
   type ImageShape,
   type PageBlock,
   type SeparatorBlock,
+  type TabsBlock,
 } from "@/lib/page-content";
 
 import { RichText } from "./rich-text";
+import { TabsView } from "./tabs-view";
 
 // Written out whole so Tailwind finds every class.
 
@@ -82,6 +84,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <DualButton block={block} />;
     case "accordion":
       return <Accordion block={block} />;
+    case "tabs":
+      return <Tabs block={block} />;
     case "image":
       if (!block.image) return null;
       return (
@@ -243,5 +247,20 @@ function Accordion({ block }: { block: AccordionBlock }) {
         </details>
       ))}
     </div>
+  );
+}
+
+/** Tabs (D91): the tab list chooses the panel (`TabsView`); the panels are drawn here, all in the page. */
+function Tabs({ block }: { block: TabsBlock }) {
+  const items = block.items.filter((item) => item.title.trim() !== "");
+  return (
+    <TabsView
+      titles={items.map((item) => item.title)}
+      look={block.look ?? "underline"}
+      align={block.tabsAlign ?? "start"}
+      panels={items.map((item) => (
+        <RichText key={item.id} doc={item.body} />
+      ))}
+    />
   );
 }

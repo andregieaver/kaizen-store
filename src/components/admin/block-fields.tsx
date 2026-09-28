@@ -7,6 +7,8 @@ import { RichTextEditor } from "./rich-text-editor";
 
 import {
   ACCORDION_LOOKS,
+  TABS_ALIGNS,
+  TABS_LOOKS,
   EMPTY_DOC,
   HEADING_SIZES,
   ITEM_TITLE_MAX,
@@ -25,6 +27,7 @@ import {
   type BlockType,
   type HeadingSize,
   type PanelItem,
+  type TabsBlock,
   type ButtonShape,
   type ButtonSize,
   type ButtonVariant,
@@ -75,6 +78,12 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: AccordionFields,
     Style: AccordionStyleFields,
+  },
+  tabs: {
+    title: "Tabs",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: TabsFields,
+    Style: TabsStyleFields,
   },
   dualButton: {
     title: "Dual button",
@@ -726,6 +735,31 @@ function AccordionStyleFields({ block, onChange }: BlockEditorProps<AccordionBlo
         options={optionsOf(HEADING_SIZES)}
         value={block.titleSize ?? "sm"}
         onChange={(titleSize: HeadingSize) => onChange({ titleSize: titleSize === "sm" ? undefined : titleSize })}
+      />
+    </>
+  );
+}
+
+/** Tabs' titles and texts (D91). */
+function TabsFields({ block, onChange }: BlockEditorProps<TabsBlock>) {
+  return (
+    <>
+      <PanelItemsFields items={block.items} noun="Tab" onChange={(items) => onChange({ items })} />
+      <p className="text-xs text-muted">A tab without a title is left out on the site. The first tab shows when the page loads.</p>
+    </>
+  );
+}
+
+/** How tabs look (D91). */
+function TabsStyleFields({ block, onChange }: BlockEditorProps<TabsBlock>) {
+  return (
+    <>
+      <Choices legend="Look" options={optionsOf(TABS_LOOKS)} value={block.look ?? "underline"} onChange={(look) => onChange({ look: look === "underline" ? undefined : look })} />
+      <Choices
+        legend="Tabs"
+        options={optionsOf(TABS_ALIGNS)}
+        value={block.tabsAlign ?? "start"}
+        onChange={(tabsAlign) => onChange({ tabsAlign: tabsAlign === "start" ? undefined : tabsAlign })}
       />
     </>
   );
