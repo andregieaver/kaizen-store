@@ -305,6 +305,12 @@ of running `playwright install`.
   edits in `src/lib/page-rows.ts`. Rows, columns and components saved to
   use again (D46) are in `commerce.saved_parts` (`src/server/saved-parts.ts`,
   checked by `savedPartInput`); the page gets copies (`copyRow()` etc.).
+  A global one (D98, `src/lib/global-parts.ts`, `src/server/global-parts.ts`)
+  is kept the same on every page using it: pages hold copies marked
+  `global` (ids from `src/lib/part-ids.ts`, parts inside marked `local` are
+  each page's own), and a change is written to every page by
+  `spreadGlobals()`; the editor sends the globals it changed as
+  `globalEdits`. Copy parts with `copyRow()` and co., which keep uses uses.
   Pages saved as a plain
   block list are read as one row (`upgradeLegacy`). Blocks are rich text
   (Tiptap JSON, cleaned by `cleanRichText()` and rendered by `<RichText>`

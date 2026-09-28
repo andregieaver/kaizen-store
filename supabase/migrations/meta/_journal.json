@@ -1142,6 +1142,13 @@
       "when": 1790629341313,
       "tag": "20260928210221_avatars_bucket",
       "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1790631101673,
+      "tag": "20260928213141_global_parts",
+      "breakpoints": true
     }
   ]
 }

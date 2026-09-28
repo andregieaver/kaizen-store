@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent, useId, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useId, useRef, useState, useTransition } from "react";
 
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
@@ -33,7 +33,15 @@ import {
   withTranslation,
   type PageLanguage,
 } from "@/lib/page-translation";
-import type { SavedPart } from "@/lib/saved-parts";
+import {
+  currentGlobal,
+  editedGlobals,
+  refreshUses,
+  sameJson,
+  settleUses,
+  type GlobalPart,
+} from "@/lib/global-parts";
+import { globalsOf, type SavedPart } from "@/lib/saved-parts";
 import type { Term } from "@/lib/taxonomy";
 import type { EditablePage, PageState } from "@/server/pages";
 
@@ -102,13 +110,24 @@ export function PageEditor({
     context.type === "product_layout" ? "layout" : context.type === "header" || context.type === "footer" ? context.type : context.type === "article" ? "article" : "page";
   // A product layout (D79), header or footer (D80) is only its name and its rows: no address, picture, search texts or categories.
   const layout = LAYOUT_TYPES.includes(context.type);
-  const [content, setContent] = useState<PageContent>(
-    page?.draft ?? {
+  // The owner's saved parts, and its globals (D98) as this editor knows them: what the page's uses are compared with.
+  const [parts, setParts] = useState<SavedPart[]>(savedParts);
+  const known = useRef<Map<string, GlobalPart>>(globalsOf(savedParts));
+  const [content, setContent] = useState<PageContent>(() => {
+    const start = page?.draft ?? {
       ...newPageContent(),
       rows: startingRows(context.type, context.owner, context.standardMenus),
       ...(context.type === "article" && context.defaultAuthor ? { author: context.defaultAuthor } : {}),
-    },
-  );
+    };
+    // Uses of globals as they are now; a use of one deleted is the page's own.
+    const globals = globalsOf(savedParts);
+    return refreshUses(start, globals, (id) => !globals.has(id));
+  });
+  // The page as last changed, to tell whether a save's answer may replace it.
+  const latest = useRef(content);
+  useEffect(() => {
+    latest.current = content;
+  }, [content]);
   // The address follows the title until it is edited, and never once the page is live.
   const [slugFollows, setSlugFollows] = useState(
     !page || (!page.published && page.draft.slug === pageSlugFromTitle(page.draft.title, reserved)),
@@ -131,9 +150,14 @@ export function PageEditor({
    */
   const edit = (update: (page: PageContent) => PageContent) => {
     setContent((current) => {
-      if (!translating) return update(current);
-      const edited = update(localizePage(current, locale));
-      return withTranslation(current, locale, translationOf(current, edited));
+      let next: PageContent;
+      if (!translating) next = update(current);
+      else {
+        const edited = update(localizePage(current, locale));
+        next = withTranslation(current, locale, translationOf(current, edited));
+      }
+      // A change to one use of a global reaches the page's other uses of it at once (D98).
+      return settleUses(current, next, known.current);
     });
     setDirty(true);
     setMessage(null);
@@ -155,11 +179,25 @@ export function PageEditor({
   const submit = (publish: boolean) =>
     startBusy(async () => {
       setProblems([]);
-      const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify(content), publish);
+      const sent = content;
+      // The globals changed here (D98): the server takes them from this page to every page using them.
+      const globalEdits = editedGlobals(sent, known.current);
+      const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify({ ...sent, globalEdits }), publish);
       if (outcome.status === "error") {
         setProblems(outcome.problems);
         return;
       }
+      if (globalEdits.length > 0) {
+        const now = new Map(known.current);
+        for (const id of globalEdits) {
+          const global = now.get(id);
+          if (global) now.set(id, currentGlobal(sent, global));
+        }
+        known.current = now;
+        setParts((list) => list.map((p) => (now.has(p.id) && globalEdits.includes(p.id) ? ({ ...p, ...now.get(p.id)! } as SavedPart) : p)));
+      }
+      // The server brings the page's other uses up to date; take its version unless the page changed meanwhile.
+      if (latest.current === sent && !sameJson(outcome.page.draft, sent)) setContent(outcome.page.draft);
       setDirty(false);
       setSaved(outcome.page);
       setMessage(publish ? `Published at ${siteBase}/${outcome.page.slug}.` : "Draft saved.");
@@ -214,7 +252,17 @@ export function PageEditor({
         rows={view.rows}
         onRows={changeRows}
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
-        saved={savedParts}
+        saved={parts}
+        onSaved={(next) => {
+          // A global changed or deleted under Saved (the server has changed the pages using it): its uses here follow.
+          const before = new Map(parts.map((p) => [p.id, p]));
+          const globals = globalsOf(next);
+          const changed = new Map([...globals].filter(([id]) => before.get(id)?.global && before.get(id)?.updatedAt !== next.find((p) => p.id === id)?.updatedAt));
+          const gone = new Set([...known.current.keys()].filter((id) => !globals.has(id)));
+          known.current = globals;
+          setParts(next);
+          if (changed.size > 0 || gone.size > 0) setContent((current) => refreshUses(current, changed, (id) => gone.has(id)));
+        }}
         library={library}
         productParts={context.type === "product_layout"}
         siteParts={context.type === "header" || context.type === "footer" ? sitePartsFor(context.owner) : null}

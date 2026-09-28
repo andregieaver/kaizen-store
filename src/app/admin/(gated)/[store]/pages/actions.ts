@@ -50,7 +50,8 @@ export async function saveStorePageAction(
   }
   const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type });
   if (!result.ok) return { status: "error", problems: result.problems };
-  if (publish) pagesChanged(member);
+  // A global part's change (D98) reaches live pages even when this page is only a draft.
+  if (publish || result.pages) pagesChanged(member);
   const page = await getPageForEdit(member.store.id, result.id, type);
   if (!page) return { status: "error", problems: ["The page was saved but could not be read back."] };
   return { status: "saved", page };
@@ -131,13 +132,17 @@ export async function createStorePartAction(storeSlug: string, input: unknown): 
 export async function updateStorePartAction(storeSlug: string, id: string, input: unknown): Promise<SavedResult> {
   const member = await requireMember(storeSlug);
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
-  return updateSavedPart(member.account, member.store.id, id, input);
+  const result = await updateSavedPart(member.account, member.store.id, id, input);
+  if (result.ok && result.pages) pagesChanged(member);
+  return result;
 }
 
 export async function deleteStorePartAction(storeSlug: string, id: string): Promise<SavedResult> {
   const member = await requireMember(storeSlug);
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
-  return deleteSavedPart(member.account, member.store.id, id);
+  const result = await deleteSavedPart(member.account, member.store.id, id);
+  if (result.ok && result.pages) pagesChanged(member);
+  return result;
 }
 
 // The store's page and article categories and tags (D50, D57).

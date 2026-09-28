@@ -1554,6 +1554,16 @@ describe("saved parts", () => {
     await expect(save("block", "  ")).rejects.toThrow(/saved_parts_name/);
     await expect(save("block", "x".repeat(81))).rejects.toThrow(/saved_parts_name/);
   });
+
+  it("are not global until said, and keep a global's translations as an object (D98)", async () => {
+    const { rows } = await db.query<{ global: boolean; translations: unknown }>(
+      "insert into commerce.saved_parts (kind, name, content) values ('block', 'Plain', '{}') returning global, translations",
+    );
+    expect(rows[0]).toEqual({ global: false, translations: {} });
+    await expect(
+      db.query("insert into commerce.saved_parts (kind, name, content, global, translations) values ('row', 'Hero', '{}', true, '[]')"),
+    ).rejects.toThrow(/saved_parts_translations/);
+  });
 });
 
 describe("categories and tags (D50)", () => {

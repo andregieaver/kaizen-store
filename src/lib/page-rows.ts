@@ -14,6 +14,7 @@ import {
   type RowLayout,
   type Spacing,
 } from "./page-content";
+import { copyWithUses } from "./global-parts";
 
 /**
  * The page builder's edits (D43), as pure functions on a page's rows: each
@@ -229,14 +230,20 @@ function keepHtmlId<T extends PartBase>(part: T, taken: Set<string>): T {
 /**
  * Copies with new ids throughout: for duplicating, and for putting a saved
  * part on the page (D46). Custom ids in `taken` (the page's) are left out,
- * since an id is used once on a page.
+ * since an id is used once on a page. A global's use (D98) stays one: its
+ * ids keep their relation to the global's, and its custom ids are the
+ * global's own.
  */
 export const copyBlock = (block: PageBlock, id: NewId, taken = new Set<string>()): PageBlock =>
-  keepHtmlId({ ...structuredClone(block), id: id() }, taken);
+  block.global ? copyWithUses("block", structuredClone(block), id) : keepHtmlId({ ...structuredClone(block), id: id() }, taken);
 export const copyColumn = (column: PageColumn, id: NewId, taken = new Set<string>()): PageColumn =>
-  keepHtmlId({ ...structuredClone(column), id: id(), blocks: column.blocks.map((b) => copyBlock(b, id, taken)) }, taken);
+  column.global
+    ? copyWithUses("column", structuredClone(column), id)
+    : keepHtmlId({ ...structuredClone(column), id: id(), blocks: column.blocks.map((b) => copyBlock(b, id, taken)) }, taken);
 export const copyRow = (row: PageRow, id: NewId, taken = new Set<string>()): PageRow =>
-  keepHtmlId({ ...structuredClone(row), id: id(), columns: row.columns.map((c) => copyColumn(c, id, taken)) }, taken);
+  row.global
+    ? copyWithUses("row", structuredClone(row), id)
+    : keepHtmlId({ ...structuredClone(row), id: id(), columns: row.columns.map((c) => copyColumn(c, id, taken)) }, taken);
 
 /** A copy of the row, with new ids throughout, right after it. */
 export function duplicateRow(rows: PageRow[], rowId: string, id: NewId): PageRow[] {

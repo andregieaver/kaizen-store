@@ -156,7 +156,8 @@ import { blockTextFields, setBlockText } from "@/lib/page-translation";
 
 import type { GridData } from "@/lib/content-grid";
 import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
-import { SAVED_KIND_LABELS, SAVED_NAME_MAX, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
+import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
+import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
@@ -183,10 +184,11 @@ import { RichTextEditor } from "./rich-text-editor";
 
 type Rows = (update: (rows: PageRow[]) => PageRow[]) => void;
 
+// A uuid, also where the browser has no `randomUUID` (an address without https): a global's uses (D98) work on ids of 128 bits.
 export const newId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
-    : `id${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+    : "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx".replace(/x/g, () => Math.floor(Math.random() * 16).toString(16));
 
 /** What is dragged, and what it is dropped on. */
 type DragData =
@@ -356,6 +358,8 @@ type Actions = {
   blocksFull: boolean;
   /** The language the page is shown in, for words the site fills in (a form's usual labels, D93). */
   lang: string | undefined;
+  /** A global saved part's name (D98), for the canvas's marks. */
+  globalName: (id: string) => string;
 };
 
 /** The site's own fonts for the canvas, and installing a family a block chooses (D59). */
@@ -370,7 +374,8 @@ export type BuilderFonts = {
 export function PageBuilder({
   rows,
   onRows,
-  saved,
+  saved: parts,
+  onSaved: setParts,
   upload,
   startVideo = null,
   aside,
@@ -400,8 +405,10 @@ export function PageBuilder({
   upload: Upload | null;
   /** Starts a row's background video upload; null where uploads are not set up. */
   startVideo?: StartVideo | null;
-  /** Kaizen's saved rows, columns and components (D46). */
+  /** The owner's saved rows, columns and components (D46), global ones too (D98). */
   saved: SavedPart[];
+  /** The saved parts changed: one saved, changed or deleted here. */
+  onSaved: (parts: SavedPart[]) => void;
   aside: ReactNode;
 }) {
   const sensors = useSensors(
@@ -414,7 +421,6 @@ export function PageBuilder({
   /** The column last worked in, where pressing a component adds it. */
   const [lastColumn, setLastColumn] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  const [parts, setParts] = useState<SavedPart[]>(saved);
   /** A saved part by id: the owner's, or one from Kaizen's library. */
   const findPart = (id: string) => parts.find((p) => p.id === id) ?? library.find((p) => p.id === id);
   const [tab, setTab] = useState<Tab>("components");
@@ -441,24 +447,33 @@ export function PageBuilder({
     setDialog({ kind: "edit-block", blockId: block.id });
   };
 
-  /** Puts a copy of a saved part on the page: a row at `index`, a column into a row (or a row of its own), a block into a column. */
+  /**
+   * Puts a saved part on the page: a row at `index`, a column into a row (or
+   * a row of its own), a block into a column. A global one (D98) is a new
+   * use of it; any other a copy, and Kaizen's library's are copies without
+   * any global's marks (D56).
+   */
   const placeSaved = (
     saved: SavedPart,
     place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number } = {},
   ) => {
-    const part = library.includes(saved) ? forStore(saved) : saved;
+    const fromLibrary = library.includes(saved);
+    const part = fromLibrary ? forStore(saved) : saved;
+    const global = fromLibrary ? null : globalOf(part);
+    // A saved part's custom ids come along unless the page already uses them (D48).
+    const copy = <T extends PageRow | PageColumn | PageBlock>(content: T, copier: (c: T) => T): T =>
+      global ? (newUse(global, newId()) as T) : copier(fromLibrary ? withoutUses(part.kind, content) : content);
     if (part.kind === "row") {
-      // A saved part's custom ids come along unless the page already uses them (D48).
-      const row = copyRow(part.content, newId, htmlIds(rows));
+      const row = copy(part.content, (c) => copyRow(c, newId, htmlIds(rows)));
       if (!rowsFull) onRows((current) => insertRow(current, row, place.index ?? current.length));
     } else if (part.kind === "column") {
-      const column = copyColumn(part.content, newId, htmlIds(rows));
+      const column = copy(part.content, (c) => copyColumn(c, newId, htmlIds(rows)));
       onRows((current) => {
         if (place.rowId) return insertColumn(current, place.rowId, column, place.columnIndex ?? Number.MAX_SAFE_INTEGER);
         return insertRow(current, { id: newId(), type: "row", layout: "1", columns: [column] }, current.length);
       });
     } else if (!blocksFull) {
-      const block = copyBlock(part.content, newId, htmlIds(rows));
+      const block = copy(part.content, (c) => copyBlock(c, newId, htmlIds(rows)));
       const columnId = place.columnId === undefined ? lastColumn : place.columnId;
       onRows((current) => {
         if (columnId && current.some((r) => r.columns.some((c) => c.id === columnId))) {
@@ -588,6 +603,7 @@ export function PageBuilder({
     onColumn: setLastColumn,
     blocksFull,
     lang,
+    globalName: (id) => parts.find((p) => p.id === id)?.name ?? "Global",
   };
 
   return (
@@ -941,7 +957,8 @@ function SavedList({ parts, onOpen }: { parts: SavedPart[]; onOpen: (partId: str
   return (
     <>
       <p className="text-xs text-muted">
-        Drag one onto the page to use a copy, or press it to change it. Pages that use it keep their own copy.
+        Drag one onto the page to use it, or press it to change it. A global one stays the same on every page that uses it; any
+        other is a copy each page keeps.
       </p>
       {(["row", "column", "block"] as const).map((kind) => {
         const own = parts.filter((p) => p.kind === kind);
@@ -986,7 +1003,8 @@ function LibraryList({ parts, onUse }: { parts: SavedPart[]; onUse: (part: Saved
             <ul className="flex flex-col gap-1">
               {own.map((part) => (
                 <li key={part.id}>
-                  <SavedItem part={part} onOpen={() => onUse(part)} action="add a copy" />
+                  {/* A store gets a plain copy, even of one of Kaizen's globals (D98). */}
+                  <SavedItem part={{ ...part, global: false }} onOpen={() => onUse(part)} action="add a copy" />
                 </li>
               ))}
             </ul>
@@ -1025,7 +1043,7 @@ function SavedItem({ part, onOpen, action = "open to change or add" }: { part: S
       type="button"
       onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
       onClick={onOpen}
-      aria-label={`${part.name}, saved ${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: ${action}`}
+      aria-label={`${part.name}, saved ${part.global ? "global " : ""}${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: ${action}`}
       className={`w-full touch-none text-left ${isDragging ? "opacity-40" : ""}`}
     >
       <SavedTile part={part} />
@@ -1054,7 +1072,10 @@ function SavedTile({ part, lifted = false }: { part: SavedPart | null; lifted?: 
       </span>
       <span className="flex min-w-0 flex-col">
         <span className="truncate text-sm">{part.name}</span>
-        <span className="text-xs text-muted">{SAVED_KIND_LABELS[part.kind].one}</span>
+        <span className="text-xs text-muted">
+          {SAVED_KIND_LABELS[part.kind].one}
+          {part.global && <span className="font-medium text-violet-700 dark:text-violet-300"> · Global</span>}
+        </span>
       </span>
     </span>
   );
@@ -1396,8 +1417,11 @@ function Tools({
   duplicateDisabled = false,
   onDelete,
   deleteDisabled = false,
+  mark,
 }: {
   label: string;
+  /** A global's use, or the page's own part inside one (D98): said after the label, in its colour. */
+  mark?: PartMark | null;
   /** The drag handle, made where `useSortable` is (see `handleClass`); none while translating. */
   handle?: ReactNode;
   onEdit: () => void;
@@ -1412,7 +1436,9 @@ function Tools({
   return (
     <div
       data-builder-tools
-      className="absolute top-0 left-0 z-20 flex -translate-y-full items-center gap-0.5 rounded-t-md bg-blue-600 px-1 text-white shadow"
+      className={`absolute top-0 left-0 z-20 flex -translate-y-full items-center gap-0.5 rounded-t-md px-1 text-white shadow ${
+        mark?.kind === "global" ? "bg-violet-600" : mark?.kind === "local" ? "bg-teal-700" : "bg-blue-600"
+      }`}
     >
       {handle}
       <button type="button" onClick={onEdit} aria-label={`${editLabel} (${lower})`} title={editLabel} className={tool}>
@@ -1442,10 +1468,28 @@ function Tools({
           <Icon name="trash" />
         </button>
       )}
-      <span className="px-1 text-xs whitespace-nowrap">{label}</span>
+      <span className="px-1 text-xs whitespace-nowrap">
+        {label}
+        {mark && <span className="font-medium"> · {mark.text}</span>}
+      </span>
     </div>
   );
 }
+
+/** How the canvas marks a part among globals' uses (D98). */
+type PartMark = { kind: "global" | "local"; text: string };
+
+function markOf(part: PageRow | PageColumn | PageBlock, actions: Actions): PartMark | null {
+  if (part.global) return { kind: "global", text: `Global: ${actions.globalName(part.global)}` };
+  if (part.local) return { kind: "local", text: "Only this page" };
+  return null;
+}
+
+/** The canvas's attributes for a part's marks (the outline colours are in globals.css). */
+const markAttributes = (part: PageRow | PageColumn | PageBlock) => ({
+  ...(part.global && { "data-builder-global": "" }),
+  ...(part.local && { "data-builder-local": "" }),
+});
 
 function RowItem({
   row,
@@ -1475,6 +1519,7 @@ function RowItem({
     <li
       ref={setNodeRef}
       data-builder-item="row"
+      {...markAttributes(row)}
       tabIndex={0}
       aria-label={`${name}, ${ROW_LAYOUTS[row.layout].label.toLowerCase()}`}
       style={{ transform: CSS.Translate.toString(transform), transition }}
@@ -1484,6 +1529,7 @@ function RowItem({
       {!actions.translating && (
       <Tools
         label={name}
+        mark={markOf(row, actions)}
         handle={
           <button
             type="button"
@@ -1565,6 +1611,7 @@ function ColumnItem({
     <div
       ref={setNodeRef}
       data-builder-item="column"
+      {...markAttributes(column)}
       tabIndex={0}
       role="group"
       aria-label={name}
@@ -1587,6 +1634,7 @@ function ColumnItem({
       ) : (
       <Tools
         label={name.replace(/^Row \d+, c/, "C")}
+        mark={markOf(column, actions)}
         handle={
           <button
             type="button"
@@ -1678,6 +1726,7 @@ function BlockItem({
     <div
       ref={setNodeRef}
       data-builder-item="block"
+      {...markAttributes(block)}
       tabIndex={0}
       role="group"
       aria-label={name}
@@ -1696,6 +1745,7 @@ function BlockItem({
       ) : (
       <Tools
         label={blockLabels[block.type]}
+        mark={markOf(block, actions)}
         handle={
           <button
             type="button"
@@ -1819,13 +1869,16 @@ function Dialogs({
     </button>
   );
   const saveAs = (part: SavedPartDraft) => (
-    <button
-      type="button"
-      onClick={() => open({ kind: "save-as", part, back: dialog })}
-      className="mr-auto min-h-10 rounded-md border border-border px-4 text-sm"
-    >
-      Save as…
-    </button>
+    <div className="mr-auto flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => open({ kind: "save-as", part, back: dialog })}
+        className="min-h-10 rounded-md border border-border px-4 text-sm"
+      >
+        Save as…
+      </button>
+      <GlobalControls id={part.content.id} rows={rows} onRows={onRows} nameOf={(id) => parts.find((p) => p.id === id)?.name ?? "Global"} />
+    </div>
   );
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
   const editor = block ? editorFor(block) : undefined;
@@ -2367,8 +2420,10 @@ function Dialogs({
           create={grid.actions.createPart}
           part={dialog.part}
           onCancel={() => (dialog.back ? open(dialog.back) : onClose())}
-          onSaved={(next, id) => {
+          onSaved={(next, id, global) => {
             onParts(next, id);
+            // Saved as global (D98): the part on the page is its first use.
+            if (global) onRows((current) => markUse(current, dialog.part.content.id, id));
             onClose();
           }}
         />
@@ -4003,6 +4058,57 @@ function LayoutChoice({ value, onChange }: { value: RowLayout; onChange: (layout
 
 const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
 
+/**
+ * A part's place among globals' uses (D98), in its settings: a use says
+ * whose it is and can be unlinked (made this page's own copy); a part
+ * inside a use can be this page's own, or shared again.
+ */
+function GlobalControls({
+  id,
+  rows,
+  onRows,
+  nameOf,
+}: {
+  id: string;
+  rows: PageRow[];
+  onRows: Rows;
+  nameOf: (globalId: string) => string;
+}) {
+  const place = usePlace(rows, id);
+  if (!place || (!place.global && !place.within)) return null;
+  const within = place.within;
+  return (
+    <>
+      {place.global && (
+        <>
+          <span
+            className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-900 dark:bg-violet-950 dark:text-violet-100"
+            title="Changes here change it on every page that uses it, when you save."
+          >
+            Global: {nameOf(place.global)}
+          </span>
+          <button
+            type="button"
+            onClick={() => onRows((current) => detachUse(current, id))}
+            title="Make this one a copy of this page's own. The global and its other uses stay as they are."
+            className="min-h-10 rounded-md border border-border px-3 text-sm"
+          >
+            Unlink
+          </button>
+        </>
+      )}
+      {within && !within.shared && !place.inLocal && (
+        <label className="flex items-center gap-2 text-sm" title={`Not shared with ${nameOf(within.global)}: each page using it has its own.`}>
+          <input type="checkbox" checked={place.local} onChange={(event) => onRows((current) => setLocal(current, id, event.target.checked))} />
+          Only on this page
+        </label>
+      )}
+      {within && within.shared && !place.global && <span className="text-xs text-muted">Part of {nameOf(within.global)}</span>}
+      {place.inLocal && !place.global && <span className="text-xs text-muted">This page&apos;s own</span>}
+    </>
+  );
+}
+
 /** Names a row, column or component and saves it under Saved (D46). */
 function SaveAsDialog({
   create,
@@ -4013,17 +4119,19 @@ function SaveAsDialog({
   create: PageOwnerContext["actions"]["createPart"];
   part: SavedPartDraft;
   onCancel: () => void;
-  onSaved: (parts: SavedPart[], id: string) => void;
+  onSaved: (parts: SavedPart[], id: string, global: boolean) => void;
 }) {
   const id = useId();
   const [name, setName] = useState("");
+  const [global, setGlobal] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
   const kind = SAVED_KIND_LABELS[part.kind].one.toLowerCase();
   const submit = () =>
     start(async () => {
-      const result = await create({ ...part, name });
-      if (result.ok) onSaved(result.parts, result.id);
+      // A global's content gets ids of its own; the part on the page keeps its ids and becomes its first use.
+      const result = await create(global ? { kind: part.kind, content: globalContent(part.kind, part.content), name, global } : { ...part, name });
+      if (result.ok) onSaved(result.parts, result.id, global);
       else setProblems(result.problems);
     });
   return (
@@ -4071,8 +4179,20 @@ function SaveAsDialog({
           placeholder={part.kind === "row" ? "Hero with picture" : part.kind === "column" ? "Contact details" : "Delivery promise"}
           className={field}
         />
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" checked={global} onChange={(event) => setGlobal(event.target.checked)} className="mt-1" />
+          <span>
+            <span className="font-medium">Global</span>
+            <span className="block text-xs text-muted">
+              Every page that uses it shows the same {kind}: change it in one place and it changes everywhere. Inside it,
+              columns and components can still be each page&apos;s own.
+            </span>
+          </span>
+        </label>
         <p className="text-xs text-muted">
-          It is added under Saved in the left sidebar, to drag onto any page. This page keeps its {kind} as it is.
+          {global
+            ? `It is added under Saved in the left sidebar, to drag onto any page. This ${kind} becomes its first use.`
+            : `It is added under Saved in the left sidebar, to drag onto any page. This page keeps its ${kind} as it is.`}
         </p>
         {problems.length > 0 && (
           <p role="alert" className="text-sm text-red-700 dark:text-red-400">
@@ -4106,6 +4226,8 @@ function SavedPartDialog({
 }) {
   const id = useId();
   const [name, setName] = useState(part.name);
+  // Global (D98): its pages follow its changes; turned off, they keep what they have as their own.
+  const [global, setGlobal] = useState(part.global);
   // The content as one row, whatever the kind, so the same edits apply.
   const [rows, setRows] = useState<PageRow[]>(() =>
     part.kind === "row"
@@ -4130,7 +4252,7 @@ function SavedPartDialog({
         : { kind: "block", content: rows[0].columns[0].blocks[0] };
   const save = () =>
     start(async () => {
-      const result = await actions.updatePart(part.id, { ...content(), name });
+      const result = await actions.updatePart(part.id, { ...content(), name, global });
       if (!result.ok) return setProblems(result.problems);
       onParts(result.parts);
       onClose();
@@ -4152,7 +4274,9 @@ function SavedPartDialog({
       footer={
         confirmDelete ? (
           <>
-            <span className="mr-auto self-center text-sm">Delete “{part.name}” from Saved? Pages that use it keep their copy.</span>
+            <span className="mr-auto self-center text-sm">
+              Delete “{part.name}” from Saved? Pages that use it keep {part.global ? "what they have, as their own" : "their copy"}.
+            </span>
             <button type="button" onClick={() => setConfirmDelete(false)} className="min-h-10 rounded-md border border-border px-4 text-sm">
               Keep it
             </button>
@@ -4177,7 +4301,7 @@ function SavedPartDialog({
             <button
               type="button"
               onClick={save}
-              disabled={busy || (!dirty && name === part.name)}
+              disabled={busy || (!dirty && name === part.name && global === part.global)}
               className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
             >
               {busy ? "Saving …" : "Save changes"}
@@ -4199,6 +4323,19 @@ function SavedPartDialog({
             className={field}
           />
         </div>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" checked={global} onChange={(event) => setGlobal(event.target.checked)} className="mt-1" />
+          <span>
+            <span className="font-medium">Global</span>
+            <span className="block text-xs text-muted">
+              {part.global
+                ? `Used on ${part.uses === 1 ? "1 page" : `${part.uses} pages`}. Saving changes here changes it on every one of them, live pages included.${
+                    global ? "" : " Turned off, each page keeps what it has as its own."
+                  }`
+                : "Every page that uses it from now on shows the same, and follows its changes. Pages that already have a copy keep it."}
+            </span>
+          </span>
+        </label>
         {part.kind === "row" && (
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Layout</p>

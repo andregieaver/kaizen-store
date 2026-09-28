@@ -317,6 +317,14 @@ export type PartBase = {
   shadow?: Shadow;
   htmlId?: string;
   className?: string;
+  /**
+   * A use of a global row, column or component (D98): the saved part's id,
+   * on the part the use starts at. What it holds is the global's own, the
+   * same on every page (`src/lib/global-parts.ts`).
+   */
+  global?: string;
+  /** Inside a global's use: this part is the page's own, not shared with the global's other uses (D98). */
+  local?: true;
 };
 /**
  * A row's or column's background (D48): a colour, or a picture with an
@@ -1462,6 +1470,8 @@ const partBase = {
     .max(RADIUS_MAX, `Keep rounded corners at ${RADIUS_MAX} pixels or less.`)
     .optional(),
   shadow: z.enum(Object.keys(SHADOWS) as [Shadow, ...Shadow[]]).optional(),
+  global: z.uuid().optional(),
+  local: z.literal(true).optional(),
   htmlId: optionalText(
     z
       .string()

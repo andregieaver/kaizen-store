@@ -2744,11 +2744,12 @@ export const pageRedirects = commerce.table(
 );
 
 /**
- * A row, column or component saved to use again (D46): for now Kaizen's own
- * (`store_id` null), shown under Saved in the page builder. Using one puts a
- * copy on the page; changing it later changes what the next use gets, not
- * the pages that already have it. Shape: `PageRow`, `PageColumn` or
- * `PageBlock` in lib/page-content.
+ * A row, column or component saved to use again (D46): Kaizen's own
+ * (`store_id` null) or a store's, shown under Saved in the page builder.
+ * Using one puts a copy on the page; changing it later changes what the
+ * next use gets, not the pages that already have it, unless it is global
+ * (D98): then every page's copy is its use and follows it. Shape:
+ * `PageRow`, `PageColumn` or `PageBlock` in lib/page-content.
  */
 export const savedParts = commerce.table(
   "saved_parts",
@@ -2760,6 +2761,10 @@ export const savedParts = commerce.table(
     kind: text("kind").notNull(),
     name: text("name").notNull(),
     content: jsonb("content").notNull(),
+    /** Global (D98): its uses on pages stay the same as it, and change with it. */
+    global: boolean("global").notNull().default(false),
+    /** A global's texts in the owner's other languages (D55), by their place in `content`. */
+    translations: jsonb("translations").notNull().default({}),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedAt: updatedAt(),
@@ -2767,6 +2772,7 @@ export const savedParts = commerce.table(
   },
   (t) => [
     index("saved_parts_store_kind_idx").on(t.storeId, t.kind, t.name),
+    check("saved_parts_translations", sql`jsonb_typeof(${t.translations}) = 'object'`),
     index("saved_parts_created_by_idx").on(t.createdBy),
     index("saved_parts_updated_by_idx").on(t.updatedBy),
     check("saved_parts_kind", sql`${t.kind} in ('row', 'column', 'block')`),

@@ -16,13 +16,14 @@ import {
   termContentOf
 } from "@/lib/page-content";
 
+import { currentGlobal, refreshUses, sameGlobal, type GlobalPart, type PartKind } from "@/lib/global-parts";
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
-import { productBlocks } from "@/lib/product-layout";
-import { siteLayoutProblem } from "@/lib/site-layout";
 
 import { audit, type Account } from "./auth";
 import { findFont, installFonts } from "./fonts";
+import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./global-parts";
 import { withPageAlts } from "./media-alts";
+import { pageRulesProblem } from "./page-rules";
 import { scopedTermIds } from "./taxonomy";
 
 /**
@@ -74,7 +75,8 @@ export type EditablePage = {
   updatedAt: string;
 };
 
-export type PageResult = { ok: true; id: string } | { ok: false; problems: string[] };
+/** `pages`: how many other pages a change to a global part (D98) reached, so the site's cached pages are refreshed. */
+export type PageResult = { ok: true; id: string; pages?: number } | { ok: false; problems: string[] };
 
 const iso = (value: unknown) => (value == null ? null : new Date(String(value)).toISOString());
 
@@ -171,18 +173,6 @@ const takenProblem = (slug: string, type: PageType) =>
     : `Another page already has the address /${slug}. Choose another.`;
 
 /**
- * Product components (D79) show the product a layout is used for, so only a
- * store's product layouts hold them, and a layout has no categories or tags.
- */
-function productLayoutProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
-  const parts = productBlocks(content).length > 0;
-  if (type !== "product_layout") return parts ? "Product components belong in product layouts, which show a product." : null;
-  if (owner === null) return "Product layouts are a store's.";
-  if (content.categories.length > 0 || content.tags.length > 0) return "A product layout has no categories or tags.";
-  return null;
-}
-
-/**
  * Saves the editor's page as the draft, and with `publish` also as what
  * visitors see. A page not yet published takes its draft's address at
  * once; a published page keeps its live address until it is published
@@ -196,14 +186,13 @@ export async function savePage(
   input: unknown,
   { publish, type = "page" }: { publish: boolean; type?: PageType },
 ): Promise<PageResult> {
+  const edits = globalEditsOf(input);
   const parsed = pageInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const slugProblem = pageSlugProblem(parsed.data.slug, reservedPageSlugs(owner, type));
   if (slugProblem) return { ok: false, problems: [slugProblem] };
-  const gridProblem = ownerGridProblem(owner, parsed.data.rows);
-  if (gridProblem) return { ok: false, problems: [gridProblem] };
-  const layoutProblem = productLayoutProblem(owner, type, parsed.data) ?? siteLayoutProblem(owner, type, parsed.data);
-  if (layoutProblem) return { ok: false, problems: [layoutProblem] };
+  const ruleProblem = pageRulesProblem(owner, type, parsed.data);
+  if (ruleProblem) return { ok: false, problems: [ruleProblem] };
   // Blocks' own fonts (D59) come from Google Fonts and must be on Kaizen before the page shows them.
   const families = pageFonts(parsed.data);
   const unknown = families.filter((family) => !findFont(family));
@@ -216,7 +205,7 @@ export async function savePage(
   const translated = cleanTranslations(parsed.data, (await ownerLanguages(owner)).slice(1));
   if (!translated.ok) return { ok: false, problems: translated.problems };
   const { author, ...rest } = translated.content;
-  const content: PageContent = {
+  let content: PageContent = {
     ...rest,
     categories: await scopedTermIds(scope, "category", parsed.data.categories),
     tags: await scopedTermIds(scope, "tag", parsed.data.tags),
@@ -233,12 +222,39 @@ export async function savePage(
     // Only articles have an author (D57).
     ...(type === "article" && author ? { author } : {}),
   };
-  const json = JSON.stringify(content);
-
   let result: PageResult;
+  let spreadTo = 0;
   try {
     result = await db().transaction(async (tx): Promise<PageResult> => {
       if (await slugTaken(tx, owner, type, content.slug, id)) return { ok: false, problems: [takenProblem(content.slug, type)] };
+
+      // Global parts (D98): those changed on this page go to every page using them; the page's other uses follow them.
+      const parts = await lockSavedParts(tx, owner);
+      const known = globalsIn(parts);
+      const changed: GlobalPart[] = [];
+      for (const kind of ["block", "column", "row"] satisfies PartKind[]) {
+        for (const globalId of edits) {
+          const global = known.get(globalId);
+          if (!global || global.kind !== kind) continue;
+          const mine = currentGlobal(content, global);
+          if (!sameGlobal(kind, mine, global)) changed.push(mine);
+        }
+      }
+      const spread = await spreadGlobals(tx, {
+        accountId: account.id,
+        owner,
+        parts,
+        changed,
+        skip: id === null ? undefined : { id, published: publish },
+      });
+      spreadTo = spread.pages;
+      content = refreshUses(content, spread.globals, (globalId) => !spread.globals.has(globalId));
+      const again = pageInput.safeParse(content);
+      const problem = again.success
+        ? pageRulesProblem(owner, type, again.data)
+        : [...new Set(again.error.issues.map((i) => i.message))].join(" ");
+      if (problem) throw new GlobalsRefused([problem]);
+      const json = JSON.stringify(content);
 
       if (id === null) {
         const [row] = await tx.execute<Row>(sql`
@@ -256,7 +272,7 @@ export async function savePage(
         where id = ${id}::uuid and ${ownedBy(owner, type)}
         for update
       `);
-      if (!row) return { ok: false, problems: ["This page no longer exists. It may have been deleted."] };
+      if (!row) throw new GlobalsRefused(["This page no longer exists. It may have been deleted."]);
       // The address changes now unless the page is live and this is only a draft.
       const moveAddress = publish || !row.live;
       await tx.execute(sql`
@@ -272,18 +288,36 @@ export async function savePage(
       return { ok: true, id };
     });
   } catch (error) {
-    // Another save took the address between the check and the write.
-    if (!isUniqueViolation(error)) throw error;
-    result = { ok: false, problems: [takenProblem(content.slug, type)] };
+    if (error instanceof GlobalsRefused) {
+      result = { ok: false, problems: error.problems };
+    } else if (isUniqueViolation(error)) {
+      // Another save took the address between the check and the write.
+      result = { ok: false, problems: [takenProblem(content.slug, type)] };
+    } else {
+      throw error;
+    }
   }
+  if (result.ok && spreadTo > 0) result = { ...result, pages: spreadTo };
 
   if (result.ok) {
     await audit(account.id, owner, `${auditPrefix(owner)}.${type}_${publish ? "published" : "saved"}`, {
       page: result.id,
       slug: content.slug,
+      ...(spreadTo > 0 && { globalPages: spreadTo }),
     });
   }
   return result;
+}
+
+/**
+ * The global parts (D98) the editor says it changed on the page, sent with
+ * it as `globalEdits`: only these are taken from the page; its other uses
+ * are brought up to date from the globals as they are.
+ */
+function globalEditsOf(input: unknown): string[] {
+  const edits = typeof input === "object" && input !== null ? (input as { globalEdits?: unknown }).globalEdits : undefined;
+  if (!Array.isArray(edits)) return [];
+  return [...new Set(edits.filter((id): id is string => typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 200);
 }
 
 /** Takes a page off the site; its draft stays, and so do its redirects. */
@@ -324,23 +358,6 @@ export async function ownerLanguages(owner: PageOwner): Promise<PageLanguage[]> 
 
 /** Audit actions keep their names for Kaizen's pages (`platform.page_…`); a store's are `store.page_…`. */
 const auditPrefix = (owner: PageOwner) => (owner === null ? "platform" : "store");
-
-/**
- * A store's grids of products always show its own (D53), in the shopper's
- * market; Kaizen's name the store and market.
- */
-function ownerGridProblem(owner: PageOwner, rows: PageContent["rows"]): string | null {
-  for (const block of rows.flatMap((r) => r.columns.flatMap((c) => c.blocks))) {
-    if (block.type !== "contentGrid" || block.source.type !== "products") continue;
-    if (owner === null && (!block.source.storeId || !block.source.market)) {
-      return "Choose the store and market for each content grid of products.";
-    }
-    if (owner !== null && block.source.storeId && block.source.storeId !== owner) {
-      return "A content grid on a store's page shows that store's own products.";
-    }
-  }
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // The site

@@ -43,8 +43,8 @@ export async function savePageAction(
   }
   const result = await savePage(admin, null, id, json, { publish: publish === true, type });
   if (!result.ok) return { status: "error", problems: result.problems };
-  // Drafts are not on the site; publishing changes pages, menus, sitemap and llms.txt.
-  if (publish) updateTag(PAGES_TAG);
+  // Drafts are not on the site; publishing changes pages, menus, sitemap and llms.txt, and so does a global part's change (D98).
+  if (publish || result.pages) updateTag(PAGES_TAG);
   const page = await getPageForEdit(null, result.id, type);
   if (!page) return { status: "error", problems: ["The page was saved but could not be read back."] };
   return { status: "saved", page };
@@ -81,13 +81,17 @@ export async function createSavedPartAction(input: unknown): Promise<SavedResult
 export async function updateSavedPartAction(id: string, input: unknown): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
-  return updateSavedPart(admin, null, id, input);
+  const result = await updateSavedPart(admin, null, id, input);
+  if (result.ok && result.pages) updateTag(PAGES_TAG);
+  return result;
 }
 
 export async function deleteSavedPartAction(id: string): Promise<SavedResult> {
   const admin = await requirePlatformAdmin();
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
-  return deleteSavedPart(admin, null, id);
+  const result = await deleteSavedPart(admin, null, id);
+  if (result.ok && result.pages) updateTag(PAGES_TAG);
+  return result;
 }
 
 // ---------------------------------------------------------------------------
