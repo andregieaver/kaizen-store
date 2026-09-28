@@ -343,6 +343,31 @@ describe("a store's front page and menu links (D54)", () => {
     expect((await (await stores).getStore(`front-${run}`))?.frontPageId).toBeNull();
   });
 
+  it("makes a published page of the store's own its All products page, never the front page too (D83)", async () => {
+    const draft = await saved(await pages.savePage(admin, storeId, null, content(`all-draft-${run}`), { publish: false }));
+    const theirs = await saved(await pages.savePage(admin, otherId, null, content(`all-theirs-${run}`), { publish: true }));
+    const own = await saved(await pages.savePage(admin, storeId, null, content(`all-${run}`), { publish: true }));
+    const front = await saved(await pages.savePage(admin, storeId, null, content(`all-front-${run}`), { publish: true }));
+    expect(await pages.setProductsPage(admin, storeId, draft)).toEqual({
+      ok: false,
+      problems: ["Publish the page before making it the All products page."],
+    });
+    expect(await pages.setProductsPage(admin, storeId, theirs)).toEqual({ ok: false, problems: ["That page no longer exists."] });
+    expect(await pages.setFrontPage(admin, storeId, front)).toEqual({ ok: true });
+    expect((await pages.setProductsPage(admin, storeId, front)).ok).toBe(false);
+    expect(await pages.setProductsPage(admin, storeId, own)).toEqual({ ok: true });
+    expect((await pages.setFrontPage(admin, storeId, own)).ok).toBe(false);
+
+    const store = (await (await stores).getStore(`front-${run}`))!;
+    expect(store.productsPageId).toBe(own);
+    expect((await pages.productsPageOf(store))?.slug).toBe(`all-${run}`);
+    // Unpublished, the store shows its standard list.
+    await pages.unpublishPage(admin, storeId, own);
+    expect(await pages.productsPageOf(store)).toBeNull();
+    await pages.setFrontPage(admin, storeId, null);
+    await pages.setProductsPage(admin, storeId, null);
+  });
+
   it("names pages for menus under their addresses now and before, and checks menu links", async () => {
     const id = await saved(await pages.savePage(admin, storeId, null, content(`about-${run}`), { publish: true }));
     await saved(await pages.savePage(admin, storeId, id, content(`about-us-${run}`, { title: "About us" }), { publish: true }));

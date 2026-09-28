@@ -11,7 +11,7 @@ import { marketPath } from "@/lib/paths";
 import { summarize } from "@/lib/seo";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
 
-import { listGridProducts } from "./catalog";
+import { listGridProducts, type GridProduct } from "./catalog";
 import { pagesTag } from "./pages";
 import { getOpenStore } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
@@ -31,7 +31,19 @@ const EXCERPT_MAX = 300;
  * whose page it is (a store's, or Kaizen's: null), and on a store's page
  * the market the shopper is in (else the store's first).
  */
-export type GridPlace = { pageId: string | null; owner: string | null; market?: string };
+export type GridPlace = {
+  pageId: string | null;
+  owner: string | null;
+  market?: string;
+  /**
+   * On a store's page, the address's query and the page's path, for
+   * grids shoppers filter and sort (D83); without it they show as set.
+   */
+  listing?: ListingPlace;
+};
+
+/** Where a filterable grid reads its choices, and the address they go to. */
+export type ListingPlace = { query: Promise<Record<string, string | string[] | undefined>>; path: string };
 
 /** A grid's items where it is shown. */
 export async function gridData(block: ContentGridBlock, place: GridPlace): Promise<GridData> {
@@ -47,7 +59,7 @@ export async function gridData(block: ContentGridBlock, place: GridPlace): Promi
 }
 
 /** An open store by id, and one of its markets (by code, else its first). */
-async function storeAndMarket(storeId: string, marketCode: string | null) {
+export async function storeAndMarket(storeId: string, marketCode: string | null) {
   const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
   const store = row ? await getOpenStore(String(row.slug)) : null;
   const market = store && (marketCode ? store.markets.find((m) => m.code === marketCode) : store.markets[0]);
@@ -135,30 +147,38 @@ async function gridProducts(storeId: string, marketCode: string | null, filter: 
   if (!shop) return { ...EMPTY_GRID };
   const { store, market } = shop;
 
+  const scope = await gridScope(storeId, filter);
+  if (!scope) return { items: [], lang: market.lang, locale: market.locale };
+  const products = await listGridProducts(storeId, market.code, market.locale, { ...scope, sort: filter.sort, limit: filter.limit });
+  return { lang: market.lang, locale: market.locale, items: products.map((product) => productItem(store.slug, market.slug, product)) };
+}
+
+/**
+ * A product grid's categories (with those below them) and tags, as the
+ * store has them now; null when all it asked for are deleted, so nothing
+ * matches.
+ */
+export async function gridScope(
+  storeId: string,
+  filter: Pick<Filter, "categories" | "tags">,
+): Promise<{ categoryIds: string[]; tagIds: string[] } | null> {
   const terms = await currentTerms(storeId, "product");
   const categoryIds = withDescendants(terms, knownIds(terms, "category", filter.categories));
   const tagIds = knownIds(terms, "tag", filter.tags);
-  if ((filter.categories.length > 0 && categoryIds.length === 0) || (filter.tags.length > 0 && tagIds.length === 0)) {
-    return { items: [], lang: market.lang, locale: market.locale };
-  }
-  const products = await listGridProducts(storeId, market.code, market.locale, {
-    categoryIds,
-    tagIds,
-    sort: filter.sort,
-    limit: filter.limit,
-  });
+  if ((filter.categories.length > 0 && categoryIds.length === 0) || (filter.tags.length > 0 && tagIds.length === 0)) return null;
+  return { categoryIds, tagIds };
+}
+
+/** A product as a grid's tile, linked within the market. */
+export function productItem(storeSlug: string, marketSlug: string, product: GridProduct): GridItem {
   return {
-    lang: market.lang,
-    locale: market.locale,
-    items: products.map((product) => ({
-      id: product.id,
-      href: marketPath(store.slug, market.slug, `/p/${product.handle}`),
-      title: product.title,
-      excerpt: summarize(product.description, EXCERPT_MAX),
-      image: product.image,
-      price: { view: product.price, from: product.priceVaries },
-      audience: product.audience,
-    })),
+    id: product.id,
+    href: marketPath(storeSlug, marketSlug, `/p/${product.handle}`),
+    title: product.title,
+    excerpt: summarize(product.description, EXCERPT_MAX),
+    image: product.image,
+    price: { view: product.price, from: product.priceVaries },
+    audience: product.audience,
   };
 }
 

@@ -332,7 +332,13 @@ of running `playwright install`.
   `updateTag(pagesTag(owner))`. A store's published pages are at
   `/s/{store}/{market}/{slug}` (D54, `StorePageArticle`), linked from its
   menus by address (`{ kind: "page", slug }`), and one can be its front page
-  (`stores.front_page_id`, chosen on its Pages list). A store's page is
+  (`stores.front_page_id`, chosen on its Pages list), and one its All
+  products page at `/products` (D83, `stores.products_page_id`,
+  `productsPageOf()`; its own address redirects there, and product pages'
+  back link names it). A product content grid with `filters` shows the
+  listing's `ListingControls` over it on store pages, reading the address
+  through `GridPlace.listing` (pass it where a route renders a store page);
+  the filter dialog is `live` there and on the listing pages, not on search. A store's page is
   written in its main language with texts in its other languages over it
   (D55, `src/lib/page-translation.ts`: `mapTexts()` lists every text, so a
   new block's texts go there too; `localizePage()` on the site; the builder's

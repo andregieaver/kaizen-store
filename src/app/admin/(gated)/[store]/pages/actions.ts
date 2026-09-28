@@ -12,7 +12,7 @@ import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib
 import type { Term } from "@/lib/taxonomy";
 import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
-import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setProductsPage, unpublishPage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import { storeTag } from "@/server/stores";
@@ -73,7 +73,7 @@ export async function deleteStorePageAction(storeSlug: string, type: PageType, i
   await deletePage(member.account, member.store.id, id, type);
   pagesChanged(member);
   // A deleted front page (D54) gives the store its product list back.
-  if (member.store.frontPageId === id) updateTag(storeTag(member.store.slug));
+  if (member.store.frontPageId === id || member.store.productsPageId === id) updateTag(storeTag(member.store.slug));
   redirect(`/admin/${member.store.slug}/${PAGE_TYPE_COPY[type].segment}?deleted=1`);
 }
 
@@ -88,6 +88,20 @@ export async function setFrontPageAction(storeSlug: string, _state: FormState, f
   return {
     status: "ok",
     messages: [choice ? "Saved. Your store opens with this page now." : "Saved. Your store opens with its products now."],
+  };
+}
+
+/** Chooses the page shown as the store's All products page at /products (D83), or the standard list. */
+export async function setProductsPageAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  const choice = String(form.get("productsPage") ?? "");
+  if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
+  const result = await setProductsPage(member.account, member.store.id, choice || null);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(storeTag(member.store.slug));
+  return {
+    status: "ok",
+    messages: [choice ? "Saved. All products shows this page now." : "Saved. All products shows the standard list now."],
   };
 }
 

@@ -323,6 +323,13 @@ export const stores = commerce.table(
      */
     frontPageId: uuid("front_page_id"),
     /**
+     * One of the store's own pages shown as its All products page, at
+     * `/products` in every market (D83), instead of the standard list. Null
+     * for the standard list. Its foreign key is in `products_page_rules`,
+     * as the front page's.
+     */
+    productsPageId: uuid("products_page_id"),
+    /**
      * The store's own standard product layout (D79), for products no other
      * layout is chosen for; null: Kaizen's. Foreign key in a custom migration.
      */
@@ -362,6 +369,7 @@ export const stores = commerce.table(
     index("stores_created_by_idx").on(t.createdBy),
     index("stores_country_idx").on(t.country),
     index("stores_front_page_idx").on(t.id, t.frontPageId),
+    index("stores_products_page_idx").on(t.id, t.productsPageId),
   ],
 );
 

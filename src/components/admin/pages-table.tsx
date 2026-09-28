@@ -19,12 +19,15 @@ export function PagesTable({
   adminBase,
   siteBase,
   frontPageId = null,
+  productsPageId = null,
 }: {
   pages: PageSummary[];
   adminBase: string;
   siteBase: string;
   /** A store's front page (D54), marked in the list. */
   frontPageId?: string | null;
+  /** A store's All products page (D83), marked in the list. */
+  productsPageId?: string | null;
 }) {
   return (
         <div className="overflow-x-auto rounded-lg border border-border bg-background">
@@ -64,7 +67,11 @@ export function PagesTable({
                           {page.title || "Untitled"}
                         </Link>
                         <span className="block truncate text-muted">
-                          {page.id === frontPageId ? `Front page · ${siteBase}` : `${siteBase}/${page.slug}`}
+                          {page.id === frontPageId
+                            ? `Front page · ${siteBase}`
+                            : page.id === productsPageId
+                              ? `All products page · ${siteBase}/products`
+                              : `${siteBase}/${page.slug}`}
                         </span>
                       </span>
                     </div>

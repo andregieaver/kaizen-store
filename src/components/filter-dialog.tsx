@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import {
   filterCount,
@@ -53,6 +53,9 @@ export type FilterLabels = {
  * variant options and price range the page's products offer, and stock.
  * Showing the products goes to the page's address with the choices in it,
  * which the server applies, so the list can be shared and opened again.
+ * Live (D83), each choice goes to the address as it is made, so the
+ * products behind the dialog follow while it is open (seen beside it on
+ * larger screens, and counted in it).
  */
 export function FilterDialog({
   path,
@@ -60,6 +63,8 @@ export function FilterDialog({
   filters,
   facets,
   labels,
+  live = false,
+  count: resultCount,
 }: {
   /** The page's address without its query. */
   path: string;
@@ -68,6 +73,10 @@ export function FilterDialog({
   filters: ListingFilters;
   facets: FilterFacets;
   labels: FilterLabels;
+  /** Apply each choice at once while the dialog is open. */
+  live?: boolean;
+  /** How many products show now, as said to the shopper (live). */
+  count?: string;
 }) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -109,13 +118,30 @@ export function FilterDialog({
     return text.trim() && Number.isFinite(number) && number >= 0 ? number : null;
   };
 
+  const chosenNow = () => ({ ...draft, minPrice: amount(minText), maxPrice: amount(maxText) });
   const apply = () => {
-    const next = { ...draft, minPrice: amount(minText), maxPrice: amount(maxText) };
+    const query = listingQuery(chosenNow(), keep);
     start(() => {
-      router.push(`${path}${listingQuery(next, keep)}`, { scroll: false });
+      if (live) {
+        // Most choices are in the address already; a last one may still be on its way.
+        if (query !== listingQuery(filters, keep)) router.replace(`${path}${query}`, { scroll: false });
+      } else {
+        router.push(`${path}${query}`, { scroll: false });
+      }
       hide();
     });
   };
+  /** Closing keeps what is chosen when live, and drops it otherwise. */
+  const close = () => (live ? apply() : hide());
+
+  // Live: each choice reaches the address a moment after it is made (typing a price waits for a pause).
+  const shown = listingQuery(filters, keep);
+  const wanted = open && live ? listingQuery({ ...draft, minPrice: amount(minText), maxPrice: amount(maxText) }, keep) : shown;
+  useEffect(() => {
+    if (!live || wanted === shown) return;
+    const timer = window.setTimeout(() => start(() => router.replace(`${path}${wanted}`, { scroll: false })), 250);
+    return () => window.clearTimeout(timer);
+  }, [live, wanted, shown, path, router]);
   const clear = () => {
     setDraft({ ...NO_FILTERS, sort: draft.sort });
     setMinText("");
@@ -154,16 +180,16 @@ export function FilterDialog({
         aria-labelledby="filter-dialog-title"
         onCancel={(event) => {
           event.preventDefault();
-          hide();
+          close();
         }}
         className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 backdrop:bg-transparent"
       >
         <div
           aria-hidden="true"
-          onClick={hide}
+          onClick={close}
           className={`fixed inset-0 bg-black/40 transition-opacity duration-300 motion-reduce:transition-none ${
-            open ? "opacity-100" : "opacity-0"
-          }`}
+            live ? "md:bg-black/10" : ""
+          } ${open ? "opacity-100" : "opacity-0"}`}
         />
         <form
           onSubmit={(event) => {
@@ -178,7 +204,7 @@ export function FilterDialog({
             <h2 id="filter-dialog-title" className="text-xl font-heading">
               {labels.title}
             </h2>
-            <button type="button" onClick={hide} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full">
+            <button type="button" onClick={close} className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-full">
               <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
               </svg>
@@ -308,7 +334,14 @@ export function FilterDialog({
             </Section>
           </div>
 
-          <div className="flex shrink-0 gap-3 border-t border-border px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {live && resultCount && (
+            <p role="status" aria-live="polite" className={`shrink-0 border-t border-border px-4 pt-3 text-sm ${pending ? "text-muted" : ""}`}>
+              {resultCount}
+            </p>
+          )}
+          <div
+            className={`flex shrink-0 gap-3 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] ${live && resultCount ? "" : "border-t border-border"}`}
+          >
             <button type="button" onClick={clear} className="min-h-11 flex-1 rounded-button border border-border px-4 text-sm font-medium hover:bg-surface">
               {labels.clear}
             </button>

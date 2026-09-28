@@ -47,7 +47,14 @@ import type { Store } from "@/server/stores";
  * (a finished boundary moves out of line once the page passes ~12 kB).
  */
 
-export type ProductPageContext = { store: Store; market: Market; product: ProductDetail; m: Messages };
+export type ProductPageContext = {
+  store: Store;
+  market: Market;
+  product: ProductDetail;
+  m: Messages;
+  /** The store's All products page (D83), which the back link returns to; else the market's front page. */
+  back?: { href: string; title: string } | null;
+};
 
 export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: ProductPageContext }) {
   const { store, market, product, m } = ctx;
@@ -65,8 +72,8 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
   switch (block.part) {
     case "back":
       return (
-        <Link href={base} className="text-sm underline">
-          {m.backToProducts}
+        <Link href={ctx.back?.href ?? base} className="text-sm underline">
+          {ctx.back ? m.backTo(ctx.back.title) : m.backToProducts}
         </Link>
       );
     case "gallery":

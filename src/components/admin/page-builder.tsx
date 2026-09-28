@@ -37,6 +37,7 @@ import {
 } from "react";
 
 import { ContentGridView } from "@/components/content-grid";
+import { t } from "@/lib/i18n";
 import { FontLinks } from "@/components/font-links";
 
 import { HEADING_SIZES as HEADING_SIZE_CLASS, PageBlockView, type ButtonLook } from "@/components/page-block";
@@ -3426,8 +3427,18 @@ function GridPreview({ block, grid }: { block: ContentGridBlock; grid: GridConte
         : "Content grid: nothing matches yet, so the site shows nothing here. Double-click to change what it shows.",
     );
   }
+  const m = t(result.data.lang);
   return (
     <div className={stale ? "opacity-60 transition-opacity" : undefined}>
+      {/* The site's controls over a grid shoppers filter (D83), as they will look; they work on the site. */}
+      {block.filters && block.source.type === "products" && (
+        <div aria-hidden className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted">{m.listing.count(result.data.items.length)}</p>
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-button border border-border px-4 text-sm font-medium">
+            {m.listing.open}
+          </span>
+        </div>
+      )}
       <ContentGridView block={block} data={result.data} />
     </div>
   );
@@ -3639,6 +3650,23 @@ function ContentGridFields({
           onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
         />
       </div>
+      {products && own && (
+        <label className="flex items-start gap-2 border-t border-border pt-4 text-sm">
+          <input
+            type="checkbox"
+            checked={block.filters === true}
+            onChange={(event) => onChange({ filters: event.target.checked || undefined })}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            <span className="font-medium">Filter and sort button</span>
+            <span className="block text-xs text-muted">
+              Shoppers narrow the products by kind, category, feature, option, price and stock, and change their order;
+              the grid follows at once. The choices go into the page&apos;s address, so a filtered grid can be shared.
+            </span>
+          </span>
+        </label>
+      )}
       <div className="border-t border-border pt-4">
         <ColumnsFields value={block.columns} onChange={(columns) => onChange({ columns })} />
       </div>

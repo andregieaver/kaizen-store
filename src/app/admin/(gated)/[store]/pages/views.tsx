@@ -29,6 +29,7 @@ import {
   createStorePageTermAction,
   deleteStorePageTermAction,
   setFrontPageAction,
+  setProductsPageAction,
   updateStorePageTermAction,
 } from "./actions";
 import { storePageContext, storePagesBase } from "./context";
@@ -105,6 +106,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           adminBase={base}
           siteBase={context.siteBase}
           frontPageId={type === "page" ? store.frontPageId : null}
+          productsPageId={type === "page" ? store.productsPageId : null}
         />
       )}
       {(type === "header" || type === "footer") && (
@@ -120,7 +122,14 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         <FrontPageForm
           storeSlug={store.slug}
           current={store.frontPageId}
-          pages={pages.filter((p) => p.state !== "draft" || p.id === store.frontPageId)}
+          pages={pages.filter((p) => p.id !== store.productsPageId && (p.state !== "draft" || p.id === store.frontPageId))}
+        />
+      )}
+      {type === "page" && (
+        <ProductsPageForm
+          storeSlug={store.slug}
+          current={store.productsPageId}
+          pages={pages.filter((p) => p.id !== store.frontPageId && (p.state !== "draft" || p.id === store.productsPageId))}
         />
       )}
     </div>
@@ -324,6 +333,49 @@ function FrontPageForm({
         <p className="text-sm text-muted">
           This page is not published, so shoppers see your products until you publish it again.
         </p>
+      )}
+    </ActionForm>
+  );
+}
+
+/** Which page is the store's All products page at /products (D83), or the standard list. */
+function ProductsPageForm({
+  storeSlug,
+  current,
+  pages,
+}: {
+  storeSlug: string;
+  current: string | null;
+  pages: { id: string; title: string; state: string }[];
+}) {
+  const unpublished = pages.find((p) => p.id === current)?.state === "draft";
+  return (
+    <ActionForm
+      action={setProductsPageAction.bind(null, storeSlug)}
+      className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5"
+    >
+      <h2 className="font-medium">All products page</h2>
+      <p className="max-w-2xl text-sm text-muted">
+        What shoppers see at All products (/products, where menus&apos; All products link goes): the standard list, or one
+        of your published pages. Give its content grid of products the Filter and sort button so shoppers can narrow it.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
+          All products shows
+          <select name="productsPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+            <option value="">The standard list</option>
+            {pages.map((page) => (
+              <option key={page.id} value={page.id}>
+                {page.title || "Untitled"}
+                {page.state === "draft" ? " (not published)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <SubmitButton>Save</SubmitButton>
+      </div>
+      {unpublished && (
+        <p className="text-sm text-muted">This page is not published, so shoppers see the standard list until you publish it again.</p>
       )}
     </ActionForm>
   );

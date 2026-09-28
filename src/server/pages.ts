@@ -448,15 +448,50 @@ export async function setFrontPage(
 ): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   if (pageId !== null) {
     const [page] = await db().execute<Row>(sql`
-      select published_at is not null as published from commerce.pages
+      select published_at is not null as published,
+        id = (select products_page_id from commerce.stores where id = ${storeId}::uuid) as products
+      from commerce.pages
       where id = ${pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
     `);
     if (!page) return { ok: false, problems: ["That page no longer exists."] };
     if (!page.published) return { ok: false, problems: ["Publish the page before making it the front page."] };
+    if (page.products) return { ok: false, problems: ["That page is your All products page. Choose another page for the front page."] };
   }
   await db().execute(sql`update commerce.stores set front_page_id = ${pageId}::uuid where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.front_page_changed", { page: pageId });
   return { ok: true };
+}
+
+/**
+ * Shows one of a store's published pages as its All products page at
+ * /products in every market (D83), or the standard list again with null.
+ * The database keeps it to the store's own pages, and back to the list if
+ * the page is deleted.
+ */
+export async function setProductsPage(
+  account: Account,
+  storeId: string,
+  pageId: string | null,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  if (pageId !== null) {
+    const [page] = await db().execute<Row>(sql`
+      select published_at is not null as published, id = (select front_page_id from commerce.stores where id = ${storeId}::uuid) as front
+      from commerce.pages
+      where id = ${pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
+    `);
+    if (!page) return { ok: false, problems: ["That page no longer exists."] };
+    if (!page.published) return { ok: false, problems: ["Publish the page before making it the All products page."] };
+    if (page.front) return { ok: false, problems: ["That page is your front page. Choose another page for All products."] };
+  }
+  await db().execute(sql`update commerce.stores set products_page_id = ${pageId}::uuid where id = ${storeId}::uuid`);
+  await audit(account.id, storeId, "store.products_page_changed", { page: pageId });
+  return { ok: true };
+}
+
+/** A store's All products page (D83) while it is published, else null (the standard list). */
+export async function productsPageOf(store: { id: string; productsPageId: string | null }): Promise<PublishedPage | null> {
+  if (!store.productsPageId) return null;
+  return (await listPublishedPages(store.id)).find((page) => page.id === store.productsPageId) ?? null;
 }
 
 /** An owner's pages (or articles) for the menu editor to link to: published or not, by title. */

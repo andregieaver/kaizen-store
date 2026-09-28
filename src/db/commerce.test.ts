@@ -2003,6 +2003,34 @@ describe("search tests (D77)", () => {
   });
 });
 
+describe("the All products page (D83)", () => {
+  it("is one of the store's own pages, let go when deleted, and copied to new stores", async () => {
+    const template = await createStore("products-page-template", ["NO"]);
+    const other = await createStore("products-page-other", ["NO"]);
+    const page = (storeId: string, slug: string) =>
+      one<{ id: string }>(
+        `insert into commerce.pages (store_id, slug, draft, published, published_at)
+         values ($1, $2, '{"title": "Alle produkter"}', '{"title": "Alle produkter"}', now()) returning id`,
+        [storeId, slug],
+      );
+    const { id: mine } = await page(template, "alle-produkter");
+    const { id: theirs } = await page(other, "alle-produkter");
+    await expect(db.query("update commerce.stores set products_page_id = $1 where id = $2", [theirs, template])).rejects.toThrow(/stores_products_page_fk/);
+    await db.query("update commerce.stores set products_page_id = $1 where id = $2", [mine, template]);
+
+    const owner = await createAccount("products-page-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'products-page-copy', 'Copy', $2) as id", [template, owner]);
+    const copied = await one<{ products_page_id: string }>("select products_page_id from commerce.stores where id = $1", [copy]);
+    expect(await one("select store_id, slug from commerce.pages where id = $1", [copied.products_page_id])).toEqual({
+      store_id: copy,
+      slug: "alle-produkter",
+    });
+
+    await db.query("delete from commerce.pages where id = $1", [mine]);
+    expect(await one("select id, products_page_id from commerce.stores where id = $1", [template])).toEqual({ id: template, products_page_id: null });
+  });
+});
+
 describe("variant pictures", () => {
   it("keeps a variant's picture with its small copy, and copies them with the template's variants", async () => {
     const template = await createStore("pictures-template", ["NO"]);

@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function MarketHome({ params }: Props) {
+export default async function MarketHome({ params, searchParams }: Props) {
   const loaded = await load(params);
   if (!loaded) notFound();
   const { store, market, frontPage } = loaded;
@@ -80,7 +80,12 @@ export default async function MarketHome({ params }: Props) {
         <StorePageArticle
           front
           content={localizePage(frontPage.content, market.locale)}
-          place={{ pageId: frontPage.id, owner: store.id, market: market.code }}
+          place={{
+            pageId: frontPage.id,
+            owner: store.id,
+            market: market.code,
+            listing: { query: searchParams, path: marketPath(store.slug, market.slug) },
+          }}
         />
         <PageEditLink pageId={frontPage.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
       </>

@@ -123,6 +123,8 @@ export type PublicStore = {
   updatedAt: string;
   /** Its front page (D54), shown at each market's own address rather than its page address. */
   frontPageId: string | null;
+  /** The All products page (D83), at /products rather than its own address. */
+  productsPageId: string | null;
 };
 
 /** Every open store, for robots.txt, the sitemap index and Kaizen's llms.txt. */
@@ -131,7 +133,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheLife("hours");
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.seo, s.is_template, s.setup_completed_at, s.front_page_id,
+    select s.id, s.slug, s.name, s.seo, s.is_template, s.setup_completed_at, s.front_page_id, s.products_page_id,
       greatest(s.created_at, s.setup_completed_at,
         (select max(p.updated_at) from commerce.products p where p.store_id = s.id)) as updated_at,
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
@@ -155,6 +157,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       indexable: Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       frontPageId: row.front_page_id ? String(row.front_page_id) : null,
+      productsPageId: row.products_page_id ? String(row.products_page_id) : null,
     };
   });
 }
@@ -445,7 +448,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     }),
     // Its pages (D54) open to search engines, in every market; the front page is the markets' own address.
     ...pages
-      .filter((page) => page.content.searchEngines && page.id !== store.frontPageId)
+      .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId)
       .flatMap((page) => {
         const versions = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/${page.slug}` }));
         const image = page.content.thumbnail ? [page.content.thumbnail.url] : [];
@@ -587,7 +590,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
         // Its own pages open to AI assistants (D54), in the first market's language.
         heading: "Pages",
         links: pages
-          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId)
+          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId && page.id !== store.productsPageId)
           .map((page) => {
             const c = localizePage(page.content, market.locale);
             return { title: c.title, url: `${home(market.code)}/${page.slug}`, note: c.seo.description || pageExcerpt(c, 200) };

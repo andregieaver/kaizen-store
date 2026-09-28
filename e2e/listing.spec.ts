@@ -36,15 +36,16 @@ test("a shopper filters the store's products by kind, option and price, sorts th
   await dialog.getByRole("radio", { name: "Pris: høy til lav" }).check();
   await dialog.getByRole("button", { name: "Vis produktene" }).click();
   await expect(page).toHaveURL(/kind=stay&kind=rental&sort=priceHigh/);
-  const cards = page.locator("main li a[href*='/p/demo-']");
+  // New stores' All products page (D83) is a content grid: one tile per product, with its picture and title linked.
+  const cards = page.locator("main li").filter({ has: page.locator("a[href*='/p/demo-']") });
   await expect(cards).toHaveCount(2);
-  await expect(cards.first()).toHaveAttribute("href", /demo-hytte/);
+  await expect(cards.first().locator("a").first()).toHaveAttribute("href", /demo-hytte/);
 
   // Take one away from above the list.
   await page.getByRole("link", { name: "Fjern Overnatting" }).click();
   await expect(page).toHaveURL(/kind=rental&sort=priceHigh/);
   await expect(cards).toHaveCount(1);
-  await expect(cards.first()).toHaveAttribute("href", /demo-sykkelutleie/);
+  await expect(cards.first().locator("a").first()).toHaveAttribute("href", /demo-sykkelutleie/);
 
   // A variant's option and a price range, from a fresh start.
   await page.goto(`/s/${slug}/no/products`);
@@ -54,7 +55,7 @@ test("a shopper filters the store's products by kind, option and price, sorts th
   await dialog.getByRole("button", { name: "Vis produktene" }).click();
   await expect(page).toHaveURL(/o\.colour=white&max=300/);
   await expect(cards).toHaveCount(1);
-  await expect(cards.first()).toHaveAttribute("href", /demo-keramikkopp/);
+  await expect(cards.first().locator("a").first()).toHaveAttribute("href", /demo-keramikkopp/);
   await expect(page.getByRole("link", { name: "Fjern Farge: Hvit" })).toBeVisible();
 
   // Nothing matches: said so, and the filters can be cleared.

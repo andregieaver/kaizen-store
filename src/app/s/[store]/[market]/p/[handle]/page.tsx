@@ -7,11 +7,13 @@ import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
+import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { headerOverlays } from "@/lib/site-layout";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
+import { productsPageOf } from "@/server/pages";
 import { productLayoutFor } from "@/server/product-layouts";
 import { siteLayoutFor } from "@/server/site-layouts";
 import { listIndexedProducts, storeShareImage, storeShareTags } from "@/server/seo";
@@ -100,7 +102,12 @@ export default async function ProductPage({ params }: Props) {
   const loaded = await load(params);
   if (!loaded) notFound();
   const { store, market, product } = loaded;
-  const ctx: ProductPageContext = { store, market, product, m: t(market.lang) };
+  // The back link returns to the store's All products page (D83), by its title in the market's language.
+  const productsPage = await productsPageOf(store);
+  const back = productsPage
+    ? { href: marketPath(store.slug, market.slug, "/products"), title: localizePage(productsPage.content, market.locale).title }
+    : null;
+  const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back };
 
   const [layout, header] = await Promise.all([
     productLayoutFor(store.id, product.id).then((own) => own ?? DEFAULT_PRODUCT_LAYOUT),

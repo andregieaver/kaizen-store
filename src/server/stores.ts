@@ -49,6 +49,8 @@ export type Store = {
   navigation: StoreNavigation;
   /** The store's own page shown as its front page (D54), or null for the product list. */
   frontPageId: string | null;
+  /** The page shown as its All products page at /products (D83), or null for the standard list. */
+  productsPageId: string | null;
   /** Analytics and marketing tools, loaded only with the shopper's consent (D58). */
   tracking: TrackingSettings;
   /** The owner's own code for the head and body (D61), as saved; `liveCustomCode()` says whether it is added. */
@@ -93,7 +95,7 @@ async function loadStore(slug: string): Promise<Store | null> {
   const [row] = await readDb().execute<Row>(sql`
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
-      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.tracking, s.custom_code, s.theme,
+      s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.theme,
       s.audience, s.business_popup, s.open_cart_on_add, s.modules, s.time_zone, s.booking_reminder_hours,
       exists (
         select 1 from commerce.payment_providers p
@@ -152,6 +154,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     seo: parseStoreSeo(row.seo),
     navigation: parseNavigation(row.navigation),
     frontPageId: text(row.front_page_id),
+    productsPageId: text(row.products_page_id),
     tracking: parseTracking(row.tracking),
     customCode: parseCustomCode(row.custom_code),
     ...themed(row.theme),

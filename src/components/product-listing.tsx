@@ -70,11 +70,78 @@ export async function ProductListing({
 
   return (
     <div className="flex flex-col gap-4">
+      <ListingControls
+        market={market}
+        filters={filters}
+        facets={facets}
+        terms={terms}
+        path={path}
+        keep={keep}
+        count={(countText ?? m.listing.count)(products.length)}
+        live={!tracked}
+      />
+      {products.length === 0 ? (
+        <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p>
+      ) : (
+        <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} hrefFor={hrefFor} tracked={tracked} />
+      )}
+    </div>
+  );
+}
+
+/** A listing with the filters in the page's address. */
+export async function ProductListingFor({
+  searchParams,
+  ...props
+}: Omit<Parameters<typeof ProductListing>[0], "filters"> & {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  return <ProductListing {...props} filters={parseListingParams(await searchParams)} />;
+}
+
+/**
+ * A listing's controls (D78): how many products show, the Filter and sort
+ * button with its dialog, and the chosen filters, each a link that takes it
+ * away. Shared by the listing pages and product grids shoppers filter (D83).
+ */
+export function ListingControls({
+  market,
+  filters,
+  facets,
+  terms,
+  path,
+  keep = {},
+  count,
+  live = false,
+}: {
+  market: Market;
+  filters: ListingFilters;
+  facets: ListingFacets;
+  terms: Term[];
+  path: string;
+  keep?: Record<string, string>;
+  /** How many products show, as said to the shopper. */
+  count: string;
+  /** The products follow each choice while the dialog is open (D83). */
+  live?: boolean;
+}) {
+  const m = t(market.lang);
+  const chosen = chosenFilters(filters);
+  return (
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p role="status" className="text-sm text-muted">
-          {(countText ?? m.listing.count)(products.length)}
+          {count}
         </p>
-        <FilterDialog path={path} keep={keep} filters={filters} facets={dialogFacets(facets, m)} labels={dialogLabels(facets, m, market)} />
+        <FilterDialog
+          path={path}
+          keep={keep}
+          filters={filters}
+          facets={dialogFacets(facets, m)}
+          labels={dialogLabels(facets, m, market)}
+          live={live}
+          count={count}
+        />
       </div>
       {chosen.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
@@ -106,23 +173,8 @@ export async function ProductListing({
           )}
         </div>
       )}
-      {products.length === 0 ? (
-        <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p>
-      ) : (
-        <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} hrefFor={hrefFor} tracked={tracked} />
-      )}
-    </div>
+    </>
   );
-}
-
-/** A listing with the filters in the page's address. */
-export async function ProductListingFor({
-  searchParams,
-  ...props
-}: Omit<Parameters<typeof ProductListing>[0], "filters"> & {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  return <ProductListing {...props} filters={parseListingParams(await searchParams)} />;
 }
 
 /** Product cards in the storefront's grid. */

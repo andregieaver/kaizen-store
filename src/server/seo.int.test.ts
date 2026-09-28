@@ -90,15 +90,17 @@ describe("a store's search settings", () => {
 
   it("copies the template's pages and front page, and lists the pages in the sitemap, llms.txt and robots.txt (D53-D56)", async () => {
     const pages = await db().execute<Row>(sql`
-      select p.slug, p.id = s.front_page_id as front, p.published -> 'translations' as translations
+      select p.slug, p.id = s.front_page_id as front, p.id = s.products_page_id as products, p.published -> 'translations' as translations
       from commerce.pages p join commerce.stores s on s.id = p.store_id
       where s.slug = ${slug} and p.type = 'page' order by p.slug
     `);
-    expect(pages.map((p) => [p.slug, p.front])).toEqual([
-      ["forside", true],
-      ["om-oss", false],
+    // And its All products page (D83).
+    expect(pages.map((p) => [p.slug, p.front, p.products])).toEqual([
+      ["alle-produkter", false, true],
+      ["forside", true, false],
+      ["om-oss", false, false],
     ]);
-    expect(pages[1].translations).toHaveProperty("sv-SE");
+    expect(pages[2].translations).toHaveProperty("sv-SE");
     // The template's articles come along as articles (D57).
     const [article] = await db().execute<Row>(sql`
       select p.slug from commerce.pages p join commerce.stores s on s.id = p.store_id
@@ -113,8 +115,9 @@ describe("a store's search settings", () => {
 
     const sitemap = await seo.storeSitemap(slug);
     for (const market of ["no", "se", "dk"]) expect(sitemap).toContain(`/s/${slug}/${market}/om-oss</loc>`);
-    // The front page is each market's own address.
+    // The front page is each market's own address, and the All products page is at /products.
     expect(sitemap).not.toContain("/forside");
+    expect(sitemap).not.toContain("/alle-produkter");
     const llms = await seo.storeLlms(slug);
     expect(llms).toContain("## Pages\n\n- [Om oss](");
     expect(llms).toContain(`/s/${slug}/no/om-oss): Kaizen Demo selger`);

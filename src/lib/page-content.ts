@@ -482,6 +482,12 @@ export type ContentGridBlock = PartBase & {
   buttonLabel: string;
   /** Shown when nothing matches; empty shows nothing. */
   emptyText: string;
+  /**
+   * A "Filter and sort" button over a product grid on a store's page
+   * (D83): shoppers narrow and order its products, the grid following at
+   * once, with the choices in the address as on the listing pages (D78).
+   */
+  filters?: boolean;
   /** Pictures cropped alike keep the tiles even; landscape unless chosen. */
   /**
    * `theme` draws product tiles as the store theme's product cards (D60):
@@ -1118,6 +1124,7 @@ const contentGridBlock = z.object({
   }),
   buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
   emptyText: z.string().trim().max(300, "Keep the text for an empty grid under 300 characters.").default(""),
+  filters: z.boolean().optional(),
   imageShape: z.enum(["original", "theme", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
   headingLevel: z.literal([2, 3, 4, 5, 6], "A tile's heading has an unknown level."),
   headingSize: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),

@@ -69,7 +69,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function StorePage({ params }: Props) {
+export default async function StorePage({ params, searchParams }: Props) {
   const loaded = await load(params);
   if (!loaded) notFound();
   const { store, market, found } = loaded;
@@ -79,6 +79,8 @@ export default async function StorePage({ params }: Props) {
   const { page } = found;
   // The front page (D54) has one address: the market's own.
   if (page.id === store.frontPageId) permanentRedirect(home);
+  // So has the All products page (D83): /products.
+  if (page.id === store.productsPageId) permanentRedirect(`${home}/products`);
   const c = localizePage(page.content, market.locale);
   const origin = storeSiteUrl(store.slug);
 
@@ -95,7 +97,10 @@ export default async function StorePage({ params }: Props) {
           store: { homeUrl: `${origin}${home}`, storeUrl: storeFacts(store).url, locale: market.locale },
         })}
       />
-      <StorePageArticle content={c} place={{ pageId: page.id, owner: store.id, market: market.code }} />
+      <StorePageArticle
+        content={c}
+        place={{ pageId: page.id, owner: store.id, market: market.code, listing: { query: searchParams, path: `${home}/${page.slug}` } }}
+      />
       <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
     </>
   );
