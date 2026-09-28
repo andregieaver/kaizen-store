@@ -3,10 +3,13 @@ import type { CSSProperties } from "react";
 
 import {
   HEADING_DEFAULT_SIZE,
+  buttonShows,
   frameStyle,
   type ButtonBlock,
   type ButtonShape,
   type ButtonSize,
+  type DualButtonBlock,
+  type DualButtonSide,
   type FontWeight,
   type HeadingBlock,
   type HeadingSize,
@@ -74,6 +77,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return null;
     case "separator":
       return <Separator block={block} />;
+    case "dualButton":
+      return <DualButton block={block} />;
     case "image":
       if (!block.image) return null;
       return (
@@ -172,5 +177,34 @@ function Separator({ block }: { block: SeparatorBlock }) {
         marginRight: width < 100 && position !== "right" ? "auto" : 0,
       }}
     />
+  );
+}
+
+/**
+ * Two buttons side by side (D91), each shown once it has its text and
+ * address, sharing size, corners and weight; one under another, each the
+ * column's width, on phones if set.
+ */
+function DualButton({ block }: { block: DualButtonBlock }) {
+  const sides = [block.first, block.second].filter(buttonShows);
+  return (
+    <div
+      className={`inline-flex flex-wrap items-center ${block.stackOnPhones ? "max-md:flex max-md:flex-col max-md:items-stretch" : ""}`}
+      style={{ gap: `${block.gap ?? 12}px` }}
+    >
+      {sides.map((side, index) => (
+        <SideButton key={index} side={side} block={block} />
+      ))}
+    </div>
+  );
+}
+
+function SideButton({ side, block }: { side: DualButtonSide; block: DualButtonBlock }) {
+  const look = buttonLook({ ...side, size: block.size, shape: block.shape }, false, block.weight);
+  return (
+    <a href={side.href} {...(side.newTab && { target: "_blank", rel: "noopener noreferrer" })} style={look.style} className={look.className}>
+      {side.label}
+      {side.newTab && <span className="sr-only"> (opens in a new tab)</span>}
+    </a>
   );
 }

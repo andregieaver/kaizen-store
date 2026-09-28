@@ -40,7 +40,7 @@ import { ContentGridView } from "@/components/content-grid";
 import { t } from "@/lib/i18n";
 import { FontLinks } from "@/components/font-links";
 
-import { HEADING_SIZES as HEADING_SIZE_CLASS, PageBlockView, type ButtonLook } from "@/components/page-block";
+import { HEADING_SIZES as HEADING_SIZE_CLASS, PageBlockView } from "@/components/page-block";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
 import {
   BLOCKS_MAX,
@@ -51,9 +51,6 @@ import {
   BORDER_MAX,
   BORDER_STYLES,
   BUTTON_LABEL_MAX,
-  BUTTON_SHAPES,
-  BUTTON_SIZES,
-  BUTTON_VARIANTS,
   FONT_WEIGHTS,
   GRID_COLUMNS_MAX,
   GRID_CONTENT,
@@ -86,9 +83,6 @@ import {
   type BlockType,
   type BorderStyle,
   type ButtonBlock,
-  type ButtonShape,
-  type ButtonSize,
-  type ButtonVariant,
   type FontWeight,
   type HeadingBlock,
   type HeadingLevel,
@@ -104,8 +98,6 @@ import {
   type GridSource,
   type ImageShape,
   type PartBase,
-  type TextAlign,
-  type TextAlignments,
   type PageBlock,
   type PageColumn,
   type ImageBlock,
@@ -167,7 +159,7 @@ import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
 
-import { ColorField, editorFor } from "./block-fields";
+import { ButtonLookFields, Check, Choices, ColorField, editorFor, OptionalColor, TextAlignFields } from "./block-fields";
 import { FontPicker, type InstallFont } from "./font-picker";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
@@ -269,9 +261,10 @@ const blockLabels: Record<BlockType, string> = {
   site: "Site",
   menu: "Menu",
   separator: "Separator line",
+  dualButton: "Dual button",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -283,6 +276,7 @@ const blockThis: Record<BlockType, string> = {
   site: "this site component",
   menu: "this menu",
   separator: "this separator line",
+  dualButton: "these buttons",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1083,9 +1077,20 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <MenuIcon />;
     case "separator":
       return <SeparatorIcon />;
+    case "dualButton":
+      return <DualButtonIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function DualButtonIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center gap-1 rounded-sm bg-foreground/75 text-background">
+      <span className="h-3.5 w-5 rounded-full bg-current" />
+      <span className="h-3.5 w-5 rounded-full border-2 border-current" />
+    </span>
+  );
 }
 
 function SeparatorIcon() {
@@ -1595,6 +1600,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   site: "Site component.",
   menu: "A menu: double-click or use the wrench to choose which.",
   separator: "Separator line.",
+  dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
 };
 
 export { ColorField };
@@ -1879,8 +1885,7 @@ function Dialogs({
             style={
               <>
                 {editor.font &&
-                  "font" in block &&
-                  fontField(editor.font.label, block.font, editor.font.fallback, (font) =>
+                  fontField(editor.font.label, (block as { font?: string }).font, editor.font.fallback, (font) =>
                     onRows((current) => patchBlock(current, block.id, { font } as Partial<PageBlock>)),
                   )}
                 {editor.Style && (
@@ -2629,82 +2634,7 @@ function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
   );
 }
 
-/** One of a few choices, as a row of buttons (radio buttons underneath). */
-function Choices<T extends string>({
-  legend,
-  hint,
-  options,
-  value,
-  onChange,
-  disabled = false,
-}: {
-  legend: string;
-  hint?: string;
-  options: readonly { value: T; label: string; picture?: ReactNode }[];
-  value: T;
-  onChange: (value: T) => void;
-  disabled?: boolean;
-}) {
-  const name = useId();
-  return (
-    <fieldset disabled={disabled} className="flex flex-col gap-2 disabled:opacity-50">
-      <legend className="float-left mb-2 w-full text-sm font-medium">
-        {legend}
-        {hint && <span className="font-normal text-muted"> ({hint})</span>}
-      </legend>
-      <div className="flex flex-wrap gap-2">
-        {options.map((option) => (
-          <label
-            key={option.value}
-            // `relative` keeps the hidden radio inside its button, not at the dialog's edge, where it would make the dialog scroll.
-            className="relative flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm has-checked:border-foreground has-checked:bg-surface has-checked:font-medium has-focus-visible:outline-2 has-disabled:cursor-default"
-          >
-            <input
-              type="radio"
-              name={name}
-              value={option.value}
-              checked={value === option.value}
-              onChange={() => onChange(option.value)}
-              className="sr-only"
-            />
-            {option.picture}
-            {option.label}
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
 
-function Check({
-  label,
-  hint,
-  checked,
-  disabled = false,
-  onChange,
-}: {
-  label: string;
-  hint?: string;
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className={`flex items-start gap-3 text-sm ${disabled ? "opacity-50" : ""}`}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 size-4 shrink-0"
-      />
-      <span className="flex flex-col gap-0.5">
-        <span className="font-medium">{label}</span>
-        {hint && <span className="text-xs text-muted">{hint}</span>}
-      </span>
-    </label>
-  );
-}
 
 
 /**
@@ -3064,48 +2994,7 @@ function ColumnLinkFields({ link, onChange }: { link: ColumnLink | undefined; on
   );
 }
 
-const ALIGN_OPTIONS = [
-  { value: "left", label: "Left" },
-  { value: "center", label: "Centre" },
-  { value: "right", label: "Right" },
-] as const;
 
-/** A rich text's alignment on phones, tablets and computers (D48); each larger screen follows the smaller unless set. */
-function TextAlignFields({
-  what = "Text alignment",
-  value,
-  onChange,
-}: {
-  what?: string;
-  value: TextAlignments | undefined;
-  onChange: (value: TextAlignments | undefined) => void;
-}) {
-  const set = (screen: keyof TextAlignments, align: TextAlign | "same") => {
-    const next: TextAlignments = { ...value };
-    if (align === "same" || (screen === "mobile" && align === "left")) delete next[screen];
-    else next[screen] = align;
-    onChange(Object.keys(next).length > 0 ? next : undefined);
-  };
-  return (
-    <div className="flex flex-col gap-4">
-      <Choices legend={`${what} on phones`} options={ALIGN_OPTIONS} value={value?.mobile ?? "left"} onChange={(a) => set("mobile", a)} />
-      <Choices
-        legend="On tablets"
-        hint="768 pixels and wider"
-        options={[{ value: "same", label: "As on phones" }, ...ALIGN_OPTIONS]}
-        value={value?.tablet ?? "same"}
-        onChange={(a) => set("tablet", a)}
-      />
-      <Choices
-        legend="On computers"
-        hint="1024 pixels and wider"
-        options={[{ value: "same", label: "As on tablets" }, ...ALIGN_OPTIONS]}
-        value={value?.desktop ?? "same"}
-        onChange={(a) => set("desktop", a)}
-      />
-    </div>
-  );
-}
 
 const SHAPE_PICTURES: Record<ImageShape | "original", string> = {
   original: "h-4 w-6 rounded-sm border-dashed",
@@ -3341,36 +3230,6 @@ function FrameFields({
   );
 }
 
-/** A colour that is the site's own until one is chosen. */
-function OptionalColor({
-  label,
-  hint,
-  value,
-  fallback,
-  onChange,
-}: {
-  label: string;
-  hint: string;
-  value: string | undefined;
-  fallback: string;
-  onChange: (color: string | undefined) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      <Check
-        label={`Own ${label.toLowerCase()}`}
-        hint={hint}
-        checked={value !== undefined}
-        onChange={(on) => onChange(on ? fallback : undefined)}
-      />
-      {value !== undefined && (
-        <div className="pl-7">
-          <ColorField label={label} value={value} onChange={onChange} />
-        </div>
-      )}
-    </div>
-  );
-}
 
 const LEVELS = [1, 2, 3, 4, 5, 6] as const;
 
@@ -3531,51 +3390,6 @@ function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: 
   );
 }
 
-/** A button's kind, size, corners and colours (D49): a button's, or a content grid's tile buttons (D51). */
-function ButtonLookFields({ look, onChange }: { look: ButtonLook; onChange: (patch: Partial<ButtonLook>) => void }) {
-  const variant = look.variant ?? "filled";
-  return (
-    <>
-      <Choices
-        legend="Style"
-        options={(Object.keys(BUTTON_VARIANTS) as ButtonVariant[]).map((v) => ({ value: v, label: BUTTON_VARIANTS[v] }))}
-        value={variant}
-        onChange={(v) => onChange({ variant: v === "filled" ? undefined : v })}
-      />
-      <Choices
-        legend="Size"
-        options={(Object.keys(BUTTON_SIZES) as ButtonSize[]).map((size) => ({ value: size, label: BUTTON_SIZES[size] }))}
-        value={look.size ?? "md"}
-        onChange={(size) => onChange({ size: size === "md" ? undefined : size })}
-      />
-      <Choices
-        legend="Corners"
-        disabled={variant === "text"}
-        options={(Object.keys(BUTTON_SHAPES) as ButtonShape[]).map((shape) => ({ value: shape, label: BUTTON_SHAPES[shape] }))}
-        value={look.shape ?? "rounded"}
-        onChange={(shape) => onChange({ shape: shape === "rounded" ? undefined : shape })}
-      />
-      <OptionalColor
-        label="Button colour"
-        hint={
-          variant === "filled"
-            ? "Fills the button; otherwise the site's text colour."
-            : "Colours the outline and text; otherwise the site's text colour."
-        }
-        value={look.fill}
-        fallback="#1d4ed8"
-        onChange={(fill) => onChange({ fill })}
-      />
-      <OptionalColor
-        label="Text colour"
-        hint={variant === "filled" ? "Otherwise the site's background colour." : "Otherwise the button colour."}
-        value={look.textColor}
-        fallback="#ffffff"
-        onChange={(textColor) => onChange({ textColor })}
-      />
-    </>
-  );
-}
 
 /** Merges settings into an optional object; ones set to undefined go, and an empty object goes too. */
 function mergeOptional<T extends object>(current: T | undefined, patch: Partial<T>): T | undefined {

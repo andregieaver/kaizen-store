@@ -2,13 +2,30 @@
 
 import { useId, useState, type ReactNode } from "react";
 
+import type { ButtonLook } from "@/components/page-block";
+
 import {
+  BUTTON_SHAPES,
+  BUTTON_SIZES,
+  BUTTON_LABEL_MAX,
+  BUTTON_VARIANTS,
+  DUAL_GAP_MAX,
+  FONT_WEIGHTS,
+  isLinkAddress,
   SEPARATOR_LINES,
   SEPARATOR_POSITIONS,
   SEPARATOR_THICKNESS_MAX,
   type BlockType,
+  type ButtonShape,
+  type ButtonSize,
+  type ButtonVariant,
+  type DualButtonBlock,
+  type DualButtonSide,
+  type FontWeight,
   type PageBlock,
   type SeparatorBlock,
+  type TextAlign,
+  type TextAlignments,
 } from "@/lib/page-content";
 
 import type { Upload } from "./image-upload";
@@ -44,6 +61,12 @@ type Editors = { [K in BlockType]?: BlockEditor<Extract<PageBlock, { type: K }>>
 /** The components edited through the generic dialog. */
 export const BLOCK_EDITORS: Editors = {
   separator: { title: "Separator line", General: SeparatorFields },
+  dualButton: {
+    title: "Dual button",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: DualButtonFields,
+    Style: DualButtonStyleFields,
+  },
 };
 
 /** The editor for a block, if its kind has one here. */
@@ -100,37 +123,6 @@ export function TextField({
   );
 }
 
-/** A labelled choice among a few options, as buttons. */
-export function ChoiceField<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: Record<T, string>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-medium">{label}</legend>
-      <div className="flex flex-wrap gap-2">
-        {(Object.entries(options) as [T, string][]).map(([key, text]) => (
-          <button
-            key={key}
-            type="button"
-            aria-pressed={value === key}
-            onClick={() => onChange(key)}
-            className="min-h-10 rounded-md border border-border px-3 text-sm aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
-          >
-            {text}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
 
 /** A labelled whole number within limits. */
 export function NumberField({
@@ -213,8 +205,89 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
   );
 }
 
+
+
+/** One of a few choices, as a row of buttons (radio buttons underneath). */
+export function Choices<T extends string>({
+  legend,
+  hint,
+  options,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  legend: string;
+  hint?: string;
+  options: readonly { value: T; label: string; picture?: ReactNode }[];
+  value: T;
+  onChange: (value: T) => void;
+  disabled?: boolean;
+}) {
+  const name = useId();
+  return (
+    <fieldset disabled={disabled} className="flex flex-col gap-2 disabled:opacity-50">
+      <legend className="float-left mb-2 w-full text-sm font-medium">
+        {legend}
+        {hint && <span className="font-normal text-muted"> ({hint})</span>}
+      </legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <label
+            key={option.value}
+            // `relative` keeps the hidden radio inside its button, not at the dialog's edge, where it would make the dialog scroll.
+            className="relative flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm has-checked:border-foreground has-checked:bg-surface has-checked:font-medium has-focus-visible:outline-2 has-disabled:cursor-default"
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+            />
+            {option.picture}
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+
+export function Check({
+  label,
+  hint,
+  checked,
+  disabled = false,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className={`flex items-start gap-3 text-sm ${disabled ? "opacity-50" : ""}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-0.5 size-4 shrink-0"
+      />
+      <span className="flex flex-col gap-0.5">
+        <span className="font-medium">{label}</span>
+        {hint && <span className="text-xs text-muted">{hint}</span>}
+      </span>
+    </label>
+  );
+}
+
+
 /** A colour that is the site's own until one is chosen. */
-export function OptionalColorField({
+export function OptionalColor({
   label,
   hint,
   value,
@@ -229,7 +302,12 @@ export function OptionalColorField({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <CheckField label={`Own ${label.toLowerCase()}`} hint={hint} checked={value !== undefined} onChange={(on) => onChange(on ? fallback : undefined)} />
+      <Check
+        label={`Own ${label.toLowerCase()}`}
+        hint={hint}
+        checked={value !== undefined}
+        onChange={(on) => onChange(on ? fallback : undefined)}
+      />
       {value !== undefined && (
         <div className="pl-7">
           <ColorField label={label} value={value} onChange={onChange} />
@@ -239,16 +317,144 @@ export function OptionalColorField({
   );
 }
 
-/** A labelled on/off switch. */
-export function CheckField({ label, checked, hint, onChange }: { label: string; checked: boolean; hint?: string; onChange: (checked: boolean) => void }) {
+
+const ALIGN_OPTIONS = [
+  { value: "left", label: "Left" },
+  { value: "center", label: "Centre" },
+  { value: "right", label: "Right" },
+] as const;
+
+
+/** A rich text's alignment on phones, tablets and computers (D48); each larger screen follows the smaller unless set. */
+export function TextAlignFields({
+  what = "Text alignment",
+  value,
+  onChange,
+}: {
+  what?: string;
+  value: TextAlignments | undefined;
+  onChange: (value: TextAlignments | undefined) => void;
+}) {
+  const set = (screen: keyof TextAlignments, align: TextAlign | "same") => {
+    const next: TextAlignments = { ...value };
+    if (align === "same" || (screen === "mobile" && align === "left")) delete next[screen];
+    else next[screen] = align;
+    onChange(Object.keys(next).length > 0 ? next : undefined);
+  };
   return (
-    <label className="flex items-start gap-2 text-sm">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-0.5" />
-      <span>
-        {label}
-        {hint && <span className="block text-xs text-muted">{hint}</span>}
-      </span>
-    </label>
+    <div className="flex flex-col gap-4">
+      <Choices legend={`${what} on phones`} options={ALIGN_OPTIONS} value={value?.mobile ?? "left"} onChange={(a) => set("mobile", a)} />
+      <Choices
+        legend="On tablets"
+        hint="768 pixels and wider"
+        options={[{ value: "same", label: "As on phones" }, ...ALIGN_OPTIONS]}
+        value={value?.tablet ?? "same"}
+        onChange={(a) => set("tablet", a)}
+      />
+      <Choices
+        legend="On computers"
+        hint="1024 pixels and wider"
+        options={[{ value: "same", label: "As on tablets" }, ...ALIGN_OPTIONS]}
+        value={value?.desktop ?? "same"}
+        onChange={(a) => set("desktop", a)}
+      />
+    </div>
+  );
+}
+
+
+/** A button's kind, size, corners and colours (D49): a button's, or a content grid's tile buttons (D51). */
+export function ButtonLookFields({ look, onChange }: { look: ButtonLook; onChange: (patch: Partial<ButtonLook>) => void }) {
+  const variant = look.variant ?? "filled";
+  return (
+    <>
+      <Choices
+        legend="Style"
+        options={(Object.keys(BUTTON_VARIANTS) as ButtonVariant[]).map((v) => ({ value: v, label: BUTTON_VARIANTS[v] }))}
+        value={variant}
+        onChange={(v) => onChange({ variant: v === "filled" ? undefined : v })}
+      />
+      <Choices
+        legend="Size"
+        options={(Object.keys(BUTTON_SIZES) as ButtonSize[]).map((size) => ({ value: size, label: BUTTON_SIZES[size] }))}
+        value={look.size ?? "md"}
+        onChange={(size) => onChange({ size: size === "md" ? undefined : size })}
+      />
+      <Choices
+        legend="Corners"
+        disabled={variant === "text"}
+        options={(Object.keys(BUTTON_SHAPES) as ButtonShape[]).map((shape) => ({ value: shape, label: BUTTON_SHAPES[shape] }))}
+        value={look.shape ?? "rounded"}
+        onChange={(shape) => onChange({ shape: shape === "rounded" ? undefined : shape })}
+      />
+      <OptionalColor
+        label="Button colour"
+        hint={
+          variant === "filled"
+            ? "Fills the button; otherwise the site's text colour."
+            : "Colours the outline and text; otherwise the site's text colour."
+        }
+        value={look.fill}
+        fallback="#1d4ed8"
+        onChange={(fill) => onChange({ fill })}
+      />
+      <OptionalColor
+        label="Text colour"
+        hint={variant === "filled" ? "Otherwise the site's background colour." : "Otherwise the button colour."}
+        value={look.textColor}
+        fallback="#ffffff"
+        onChange={(textColor) => onChange({ textColor })}
+      />
+    </>
+  );
+}
+
+/** A link's text, address (checked as the site takes it) and whether it opens a new tab. */
+export function LinkFields({
+  label,
+  href,
+  newTab,
+  placeholder = "Start your store",
+  onChange,
+}: {
+  label: string;
+  href: string;
+  newTab: boolean | undefined;
+  placeholder?: string;
+  onChange: (patch: { label?: string; href?: string; newTab?: boolean }) => void;
+}) {
+  const id = useId();
+  const address = href.trim();
+  const problem = address === "" ? "It shows on the site once it has an address." : isLinkAddress(address) ? null : "Use a web address (https://…), a page on the site (/about), mailto: or tel:.";
+  return (
+    <div className="flex flex-col gap-4">
+      <TextField label="Text" value={label} max={BUTTON_LABEL_MAX} placeholder={placeholder} onChange={(value) => onChange({ label: value })} />
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-href`} className="text-sm font-medium">
+          Address
+        </label>
+        <input
+          id={`${id}-href`}
+          value={href}
+          maxLength={2000}
+          spellCheck={false}
+          placeholder="https://… or /about"
+          aria-invalid={Boolean(problem && address)}
+          aria-describedby={`${id}-hint`}
+          onChange={(event) => onChange({ href: event.target.value })}
+          className={`${fieldClass} aria-invalid:border-red-700`}
+        />
+        <span id={`${id}-hint`} className={`text-xs ${problem && address ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+          {problem ?? "A page on this site, another site, an email or a phone number."}
+        </span>
+      </div>
+      <Check
+        label="Open in a new tab"
+        hint="Screen readers are told it opens a new tab."
+        checked={Boolean(newTab)}
+        onChange={(on) => onChange({ newTab: on || undefined })}
+      />
+    </div>
   );
 }
 
@@ -355,13 +561,17 @@ export function ItemsEditor<T extends { id: string }>({
 // Components
 // ---------------------------------------------------------------------------
 
+/** Options for `Choices` from a record of labels. */
+const optionsOf = <T extends string>(labels: Record<T, string>) =>
+  (Object.entries(labels) as [T, string][]).map(([value, label]) => ({ value, label }));
+
 /** A separator line (D91): its style, thickness, colour, width and place. */
 function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) {
   return (
     <>
-      <ChoiceField label="Line" value={block.line ?? "solid"} options={SEPARATOR_LINES} onChange={(line) => onChange({ line })} />
+      <Choices legend="Line" options={optionsOf(SEPARATOR_LINES)} value={block.line ?? "solid"} onChange={(line) => onChange({ line })} />
       <NumberField label="Thickness" value={block.thickness ?? 1} min={1} max={SEPARATOR_THICKNESS_MAX} unit="pixels" onChange={(thickness) => onChange({ thickness })} />
-      <OptionalColorField
+      <OptionalColor
         label="Colour"
         hint="The site's border colour unless you choose one."
         value={block.color}
@@ -370,8 +580,76 @@ function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) 
       />
       <NumberField label="Width" value={block.width ?? 100} min={10} max={100} unit="% of the column" onChange={(width) => onChange({ width })} />
       {(block.width ?? 100) < 100 && (
-        <ChoiceField label="Position" value={block.position ?? "center"} options={SEPARATOR_POSITIONS} onChange={(position) => onChange({ position })} />
+        <Choices legend="Position" options={optionsOf(SEPARATOR_POSITIONS)} value={block.position ?? "center"} onChange={(position) => onChange({ position })} />
       )}
+    </>
+  );
+}
+
+/** A dual button's two buttons (D91): each one's text, address and new tab. */
+function DualButtonFields({ block, onChange }: BlockEditorProps<DualButtonBlock>) {
+  const side = (which: "first" | "second", title: string, placeholder: string) => (
+    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+      <legend className="px-1 text-sm font-medium">{title}</legend>
+      <LinkFields
+        label={block[which].label}
+        href={block[which].href}
+        newTab={block[which].newTab}
+        placeholder={placeholder}
+        onChange={(patch) => onChange({ [which]: { ...block[which], ...patch } })}
+      />
+    </fieldset>
+  );
+  return (
+    <>
+      {side("first", "First button", "Shop now")}
+      {side("second", "Second button", "Read more")}
+    </>
+  );
+}
+
+/** A dual button's look (D91): each button's style and colours, then their shared size, corners, weight, spacing and place. */
+function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonBlock>) {
+  const look = (which: "first" | "second", title: string, fallback: ButtonVariant) => {
+    const side: DualButtonSide = block[which];
+    const variant = side.variant ?? fallback;
+    const set = (patch: Partial<DualButtonSide>) => onChange({ [which]: { ...side, ...patch } });
+    return (
+      <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+        <legend className="px-1 text-sm font-medium">{title}</legend>
+        <Choices legend="Style" options={optionsOf(BUTTON_VARIANTS)} value={variant} onChange={(v) => set({ variant: v })} />
+        <OptionalColor
+          label="Button colour"
+          hint={variant === "filled" ? "Fills the button; otherwise the site's accent colour." : "Colours the outline and text; otherwise the site's text colour."}
+          value={side.fill}
+          fallback="#1d4ed8"
+          onChange={(fill) => set({ fill })}
+        />
+        <OptionalColor
+          label="Text colour"
+          hint={variant === "filled" ? "Otherwise the accent's own text colour." : "Otherwise the button colour."}
+          value={side.textColor}
+          fallback="#ffffff"
+          onChange={(textColor) => set({ textColor })}
+        />
+      </fieldset>
+    );
+  };
+  return (
+    <>
+      {look("first", "First button", "filled")}
+      {look("second", "Second button", "filled")}
+      <Choices legend="Size" options={optionsOf(BUTTON_SIZES)} value={block.size ?? "md"} onChange={(size: ButtonSize) => onChange({ size: size === "md" ? undefined : size })} />
+      <Choices legend="Corners" options={optionsOf(BUTTON_SHAPES)} value={block.shape ?? "rounded"} onChange={(shape: ButtonShape) => onChange({ shape: shape === "rounded" ? undefined : shape })} />
+      <Choices legend="Weight" options={optionsOf(FONT_WEIGHTS)} value={block.weight ?? "medium"} onChange={(weight: FontWeight) => onChange({ weight: weight === "medium" ? undefined : weight })} />
+      <NumberField label="Space between" value={block.gap ?? 12} min={0} max={DUAL_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
+      <Check
+        label="One under another on phones"
+        hint="Each as wide as the column on screens under 768 pixels."
+        checked={Boolean(block.stackOnPhones)}
+        onChange={(stackOnPhones) => onChange({ stackOnPhones: stackOnPhones || undefined })}
+      />
+      <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
     </>
   );
 }

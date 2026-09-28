@@ -32,3 +32,22 @@ describe("separator lines", () => {
     expect(problems({ id: "s", type: "separator", line: "wavy" })).toHaveLength(1);
   });
 });
+
+describe("dual buttons", () => {
+  it("shows once one of its buttons has text and an address, and translates both texts", () => {
+    const pair = newBlock("dualButton", () => "d");
+    expect(pair).toMatchObject({ first: { label: "", href: "" }, second: { variant: "outline" } });
+    expect(blockHasContent(pair)).toBe(false);
+    const ready = { ...pair, first: { label: "Handle nå", href: "/products" }, gap: 24, stackOnPhones: true, size: "lg" as const };
+    expect(blockHasContent(ready)).toBe(true);
+    expect(parse(ready)).toEqual(ready);
+    expect(blockTextFields(ready as never).map((field) => [field.key, field.label])).toEqual([
+      ["block.d.first.label", "First button's text"],
+      ["block.d.second.label", "Second button's text"],
+    ]);
+    expect(problems({ ...ready, second: { label: "Les mer", href: "javascript:alert(1)" } })).toEqual([
+      "A button's address must be https://…, a page like /about, mailto: or tel:.",
+    ]);
+    expect(problems({ ...ready, gap: 100 })).toEqual(["Keep the space between the buttons at 64 pixels or less."]);
+  });
+});

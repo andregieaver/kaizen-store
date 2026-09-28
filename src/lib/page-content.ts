@@ -654,6 +654,35 @@ export type SeparatorBlock = PartBase & {
   position?: SeparatorPosition;
 };
 
+/** One of a dual button's two (D91): its text, address and colours; the pair share size, corners and weight. */
+export type DualButtonSide = Pick<ButtonBlock, "label" | "href" | "newTab" | "variant" | "fill" | "textColor">;
+
+/**
+ * Two buttons side by side (D91), such as "Shop now" and "Read more": each
+ * its own text, address and style (a new one's second is an outline),
+ * sharing size, corners, weight, the space between and
+ * their place; one under another on phones if set. Each shows once it has
+ * both its text and its address.
+ */
+export type DualButtonBlock = PartBase & BlockFont & {
+  id: string;
+  type: "dualButton";
+  first: DualButtonSide;
+  second: DualButtonSide;
+  size?: ButtonSize;
+  shape?: ButtonShape;
+  weight?: FontWeight;
+  /** Pixels between them; 12 unless set. */
+  gap?: number;
+  /** One under another, each the column's width, on phones. */
+  stackOnPhones?: boolean;
+  align?: TextAlignments;
+};
+export const DUAL_GAP_MAX = 64;
+
+/** Whether a button (or a dual button's side) shows: it has its text and its address. */
+export const buttonShows = (button: { label: string; href: string }) => button.label.trim() !== "" && button.href.trim() !== "";
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -664,7 +693,8 @@ export type PageBlock =
   | ProductBlock
   | SiteBlock
   | MenuBlock
-  | SeparatorBlock;
+  | SeparatorBlock
+  | DualButtonBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -743,6 +773,8 @@ export function blockHasContent(block: PageBlock): boolean {
       return Boolean(block.menuId);
     case "separator":
       return true;
+    case "dualButton":
+      return buttonShows(block.first) || buttonShows(block.second);
   }
 }
 
@@ -765,6 +797,7 @@ export function blockText(block: PageBlock): string {
     case "site":
     case "menu":
     case "separator":
+    case "dualButton":
       return "";
   }
 }
@@ -1281,6 +1314,30 @@ const separatorBlock = z.object({
   ...partBase,
 });
 
+const dualButtonSide = z.object({
+  label: buttonBlock.shape.label,
+  href: buttonBlock.shape.href,
+  newTab: z.boolean().optional(),
+  variant: buttonBlock.shape.variant,
+  fill: color.optional(),
+  textColor: color.optional(),
+});
+
+const dualButtonBlock = z.object({
+  id: itemId,
+  type: z.literal("dualButton"),
+  first: dualButtonSide,
+  second: dualButtonSide,
+  size: buttonBlock.shape.size,
+  shape: buttonBlock.shape.shape,
+  weight: buttonBlock.shape.weight,
+  gap: z.number().int().min(0).max(DUAL_GAP_MAX, `Keep the space between the buttons at ${DUAL_GAP_MAX} pixels or less.`).optional(),
+  stackOnPhones: z.boolean().optional(),
+  align: textAlignments,
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1292,6 +1349,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   siteBlock,
   menuBlock,
   separatorBlock,
+  dualButtonBlock,
 ]);
 
 export const pageColumnSchema = z.object({

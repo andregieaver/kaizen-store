@@ -64,6 +64,12 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return b;
     case "separator":
       return b;
+    case "dualButton":
+      return {
+        ...b,
+        first: { ...b.first, label: str("first.label", b.first.label, 100, "First button's text") },
+        second: { ...b.second, label: str("second.label", b.second.label, 100, "Second button's text") },
+      };
   }
 }
 

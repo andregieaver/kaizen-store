@@ -45,6 +45,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
     case "menu":
     case "separator":
       return { id: id(), type };
+    case "dualButton":
+      return { id: id(), type, first: { label: "", href: "" }, second: { label: "", href: "", variant: "outline" } };
     case "richText":
       return { id: id(), type, doc: EMPTY_DOC };
     case "image":
