@@ -84,17 +84,35 @@ export async function uploadToLibrary(
   const image = data.get("image");
   const thumbnail = data.get("thumbnail");
   if (!(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Choose a picture to upload." };
+  const given = data.get("name");
+  return storePicture(owner, image, thumbnail, { fileName: cleanName(typeof given === "string" ? given : "", image.name || "picture") });
+}
+
+/**
+ * Stores a picture and its small copy in the site's folder and keeps it in
+ * the library: an upload's, or one the site's AI made (D92), which comes
+ * with its alt text in the main language, marked as the AI's (the alt-text
+ * run adds the other languages).
+ */
+export async function storePicture(
+  owner: { storeId: string | null; accountId: string },
+  image: File,
+  thumbnail: File,
+  details: { fileName: string; alt?: string },
+): Promise<UploadResult> {
   const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail);
   if (!uploaded.ok || !("stored" in uploaded)) return uploaded;
-  const given = data.get("name");
   const size = imageSize(new Uint8Array(await image.slice(0, 64 * 1024).arrayBuffer()));
+  const alt = details.alt?.trim().slice(0, ALT_MAX) || null;
   await db().execute(sql`
     insert into commerce.media (
-      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by
+      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by,
+      alt, alt_source, alt_written_at
     ) values (
       ${owner.storeId}::uuid, 'image', ${uploaded.url}, ${uploaded.thumbnailUrl}, ${uploaded.stored.bucket}, ${uploaded.stored.path},
-      ${uploaded.stored.thumbnailPath}, ${cleanName(typeof given === "string" ? given : "", image.name || "picture")},
-      ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid
+      ${uploaded.stored.thumbnailPath}, ${cleanName(details.fileName, "picture")},
+      ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid,
+      ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}
     )
     on conflict (url) do nothing
   `);

@@ -1888,6 +1888,13 @@ describe("AI providers (D73)", () => {
     await expect(
       db.query("update commerce.ai_providers set min_similarity = 1.5 where store_id = $1", [store]),
     ).rejects.toThrow(/ai_providers_min_similarity/);
+    // Pictures (D92) from another provider carry that provider's key; from this one, none.
+    const images = (set: string) => db.query(`update commerce.ai_providers set ${set} where store_id = $1`, [store]);
+    await images("image_model = 'pictures-2', image_provider = 'openai', image_api_key_encrypted = 'v1.y', image_api_key_hint = '…9999'");
+    await expect(images("image_api_key_encrypted = null, image_api_key_hint = null")).rejects.toThrow(/ai_providers_image_key/);
+    await expect(images("image_provider = 'custom'")).rejects.toThrow(/ai_providers_image_base_url/);
+    await expect(images("image_quality = 'ultra'")).rejects.toThrow(/ai_providers_image_quality/);
+    await images("image_provider = null, image_api_key_encrypted = null, image_api_key_hint = null");
     await db.query("delete from commerce.ai_providers");
   });
 });

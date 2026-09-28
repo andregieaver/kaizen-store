@@ -11,6 +11,7 @@ import {
   keyHint,
   providerInfo,
   type AiProviderId,
+  type ImageQuality,
 } from "@/lib/ai-provider";
 import { cosineSimilarity } from "@/lib/vectors";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
@@ -41,6 +42,12 @@ export type AiSettings = {
   transcriptionModel: string | null;
   speechModel: string | null;
   speechVoice: string | null;
+  /** Pictures (D92): the model, and another provider's (with its own key) or null for this one's. */
+  imageModel: string | null;
+  imageProvider: AiProviderId | null;
+  imageBaseUrl: string | null;
+  imageApiKeyHint: string | null;
+  imageQuality: ImageQuality | null;
   minSimilarity: number;
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
@@ -57,7 +64,12 @@ export type AiConnection = AiSettings & {
   apiKey: string;
   /** Names the vectors this connection's embedding model makes (`embeddingSpace()`). */
   space: string | null;
+  /** Where pictures are made (D92): this provider's address and key, or another's; null without a picture model. */
+  image: ImageConnection | null;
 };
+
+/** A picture model and where to reach it. */
+export type ImageConnection = { provider: AiProviderId; apiUrl: string; apiKey: string; model: string; quality: ImageQuality | null };
 
 function toSettings(row: Row): AiSettings {
   return {
@@ -70,6 +82,11 @@ function toSettings(row: Row): AiSettings {
     transcriptionModel: row.transcription_model ? String(row.transcription_model) : null,
     speechModel: row.speech_model ? String(row.speech_model) : null,
     speechVoice: row.speech_voice ? String(row.speech_voice) : null,
+    imageModel: row.image_model ? String(row.image_model) : null,
+    imageProvider: row.image_provider ? (String(row.image_provider) as AiProviderId) : null,
+    imageBaseUrl: row.image_base_url ? String(row.image_base_url) : null,
+    imageApiKeyHint: row.image_api_key_hint ? String(row.image_api_key_hint) : null,
+    imageQuality: row.image_quality ? (String(row.image_quality) as ImageQuality) : null,
     minSimilarity: Number(row.min_similarity),
     embeddingEuOnly: Boolean(row.embedding_eu_only),
     textEuOnly: Boolean(row.text_eu_only),
@@ -100,7 +117,22 @@ function toConnection(row: Row, source: AiConnection["source"]): AiConnection | 
     return null;
   }
   const space = settings.embeddingModel ? embeddingSpace(settings.provider, settings.baseUrl, settings.embeddingModel) : null;
-  return { ...settings, source, apiUrl, apiKey, space };
+  return { ...settings, source, apiUrl, apiKey, space, image: imageConnection(row, settings, { apiUrl, apiKey }, key) };
+}
+
+/** Where the row's pictures are made: its own provider, or the other one it names with that one's key; null without a model. */
+function imageConnection(row: Row, settings: AiSettings, own: { apiUrl: string; apiKey: string }, key: Buffer): ImageConnection | null {
+  if (!settings.imageModel) return null;
+  const quality = settings.imageQuality;
+  if (!settings.imageProvider) return { provider: settings.provider, ...own, model: settings.imageModel, quality };
+  const apiUrl = apiBaseUrl(settings.imageProvider, settings.imageBaseUrl);
+  if (!apiUrl || !row.image_api_key_encrypted) return null;
+  try {
+    const apiKey = decryptSecret(String(row.image_api_key_encrypted), key);
+    return { provider: settings.imageProvider, apiUrl, apiKey, model: settings.imageModel, quality };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -148,15 +180,33 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
   } else if (!sameEndpoint) {
     return { ok: false, problems: [`Paste an API key for ${providerInfo(input.provider).name}.`] };
   }
+  // Pictures from another provider (D92) take its own key, kept as the other: a new one replaces it; left empty, it stays while the provider does.
+  const imageBaseUrl = input.imageProvider === "custom" ? (checkBaseUrl(input.imageBaseUrl) as { ok: true; url: string }).url : null;
+  let imageEncrypted: string | null = null;
+  let imageHint: string | null = null;
+  if (input.imageProvider && input.imageApiKey) {
+    const key = encryptionKey();
+    if (!key) return { ok: false, problems: ["Kaizen cannot keep the key safe right now, so it was not saved. Try again later."] };
+    imageEncrypted = encryptSecret(input.imageApiKey, key);
+    imageHint = keyHint(input.imageApiKey);
+  } else if (input.imageProvider && !(existing?.imageProvider === input.imageProvider && existing.imageBaseUrl === imageBaseUrl)) {
+    return { ok: false, problems: [`Paste an API key for pictures from ${providerInfo(input.imageProvider).name}.`] };
+  }
 
   await db().execute(sql`
     insert into commerce.ai_providers (
       store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model, text_model,
       transcription_model, speech_model, speech_voice,
+      image_model, image_provider, image_base_url, image_api_key_encrypted, image_api_key_hint, image_quality,
       min_similarity, embedding_eu_only, text_eu_only, zero_data_retention, enabled, updated_by
     ) values (
       ${storeId}::uuid, ${input.provider}, ${baseUrl}, ${encrypted ?? ""}, ${hint ?? ""}, ${input.embeddingModel}, ${input.textModel},
       ${input.transcriptionModel}, ${input.speechModel}, ${input.speechVoice},
+      ${input.imageModel}, ${input.imageProvider}, ${imageBaseUrl},
+      -- A kept key is carried into the row itself: the row's checks see it before the update does.
+      case when ${input.imageProvider}::text is not null then coalesce(${imageEncrypted}::text, (select p.image_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
+      case when ${input.imageProvider}::text is not null then coalesce(${imageHint}::text, (select p.image_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
+      ${input.imageQuality},
       ${input.minSimilarity}, ${input.embeddingEuOnly}, ${input.textEuOnly}, ${input.zeroDataRetention}, ${input.enabled}, ${accountId}::uuid
     )
     on conflict (store_id) do update set
@@ -165,6 +215,9 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       api_key_hint = coalesce(nullif(excluded.api_key_hint, ''), ai_providers.api_key_hint),
       embedding_model = excluded.embedding_model, text_model = excluded.text_model,
       transcription_model = excluded.transcription_model, speech_model = excluded.speech_model, speech_voice = excluded.speech_voice,
+      image_model = excluded.image_model, image_provider = excluded.image_provider, image_base_url = excluded.image_base_url,
+      image_api_key_encrypted = excluded.image_api_key_encrypted, image_api_key_hint = excluded.image_api_key_hint,
+      image_quality = excluded.image_quality,
       min_similarity = excluded.min_similarity, embedding_eu_only = excluded.embedding_eu_only,
       text_eu_only = excluded.text_eu_only, zero_data_retention = excluded.zero_data_retention,
       enabled = excluded.enabled, updated_at = now(), updated_by = excluded.updated_by
@@ -177,9 +230,14 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     transcriptionModel: input.transcriptionModel,
     speechModel: input.speechModel,
     speechVoice: input.speechVoice,
+    imageModel: input.imageModel,
+    imageProvider: input.imageProvider,
+    imageBaseUrl,
+    imageQuality: input.imageQuality,
     minSimilarity: input.minSimilarity,
     enabled: input.enabled,
     newKey: Boolean(encrypted),
+    newImageKey: Boolean(imageEncrypted),
   });
   return { ok: true };
 }
@@ -220,7 +278,12 @@ function gatewayOptions(connection: AiConnection, euOnly: boolean): Record<strin
   return Object.keys(gateway).length > 0 ? { providerOptions: { gateway } } : {};
 }
 
-async function post(connection: AiConnection, path: string, body: Record<string, unknown>, timeoutMs: number): Promise<Row> {
+async function post(
+  connection: Pick<AiConnection, "apiUrl" | "apiKey" | "provider">,
+  path: string,
+  body: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<Row> {
   let response: Response;
   try {
     response = await fetch(`${connection.apiUrl}${path}`, {
@@ -437,6 +500,72 @@ export async function speakText(connection: AiConnection, text: string): Promise
     30_000,
   );
   return response.arrayBuffer();
+}
+
+// Pictures (D92) -----------------------------------------------------------
+
+/** A picture's shape; each model is asked for its nearest size. */
+export type ImageShape = "landscape" | "portrait" | "square";
+const IMAGE_SIZES: Record<ImageShape, string> = { landscape: "1536x1024", portrait: "1024x1536", square: "1024x1024" };
+/** Options a picture model may refuse, and which models refused which (per server instance), as for text. */
+const IMAGE_OPTIONS = ["size", "quality"];
+const refusedImageOptions = new Map<string, Set<string>>();
+/** The largest picture taken from a provider. */
+const IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+
+/**
+ * A picture made by the connection's picture model from a description,
+ * through the OpenAI-compatible `/images/generations` that OpenAI and
+ * others offer: its bytes, whatever their format. The model is only a
+ * name in the settings, so a better one needs no change here; a size or
+ * quality it does not take is left out and remembered.
+ */
+export async function generateImage(
+  connection: AiConnection,
+  prompt: string,
+  options: { shape?: ImageShape; timeoutMs?: number } = {},
+): Promise<{ bytes: Uint8Array }> {
+  const image = connection.image;
+  if (!image) throw new AiError("No picture model is set.");
+  const model = `${image.apiUrl}|${image.model}`;
+  const refused = refusedImageOptions.get(model) ?? new Set<string>();
+  const extra: Record<string, unknown> = {
+    size: IMAGE_SIZES[options.shape ?? "landscape"],
+    ...(image.quality ? { quality: image.quality } : {}),
+  };
+  for (const name of refused) delete extra[name];
+  let json: Row | null = null;
+  while (!json) {
+    try {
+      json = await post(image, "/images/generations", { model: image.model, prompt: prompt.slice(0, 4000), n: 1, ...extra }, options.timeoutMs ?? 150_000);
+    } catch (error) {
+      const name = error instanceof AiError && error.status === 400 ? IMAGE_OPTIONS.find((n) => n in extra && error.message.toLowerCase().includes(n)) : undefined;
+      if (!name) throw error;
+      delete extra[name];
+      refused.add(name);
+      refusedImageOptions.set(model, refused);
+    }
+  }
+  const first = ((json.data ?? []) as Row[])[0];
+  if (typeof first?.b64_json === "string" && first.b64_json) {
+    const bytes = new Uint8Array(Buffer.from(first.b64_json, "base64"));
+    if (bytes.byteLength > IMAGE_MAX_BYTES) throw new AiError("The picture was too large.");
+    return { bytes };
+  }
+  // Some models answer with an address to fetch the picture from, for a short while.
+  if (typeof first?.url === "string" && first.url.startsWith("https://")) {
+    let response: Response;
+    try {
+      response = await fetch(first.url, { signal: AbortSignal.timeout(30_000), cache: "no-store" });
+    } catch {
+      throw new AiError("The picture could not be fetched from the provider.");
+    }
+    if (!response.ok) throw new AiError(`The picture could not be fetched from the provider (${response.status}).`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength === 0 || bytes.byteLength > IMAGE_MAX_BYTES) throw new AiError("The picture was empty or too large.");
+    return { bytes };
+  }
+  throw new AiError("The provider's answer held no picture.");
 }
 
 /** A request whose answer is not JSON (audio) or whose body is a form (a recording). */

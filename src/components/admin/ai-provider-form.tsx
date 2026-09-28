@@ -3,7 +3,7 @@
 import { useId, useState, useTransition } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
-import { AI_PROVIDERS, DEFAULT_MIN_SIMILARITY, providerInfo, type AiProviderId } from "@/lib/ai-provider";
+import { AI_PROVIDERS, DEFAULT_MIN_SIMILARITY, IMAGE_QUALITIES, providerInfo, type AiProviderId, type ImageQuality } from "@/lib/ai-provider";
 
 /** A provider's saved settings as the form shows them: never the key. */
 export type AiFormSettings = {
@@ -15,6 +15,11 @@ export type AiFormSettings = {
   transcriptionModel: string | null;
   speechModel: string | null;
   speechVoice: string | null;
+  imageModel: string | null;
+  imageProvider: AiProviderId | null;
+  imageBaseUrl: string | null;
+  imageApiKeyHint: string | null;
+  imageQuality: ImageQuality | null;
   minSimilarity: number;
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
@@ -43,6 +48,10 @@ export function AiProviderForm({
   const info = providerInfo(provider);
   const saved = settings && settings.provider === provider ? settings : null;
   const keptKey = saved?.apiKeyHint ?? null;
+  // Pictures (D92) may come from another provider, with its own key.
+  const [imageProvider, setImageProvider] = useState<AiProviderId | "">(settings?.imageProvider ?? "");
+  const imageInfo = providerInfo(imageProvider || provider);
+  const keptImageKey = settings?.imageProvider && settings.imageProvider === imageProvider ? settings.imageApiKeyHint : null;
 
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
@@ -162,6 +171,89 @@ export function AiProviderForm({
             suggestions={info.voices}
             defaultValue={saved ? (saved.speechVoice ?? "") : ""}
           />
+        </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-sm font-medium">Pictures</legend>
+        <p className="text-sm text-muted">
+          Makes pictures for pages the AI builds. Any picture model the provider offers through its images API can be named:
+          when a better one comes along, type its name here. It can come from another provider than the rest, with its own key.
+          Empty: no pictures.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex flex-col gap-1 text-sm font-medium">
+            <label htmlFor={`${id}-image-provider`}>Pictures from</label>
+            <select
+              id={`${id}-image-provider`}
+              name="imageProvider"
+              value={imageProvider}
+              onChange={(e) => setImageProvider(e.target.value as AiProviderId | "")}
+              className={field}
+            >
+              <option value="">The provider above ({info.name})</option>
+              {AI_PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}, with its own key
+                </option>
+              ))}
+            </select>
+          </div>
+          <ModelField
+            key={`image-${imageProvider || provider}`}
+            id={`${id}-image`}
+            name="imageModel"
+            label="Picture model"
+            hint="Newest first where Kaizen knows them; type any other."
+            suggestions={imageInfo.imageModels}
+            defaultValue={settings && (settings.imageProvider ?? "") === imageProvider ? (settings.imageModel ?? "") : ""}
+          />
+        </div>
+        {imageProvider === "custom" && (
+          <div className="flex flex-col gap-1 text-sm font-medium">
+            <label htmlFor={`${id}-image-base`}>Pictures API address</label>
+            <input
+              id={`${id}-image-base`}
+              name="imageBaseUrl"
+              type="url"
+              inputMode="url"
+              required
+              spellCheck={false}
+              defaultValue={settings?.imageBaseUrl ?? ""}
+              placeholder="https://api.example.com/v1"
+              className={`${field} font-mono text-sm`}
+            />
+            <p className="font-normal text-muted">An OpenAI-compatible API: Kaizen adds /images/generations to this address.</p>
+          </div>
+        )}
+        {imageProvider && (
+          <div className="flex flex-col gap-1 text-sm font-medium">
+            <label htmlFor={`${id}-image-key`}>{keptImageKey ? `New API key for ${imageInfo.name}` : `API key for ${imageInfo.name}`}</label>
+            <input
+              id={`${id}-image-key`}
+              name="imageApiKey"
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              required={!keptImageKey}
+              className={`${field} font-mono text-sm`}
+            />
+            <p className="font-normal text-muted">
+              {keptImageKey ? `Leave empty to keep the saved key (${keptImageKey}). ` : ""}Kept encrypted and only ever sent to {imageInfo.name}.
+            </p>
+          </div>
+        )}
+        <div className="flex flex-col gap-1 text-sm font-medium">
+          <label htmlFor={`${id}-image-quality`}>Quality</label>
+          <select id={`${id}-image-quality`} name="imageQuality" defaultValue={settings?.imageQuality ?? ""} className={`${field} w-fit`}>
+            <option value="">Not sent (the model&apos;s own)</option>
+            {(Object.keys(IMAGE_QUALITIES) as ImageQuality[]).map((quality) => (
+              <option key={quality} value={quality}>
+                {IMAGE_QUALITIES[quality]}
+              </option>
+            ))}
+          </select>
+          <p className="font-normal text-muted">Sent only where the model takes it; a model that does not is asked without it.</p>
         </div>
       </fieldset>
 
@@ -339,6 +431,36 @@ export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }
               </ul>
             )}
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export type AiImageTestResult = { ok: true; dataUrl: string; ms: number } | { ok: false; message: string };
+
+/** Makes one small test picture with the saved picture model and shows it (not kept). */
+export function AiImageTestButton({ action }: { action: () => Promise<AiImageTestResult> }) {
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<AiImageTestResult | null>(null);
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => start(async () => setResult(await action()))}
+        className="min-h-10 w-fit rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+      >
+        {pending ? "Making a picture … (up to a minute)" : "Test the picture model"}
+      </button>
+      <div role="status" className="text-sm">
+        {result && !result.ok && <p className="text-red-700 dark:text-red-400">✗ {result.message}</p>}
+        {result?.ok && (
+          <div className="flex flex-col gap-2">
+            <p>✓ Made in {(result.ms / 1000).toFixed(1)} s. Not kept.</p>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a small test picture, never kept */}
+            <img src={result.dataUrl} alt="A test picture: a coffee cup on a table" width={256} height={256} className="rounded-md border border-border" />
+          </div>
         )}
       </div>
     </div>

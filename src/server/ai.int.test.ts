@@ -262,4 +262,65 @@ describe("AI providers (D73)", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("Bad Gateway", { status: 502 })));
     expect((await ai.testAi(connection)).text).toEqual({ ok: false, message: "anthropic/claude-haiku-4.5: 502: Bad Gateway" });
   });
+
+  it("makes pictures with the model named in the settings, from this provider or another with its own key (D92)", async () => {
+    // From the provider above: its address and key.
+    await ai.saveAiSettings(accountId, storeId, form({ provider: "openai", apiKey: "sk-store-3333", textModel: "gpt-5-mini", imageModel: "picture-model-1", minSimilarity: "0.5", enabled: true }));
+    let connection = (await ai.ownConnection(storeId))!;
+    expect(connection.image).toMatchObject({ provider: "openai", apiUrl: "https://api.openai.com/v1", apiKey: "sk-store-3333", model: "picture-model-1", quality: null });
+
+    const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+    const calls: { url: string; body: Row }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        calls.push({ url, body: JSON.parse(String(init.body)) as Row });
+        return Response.json({ data: [{ b64_json: pixel.toString("base64") }] });
+      }),
+    );
+    const made = await ai.generateImage(connection, "A shop full of plants", { shape: "portrait" });
+    expect(Buffer.from(made.bytes).equals(pixel)).toBe(true);
+    expect(calls[0]).toEqual({
+      url: "https://api.openai.com/v1/images/generations",
+      body: { model: "picture-model-1", prompt: "A shop full of plants", n: 1, size: "1024x1536" },
+    });
+
+    // A better model from another provider: a new name and its own key, no change in code.
+    const other = { provider: "openai", apiKey: "", textModel: "gpt-5-mini", minSimilarity: "0.5", enabled: true, imageProvider: "custom", imageModel: "better-pictures-2", imageQuality: "high" };
+    expect(await ai.saveAiSettings(accountId, storeId, form({ ...other, imageBaseUrl: "https://images.example.com/v1" }))).toEqual({
+      ok: false,
+      problems: ["Paste an API key for pictures from Another OpenAI-compatible API."],
+    });
+    expect(await ai.saveAiSettings(accountId, storeId, form({ ...other, imageBaseUrl: "https://images.example.com/v1", imageApiKey: "img-key-4444" }))).toEqual({ ok: true });
+    const settings = await ai.getAiSettings(storeId);
+    expect(settings).toMatchObject({ apiKeyHint: "…3333", imageApiKeyHint: "…4444", imageProvider: "custom", imageModel: "better-pictures-2" });
+    expect(JSON.stringify(settings)).not.toContain("img-key-4444");
+    connection = (await ai.ownConnection(storeId))!;
+    expect(connection.apiKey).toBe("sk-store-3333");
+    expect(connection.image).toMatchObject({ provider: "custom", apiUrl: "https://images.example.com/v1", apiKey: "img-key-4444", quality: "high" });
+
+    // An empty key keeps the saved one; a model that refuses a size or quality is asked without it.
+    expect(await ai.saveAiSettings(accountId, storeId, form({ ...other, imageBaseUrl: "https://images.example.com/v1" }))).toEqual({ ok: true });
+    calls.length = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as Row;
+        calls.push({ url, body });
+        if ("quality" in body) return Response.json({ error: { message: "Unknown parameter: 'quality'." } }, { status: 400 });
+        return Response.json({ data: [{ b64_json: pixel.toString("base64") }] });
+      }),
+    );
+    await ai.generateImage((await ai.ownConnection(storeId))!, "A lamp");
+    expect(calls.map((call) => Object.keys(call.body).sort().join(","))).toEqual(["model,n,prompt,quality,size", "model,n,prompt,size"]);
+    expect(calls[1].url).toBe("https://images.example.com/v1/images/generations");
+
+    // Back to the provider above: the other key is forgotten.
+    await ai.saveAiSettings(accountId, storeId, form({ ...other, imageProvider: "", imageModel: "", imageQuality: "" }));
+    const [row] = await db().execute<Row>(sql`select image_api_key_encrypted, image_model from commerce.ai_providers where store_id = ${storeId}::uuid`);
+    expect(row).toEqual({ image_api_key_encrypted: null, image_model: null });
+    expect((await ai.ownConnection(storeId))!.image).toBeNull();
+    await expect(ai.generateImage((await ai.ownConnection(storeId))!, "x")).rejects.toThrow("No picture model is set.");
+    await ai.removeAiSettings(accountId, storeId);
+  });
 });

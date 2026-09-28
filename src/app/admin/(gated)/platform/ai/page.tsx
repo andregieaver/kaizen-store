@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { AiEvalButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
+import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { providerInfo } from "@/lib/ai-provider";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 
-import { evalPlatformAiAction, removePlatformAiAction, savePlatformAiAction, testPlatformAiAction } from "./actions";
+import { evalPlatformAiAction, removePlatformAiAction, savePlatformAiAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
 
 export const metadata: Metadata = { title: "AI" };
 
@@ -52,6 +52,10 @@ export default async function PlatformAiPage() {
               Norwegian, Swedish, Danish and English, with the filters a good answer gives; a model passes at {Math.round(PASS_RATE * 100)} %.
             </p>
             <AiEvalButton action={evalPlatformAiAction} />
+          </div>
+          <div className="mt-4 border-t border-border pt-4">
+            <p className="mb-2 text-sm text-muted">Makes one small picture with the saved picture model, to see it works and how it looks. It costs one picture.</p>
+            <AiImageTestButton action={testPlatformImageAction} />
           </div>
           <div className="mt-4">
             <DeleteDiscountButton

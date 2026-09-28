@@ -3621,6 +3621,19 @@ export const aiProviders = commerce.table(
     transcriptionModel: text("transcription_model"),
     speechModel: text("speech_model"),
     speechVoice: text("speech_voice"),
+    /**
+     * Pictures (D92): the model that makes them, and, when they come from
+     * another provider than the rest, that provider with its own address and
+     * key (encrypted as the other); none uses this row's provider and key.
+     * A better model is a new name here, never a change in code.
+     */
+    imageModel: text("image_model"),
+    imageProvider: text("image_provider"),
+    imageBaseUrl: text("image_base_url"),
+    imageApiKeyEncrypted: text("image_api_key_encrypted"),
+    imageApiKeyHint: text("image_api_key_hint"),
+    /** `low`, `medium`, `high` or `auto` where the model takes one; none leaves it to the model. */
+    imageQuality: text("image_quality"),
     /** How similar a product must be to a query to be found by meaning, from 0 to 1. */
     minSimilarity: real("min_similarity").notNull().default(0.3),
     /**
@@ -3650,6 +3663,17 @@ export const aiProviders = commerce.table(
       "ai_providers_voice_models",
       sql`coalesce(length(${t.transcriptionModel}) between 1 and 200, true) and coalesce(length(${t.speechModel}) between 1 and 200, true) and coalesce(length(${t.speechVoice}) between 1 and 100, true)`,
     ),
+    check("ai_providers_image_model", sql`coalesce(length(${t.imageModel}) between 1 and 200, true)`),
+    check(
+      "ai_providers_image_provider",
+      sql`coalesce(${t.imageProvider} in ('gateway', 'mistral', 'openai', 'openai_eu', 'google', 'custom'), true)`,
+    ),
+    check("ai_providers_image_base_url", sql`(${t.imageProvider} is not distinct from 'custom') = (${t.imageBaseUrl} is not null)`),
+    check(
+      "ai_providers_image_key",
+      sql`(${t.imageProvider} is null) = (${t.imageApiKeyEncrypted} is null) and (${t.imageApiKeyEncrypted} is null) = (${t.imageApiKeyHint} is null)`,
+    ),
+    check("ai_providers_image_quality", sql`coalesce(${t.imageQuality} in ('low', 'medium', 'high', 'auto'), true)`),
   ],
 );
 

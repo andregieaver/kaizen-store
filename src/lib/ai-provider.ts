@@ -25,6 +25,12 @@ export type AiProviderInfo = {
   transcriptionModels: string[];
   speechModels: string[];
   voices: string[];
+  /**
+   * Picture models (D92), newest first, as suggestions: any the provider
+   * offers through `/images/generations` can be typed, so a better one is a
+   * new name in the settings.
+   */
+  imageModels: string[];
   /** Vercel AI Gateway takes EU-only and zero-retention options per request. */
   gateway: boolean;
 };
@@ -40,6 +46,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     transcriptionModels: [],
     speechModels: [],
     voices: [],
+    imageModels: [],
     gateway: true,
   },
   {
@@ -52,6 +59,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     transcriptionModels: [],
     speechModels: [],
     voices: [],
+    imageModels: [],
     gateway: false,
   },
   {
@@ -64,6 +72,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     transcriptionModels: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
     speechModels: ["gpt-4o-mini-tts", "tts-1"],
     voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
+    imageModels: ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"],
     gateway: false,
   },
   {
@@ -77,6 +86,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     transcriptionModels: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
     speechModels: ["gpt-4o-mini-tts", "tts-1"],
     voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
+    imageModels: ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"],
     gateway: false,
   },
   {
@@ -89,6 +99,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     transcriptionModels: [],
     speechModels: [],
     voices: [],
+    imageModels: [],
     gateway: false,
   },
   {
@@ -101,6 +112,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     transcriptionModels: [],
     speechModels: [],
     voices: [],
+    imageModels: [],
     gateway: false,
   },
 ];
@@ -163,6 +175,10 @@ export function keyHint(key: string): string {
   return `…${key.trim().slice(-4)}`;
 }
 
+/** How much care a picture model takes, where it takes one (OpenAI's do): none leaves it to the model. */
+export const IMAGE_QUALITIES = { auto: "The model's choice", low: "Low (fast, cheap)", medium: "Medium", high: "High (slow)" } as const;
+export type ImageQuality = keyof typeof IMAGE_QUALITIES;
+
 const modelName = z
   .string()
   .trim()
@@ -192,6 +208,23 @@ export const aiProviderInput = z
           .regex(/^[\w.:/@+-]*$/, "A voice's name has only letters, digits and . : / @ + - _.")
           .transform((value) => value || null),
       ),
+    // Pictures (D92): optional, like the voice; another provider needs its own key.
+    imageModel: z.string().default("").pipe(modelName),
+    imageProvider: z
+      .string()
+      .default("")
+      .pipe(z.union([z.literal("").transform(() => null), z.enum(AI_PROVIDER_IDS, { error: "Choose where pictures come from." })])),
+    imageBaseUrl: z.string().trim().max(300).default(""),
+    imageApiKey: z.string().trim().max(500, "That key is too long.").default(""),
+    imageQuality: z
+      .string()
+      .default("")
+      .pipe(
+        z.union([
+          z.literal("").transform(() => null),
+          z.enum(Object.keys(IMAGE_QUALITIES) as [ImageQuality, ...ImageQuality[]], { error: "Choose a picture quality." }),
+        ]),
+      ),
     minSimilarity: z.coerce
       .number({ error: "The similarity is a number from 0 to 1." })
       .min(0, "The similarity is a number from 0 to 1.")
@@ -205,6 +238,13 @@ export const aiProviderInput = z
     if (value.provider === "custom") {
       const checked = checkBaseUrl(value.baseUrl);
       if (!checked.ok) ctx.addIssue({ code: "custom", message: checked.problem, path: ["baseUrl"] });
+    }
+    if (value.imageProvider === "custom") {
+      const checked = checkBaseUrl(value.imageBaseUrl);
+      if (!checked.ok) ctx.addIssue({ code: "custom", message: `Pictures: ${checked.problem}`, path: ["imageBaseUrl"] });
+    }
+    if (value.imageProvider && !value.imageModel) {
+      ctx.addIssue({ code: "custom", message: "Name the picture model to use with the other provider.", path: ["imageModel"] });
     }
     if (!value.embeddingModel && !value.textModel) {
       ctx.addIssue({ code: "custom", message: "Name at least one model.", path: ["embeddingModel"] });
@@ -224,6 +264,11 @@ export function aiFormValues(formData: FormData) {
     transcriptionModel: String(formData.get("transcriptionModel") ?? ""),
     speechModel: String(formData.get("speechModel") ?? ""),
     speechVoice: String(formData.get("speechVoice") ?? ""),
+    imageModel: String(formData.get("imageModel") ?? ""),
+    imageProvider: String(formData.get("imageProvider") ?? ""),
+    imageBaseUrl: String(formData.get("imageBaseUrl") ?? ""),
+    imageApiKey: String(formData.get("imageApiKey") ?? ""),
+    imageQuality: String(formData.get("imageQuality") ?? ""),
     minSimilarity: String(formData.get("minSimilarity") ?? DEFAULT_MIN_SIMILARITY),
     embeddingEuOnly: formData.get("embeddingEuOnly") === "on",
     textEuOnly: formData.get("textEuOnly") === "on",

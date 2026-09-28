@@ -3,9 +3,10 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import type { AiEvalResult, AiTestResult } from "@/components/admin/ai-provider-form";
+import type { AiEvalResult, AiImageTestResult, AiTestResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
 import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
+import { testPicture } from "@/server/ai-pictures";
 import { requireMember, type Membership } from "@/server/auth";
 import { runUnderstandingEval } from "@/server/query-understanding";
 
@@ -48,4 +49,12 @@ export async function evalStoreAiAction(storeSlug: string): Promise<AiEvalResult
   const connection = await ownConnection(owner.store.id);
   if (!connection?.textModel) return { error: "Save a provider with a text model first." };
   return runUnderstandingEval(connection);
+}
+
+/** One test picture from the store's own saved picture model (D92), not kept. */
+export async function testStoreImageAction(storeSlug: string): Promise<AiImageTestResult> {
+  const owner = await asOwner(storeSlug);
+  if (typeof owner === "string") return { ok: false, message: owner };
+  const connection = await ownConnection(owner.store.id);
+  return connection ? testPicture(connection) : { ok: false, message: "Save a provider and key first." };
 }
