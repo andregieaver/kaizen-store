@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { FontLinks } from "@/components/font-links";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
+import { KaizenChat } from "@/components/site-chat";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
 import { siteFontFamilies } from "@/lib/fonts";
@@ -62,6 +63,10 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
         </Suspense>
         <Suspense fallback={null}>
           <PlatformMenu chrome={chrome} />
+        </Suspense>
+        {/* Kaizen's AI assistant (D81), while it is on. */}
+        <Suspense fallback={null}>
+          <KaizenChat />
         </Suspense>
         {/* Asks about Kaizen's optional tools, if it has any (D58). */}
         <Suspense fallback={null}>

@@ -1909,6 +1909,68 @@ describe("search by meaning (D74)", () => {
   });
 });
 
+describe("the chat agent (D81)", () => {
+  it("keeps one agent per site, its usage per window, and passages from one source each, found by keyword and meaning", async () => {
+    const agent = (storeId: string | null, name = "Ingrid") =>
+      db.query("insert into commerce.chat_agents (store_id, enabled, name) values ($1, true, $2)", [storeId, name]);
+    await agent(null);
+    await expect(agent(null)).rejects.toThrow(/chat_agents_store_key/);
+    await agent(store);
+    await expect(agent(other, "x".repeat(61))).rejects.toThrow(/chat_agents_name/);
+    await expect(db.query("update commerce.chat_agents set daily_limit = 0 where store_id = $1", [store])).rejects.toThrow(/chat_agents_daily_limit/);
+
+    // One count per site, bucket and window, Kaizen's too.
+    const count = (storeId: string | null) =>
+      db.query(
+        `insert into commerce.chat_usage (store_id, bucket, "window", count) values ($1, 'day', '2026-09-28', 1)
+         on conflict (store_id, bucket, "window") do update set count = commerce.chat_usage.count + 1`,
+        [storeId],
+      );
+    await count(null);
+    await count(null);
+    await count(store);
+    expect((await db.query<{ count: number }>("select count from commerce.chat_usage order by count")).rows.map((r) => r.count)).toEqual([1, 2]);
+
+    // A passage comes from a document or a page, never both or neither.
+    const { id: documentId } = await one<{ id: string }>(
+      "insert into commerce.knowledge_documents (store_id, title, content) values ($1, 'Returns', 'Return within 30 days.') returning id",
+      [store],
+    );
+    const passage = (source: { document?: string; page?: string }, locale: string | null, body: string) =>
+      db.query(
+        `insert into commerce.knowledge_chunks (store_id, document_id, page_id, locale, position, title, body, version)
+         values ($1, $2, $3, $4, 0, 'Returns', $5, 'v1')`,
+        [store, source.document ?? null, source.page ?? null, locale, body],
+      );
+    await passage({ document: documentId }, null, "You may return goods within 30 days of delivery.");
+    await expect(passage({}, null, "Neither")).rejects.toThrow(/knowledge_chunks_source/);
+    await expect(passage({ document: documentId }, null, "")).rejects.toThrow(/knowledge_chunks_body/);
+    await expect(
+      db.query("update commerce.knowledge_chunks set space = 'api.example.com|embed' where document_id = $1", [documentId]),
+    ).rejects.toThrow(/knowledge_chunks_embedded/);
+
+    // Found by stemmed keyword in the passage's language ('simple' for documents) and by meaning.
+    const { n } = await one<{ n: number }>(
+      "select count(*)::int as n from commerce.knowledge_chunks where search @@ websearch_to_tsquery('simple', 'return')",
+    );
+    expect(n).toBe(1);
+    await db.query(
+      "update commerce.knowledge_chunks set space = 's', embedding = '[1,0]'::extensions.vector where document_id = $1",
+      [documentId],
+    );
+    const { distance } = await one<{ distance: number }>(
+      "select embedding OPERATOR(extensions.<=>) '[1,0]'::extensions.vector as distance from commerce.knowledge_chunks",
+    );
+    expect(distance).toBeCloseTo(0);
+
+    // Passages go with their document.
+    await db.query("delete from commerce.knowledge_documents where id = $1", [documentId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.knowledge_chunks")).n).toBe(0);
+    await db.query("delete from commerce.chat_agents");
+    await db.query("delete from commerce.chat_usage");
+  });
+});
+
 describe("search tests (D77)", () => {
   it("runs one test at a time, keeps each search's arm with its test, and a search's clicks with it", async () => {
     const { id } = await one<{ id: string }>("insert into commerce.search_experiments (keyword_share) values (0.5) returning id");

@@ -126,6 +126,8 @@ export type KnownCookie = {
   tool?: keyof TrackingSettings;
   /** Set only in stores selling to both private shoppers and businesses (D63). */
   buyers?: boolean;
+  /** Set only on sites whose chat agent is on (D81). */
+  chat?: boolean;
 };
 
 /**
@@ -134,6 +136,22 @@ export type KnownCookie = {
  * site's cookie page and should be reviewed with the other legal texts.
  */
 export const KNOWN_COOKIES: KnownCookie[] = [
+  {
+    // In the tab's session storage, not a cookie: only once a visitor writes to the chat agent (D81).
+    name: "kaizen_chat",
+    pattern: /^kaizen_chat$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "both",
+    chat: true,
+    purpose: {
+      en: "Keeps your conversation with the chat assistant while you move between pages; gone when you close the tab.",
+      nb: "Husker samtalen din med chatassistenten mens du går mellom sidene; forsvinner når du lukker fanen.",
+      sv: "Kommer ihåg ditt samtal med chattassistenten medan du går mellan sidorna; försvinner när du stänger fliken.",
+      da: "Husker din samtale med chatassistenten, mens du går mellem siderne; forsvinder, når du lukker fanen.",
+    },
+  },
   {
     name: "cart_…",
     pattern: /^cart_[0-9a-f-]{36}_[a-z]{2}$/,
@@ -324,12 +342,13 @@ export const cookiePurpose = (cookie: Pick<KnownCookie, "purpose">, lang: string
 export function declaredCookies(
   site: "platform" | "store",
   tracking: TrackingSettings,
-  { buyers = false }: { buyers?: boolean } = {},
+  { buyers = false, chat = false }: { buyers?: boolean; chat?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
       (cookie.on === site || cookie.on === "both") &&
       (!cookie.buyers || buyers) &&
+      (!cookie.chat || chat) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );
 }

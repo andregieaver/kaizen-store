@@ -37,6 +37,10 @@ export type AiSettings = {
   apiKeyHint: string;
   embeddingModel: string | null;
   textModel: string | null;
+  /** The chat agent's voice (D81): speech to text, text to speech and its voice; any unset turns voice off. */
+  transcriptionModel: string | null;
+  speechModel: string | null;
+  speechVoice: string | null;
   minSimilarity: number;
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
@@ -63,6 +67,9 @@ function toSettings(row: Row): AiSettings {
     apiKeyHint: String(row.api_key_hint),
     embeddingModel: row.embedding_model ? String(row.embedding_model) : null,
     textModel: row.text_model ? String(row.text_model) : null,
+    transcriptionModel: row.transcription_model ? String(row.transcription_model) : null,
+    speechModel: row.speech_model ? String(row.speech_model) : null,
+    speechVoice: row.speech_voice ? String(row.speech_voice) : null,
     minSimilarity: Number(row.min_similarity),
     embeddingEuOnly: Boolean(row.embedding_eu_only),
     textEuOnly: Boolean(row.text_eu_only),
@@ -114,6 +121,9 @@ export async function aiFor(storeId: string | null): Promise<AiConnection | null
   return null;
 }
 
+/** Cached reads that depend on which AI a site has (the chat widget, D81); saving or removing a provider updates them. */
+export const AI_TAG = "ai-providers";
+
 export type SaveResult = { ok: true } | { ok: false; problems: string[] };
 
 /**
@@ -142,9 +152,11 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
   await db().execute(sql`
     insert into commerce.ai_providers (
       store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model, text_model,
+      transcription_model, speech_model, speech_voice,
       min_similarity, embedding_eu_only, text_eu_only, zero_data_retention, enabled, updated_by
     ) values (
       ${storeId}::uuid, ${input.provider}, ${baseUrl}, ${encrypted ?? ""}, ${hint ?? ""}, ${input.embeddingModel}, ${input.textModel},
+      ${input.transcriptionModel}, ${input.speechModel}, ${input.speechVoice},
       ${input.minSimilarity}, ${input.embeddingEuOnly}, ${input.textEuOnly}, ${input.zeroDataRetention}, ${input.enabled}, ${accountId}::uuid
     )
     on conflict (store_id) do update set
@@ -152,6 +164,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       api_key_encrypted = coalesce(nullif(excluded.api_key_encrypted, ''), ai_providers.api_key_encrypted),
       api_key_hint = coalesce(nullif(excluded.api_key_hint, ''), ai_providers.api_key_hint),
       embedding_model = excluded.embedding_model, text_model = excluded.text_model,
+      transcription_model = excluded.transcription_model, speech_model = excluded.speech_model, speech_voice = excluded.speech_voice,
       min_similarity = excluded.min_similarity, embedding_eu_only = excluded.embedding_eu_only,
       text_eu_only = excluded.text_eu_only, zero_data_retention = excluded.zero_data_retention,
       enabled = excluded.enabled, updated_at = now(), updated_by = excluded.updated_by
@@ -161,6 +174,9 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     baseUrl,
     embeddingModel: input.embeddingModel,
     textModel: input.textModel,
+    transcriptionModel: input.transcriptionModel,
+    speechModel: input.speechModel,
+    speechVoice: input.speechVoice,
     minSimilarity: input.minSimilarity,
     enabled: input.enabled,
     newKey: Boolean(encrypted),
@@ -331,6 +347,113 @@ export async function completeText(
     throw new AiError(cut ? "The answer was cut off at its length limit." : "The provider's answer held no text.");
   }
   return { text: message.content, region: servedRegion(message) ?? servedRegion(json) };
+}
+
+// The chat agent (D81) ----------------------------------------------------
+
+/** A message in a conversation with tools: the model may ask for tools, and each answer goes back as a `tool` message. */
+export type ToolChatMessage =
+  | { role: "system" | "user"; content: string }
+  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string };
+
+export type ToolCall = { id: string; type: "function"; function: { name: string; arguments: string } };
+
+/** A tool the model may call: its name, what it does, and its arguments as JSON Schema. */
+export type ToolDefinition = { name: string; description: string; parameters: Record<string, unknown> };
+
+/** One step of a conversation with tools: the model's text, or the tools it asks for. */
+export async function chatWithTools(
+  connection: AiConnection,
+  messages: ToolChatMessage[],
+  tools: ToolDefinition[],
+  options: { maxTokens?: number; timeoutMs?: number } = {},
+): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
+  if (!connection.textModel) throw new AiError("No text model is set.");
+  const limit = options.maxTokens ?? 800;
+  const json = await post(
+    connection,
+    "/chat/completions",
+    {
+      model: connection.textModel,
+      messages,
+      tools: tools.map((tool) => ({ type: "function", function: tool })),
+      tool_choice: "auto",
+      ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
+      ...gatewayOptions(connection, connection.textEuOnly),
+    },
+    options.timeoutMs ?? 30_000,
+  );
+  const message = (((json.choices ?? []) as Row[])[0]?.message ?? {}) as Row;
+  const toolCalls = ((message.tool_calls ?? []) as Row[])
+    .filter((call) => (call.function as Row | undefined)?.name)
+    .map((call, index) => ({
+      id: String(call.id ?? `call-${index}`),
+      type: "function" as const,
+      function: { name: String((call.function as Row).name), arguments: String((call.function as Row).arguments ?? "{}") },
+    }));
+  const content = typeof message.content === "string" && message.content.trim() ? message.content : null;
+  if (!content && toolCalls.length === 0) throw new AiError("The provider's answer held no text.");
+  return { content, toolCalls };
+}
+
+/** Whether the connection can hear and speak: both voice models and a voice are set. */
+export const canSpeak = (connection: AiConnection | null): connection is AiConnection =>
+  Boolean(connection?.transcriptionModel && connection.speechModel && connection.speechVoice);
+
+/** What a visitor said, written down by the connection's speech-to-text model. */
+export async function transcribeAudio(connection: AiConnection, audio: Blob, fileName: string, language: string | null): Promise<string> {
+  if (!connection.transcriptionModel) throw new AiError("No speech-to-text model is set.");
+  const form = new FormData();
+  form.set("model", connection.transcriptionModel);
+  form.set("file", audio, fileName);
+  form.set("response_format", "json");
+  if (language) form.set("language", language);
+  const response = await send(connection, "/audio/transcriptions", form, 30_000);
+  const json = (await response.json().catch(() => ({}))) as Row;
+  return typeof json.text === "string" ? json.text.trim() : "";
+}
+
+/** Text read out by the connection's text-to-speech model and voice, as MP3. */
+export async function speakText(connection: AiConnection, text: string): Promise<ArrayBuffer> {
+  if (!connection.speechModel || !connection.speechVoice) throw new AiError("No text-to-speech model or voice is set.");
+  const response = await send(
+    connection,
+    "/audio/speech",
+    JSON.stringify({ model: connection.speechModel, voice: connection.speechVoice, input: text, response_format: "mp3" }),
+    30_000,
+  );
+  return response.arrayBuffer();
+}
+
+/** A request whose answer is not JSON (audio) or whose body is a form (a recording). */
+async function send(connection: AiConnection, path: string, body: FormData | string, timeoutMs: number): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(`${connection.apiUrl}${path}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${connection.apiKey}`, ...(typeof body === "string" ? { "content-type": "application/json" } : {}) },
+      body,
+      redirect: "error",
+      signal: AbortSignal.timeout(timeoutMs),
+      cache: "no-store",
+    });
+  } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === "TimeoutError";
+    throw new AiError(timedOut ? `No answer within ${timeoutMs / 1000} seconds.` : "The provider could not be reached.");
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    let message = text.slice(0, 200);
+    try {
+      const error = (JSON.parse(text) as Row).error as Row | string | undefined;
+      message = typeof error === "string" ? error : typeof error?.message === "string" ? error.message : message;
+    } catch {
+      // Not JSON: the start of the text says enough.
+    }
+    throw new AiError(message || `The provider answered ${response.status}.`, response.status);
+  }
+  return response;
 }
 
 // Testing from the admin -------------------------------------------------

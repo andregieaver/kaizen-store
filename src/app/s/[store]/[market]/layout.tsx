@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { BuyerQuestion } from "@/components/buyer";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { StoreChat } from "@/components/site-chat";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { StoreThemeStyles } from "@/components/store-theme";
@@ -132,6 +133,10 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         {/* The slide-out cart on phones, when the cart is opened from a page of the store. */}
         {drawer}
         {store.businessPopup && <BuyerQuestion storeId={store.id} labels={m.buyer} />}
+        {/* The store's AI assistant (D81), while it is on. */}
+        <Suspense fallback={null}>
+          <StoreChat store={store} market={market} />
+        </Suspense>
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* Asks about the store's optional tools and code, if it has any, in the market's language (D58, D61). */}
         <Suspense fallback={null}>

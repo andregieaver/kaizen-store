@@ -18,6 +18,7 @@ import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, ty
 import { codeCategories, customCodeInput, type CustomCode } from "@/lib/custom-code";
 
 import { audit, type Account } from "./auth";
+import { getChatAgent } from "./chat-agent";
 
 type Row = Record<string, unknown>;
 
@@ -71,7 +72,9 @@ export async function siteCookies(
   const listed = new Map<string, ListedCookie>();
   const list = ({ name, provider, category, days, purpose }: KnownCookie) =>
     listed.has(name) || listed.set(name, { name, provider, category, days, purpose });
-  declaredCookies(storeId === null ? "platform" : "store", tracking, options).forEach(list);
+  // The chat agent keeps its conversation in the tab while it is on (D81).
+  const chat = (await getChatAgent(storeId))?.enabled ?? false;
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat }).forEach(list);
 
   const { items, notes } = await siteFindings(storeId);
   for (const item of reviewFindings(items, notes)) {

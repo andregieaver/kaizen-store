@@ -143,6 +143,26 @@ of running `playwright install`.
   (`findClaims()` in `src/lib/claims.ts`: generic green claims, urgency, best
   price, money, stock) before it can be used; new AI copy anywhere goes
   through it too.
+- The chat agent (D81, `src/lib/chat.ts`, `src/server/chat-agent.ts`,
+  `src/server/knowledge.ts`, `ChatWidget`): Kaizen's and each store's
+  (`commerce.chat_agents`, edited at `/admin/{store}/chat` and
+  `/admin/platform/chat`), shown by `StoreChat`/`KaizenChat` in the layouts
+  while on and the site's AI has a text model (`chatWidgetFor()`, tagged
+  `chatTag()` and `AI_TAG`). `runChat()` gives the model the rules
+  (`systemPrompt()`: only the site, facts only from tools) and the site's
+  own reads as tools (`storeTools()`/`kaizenTools()`); a new tool answers
+  from Kaizen's own data, never the model's. `navigate` only opens the
+  site's existing pages, built with `marketPath()`. Answers pass
+  `cleanReply()`; products are cards drawn by the widget with `VatAmount`.
+  Knowledge is `knowledge_chunks` (SQL only, like `product_embeddings`):
+  documents cut on save, published pages and articles by
+  `syncPageKnowledge()` in the five-minute cron, vectors by
+  `embedKnowledge()`; `searchKnowledge()` merges keyword and meaning.
+  Voice is push to talk (`/api/chat/voice`: `transcribeAudio()`, then the
+  same answer, then `speakText()`), with the provider's voice models.
+  `/api/chat` routes refuse other sites and count turns (`takeTurn()`)
+  before any model call. Conversations live only in the visitor's tab
+  (`kaizen_chat`).
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - The template store's product pages are prerendered at build time, so their

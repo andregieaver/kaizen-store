@@ -3498,6 +3498,10 @@ export const aiProviders = commerce.table(
     embeddingModel: text("embedding_model"),
     /** For understanding queries and writing product content; none turns those off. */
     textModel: text("text_model"),
+    /** The chat agent's voice (D81): speech to text, and text to speech with its voice; none turns voice off. */
+    transcriptionModel: text("transcription_model"),
+    speechModel: text("speech_model"),
+    speechVoice: text("speech_voice"),
     /** How similar a product must be to a query to be found by meaning, from 0 to 1. */
     minSimilarity: real("min_similarity").notNull().default(0.3),
     /**
@@ -3523,5 +3527,92 @@ export const aiProviders = commerce.table(
       "ai_providers_models",
       sql`coalesce(length(${t.embeddingModel}) between 1 and 200, true) and coalesce(length(${t.textModel}) between 1 and 200, true)`,
     ),
+    check(
+      "ai_providers_voice_models",
+      sql`coalesce(length(${t.transcriptionModel}) between 1 and 200, true) and coalesce(length(${t.speechModel}) between 1 and 200, true) and coalesce(length(${t.speechVoice}) between 1 and 100, true)`,
+    ),
   ],
+);
+
+/**
+ * A site's chat agent (D81): Kaizen's (`store_id` null) or a store's. It
+ * answers visitors in text and voice from the site's published content,
+ * its products and its knowledge base, and opens pages for them; only
+ * about the site. Its name, occupation and picture make it relatable; it
+ * is always shown as an AI assistant.
+ */
+export const chatAgents = commerce.table(
+  "chat_agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(false),
+    name: text("name").notNull().default(""),
+    occupation: text("occupation").notNull().default(""),
+    /** Its picture: `{ url, width, height }`, or null. */
+    avatar: jsonb("avatar"),
+    /** Its first words, by locale; empty uses the built-in greeting in the visitor's language. */
+    greeting: jsonb("greeting").notNull().default({}),
+    /** The owner's own guidance on tone and what to point out, under the fixed rules. */
+    instructions: text("instructions").notNull().default(""),
+    /** Visitors may talk to it (the AI's voice models must be set too). */
+    voice: boolean("voice").notNull().default(false),
+    /** At most this many visitor messages a day, to keep the AI's cost in hand. */
+    dailyLimit: integer("daily_limit").notNull().default(500),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("chat_agents_store_key").on(t.storeId).nullsNotDistinct(),
+    index("chat_agents_updated_by_idx").on(t.updatedBy),
+    check("chat_agents_name", sql`length(${t.name}) <= 60`),
+    check("chat_agents_occupation", sql`length(${t.occupation}) <= 80`),
+    check("chat_agents_instructions", sql`length(${t.instructions}) <= 2000`),
+    check("chat_agents_daily_limit", sql`${t.dailyLimit} between 1 and 100000`),
+  ],
+);
+
+/**
+ * A document in a site's knowledge base (D81): its text, from a file the
+ * owner uploaded (text, Markdown, PDF, Word) or typed in. The file itself
+ * is not kept. Split into passages in `knowledge_chunks` (SQL only).
+ */
+export const knowledgeDocuments = commerce.table(
+  "knowledge_documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    /** The uploaded file's name; null for text typed in. */
+    fileName: text("file_name"),
+    content: text("content").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("knowledge_documents_store_idx").on(t.storeId),
+    index("knowledge_documents_created_by_idx").on(t.createdBy),
+    check("knowledge_documents_title", sql`length(${t.title}) between 1 and 200`),
+    check("knowledge_documents_content", sql`length(${t.content}) between 1 and 200000`),
+  ],
+);
+
+/**
+ * How much a site's chat agent was asked (D81): visitor messages a day, for
+ * its daily limit, and per visitor (a hash of their address) per
+ * ten-minute window, so one visitor cannot use it all. Pruned after a day.
+ */
+export const chatUsage = commerce.table(
+  "chat_usage",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `day` for the site's count, else the visitor's hash. */
+    bucket: text("bucket").notNull(),
+    window: timestamp("window", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [unique("chat_usage_key").on(t.storeId, t.bucket, t.window).nullsNotDistinct(), check("chat_usage_count", sql`${t.count} >= 0`)],
 );

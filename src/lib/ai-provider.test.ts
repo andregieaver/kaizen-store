@@ -58,6 +58,13 @@ describe("AI providers (D73)", () => {
     expect(problems({ embeddingModel: "", textModel: "" })).toEqual(["Name at least one model."]);
     expect(problems({ embeddingModel: "mistral embed; drop" })[0]).toMatch(/letters, digits/);
     expect(problems({ minSimilarity: "1.5" })).toEqual(["The similarity is a number from 0 to 1."]);
+    // The chat agent's voice (D81): off unless named, with names checked like models'.
+    expect(aiProviderInput.parse(valid)).toMatchObject({ transcriptionModel: null, speechModel: null, speechVoice: null });
+    expect(aiProviderInput.parse({ ...valid, transcriptionModel: "gpt-4o-mini-transcribe", speechModel: "gpt-4o-mini-tts", speechVoice: "alloy" })).toMatchObject({
+      transcriptionModel: "gpt-4o-mini-transcribe",
+      speechVoice: "alloy",
+    });
+    expect(problems({ speechVoice: "alloy; drop" })[0]).toMatch(/letters, digits/);
     expect(problems({ provider: "custom", baseUrl: "http://10.0.0.1/v1" })).toEqual(["The address must start with https://."]);
     expect(problems({ provider: "custom", baseUrl: "https://llm.example.com/v1" })).toEqual([]);
   });

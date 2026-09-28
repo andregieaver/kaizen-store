@@ -12,6 +12,9 @@ export type AiFormSettings = {
   apiKeyHint: string;
   embeddingModel: string | null;
   textModel: string | null;
+  transcriptionModel: string | null;
+  speechModel: string | null;
+  speechVoice: string | null;
   minSimilarity: number;
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
@@ -124,6 +127,43 @@ export function AiProviderForm({
           defaultValue={saved ? (saved.textModel ?? "") : (info.textModels[0] ?? "")}
         />
       </div>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-sm font-medium">Voice for the chat agent</legend>
+        <p className="text-sm text-muted">
+          Lets visitors talk to the chat agent: what they say is written down by one model, and its answers read out by
+          another. Leave any empty to keep the chat to text.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-3">
+          <ModelField
+            key={`transcription-${provider}`}
+            id={`${id}-transcription`}
+            name="transcriptionModel"
+            label="Speech to text"
+            hint="Writes down what visitors say."
+            suggestions={info.transcriptionModels}
+            defaultValue={saved ? (saved.transcriptionModel ?? "") : ""}
+          />
+          <ModelField
+            key={`speech-${provider}`}
+            id={`${id}-speech`}
+            name="speechModel"
+            label="Text to speech"
+            hint="Reads the agent's answers out."
+            suggestions={info.speechModels}
+            defaultValue={saved ? (saved.speechModel ?? "") : ""}
+          />
+          <ModelField
+            key={`voice-${provider}`}
+            id={`${id}-voice`}
+            name="speechVoice"
+            label="Voice"
+            hint="Which of the model's voices."
+            suggestions={info.voices}
+            defaultValue={saved ? (saved.speechVoice ?? "") : ""}
+          />
+        </div>
+      </fieldset>
 
       {/* Hidden rather than left out for other providers, so switching back keeps them. */}
       <fieldset hidden={!info.gateway} className="flex flex-col gap-2">

@@ -21,6 +21,10 @@ export type AiProviderInfo = {
   /** Model names to start from; any the provider offers can be typed. */
   embeddingModels: string[];
   textModels: string[];
+  /** The chat agent's voice (D81): speech to text, text to speech, and its voices. */
+  transcriptionModels: string[];
+  speechModels: string[];
+  voices: string[];
   /** Vercel AI Gateway takes EU-only and zero-retention options per request. */
   gateway: boolean;
 };
@@ -33,6 +37,9 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://vercel.com/docs/ai-gateway/authentication-and-byok",
     embeddingModels: ["mistral/mistral-embed", "openai/text-embedding-3-small", "google/text-multilingual-embedding-002"],
     textModels: ["anthropic/claude-haiku-4.5", "anthropic/claude-sonnet-5", "google/gemini-2.5-flash"],
+    transcriptionModels: [],
+    speechModels: [],
+    voices: [],
     gateway: true,
   },
   {
@@ -42,6 +49,9 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://console.mistral.ai/api-keys",
     embeddingModels: ["mistral-embed"],
     textModels: ["mistral-small-latest", "mistral-medium-latest"],
+    transcriptionModels: [],
+    speechModels: [],
+    voices: [],
     gateway: false,
   },
   {
@@ -51,6 +61,9 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://platform.openai.com/api-keys",
     embeddingModels: ["text-embedding-3-small", "text-embedding-3-large"],
     textModels: ["gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano"],
+    transcriptionModels: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
+    speechModels: ["gpt-4o-mini-tts", "tts-1"],
+    voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
     gateway: false,
   },
   {
@@ -61,6 +74,9 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://platform.openai.com/docs/guides/your-data#data-residency-controls",
     embeddingModels: ["text-embedding-3-small", "text-embedding-3-large"],
     textModels: ["gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano"],
+    transcriptionModels: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
+    speechModels: ["gpt-4o-mini-tts", "tts-1"],
+    voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
     gateway: false,
   },
   {
@@ -70,6 +86,9 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://aistudio.google.com/apikey",
     embeddingModels: ["gemini-embedding-001"],
     textModels: ["gemini-2.5-flash"],
+    transcriptionModels: [],
+    speechModels: [],
+    voices: [],
     gateway: false,
   },
   {
@@ -79,6 +98,9 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: null,
     embeddingModels: [],
     textModels: [],
+    transcriptionModels: [],
+    speechModels: [],
+    voices: [],
     gateway: false,
   },
 ];
@@ -156,6 +178,20 @@ export const aiProviderInput = z
     apiKey: z.string().trim().max(500, "That key is too long.").default(""),
     embeddingModel: modelName,
     textModel: modelName,
+    // The voice (D81) is optional: forms and callers without it keep voice off.
+    transcriptionModel: z.string().default("").pipe(modelName),
+    speechModel: z.string().default("").pipe(modelName),
+    speechVoice: z
+      .string()
+      .default("")
+      .pipe(
+        z
+          .string()
+          .trim()
+          .max(100, "A voice's name is at most 100 characters.")
+          .regex(/^[\w.:/@+-]*$/, "A voice's name has only letters, digits and . : / @ + - _.")
+          .transform((value) => value || null),
+      ),
     minSimilarity: z.coerce
       .number({ error: "The similarity is a number from 0 to 1." })
       .min(0, "The similarity is a number from 0 to 1.")
@@ -185,6 +221,9 @@ export function aiFormValues(formData: FormData) {
     apiKey: String(formData.get("apiKey") ?? ""),
     embeddingModel: String(formData.get("embeddingModel") ?? ""),
     textModel: String(formData.get("textModel") ?? ""),
+    transcriptionModel: String(formData.get("transcriptionModel") ?? ""),
+    speechModel: String(formData.get("speechModel") ?? ""),
+    speechVoice: String(formData.get("speechVoice") ?? ""),
     minSimilarity: String(formData.get("minSimilarity") ?? DEFAULT_MIN_SIMILARITY),
     embeddingEuOnly: formData.get("embeddingEuOnly") === "on",
     textEuOnly: formData.get("textEuOnly") === "on",

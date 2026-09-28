@@ -24,6 +24,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
     { href: "/admin/platform/cookies", label: "Cookies" },
     { href: "/admin/platform/emails", label: "Emails" },
     { href: "/admin/platform/ai", label: "AI" },
+    { href: "/admin/platform/chat", label: "Chat agent" },
     { href: "/admin/platform/search-test", label: "Search test" },
   ];
   return (

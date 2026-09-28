@@ -1,11 +1,11 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { AiEvalResult, AiTestResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
-import { ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
+import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
 import { runUnderstandingEval } from "@/server/query-understanding";
 
@@ -14,6 +14,7 @@ export async function savePlatformAiAction(_state: FormState, formData: FormData
   const account = await requirePlatformAdmin();
   const result = await saveAiSettings(account.id, null, aiFormValues(formData));
   if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(AI_TAG);
   refresh();
   return { status: "ok", messages: ["Saved. Stores without their own provider use it now."] };
 }
@@ -27,6 +28,7 @@ export async function testPlatformAiAction(): Promise<AiTestResult> {
 export async function removePlatformAiAction(): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const account = await requirePlatformAdmin();
   await removeAiSettings(account.id, null);
+  updateTag(AI_TAG);
   refresh();
   return { ok: true };
 }

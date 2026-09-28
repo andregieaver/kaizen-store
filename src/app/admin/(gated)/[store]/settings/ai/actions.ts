@@ -1,11 +1,11 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { AiEvalResult, AiTestResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
-import { ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
+import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { requireMember, type Membership } from "@/server/auth";
 import { runUnderstandingEval } from "@/server/query-understanding";
 
@@ -20,6 +20,7 @@ export async function saveStoreAiAction(storeSlug: string, _state: FormState, fo
   if (typeof owner === "string") return { status: "error", messages: [owner] };
   const result = await saveAiSettings(owner.account.id, owner.store.id, aiFormValues(formData));
   if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(AI_TAG);
   refresh();
   return { status: "ok", messages: ["Saved. The store uses its own AI now."] };
 }
@@ -35,6 +36,7 @@ export async function removeStoreAiAction(storeSlug: string): Promise<{ ok: true
   const owner = await asOwner(storeSlug);
   if (typeof owner === "string") return { ok: false, problems: [owner] };
   await removeAiSettings(owner.account.id, owner.store.id);
+  updateTag(AI_TAG);
   refresh();
   return { ok: true };
 }
