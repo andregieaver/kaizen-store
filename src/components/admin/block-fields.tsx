@@ -3,6 +3,8 @@
 import { useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
+import { ListIcon } from "@/components/list-icon";
+import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
@@ -23,6 +25,10 @@ import {
   SOCIAL_SHAPES,
   type SocialLink,
   type SocialLinksBlock,
+  ICON_LIST_LAYOUTS,
+  ICON_LIST_TEXT_MAX,
+  type IconListBlock,
+  type IconListItem,
   TESTIMONIAL_COLUMNS,
   TESTIMONIAL_LOOKS,
   TESTIMONIAL_NAME_MAX,
@@ -110,6 +116,12 @@ export const BLOCK_EDITORS: Editors = {
   },
   video: { title: "Video", General: VideoFields, Style: VideoStyleFields },
   html: { title: "HTML", General: HtmlFields, Style: HtmlStyleFields },
+  iconList: {
+    title: "Icon list",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: IconListFields,
+    Style: IconListStyleFields,
+  },
   socialLinks: {
     title: "Social media",
     font: { label: "Font of the names", fallback: "The site's body font" },
@@ -1203,6 +1215,89 @@ function SocialLinksStyleFields({ block, onChange }: BlockEditorProps<SocialLink
         onChange={(position) => onChange({ position: position === "left" ? undefined : position })}
       />
       <Check label="Show the networks' names" checked={Boolean(block.showNames)} onChange={(showNames) => onChange({ showNames: showNames || undefined })} />
+    </>
+  );
+}
+
+/** Chooses one of the icon list's icons (D91). */
+function IconPicker({ value, onChange }: { value: IconName; onChange: (icon: IconName) => void }) {
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-sm font-medium">Icon: {ICONS[value]}</legend>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(2.5rem,1fr))] gap-1">
+        {(Object.keys(ICONS) as IconName[]).map((icon) => (
+          <button
+            key={icon}
+            type="button"
+            aria-pressed={icon === value}
+            aria-label={ICONS[icon]}
+            title={ICONS[icon]}
+            onClick={() => onChange(icon)}
+            className={`flex size-10 items-center justify-center rounded-md border ${
+              icon === value ? "border-foreground bg-foreground text-background" : "border-border hover:bg-surface"
+            }`}
+          >
+            <ListIcon name={icon} className="size-5" />
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** An icon list's lines (D91). */
+function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
+  return (
+    <>
+      <ItemsEditor<IconListItem>
+        label="Lines"
+        items={block.items}
+        max={ITEMS_MAX}
+        addLabel="Add a line"
+        nameOf={(item, index) => item.text.trim() || `Line ${index + 1} (no words yet)`}
+        // A new line takes the icon of the one before, as lists mostly share one.
+        newItem={() => ({ id: newItemId(), icon: block.items.at(-1)?.icon ?? "check", text: "", href: "" })}
+        onChange={(items) => onChange({ items })}
+      >
+        {(item, change) => {
+          const address = item.href.trim();
+          return (
+            <>
+              <TextField label="Words" value={item.text} max={ICON_LIST_TEXT_MAX} placeholder="Free delivery over 500 kr" onChange={(text) => change({ text })} />
+              <TextField
+                label="Links to (optional)"
+                value={item.href}
+                max={2000}
+                placeholder="https://… or /about"
+                hint={address === "" || isLinkAddress(address) ? undefined : "Use a web address (https://…), a page on the site (/about), mailto: or tel:."}
+                onChange={(href) => change({ href })}
+              />
+              <IconPicker value={item.icon} onChange={(icon) => change({ icon })} />
+            </>
+          );
+        }}
+      </ItemsEditor>
+      <p className="text-xs text-muted">A line without words is left out on the site. The icons are for looks: the words say what each line means.</p>
+    </>
+  );
+}
+
+/** How an icon list is laid out and its icons look (D91). */
+function IconListStyleFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
+  return (
+    <>
+      <Choices legend="Lines" options={optionsOf(ICON_LIST_LAYOUTS)} value={block.layout ?? "column"} onChange={(layout) => onChange({ layout: layout === "column" ? undefined : layout })} />
+      {block.layout === "row" && (
+        <Choices
+          legend="Place"
+          options={optionsOf(SEPARATOR_POSITIONS)}
+          value={block.position ?? "left"}
+          onChange={(position) => onChange({ position: position === "left" ? undefined : position })}
+        />
+      )}
+      <Choices legend="Icon size" options={optionsOf(BUTTON_SIZES)} value={block.iconSize ?? "md"} onChange={(iconSize) => onChange({ iconSize: iconSize === "md" ? undefined : iconSize })} />
+      <OptionalColor label="Icon colour" hint="The theme's accent unless chosen." value={block.iconColor} fallback="#2563eb" onChange={(iconColor) => onChange({ iconColor })} />
+      <NumberField label="Space between lines" value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
     </>
   );
 }

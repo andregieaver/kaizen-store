@@ -306,3 +306,23 @@ test("social media buttons link to the profiles, each named for screen readers, 
   await expect(page.getByRole("link", { name: "Email" })).not.toHaveAttribute("target", "_blank");
   await expect(page.getByRole("link", { name: "Facebook" })).toHaveCount(0);
 });
+
+test("an icon list shows its lines after their icons, a line with an address as a link", async ({ page }) => {
+  const address = await storePageWith("icon-list", [
+    {
+      id: "icons",
+      type: "iconList",
+      items: [
+        { id: "a", icon: "truck", text: "Fri frakt over 500 kr", href: "/levering" },
+        { id: "b", icon: "rotateCcw", text: "30 dagers retur", href: "" },
+        { id: "c", icon: "check", text: "", href: "" },
+      ],
+    },
+  ]);
+  await page.goto(address);
+  const lines = page.locator("main li").filter({ has: page.locator("svg") });
+  await expect(lines).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "Fri frakt over 500 kr" })).toHaveAttribute("href", "/levering");
+  await expect(page.getByText("30 dagers retur")).toBeVisible();
+  await expect(lines.first().locator("svg")).toHaveAttribute("aria-hidden", "true");
+});

@@ -83,6 +83,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
           role: str(`${item.id}.role`, item.role, 100, `Testimonial ${index + 1}: title or place`),
         })),
       };
+    case "iconList":
+      return { ...b, items: b.items.map((item, index) => ({ ...item, text: str(`${item.id}.text`, item.text, 300, `Line ${index + 1}`) })) };
     case "html":
       // The HTML itself is code, the same in every language; its title names the frame.
       return { ...b, title: str("title", b.title, 200, "HTML title") };

@@ -283,3 +283,32 @@ describe("social media buttons", () => {
     expect(problems({ ...social, links: [{ id: "a", network: "myspace", href: "https://myspace.com" }] })).toEqual(["Choose a network for each link."]);
   });
 });
+
+describe("icon lists", () => {
+  const list = {
+    id: "i",
+    type: "iconList",
+    items: [
+      { id: "a", icon: "truck", text: "Fri frakt over 500 kr", href: "/levering" },
+      { id: "b", icon: "rotateCcw", text: "30 dagers retur" },
+      { id: "c", icon: "check", text: " ", href: "" },
+    ],
+    layout: "row",
+  };
+
+  it("shows lines with words, gives them to the page's words, and translates each", () => {
+    expect(newBlock("iconList", () => "n")).toMatchObject({ type: "iconList", items: [{ icon: "check", text: "" }, { icon: "check" }] });
+    const parsed = parse(list);
+    expect(parsed).toMatchObject({ layout: "row", items: [{ href: "/levering" }, { href: "" }, {}] });
+    expect(blockHasContent(parsed)).toBe(true);
+    expect(blockText(parsed)).toBe("Fri frakt over 500 kr 30 dagers retur");
+    expect(blockTextFields(parsed).map((field) => field.label)).toEqual(["Line 1", "Line 2", "Line 3"]);
+  });
+
+  it("refuses an unknown icon and an address that is not one", () => {
+    expect(problems({ ...list, items: [{ id: "a", icon: "unicorn", text: "x", href: "" }] })).toEqual(["Choose an icon for each line."]);
+    expect(problems({ ...list, items: [{ id: "a", icon: "check", text: "x", href: "javascript:alert(1)" }] })).toEqual([
+      "A line's address must be https://…, a page like /about, mailto: or tel:.",
+    ]);
+  });
+});

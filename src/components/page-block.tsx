@@ -31,6 +31,7 @@ import { faqJsonLd } from "@/lib/seo";
 import { embedUrl } from "@/lib/video-embed";
 
 import { HtmlFrame } from "./html-frame";
+import { IconListView } from "./icon-list-view";
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
 import { SocialLinksView } from "./social-links-view";
@@ -107,6 +108,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Video block={block} />;
     case "socialLinks":
       return <SocialLinksView block={block} />;
+    case "iconList":
+      return <IconListView block={block} />;
     case "testimonials":
       // Google's reviews are fetched where they are shown (`GoogleReviewsSection`); the editor shows a stand-in.
       return block.source === "google" ? null : <Testimonials block={block} />;

@@ -4,6 +4,7 @@ import { fontFamily } from "./fonts";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { termIdsSchema } from "./taxonomy";
+import { ICONS, type IconName } from "./icons";
 import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "./social-links";
 import { embedUrl } from "./video-embed";
 
@@ -896,6 +897,36 @@ export type SocialLinksBlock = PartBase & {
 /** A link that shows: its address is one. */
 export const socialLinkShows = (link: SocialLink) => socialHref(link.network, link.href) !== null;
 
+export const ICON_LIST_TEXT_MAX = 300;
+export const ICON_LIST_LAYOUTS = { column: "One under another", row: "Side by side" } as const;
+export type IconListLayout = keyof typeof ICON_LIST_LAYOUTS;
+
+/** One line of an icon list: its icon, its words, and where it links if anywhere. */
+export type IconListItem = { id: string; icon: IconName; text: string; href: string };
+
+/**
+ * An icon list (D91): lines of text, each after an icon (the theme's
+ * accent unless a colour is chosen), one under another or side by side,
+ * each a link if given an address. The icons are decorative: the words
+ * say what each line means.
+ */
+export type IconListBlock = PartBase & {
+  id: string;
+  type: "iconList";
+  items: IconListItem[];
+  layout?: IconListLayout;
+  iconColor?: string;
+  iconSize?: ButtonSize;
+  /** Pixels between lines; 12 unless set. */
+  gap?: number;
+  /** Side by side: where the lines sit. */
+  position?: SeparatorPosition;
+  font?: string;
+};
+
+/** A line that shows: it has words. */
+export const iconItemShows = (item: IconListItem) => item.text.trim() !== "";
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -914,7 +945,8 @@ export type PageBlock =
   | VideoBlock
   | HtmlBlock
   | TestimonialsBlock
-  | SocialLinksBlock;
+  | SocialLinksBlock
+  | IconListBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -1006,6 +1038,8 @@ export function blockHasContent(block: PageBlock): boolean {
       return block.html.trim() !== "";
     case "socialLinks":
       return block.links.some(socialLinkShows);
+    case "iconList":
+      return block.items.some(iconItemShows);
     case "testimonials":
       // Google's reviews are known only when the page is shown.
       return block.source === "google" || block.items.some(testimonialShows);
@@ -1032,6 +1066,11 @@ export function blockText(block: PageBlock): string {
       return panelText(block.items.filter(faqShows));
     case "video":
       return block.title;
+    case "iconList":
+      return block.items
+        .filter(iconItemShows)
+        .map((item) => item.text)
+        .join(" ");
     case "testimonials":
       // Google's reviews are Google's words, not the page's.
       if (block.source === "google") return "";
@@ -1744,6 +1783,33 @@ const socialLinksBlock = z.object({
   ...partBase,
 });
 
+const iconListBlock = z.object({
+  id: itemId,
+  type: z.literal("iconList"),
+  items: z
+    .array(
+      z.object({
+        id: itemId,
+        icon: z.enum(Object.keys(ICONS) as [IconName, ...IconName[]], "Choose an icon for each line."),
+        text: z.string().trim().max(ICON_LIST_TEXT_MAX, `Keep a line under ${ICON_LIST_TEXT_MAX} characters.`),
+        href: z
+          .string()
+          .trim()
+          .refine((href) => href === "" || isLinkAddress(href), "A line's address must be https://…, a page like /about, mailto: or tel:.")
+          .default(""),
+      }),
+    )
+    .max(ITEMS_MAX, `A component holds at most ${ITEMS_MAX} items.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
+  layout: z.enum(Object.keys(ICON_LIST_LAYOUTS) as [IconListLayout, ...IconListLayout[]]).optional(),
+  iconColor: color.optional(),
+  iconSize: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
+  gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
+  position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1763,6 +1829,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   htmlBlock,
   testimonialsBlock,
   socialLinksBlock,
+  iconListBlock,
 ]);
 
 export const pageColumnSchema = z.object({

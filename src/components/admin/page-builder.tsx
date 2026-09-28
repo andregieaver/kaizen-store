@@ -269,9 +269,10 @@ const blockLabels: Record<BlockType, string> = {
   html: "HTML",
   testimonials: "Testimonials",
   socialLinks: "Social media",
+  iconList: "Icon list",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "socialLinks", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "socialLinks", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -291,6 +292,7 @@ const blockThis: Record<BlockType, string> = {
   html: "this HTML",
   testimonials: "these testimonials",
   socialLinks: "these social media links",
+  iconList: "this icon list",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1107,9 +1109,24 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <TestimonialsIcon />;
     case "socialLinks":
       return <SocialIcon />;
+    case "iconList":
+      return <IconListIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function IconListIcon() {
+  return (
+    <span aria-hidden className="flex h-9 flex-col justify-center gap-1 rounded-sm bg-foreground/75 px-2 text-background">
+      {[0, 1, 2].map((line) => (
+        <span key={line} className="flex items-center gap-1">
+          <span className="size-1.5 rounded-full bg-current" />
+          <span className="h-0.5 w-5 bg-current opacity-60" />
+        </span>
+      ))}
+    </span>
+  );
 }
 
 function SocialIcon() {
@@ -1708,6 +1725,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   html: "No HTML yet. Double-click or use the wrench to paste some.",
   testimonials: "Testimonials: each needs what the person said. Double-click or use the wrench.",
   socialLinks: "Social media: each link needs its address. Double-click or use the wrench.",
+  iconList: "An icon list: each line needs its words. Double-click or use the wrench.",
 };
 
 export { ColorField };
