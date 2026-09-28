@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { blockHasContent, blockText, newPageContent, pageInput, type RichTextDoc } from "./page-content";
+import { blockHasContent, blockText, EMPTY_DOC, newPageContent, pageInput, type RichTextDoc } from "./page-content";
 import { newBlock } from "./page-rows";
 import { blockTextFields, localizePage } from "./page-translation";
+import { faqJsonLd } from "./seo";
 
 const doc = (text: string): RichTextDoc => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
@@ -116,5 +117,36 @@ describe("tabs", () => {
     expect(blockText(parsed)).toBe("Beskrivelse En hvit kopp. Mål 8 cm høy.");
     expect(blockTextFields(parsed).map((field) => field.label)).toEqual(["Tab 1: title", "Tab 1: text", "Tab 2: title", "Tab 2: text"]);
     expect(problems({ ...tabs, look: "cards" })).toHaveLength(1);
+  });
+});
+
+describe("FAQs", () => {
+  const faq = {
+    id: "f",
+    type: "faq",
+    items: [
+      { id: "q1", title: "Hvor lang er leveringstiden?", body: doc("To til fire dager.") },
+      { id: "q2", title: "Kan jeg returnere?", body: EMPTY_DOC },
+    ],
+  };
+
+  it("shows only questions with an answer, and gives them to the page's words", () => {
+    const parsed = parse(faq);
+    expect(blockHasContent(parsed)).toBe(true);
+    expect(blockHasContent(parse({ ...faq, items: [faq.items[1]] }))).toBe(false);
+    expect(blockText(parsed)).toBe("Hvor lang er leveringstiden? To til fire dager.");
+    expect(parse({ ...faq, structuredData: false })).toMatchObject({ structuredData: false });
+  });
+
+  it("translates each question and answer by name", () => {
+    expect(blockTextFields(parse(faq)).map((field) => field.label)).toEqual(["Question 1", "Answer 1", "Question 2", "Answer 2"]);
+  });
+
+  it("is schema.org's FAQPage for search engines and AI assistants", () => {
+    expect(faqJsonLd([{ question: "Hvor lang er leveringstiden?", answer: "To til fire dager." }])).toEqual({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [{ "@type": "Question", name: "Hvor lang er leveringstiden?", acceptedAnswer: { "@type": "Answer", text: "To til fire dager." } }],
+    });
   });
 });

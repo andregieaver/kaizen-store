@@ -264,9 +264,10 @@ const blockLabels: Record<BlockType, string> = {
   dualButton: "Dual button",
   accordion: "Accordion",
   tabs: "Tabs",
+  faq: "FAQs",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "tabs", "accordion", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "button", "dualButton", "tabs", "accordion", "faq", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -281,6 +282,7 @@ const blockThis: Record<BlockType, string> = {
   dualButton: "these buttons",
   accordion: "this accordion",
   tabs: "these tabs",
+  faq: "these questions",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1087,6 +1089,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <AccordionIcon />;
     case "tabs":
       return <TabsIcon />;
+    case "faq":
+      return <LetterIcon letter="?" bold />;
     default:
       return <LetterIcon letter="T" />;
   }
@@ -1637,6 +1641,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
   accordion: "An accordion: its sections need titles. Double-click or use the wrench.",
   tabs: "Tabs: each needs a title. Double-click or use the wrench.",
+  faq: "Questions and answers: each needs both. Double-click or use the wrench.",
 };
 
 export { ColorField };

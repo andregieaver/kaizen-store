@@ -729,6 +729,28 @@ export type TabsBlock = PartBase & BlockFont & {
   tabsAlign?: TabsAlign;
 };
 
+/**
+ * Frequently asked questions (D91): each a question and its answer, drawn
+ * as the accordion is, with the questions and answers also given to search
+ * engines and AI assistants as schema.org's FAQPage unless switched off.
+ * A question shows once it has both.
+ */
+export type FaqBlock = PartBase & BlockFont & {
+  id: string;
+  type: "faq";
+  /** Each item's title is the question and its text the answer. */
+  items: PanelItem[];
+  openFirst?: boolean;
+  single?: boolean;
+  look?: AccordionLook;
+  titleSize?: HeadingSize;
+  /** The FAQPage data; on unless off. */
+  structuredData?: boolean;
+};
+
+/** A question that shows: it has both its question and an answer. */
+export const faqShows = (item: PanelItem) => item.title.trim() !== "" && !richTextIsEmpty(item.body);
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -742,7 +764,8 @@ export type PageBlock =
   | SeparatorBlock
   | DualButtonBlock
   | AccordionBlock
-  | TabsBlock;
+  | TabsBlock
+  | FaqBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -826,6 +849,8 @@ export function blockHasContent(block: PageBlock): boolean {
     case "accordion":
     case "tabs":
       return block.items.some((item) => item.title.trim() !== "");
+    case "faq":
+      return block.items.some(faqShows);
   }
 }
 
@@ -845,6 +870,8 @@ export function blockText(block: PageBlock): string {
     case "accordion":
     case "tabs":
       return panelText(block.items);
+    case "faq":
+      return panelText(block.items.filter(faqShows));
     case "button":
     case "contentGrid":
     case "product":
@@ -1428,6 +1455,19 @@ const tabsBlock = z.object({
   ...partBase,
 });
 
+const faqBlock = z.object({
+  id: itemId,
+  type: z.literal("faq"),
+  items: panelItems,
+  openFirst: z.boolean().optional(),
+  single: z.boolean().optional(),
+  look: accordionBlock.shape.look,
+  titleSize: headingBlock.shape.size,
+  structuredData: z.boolean().optional(),
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1442,6 +1482,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   dualButtonBlock,
   accordionBlock,
   tabsBlock,
+  faqBlock,
 ]);
 
 export const pageColumnSchema = z.object({

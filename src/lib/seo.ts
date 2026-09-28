@@ -302,6 +302,22 @@ export function renderLlms({
 export type JsonLd = Record<string, unknown>;
 
 /** A JSON-LD script body that cannot close the script tag early. */
+/**
+ * Questions and answers as schema.org's FAQPage (D91), for search engines
+ * and AI assistants: each question with its answer as plain text.
+ */
+export function faqJsonLd(items: { question: string; answer: string }[]): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+}
+
 export function jsonLdText(data: JsonLd | JsonLd[]): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }

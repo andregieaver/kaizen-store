@@ -26,6 +26,7 @@ import {
   type AccordionBlock,
   type BlockType,
   type HeadingSize,
+  type FaqBlock,
   type PanelItem,
   type TabsBlock,
   type ButtonShape,
@@ -84,6 +85,12 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: TabsFields,
     Style: TabsStyleFields,
+  },
+  faq: {
+    title: "FAQs",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: FaqFields,
+    Style: FaqStyleFields,
   },
   dualButton: {
     title: "Dual button",
@@ -686,11 +693,14 @@ const newItemId = () =>
 function PanelItemsFields({
   items,
   noun,
+  names = { title: "Title", body: "Text" },
   onChange,
 }: {
   items: PanelItem[];
   /** What one is called: "Section", "Tab". */
   noun: string;
+  /** What its title and text are called. */
+  names?: { title: string; body: string };
   onChange: (items: PanelItem[]) => void;
 }) {
   return (
@@ -705,8 +715,8 @@ function PanelItemsFields({
     >
       {(item, change) => (
         <>
-          <TextField label="Title" value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
-          <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label="Text" />
+          <TextField label={names.title} value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
+          <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label={names.body} />
         </>
       )}
     </ItemsEditor>
@@ -723,12 +733,18 @@ function AccordionFields({ block, onChange }: BlockEditorProps<AccordionBlock>) 
   );
 }
 
-/** How an accordion opens and looks (D91). */
-function AccordionStyleFields({ block, onChange }: BlockEditorProps<AccordionBlock>) {
+/** How an accordion (or FAQs) opens and looks (D91). */
+function AccordionStyleFields({
+  block,
+  onChange,
+}: {
+  block: AccordionBlock | FaqBlock;
+  onChange: (patch: Partial<Pick<AccordionBlock, "openFirst" | "single" | "look" | "titleSize">>) => void;
+}) {
   return (
     <>
-      <Check label="First section open" hint="Shown open when the page loads." checked={Boolean(block.openFirst)} onChange={(openFirst) => onChange({ openFirst: openFirst || undefined })} />
-      <Check label="One open at a time" hint="Opening a section closes the one that was open." checked={Boolean(block.single)} onChange={(single) => onChange({ single: single || undefined })} />
+      <Check label={block.type === "faq" ? "First question open" : "First section open"} hint="Shown open when the page loads." checked={Boolean(block.openFirst)} onChange={(openFirst) => onChange({ openFirst: openFirst || undefined })} />
+      <Check label="One open at a time" hint={block.type === "faq" ? "Opening a question closes the one that was open." : "Opening a section closes the one that was open."} checked={Boolean(block.single)} onChange={(single) => onChange({ single: single || undefined })} />
       <Choices legend="Look" options={optionsOf(ACCORDION_LOOKS)} value={block.look ?? "lines"} onChange={(look) => onChange({ look: look === "lines" ? undefined : look })} />
       <Choices
         legend="Title size"
@@ -760,6 +776,31 @@ function TabsStyleFields({ block, onChange }: BlockEditorProps<TabsBlock>) {
         options={optionsOf(TABS_ALIGNS)}
         value={block.tabsAlign ?? "start"}
         onChange={(tabsAlign) => onChange({ tabsAlign: tabsAlign === "start" ? undefined : tabsAlign })}
+      />
+    </>
+  );
+}
+
+/** Questions and their answers (D91). */
+function FaqFields({ block, onChange }: BlockEditorProps<FaqBlock>) {
+  return (
+    <>
+      <PanelItemsFields items={block.items} noun="Question" names={{ title: "Question", body: "Answer" }} onChange={(items) => onChange({ items })} />
+      <p className="text-xs text-muted">A question shows on the site once it has an answer.</p>
+    </>
+  );
+}
+
+/** How FAQs open and look, and whether search engines are given them as questions and answers (D91). */
+function FaqStyleFields({ block, onChange }: BlockEditorProps<FaqBlock>) {
+  return (
+    <>
+      <AccordionStyleFields block={block} onChange={onChange} />
+      <Check
+        label="Tell search engines these are questions and answers"
+        hint="Adds schema.org's FAQPage to the page, which search engines and AI assistants read."
+        checked={block.structuredData !== false}
+        onChange={(on) => onChange({ structuredData: on ? undefined : false })}
       />
     </>
   );

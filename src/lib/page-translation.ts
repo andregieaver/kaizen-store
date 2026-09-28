@@ -69,6 +69,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return { ...b, items: mapPanelItems(b.items, visit, key, "Section") };
     case "tabs":
       return { ...b, items: mapPanelItems(b.items, visit, key, "Tab") };
+    case "faq":
+      return { ...b, items: mapPanelItems(b.items, visit, key, "Question", { title: "Question", body: "Answer" }) };
     case "dualButton":
       return {
         ...b,
@@ -78,11 +80,22 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
   }
 }
 
-/** Titled items' texts (D91): each title and its rich text, by the item's id. */
-function mapPanelItems(items: PanelItem[], visit: Visit, key: (field: string) => string, noun: string): PanelItem[] {
+/**
+ * Titled items' texts (D91): each title and its rich text, by the item's
+ * id, labelled "Tab 2: title" or, with `names`, as they are called there
+ * ("Question 2", "Answer 2").
+ */
+function mapPanelItems(
+  items: PanelItem[],
+  visit: Visit,
+  key: (field: string) => string,
+  noun: string,
+  names?: { title: string; body: string },
+): PanelItem[] {
   return items.map((item, index) => {
-    const title = visit(key(`${item.id}.title`), item.title, 200, `${noun} ${index + 1}: title`);
-    const body = visit(key(`${item.id}.body`), item.body, 0, `${noun} ${index + 1}: text`);
+    const n = index + 1;
+    const title = visit(key(`${item.id}.title`), item.title, 200, names ? `${names.title} ${n}` : `${noun} ${n}: title`);
+    const body = visit(key(`${item.id}.body`), item.body, 0, names ? `${names.body} ${n}` : `${noun} ${n}: text`);
     return { ...item, title: typeof title === "string" ? title : item.title, body: typeof body === "string" ? item.body : body };
   });
 }

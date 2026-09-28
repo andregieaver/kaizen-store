@@ -3,7 +3,11 @@ import type { CSSProperties } from "react";
 
 import {
   HEADING_DEFAULT_SIZE,
+  faqShows,
+  richTextPlain,
   type AccordionBlock,
+  type FaqBlock,
+  type PanelItem,
   buttonShows,
   frameStyle,
   type ButtonBlock,
@@ -20,6 +24,9 @@ import {
   type TabsBlock,
 } from "@/lib/page-content";
 
+import { faqJsonLd } from "@/lib/seo";
+
+import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
 import { TabsView } from "./tabs-view";
 
@@ -86,6 +93,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Accordion block={block} />;
     case "tabs":
       return <Tabs block={block} />;
+    case "faq":
+      return <Faq block={block} />;
     case "image":
       if (!block.image) return null;
       return (
@@ -222,14 +231,35 @@ function SideButton({ side, block }: { side: DualButtonSide; block: DualButtonBl
  * was searched for; sections sharing a `name` close each other.
  */
 function Accordion({ block }: { block: AccordionBlock }) {
-  const items = block.items.filter((item) => item.title.trim() !== "");
+  return <DetailsList block={block} items={block.items.filter((item) => item.title.trim() !== "")} />;
+}
+
+/**
+ * Frequently asked questions (D91): drawn as the accordion is, with
+ * schema.org's FAQPage beside them for search engines and AI assistants
+ * unless switched off. Only questions with an answer show.
+ */
+function Faq({ block }: { block: FaqBlock }) {
+  const items = block.items.filter(faqShows);
+  return (
+    <>
+      <DetailsList block={block} items={items} />
+      {block.structuredData !== false && items.length > 0 && (
+        <JsonLdScript data={faqJsonLd(items.map((item) => ({ question: item.title, answer: richTextPlain(item.body) })))} />
+      )}
+    </>
+  );
+}
+
+/** Titled items that open under their titles: an accordion's sections, or questions and answers. */
+function DetailsList({ block, items }: { block: AccordionBlock | FaqBlock; items: PanelItem[] }) {
   const boxed = block.look === "boxed";
   return (
     <div className={boxed ? "flex flex-col gap-3" : "divide-y divide-border border-y border-border"}>
       {items.map((item, index) => (
         <details
           key={item.id}
-          name={block.single ? `accordion-${block.id}` : undefined}
+          name={block.single ? `details-${block.id}` : undefined}
           open={Boolean(block.openFirst) && index === 0}
           className={`group ${boxed ? "rounded-lg border border-border px-4" : ""}`}
         >

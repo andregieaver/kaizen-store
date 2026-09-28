@@ -119,6 +119,34 @@ test("tabs show one panel at a time, chosen by clicking or the arrow keys, with 
   await expect(page.getByRole("tab", { name: "Mål" })).toHaveAttribute("tabindex", "-1");
 });
 
+test("FAQs show questions with answers, and tell search engines they are questions and answers", async ({ page }) => {
+  const text = (words: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: words }] }] });
+  const address = await storePageWith("faq", [
+    {
+      id: "faq",
+      type: "faq",
+      items: [
+        { id: "a", title: "Hvor lang er leveringstiden?", body: text("To til fire dager.") },
+        { id: "b", title: "Kan jeg returnere?", body: text("Ja, i 30 dager.") },
+        { id: "c", title: "Uten svar?", body: { type: "doc", content: [{ type: "paragraph" }] } },
+      ],
+    },
+    { id: "quiet", type: "faq", structuredData: false, items: [{ id: "a", title: "Stille spørsmål", body: text("Stille svar.") }] },
+  ]);
+  await page.goto(address);
+  await expect(page.locator("main summary")).toHaveCount(3);
+  await expect(page.getByText("Uten svar?")).toHaveCount(0);
+  await page.getByText("Kan jeg returnere?").click();
+  await expect(page.getByText("Ja, i 30 dager.")).toBeVisible();
+  const data = await page.locator('script[type="application/ld+json"]').allTextContents();
+  const faqs = data.map((text) => JSON.parse(text)).filter((entry) => entry["@type"] === "FAQPage");
+  expect(faqs).toHaveLength(1);
+  expect(faqs[0].mainEntity).toEqual([
+    { "@type": "Question", name: "Hvor lang er leveringstiden?", acceptedAnswer: { "@type": "Answer", text: "To til fire dager." } },
+    { "@type": "Question", name: "Kan jeg returnere?", acceptedAnswer: { "@type": "Answer", text: "Ja, i 30 dager." } },
+  ]);
+});
+
 test.describe("without script", () => {
   test.use({ javaScriptEnabled: false });
 
