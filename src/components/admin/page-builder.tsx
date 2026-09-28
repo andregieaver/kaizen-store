@@ -267,9 +267,10 @@ const blockLabels: Record<BlockType, string> = {
   faq: "FAQs",
   video: "Video",
   html: "HTML",
+  testimonials: "Testimonials",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -287,6 +288,7 @@ const blockThis: Record<BlockType, string> = {
   faq: "these questions",
   video: "this video",
   html: "this HTML",
+  testimonials: "these testimonials",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1099,9 +1101,22 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <VideoIcon />;
     case "html":
       return <HtmlIcon />;
+    case "testimonials":
+      return <TestimonialsIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function TestimonialsIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+        <path d="M4 5h16v11H9l-5 4z" />
+        <path d="M8 9.5h2M8 12h6" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
 }
 
 function HtmlIcon() {
@@ -1673,6 +1688,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   faq: "Questions and answers: each needs both. Double-click or use the wrench.",
   video: "No video yet. Double-click or use the wrench to upload one or give a YouTube or Vimeo address.",
   html: "No HTML yet. Double-click or use the wrench to paste some.",
+  testimonials: "Testimonials: each needs what the person said. Double-click or use the wrench.",
 };
 
 export { ColorField };

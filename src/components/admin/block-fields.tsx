@@ -16,6 +16,12 @@ import {
   HTML_HEIGHT_MAX,
   HTML_MAX,
   type HtmlBlock,
+  TESTIMONIAL_COLUMNS,
+  TESTIMONIAL_LOOKS,
+  TESTIMONIAL_NAME_MAX,
+  TESTIMONIAL_QUOTE_MAX,
+  type Testimonial,
+  type TestimonialsBlock,
   TABS_LOOKS,
   EMPTY_DOC,
   HEADING_SIZES,
@@ -97,6 +103,12 @@ export const BLOCK_EDITORS: Editors = {
   },
   video: { title: "Video", General: VideoFields, Style: VideoStyleFields },
   html: { title: "HTML", General: HtmlFields, Style: HtmlStyleFields },
+  testimonials: {
+    title: "Testimonials",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: TestimonialsFields,
+    Style: TestimonialsStyleFields,
+  },
   faq: {
     title: "FAQs",
     font: { label: "Font", fallback: "The site's body font" },
@@ -978,6 +990,78 @@ function HtmlStyleFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
       {block.height !== undefined && (
         <NumberField label="Height" value={block.height} min={20} max={HTML_HEIGHT_MAX} unit="px" onChange={(height) => onChange({ height })} />
       )}
+    </>
+  );
+}
+
+/** Testimonials written in by the owner (D91). */
+function TestimonialsFields({ block, onChange, context }: BlockEditorProps<TestimonialsBlock>) {
+  return (
+    <>
+      <ItemsEditor<Testimonial>
+        label="Testimonials"
+        items={block.items}
+        max={ITEMS_MAX}
+        addLabel="Add a testimonial"
+        nameOf={(item, index) => item.name.trim() || `Testimonial ${index + 1}${item.quote.trim() ? "" : " (no words yet)"}`}
+        newItem={() => ({ id: newItemId(), quote: "", name: "", role: "", picture: null })}
+        onChange={(items) => onChange({ items })}
+      >
+        {(item, change) => (
+          <>
+            <TextField label="What they said" value={item.quote} max={TESTIMONIAL_QUOTE_MAX} multiline onChange={(quote) => change({ quote })} />
+            <TextField label="Name" value={item.name} max={TESTIMONIAL_NAME_MAX} onChange={(name) => change({ name })} />
+            <TextField
+              label="Title, company or place"
+              value={item.role}
+              max={TESTIMONIAL_NAME_MAX}
+              placeholder="Customer in Bergen"
+              onChange={(role) => change({ role })}
+            />
+            <Choices
+              legend="Stars"
+              options={[{ value: "0", label: "None" }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: "★".repeat(n) }))]}
+              value={String(item.rating ?? 0)}
+              onChange={(value) => change({ rating: value === "0" ? undefined : Number(value) })}
+            />
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Picture</p>
+              <div className="flex flex-wrap items-center gap-3">
+                {item.picture && (
+                  // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
+                  <img src={item.picture.url} alt="" className="size-12 rounded-full object-cover" />
+                )}
+                <ImageUploadButton upload={context.upload} label={item.picture ? "Choose another" : "Choose a picture"} onUploaded={(picture) => change({ picture })} />
+                {item.picture && (
+                  <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </ItemsEditor>
+      <p className="text-xs text-muted">
+        Use only what customers really said, with their permission to show it. A testimonial without words is left out on the site.
+      </p>
+    </>
+  );
+}
+
+/** How testimonials are laid out and look (D91). */
+function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<TestimonialsBlock>) {
+  return (
+    <>
+      <Choices
+        legend="Columns"
+        hint="one on phones"
+        options={TESTIMONIAL_COLUMNS.map((n) => ({ value: String(n), label: String(n) }))}
+        value={String(block.columns ?? 3)}
+        onChange={(value) => onChange({ columns: value === "3" ? undefined : (Number(value) as TestimonialsBlock["columns"]) })}
+      />
+      <Choices legend="Look" options={optionsOf(TESTIMONIAL_LOOKS)} value={block.look ?? "cards"} onChange={(look) => onChange({ look: look === "cards" ? undefined : look })} />
+      <Check label="Show stars" checked={block.showRating !== false} onChange={(show) => onChange({ showRating: show ? undefined : false })} />
     </>
   );
 }

@@ -807,6 +807,44 @@ export type HtmlBlock = PartBase & {
   waitForClick?: boolean;
 };
 
+export const TESTIMONIAL_QUOTE_MAX = 1000;
+export const TESTIMONIAL_NAME_MAX = 100;
+export const TESTIMONIAL_LOOKS = { cards: "Cards", plain: "Plain", quote: "Large quotes" } as const;
+export type TestimonialLook = keyof typeof TESTIMONIAL_LOOKS;
+export const TESTIMONIAL_COLUMNS = [1, 2, 3, 4] as const;
+export type TestimonialColumns = (typeof TESTIMONIAL_COLUMNS)[number];
+
+/** One testimonial: what someone said, who they are, and if given their stars (1–5) and picture. */
+export type Testimonial = {
+  id: string;
+  quote: string;
+  name: string;
+  /** Their title, company or town. */
+  role: string;
+  rating?: number;
+  picture: { url: string; width: number; height: number } | null;
+};
+
+/**
+ * Testimonials (D91): what customers said, written in by the owner, as
+ * cards, plain or large quotes in up to four columns (one on phones), with
+ * their stars if given. A testimonial shows once it has its words.
+ */
+export type TestimonialsBlock = PartBase & {
+  id: string;
+  type: "testimonials";
+  items: Testimonial[];
+  /** 3 unless set; phones show one. */
+  columns?: TestimonialColumns;
+  look?: TestimonialLook;
+  /** Stars show unless off. */
+  showRating?: boolean;
+  font?: string;
+};
+
+/** A testimonial that shows: it has its words. */
+export const testimonialShows = (item: Testimonial) => item.quote.trim() !== "";
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -823,7 +861,8 @@ export type PageBlock =
   | TabsBlock
   | FaqBlock
   | VideoBlock
-  | HtmlBlock;
+  | HtmlBlock
+  | TestimonialsBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -913,6 +952,8 @@ export function blockHasContent(block: PageBlock): boolean {
       return block.source === "upload" ? block.video !== null : embedUrl(block.source, block.link) !== null;
     case "html":
       return block.html.trim() !== "";
+    case "testimonials":
+      return block.items.some(testimonialShows);
   }
 }
 
@@ -936,6 +977,11 @@ export function blockText(block: PageBlock): string {
       return panelText(block.items.filter(faqShows));
     case "video":
       return block.title;
+    case "testimonials":
+      return block.items
+        .filter(testimonialShows)
+        .map((item) => [item.quote, item.name].filter(Boolean).join(" "))
+        .join(" ");
     case "button":
     case "contentGrid":
     case "product":
@@ -1570,6 +1616,40 @@ const htmlBlock = z.object({
   ...partBase,
 });
 
+const testimonialsBlock = z.object({
+  id: itemId,
+  type: z.literal("testimonials"),
+  items: z
+    .array(
+      z.object({
+        id: itemId,
+        quote: z.string().trim().max(TESTIMONIAL_QUOTE_MAX, `Keep a testimonial under ${TESTIMONIAL_QUOTE_MAX} characters.`),
+        name: z.string().trim().max(TESTIMONIAL_NAME_MAX, `Keep a name under ${TESTIMONIAL_NAME_MAX} characters.`),
+        role: z.string().trim().max(TESTIMONIAL_NAME_MAX, `Keep a title or place under ${TESTIMONIAL_NAME_MAX} characters.`),
+        rating: z.number().int().min(1, "Give from 1 to 5 stars.").max(5, "Give from 1 to 5 stars.").optional(),
+        picture: z
+          .object({
+            url: z.url({ protocol: /^https?$/, error: "A testimonial's picture has an invalid address." }).max(1000),
+            width: z.number().int().min(1).max(10_000),
+            height: z.number().int().min(1).max(10_000),
+          })
+          .nullable(),
+      }),
+    )
+    .max(ITEMS_MAX, `A component holds at most ${ITEMS_MAX} items.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
+  columns: z
+    .number()
+    .int()
+    .refine((value) => (TESTIMONIAL_COLUMNS as readonly number[]).includes(value), "Show testimonials in 1 to 4 columns.")
+    .transform((value) => value as TestimonialColumns)
+    .optional(),
+  look: z.enum(Object.keys(TESTIMONIAL_LOOKS) as [TestimonialLook, ...TestimonialLook[]]).optional(),
+  showRating: z.boolean().optional(),
+  font: blockFont,
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1587,6 +1667,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   faqBlock,
   videoBlock,
   htmlBlock,
+  testimonialsBlock,
 ]);
 
 export const pageColumnSchema = z.object({

@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { t } from "@/lib/i18n";
 import { EMBED_NAMES, type EmbedSource } from "@/lib/video-embed";
 
-/** The page's language, read in the browser (the server draws the page before it is known here). */
-function usePageLanguage(): string {
-  return useSyncExternalStore(
-    () => () => {},
-    () => document.documentElement.lang.split("-")[0] || "en",
-    () => "en",
-  );
-}
+import { usePageLanguage } from "./page-language";
 
 /**
  * A video uploaded to the site (D91), played by the browser. One set to

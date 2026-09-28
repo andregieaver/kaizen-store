@@ -198,3 +198,39 @@ describe("HTML", () => {
     expect(blockTextFields(parse(html)).map((field) => [field.key, field.label])).toEqual([["block.h.title", "HTML title"]]);
   });
 });
+
+describe("testimonials", () => {
+  const testimonials = {
+    id: "t",
+    type: "testimonials",
+    items: [
+      { id: "a", quote: "Den beste koppen jeg har hatt.", name: "Kari", role: "Kunde i Bergen", rating: 5, picture: null },
+      { id: "b", quote: "", name: "Ola", role: "", picture: null },
+    ],
+    columns: 2,
+    look: "quote",
+  };
+
+  it("shows those with words, and gives what they said to the page's words", () => {
+    expect(newBlock("testimonials", () => "n")).toMatchObject({ type: "testimonials", items: [{ quote: "", name: "" }] });
+    const parsed = parse(testimonials);
+    expect(parsed).toMatchObject({ columns: 2, look: "quote" });
+    expect(blockHasContent(parsed)).toBe(true);
+    expect(blockHasContent(parse({ ...testimonials, items: [testimonials.items[1]] }))).toBe(false);
+    expect(blockText(parsed)).toBe("Den beste koppen jeg har hatt. Kari");
+  });
+
+  it("keeps stars from 1 to 5 and up to four columns", () => {
+    expect(problems({ ...testimonials, items: [{ ...testimonials.items[0], rating: 6 }] })).toEqual(["Give from 1 to 5 stars."]);
+    expect(problems({ ...testimonials, columns: 5 })).toEqual(["Show testimonials in 1 to 4 columns."]);
+  });
+
+  it("translates what was said and who they are, never their name", () => {
+    expect(blockTextFields(parse(testimonials)).map((field) => field.label)).toEqual([
+      "Testimonial 1",
+      "Testimonial 1: title or place",
+      "Testimonial 2",
+      "Testimonial 2: title or place",
+    ]);
+  });
+});

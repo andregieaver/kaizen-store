@@ -1,18 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { t } from "@/lib/i18n";
 import { cssValue, FRAME_SANDBOX, frameDocument, frameHeight, HEIGHT_MESSAGE, LOOK_MESSAGE, type FrameLook } from "@/lib/html-frame";
 
-/** The page's language, read in the browser. */
-function usePageLanguage(): string {
-  return useSyncExternalStore(
-    () => () => {},
-    () => document.documentElement.lang.split("-")[0] || "en",
-    () => "en",
-  );
-}
+import { usePageLanguage } from "./page-language";
 
 /**
  * The owner's HTML (D91) in a sandboxed frame of its own origin, which

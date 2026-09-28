@@ -213,3 +213,24 @@ test("HTML runs its scripts in a frame of its own, sealed from the site, and the
   }).toPass();
   await expect(page.frameLocator('main iframe[title="Widget"]').getByText("Fra en annen tjeneste")).toBeVisible();
 });
+
+test("testimonials show what customers said, who said it and their stars", async ({ page }) => {
+  const address = await storePageWith("testimonials", [
+    {
+      id: "said",
+      type: "testimonials",
+      items: [
+        { id: "a", quote: "Den beste koppen jeg har hatt.", name: "Kari", role: "Kunde i Bergen", rating: 4, picture: null },
+        { id: "b", quote: "Rask levering.", name: "Ola", role: "", picture: null },
+        { id: "c", quote: "", name: "Uten ord", role: "", picture: null },
+      ],
+    },
+  ]);
+  await page.goto(address);
+  await expect(page.locator("main figure blockquote")).toHaveCount(2);
+  await expect(page.getByText("Uten ord")).toHaveCount(0);
+  const kari = page.locator("main figure").filter({ hasText: "Kari" });
+  await expect(kari.locator("figcaption")).toContainText("Kunde i Bergen");
+  await expect(kari.getByRole("img", { name: "4 av 5 stjerner" })).toBeVisible();
+  await expect(page.locator("main figure").filter({ hasText: "Ola" }).getByRole("img")).toHaveCount(0);
+});

@@ -71,6 +71,16 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return { ...b, items: mapPanelItems(b.items, visit, key, "Tab") };
     case "video":
       return { ...b, title: str("title", b.title, 200, "Video title") };
+    case "testimonials":
+      // A person's name is theirs in every language; what they said and who they are is translated.
+      return {
+        ...b,
+        items: b.items.map((item, index) => ({
+          ...item,
+          quote: str(`${item.id}.quote`, item.quote, 1000, `Testimonial ${index + 1}`),
+          role: str(`${item.id}.role`, item.role, 100, `Testimonial ${index + 1}: title or place`),
+        })),
+      };
     case "html":
       // The HTML itself is code, the same in every language; its title names the frame.
       return { ...b, title: str("title", b.title, 200, "HTML title") };

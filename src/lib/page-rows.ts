@@ -53,6 +53,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, source: "youtube", video: null, link: "", poster: null, title: "" };
     case "html":
       return { id: id(), type, html: "", title: "" };
+    case "testimonials":
+      return { id: id(), type, items: [{ id: id(), quote: "", name: "", role: "", picture: null }] };
     case "dualButton":
       return { id: id(), type, first: { label: "", href: "" }, second: { label: "", href: "", variant: "outline" } };
     case "richText":

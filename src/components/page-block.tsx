@@ -23,6 +23,8 @@ import {
   type SeparatorBlock,
   type TabsBlock,
   type VideoBlock,
+  type TestimonialsBlock,
+  testimonialShows,
 } from "@/lib/page-content";
 
 import { faqJsonLd } from "@/lib/seo";
@@ -32,6 +34,7 @@ import { HtmlFrame } from "./html-frame";
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
 import { TabsView } from "./tabs-view";
+import { TestimonialCards } from "./testimonials-view";
 import { EmbeddedVideo, UploadedVideo } from "./video-view";
 
 // Written out whole so Tailwind finds every class.
@@ -101,6 +104,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Faq block={block} />;
     case "video":
       return <Video block={block} />;
+    case "testimonials":
+      return <Testimonials block={block} />;
     case "html":
       return block.html.trim() ? <HtmlFrame html={block.html} title={block.title} height={block.height} waitForClick={Boolean(block.waitForClick)} /> : null;
     case "image":
@@ -323,4 +328,23 @@ function Video({ block }: { block: VideoBlock }) {
   const player = embedUrl(block.source, block.link);
   if (!player) return null;
   return <EmbeddedVideo source={block.source} player={player} poster={block.poster?.url} title={block.title} style={style} />;
+}
+
+/** Testimonials written in by the owner (D91): those with words. */
+function Testimonials({ block }: { block: TestimonialsBlock }) {
+  return (
+    <TestimonialCards
+      entries={block.items.filter(testimonialShows).map((item) => ({
+        key: item.id,
+        quote: item.quote,
+        name: item.name,
+        role: item.role,
+        rating: item.rating,
+        picture: item.picture?.url,
+      }))}
+      columns={block.columns}
+      look={block.look}
+      showRating={block.showRating !== false}
+    />
+  );
 }
