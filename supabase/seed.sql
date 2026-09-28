@@ -76,8 +76,8 @@ BEGIN
 
   INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES (v_store, v_product, 'packaging');
 
-  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country)
-  VALUES (v_store, v_product, 'DEMO-MUG-WHITE', '7090000000011', '{"colour": "white"}', 380, '691200', 'PT')
+  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url)
+  VALUES (v_store, v_product, 'DEMO-MUG-WHITE', '7090000000011', '{"colour": "white"}', 380, '691200', 'PT', '/demo/mug.svg')
   RETURNING id INTO v_variant;
   PERFORM commerce.set_price(v_variant, 'NO', 29900, now() - interval '40 days');
   PERFORM commerce.set_price(v_variant, 'NO', 24900, now() - interval '1 day');
@@ -85,8 +85,8 @@ BEGIN
   PERFORM commerce.set_price(v_variant, 'DK', 17900, now() - interval '1 day');
   INSERT INTO commerce.inventory_levels (store_id, variant_id, location_id, on_hand) VALUES (v_store, v_variant, v_location, 40);
 
-  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country)
-  VALUES (v_store, v_product, 'DEMO-MUG-BLACK', '7090000000028', '{"colour": "black"}', 380, '691200', 'PT')
+  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url)
+  VALUES (v_store, v_product, 'DEMO-MUG-BLACK', '7090000000028', '{"colour": "black"}', 380, '691200', 'PT', '/demo/mug-black.svg')
   RETURNING id INTO v_variant;
   PERFORM commerce.set_price(v_variant, 'NO', 29900, now() - interval '40 days');
   PERFORM commerce.set_price(v_variant, 'NO', 24900, now() - interval '1 day');
@@ -155,16 +155,16 @@ BEGIN
 
   INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES (v_store, v_product, 'packaging');
 
-  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country)
-  VALUES (v_store, v_product, 'DEMO-NOTEBOOK-LINED', '7090000000042', '{"ruling": "lined"}', 300, '482010', 'NO')
+  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url)
+  VALUES (v_store, v_product, 'DEMO-NOTEBOOK-LINED', '7090000000042', '{"ruling": "lined"}', 300, '482010', 'NO', '/demo/notebook-open.svg')
   RETURNING id INTO v_variant;
   PERFORM commerce.set_price(v_variant, 'NO', 12900, now() - interval '1 day');
   PERFORM commerce.set_price(v_variant, 'SE', 12900, now() - interval '1 day');
   PERFORM commerce.set_price(v_variant, 'DK', 9900, now() - interval '1 day');
   INSERT INTO commerce.inventory_levels (store_id, variant_id, location_id, on_hand) VALUES (v_store, v_variant, v_location, 60);
 
-  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country)
-  VALUES (v_store, v_product, 'DEMO-NOTEBOOK-DOTTED', '7090000000059', '{"ruling": "dotted"}', 300, '482010', 'NO')
+  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url)
+  VALUES (v_store, v_product, 'DEMO-NOTEBOOK-DOTTED', '7090000000059', '{"ruling": "dotted"}', 300, '482010', 'NO', '/demo/notebook-dotted.svg')
   RETURNING id INTO v_variant;
   PERFORM commerce.set_price(v_variant, 'NO', 12900, now() - interval '1 day');
   PERFORM commerce.set_price(v_variant, 'SE', 12900, now() - interval '1 day');

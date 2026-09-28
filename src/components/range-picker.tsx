@@ -13,6 +13,7 @@ import type { PriceVat } from "@/lib/pricing";
 
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
+import { Dropdown } from "./dropdown";
 import { VatAmount } from "./price";
 
 export type RangePickerLabels = AddToCartLabels & {
@@ -84,6 +85,7 @@ export function RangePicker({
     id: string;
     label: string;
     price: ReactNode;
+    image?: { url: string; alt: string } | null;
     period: RentalPeriod;
     /** The price of a night, day, half day or hour before seasons (D70), kept with VAT, and how it is shown (B2B). */
     base: { amountMinor: number; currency: string; vat: PriceVat };
@@ -234,6 +236,10 @@ export function RangePicker({
             >
               <span className="flex items-center gap-2">
                 <input type="radio" name="range-option" checked={variantId === variant.id} onChange={() => chooseVariant(variant.id)} />
+                {variant.image && (
+                  // eslint-disable-next-line @next/next/no-img-element -- the store's own small picture
+                  <img src={variant.image.url} alt={variant.image.alt} className="size-10 rounded-md bg-surface object-cover" />
+                )}
                 {variant.label}
               </span>
               {variant.price}
@@ -325,20 +331,16 @@ export function RangePicker({
             ))}
           </div>
           {period === "hour" && chosenTime && (
-            <label className="flex max-w-40 flex-col gap-1 text-sm">
-              <span className="font-medium">{labels.howLong}</span>
-              <select
-                value={hours}
-                onChange={(e) => setHours(Number(e.target.value))}
-                className="min-h-11 rounded-md border border-border bg-background px-2"
-              >
-                {Array.from({ length: chosenTime.free }, (_, i) => i + 1).map((n) => (
-                  <option key={n} value={n}>
-                    {lengthLabel(n, labels.hourOne, labels.hourMany)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <Dropdown
+              label={labels.howLong}
+              className="max-w-48 text-sm"
+              value={String(hours)}
+              onChange={(value) => setHours(Number(value))}
+              options={Array.from({ length: chosenTime.free }, (_, i) => i + 1).map((n) => ({
+                value: String(n),
+                label: lengthLabel(n, labels.hourOne, labels.hourMany),
+              }))}
+            />
           )}
         </fieldset>
       )}

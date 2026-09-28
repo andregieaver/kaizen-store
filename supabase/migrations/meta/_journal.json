@@ -981,6 +981,20 @@
       "when": 1790559722613,
       "tag": "20260928014202_chat_usage_key",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1790578122329,
+      "tag": "20260928064842_variant_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1790578126473,
+      "tag": "20260928064846_variant_images_rules",
+      "breakpoints": true
     }
   ]
 }

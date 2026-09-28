@@ -46,6 +46,8 @@ export type ProductVariant = {
   delivery: Delivery;
   /** How a rental's variant is booked (D69); "day" for everything else. */
   rentalPeriod: RentalPeriod;
+  /** Its own picture, shown where shoppers choose a variant; `thumbnailUrl` is the small copy, or the picture itself. */
+  image: { url: string; thumbnailUrl: string } | null;
 };
 
 /** A purchase option for subscribing (D25). */
@@ -222,7 +224,8 @@ export async function getProduct(
       order by position
     `),
     readDb().execute<Row>(sql`
-      select v.id, v.sku, v.gtin, v.options, v.delivery, v.rental_period, cp.amount_minor, cp.currency, cp.prior_30d_minor
+      select v.id, v.sku, v.gtin, v.options, v.delivery, v.rental_period, v.image_url, v.image_thumbnail_url,
+        cp.amount_minor, cp.currency, cp.prior_30d_minor
       from commerce.product_variants v
       join commerce.current_prices cp
         on cp.variant_id = v.id and cp.market_code = ${marketCode}
@@ -269,6 +272,7 @@ export async function getProduct(
       price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor), vat),
       delivery: parseDelivery(v.delivery),
       rentalPeriod: parseRentalPeriod(v.rental_period),
+      image: v.image_url ? { url: str(v.image_url), thumbnailUrl: str(v.image_thumbnail_url ?? v.image_url) } : null,
     })),
     plans: plans.map((plan) => ({
       id: str(plan.id),

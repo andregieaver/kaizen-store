@@ -269,6 +269,8 @@ export const productInput = z.object({
         delivery: z.enum(DELIVERIES).default("physical"),
         /** A rental's variant: by the day, half day or hour (D69). Ignored for other kinds. */
         rentalPeriod: z.enum(RENTAL_PERIODS).default("day"),
+        /** Its own picture, shown where shoppers choose a variant: one of the product's, or uploaded for it. */
+        image: z.object({ url: pictureAddress, thumbnailUrl: pictureAddress.nullable() }).nullable().default(null),
       }),
     )
     .min(1, "A product needs at least one variant.")

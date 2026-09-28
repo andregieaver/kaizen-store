@@ -13,9 +13,17 @@ import type { AddToCartLabels } from "./add-to-cart";
 import { useBuyer } from "./buyer";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { useChosenPlan } from "./purchase-options";
+import { Dropdown } from "./dropdown";
 import { HidingBottomBar } from "./store-chrome";
+import { useVariantChoice } from "./variant-choice";
 
-export type BarVariant = { id: string; label: string; amountMinor: number; available: boolean };
+export type BarVariant = {
+  id: string;
+  label: string;
+  amountMinor: number;
+  available: boolean;
+  image?: { url: string; alt: string } | null;
+};
 
 const initial: AddToCartState = { outcome: "idle", quantity: 0 };
 
@@ -53,7 +61,8 @@ export function ProductBar({
   useOpenCartAfterAdd(openCart, cartHref, state);
   const plan = useChosenPlan();
   const buyer = useBuyer(storeAudience);
-  const [chosen, setChosen] = useState(() => (variants.find((v) => v.available) ?? variants[0])?.id ?? "");
+  // The variant chosen on the page, so the bar adds the same one.
+  const [chosen, setChosen] = useVariantChoice((variants.find((v) => v.available) ?? variants[0])?.id ?? "");
   // The outcome shows for a few seconds, then the price again.
   const [expired, setExpired] = useState<AddToCartState | null>(null);
   const shown = state.outcome !== "idle" && expired !== state;
@@ -85,7 +94,7 @@ export function ProductBar({
 
   return (
     <HidingBottomBar product>
-      <form action={action} className="flex items-center gap-3 px-4 py-3">
+      <form action={action} className="relative flex items-center gap-3 px-4 py-3">
         <input type="hidden" name="store" value={store} />
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variant.id} />
@@ -102,18 +111,22 @@ export function ProductBar({
               )}
             </p>
           ) : variants.length > 1 ? (
-            <select
+            <Dropdown
+              label={labels.chooseVariant}
+              hideLabel
+              size="compact"
+              placement="up"
+              spanParent
               value={chosen}
-              onChange={(event) => setChosen(event.target.value)}
-              aria-label={labels.chooseVariant}
-              className="min-h-11 w-full truncate rounded-button border border-border bg-background px-3 text-sm"
-            >
-              {variants.map((v) => (
-                <option key={v.id} value={v.id} disabled={!v.available}>
-                  {v.label} · {v.available ? money(v) : labels.soldOut}
-                </option>
-              ))}
-            </select>
+              onChange={setChosen}
+              options={variants.map((v) => ({
+                value: v.id,
+                label: v.label,
+                image: v.image,
+                detail: v.available ? money(v) : labels.soldOut,
+                disabled: !v.available,
+              }))}
+            />
           ) : (
             <p className="font-semibold">{money(variant)}</p>
           )}

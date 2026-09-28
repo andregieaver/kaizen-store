@@ -165,6 +165,11 @@ of running `playwright install`.
   (`kaizen_chat`).
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
+- Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,
+  a themed select-only combobox with pictures), never a native `<select>`.
+  A variant's picture is `product_variants.image_url`/`image_thumbnail_url`
+  (`ProductVariant.image`); the product page and the phone's bar share the
+  chosen variant through `VariantChoice`.
 - The template store's product pages are prerendered at build time, so their
   content is plain HTML; stock and add-to-cart stream in and need JavaScript.
   Keep the details outside a `<Suspense>` boundary: React moves a finished

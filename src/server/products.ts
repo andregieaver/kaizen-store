@@ -176,6 +176,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
         originCountry: null,
         delivery: "physical",
         rentalPeriod: "day",
+        image: null,
       },
     ],
     delivery: "physical",
@@ -301,6 +302,7 @@ export async function getProductForEdit(
     `),
     db().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country, v.delivery, v.rental_period,
+             v.image_url, v.image_thumbnail_url,
              coalesce((
                select l.on_hand from commerce.inventory_levels l
                join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
@@ -414,6 +416,7 @@ export async function getProductForEdit(
       originCountry: v.origin_country ? String(v.origin_country) : null,
       delivery: parseDelivery(v.delivery),
       rentalPeriod: parseRentalPeriod(v.rental_period),
+      image: v.image_url ? { url: String(v.image_url), thumbnailUrl: v.image_thumbnail_url ? String(v.image_thumbnail_url) : null } : null,
     })),
     delivery: parseDelivery(product.delivery),
     files: files.map((f) => ({
@@ -820,7 +823,8 @@ async function saveVariants(
       active = ${variant.active}, delivery = ${variant.delivery},
       rental_period = ${input.kind === "rental" ? variant.rentalPeriod : "day"},
       weight_grams = ${physical ? variant.weightGrams : null},
-      hs_code = ${physical ? variant.hsCode : null}, origin_country = ${physical ? variant.originCountry : null}
+      hs_code = ${physical ? variant.hsCode : null}, origin_country = ${physical ? variant.originCountry : null},
+      image_url = ${variant.image?.url ?? null}, image_thumbnail_url = ${variant.image?.thumbnailUrl ?? null}
     `;
     let id: string;
     if (variant.id && existingIds.has(variant.id)) {
@@ -829,13 +833,14 @@ async function saveVariants(
     } else {
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.product_variants (
-          store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country
+          store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
+          image_url, image_thumbnail_url
         ) values (
           ${storeId}::uuid, ${productId}::uuid, ${variant.sku}, ${variant.gtin},
           ${JSON.stringify(variant.options)}::jsonb, ${variant.active}, ${variant.delivery},
           ${input.kind === "rental" ? variant.rentalPeriod : "day"},
           ${physical ? variant.weightGrams : null}, ${physical ? variant.hsCode : null},
-          ${physical ? variant.originCountry : null}
+          ${physical ? variant.originCountry : null}, ${variant.image?.url ?? null}, ${variant.image?.thumbnailUrl ?? null}
         )
         returning id
       `);

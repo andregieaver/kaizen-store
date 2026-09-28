@@ -10,6 +10,7 @@ import type { ChangeOutcome } from "@/server/booking-changes";
 
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
+import { Dropdown } from "./dropdown";
 
 export type AppointmentPickerLabels = AddToCartLabels & {
   chooseTime: string;
@@ -64,7 +65,7 @@ export function AppointmentPicker({
   cartHref: string;
   productId: string;
   /** The appointment's options (a longer session, a package), each with its price drawn by the page. */
-  variants: { id: string; label: string; price: ReactNode }[];
+  variants: { id: string; label: string; price: ReactNode; image?: { url: string; alt: string } | null }[];
   staff: { id: string; name: string }[];
   initial: SlotWeek;
   openCart?: boolean;
@@ -132,6 +133,10 @@ export function AppointmentPicker({
                   checked={variantId === variant.id}
                   onChange={() => setVariantId(variant.id)}
                 />
+                {variant.image && (
+                  // eslint-disable-next-line @next/next/no-img-element -- the store's own small picture
+                  <img src={variant.image.url} alt={variant.image.alt} className="size-10 rounded-md bg-surface object-cover" />
+                )}
                 {variant.label}
               </span>
               {variant.price}
@@ -141,25 +146,17 @@ export function AppointmentPicker({
       )}
 
       {staff.length > 1 && (
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">{labels.who}</span>
-          <select
-            value={resourceId ?? ""}
-            onChange={(event) => {
-              const who = event.target.value || null;
-              setResourceId(who);
-              load(week.from, who);
-            }}
-            className="min-h-11 rounded-md border border-border bg-background px-2"
-          >
-            <option value="">{labels.anyone}</option>
-            {staff.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Dropdown
+          label={labels.who}
+          className="text-sm"
+          value={resourceId ?? ""}
+          onChange={(value) => {
+            const who = value || null;
+            setResourceId(who);
+            load(week.from, who);
+          }}
+          options={[{ value: "", label: labels.anyone }, ...staff.map((member) => ({ value: member.id, label: member.name }))]}
+        />
       )}
 
       <fieldset className="flex flex-col gap-3" aria-busy={loading}>

@@ -195,6 +195,23 @@ describe("saving a product", () => {
     ]);
   });
 
+  it("keeps each variant's picture, and lets it go", async () => {
+    const input = { ...(await getProductForEdit(store, context, productId))! };
+    const picture = { url: "https://example.com/svart.webp", thumbnailUrl: "https://example.com/svart-480.webp" };
+    input.variants = input.variants.map((v) => (v.options.Farge === "Svart" ? { ...v, image: picture } : v));
+    expect(await saveProduct(store, context, productId, productInput.parse(input))).toMatchObject({ ok: true });
+    const saved = await getProductForEdit(store, context, productId);
+    expect(saved!.variants.map((v) => [v.options.Farge, v.image])).toEqual([
+      ["Hvit", null],
+      ["Svart", picture],
+    ]);
+    // An address that is not a picture is refused like a product picture's.
+    expect(productInput.safeParse({ ...input, variants: input.variants.map((v) => ({ ...v, image: { url: "javascript:x", thumbnailUrl: null } })) }).success).toBe(false);
+    input.variants = saved!.variants.map((v) => ({ ...v, image: null }));
+    await saveProduct(store, context, productId, productInput.parse(input));
+    expect((await getProductForEdit(store, context, productId))!.variants.every((v) => v.image === null)).toBe(true);
+  });
+
   it("switches off variants taken out, instead of deleting them", async () => {
     const current = await getProductForEdit(store, context, productId);
     const { archived, ...input } = current!;

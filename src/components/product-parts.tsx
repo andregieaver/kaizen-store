@@ -2,7 +2,6 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
-import { AddToCart } from "@/components/add-to-cart";
 import { AppointmentPicker } from "@/components/appointment-picker";
 import { SwitchToBusiness } from "@/components/buyer";
 import { JsonLdScript } from "@/components/json-ld";
@@ -12,8 +11,9 @@ import { Price, VatAmount } from "@/components/price";
 import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductGrid } from "@/components/product-listing";
-import { PlanPrice, PurchaseOptions } from "@/components/purchase-options";
+import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { RangePicker } from "@/components/range-picker";
+import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
 import { seasonName, seasonPrice } from "@/lib/booking-prices";
@@ -326,6 +326,7 @@ async function AppointmentBooking({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
           price: <Price price={variant.price} locale={market.locale} m={m} />,
+          image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
         }))}
         staff={offer.staff}
         initial={slotWeek(week, market.locale, store.timeZone)}
@@ -448,6 +449,7 @@ async function RangeBooking({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
           price: <Price price={variant.price} locale={market.locale} m={m} />,
+          image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
           period: variant.rentalPeriod,
           base: { amountMinor: variant.price.amountMinor, currency: variant.price.currency, vat: variant.price.vat },
         }))}
@@ -485,6 +487,8 @@ async function VariantsWithStock({
     const level = stockLevel(available);
     return level === "out" ? m.outOfStock : level === "low" ? m.lowStock(available) : m.inStock;
   };
+  const available = (variant: ProductDetail["variants"][number]) =>
+    variant.delivery === "digital" || (availability.get(variant.id) ?? 0) > 0;
 
   const plans = product.plans.map((plan) => ({
     id: plan.id,
@@ -506,18 +510,21 @@ async function VariantsWithStock({
       subscriptionOnly={product.subscriptionOnly}
       labels={{ legend: m.purchaseOptions, oneTime: m.oneTimePurchase }}
     >
-      <ul className="divide-y divide-border rounded-lg border border-border">
-        {product.variants.map((variant) => {
-          const digital = variant.delivery === "digital";
-          const available = digital ? Infinity : (availability.get(variant.id) ?? 0);
-          const label = optionLabel(m, variant.options);
-          return (
-            <li key={variant.id} className="flex items-start justify-between gap-4 p-3">
-              <div>
-                {label && <p>{label}</p>}
-                <p className="text-sm text-muted">{digital ? m.instantDownload : stockText(available)}</p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
+      <VariantChoice initial={(product.variants.find(available) ?? product.variants[0]).id}>
+        <VariantPurchase
+          store={store.slug}
+          market={market.slug}
+          cartHref={marketPath(store.slug, market.slug, "/cart")}
+          openCart={store.openCartOnAdd}
+          variants={product.variants.map((variant) => {
+            const digital = variant.delivery === "digital";
+            return {
+              id: variant.id,
+              label: optionLabel(m, variant.options) || product.title,
+              image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
+              note: digital ? m.instantDownload : stockText(availability.get(variant.id) ?? 0),
+              available: available(variant),
+              price: (
                 <PlanPrice
                   amountMinor={variant.price.amountMinor}
                   currency={variant.price.currency}
@@ -527,29 +534,30 @@ async function VariantsWithStock({
                 >
                   <Price price={variant.price} locale={market.locale} m={m} />
                 </PlanPrice>
-                <AddToCart
-                  store={store.slug}
-                  market={market.slug}
-                  cartHref={marketPath(store.slug, market.slug, "/cart")}
-                  variantId={variant.id}
-                  disabled={available <= 0}
-                  openCart={store.openCartOnAdd}
-                  labels={{
-                    addToCart: m.addToCart,
-                    adding: m.adding,
-                    added: m.added,
-                    capped: m.capped,
-                    unavailable: m.unavailable,
-                    planConflict: m.planConflict,
-                    tryAgain: m.tryAgain,
-                    goToCart: m.goToCart,
-                  }}
+              ),
+              amount: (
+                <PlanAmount
+                  amountMinor={variant.price.amountMinor}
+                  currency={variant.price.currency}
+                  locale={market.locale}
+                  vat={variant.price.vat}
+                  labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
                 />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+              ),
+            };
+          })}
+          labels={{
+            addToCart: m.addToCart,
+            adding: m.adding,
+            added: m.added,
+            capped: m.capped,
+            unavailable: m.unavailable,
+            planConflict: m.planConflict,
+            tryAgain: m.tryAgain,
+            goToCart: m.goToCart,
+            chooseVariant: m.chooseVariantLabel,
+          }}
+        />
       <ProductBar
         store={store.slug}
         market={market.slug}
@@ -563,7 +571,8 @@ async function VariantsWithStock({
           id: variant.id,
           label: optionLabel(m, variant.options) || product.title,
           amountMinor: variant.price.amountMinor,
-          available: variant.delivery === "digital" || (availability.get(variant.id) ?? 0) > 0,
+          available: available(variant),
+          image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
         }))}
         labels={{
           addToCart: m.addToCart,
@@ -579,6 +588,7 @@ async function VariantsWithStock({
           goCart: m.goCart,
         }}
       />
+      </VariantChoice>
     </PurchaseOptions>
   );
 }

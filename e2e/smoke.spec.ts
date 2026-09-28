@@ -50,8 +50,12 @@ test("a product page shows stock, safety details and structured data", async ({ 
   await expect(page).toHaveURL("/s/demo/no/p/demo-keramikkopp");
   await expect(page).toHaveTitle("Demo: Keramikkopp · Kaizen Demo");
 
-  await expect(page.getByText("Kun 3 igjen")).toBeVisible();
-  await expect(page.getByText("På lager")).toBeVisible();
+  // The variant dropdown shows the chosen one's stock, and each one's in its list.
+  const variants = page.getByRole("region", { name: "Varianter" });
+  await expect(variants.getByText("Kun 3 igjen").filter({ visible: true })).toBeVisible();
+  await variants.getByRole("combobox", { name: "Velg variant" }).click();
+  await expect(variants.getByRole("option", { name: /Farge: Hvit/ })).toContainText("På lager");
+  await page.keyboard.press("Escape");
   await expect(page.getByText("Kaizen Demo AS, Storgata 1")).toBeVisible();
   await expect(page.getByText("Ansvarlig person i EU")).toBeVisible();
 

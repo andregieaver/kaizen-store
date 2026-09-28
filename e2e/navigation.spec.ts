@@ -46,8 +46,12 @@ test.describe("on a phone", () => {
     await page.goto("/s/demo/no/p/demo-notatbok");
     const bar = page.locator("[data-product-bar]");
     await expect(page.locator("[data-default-bar]")).toBeHidden();
-    const lined = await bar.locator("option", { hasText: "Linjert" }).getAttribute("value");
-    await bar.getByRole("combobox", { name: "Velg variant" }).selectOption(lined!);
+    // The bar's dropdown opens upwards, with each variant's picture.
+    await bar.getByRole("combobox", { name: "Velg variant" }).click();
+    const lined = bar.getByRole("option", { name: /Linjert/ });
+    await expect(lined.locator("img")).toHaveAttribute("src", "/demo/notebook-open.svg");
+    await lined.click();
+    await expect(bar.getByRole("combobox", { name: "Velg variant" })).toContainText("Linjert");
     await bar.getByRole("button", { name: "Legg i handlekurven" }).click();
     await expect(bar.getByText("Lagt i handlekurven.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Handlekurv (1)" }).first()).toBeAttached();

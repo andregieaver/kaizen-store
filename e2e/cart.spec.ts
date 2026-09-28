@@ -5,12 +5,20 @@ import { testDb } from "./db";
 test("add to cart, change quantity within stock, and remove", async ({ page }) => {
   await page.goto("/s/demo/no/p/demo-keramikkopp");
 
-  const black = page.getByRole("listitem").filter({ hasText: "Farge: Svart" });
-  await black.getByRole("button", { name: "Legg i handlekurven" }).click();
-  await expect(black.getByRole("status")).toContainText("Lagt i handlekurven.");
+  // The variants are one dropdown with their pictures, stock and prices.
+  const variants = page.getByRole("region", { name: "Varianter" });
+  const choose = variants.getByRole("combobox", { name: "Velg variant" });
+  await choose.click();
+  const black = variants.getByRole("option", { name: /Farge: Svart/ });
+  await expect(black.locator("img")).toHaveAttribute("src", "/demo/mug-black.svg");
+  await black.click();
+  await expect(choose).toContainText("Farge: Svart");
+  await expect(variants.getByRole("listbox")).toBeHidden();
+  await variants.getByRole("button", { name: "Legg i handlekurven" }).click();
+  await expect(variants.getByRole("status")).toContainText("Lagt i handlekurven.");
   await expect(page.getByRole("link", { name: "Handlekurv (1)" })).toBeVisible();
 
-  await black.getByRole("link", { name: "Gå til handlekurven" }).click();
+  await variants.getByRole("link", { name: "Gå til handlekurven" }).click();
   await expect(page).toHaveURL("/s/demo/no/cart");
   await expect(page.getByRole("heading", { level: 1, name: "Handlekurv" })).toBeVisible();
   // The product page stays mounted but hidden (for back navigation), so look

@@ -12,6 +12,7 @@ const PATHS = {
   mic: "M12 3a3 3 0 013 3v5a3 3 0 01-6 0V6a3 3 0 013-3zm-6 8a6 6 0 0012 0m-6 6v4",
   send: "M4 12l16-8-6 16-2.5-6.5L4 12z",
   close: "M6 6l12 12M18 6L6 18",
+  check: "M5 12.5l4.5 4.5L19 7.5",
 } as const;
 
 export type IconName = keyof typeof PATHS;

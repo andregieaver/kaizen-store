@@ -102,3 +102,30 @@ export function PlanPrice({
     </div>
   );
 }
+
+/** A variant's amount alone for the chosen purchase option, for lists where the full price does not fit. */
+export function PlanAmount({
+  amountMinor,
+  currency,
+  locale,
+  vat,
+  labels,
+}: {
+  amountMinor: number;
+  currency: string;
+  locale: string;
+  vat: PriceVat;
+  labels: VatLabels;
+}) {
+  const plan = useChosenPlan();
+  return (
+    <VatAmount
+      amountMinor={plan ? planPrice(amountMinor, plan.discountPercent) : amountMinor}
+      currency={currency}
+      locale={locale}
+      vat={vat}
+      labels={labels}
+      label={false}
+    />
+  );
+}

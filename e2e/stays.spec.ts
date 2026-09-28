@@ -134,7 +134,8 @@ test("a shopper rents a bike by the hour, then for half a day", async ({ page })
   await days.getByRole("button", { name: /, ledig$/ }).first().click();
   const times = page.getByRole("group", { name: "Velg tid" });
   await times.getByRole("button", { name: /^10[:.]00$/ }).click();
-  await page.getByLabel("Antall timer").selectOption("3");
+  await page.getByRole("combobox", { name: "Antall timer" }).click();
+  await page.getByRole("option", { name: "3 timer" }).click();
   await expect(add).toBeEnabled();
   await expect(page.locator("[data-range-total]")).toContainText(/Totalt:\s*360,00/);
   await add.click();

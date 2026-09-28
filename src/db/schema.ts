@@ -998,6 +998,12 @@ export const productVariants = commerce.table(
      * or by the hour. The cart line's quantity is the days or hours.
      */
     rentalPeriod: text("rental_period").notNull().default("day"),
+    /**
+     * The variant's own picture, shown beside it where shoppers choose one
+     * (usually one of the product's pictures), with its small copy.
+     */
+    imageUrl: text("image_url"),
+    imageThumbnailUrl: text("image_thumbnail_url"),
     weightGrams: integer("weight_grams"),
     /** Customs tariff (HS) code and country of origin, for export declarations. */
     hsCode: text("hs_code"),
@@ -1012,6 +1018,7 @@ export const productVariants = commerce.table(
     index("product_variants_product_idx").on(t.storeId, t.productId),
     check("product_variants_gtin_digits", sql`${t.gtin} ~ '^[0-9]{8,14}$'`),
     check("product_variants_rental_period", sql`${t.rentalPeriod} in ('day', 'half_day', 'hour')`),
+    check("product_variants_image", sql`${t.imageThumbnailUrl} is null or ${t.imageUrl} is not null`),
     check("product_variants_weight_positive", sql`${t.weightGrams} > 0`),
     check("product_variants_hs_code_digits", sql`${t.hsCode} ~ '^[0-9]{6,10}$'`),
   ],

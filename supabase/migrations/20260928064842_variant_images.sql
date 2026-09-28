@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."product_variants" ADD COLUMN "image_url" text;--> statement-breakpoint
+ALTER TABLE "commerce"."product_variants" ADD COLUMN "image_thumbnail_url" text;--> statement-breakpoint
+ALTER TABLE "commerce"."product_variants" ADD CONSTRAINT "product_variants_image" CHECK ("commerce"."product_variants"."image_thumbnail_url" is null or "commerce"."product_variants"."image_url" is not null);

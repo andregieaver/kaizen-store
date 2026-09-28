@@ -290,7 +290,13 @@ export function ProductEditor(props: Props) {
       {(product.kind === "stay" || product.kind === "rental") && product.appointment && (
         <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
       )}
-      <VariantsSection product={product} update={update} context={context} countries={props.countries} />
+      <VariantsSection
+        product={product}
+        update={update}
+        context={context}
+        countries={props.countries}
+        upload={uploads ? (file) => uploadPicture(storeSlug, file) : null}
+      />
       {product.variants.some((v) => v.delivery === "digital") && (
         <DigitalSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       )}
@@ -505,6 +511,21 @@ function TextSection({
   );
 }
 
+/** A picture from the owner's computer, shrunk in the browser (1600 px and a 480 px copy) and uploaded to the store. */
+async function uploadPicture(storeSlug: string, file: File): Promise<{ url: string; thumbnailUrl: string } | { problem: string }> {
+  try {
+    const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
+    const data = new FormData();
+    const ext = image.type === "image/webp" ? "webp" : "jpg";
+    data.set("image", new File([image], `image.${ext}`, { type: image.type }));
+    data.set("thumbnail", new File([thumbnail], `thumb.${ext}`, { type: thumbnail.type }));
+    const outcome = await uploadImageAction(storeSlug, data);
+    return outcome.ok ? { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl } : { problem: outcome.problem };
+  } catch {
+    return { problem: `${file.name} could not be read as a picture.` };
+  }
+}
+
 function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { storeSlug: string; uploads: boolean }) {
   const [busy, setBusy] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
@@ -516,26 +537,13 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
     const room = MAX_MEDIA - product.media.length;
     for (const file of Array.from(files).slice(0, room)) {
       setBusy((n) => n + 1);
-      try {
-        const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
-        const data = new FormData();
-        const ext = image.type === "image/webp" ? "webp" : "jpg";
-        data.set("image", new File([image], `image.${ext}`, { type: image.type }));
-        data.set("thumbnail", new File([thumbnail], `thumb.${ext}`, { type: thumbnail.type }));
-        const outcome = await uploadImageAction(storeSlug, data);
-        if (outcome.ok) {
-          update((p) => ({
-            ...p,
-            media: [...p.media, { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl, alt: "" }],
-          }));
-        } else {
-          setProblem(outcome.problem);
-        }
-      } catch {
-        setProblem(`${file.name} could not be read as a picture.`);
-      } finally {
-        setBusy((n) => n - 1);
+      const outcome = await uploadPicture(storeSlug, file);
+      if ("url" in outcome) {
+        update((p) => ({ ...p, media: [...p.media, { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl, alt: "" }] }));
+      } else {
+        setProblem(outcome.problem);
       }
+      setBusy((n) => n - 1);
     }
   };
 
@@ -678,6 +686,7 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   originCountry: null,
   delivery,
   rentalPeriod: "day",
+  image: null,
 });
 
 /** Variants for a new set of options, keeping what was typed for combinations that remain. */
@@ -703,12 +712,15 @@ function variantsFor(
   });
 }
 
+type PictureUpload = (file: File) => Promise<{ url: string; thumbnailUrl: string } | { problem: string }>;
+
 function VariantsSection({
   product,
   update,
   context,
   countries,
-}: SectionProps & { context: EditorContext; countries: CountryOption[] }) {
+  upload,
+}: SectionProps & { context: EditorContext; countries: CountryOption[]; upload: PictureUpload | null }) {
   const [optionsOn, setOptionsOn] = useState(product.options.length > 0);
   const [drafts, setDrafts] = useState(() => product.options.map((o) => o.values.join(", ")));
   const [mixed, setMixed] = useState(() => new Set(product.variants.map((v) => v.delivery)).size > 1);
@@ -933,6 +945,8 @@ function VariantsSection({
                   showDelivery={mixed}
                   showPeriod={product.kind === "rental"}
                   showStock={!allDigital}
+                  pictures={product.media}
+                  upload={upload}
                   onChange={(change) => setVariant(index, change)}
                 />
               );
@@ -961,10 +975,15 @@ function VariantRow({
   showDelivery,
   showPeriod = false,
   showStock,
+  pictures,
+  upload,
   onChange,
 }: {
   variant: VariantInput;
   name: string;
+  /** The product's pictures, to choose the variant's from. */
+  pictures: ProductInput["media"];
+  upload: PictureUpload | null;
   markets: EditorContext["markets"];
   countries: CountryOption[];
   showDelivery: boolean;
@@ -981,7 +1000,16 @@ function VariantRow({
     <>
       <tr className="border-b border-border align-top">
         <th scope="row" className="py-2 pr-3 font-normal">
-          {name}
+          <span className="flex items-center gap-2">
+            <VariantPicture
+              name={name}
+              image={variant.image}
+              pictures={pictures}
+              upload={upload}
+              onChange={(image) => onChange({ image })}
+            />
+            {name}
+          </span>
         </th>
         <td className="py-2 pr-3">
           <input
@@ -1117,6 +1145,142 @@ function VariantRow({
         </td>
       </tr>
     </>
+  );
+}
+
+/**
+ * A variant's picture, shown beside it where shoppers choose a variant:
+ * one of the product's pictures, or one uploaded for it.
+ */
+function VariantPicture({
+  name,
+  image,
+  pictures,
+  upload,
+  onChange,
+}: {
+  name: string;
+  image: VariantInput["image"];
+  pictures: ProductInput["media"];
+  upload: PictureUpload | null;
+  onChange: (image: VariantInput["image"]) => void;
+}) {
+  // Where the chooser opens: fixed beside its button, as the variants' table scrolls and would cut it off.
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+  const open = at !== null;
+  const setOpen = (next: boolean) => {
+    const box = ref.current?.getBoundingClientRect();
+    setAt(next && box ? { top: box.bottom + 4, left: Math.min(box.left, window.innerWidth - 272) } : null);
+  };
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: Event) => {
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !ref.current?.contains(event.target as Node)) setAt(null);
+    };
+    const away = () => setAt(null);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    window.addEventListener("resize", away);
+    // Scrolling the page (not the chooser's own content) closes it, as it no longer sits by its button.
+    const scrolled = (event: Event) => !ref.current?.contains(event.target as Node) && setAt(null);
+    window.addEventListener("scroll", scrolled, true);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+      window.removeEventListener("resize", away);
+      window.removeEventListener("scroll", scrolled, true);
+    };
+  }, [open]);
+
+  const choose = (next: VariantInput["image"]) => {
+    onChange(next);
+    setOpen(false);
+  };
+  const thumb = "size-10 shrink-0 rounded-md border border-border object-cover";
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-label={image ? `Change the picture for ${name}` : `Choose a picture for ${name}`}
+        className="block rounded-md"
+      >
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element -- the store's own uploaded picture
+          <img src={image.thumbnailUrl ?? image.url} alt="" className={thumb} />
+        ) : (
+          <span aria-hidden className={`${thumb} flex items-center justify-center border-dashed text-lg text-muted`}>
+            +
+          </span>
+        )}
+      </button>
+      {at && (
+        <div
+          style={{ top: at.top, left: at.left }}
+          className="fixed z-50 flex w-64 flex-col gap-2 rounded-lg border border-border bg-background p-3 shadow-lg"
+        >
+          <p className="text-xs font-medium">Picture for {name}</p>
+          {pictures.length > 0 ? (
+            <ul className="grid grid-cols-4 gap-2">
+              {pictures.map((picture, index) => (
+                <li key={picture.url}>
+                  <button
+                    type="button"
+                    onClick={() => choose({ url: picture.url, thumbnailUrl: picture.thumbnailUrl })}
+                    aria-label={`Picture ${index + 1}`}
+                    aria-pressed={image?.url === picture.url}
+                    className="block rounded-md aria-pressed:ring-2 aria-pressed:ring-foreground"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- the product's own picture */}
+                    <img src={picture.thumbnailUrl ?? picture.url} alt="" className="aspect-square w-full rounded-md object-cover" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted">The product has no pictures yet.</p>
+          )}
+          {upload && (
+            <label className="w-fit cursor-pointer text-sm underline focus-within:outline-2">
+              {busy ? "Uploading …" : "Upload a picture"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/avif"
+                className="sr-only"
+                disabled={busy}
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  setBusy(true);
+                  setProblem(null);
+                  const outcome = await upload(file);
+                  setBusy(false);
+                  if ("url" in outcome) choose(outcome);
+                  else setProblem(outcome.problem);
+                }}
+              />
+            </label>
+          )}
+          {image && (
+            <button type="button" onClick={() => choose(null)} className="w-fit text-sm text-muted underline">
+              No picture
+            </button>
+          )}
+          {problem && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {problem}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

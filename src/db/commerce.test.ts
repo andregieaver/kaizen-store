@@ -2003,6 +2003,26 @@ describe("search tests (D77)", () => {
   });
 });
 
+describe("variant pictures", () => {
+  it("keeps a variant's picture with its small copy, and copies them with the template's variants", async () => {
+    const template = await createStore("pictures-template", ["NO"]);
+    const { productId, variantId } = await createProduct({ storeId: template });
+    await expect(
+      db.query("update commerce.product_variants set image_thumbnail_url = '/demo/mug-480.webp' where id = $1", [variantId]),
+    ).rejects.toThrow(/product_variants_image/);
+    await db.query(
+      "update commerce.product_variants set image_url = '/demo/mug-black.svg', image_thumbnail_url = '/demo/mug-black-480.svg' where id = $1",
+      [variantId],
+    );
+    await db.query("update commerce.products set status = 'active' where id = $1", [productId]);
+    const owner = await createAccount("pictures-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'pictures-copy', 'Copy', $2) as id", [template, owner]);
+    expect(
+      await one("select image_url, image_thumbnail_url from commerce.product_variants where store_id = $1", [copy]),
+    ).toEqual({ image_url: "/demo/mug-black.svg", image_thumbnail_url: "/demo/mug-black-480.svg" });
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(
