@@ -473,6 +473,97 @@ export async function chatWithTools(
   return { content, toolCalls };
 }
 
+/**
+ * One step of a conversation with tools, streamed (D94): the text is handed
+ * to `onText` as it comes, and the tools asked for are put together from
+ * their pieces, so the answer is the same as `chatWithTools`'s.
+ */
+export async function streamWithTools(
+  connection: AiConnection,
+  messages: ToolChatMessage[],
+  tools: ToolDefinition[],
+  onText: (delta: string) => void,
+  options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
+  if (!connection.textModel) throw new AiError("No text model is set.");
+  const limit = options.maxTokens ?? 1200;
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? 60_000);
+  let response: Response;
+  try {
+    response = await fetch(`${connection.apiUrl}/chat/completions`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${connection.apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: connection.textModel,
+        messages,
+        ...(tools.length > 0 && { tools: tools.map((tool) => ({ type: "function", function: tool })), tool_choice: "auto" }),
+        stream: true,
+        ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
+        ...gatewayOptions(connection, connection.textEuOnly),
+      }),
+      redirect: "error",
+      signal: options.signal ? AbortSignal.any([timeout, options.signal]) : timeout,
+      cache: "no-store",
+    });
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    throw new AiError("The provider could not be reached.");
+  }
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => "");
+    let message = text.slice(0, 200);
+    try {
+      const error = (JSON.parse(text) as Row).error as Row | string | undefined;
+      message = typeof error === "string" ? error : typeof error?.message === "string" ? error.message : message;
+    } catch {
+      // Not JSON.
+    }
+    throw new AiError(message || `The provider answered ${response.status}.`, response.status);
+  }
+  let content = "";
+  const calls = new Map<number, { id: string; name: string; args: string }>();
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const data = line.startsWith("data:") ? line.slice(5).trim() : "";
+      if (!data || data === "[DONE]") continue;
+      let chunk: Row;
+      try {
+        chunk = JSON.parse(data) as Row;
+      } catch {
+        continue;
+      }
+      const delta = (((chunk.choices ?? []) as Row[])[0]?.delta ?? {}) as Row;
+      if (typeof delta.content === "string" && delta.content) {
+        content += delta.content;
+        onText(delta.content);
+      }
+      for (const call of (delta.tool_calls ?? []) as Row[]) {
+        const index = Number(call.index ?? 0);
+        const current = calls.get(index) ?? { id: "", name: "", args: "" };
+        const fn = (call.function ?? {}) as Row;
+        if (typeof call.id === "string" && call.id) current.id = call.id;
+        if (typeof fn.name === "string") current.name += fn.name;
+        if (typeof fn.arguments === "string") current.args += fn.arguments;
+        calls.set(index, current);
+      }
+    }
+  }
+  const toolCalls = [...calls.entries()]
+    .sort(([a], [b]) => a - b)
+    .filter(([, call]) => call.name)
+    .map(([index, call]) => ({ id: call.id || `call-${index}`, type: "function" as const, function: { name: call.name, arguments: call.args || "{}" } }));
+  const text = content.trim() ? content : null;
+  if (!text && toolCalls.length === 0) throw new AiError("The provider's answer held no text.");
+  return { content: text, toolCalls };
+}
+
 /** Whether the connection can hear and speak: both voice models and a voice are set. */
 export const canSpeak = (connection: AiConnection | null): connection is AiConnection =>
   Boolean(connection?.transcriptionModel && connection.speechModel && connection.speechVoice);

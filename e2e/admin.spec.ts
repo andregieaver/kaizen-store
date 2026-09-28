@@ -105,3 +105,10 @@ test("a sign-in link without a code is rejected", async ({ page }) => {
   await expect(page).toHaveURL("/admin/sign-in?error=link");
   await expect(page.getByText("That link has expired or was already used.")).toBeVisible();
 });
+
+test("the owner assistant answers only a signed-in owner (D94)", async ({ page, request }) => {
+  const turn = await request.post("/admin/demo/assistant/turn", { data: { conversationId: null, message: "Hei" } });
+  expect(turn.status()).toBe(404);
+  await page.goto("/admin/demo/assistant");
+  await expect(page).toHaveURL("/admin/sign-in");
+});

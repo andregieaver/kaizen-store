@@ -376,6 +376,15 @@ of running `playwright install`.
   never the visitor; sign-ups are confirmed by email first unless switched
   off (`/api/forms/confirm`). Anything else that copies a page for another
   owner drops recipients (`withoutRecipients()`, `clone_page_content()`).
+- The owner assistant (D94, `src/lib/owner-tools.ts`, `src/server/owner-tools.ts`,
+  `src/server/owner-assistant.ts`, `OwnerAssistant`, `/admin/{store}/assistant`,
+  owners only): a tool loop with the store's AI over `OWNER_TOOLS`. A new
+  tool goes in `OWNER_TOOLS` (zod arguments, description) and `HANDLERS`,
+  answers from the store's own data with amounts written by `formatMoney`
+  and sums done in code, and takes a `gate` (`send`, `public`, `spend`) if
+  it emails customers, changes the site or costs money: gated calls are only
+  kept (`assistant_approvals`, `approvalSummary()`) and run on the owner's
+  yes. It never depends on Kaizen Life.
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
   `src/server/product-layouts.ts`): a product's page is a layout of rows
   with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the

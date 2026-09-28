@@ -1093,6 +1093,20 @@
       "when": 1790612027322,
       "tag": "20260928161347_form_submissions_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1790616146386,
+      "tag": "20260928172226_owner_assistant",
+      "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1790616149866,
+      "tag": "20260928172229_owner_assistant_rules",
+      "breakpoints": true
     }
   ]
 }

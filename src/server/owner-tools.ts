@@ -1,0 +1,434 @@
+import "server-only";
+
+import { sql } from "drizzle-orm";
+
+import { db } from "@/db/client";
+import { formatMoney } from "@/lib/money";
+import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerToolName } from "@/lib/owner-tools";
+import { marketPath, storeHref } from "@/lib/paths";
+
+import { audit, type Account } from "./auth";
+import { cancelBooking, listBookings } from "./bookings";
+import { catalogTag } from "./catalog";
+import { listDiscounts } from "./discounts";
+import { addOrderNote, CARRIERS, getOrderAdmin, markSent } from "./order-admin";
+import { listOrders } from "./orders";
+import { listPages, pagesTag, unpublishPage } from "./pages";
+import { listAdminProducts, setArchived } from "./products";
+import { sendBookingCancelled, sendShipped } from "./shopper-emails";
+import type { Store } from "./stores";
+
+type Row = Record<string, unknown>;
+
+/**
+ * What the owner assistant's tools do (D94): the store's own reads and
+ * writes, for one store and its owner. Answers are small JSON the model
+ * repeats: amounts are written out here in the store's own format, and
+ * totals and averages worked out here, never by the model.
+ */
+
+export type OwnerToolContext = {
+  account: Account;
+  store: Store;
+  /** Refreshes a cache tag: `updateTag` in a server action, `revalidateTag` in a route. */
+  invalidate: (tag: string) => void;
+};
+
+export class OwnerToolError extends Error {}
+
+const fail = (message: string): never => {
+  throw new OwnerToolError(message);
+};
+
+const mainLocale = (store: Store) => store.markets[0]?.locale ?? "en";
+const money = (store: Store, minor: number, currency: string) => formatMoney(minor, currency, mainLocale(store));
+
+/** An order by its number or id, the store's only. */
+async function findOrderId(store: Store, ref: string): Promise<string> {
+  const byId = /^[0-9a-f-]{36}$/i.test(ref);
+  const [row] = await db().execute<Row>(sql`
+    select id from commerce.orders
+    where store_id = ${store.id}::uuid and ${byId ? sql`id = ${ref}::uuid` : sql`number = ${ref.replace(/^#/, "")}`}
+  `);
+  return row ? String(row.id) : fail(`No order ${ref} in this store.`);
+}
+
+/** A product by id, handle or title, the store's only; a title that fits several says so. */
+async function findProductId(store: Store, ref: string): Promise<string> {
+  const byId = /^[0-9a-f-]{36}$/i.test(ref);
+  const rows = await db().execute<Row>(sql`
+    select distinct p.id, p.handle from commerce.products p
+    left join commerce.product_translations t on t.product_id = p.id
+    where p.store_id = ${store.id}::uuid
+      and ${byId ? sql`p.id = ${ref}::uuid` : sql`(p.handle = ${ref} or lower(t.title) = lower(${ref}))`}
+    limit 3
+  `);
+  if (rows.length === 0) return fail(`No product "${ref}" in this store. Use list_products to find it.`);
+  if (rows.length > 1) return fail(`Several products match "${ref}": ${rows.map((r) => r.handle).join(", ")}. Name one by its handle.`);
+  return String(rows[0].id);
+}
+
+// Reading ----------------------------------------------------------------------
+
+async function storeOverview({ store }: OwnerToolContext) {
+  const [counts] = await db().execute<Row>(sql`
+    select
+      (select count(*)::int from commerce.products where store_id = ${store.id}::uuid and status = 'active') as active_products,
+      (select count(*)::int from commerce.products where store_id = ${store.id}::uuid and status = 'draft') as draft_products,
+      (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed')) as orders,
+      (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status = 'paid') as orders_to_handle
+  `);
+  return {
+    name: store.name,
+    status: store.status,
+    address: storeHref(store.slug, marketPath(store.slug, store.markets[0]?.slug ?? "")),
+    payments: store.paymentsOn ? (store.paymentsTest ? "on, in test mode" : "on") : "off",
+    sells_to: store.audience,
+    bookings_module: store.bookingsOn,
+    time_zone: store.timeZone,
+    countries: store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency, language: m.lang })),
+    products: { active: Number(counts.active_products), drafts: Number(counts.draft_products) },
+    orders: { taken: Number(counts.orders), paid_not_yet_sent: Number(counts.orders_to_handle) },
+  };
+}
+
+async function salesSummary({ store }: OwnerToolContext, { days }: OwnerToolInput<"sales_summary">) {
+  // The period starts at midnight in the store's time zone, `days` days back counting today.
+  const since = sql`(date_trunc('day', now() at time zone ${store.timeZone}) - make_interval(days => ${days - 1})) at time zone ${store.timeZone}`;
+  const paid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
+  const [totals, refunds, top] = await Promise.all([
+    db().execute<Row>(sql`
+      select o.currency, count(*)::int as orders, sum(o.total_minor)::bigint as total
+      from commerce.orders o
+      where o.store_id = ${store.id}::uuid and o.placed_at >= ${since} and ${paid}
+      group by o.currency order by total desc
+    `),
+    db().execute<Row>(sql`
+      select o.currency, sum(r.amount_minor)::bigint as refunded
+      from commerce.refunds r
+      join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+      join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
+      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and r.created_at >= ${since}
+      group by o.currency
+    `),
+    db().execute<Row>(sql`
+      select l.title, sum(l.quantity)::int as quantity
+      from commerce.order_lines l join commerce.orders o on o.store_id = l.store_id and o.id = l.order_id
+      where o.store_id = ${store.id}::uuid and o.placed_at >= ${since} and ${paid} and l.variant_id is not null
+      group by l.title order by quantity desc, l.title limit 5
+    `),
+  ]);
+  const refunded = new Map(refunds.map((r) => [String(r.currency), Number(r.refunded)]));
+  return {
+    period: days === 1 ? "today" : `the last ${days} days, today included`,
+    per_currency: totals.map((t) => {
+      const currency = String(t.currency);
+      const orders = Number(t.orders);
+      const total = Number(t.total);
+      const back = refunded.get(currency) ?? 0;
+      return {
+        currency,
+        paid_orders: orders,
+        taken: money(store, total, currency),
+        refunded: money(store, back, currency),
+        after_refunds: money(store, total - back, currency),
+        average_order: money(store, Math.round(total / orders), currency),
+      };
+    }),
+    best_sellers: top.map((t) => ({ product: String(t.title), sold: Number(t.quantity) })),
+    note: totals.length === 0 ? "No paid orders in this period." : "Totals include VAT and shipping, as charged.",
+  };
+}
+
+async function listOrdersTool({ store }: OwnerToolContext, input: OwnerToolInput<"list_orders">) {
+  const rows = await listOrders(store.id, { unpaid: input.which === "unpaid", toSend: input.which === "to_send" });
+  const search = input.search?.toLowerCase();
+  const found = search
+    ? rows.filter((o) => [o.number, o.email, o.name ?? ""].some((v) => v.toLowerCase().includes(search.replace(/^#/, ""))))
+    : rows;
+  return {
+    count: found.length,
+    orders: found.slice(0, input.limit).map((o) => ({
+      number: o.number,
+      status: o.status,
+      customer: o.name ?? o.email,
+      email: o.email,
+      placed: o.placedAt,
+      total: money(store, o.totalMinor, o.currency),
+      items: o.items,
+    })),
+  };
+}
+
+async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInput<"get_order">) {
+  const view = await getOrderAdmin(store.id, await findOrderId(store, order));
+  if (!view) return fail(`No order ${order} in this store.`);
+  const m = (minor: number) => money(store, minor, view.currency);
+  return {
+    number: view.number,
+    status: view.status,
+    placed: view.placedAt,
+    customer: { email: view.email, name: view.shippingAddress?.name ?? view.billingAddress?.name ?? null },
+    country: view.marketCode,
+    lines: view.lines.map((l) => ({
+      title: l.title,
+      sku: l.sku,
+      quantity: l.quantity,
+      total: m(l.totalMinor),
+      delivery: l.delivery,
+      booking: l.booking ? { kind: l.booking.kind, starts: l.booking.startsAt, ends: l.booking.endsAt, status: l.booking.status, with: l.booking.staff } : null,
+    })),
+    subtotal: m(view.subtotalMinor),
+    shipping: m(view.shippingMinor),
+    discount: view.discountMinor ? { code: view.discountCode, off: m(view.discountMinor) } : null,
+    vat: m(view.taxMinor),
+    total: m(view.totalMinor),
+    paid: m(view.paidMinor),
+    refunded: m(view.refundedMinor),
+    left_to_refund: m(view.refundableMinor),
+    due_at_venue: view.balanceMinor ? m(view.balanceMinor) : null,
+    shipments: view.shipments.map((s) => ({ carrier: s.carrier, tracking: s.trackingNumber, sent: s.createdAt })),
+    admin: `/admin/${store.slug}/orders/${view.id}`,
+  };
+}
+
+async function listProductsTool({ store }: OwnerToolContext, input: OwnerToolInput<"list_products">) {
+  const rows = await listAdminProducts(store, { archived: input.status === "archived" });
+  const search = input.search?.toLowerCase();
+  const found = rows.filter(
+    (p) => (!input.status || p.status === input.status) && (!search || p.title.toLowerCase().includes(search) || p.handle.includes(search)),
+  );
+  return {
+    count: found.length,
+    products: found.slice(0, input.limit).map((p) => ({
+      id: p.id,
+      title: p.title,
+      handle: p.handle,
+      status: p.status,
+      price: p.price
+        ? p.price.min === p.price.max
+          ? money(store, p.price.min, p.price.currency)
+          : `${money(store, p.price.min, p.price.currency)} – ${money(store, p.price.max, p.price.currency)}`
+        : null,
+      stock: p.variants > p.digitalVariants ? p.stock : null,
+      variants: p.variants,
+    })),
+    prices: store.audience === "businesses" ? "Without VAT, as the store shows them." : "With VAT, in the main country.",
+  };
+}
+
+async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToolInput<"get_product">) {
+  const id = await findProductId(store, product);
+  const locale = mainLocale(store);
+  const [[head], variants] = await Promise.all([
+    db().execute<Row>(sql`
+      select p.handle, p.status, p.kind, coalesce(tl.title, tf.title, p.handle) as title, coalesce(tl.description, tf.description, '') as description
+      from commerce.products p
+      left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
+      left join lateral (select title, description from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
+      where p.store_id = ${store.id}::uuid and p.id = ${id}::uuid
+    `),
+    db().execute<Row>(sql`
+      select v.id, v.sku, v.options, v.delivery,
+        (select coalesce(sum(l.on_hand), 0)::int from commerce.inventory_levels l where l.variant_id = v.id) as stock,
+        coalesce((select jsonb_agg(jsonb_build_object('market', c.market_code, 'amount', c.amount_minor, 'currency', c.currency) order by c.market_code)
+          from commerce.current_prices c where c.variant_id = v.id), '[]') as prices
+      from commerce.product_variants v
+      where v.store_id = ${store.id}::uuid and v.product_id = ${id}::uuid and v.active
+      order by v.sku
+    `),
+  ]);
+  return {
+    id,
+    title: String(head.title),
+    handle: String(head.handle),
+    status: String(head.status),
+    kind: String(head.kind),
+    description: String(head.description).slice(0, 1500),
+    variants: variants.map((v) => ({
+      sku: String(v.sku),
+      options: v.options,
+      delivery: String(v.delivery),
+      stock: v.delivery === "physical" ? Number(v.stock) : null,
+      prices: (v.prices as { market: string; amount: number; currency: string }[]).map((p) => ({
+        country: p.market,
+        price: money(store, Number(p.amount), p.currency),
+      })),
+    })),
+    prices: "With VAT, as charged.",
+    admin: `/admin/${store.slug}/products/${id}`,
+  };
+}
+
+async function lowStock({ store }: OwnerToolContext, { at_most }: OwnerToolInput<"low_stock">) {
+  const locale = mainLocale(store);
+  const rows = await db().execute<Row>(sql`
+    select v.sku, v.options, coalesce(tl.title, p.handle) as title, coalesce(sum(l.on_hand), 0)::int as stock
+    from commerce.product_variants v
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
+    left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
+    left join commerce.inventory_levels l on l.variant_id = v.id
+    where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical'
+    group by v.id, v.sku, v.options, tl.title, p.handle
+    having coalesce(sum(l.on_hand), 0) <= ${at_most}
+    order by stock, title
+    limit 50
+  `);
+  return { count: rows.length, variants: rows.map((r) => ({ product: String(r.title), sku: String(r.sku), options: r.options, stock: Number(r.stock) })) };
+}
+
+/** Midnight of a day in the store's time zone, as an instant. */
+async function dayStart(store: Store, day: string | undefined): Promise<Date> {
+  const [row] = await db().execute<Row>(sql`
+    select (${day ? sql`${day}::date` : sql`(now() at time zone ${store.timeZone})::date`}::timestamp at time zone ${store.timeZone}) as at
+  `);
+  return new Date(String(row.at));
+}
+
+async function listBookingsTool({ store }: OwnerToolContext, input: OwnerToolInput<"list_bookings">) {
+  if (!store.bookingsOn) return { note: "The bookings module is off in this store." };
+  const from = await dayStart(store, input.from);
+  const to = new Date(from.getTime() + input.days * 86_400_000);
+  const [staff, ranges] = await Promise.all([listBookings(store.id, from, to, ["staff"]), listBookings(store.id, from, to, ["unit", "item"])]);
+  const time = new Intl.DateTimeFormat(mainLocale(store), { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
+  return {
+    time_zone: store.timeZone,
+    bookings: [...staff, ...ranges]
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      .slice(0, 100)
+      .map((b) => ({
+        id: b.id,
+        what: b.service,
+        with: b.staff,
+        starts: time.format(new Date(b.startsAt)),
+        ends: time.format(new Date(b.endsAt)),
+        status: b.status,
+        customer: b.customer,
+        order: b.orderNumber,
+      })),
+  };
+}
+
+async function listDiscountsTool({ store }: OwnerToolContext) {
+  const rows = await listDiscounts(store.id);
+  return {
+    discounts: rows.map((d) => ({
+      code: d.code,
+      active: d.active,
+      gives:
+        d.kind === "percent"
+          ? `${d.percent} % off`
+          : Object.entries(d.amounts)
+              .map(([market, minor]) => {
+                const m = store.markets.find((x) => x.code === market);
+                return m ? `${money(store, minor, m.currency)} off in ${m.name}` : null;
+              })
+              .filter(Boolean)
+              .join(", "),
+      runs: { from: d.startsAt, until: d.endsAt },
+      used: d.used,
+      limit: d.usageLimit,
+    })),
+  };
+}
+
+async function listPagesTool({ store }: OwnerToolContext, { type }: OwnerToolInput<"list_pages">) {
+  const pages = await listPages(store.id, type);
+  return {
+    pages: pages.map((p) => ({ id: p.id, title: p.title, address: p.slug, state: p.state, published: p.publishedAt })),
+  };
+}
+
+async function searchInsights({ store }: OwnerToolContext, input: OwnerToolInput<"search_insights">) {
+  const since = sql`now() - make_interval(days => ${input.days})`;
+  const [top, none] = await Promise.all([
+    db().execute<Row>(sql`
+      select lower(query) as query, count(*)::int as times from commerce.search_queries
+      where store_id = ${store.id}::uuid and created_at >= ${since}
+      group by lower(query) order by times desc, query limit ${input.limit}
+    `),
+    db().execute<Row>(sql`
+      select lower(query) as query, count(*)::int as times from commerce.search_queries
+      where store_id = ${store.id}::uuid and created_at >= ${since} and results = 0
+      group by lower(query) order by times desc, query limit ${input.limit}
+    `),
+  ]);
+  return {
+    most_searched: top.map((r) => ({ search: String(r.query), times: Number(r.times) })),
+    found_nothing: none.map((r) => ({ search: String(r.query), times: Number(r.times) })),
+  };
+}
+
+// Changing ---------------------------------------------------------------------
+
+async function addOrderNoteTool({ store, account }: OwnerToolContext, input: OwnerToolInput<"add_order_note">) {
+  const id = await findOrderId(store, input.order);
+  await addOrderNote(store.id, id, input.note, `${account.email} (assistant)`);
+  return { done: `Note added to order ${input.order}.` };
+}
+
+async function markOrderSentTool({ store, account }: OwnerToolContext, input: OwnerToolInput<"mark_order_sent">) {
+  const id = await findOrderId(store, input.order);
+  const carrier = CARRIERS.find((c) => c.id === input.carrier.toLowerCase() || c.name.toLowerCase() === input.carrier.toLowerCase())?.id ?? "other";
+  const shipment = await markSent(store.id, id, { carrier, trackingNumber: input.tracking_number, trackingUrl: null }, account.id);
+  if (!shipment) return fail(`Order ${input.order} is not paid, so it cannot be sent.`);
+  if (input.notify) await sendShipped(store.id, id, shipment);
+  return { done: input.notify ? `Order ${input.order} is marked as sent and the customer has been told.` : `Order ${input.order} is marked as sent.` };
+}
+
+async function cancelBookingTool({ store, account }: OwnerToolContext, input: OwnerToolInput<"cancel_booking">) {
+  if (!(await cancelBooking({ account, store, role: "owner" }, input.booking))) return fail("That booking is not a confirmed booking of this store.");
+  if (input.notify) await sendBookingCancelled(store.id, input.booking);
+  return { done: input.notify ? "The booking is cancelled and the customer has been told." : "The booking is cancelled." };
+}
+
+async function archiveProductTool(ctx: OwnerToolContext, input: OwnerToolInput<"archive_product">) {
+  const id = await findProductId(ctx.store, input.product);
+  if (!(await setArchived(ctx.store, id, input.archived))) return fail("That product is not this store's.");
+  ctx.invalidate(catalogTag(ctx.store.id));
+  return { done: input.archived ? `${input.product} is taken off the site.` : `${input.product} is back, as a draft to publish from the product page.` };
+}
+
+async function unpublishPageTool(ctx: OwnerToolContext, input: OwnerToolInput<"unpublish_page">) {
+  if (!(await unpublishPage(ctx.account, ctx.store.id, input.page, input.type))) return fail("That page is not one of this store's published pages.");
+  ctx.invalidate(pagesTag(ctx.store.id));
+  return { done: "The page is taken off the site; its draft is kept." };
+}
+
+type Handler = (ctx: OwnerToolContext, input: never) => Promise<unknown>;
+
+const HANDLERS: Record<OwnerToolName, Handler> = {
+  store_overview: storeOverview,
+  sales_summary: salesSummary,
+  list_orders: listOrdersTool,
+  get_order: getOrderTool,
+  list_products: listProductsTool,
+  get_product: getProductTool,
+  low_stock: lowStock,
+  list_bookings: listBookingsTool,
+  list_discounts: listDiscountsTool,
+  list_pages: listPagesTool,
+  search_insights: searchInsights,
+  add_order_note: addOrderNoteTool,
+  mark_order_sent: markOrderSentTool,
+  cancel_booking: cancelBookingTool,
+  archive_product: archiveProductTool,
+  unpublish_page: unpublishPageTool,
+};
+
+/**
+ * Runs a tool for the store's owner, its arguments checked first. Gated
+ * tools run here only once approved (`runApproved` in the assistant);
+ * changes are written to the store's audit log.
+ */
+export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<unknown> {
+  const tool = OWNER_TOOLS_BY_NAME[name];
+  if (!tool) return fail(`There is no tool called ${name}.`);
+  const input = readToolInput(tool, raw);
+  if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+  const result = await HANDLERS[name as OwnerToolName](ctx, input.input as never);
+  if (tool.gate || name === "add_order_note") {
+    await audit(ctx.account.id, ctx.store.id, `store.assistant.${name}`, { args: input.input as Record<string, unknown> });
+  }
+  return result;
+}

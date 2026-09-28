@@ -3834,3 +3834,90 @@ export const formSubmissions = commerce.table(
     check("form_submissions_path", sql`left(${t.path}, 1) = '/' and length(${t.path}) <= 500`),
   ],
 );
+
+/**
+ * The owner assistant (D94): a store owner's conversations with the store's
+ * own AI in the admin, one per thread. Kept until the owner deletes them.
+ */
+export const assistantConversations = commerce.table(
+  "assistant_conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("assistant_conversations_owner_idx").on(t.storeId, t.accountId, t.updatedAt),
+    index("assistant_conversations_account_idx").on(t.accountId),
+    check("assistant_conversations_title", sql`length(${t.title}) <= 200`),
+  ],
+);
+
+/** One turn of a conversation: what the owner wrote, or the assistant's answer with the tools it used. */
+export const assistantMessages = commerce.table(
+  "assistant_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").notNull(),
+    /** `user` or `assistant`. */
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    /** The assistant's tool calls that turn: name and whether it worked, never their data. */
+    tools: jsonb("tools").notNull().default([]),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({ name: "assistant_messages_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
+    index("assistant_messages_conversation_idx").on(t.conversationId, t.createdAt),
+    index("assistant_messages_store_idx").on(t.storeId, t.createdAt),
+    check("assistant_messages_role", sql`${t.role} in ('user', 'assistant')`),
+    check("assistant_messages_content", sql`length(${t.content}) <= 20000`),
+  ],
+);
+
+/**
+ * A change the assistant asked to make that needs the owner's yes (D94):
+ * anything sent in the store's name, made public or costing money. The
+ * exact call is kept; approving runs it, not the model's rewording of it.
+ */
+export const assistantApprovals = commerce.table(
+  "assistant_approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    conversationId: uuid("conversation_id").notNull(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    tool: text("tool").notNull(),
+    args: jsonb("args").notNull(),
+    /** What it will do, in words made by code from the arguments. */
+    summary: text("summary").notNull(),
+    /** `send`, `public` or `spend`. */
+    category: text("category").notNull(),
+    status: text("status").notNull().default("pending"),
+    result: jsonb("result"),
+    createdAt: createdAt(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+  },
+  (t) => [
+    foreignKey({ name: "assistant_approvals_conversation_fk", columns: [t.conversationId], foreignColumns: [assistantConversations.id] }).onDelete("cascade"),
+    index("assistant_approvals_conversation_idx").on(t.conversationId, t.createdAt),
+    index("assistant_approvals_store_idx").on(t.storeId, t.status),
+    index("assistant_approvals_account_idx").on(t.accountId),
+    check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend')`),
+    check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed')`),
+  ],
+);

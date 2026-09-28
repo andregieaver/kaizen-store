@@ -33,6 +33,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const base = `/admin/${store.slug}`;
   const tabs: NavItem[] = [
     { href: base, label: "Overview", exact: true },
+    // The owner assistant (D94), for owners.
+    ...(role === "owner" ? [{ href: `${base}/assistant`, label: "Assistant" }] : []),
     { href: `${base}/orders`, label: "Orders" },
     { href: `${base}/subscriptions`, label: "Subscriptions" },
     { href: `${base}/products`, label: "Products" },
