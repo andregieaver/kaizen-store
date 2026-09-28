@@ -2771,6 +2771,54 @@ export const savedParts = commerce.table(
 );
 
 /**
+ * A file in a site's media library (D88): Kaizen's (`store_id` null) or a
+ * store's pictures and videos, in the public buckets. Every picture or video
+ * uploaded anywhere in the admin is kept here (its address, its small copy,
+ * where it lies in Storage, its name as uploaded, type, size and, once
+ * known, width and height); `alt` describes it for search. What uses it is
+ * found where it is shown, never stored. Its keyword index and vectors
+ * (`media_embeddings`) are SQL only.
+ */
+export const media = commerce.table(
+  "media",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizen's own. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `image` or `video`. */
+    kind: text("kind").notNull(),
+    url: text("url").notNull(),
+    thumbnailUrl: text("thumbnail_url"),
+    /** The Storage bucket and paths, to delete the files with the item. */
+    bucket: text("bucket").notNull(),
+    path: text("path").notNull(),
+    thumbnailPath: text("thumbnail_path"),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
+    width: integer("width"),
+    height: integer("height"),
+    alt: text("alt").notNull().default(""),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("media_url_key").on(t.url),
+    index("media_store_created_idx").on(t.storeId, t.createdAt),
+    index("media_created_by_idx").on(t.createdBy),
+    check("media_kind", sql`${t.kind} in ('image', 'video')`),
+    check("media_file_name", sql`length(trim(${t.fileName})) between 1 and 255`),
+    check("media_alt", sql`length(${t.alt}) <= 500`),
+    check("media_size", sql`${t.sizeBytes} >= 0`),
+    check(
+      "media_dimensions",
+      sql`(${t.width} is null and ${t.height} is null) or (${t.width} is not null and ${t.height} is not null and ${t.width} > 0 and ${t.height} > 0)`,
+    ),
+  ],
+);
+
+/**
  * A menu (D85): Kaizen's (`store_id` null) or a store's, edited under Menus
  * and shown wherever it is chosen: a menu component in any page, header or
  * footer, and the standard header and footer. Its items are a list in

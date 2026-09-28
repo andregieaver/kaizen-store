@@ -7,6 +7,7 @@ import { cronAuthorised } from "@/server/cron-auth";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { pruneSearchCache } from "@/server/search-cache";
 import { refreshKnowledge } from "@/server/knowledge";
+import { refreshMediaEmbeddings } from "@/server/media-library";
 import { payHostCommissions } from "@/server/host-payments";
 import { pruneSearchLog } from "@/server/search";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
@@ -20,12 +21,13 @@ import { sendDueBookingReminders } from "@/server/shopper-emails";
  * older than 90 days and search answers older than 30 forgotten (Phase 2),
  * products' vectors for search by meaning brought up to date (D74), and
  * the chat agents' knowledge cut anew from pages published since, with its
- * vectors, and their counts older than two days forgotten (D81).
+ * vectors, and their counts older than two days forgotten (D81); and media
+ * libraries' vectors for search by meaning (D88).
  */
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -36,9 +38,10 @@ async function run(request: Request) {
     pruneSearchCache(),
     refreshKnowledge(),
     pruneChatUsage(),
+    refreshMediaEmbeddings(),
   ]);
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

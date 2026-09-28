@@ -145,6 +145,8 @@ export function ShareImageField({
       const ext = image.type === "image/webp" ? "webp" : "jpg";
       const data = new FormData();
       data.set("image", new File([image], `share.${ext}`, { type: image.type }));
+      // Its name as it was on the owner's computer, for the media library (D88).
+      data.set("name", file.name);
       data.set("thumbnail", new File([thumbnail], `share-480.${ext}`, { type: thumbnail.type }));
       const outcome = await upload(data);
       if (outcome.ok) setUrl(outcome.url);

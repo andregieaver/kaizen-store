@@ -41,6 +41,9 @@ export type UploadResult =
   | { ok: true; url: string; thumbnailUrl: string }
   | { ok: false; problem: string };
 
+/** Where an uploaded picture lies in Storage, for the media library (D88). */
+export type StoredImage = { bucket: string; path: string; thumbnailPath: string };
+
 /**
  * Stores a product picture and its thumbnail (both already shrunk by the
  * browser) in the store's folder of the public bucket.
@@ -49,7 +52,7 @@ export async function uploadProductImage(
   storeId: string,
   image: File,
   thumbnail: File,
-): Promise<UploadResult> {
+): Promise<UploadResult | { ok: true; url: string; thumbnailUrl: string; stored: StoredImage }> {
   const secret = secretKey();
   if ("problem" in secret) return { ok: false, problem: secret.problem };
   for (const file of [image, thumbnail]) {
@@ -87,7 +90,21 @@ export async function uploadProductImage(
     ok: true,
     url: storage.getPublicUrl(paths.image).data.publicUrl,
     thumbnailUrl: storage.getPublicUrl(paths.thumbnail).data.publicUrl,
+    stored: { bucket: BUCKET, path: paths.image, thumbnailPath: paths.thumbnail },
   };
+}
+
+/** Removes a library item's files from their public bucket (D88); false if Storage refused. */
+export async function removeStoredFiles(bucket: string, paths: string[]): Promise<boolean> {
+  if (![BUCKET, VIDEOS_BUCKET].includes(bucket) || paths.length === 0) return false;
+  const secret = secretKey();
+  if ("problem" in secret) return false;
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(bucket);
+  const { error } = await storage.remove(paths);
+  if (error) console.error("[media] files could not be removed:", error.message);
+  return !error;
 }
 
 // ---------------------------------------------------------------------------

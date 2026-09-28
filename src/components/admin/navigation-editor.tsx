@@ -235,12 +235,14 @@ function FaviconField({
       const [big, small] = await Promise.all([squareIcon(file, 512), squareIcon(file, 64)]);
       const data = new FormData();
       data.set("image", new File([big], "icon.png", { type: "image/png" }));
+      // Its name as it was on the owner's computer, for the media library (D88).
+      data.set("name", file.name);
       data.set("thumbnail", new File([small], "icon-64.png", { type: "image/png" }));
       const outcome = await upload(data);
       if (outcome.ok) onChange({ url: outcome.url, smallUrl: outcome.thumbnailUrl ?? outcome.url });
       else setProblem(outcome.problem);
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a PNG, JPEG, WebP or SVG.`);
+      setProblem(`${file.name} could not be read as a picture. Use a PNG, JPEG, WebP, AVIF or SVG.`);
     } finally {
       setBusy(false);
     }
@@ -279,7 +281,7 @@ function FaviconField({
               {busy ? "Uploading …" : favicon ? "Replace icon" : "Upload icon"}
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/webp,image/avif,image/svg+xml"
                 className="sr-only"
                 disabled={busy}
                 onChange={(event) => {
@@ -337,13 +339,15 @@ function LogoField({
       const ext = image.type === "image/webp" ? "webp" : "jpg";
       const data = new FormData();
       data.set("image", new File([image], `logo.${ext}`, { type: image.type }));
+      // Its name as it was on the owner's computer, for the media library (D88).
+      data.set("name", file.name);
       data.set("thumbnail", new File([thumbnail], `logo-480.${ext}`, { type: thumbnail.type }));
       const outcome = await upload(data);
       if (outcome.ok) onChange({ url: outcome.url, width: size.width, height: size.height });
       else setProblem(outcome.problem);
       size.close();
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a PNG, JPEG or WebP.`);
+      setProblem(`${file.name} could not be read as a picture. Use a PNG, JPEG, WebP or AVIF.`);
     } finally {
       setBusy(false);
     }
@@ -376,7 +380,7 @@ function LogoField({
               {busy ? "Uploading …" : logo ? `Replace ${title.toLowerCase()}` : `Upload ${title.toLowerCase()}`}
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept="image/png,image/jpeg,image/webp,image/avif"
                 className="sr-only"
                 disabled={busy}
                 onChange={(event) => {

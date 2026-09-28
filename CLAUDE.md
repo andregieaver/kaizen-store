@@ -564,6 +564,17 @@ of running `playwright install`.
   columns and centring; the links right under it take a picture,
   `MenuEntry.image`), drawn side by side across the header's width. `clone_store()` copies menus and `clone_page_content()`
   swaps their ids in copied pages.
+- The media library (D88, `src/server/media-library.ts`, `MediaLibrary`):
+  `commerce.media`, one row per uploaded file per owner (a store, or Kaizen
+  with a null store), at `/admin/{store}/media` and `/admin/platform/media`.
+  Every upload is registered: pictures through `uploadToLibrary()` (which
+  the upload actions call; send the file's `name`), videos by `registerVideo()`
+  when their upload starts; a new upload path does the same. Where a file is
+  used is worked out on request by `mediaUses()`, so a new place that keeps a
+  picture's address goes there too. Search is keyword plus meaning
+  (`media_embeddings`, SQL only, `embedMedia()` in the five-minute cron),
+  fused as the storefront's; the address is read by `mediaQuery()`.
+  Deleting removes the file from Storage (`removeStoredFiles()`) and the row.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
   store's `NavigationEditor` (logos, icon, which menus, and business
   details); menu links take platform kinds (`PlatformMenuLink`: a page by

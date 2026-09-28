@@ -8,7 +8,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
 import { chatTag, saveChatAgent } from "@/server/chat-agent";
 import { addDocumentFromForm, deleteDocument, refreshSiteKnowledge } from "@/server/knowledge";
-import { uploadProductImage, type UploadResult } from "@/server/media";
+import type { UploadResult } from "@/server/media";
+import { uploadToLibrary } from "@/server/media-library";
 
 /** The store's chat agent (D81): who it is and how it works. */
 export async function saveChatAgentAction(storeSlug: string, json: string) {
@@ -29,11 +30,8 @@ export async function saveChatAgentAction(storeSlug: string, json: string) {
 
 /** The agent's picture, shrunk by the browser. */
 export async function uploadChatAvatarAction(storeSlug: string, formData: FormData): Promise<UploadResult> {
-  const { store } = await requireMember(storeSlug);
-  const image = formData.get("image");
-  const thumbnail = formData.get("thumbnail");
-  if (!(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Choose a picture to upload." };
-  return uploadProductImage(store.id, image, thumbnail);
+  const { account, store } = await requireMember(storeSlug);
+  return uploadToLibrary({ storeId: store.id, accountId: account.id }, formData);
 }
 
 /** A document for the knowledge base, pasted or from a file. */

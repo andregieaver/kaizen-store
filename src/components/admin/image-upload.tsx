@@ -21,6 +21,8 @@ export async function uploadPicture(
   const ext = image.type === "image/webp" ? "webp" : "jpg";
   const data = new FormData();
   data.set("image", new File([image], `picture.${ext}`, { type: image.type }));
+  // Its name as it was on the owner's computer, for the media library (D88).
+  data.set("name", file.name);
   data.set("thumbnail", new File([thumbnail], `picture-480.${ext}`, { type: thumbnail.type }));
   const outcome = await upload(data);
   const dimensions = { width: size.width, height: size.height };
@@ -53,7 +55,7 @@ export function ImageUploadButton({
       if (outcome.ok) onUploaded(outcome.image);
       else setProblem(outcome.problem);
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG or WebP.`);
+      setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.`);
     } finally {
       setBusy(false);
     }

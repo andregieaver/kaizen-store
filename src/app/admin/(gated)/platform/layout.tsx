@@ -16,6 +16,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
     { href: "/admin/platform/stripe", label: "Stripe" },
     { href: "/admin/platform/pages", label: "Pages" },
     { href: "/admin/platform/articles", label: "Blog" },
+    { href: "/admin/platform/media", label: "Media" },
     { href: "/admin/platform/menus", label: "Menus" },
     { href: "/admin/platform/navigation", label: "Header and footer" },
     { href: "/admin/platform/headers", label: "Headers" },

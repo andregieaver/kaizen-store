@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadPicture, type Upload, type Uploaded } from "./image-upload";
 
 /** Starts a video's upload: a signed upload to the public bucket and the address it will have. */
-export type StartVideo = (file: { type: string; size: number }) => Promise<
+export type StartVideo = (file: { name?: string; type: string; size: number }) => Promise<
   { ok: true; path: string; token: string; bucket: string; url: string } | { ok: false; problem: string }
 >;
 
@@ -54,6 +54,33 @@ function takeStill(file: File): Promise<File | null> {
  * to the public bucket (videos are too large for a server request), with a
  * still from it uploaded as a picture.
  */
+/**
+ * Uploads a video straight from the browser to Storage (after the server
+ * starts it, which keeps it in the media library, D88), with a still from
+ * it as its poster where `upload` is given.
+ */
+export async function uploadVideoFile(
+  startVideo: StartVideo,
+  upload: Upload | null,
+  file: File,
+): Promise<{ ok: true; video: UploadedVideo } | { ok: false; problem: string }> {
+  if (!VIDEO_TYPES.includes(file.type)) return { ok: false, problem: "Use an MP4 or WebM video." };
+  if (file.size > VIDEO_MAX_BYTES) return { ok: false, problem: "That video is too large. Use one under 50 MB." };
+  try {
+    const started = await startVideo({ name: file.name, type: file.type, size: file.size });
+    if (!started.ok) return { ok: false, problem: started.problem };
+    const [stored, still] = await Promise.all([
+      createClient().storage.from(started.bucket).uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
+      upload ? takeStill(file) : Promise.resolve(null),
+    ]);
+    if (stored.error) return { ok: false, problem: `${file.name} could not be uploaded. Try again.` };
+    const poster = still && upload ? await uploadPicture(upload, still) : null;
+    return { ok: true, video: { video: { url: started.url }, poster: poster?.ok ? poster.image : null } };
+  } catch {
+    return { ok: false, problem: `${file.name} could not be uploaded. Try again.` };
+  }
+}
+
 export function VideoUploadButton({
   startVideo,
   upload,
@@ -74,21 +101,10 @@ export function VideoUploadButton({
     if (file.size > VIDEO_MAX_BYTES) return setProblem("That video is too large. Use one under 50 MB.");
     setBusy(true);
     setProblem(null);
-    try {
-      const started = await startVideo({ type: file.type, size: file.size });
-      if (!started.ok) return setProblem(started.problem);
-      const [stored, still] = await Promise.all([
-        createClient().storage.from(started.bucket).uploadToSignedUrl(started.path, started.token, file, { contentType: file.type }),
-        takeStill(file),
-      ]);
-      if (stored.error) return setProblem(`${file.name} could not be uploaded. Try again.`);
-      const poster = still && upload ? await uploadPicture(upload, still) : null;
-      onUploaded({ video: { url: started.url }, poster: poster?.ok ? poster.image : null });
-    } catch {
-      setProblem(`${file.name} could not be uploaded. Try again.`);
-    } finally {
-      setBusy(false);
-    }
+    const outcome = await uploadVideoFile(startVideo, upload, file);
+    if (outcome.ok) onUploaded(outcome.video);
+    else setProblem(outcome.problem);
+    setBusy(false);
   };
 
   if (!startVideo) return <p className="text-sm text-muted">Uploads are not set up on this server.</p>;

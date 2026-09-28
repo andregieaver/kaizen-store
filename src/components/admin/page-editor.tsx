@@ -609,13 +609,15 @@ function ThumbnailField({
       const ext = image.type === "image/webp" ? "webp" : "jpg";
       const data = new FormData();
       data.set("image", new File([image], `page.${ext}`, { type: image.type }));
+      // Its name as it was on the owner's computer, for the media library (D88).
+      data.set("name", file.name);
       data.set("thumbnail", new File([thumbnail], `page-480.${ext}`, { type: thumbnail.type }));
       const outcome = await upload(data);
       if (outcome.ok) onChange({ url: outcome.url, width: size.width, height: size.height, alt: value?.alt ?? "" });
       else setProblem(outcome.problem);
       size.close();
     } catch {
-      setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG or WebP.`);
+      setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.`);
     } finally {
       setBusy(false);
     }

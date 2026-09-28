@@ -15,11 +15,11 @@ import { suggestProductText } from "@/server/product-writer";
 import {
   startFileUpload,
   startVideoUpload,
-  uploadProductImage,
   type FileUpload,
   type UploadResult,
   type VideoUpload,
 } from "@/server/media";
+import { registerVideo, uploadToLibrary } from "@/server/media-library";
 import { createTerm, deleteTerm, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import {
   getEditorContext,
@@ -90,13 +90,9 @@ export async function saveProductAction(
 
 /** Receives a picture already shrunk by the browser, plus its thumbnail. */
 export async function uploadImageAction(storeSlug: string, formData: FormData): Promise<UploadResult> {
-  const member = await requireMember(storeSlug);
-  const image = formData.get("image");
-  const thumbnail = formData.get("thumbnail");
-  if (!(image instanceof File) || !(thumbnail instanceof File)) {
-    return { ok: false, problem: "Choose a picture to upload." };
-  }
-  return uploadProductImage(member.store.id, image, thumbnail);
+  const { account, store } = await requireMember(storeSlug);
+  // Kept in the store's media library too (D88).
+  return uploadToLibrary({ storeId: store.id, accountId: account.id }, formData);
 }
 
 export async function archiveProductAction(storeSlug: string, productId: string, archive: boolean) {
@@ -107,15 +103,18 @@ export async function archiveProductAction(storeSlug: string, productId: string,
   redirect(`/admin/${storeSlug}/products${archive ? "" : `/${productId}`}`);
 }
 
-/** The video the browser means to upload: its type and size, checked again by the bucket. */
-const videoFile = z.object({ type: z.string().max(100), size: z.number().int().nonnegative() });
+/** The video the browser means to upload: its name, type and size, checked again by the bucket. */
+const videoFile = z.object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative() });
 
 /** Starts an upload of a row's background video straight from the browser to the public bucket. */
 export async function startVideoUploadAction(storeSlug: string, file: unknown): Promise<VideoUpload> {
-  const member = await requireMember(storeSlug);
+  const { account, store } = await requireMember(storeSlug);
   const parsed = videoFile.safeParse(file);
   if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
-  return startVideoUpload(member.store.id, parsed.data);
+  const started = await startVideoUpload(store.id, parsed.data);
+  // Kept in the store's media library as its upload starts (D88).
+  if (started.ok) await registerVideo({ storeId: store.id, accountId: account.id }, started, parsed.data);
+  return started;
 }
 
 /** Starts an upload of a download file straight from the browser to the private bucket (D24). */

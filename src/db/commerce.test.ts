@@ -2090,6 +2090,59 @@ describe("menus (D85)", () => {
   });
 });
 
+describe("the media library (D88)", () => {
+  it("keeps each file once, searchable by its name's words, with its vector while it is kept", async () => {
+    const owner = await createStore("media-owner", ["NO"]);
+    const insert = (values: { store?: string | null; url: string; name?: string; kind?: string; size?: number; width?: number | null; height?: number | null }) =>
+      db.query(
+        `insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, width, height)
+         values ($1, $2, $3, 'product-media', $3, $4, 'image/webp', $5, $6, $7) returning id`,
+        [
+          values.store === undefined ? owner : values.store,
+          values.kind ?? "image",
+          values.url,
+          values.name ?? "bilde.webp",
+          values.size ?? 100,
+          values.width === undefined ? 10 : values.width,
+          values.height === undefined ? 10 : values.height,
+        ],
+      );
+    const { rows } = await insert({ url: "https://x/a.webp", name: "hvit_kopp-på.bord.webp" });
+    const id = (rows[0] as { id: string }).id;
+    // One row per file; Kaizen's own files have no store.
+    await expect(insert({ url: "https://x/a.webp" })).rejects.toThrow(/media_url_key/);
+    await insert({ store: null, url: "https://x/kaizen.webp" });
+    await expect(insert({ url: "https://x/b.webp", kind: "pdf" })).rejects.toThrow(/media_kind/);
+    await expect(insert({ url: "https://x/c.webp", name: "" })).rejects.toThrow(/media_file_name/);
+    await expect(insert({ url: "https://x/d.webp", size: -1 })).rejects.toThrow(/media_size/);
+    await expect(insert({ url: "https://x/e.webp", width: 10, height: null })).rejects.toThrow(/media_dimensions/);
+    await expect(insert({ url: "https://x/f.webp", width: 0, height: 0 })).rejects.toThrow(/media_dimensions/);
+    await insert({ url: "https://x/g.webp", width: null, height: null });
+    // The name's words, split at dots, dashes and underscores, are found.
+    const { n } = await one<{ n: number }>(
+      "select count(*)::int as n from commerce.media where search @@ to_tsquery('simple', 'kopp & bord') and id = $1",
+      [id],
+    );
+    expect(n).toBe(1);
+    await db.query(
+      `insert into commerce.media_embeddings (media_id, store_id, space, content_hash, embedding)
+       values ($1, $2, 's', '0123456789abcdef0123456789abcdef', '[1,0]')`,
+      [id, owner],
+    );
+    await expect(
+      db.query(
+        `insert into commerce.media_embeddings (media_id, store_id, space, content_hash, embedding)
+         values ($1, $2, 's', 'not a hash', '[1,0]') on conflict (media_id) do update set content_hash = excluded.content_hash`,
+        [id, owner],
+      ),
+    ).rejects.toThrow(/content_hash/);
+    // A file's vector goes with it.
+    await db.query("delete from commerce.media where id = $1", [id]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.media_embeddings where media_id = $1", [id])).n).toBe(0);
+    await db.query("delete from commerce.media where url = 'https://x/kaizen.webp'");
+  });
+});
+
 describe("variant pictures", () => {
   it("keeps a variant's picture with its small copy, and copies them with the template's variants", async () => {
     const template = await createStore("pictures-template", ["NO"]);

@@ -23,7 +23,8 @@ import {
   type PlanInput,
 } from "@/server/billing";
 import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
-import { startVideoUpload, uploadProductImage, type UploadResult, type VideoUpload } from "@/server/media";
+import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/media";
+import { registerVideo, uploadToLibrary } from "@/server/media-library";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import {
@@ -243,21 +244,22 @@ export async function savePlatformSeoAction(_state: FormState, formData: FormDat
 }
 
 export async function uploadPlatformImageAction(formData: FormData): Promise<UploadResult> {
-  await requirePlatformAdmin();
-  const image = formData.get("image");
-  const thumbnail = formData.get("thumbnail");
-  if (!(image instanceof File) || !(thumbnail instanceof File)) {
-    return { ok: false, problem: "Choose a picture to upload." };
-  }
-  return uploadProductImage("platform", image, thumbnail);
+  const admin = await requirePlatformAdmin();
+  // Kept in Kaizen's media library too (D88).
+  return uploadToLibrary({ storeId: null, accountId: admin.id }, formData);
 }
 
 /** Starts an upload of a row's background video on Kaizen's pages, straight from the browser to the public bucket. */
 export async function startPlatformVideoUploadAction(file: unknown): Promise<VideoUpload> {
-  await requirePlatformAdmin();
-  const parsed = z.object({ type: z.string().max(100), size: z.number().int().nonnegative() }).safeParse(file);
+  const admin = await requirePlatformAdmin();
+  const parsed = z
+    .object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative() })
+    .safeParse(file);
   if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
-  return startVideoUpload("platform", parsed.data);
+  const started = await startVideoUpload("platform", parsed.data);
+  // Kept in Kaizen's media library as its upload starts (D88).
+  if (started.ok) await registerVideo({ storeId: null, accountId: admin.id }, started, parsed.data);
+  return started;
 }
 
 /** The platform discount form's fields, as the server checks them. */

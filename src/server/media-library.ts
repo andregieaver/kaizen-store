@@ -1,0 +1,460 @@
+import "server-only";
+
+import { createHash } from "node:crypto";
+
+import { sql } from "drizzle-orm";
+
+import { db, readDb } from "@/db/client";
+import { imageSize } from "@/lib/image-size";
+import type { MediaKind, MediaQuery } from "@/lib/media-query";
+import { normalizeQuery, prefixQuery, reciprocalRankFusion } from "@/lib/search";
+import { vectorLiteral } from "@/lib/vectors";
+
+import { aiFor, AiError, embedTexts, type AiConnection } from "./ai";
+import { audit } from "./auth";
+import { removeStoredFiles, uploadProductImage, type UploadResult } from "./media";
+
+type Row = Record<string, unknown>;
+
+/**
+ * The media library (D88): every picture and video a site uploads, kept in
+ * `commerce.media` with its name as uploaded, type, size and measurements.
+ * What uses an item is looked up where it is shown (`mediaUses()`), never
+ * stored, so it is always true. Search is keyword (the name in words, the
+ * description, and parts of the name by trigram) and, with the site's AI
+ * (D73), meaning, merged by reciprocal rank as the storefront's search is
+ * (D74); without AI, keyword alone.
+ */
+
+/** Where an item is used, for people: what it is and where to change it. */
+export type MediaUse = { label: string; href: string | null };
+
+export type MediaItem = {
+  id: string;
+  kind: MediaKind;
+  url: string;
+  thumbnailUrl: string | null;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  width: number | null;
+  height: number | null;
+  alt: string;
+  createdAt: string;
+  uses: MediaUse[];
+};
+
+export type MediaOwner = { storeId: string | null; storeSlug: string | null };
+
+const owned = (storeId: string | null, column = sql`store_id`) =>
+  storeId ? sql`${column} = ${storeId}::uuid` : sql`${column} is null`;
+
+/** A file name as people gave it, safe to show and keep. */
+function cleanName(name: string, fallback: string): string {
+  const cleaned = name.replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/[/\\]/g, "-").trim().slice(0, 255);
+  return cleaned || fallback;
+}
+
+// ---------------------------------------------------------------------------
+// Adding
+// ---------------------------------------------------------------------------
+
+/**
+ * Stores a picture the browser shrank (and its small copy) in the site's
+ * folder and keeps it in the library, with the name the file had on the
+ * person's computer (`name`), its size and, read from its first bytes, its
+ * width and height. Every picture upload in the admin comes through here.
+ */
+export async function uploadToLibrary(
+  owner: { storeId: string | null; accountId: string },
+  data: FormData,
+): Promise<UploadResult> {
+  const image = data.get("image");
+  const thumbnail = data.get("thumbnail");
+  if (!(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Choose a picture to upload." };
+  const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail);
+  if (!uploaded.ok || !("stored" in uploaded)) return uploaded;
+  const given = data.get("name");
+  const size = imageSize(new Uint8Array(await image.slice(0, 64 * 1024).arrayBuffer()));
+  await db().execute(sql`
+    insert into commerce.media (
+      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by
+    ) values (
+      ${owner.storeId}::uuid, 'image', ${uploaded.url}, ${uploaded.thumbnailUrl}, ${uploaded.stored.bucket}, ${uploaded.stored.path},
+      ${uploaded.stored.thumbnailPath}, ${cleanName(typeof given === "string" ? given : "", image.name || "picture")},
+      ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid
+    )
+    on conflict (url) do nothing
+  `);
+  return { ok: true, url: uploaded.url, thumbnailUrl: uploaded.thumbnailUrl };
+}
+
+/** Keeps a video in the library as its upload starts (it goes straight from the browser to Storage). */
+export async function registerVideo(
+  owner: { storeId: string | null; accountId: string },
+  video: { url: string; bucket: string; path: string },
+  file: { name?: string; type: string; size: number },
+): Promise<void> {
+  await db().execute(sql`
+    insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, created_by)
+    values (
+      ${owner.storeId}::uuid, 'video', ${video.url}, ${video.bucket}, ${video.path},
+      ${cleanName(file.name ?? "", video.path.split("/").pop() ?? "video")}, ${file.type}, ${file.size}, ${owner.accountId}::uuid
+    )
+    on conflict (url) do nothing
+  `);
+}
+
+// ---------------------------------------------------------------------------
+// Where items are used
+// ---------------------------------------------------------------------------
+
+type UseRow = { media_id: string; source: string; ref_id: string | null; label: string | null; type: string | null };
+
+/** The admin's segment for each page type, as `PAGE_TYPE_COPY` has them. */
+const PAGE_SEGMENTS: Record<string, string> = {
+  page: "pages",
+  article: "articles",
+  product_layout: "product-layouts",
+  header: "headers",
+  footer: "footers",
+};
+const PAGE_NOUNS: Record<string, string> = { page: "Page", article: "Article", product_layout: "Product layout", header: "Header", footer: "Footer" };
+
+/**
+ * Everywhere the owner's items appear or are linked, by item id: products'
+ * pictures and variants', pages, articles, layouts, headers and footers
+ * (drafts too), menus, the logo and icon, search and sharing, the chat
+ * agent's picture, the theme and saved parts. An item counts where its
+ * address or its small copy's is found.
+ */
+export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<string, MediaUse[]>> {
+  const uses = new Map<string, MediaUse[]>(ids.map((id) => [id, []]));
+  if (ids.length === 0) return uses;
+  const { storeId } = owner;
+  const found = (text: ReturnType<typeof sql>) =>
+    sql`(position(m.url in ${text}) > 0 or (m.thumbnail_url is not null and position(m.thumbnail_url in ${text}) > 0))`;
+  const rows = await db().execute<Row>(sql`
+    with m as (
+      select id, url, thumbnail_url from commerce.media
+      where ${owned(storeId)} and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)})
+    )
+    select m.id as media_id, 'product' as source, p.id::text as ref_id,
+      (select title from commerce.product_translations t where t.product_id = p.id order by t.locale limit 1) as label, null as type
+    from m join commerce.products p on ${owned(storeId, sql`p.store_id`)} and p.status <> 'archived'
+    where exists (
+      select 1 from commerce.product_media pm where pm.product_id = p.id and (pm.url in (m.url, m.thumbnail_url) or pm.thumbnail_url in (m.url, m.thumbnail_url))
+    ) or exists (
+      select 1 from commerce.product_variants v where v.product_id = p.id and (v.image_url in (m.url, m.thumbnail_url) or v.image_thumbnail_url in (m.url, m.thumbnail_url))
+    )
+    union all
+    select m.id, 'page', pg.id::text, coalesce(nullif(pg.draft ->> 'title', ''), pg.slug), pg.type
+    from m join commerce.pages pg on ${owned(storeId, sql`pg.store_id`)}
+    where ${found(sql`pg.draft::text`)} or (pg.published is not null and ${found(sql`pg.published::text`)})
+    union all
+    select m.id, 'menu', mn.id::text, mn.name, null from m join commerce.menus mn on ${owned(storeId, sql`mn.store_id`)} where ${found(sql`mn.items::text`)}
+    union all
+    select m.id, 'saved', sp.id::text, sp.name, null from m join commerce.saved_parts sp on ${owned(storeId, sql`sp.store_id`)} where ${found(sql`sp.content::text`)}
+    union all
+    select m.id, 'chat', null, null, null from m join commerce.chat_agents c on ${owned(storeId, sql`c.store_id`)} where ${found(sql`coalesce(c.avatar::text, '')`)}
+    union all
+    ${
+      storeId
+        ? sql`
+    select m.id, 'navigation', null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.navigation::text`)}
+    union all
+    select m.id, 'seo', null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.seo::text`)}
+    union all
+    select m.id, 'theme', null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.theme::text`)}
+    `
+        : sql`
+    select m.id, 'navigation', null, null, null from m join commerce.platform_settings k on true where ${found(sql`k.navigation::text`)}
+    union all
+    select m.id, 'seo', null, null, null from m join commerce.platform_settings k on true where ${found(sql`k.seo::text`)}
+    `
+    }
+  `);
+  const base = storeId ? `/admin/${owner.storeSlug}` : "/admin/platform";
+  for (const raw of rows as unknown as UseRow[]) {
+    const list = uses.get(String(raw.media_id));
+    if (!list) continue;
+    list.push(describeUse(raw, base, storeId !== null));
+  }
+  return uses;
+}
+
+function describeUse(row: UseRow, base: string, store: boolean): MediaUse {
+  const label = row.label ?? "";
+  switch (row.source) {
+    case "product":
+      return { label: `Product: ${label || "Untitled"}`, href: `${base}/products/${row.ref_id}` };
+    case "page": {
+      const type = row.type ?? "page";
+      return { label: `${PAGE_NOUNS[type] ?? "Page"}: ${label || "Untitled"}`, href: `${base}/${PAGE_SEGMENTS[type] ?? "pages"}/${row.ref_id}` };
+    }
+    case "menu":
+      return { label: `Menu: ${label}`, href: `${base}/menus?menu=${row.ref_id}` };
+    case "saved":
+      return { label: `Saved part: ${label}`, href: null };
+    case "chat":
+      return { label: "Chat agent's picture", href: `${base}/chat` };
+    case "navigation":
+      return { label: "Logo and icon (Header and footer)", href: store ? `${base}/settings/navigation` : `${base}/navigation` };
+    case "seo":
+      return { label: "Search and sharing picture", href: store ? `${base}/settings/seo` : `${base}/seo` };
+    case "theme":
+      return { label: "Design", href: `${base}/settings/design` };
+    default:
+      return { label: row.source, href: null };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Listing and searching
+// ---------------------------------------------------------------------------
+
+/** How far below the closest match a match by meaning may be, as in the storefront's search. */
+const MEANING_MARGIN = 0.1;
+
+const toItem = (row: Row): Omit<MediaItem, "uses"> => ({
+  id: String(row.id),
+  kind: row.kind as MediaKind,
+  url: String(row.url),
+  thumbnailUrl: row.thumbnail_url ? String(row.thumbnail_url) : null,
+  fileName: String(row.file_name),
+  contentType: String(row.content_type),
+  sizeBytes: Number(row.size_bytes),
+  width: row.width === null ? null : Number(row.width),
+  height: row.height === null ? null : Number(row.height),
+  alt: String(row.alt ?? ""),
+  createdAt: new Date(String(row.created_at)).toISOString(),
+});
+
+/** The ids a query finds by keyword, best first. */
+async function keywordIds(storeId: string | null, text: string, limit: number): Promise<string[]> {
+  const words = prefixQuery(text);
+  const rows = await readDb().execute<Row>(sql`
+    with q as (
+      select websearch_to_tsquery('simple', ${text}) as full_q,
+        ${words ? sql`to_tsquery('simple', ${words})` : sql`null::tsquery`} as prefix_q,
+        ${text}::text as text
+    )
+    select m.id,
+      coalesce(ts_rank_cd(m.search, q.full_q), 0) * 4 + coalesce(ts_rank_cd(m.search, q.prefix_q), 0) * 2
+        + extensions.word_similarity(q.text, lower(m.file_name)) as score
+    from commerce.media m cross join q
+    where ${owned(storeId, sql`m.store_id`)}
+      and (m.search @@ q.full_q or (q.prefix_q is not null and m.search @@ q.prefix_q)
+        or extensions.word_similarity(q.text, lower(m.file_name)) >= 0.4)
+    order by score desc, m.created_at desc
+    limit ${limit}
+  `);
+  return rows.map((row) => String(row.id));
+}
+
+/** The ids a query finds by meaning with the site's AI, nearest first; none without AI or when it fails. */
+async function meaningIds(storeId: string | null, text: string, limit: number): Promise<string[]> {
+  const connection = await aiFor(storeId);
+  if (!connection?.space) return [];
+  try {
+    const { vectors } = await embedTexts(connection, [text], 5000);
+    const rows = await readDb().execute<Row>(sql`
+      with q as (select ${vectorLiteral(vectors[0])}::extensions.vector as v)
+      select e.media_id, 1 - (e.embedding OPERATOR(extensions.<=>) q.v) as similarity
+      from commerce.media_embeddings e cross join q
+      where ${owned(storeId, sql`e.store_id`)} and e.space = ${connection.space}
+        and extensions.vector_dims(e.embedding) = extensions.vector_dims(q.v)
+      order by similarity desc, e.media_id
+      limit ${limit}
+    `);
+    // As the storefront's search (D74): only the close ones, near the closest.
+    const best = rows.length > 0 ? Number(rows[0].similarity) : 1;
+    const floor = Math.max(connection.minSimilarity, best - MEANING_MARGIN);
+    return rows.filter((row) => Number(row.similarity) >= floor).map((row) => String(row.media_id));
+  } catch (error) {
+    if (error instanceof AiError) return [];
+    throw error;
+  }
+}
+
+/**
+ * A page of the owner's library, with where each item is used: all of it
+ * in the chosen order, or what a search finds, best first. `total` counts
+ * what the list holds before the page's limit.
+ */
+export async function listMedia(owner: MediaOwner, query: MediaQuery): Promise<{ items: MediaItem[]; total: number; searched: boolean }> {
+  const { storeId } = owner;
+  const text = normalizeQuery(query.q);
+  const kindFilter = query.kind === "all" ? sql`true` : sql`m.kind = ${query.kind}`;
+  let rows: Row[];
+  let total: number;
+  if (text) {
+    // Both lists deep enough that the kind filter still leaves a page.
+    const depth = Math.max(query.limit * 2, 100);
+    const [keyword, meaning] = await Promise.all([keywordIds(storeId, text, depth), meaningIds(storeId, text, depth)]);
+    const ranked = reciprocalRankFusion([keyword, meaning]);
+    if (ranked.length === 0) return { items: [], total: 0, searched: true };
+    const found = await readDb().execute<Row>(sql`
+      select m.* from commerce.media m
+      where ${owned(storeId, sql`m.store_id`)} and ${kindFilter}
+        and m.id in (${sql.join(ranked.map((id) => sql`${id}::uuid`), sql`, `)})
+    `);
+    const byId = new Map<string, Row>(found.map((row) => [String(row.id), row]));
+    const ordered = ranked.flatMap((id): Row[] => { const row = byId.get(id); return row ? [row] : []; });
+    total = ordered.length;
+    rows = ordered.slice(0, query.limit);
+  } else {
+    const order = {
+      newest: sql`m.created_at desc`,
+      oldest: sql`m.created_at asc`,
+      largest: sql`m.size_bytes desc, m.created_at desc`,
+      name: sql`lower(m.file_name) asc, m.created_at desc`,
+    }[query.sort];
+    rows = await readDb().execute<Row>(sql`
+      select m.*, count(*) over () as total from commerce.media m
+      where ${owned(storeId, sql`m.store_id`)} and ${kindFilter}
+      order by ${order}
+      limit ${query.limit}
+    `);
+    total = rows.length > 0 ? Number(rows[0].total) : 0;
+  }
+  const items = rows.map(toItem);
+  const uses = await mediaUses(owner, items.map((item) => item.id));
+  return { items: items.map((item) => ({ ...item, uses: uses.get(item.id) ?? [] })), total, searched: Boolean(text) };
+}
+
+// ---------------------------------------------------------------------------
+// Changing and deleting
+// ---------------------------------------------------------------------------
+
+/** Changes an item's description (for search, D88); false if it is not the owner's. */
+export async function describeMedia(owner: MediaOwner, accountId: string, id: string, alt: string): Promise<boolean> {
+  const rows = await db().execute<Row>(sql`
+    update commerce.media set alt = ${alt.trim().slice(0, 500)}, updated_at = now()
+    where id = ${id}::uuid and ${owned(owner.storeId)} returning id
+  `);
+  if (rows.length === 0) return false;
+  await audit(accountId, owner.storeId, owner.storeId ? "store.media_described" : "platform.media_described", { mediaId: id });
+  return true;
+}
+
+/** Keeps the width and height the library measured, for an item that has none yet. */
+export async function measureMedia(owner: MediaOwner, id: string, width: number, height: number): Promise<void> {
+  if (!(Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0 && width < 100_000 && height < 100_000)) return;
+  await db().execute(sql`
+    update commerce.media set width = ${width}, height = ${height}
+    where id = ${id}::uuid and ${owned(owner.storeId)} and width is null
+  `);
+}
+
+/**
+ * Deletes an item and its files. Places that use it show nothing where it
+ * was; the library says where before asking. False if it is not the
+ * owner's, or Storage would not remove the files (then it is kept).
+ */
+export async function deleteMedia(owner: MediaOwner, accountId: string, id: string): Promise<{ ok: true } | { ok: false; problem: string }> {
+  const [row] = await db().execute<Row>(sql`
+    select bucket, path, thumbnail_path, file_name from commerce.media where id = ${id}::uuid and ${owned(owner.storeId)}
+  `);
+  if (!row) return { ok: false, problem: "That file is no longer in the library." };
+  const paths = [String(row.path), ...(row.thumbnail_path ? [String(row.thumbnail_path)] : [])];
+  if (!(await removeStoredFiles(String(row.bucket), paths))) {
+    return { ok: false, problem: "The file could not be removed from storage. Try again." };
+  }
+  await db().execute(sql`delete from commerce.media where id = ${id}::uuid`);
+  await audit(accountId, owner.storeId, owner.storeId ? "store.media_deleted" : "platform.media_deleted", {
+    mediaId: id,
+    fileName: String(row.file_name),
+  });
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Vectors for search by meaning
+// ---------------------------------------------------------------------------
+
+const BATCH = 32;
+const PER_RUN = 128;
+
+/** What an item's vector is made from: its name in words, its description and the names of what uses it. */
+export function mediaDocument(fileName: string, alt: string, uses: MediaUse[]): string {
+  const name = fileName.replace(/\.[a-z0-9]+$/i, "").replace(/[._-]+/g, " ").trim();
+  return [name, alt.trim(), uses.length > 0 ? `Used in: ${uses.map((use) => use.label).join("; ")}` : ""].filter(Boolean).join("\n");
+}
+
+/**
+ * Gives a site's items vectors from its AI where they have none from its
+ * current model, where the item changed since, or once a day (so what uses
+ * an item is kept current); unchanged text keeps its vector.
+ */
+export async function embedMedia(owner: MediaOwner, connection: AiConnection, limit = PER_RUN): Promise<{ embedded: number; failed: string | null }> {
+  const space = connection.space;
+  if (!space) return { embedded: 0, failed: null };
+  const stale = await db().execute<Row>(sql`
+    select m.id, m.file_name, m.alt, e.content_hash from commerce.media m
+    left join commerce.media_embeddings e on e.media_id = m.id
+    where ${owned(owner.storeId, sql`m.store_id`)}
+      and (e.media_id is null or e.space <> ${space} or e.updated_at < m.updated_at or e.updated_at < now() - interval '1 day')
+    order by e.updated_at nulls first, m.created_at
+    limit ${limit}
+  `);
+  if (stale.length === 0) return { embedded: 0, failed: null };
+  const uses = await mediaUses(owner, stale.map((row) => String(row.id)));
+  const docs = stale.map((row) => {
+    const text = mediaDocument(String(row.file_name), String(row.alt), uses.get(String(row.id)) ?? []);
+    return { id: String(row.id), text, previous: row.content_hash ? String(row.content_hash) : null };
+  });
+  const hash = (text: string) => createHash("md5").update(`${space}\u001f${text}`).digest("hex");
+  // Unchanged texts only have their date moved on; the rest are embedded.
+  const unchanged = docs.filter((doc) => doc.previous === hash(doc.text));
+  if (unchanged.length > 0) {
+    await db().execute(sql`
+      update commerce.media_embeddings set updated_at = now()
+      where space = ${space} and media_id in (${sql.join(unchanged.map((doc) => sql`${doc.id}::uuid`), sql`, `)})
+    `);
+  }
+  const changed = docs.filter((doc) => doc.previous !== hash(doc.text));
+  let embedded = 0;
+  for (let start = 0; start < changed.length; start += BATCH) {
+    const batch = changed.slice(start, start + BATCH);
+    try {
+      const { vectors } = await embedTexts(connection, batch.map((doc) => doc.text));
+      await db().execute(sql`
+        insert into commerce.media_embeddings (media_id, store_id, space, content_hash, embedding)
+        values ${sql.join(
+          batch.map(
+            (doc, i) =>
+              sql`(${doc.id}::uuid, ${owner.storeId}::uuid, ${space}, ${hash(doc.text)}, ${vectorLiteral(vectors[i])}::extensions.vector)`,
+          ),
+          sql`, `,
+        )}
+        on conflict (media_id) do update set
+          space = excluded.space, content_hash = excluded.content_hash, embedding = excluded.embedding, updated_at = now()
+      `);
+      embedded += batch.length;
+    } catch (error) {
+      const message = error instanceof AiError ? error.message : String(error);
+      console.warn(`[media] embedding failed (${connection.source} AI, ${space}): ${message}`);
+      return { embedded, failed: message };
+    }
+  }
+  return { embedded, failed: null };
+}
+
+/** The cron's share: each site with media and an AI brings its library's vectors up to date. */
+export async function refreshMediaEmbeddings(): Promise<{ sites: number; embedded: number }> {
+  const owners = await db().execute<Row>(sql`
+    select distinct m.store_id, s.slug from commerce.media m left join commerce.stores s on s.id = m.store_id
+  `);
+  let embedded = 0;
+  for (const row of owners) {
+    const owner = { storeId: row.store_id ? String(row.store_id) : null, storeSlug: row.slug ? String(row.slug) : null };
+    try {
+      const connection = await aiFor(owner.storeId);
+      if (connection) embedded += (await embedMedia(owner, connection)).embedded;
+    } catch (error) {
+      console.warn(`[media] refresh failed for ${owner.storeSlug ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return { sites: owners.length, embedded };
+}
