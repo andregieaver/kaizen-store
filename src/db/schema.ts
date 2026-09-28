@@ -3850,11 +3850,17 @@ export const assistantConversations = commerce.table(
       .notNull()
       .references(() => accounts.id, { onDelete: "cascade" }),
     title: text("title").notNull().default(""),
+    /** `admin`, the owner in the admin, or `kaizen-life`: Kaizen Life's assistant asking for the owner (D96). */
+    source: text("source").notNull().default("admin"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     index("assistant_conversations_owner_idx").on(t.storeId, t.accountId, t.updatedAt),
+    uniqueIndex("assistant_conversations_kaizen_life_idx")
+      .on(t.storeId, t.accountId)
+      .where(sql`${t.source} = 'kaizen-life'`),
+    check("assistant_conversations_source", sql`${t.source} in ('admin', 'kaizen-life')`),
     index("assistant_conversations_account_idx").on(t.accountId),
     check("assistant_conversations_title", sql`length(${t.title}) <= 200`),
   ],

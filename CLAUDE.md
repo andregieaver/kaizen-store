@@ -391,7 +391,13 @@ of running `playwright install`.
   `admitFromKaizenLife()`, which admits owners and platform admins only;
   apps asking to sign someone in with Kaizen Store land on
   `/admin/oauth/consent` (owners only). Sign-in shares identity, never
-  store data.
+  store data. Kaizen Life's assistant reaches the owner's stores through
+  `/api/mcp` (D96, `src/server/store-mcp.ts`): tokens from the store's
+  OAuth server for `KAIZEN_LIFE_CLIENT_ID` only, every owner tool with a
+  `store` argument, gated tools only kept (`keepForApproval()`) in the
+  owner's Kaizen Life conversation (`kaizenLifeConversation()`), and
+  `ask_store_assistant` runs a turn there with `fromKaizenLife`. A new owner
+  tool is served there too.
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
   `src/server/product-layouts.ts`): a product's page is a layout of rows
   with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the

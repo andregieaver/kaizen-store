@@ -1107,6 +1107,13 @@
       "when": 1790616149866,
       "tag": "20260928172229_owner_assistant_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1790619578226,
+      "tag": "20260928181938_assistant_kaizen_life",
+      "breakpoints": true
     }
   ]
 }

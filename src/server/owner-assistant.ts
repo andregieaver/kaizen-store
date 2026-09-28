@@ -124,6 +124,21 @@ async function addMessage(storeId: string, conversationId: string, role: "user" 
   return toMessage(row);
 }
 
+/**
+ * The owner's conversation with Kaizen Life's assistant (D96): one per
+ * store and owner, where its questions and the changes it asks for (kept
+ * for approval) show in the admin like any other conversation.
+ */
+export async function kaizenLifeConversation({ store, account }: Membership): Promise<string> {
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.assistant_conversations (store_id, account_id, title, source)
+    values (${store.id}::uuid, ${account.id}::uuid, 'From Kaizen Life', 'kaizen-life')
+    on conflict (store_id, account_id) where source = 'kaizen-life' do update set updated_at = now()
+    returning id
+  `);
+  return String(row.id);
+}
+
 // The prompt ------------------------------------------------------------------------
 
 export function assistantPrompt(member: Membership, now = new Date()): string {
@@ -154,6 +169,8 @@ export type TurnInput = {
   emit: (event: AssistantEvent) => void;
   invalidate: (tag: string) => void;
   signal?: AbortSignal;
+  /** Kaizen Life's assistant is asking (D96): answer without asking it back. */
+  fromKaizenLife?: boolean;
   /** The connection to use; the store's own (D73) unless given (tests). */
   connection?: AiConnection | null;
 };
@@ -261,7 +278,7 @@ async function callTool(
   if (tool.gate) {
     const input = readToolInput(tool, args);
     if (!input.ok) return { error: `The arguments could not be read: ${input.problem}` };
-    const approval = await queueApproval(ctx, conversationId, name, tool.gate, input.input as Record<string, unknown>);
+    const approval = await keepForApproval(ctx, conversationId, name, tool.gate, input.input as Record<string, unknown>);
     emit({ type: "approval", approval });
     return {
       queued_for_approval: true,
@@ -279,7 +296,13 @@ async function callTool(
 }
 
 /** A gated call kept for the owner's yes, described in words made from its arguments and the store's data. */
-async function queueApproval(ctx: OwnerToolContext, conversationId: string, tool: string, category: GateCategory, args: Record<string, unknown>) {
+export async function keepForApproval(
+  ctx: OwnerToolContext,
+  conversationId: string,
+  tool: string,
+  category: GateCategory,
+  args: Record<string, unknown>,
+): Promise<Approval> {
   let summary = approvalSummary(tool, args);
   if (tool === "cancel_booking") {
     const [booking] = await db().execute<Row>(sql`

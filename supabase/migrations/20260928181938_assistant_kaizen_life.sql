@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."assistant_conversations" ADD COLUMN "source" text DEFAULT 'admin' NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "assistant_conversations_kaizen_life_idx" ON "commerce"."assistant_conversations" USING btree ("store_id","account_id") WHERE "commerce"."assistant_conversations"."source" = 'kaizen-life';--> statement-breakpoint
+ALTER TABLE "commerce"."assistant_conversations" ADD CONSTRAINT "assistant_conversations_source" CHECK ("commerce"."assistant_conversations"."source" in ('admin', 'kaizen-life'));
