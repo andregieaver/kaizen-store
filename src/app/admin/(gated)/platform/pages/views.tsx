@@ -63,6 +63,11 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
               Categories and tags
             </Link>
           )}
+          {type === "page" && (
+            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-md border border-border px-5 font-medium">
+              Create with AI
+            </Link>
+          )}
           <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-md bg-foreground px-5 font-medium text-background">
             New {copy.one}
           </Link>

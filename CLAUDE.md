@@ -360,6 +360,15 @@ of running `playwright install`.
   `BLOCK_EDITORS` (`src/components/admin/block-fields.tsx`, D91: its General
   and Style fields; the generic dialog adds font, spacing, frame and
   Advanced). Components made of items use `ItemsEditor`.
+  The AI page studio (D92, Pages → Create with AI, `src/lib/page-ai.ts`,
+  `src/server/page-ai.ts`, `PageStudio`) interviews, plans sections from
+  `PATTERNS`, writes each section's words and builds the rows with
+  `buildPage()`, saving a draft; pictures come after, one per request,
+  from the picture model named in the AI settings (`generateImage()`,
+  `ai_providers.image_model`, never a model in code; `makePicture()` keeps
+  them in the media library). A new design goes in `PATTERNS` and
+  `sectionRows()`; the model only chooses designs and fills words, links
+  only to `SiteFacts.links`, and every text passes the claims filter.
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
   `src/server/product-layouts.ts`): a product's page is a layout of rows
   with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the

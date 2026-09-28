@@ -74,6 +74,11 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
               Categories and tags
             </Link>
           )}
+          {type === "page" && (
+            <Link href={`${base}/ai`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
+              Create with AI
+            </Link>
+          )}
           <Link
             href={`${base}/new`}
             className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
