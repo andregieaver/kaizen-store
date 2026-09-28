@@ -996,8 +996,45 @@ function HtmlStyleFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
 
 /** Testimonials written in by the owner (D91). */
 function TestimonialsFields({ block, onChange, context }: BlockEditorProps<TestimonialsBlock>) {
+  const source = (
+    <Choices
+      legend="Testimonials from"
+      options={[
+        { value: "custom", label: "Written here" },
+        { value: "google", label: "Google reviews" },
+      ]}
+      value={block.source ?? "custom"}
+      onChange={(value) => onChange({ source: value === "google" ? "google" : undefined })}
+    />
+  );
+  if (block.source === "google") {
+    return (
+      <>
+        {source}
+        <p className="text-sm text-muted">
+          Your business&apos;s rating and newest reviews on Google, in the page&apos;s language, with Google named as their source. Set up
+          the Google key and choose your business under Integrations, Google reviews (Kaizen&apos;s under Platform, Google reviews). They
+          are asked of Google each time the page is shown, as Google does not allow keeping them.
+        </p>
+        <Choices
+          legend="Only reviews with at least"
+          options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: n === 1 ? "Any stars" : `${n} stars` }))}
+          value={String(block.minRating ?? 1)}
+          onChange={(value) => onChange({ minRating: value === "1" ? undefined : Number(value) })}
+        />
+        <Choices
+          legend="At most"
+          hint="Google gives the five most relevant"
+          options={[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: String(n) }))}
+          value={String(block.limit ?? 5)}
+          onChange={(value) => onChange({ limit: value === "5" ? undefined : Number(value) })}
+        />
+      </>
+    );
+  }
   return (
     <>
+      {source}
       <ItemsEditor<Testimonial>
         label="Testimonials"
         items={block.items}

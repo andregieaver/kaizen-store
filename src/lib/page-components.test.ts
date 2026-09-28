@@ -225,6 +225,15 @@ describe("testimonials", () => {
     expect(problems({ ...testimonials, columns: 5 })).toEqual(["Show testimonials in 1 to 4 columns."]);
   });
 
+  it("shows the business's Google reviews, which are Google's words and not the page's", () => {
+    const google = parse({ id: "g", type: "testimonials", source: "google", items: [], minRating: 4, limit: 3 });
+    expect(google).toMatchObject({ source: "google", minRating: 4, limit: 3 });
+    expect(blockHasContent(google)).toBe(true);
+    expect(blockText(google)).toBe("");
+    expect(problems({ id: "g", type: "testimonials", source: "google", items: [], limit: 6 })).toEqual(["Show 1 to 5 reviews."]);
+    expect(problems({ id: "g", type: "testimonials", source: "trustpilot", items: [] })).toHaveLength(1);
+  });
+
   it("translates what was said and who they are, never their name", () => {
     expect(blockTextFields(parse(testimonials)).map((field) => field.label)).toEqual([
       "Testimonial 1",

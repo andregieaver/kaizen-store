@@ -3654,6 +3654,35 @@ export const aiProviders = commerce.table(
 );
 
 /**
+ * Google reviews (D91): each owner's (a store's, or Kaizen's with a null
+ * store) Google Maps Platform key, encrypted like payment secrets, and the
+ * business on Google whose reviews its testimonials components show. Its
+ * reviews are fetched when a page is shown, never kept (Google's terms).
+ */
+export const googlePlaces = commerce.table(
+  "google_places",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    apiKeyEncrypted: text("api_key_encrypted").notNull(),
+    apiKeyHint: text("api_key_hint").notNull(),
+    /** Google's id of the business (a Place ID), and its name and address as Google gave them when chosen. */
+    placeId: text("place_id"),
+    placeName: text("place_name"),
+    placeAddress: text("place_address"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("google_places_store_key").on(t.storeId).nullsNotDistinct(),
+    index("google_places_updated_by_idx").on(t.updatedBy),
+    check("google_places_place_id", sql`coalesce(${t.placeId} ~ '^[A-Za-z0-9_-]+$' and length(${t.placeId}) between 10 and 300, true)`),
+    check("google_places_place_named", sql`(${t.placeId} is null) = (${t.placeName} is null)`),
+  ],
+);
+
+/**
  * A site's chat agent (D81): Kaizen's (`store_id` null) or a store's. It
  * answers visitors in text and voice from the site's published content,
  * its products and its knowledge base, and opens pages for them; only

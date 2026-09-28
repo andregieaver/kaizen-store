@@ -105,7 +105,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "video":
       return <Video block={block} />;
     case "testimonials":
-      return <Testimonials block={block} />;
+      // Google's reviews are fetched where they are shown (`GoogleReviewsSection`); the editor shows a stand-in.
+      return block.source === "google" ? null : <Testimonials block={block} />;
     case "html":
       return block.html.trim() ? <HtmlFrame html={block.html} title={block.title} height={block.height} waitForClick={Boolean(block.waitForClick)} /> : null;
     case "image":

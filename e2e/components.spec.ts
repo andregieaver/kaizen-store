@@ -234,3 +234,13 @@ test("testimonials show what customers said, who said it and their stars", async
   await expect(kari.getByRole("img", { name: "4 av 5 stjerner" })).toBeVisible();
   await expect(page.locator("main figure").filter({ hasText: "Ola" }).getByRole("img")).toHaveCount(0);
 });
+
+test("Google reviews not set up show nothing, and the page around them still shows", async ({ page }) => {
+  const address = await storePageWith("google-reviews", [
+    { id: "g", type: "testimonials", source: "google", items: [] },
+    { id: "h", type: "heading", text: "Etter anmeldelsene", level: 2 },
+  ]);
+  await page.goto(address);
+  await expect(page.getByRole("heading", { name: "Etter anmeldelsene" })).toBeVisible();
+  await expect(page.locator("main figure")).toHaveCount(0);
+});

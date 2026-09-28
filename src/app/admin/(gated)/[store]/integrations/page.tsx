@@ -62,6 +62,17 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
           );
         })}
       </ul>
+      <section aria-labelledby="google-reviews" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <div>
+          <h2 id="google-reviews" className="font-medium">
+            Google reviews
+          </h2>
+          <p className="text-sm text-muted">Show your rating and reviews on Google in Testimonials components on your pages.</p>
+        </div>
+        <Link href={`${base}/google-reviews`} className="inline-flex min-h-10 w-fit items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-surface">
+          Set up Google reviews
+        </Link>
+      </section>
     </div>
   );
 }

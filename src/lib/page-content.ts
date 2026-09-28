@@ -826,14 +826,20 @@ export type Testimonial = {
 };
 
 /**
- * Testimonials (D91): what customers said, written in by the owner, as
+ * Testimonials (D91): what customers said, written in by the owner or
+ * their business's reviews on Google (fetched as the page is shown), as
  * cards, plain or large quotes in up to four columns (one on phones), with
  * their stars if given. A testimonial shows once it has its words.
  */
 export type TestimonialsBlock = PartBase & {
   id: string;
   type: "testimonials";
+  /** The owner's own (`items`) unless Google's reviews of their business (set up under Integrations). */
+  source?: "google";
   items: Testimonial[];
+  /** Google reviews: only those with at least these stars, and at most this many (Google gives five). */
+  minRating?: number;
+  limit?: number;
   /** 3 unless set; phones show one. */
   columns?: TestimonialColumns;
   look?: TestimonialLook;
@@ -953,7 +959,8 @@ export function blockHasContent(block: PageBlock): boolean {
     case "html":
       return block.html.trim() !== "";
     case "testimonials":
-      return block.items.some(testimonialShows);
+      // Google's reviews are known only when the page is shown.
+      return block.source === "google" || block.items.some(testimonialShows);
   }
 }
 
@@ -978,6 +985,8 @@ export function blockText(block: PageBlock): string {
     case "video":
       return block.title;
     case "testimonials":
+      // Google's reviews are Google's words, not the page's.
+      if (block.source === "google") return "";
       return block.items
         .filter(testimonialShows)
         .map((item) => [item.quote, item.name].filter(Boolean).join(" "))
@@ -1619,6 +1628,9 @@ const htmlBlock = z.object({
 const testimonialsBlock = z.object({
   id: itemId,
   type: z.literal("testimonials"),
+  source: z.literal("google", "Testimonials come from an unknown place.").optional(),
+  minRating: z.number().int().min(1).max(5, "Show reviews with 1 to 5 stars.").optional(),
+  limit: z.number().int().min(1, "Show 1 to 5 reviews.").max(5, "Show 1 to 5 reviews.").optional(),
   items: z
     .array(
       z.object({

@@ -1661,6 +1661,10 @@ function BlockItem({
           <SiteStandIn block={block} />
         ) : block.type === "menu" && blockHasContent(block) ? (
           <MenuStandIn block={block} menus={actions.grid.menus} />
+        ) : block.type === "testimonials" && block.source === "google" ? (
+          <p className="rounded-md bg-surface p-3 text-sm text-muted">
+            Google reviews of your business show here on the site, as Google has them when the page is shown.
+          </p>
         ) : blockHasContent(block) ? (
           <PageBlockView block={block} />
         ) : (

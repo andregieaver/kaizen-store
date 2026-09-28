@@ -1854,6 +1854,23 @@ describe("selling to businesses (B2B)", () => {
   });
 });
 
+describe("Google reviews (D91)", () => {
+  it("keeps one key and business for Kaizen and one per store, a business always with its name", async () => {
+    const insert = (storeId: string | null, placeId: string | null, placeName: string | null) =>
+      db.query(
+        `insert into commerce.google_places (store_id, api_key_encrypted, api_key_hint, place_id, place_name)
+         values ($1, 'v1.x', '…1234', $2, $3)`,
+        [storeId, placeId, placeName],
+      );
+    await insert(null, null, null);
+    await expect(insert(null, null, null)).rejects.toThrow(/google_places_store_key/);
+    await insert(store, "ChIJN1t_tDeuEmsRUsoyG83frY4", "Kaffebaren");
+    await expect(insert(other, "ChIJN1t_tDeuEmsRUsoyG83frY4", null)).rejects.toThrow(/google_places_place_named/);
+    await expect(insert(other, "not a place id", "Noe")).rejects.toThrow(/google_places_place_id/);
+    await db.query("delete from commerce.google_places");
+  });
+});
+
 describe("AI providers (D73)", () => {
   it("keeps one provider for Kaizen and one per store, with an address only for other APIs", async () => {
     const insert = (storeId: string | null, provider: string, baseUrl: string | null) =>
