@@ -354,8 +354,12 @@ of running `playwright install`.
   site, `ArticleView` draws an article's header over its rows, with
   `articleJsonLd()`; `/blog` lists (Kaizen's in `(platform)/term-listing.tsx`,
   a store's in `blog/blog-listing.tsx`) are content grids of articles. New block kinds go in `PageBlock`, `pageInput`,
-  `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`, the
-  builder's Components tab and its dialogs.
+  `newBlock()`, `blockHasContent()`, `blockText()`, `PageBlockView`,
+  `mapBlockTexts()` (its texts, with labels, which translating lists), the
+  builder's palette (`BLOCK_TYPES`, labels, icon) and an entry in
+  `BLOCK_EDITORS` (`src/components/admin/block-fields.tsx`, D91: its General
+  and Style fields; the generic dialog adds font, spacing, frame and
+  Advanced). Components made of items use `ItemsEditor`.
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
   `src/server/product-layouts.ts`): a product's page is a layout of rows
   with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the

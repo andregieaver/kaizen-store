@@ -167,7 +167,7 @@ import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
 
-import { editorFor } from "./block-fields";
+import { ColorField, editorFor } from "./block-fields";
 import { FontPicker, type InstallFont } from "./font-picker";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
@@ -268,9 +268,10 @@ const blockLabels: Record<BlockType, string> = {
   product: "Product",
   site: "Site",
   menu: "Menu",
+  separator: "Separator line",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid", "menu"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "button", "contentGrid", "menu", "separator"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -281,6 +282,7 @@ const blockThis: Record<BlockType, string> = {
   product: "this product component",
   site: "this site component",
   menu: "this menu",
+  separator: "this separator line",
 };
 
 const rowHasText = (row: PageRow) => row.columns.some(columnHasText);
@@ -1079,9 +1081,21 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SiteIcon />;
     case "menu":
       return <MenuIcon />;
+    case "separator":
+      return <SeparatorIcon />;
     default:
       return <LetterIcon letter="T" />;
   }
+}
+
+function SeparatorIcon() {
+  return (
+    <span aria-hidden className="flex h-9 flex-col items-center justify-center gap-1 rounded-sm bg-foreground/75 text-background">
+      <span className="h-0.5 w-8 rounded-full bg-current opacity-50" />
+      <span className="h-0.5 w-10 rounded-full bg-current" />
+      <span className="h-0.5 w-8 rounded-full bg-current opacity-50" />
+    </span>
+  );
 }
 
 function GridIcon() {
@@ -1580,7 +1594,10 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   product: "Product component.",
   site: "Site component.",
   menu: "A menu: double-click or use the wrench to choose which.",
+  separator: "Separator line.",
 };
+
+export { ColorField };
 
 // ---------------------------------------------------------------------------
 // Dialogs
@@ -2274,6 +2291,13 @@ function TranslateText({
   );
 }
 
+/** A saved component of a newer kind (D91), with its General fields from `BLOCK_EDITORS`. */
+function SavedBlockFields({ block, upload, onChange }: { block: PageBlock; upload: Upload | null; onChange: (patch: Partial<PageBlock>) => void }) {
+  const editor = editorFor(block);
+  if (!editor) return <p className="text-sm text-muted">{blockLabels[block.type]}: change its settings where it is used.</p>;
+  return <editor.General block={block} context={{ upload, startVideo: null }} onChange={onChange} />;
+}
+
 /** A block's texts in the language being translated into, as `mapBlockTexts()` lists them, each beside the main language's. */
 function TranslateBlockTexts({
   block,
@@ -2682,44 +2706,6 @@ function Check({
   );
 }
 
-const HEX = /^#[0-9a-fA-F]{6}$/;
-
-/** A colour: the browser's picker, or `#rrggbb` typed. */
-export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
-  const id = useId();
-  const [text, setText] = useState(value);
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={`${label}: choose`}
-          value={value}
-          onChange={(event) => {
-            setText(event.target.value);
-            onChange(event.target.value);
-          }}
-          className="h-10 w-14 cursor-pointer rounded-md border border-border bg-background p-1"
-        />
-        <input
-          id={id}
-          value={text}
-          maxLength={7}
-          spellCheck={false}
-          aria-invalid={!HEX.test(text)}
-          onChange={(event) => {
-            setText(event.target.value);
-            if (HEX.test(event.target.value)) onChange(event.target.value.toLowerCase());
-          }}
-          className="min-h-10 w-28 rounded-md border border-border bg-background px-2 font-mono text-sm aria-invalid:border-red-700"
-        />
-      </div>
-    </div>
-  );
-}
 
 /**
  * A row's or column's background (D48): none, a colour, or a picture (or,
@@ -4242,8 +4228,10 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Site component: change its settings where it is used in a header or footer.</p>
                     ) : block.type === "menu" ? (
                       <p className="text-sm text-muted">Menu: change its settings where it is used.</p>
-                    ) : (
+                    ) : block.type === "button" ? (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
+                    ) : (
+                      <SavedBlockFields block={block} upload={upload} onChange={(patch) => change((r) => patchBlock(r, block.id, patch))} />
                     )}
                   </div>
                 )}

@@ -12,6 +12,7 @@ import {
   type HeadingSize,
   type ImageShape,
   type PageBlock,
+  type SeparatorBlock,
 } from "@/lib/page-content";
 
 import { RichText } from "./rich-text";
@@ -71,6 +72,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "menu":
       // Its links are looked up where it is shown (`MenuSection`, D85); the editor shows a stand-in.
       return null;
+    case "separator":
+      return <Separator block={block} />;
     case "image":
       if (!block.image) return null;
       return (
@@ -147,5 +150,27 @@ function Button({ block }: { block: ButtonBlock }) {
       {block.label}
       {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}
     </a>
+  );
+}
+
+/** A separator line (D91): a thematic break, in the site's border colour unless one is chosen. */
+function Separator({ block }: { block: SeparatorBlock }) {
+  const thickness = block.thickness ?? 1;
+  const line = block.line ?? "solid";
+  const width = block.width ?? 100;
+  const position = block.position ?? "center";
+  return (
+    <hr
+      className="my-0 border-0 border-border"
+      style={{
+        borderTopStyle: line,
+        // A double line needs room for two lines and the gap between.
+        borderTopWidth: `${line === "double" ? Math.max(3, thickness) : thickness}px`,
+        borderTopColor: block.color,
+        width: `${width}%`,
+        marginLeft: width < 100 && position !== "left" ? "auto" : 0,
+        marginRight: width < 100 && position !== "right" ? "auto" : 0,
+      }}
+    />
   );
 }

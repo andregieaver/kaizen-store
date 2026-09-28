@@ -628,8 +628,43 @@ export type MenuBlock = PartBase & BlockFont & {
   hideOnPhones?: boolean;
 };
 
+/** A separator line's look (D91). */
+export const SEPARATOR_LINES = { solid: "Solid", dashed: "Dashed", dotted: "Dotted", double: "Double" } as const;
+export type SeparatorLine = keyof typeof SEPARATOR_LINES;
+export const SEPARATOR_THICKNESS_MAX = 16;
+/** Where a line narrower than its column sits. */
+export const SEPARATOR_POSITIONS = { left: "Left", center: "Centre", right: "Right" } as const;
+export type SeparatorPosition = keyof typeof SEPARATOR_POSITIONS;
+
+/**
+ * A separator line (D91): a thematic break between parts of a page, drawn
+ * as a line of its own style, thickness, colour and width. The defaults
+ * are a solid, one-pixel line in the site's border colour across the column.
+ */
+export type SeparatorBlock = PartBase & {
+  id: string;
+  type: "separator";
+  line?: SeparatorLine;
+  /** Pixels; 1 unless set. */
+  thickness?: number;
+  /** The site's border colour unless chosen. */
+  color?: Color;
+  /** Its share of the column, 10–100 %; the whole column unless set. */
+  width?: number;
+  position?: SeparatorPosition;
+};
+
 /** One piece of a page's content. */
-export type PageBlock = RichTextBlock | ImageBlock | HeadingBlock | ButtonBlock | ContentGridBlock | ProductBlock | SiteBlock | MenuBlock;
+export type PageBlock =
+  | RichTextBlock
+  | ImageBlock
+  | HeadingBlock
+  | ButtonBlock
+  | ContentGridBlock
+  | ProductBlock
+  | SiteBlock
+  | MenuBlock
+  | SeparatorBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -706,6 +741,8 @@ export function blockHasContent(block: PageBlock): boolean {
     case "menu":
       // A menu with no links draws nothing.
       return Boolean(block.menuId);
+    case "separator":
+      return true;
   }
 }
 
@@ -727,6 +764,7 @@ export function blockText(block: PageBlock): string {
     case "product":
     case "site":
     case "menu":
+    case "separator":
       return "";
   }
 }
@@ -1227,6 +1265,22 @@ const menuBlock = z.object({
   ...partBase,
 });
 
+const separatorBlock = z.object({
+  id: itemId,
+  type: z.literal("separator"),
+  line: z.enum(Object.keys(SEPARATOR_LINES) as [SeparatorLine, ...SeparatorLine[]]).optional(),
+  thickness: z
+    .number()
+    .int()
+    .min(1)
+    .max(SEPARATOR_THICKNESS_MAX, `Keep a line at most ${SEPARATOR_THICKNESS_MAX} pixels thick.`)
+    .optional(),
+  color: color.optional(),
+  width: z.number().int().min(10, "Make a line at least 10 % of its column.").max(100).optional(),
+  position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1237,6 +1291,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   productBlock,
   siteBlock,
   menuBlock,
+  separatorBlock,
 ]);
 
 export const pageColumnSchema = z.object({

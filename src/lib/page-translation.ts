@@ -62,6 +62,8 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
     case "menu":
       // The site's logo, menus and details have their own texts in each language already (D80, D85).
       return b;
+    case "separator":
+      return b;
   }
 }
 

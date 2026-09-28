@@ -2,7 +2,14 @@
 
 import { useId, useState, type ReactNode } from "react";
 
-import type { BlockType, PageBlock } from "@/lib/page-content";
+import {
+  SEPARATOR_LINES,
+  SEPARATOR_POSITIONS,
+  SEPARATOR_THICKNESS_MAX,
+  type BlockType,
+  type PageBlock,
+  type SeparatorBlock,
+} from "@/lib/page-content";
 
 import type { Upload } from "./image-upload";
 import type { StartVideo } from "./video-upload";
@@ -35,7 +42,9 @@ export type BlockEditor<T extends PageBlock> = {
 type Editors = { [K in BlockType]?: BlockEditor<Extract<PageBlock, { type: K }>> };
 
 /** The components edited through the generic dialog. */
-export const BLOCK_EDITORS: Editors = {};
+export const BLOCK_EDITORS: Editors = {
+  separator: { title: "Separator line", General: SeparatorFields },
+};
 
 /** The editor for a block, if its kind has one here. */
 export function editorFor(block: PageBlock): BlockEditor<PageBlock> | undefined {
@@ -165,6 +174,71 @@ export function NumberField({
   );
 }
 
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** A colour: the browser's picker, or `#rrggbb` typed. */
+export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
+  const id = useId();
+  const [text, setText] = useState(value);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${label}: choose`}
+          value={value}
+          onChange={(event) => {
+            setText(event.target.value);
+            onChange(event.target.value);
+          }}
+          className="h-10 w-14 cursor-pointer rounded-md border border-border bg-background p-1"
+        />
+        <input
+          id={id}
+          value={text}
+          maxLength={7}
+          spellCheck={false}
+          aria-invalid={!HEX.test(text)}
+          onChange={(event) => {
+            setText(event.target.value);
+            if (HEX.test(event.target.value)) onChange(event.target.value.toLowerCase());
+          }}
+          className="min-h-10 w-28 rounded-md border border-border bg-background px-2 font-mono text-sm aria-invalid:border-red-700"
+        />
+      </div>
+    </div>
+  );
+}
+
+/** A colour that is the site's own until one is chosen. */
+export function OptionalColorField({
+  label,
+  hint,
+  value,
+  fallback,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  value: string | undefined;
+  fallback: string;
+  onChange: (color: string | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <CheckField label={`Own ${label.toLowerCase()}`} hint={hint} checked={value !== undefined} onChange={(on) => onChange(on ? fallback : undefined)} />
+      {value !== undefined && (
+        <div className="pl-7">
+          <ColorField label={label} value={value} onChange={onChange} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** A labelled on/off switch. */
 export function CheckField({ label, checked, hint, onChange }: { label: string; checked: boolean; hint?: string; onChange: (checked: boolean) => void }) {
   return (
@@ -274,5 +348,30 @@ export function ItemsEditor<T extends { id: string }>({
       </button>
       {items.length >= max && <p className="text-xs text-muted">At most {max}.</p>}
     </fieldset>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
+
+/** A separator line (D91): its style, thickness, colour, width and place. */
+function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) {
+  return (
+    <>
+      <ChoiceField label="Line" value={block.line ?? "solid"} options={SEPARATOR_LINES} onChange={(line) => onChange({ line })} />
+      <NumberField label="Thickness" value={block.thickness ?? 1} min={1} max={SEPARATOR_THICKNESS_MAX} unit="pixels" onChange={(thickness) => onChange({ thickness })} />
+      <OptionalColorField
+        label="Colour"
+        hint="The site's border colour unless you choose one."
+        value={block.color}
+        fallback="#d4d4d8"
+        onChange={(color) => onChange({ color })}
+      />
+      <NumberField label="Width" value={block.width ?? 100} min={10} max={100} unit="% of the column" onChange={(width) => onChange({ width })} />
+      {(block.width ?? 100) < 100 && (
+        <ChoiceField label="Position" value={block.position ?? "center"} options={SEPARATOR_POSITIONS} onChange={(position) => onChange({ position })} />
+      )}
+    </>
   );
 }
