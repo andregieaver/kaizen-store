@@ -16,8 +16,54 @@ import {
  * shows in the main language.
  */
 
-/** A text's place on the page and its longest length (a rich text's is checked on its own). */
-type Visit = (key: string, value: PageText, max: number) => PageText;
+/**
+ * A text's place on the page, its longest length (a rich text's is checked
+ * on its own) and, for the translator, what it is ("Tab title 2").
+ */
+type Visit = (key: string, value: PageText, max: number, label?: string) => PageText;
+
+/**
+ * The block with each of its texts replaced by what `visit` returns for it
+ * (D55): every text a block shows, by its place (`block.{id}.{field}`, and
+ * `block.{id}.{item}.{field}` for a text in one of its items). A new kind
+ * of block lists its texts here, with labels, and translates with no more.
+ */
+export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
+  const key = (field: string) => `block.${b.id}.${field}`;
+  const str = (field: string, value: string, max: number, label?: string) => {
+    const next = visit(key(field), value, max, label);
+    return typeof next === "string" ? next : value;
+  };
+  switch (b.type) {
+    case "richText": {
+      const doc = visit(key("doc"), b.doc, 0, "Text");
+      return typeof doc === "string" ? b : { ...b, doc };
+    }
+    case "heading":
+      return { ...b, text: str("text", b.text, 300, "Heading") };
+    case "button":
+      return { ...b, label: str("label", b.label, 100, "Button text") };
+    case "image":
+      return {
+        ...b,
+        caption: str("caption", b.caption, 300, "Caption"),
+        image: b.image && { ...b.image, alt: str("alt", b.image.alt, 300, "Description of the picture") },
+      };
+    case "contentGrid":
+      return {
+        ...b,
+        buttonLabel: str("buttonLabel", b.buttonLabel, 100, "Button text"),
+        emptyText: str("emptyText", b.emptyText, 300, "Text when nothing matches"),
+      };
+    case "product":
+      // Only a heading of the store's own is text to translate; the product's own texts have their languages already.
+      return b.heading ? { ...b, heading: str("heading", b.heading, 300, "Heading") } : b;
+    case "site":
+    case "menu":
+      // The site's logo, menus and details have their own texts in each language already (D80, D85).
+      return b;
+  }
+}
 
 /**
  * The page with each text replaced by what `visit` returns for it. Every
@@ -29,38 +75,10 @@ export function mapTexts(content: PageContent, visit: Visit): PageContent {
     const next = visit(key, value, max);
     return typeof next === "string" ? next : value;
   };
-  const block = (b: PageBlock): PageBlock => {
-    const key = (field: string) => `block.${b.id}.${field}`;
-    switch (b.type) {
-      case "richText": {
-        const doc = visit(key("doc"), b.doc, 0);
-        return typeof doc === "string" ? b : { ...b, doc };
-      }
-      case "heading":
-        return { ...b, text: str(key("text"), b.text, 300) };
-      case "button":
-        return { ...b, label: str(key("label"), b.label, 100) };
-      case "image":
-        return {
-          ...b,
-          caption: str(key("caption"), b.caption, 300),
-          image: b.image && { ...b.image, alt: str(key("alt"), b.image.alt, 300) },
-        };
-      case "contentGrid":
-        return { ...b, buttonLabel: str(key("buttonLabel"), b.buttonLabel, 100), emptyText: str(key("emptyText"), b.emptyText, 300) };
-      case "product":
-        // Only a heading of the store's own is text to translate; the product's own texts have their languages already.
-        return b.heading ? { ...b, heading: str(key("heading"), b.heading, 300) } : b;
-      case "site":
-      case "menu":
-        // The site's logo, menus and details have their own texts in each language already (D80, D85).
-        return b;
-    }
-  };
   const column = (c: PageColumn): PageColumn => ({
     ...c,
     ...(c.link && { link: { ...c.link, label: str(`column.${c.id}.label`, c.link.label, 200) } }),
-    blocks: c.blocks.map(block),
+    blocks: c.blocks.map((b) => mapBlockTexts(b, visit)),
   });
   return {
     ...content,
@@ -69,6 +87,21 @@ export function mapTexts(content: PageContent, visit: Visit): PageContent {
     thumbnail: content.thumbnail && { ...content.thumbnail, alt: str("thumbnail.alt", content.thumbnail.alt, 300) },
     rows: content.rows.map((row) => ({ ...row, columns: row.columns.map(column) })),
   };
+}
+
+/** A block's texts for the translator: each text's place, what it is, its longest length and value. */
+export function blockTextFields(block: PageBlock): { key: string; label: string; max: number; value: PageText }[] {
+  const fields: { key: string; label: string; max: number; value: PageText }[] = [];
+  mapBlockTexts(block, (key, value, max, label) => {
+    fields.push({ key, label: label ?? key, max, value });
+    return value;
+  });
+  return fields;
+}
+
+/** The block with one of its texts (by its place) set to `value`. */
+export function setBlockText(block: PageBlock, key: string, value: PageText): PageBlock {
+  return mapBlockTexts(block, (k, current) => (k === key ? value : current));
 }
 
 /** Every text of the page by its place, with its longest length (0 for rich text). */

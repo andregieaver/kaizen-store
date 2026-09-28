@@ -158,6 +158,7 @@ import {
   type RowPatch,
   type Styled,
 } from "@/lib/page-rows";
+import { blockTextFields, setBlockText } from "@/lib/page-translation";
 
 import type { GridData } from "@/lib/content-grid";
 import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
@@ -166,6 +167,7 @@ import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
 
+import { editorFor } from "./block-fields";
 import { FontPicker, type InstallFont } from "./font-picker";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
@@ -1630,6 +1632,7 @@ function Dialogs({
     </button>
   );
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
+  const editor = block ? editorFor(block) : undefined;
   const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
   const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
@@ -1828,6 +1831,44 @@ function Dialogs({
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
                 />
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      {/* The newer components, each described in `BLOCK_EDITORS`. */}
+      <Modal
+        open={Boolean(editor)}
+        onClose={onClose}
+        title={editor?.title ?? ""}
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block && editor && (
+          <SettingsTabs
+            key={block.id}
+            general={<editor.General block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />}
+            style={
+              <>
+                {editor.font &&
+                  "font" in block &&
+                  fontField(editor.font.label, block.font, editor.font.fallback, (font) =>
+                    onRows((current) => patchBlock(current, block.id, { font } as Partial<PageBlock>)),
+                  )}
+                {editor.Style && (
+                  <editor.Style block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />
+                )}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2233,6 +2274,49 @@ function TranslateText({
   );
 }
 
+/** A block's texts in the language being translated into, as `mapBlockTexts()` lists them, each beside the main language's. */
+function TranslateBlockTexts({
+  block,
+  original,
+  name,
+  mainName,
+  onChange,
+}: {
+  block: PageBlock;
+  original: PageBlock | null;
+  name: string;
+  mainName: string;
+  onChange: (block: PageBlock) => void;
+}) {
+  const fields = blockTextFields(block);
+  const was = new Map(original ? blockTextFields(original).map((field) => [field.key, field.value]) : []);
+  if (fields.length === 0) return <p className="text-sm text-muted">This component has no text of its own.</p>;
+  return (
+    <div className="flex flex-col gap-5">
+      {fields.map((field) => {
+        const before = was.get(field.key);
+        return typeof field.value === "string" ? (
+          <TranslateText
+            key={field.key}
+            label={`${field.label} in ${name}`}
+            value={field.value}
+            max={field.max}
+            original={typeof before === "string" ? before : ""}
+            mainName={mainName}
+            multiline={field.max > 120}
+            onChange={(value) => onChange(setBlockText(block, field.key, value))}
+          />
+        ) : (
+          <div key={field.key} className="flex flex-col gap-3">
+            <RichTextEditor value={field.value} onChange={(doc) => onChange(setBlockText(block, field.key, doc))} label={`${field.label} in ${name}`} />
+            <Original mainName={mainName} text={before && typeof before !== "string" ? richTextPlain(before) : ""} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * The dialogs while translating (D55): a part's texts only, each beside
  * the main language's. A text left as it was keeps showing in that language.
@@ -2315,6 +2399,9 @@ function TranslateDialogs({
             <TranslateText label={`Text when nothing matches, in ${name}`} value={b.emptyText} max={300} original={was("emptyText")} mainName={mainName} onChange={(emptyText) => set<ContentGridBlock>({ emptyText })} />
           </div>
         );
+      default:
+        // The newer components: every text they list in `mapBlockTexts()`, each beside the main language's.
+        return <TranslateBlockTexts block={b} original={o ?? null} name={name} mainName={mainName} onChange={(next) => onRows((current) => updateBlock(current, b.id, () => next))} />;
     }
   };
   const done = (

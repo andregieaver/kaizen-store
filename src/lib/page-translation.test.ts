@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { newPageContent, pageInput, type PageContent, type RichTextDoc } from "./page-content";
 import {
+  blockTextFields,
   cleanTranslations,
   localizePage,
   pageLanguages,
   pageTexts,
+  setBlockText,
   translationOf,
   translationProgress,
   withTranslation,
@@ -120,5 +122,18 @@ describe("a page's texts in other languages (D55)", () => {
       { locale: "nb-NO", name: "Norwegian Bokmål" },
       { locale: "sv-SE", name: "Swedish" },
     ]);
+  });
+});
+
+describe("a component's texts for the translator", () => {
+  it("lists each text by its place, with what it is, and sets one", () => {
+    const image = { id: "i", type: "image" as const, image: { url: "https://x/a.webp", width: 1, height: 1, alt: "Kopp" }, caption: "Vår kopp" };
+    expect(blockTextFields(image)).toEqual([
+      { key: "block.i.caption", label: "Caption", max: 300, value: "Vår kopp" },
+      { key: "block.i.alt", label: "Description of the picture", max: 300, value: "Kopp" },
+    ]);
+    const next = setBlockText(image, "block.i.caption", "Vår mugg");
+    expect(next).toMatchObject({ caption: "Vår mugg", image: { alt: "Kopp" } });
+    expect(blockTextFields({ id: "m", type: "menu" })).toEqual([]);
   });
 });
