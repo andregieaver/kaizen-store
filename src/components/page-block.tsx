@@ -28,6 +28,7 @@ import {
 import { faqJsonLd } from "@/lib/seo";
 import { embedUrl } from "@/lib/video-embed";
 
+import { HtmlFrame } from "./html-frame";
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
 import { TabsView } from "./tabs-view";
@@ -100,6 +101,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <Faq block={block} />;
     case "video":
       return <Video block={block} />;
+    case "html":
+      return block.html.trim() ? <HtmlFrame html={block.html} title={block.title} height={block.height} waitForClick={Boolean(block.waitForClick)} /> : null;
     case "image":
       if (!block.image) return null;
       return (

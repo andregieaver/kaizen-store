@@ -176,3 +176,25 @@ describe("videos", () => {
     expect(blockTextFields(parsed).map((field) => [field.key, field.label])).toEqual([["block.v.title", "Video title"]]);
   });
 });
+
+describe("HTML", () => {
+  const html = { id: "h", type: "html", html: "<p>Hei</p>", title: "Påmelding" };
+
+  it("starts empty and shows once it has HTML, with none of its words in the page's", () => {
+    expect(newBlock("html", () => "n")).toEqual({ id: "n", type: "html", html: "", title: "" });
+    expect(blockHasContent(parse({ ...html, html: "  " }))).toBe(false);
+    const parsed = parse(html);
+    expect(blockHasContent(parsed)).toBe(true);
+    expect(blockText(parsed)).toBe("");
+  });
+
+  it("keeps a set height within limits, and the HTML under its length", () => {
+    expect(parse({ ...html, height: 320, waitForClick: true })).toMatchObject({ height: 320, waitForClick: true });
+    expect(problems({ ...html, height: 5 })).toEqual(["Make the HTML at least 20 pixels tall."]);
+    expect(problems({ ...html, html: "x".repeat(50_001) })).toEqual(["Keep the HTML under 50,000 characters."]);
+  });
+
+  it("translates its title, never its code", () => {
+    expect(blockTextFields(parse(html)).map((field) => [field.key, field.label])).toEqual([["block.h.title", "HTML title"]]);
+  });
+});

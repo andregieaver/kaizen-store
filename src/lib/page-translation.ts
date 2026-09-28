@@ -71,6 +71,9 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return { ...b, items: mapPanelItems(b.items, visit, key, "Tab") };
     case "video":
       return { ...b, title: str("title", b.title, 200, "Video title") };
+    case "html":
+      // The HTML itself is code, the same in every language; its title names the frame.
+      return { ...b, title: str("title", b.title, 200, "HTML title") };
     case "faq":
       return { ...b, items: mapPanelItems(b.items, visit, key, "Question", { title: "Question", body: "Answer" }) };
     case "dualButton":

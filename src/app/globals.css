@@ -224,6 +224,10 @@ body:has([data-product-bar]) [data-default-bar] {
 [data-builder-dragging] [data-builder-item] {
   outline-color: transparent !important;
 }
+/* A frame on the canvas (HTML, a video's player) would take the pointer: the block is chosen, edited and dragged instead. */
+[data-builder-item="block"] iframe {
+  pointer-events: none;
+}
 
 /*
  * A header over the page (D80): a page whose header may lie over it marks

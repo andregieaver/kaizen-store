@@ -148,7 +148,7 @@ describe("page input", () => {
   });
 
   it("refuses unknown block types, unknown layouts and rows with the wrong number of columns", () => {
-    expect(pageInput.safeParse({ ...valid, rows: [row([{ id: "x", type: "html", html: "<script>" }])] }).success).toBe(false);
+    expect(pageInput.safeParse({ ...valid, rows: [row([{ id: "x", type: "iframe", src: "https://example.com" }])] }).success).toBe(false);
     expect(pageInput.safeParse({ ...valid, rows: [row([], { layout: "7" })] }).success).toBe(false);
     expect(pageInput.safeParse({ ...valid, rows: [row([], { layout: "2" })] }).success).toBe(false);
   });

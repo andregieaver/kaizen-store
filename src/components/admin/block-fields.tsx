@@ -13,6 +13,9 @@ import {
   VIDEO_RATIOS,
   VIDEO_SOURCES,
   VIDEO_TITLE_MAX,
+  HTML_HEIGHT_MAX,
+  HTML_MAX,
+  type HtmlBlock,
   TABS_LOOKS,
   EMPTY_DOC,
   HEADING_SIZES,
@@ -93,6 +96,7 @@ export const BLOCK_EDITORS: Editors = {
     Style: TabsStyleFields,
   },
   video: { title: "Video", General: VideoFields, Style: VideoStyleFields },
+  html: { title: "HTML", General: HtmlFields, Style: HtmlStyleFields },
   faq: {
     title: "FAQs",
     font: { label: "Font", fallback: "The site's body font" },
@@ -909,6 +913,70 @@ function VideoStyleFields({ block, onChange }: BlockEditorProps<VideoBlock>) {
             onChange={(controls) => onChange({ controls: controls ? undefined : false })}
           />
         </>
+      )}
+    </>
+  );
+}
+
+/** The owner's HTML and what names it (D91). */
+function HtmlFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
+  const id = useId();
+  return (
+    <>
+      <div className="flex flex-col gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          HTML
+        </label>
+        <textarea
+          id={id}
+          value={block.html}
+          maxLength={HTML_MAX}
+          rows={14}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          placeholder={"<div>…</div>\n<script>…</script>"}
+          onChange={(event) => onChange({ html: event.target.value })}
+          className={`${fieldClass} py-2 font-mono text-xs leading-relaxed`}
+        />
+        <p className="text-xs text-muted">
+          HTML, styles and scripts, such as a form or a widget from another service. It runs in a frame of its own, so it cannot reach the
+          site&apos;s cookies or sign-ins, and the site&apos;s styles do not reach it (only its font and text colour). {block.html.length.toLocaleString("en")}{" "}
+          of {HTML_MAX.toLocaleString("en")} characters.
+        </p>
+      </div>
+      <TextField
+        label="Title"
+        value={block.title}
+        max={200}
+        hint="What it is, such as “Newsletter sign-up”, for people using screen readers."
+        onChange={(title) => onChange({ title })}
+      />
+      <Check
+        label="Wait until the visitor presses Show"
+        hint="For content from another service that may set cookies: nothing loads until the visitor asks for it."
+        checked={Boolean(block.waitForClick)}
+        onChange={(waitForClick) => onChange({ waitForClick: waitForClick || undefined })}
+      />
+    </>
+  );
+}
+
+/** The HTML's height: its content's, or set (D91). */
+function HtmlStyleFields({ block, onChange }: BlockEditorProps<HtmlBlock>) {
+  return (
+    <>
+      <Choices
+        legend="Height"
+        options={[
+          { value: "fit", label: "Fits its content" },
+          { value: "set", label: "Set" },
+        ]}
+        value={block.height === undefined ? "fit" : "set"}
+        onChange={(mode) => onChange({ height: mode === "fit" ? undefined : 400 })}
+      />
+      {block.height !== undefined && (
+        <NumberField label="Height" value={block.height} min={20} max={HTML_HEIGHT_MAX} unit="px" onChange={(height) => onChange({ height })} />
       )}
     </>
   );

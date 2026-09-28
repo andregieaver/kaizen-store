@@ -785,6 +785,28 @@ export type VideoBlock = PartBase & {
   loop?: boolean;
 };
 
+export const HTML_MAX = 50_000;
+export const HTML_HEIGHT_MAX = 4000;
+
+/**
+ * The owner's own HTML (D91), with its styles and scripts, run in a
+ * sandboxed frame of its own origin (`HtmlFrame`, `src/lib/html-frame.ts`)
+ * so nothing in it can reach the site's or the admin's cookies and
+ * storage. It grows to its content unless a height is set; content from
+ * other services can wait until the visitor presses Show. Its title names
+ * the frame to screen readers.
+ */
+export type HtmlBlock = PartBase & {
+  id: string;
+  type: "html";
+  html: string;
+  title: string;
+  /** Pixels; fits its content unless set. */
+  height?: number;
+  /** Shows a button first and loads nothing until it is pressed. */
+  waitForClick?: boolean;
+};
+
 /** One piece of a page's content. */
 export type PageBlock =
   | RichTextBlock
@@ -800,7 +822,8 @@ export type PageBlock =
   | AccordionBlock
   | TabsBlock
   | FaqBlock
-  | VideoBlock;
+  | VideoBlock
+  | HtmlBlock;
 export type BlockType = PageBlock["type"];
 
 /** The whole column is a link (D48); `label` names it for screen readers, else its text does. */
@@ -888,6 +911,8 @@ export function blockHasContent(block: PageBlock): boolean {
       return block.items.some(faqShows);
     case "video":
       return block.source === "upload" ? block.video !== null : embedUrl(block.source, block.link) !== null;
+    case "html":
+      return block.html.trim() !== "";
   }
 }
 
@@ -918,6 +943,8 @@ export function blockText(block: PageBlock): string {
     case "menu":
     case "separator":
     case "dualButton":
+    // Its words are in its own frame, not the page's.
+    case "html":
       return "";
   }
 }
@@ -1533,6 +1560,16 @@ const videoBlock = z
     path: ["link"],
   });
 
+const htmlBlock = z.object({
+  id: itemId,
+  type: z.literal("html"),
+  html: z.string().max(HTML_MAX, `Keep the HTML under ${HTML_MAX.toLocaleString("en")} characters.`),
+  title: z.string().trim().max(200, "Keep the HTML's title under 200 characters.").default(""),
+  height: z.number().int().min(20, "Make the HTML at least 20 pixels tall.").max(HTML_HEIGHT_MAX, `Make the HTML at most ${HTML_HEIGHT_MAX} pixels tall.`).optional(),
+  waitForClick: z.boolean().optional(),
+  ...partBase,
+});
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
 export const pageBlockSchema = z.discriminatedUnion("type", [
   richTextBlock,
@@ -1549,6 +1586,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   tabsBlock,
   faqBlock,
   videoBlock,
+  htmlBlock,
 ]);
 
 export const pageColumnSchema = z.object({

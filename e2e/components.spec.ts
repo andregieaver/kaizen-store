@@ -181,3 +181,35 @@ test("a YouTube video loads nothing from YouTube until the visitor presses play"
   await expect(page.locator("main iframe")).toHaveAttribute("src", /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?autoplay=1/);
   await expect(page.locator("main iframe")).toHaveAttribute("title", "Slik lager vi koppene");
 });
+
+test("HTML runs its scripts in a frame of its own, sealed from the site, and the frame fits its content", async ({ page }) => {
+  const html = [
+    '<div style="height: 600px">Påmelding til nyhetsbrev</div>',
+    '<p id="out">waiting</p>',
+    "<script>",
+    "let reached = [];",
+    "try { document.cookie; reached.push('cookies'); } catch {}",
+    "try { localStorage.length; reached.push('storage'); } catch {}",
+    "try { parent.document.title; reached.push('page'); } catch {}",
+    "document.getElementById('out').textContent = reached.length ? 'reached ' + reached.join(', ') : 'sealed';",
+    "</script>",
+  ].join("\n");
+  const address = await storePageWith("html", [
+    { id: "code", type: "html", html, title: "Nyhetsbrev" },
+    { id: "later", type: "html", html: "<p>Fra en annen tjeneste</p>", title: "Widget", waitForClick: true },
+  ]);
+  await page.goto(address);
+  const frame = page.frameLocator('main iframe[title="Nyhetsbrev"]');
+  await expect(frame.locator("#out")).toHaveText("sealed");
+  await expect(frame.getByText("Påmelding til nyhetsbrev")).toBeVisible();
+  // It grows to its content: the 600-pixel box and the line under it.
+  await expect.poll(async () => (await page.locator('main iframe[title="Nyhetsbrev"]').boundingBox())?.height ?? 0).toBeGreaterThan(600);
+  // Content set to wait loads only when asked for.
+  await expect(page.locator('main iframe[title="Widget"]')).toHaveCount(0);
+  // The store's header slides away as the page scrolls down to the button, so a first click can miss it.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Vis innholdet" }).click({ timeout: 1000 });
+    await expect(page.locator('main iframe[title="Widget"]')).toHaveCount(1, { timeout: 1000 });
+  }).toPass();
+  await expect(page.frameLocator('main iframe[title="Widget"]').getByText("Fra en annen tjeneste")).toBeVisible();
+});
