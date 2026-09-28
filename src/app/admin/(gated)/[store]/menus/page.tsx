@@ -10,9 +10,11 @@ import { termTargets } from "@/lib/taxonomy";
 import { requireMember } from "@/server/auth";
 import { listStoreMenus, menuUses } from "@/server/menus";
 import { listMenuProducts } from "@/server/navigation";
+import { uploadsEnabled } from "@/server/media";
 import { listMenuPages } from "@/server/pages";
 import { listTerms } from "@/server/taxonomy";
 
+import { uploadImageAction } from "../products/actions";
 import { deleteMenuAction, saveMenuAction } from "./actions";
 
 export const metadata: Metadata = { title: "Menus" };
@@ -119,6 +121,7 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
         urlPlaceholder: "https://… or /p/product-name",
       }}
       save={saveMenuAction.bind(null, store.slug)}
+      upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}
       remove={deleteMenuAction.bind(null, store.slug)}
     />
   );

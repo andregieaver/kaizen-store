@@ -37,7 +37,14 @@ export function MenuLinks({
   const resolved = new Map(items.map((item) => [item, platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms, chrome.blog)]));
   const toNode = ({ item, children }: MenuNode<PlatformMenuEntry>, index: number): MenuLinkNode => {
     const link = resolved.get(item)!;
-    return { key: `${index}-${link.href}`, ...link, newTab: Boolean(item.newTab), children: children.map(toNode) };
+    return {
+      key: `${index}-${link.href}`,
+      ...link,
+      newTab: Boolean(item.newTab),
+      ...(item.depth === 0 && item.mega && { mega: item.mega }),
+      ...(item.image && { image: item.image }),
+      children: children.map(toNode),
+    };
   };
   const nodes = menuTree(items, (item) => resolved.get(item) !== null).map(toNode);
   return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} />;

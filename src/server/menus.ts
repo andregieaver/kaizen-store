@@ -14,6 +14,7 @@ import {
   parseMenuItems,
   parsePlatformMenuItems,
   platformMenuInput,
+  type AnyMenuEntry,
   type Menu,
   type MenuEntry,
   type PlatformMenu,
@@ -52,6 +53,14 @@ export async function listPlatformMenus(): Promise<PlatformMenu[]> {
   `);
   return rows.map((row) => ({ id: String(row.id), name: String(row.name), items: parsePlatformMenuItems(row.items) }));
 }
+
+/** An item's place and how it shows, as kept: only a top link is a mega menu (D87). */
+const placed = (item: AnyMenuEntry): Pick<AnyMenuEntry, "depth" | "newTab" | "mega" | "image"> => ({
+  depth: item.depth,
+  ...(item.newTab && { newTab: true }),
+  ...(item.depth === 0 && item.mega && { mega: item.mega.center ? item.mega : { columns: item.mega.columns } }),
+  ...(item.image && { image: item.image }),
+});
 
 const problemsOf = (issues: { message: string }[]) => [...new Set(issues.map((i) => i.message))];
 
@@ -136,7 +145,7 @@ export async function saveStoreMenu({ account, store }: Membership, id: string |
       else label = { ...cleanLabels(own, locales), ...label };
     }
     if (item.link.kind === "url" && Object.keys(label).length === 0) problems.push("Give each custom link a text.");
-    return { label, link: item.link, depth: item.depth, ...(item.newTab && { newTab: true }) };
+    return { label, link: item.link, ...placed(item) };
   };
   const cleaned = items.map(clean);
   if (await nameTaken(store.id, name, id)) problems.push(`There is already a menu called ${name}.`);
@@ -173,7 +182,7 @@ export async function savePlatformMenu(account: Account, id: string | null, inpu
       problems.push("A link goes to an article that no longer exists. Choose another.");
     }
     if (item.link.kind === "url" && !label.en) problems.push("Give each custom link a text.");
-    return { label, link: item.link, depth: item.depth, ...(item.newTab && { newTab: true }) };
+    return { label, link: item.link, ...placed(item) };
   };
   const cleaned = items.map(clean);
   if (await nameTaken(null, name, id)) problems.push(`There is already a menu called ${name}.`);

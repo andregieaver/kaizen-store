@@ -119,7 +119,31 @@ const link = z.discriminatedUnion("kind", [
 const item = z.object({ label, link });
 
 /** Where an item sits: how deep under the items before it (0 at the top), and whether it opens in a new tab. */
-const placing = { depth: z.number().int().min(0).max(MENU_MAX_DEPTH), newTab: z.boolean().optional() };
+/** A mega menu's columns at most (D87). */
+export const MEGA_MAX_COLUMNS = 6;
+
+/** A top link's mega menu (D87): the links under it across the content's width, in columns, centred if asked. */
+export type MegaMenu = { columns: number; center?: boolean };
+/** A link's picture (D87), shown in a mega menu. */
+export type MenuPicture = { url: string; width: number; height: number };
+
+const megaSchema = z.object({
+  columns: z.number().int().min(1).max(MEGA_MAX_COLUMNS, `A mega menu has at most ${MEGA_MAX_COLUMNS} columns.`),
+  center: z.boolean().optional(),
+});
+const pictureSchema = z.object({
+  url: z.string().trim().max(1000).refine(isMenuAddress, "A menu link's picture has an invalid address."),
+  width: z.number().int().min(1).max(10_000),
+  height: z.number().int().min(1).max(10_000),
+});
+
+/** Where an item sits, and how it shows: a new tab, a mega menu for a top link, a picture. */
+const placing = {
+  depth: z.number().int().min(0).max(MENU_MAX_DEPTH),
+  newTab: z.boolean().optional(),
+  mega: megaSchema.optional(),
+  image: pictureSchema.optional(),
+};
 
 /** A menu's items: at most `MENU_MAX_ITEMS`, the first at the top and each at most one deeper than the one before. */
 function itemsSchema<T extends z.ZodType<{ depth: number }>>(entry: T) {
@@ -129,7 +153,8 @@ function itemsSchema<T extends z.ZodType<{ depth: number }>>(entry: T) {
     .refine(
       (items) => items.every((it, i) => it.depth <= (i === 0 ? 0 : items[i - 1].depth + 1)),
       "A link can only sit under the link before it.",
-    );
+    )
+    .refine((items) => items.every((it) => it.depth === 0 || !("mega" in it) || !it.mega), "Only a top link can be a mega menu.");
 }
 
 const menuName = z
@@ -337,9 +362,10 @@ export const parsePlatformNavigation = parseNavigation;
 // ---------------------------------------------------------------------------
 
 /** An item in a menu: its link and texts, how deep it sits under the items before it, and whether it opens a new tab. */
-export type MenuEntry = MenuItem & { depth: number; newTab?: boolean };
-export type PlatformMenuEntry = PlatformMenuItem & { depth: number; newTab?: boolean };
-export type AnyMenuEntry = AnyMenuItem & { depth: number; newTab?: boolean };
+type Placing = { depth: number; newTab?: boolean; mega?: MegaMenu; image?: MenuPicture };
+export type MenuEntry = MenuItem & Placing;
+export type PlatformMenuEntry = PlatformMenuItem & Placing;
+export type AnyMenuEntry = AnyMenuItem & Placing;
 
 /** A menu: a store's (`MenuEntry`) or Kaizen's (`PlatformMenuEntry`). */
 export type Menu<E extends AnyMenuEntry = MenuEntry> = { id: string; name: string; items: E[] };
@@ -364,8 +390,14 @@ function parseItems<E extends { depth: number }>(value: unknown, entry: z.ZodTyp
   }));
 }
 
-const storeEntry = item.extend({ depth: z.number().int().min(0).catch(0), newTab: z.boolean().optional().catch(undefined) });
-const platformEntry = platformItem.extend({ depth: z.number().int().min(0).catch(0), newTab: z.boolean().optional().catch(undefined) });
+const stored = {
+  depth: z.number().int().min(0).catch(0),
+  newTab: z.boolean().optional().catch(undefined),
+  mega: megaSchema.optional().catch(undefined),
+  image: pictureSchema.optional().catch(undefined),
+};
+const storeEntry = item.extend(stored);
+const platformEntry = platformItem.extend(stored);
 
 /** A store's stored menu items. */
 export const parseMenuItems = (value: unknown): MenuEntry[] => parseItems(value, storeEntry);

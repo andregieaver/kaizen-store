@@ -560,7 +560,9 @@ of running `playwright install`.
   with `getPlatformChrome()`. Draw any menu with `MenuLinks` (store or
   platform), which renders `MenuTreeView` (`src/components/menu-view.tsx`:
   side by side with lists opening below on hover or focus, a column, or the
-  phone's drawer). `clone_store()` copies menus and `clone_page_content()`
+  phone's drawer). A top link can be a mega menu (D87, `MenuEntry.mega`:
+  columns and centring; the links right under it take a picture,
+  `MenuEntry.image`), drawn side by side across the header's width. `clone_store()` copies menus and `clone_page_content()`
   swaps their ids in copied pages.
 - Kaizen's own header and footer (`/admin/platform/navigation`) use the
   store's `NavigationEditor` (logos, icon, which menus, and business

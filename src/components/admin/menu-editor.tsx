@@ -27,8 +27,9 @@ import {
 } from "react";
 
 import { dropDepth, menuMoves, moveItem, subtreeEnd, type MenuMoves } from "@/lib/menu-structure";
-import { LABEL_MAX, MENU_MAX_ITEMS, MENU_NAME_MAX, type AnyLinkKind, type AnyMenuEntry, type AnyMenuLink } from "@/lib/navigation";
+import { LABEL_MAX, MEGA_MAX_COLUMNS, MENU_MAX_ITEMS, MENU_NAME_MAX, type AnyLinkKind, type AnyMenuEntry, type AnyMenuLink } from "@/lib/navigation";
 
+import { ImageUploadButton, type Upload } from "./image-upload";
 import {
   TARGET_NOUNS,
   targetLink,
@@ -89,6 +90,7 @@ export function MenuEditor({
   copy,
   save,
   remove,
+  upload,
 }: {
   menus: { id: string; name: string }[];
   /** The menu edited; a new one has no id. */
@@ -102,6 +104,8 @@ export function MenuEditor({
   copy: MenuEditorCopy;
   save: SaveMenu;
   remove: (id: string) => Promise<{ ok: boolean }>;
+  /** Uploads a link's picture (D87); null where uploads are not set up. */
+  upload: Upload | null;
 }) {
   const router = useRouter();
   const [name, setName] = useState(menu.name);
@@ -148,7 +152,15 @@ export function MenuEditor({
     startSaving(async () => {
       const outcome = await save(menu.id, {
         name,
-        items: items.map((item) => ({ label: item.label, link: item.link, depth: item.depth, ...(item.newTab && { newTab: true }) })),
+        items: items.map((item) => ({
+          label: item.label,
+          link: item.link,
+          depth: item.depth,
+          ...(item.newTab && { newTab: true }),
+          // Only a top link is a mega menu (D87); one moved under another is no longer.
+          ...(item.depth === 0 && item.mega && { mega: item.mega }),
+          ...(item.image && { image: item.image }),
+        })),
       });
       if (!outcome.ok) {
         setResult(outcome);
@@ -251,6 +263,7 @@ export function MenuEditor({
               kinds={kinds}
               targets={targets}
               copy={copy}
+              upload={upload}
             />
             <p role="status" aria-live="polite" className="sr-only">
               {announcement}
@@ -562,6 +575,7 @@ function Structure({
   kinds,
   targets,
   copy,
+  upload,
 }: {
   items: Item[];
   expanded: ReadonlySet<string>;
@@ -573,6 +587,7 @@ function Structure({
   kinds: KindOption[];
   targets: Targets;
   copy: MenuEditorCopy;
+  upload: Upload | null;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -659,6 +674,13 @@ function Structure({
                 kinds={kinds}
                 targets={targets}
                 copy={copy}
+                upload={upload}
+                // A link right under a mega menu's top link is one of its columns, with a picture (D87).
+                inMega={(() => {
+                  if (item.depth !== 1) return false;
+                  for (let i = index - 1; i >= 0; i--) if (items[i].depth === 0) return Boolean(items[i].mega);
+                  return false;
+                })()}
               />
             );
           })}
@@ -692,6 +714,8 @@ function MenuItemRow({
   kinds,
   targets,
   copy,
+  upload,
+  inMega,
 }: {
   item: Item;
   depth: number;
@@ -709,11 +733,14 @@ function MenuItemRow({
   kinds: KindOption[];
   targets: Targets;
   copy: MenuEditorCopy;
+  upload: Upload | null;
+  inMega: boolean;
 }) {
   const id = useId();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
   const target = targetOf(item.link);
   const original = target ? (targets[target.kind] ?? []).find((t) => t.value === target.value) : null;
+  const mega = item.mega;
   const move = (next: Item[] | null, label: string, what: string) =>
     next && (
       <button type="button" className={small} onClick={() => onMove(next, what)}>
@@ -756,6 +783,7 @@ function MenuItemRow({
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
         {carried > 0 && <span className="text-xs text-muted">+{carried} under it</span>}
         {depth > 0 && <span className="hidden text-xs text-muted sm:inline">sub item</span>}
+        {item.mega && depth === 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-xs text-background">Mega menu</span>}
         <span className="shrink-0 text-xs text-muted">{kindName(item.link, kinds)}</span>
         <button
           type="button"
@@ -807,6 +835,73 @@ function MenuItemRow({
             />
             Open the link in a new tab
           </label>
+          {item.depth === 0 && (
+            <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(item.mega)}
+                  onChange={(event) => onChange({ ...item, mega: event.target.checked ? { columns: 4 } : undefined })}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="font-medium">Mega menu</span>
+                  <span className="block text-xs text-muted">
+                    The links under this one open side by side across the page&apos;s width, in columns, each with its picture
+                    and the links under it. On phones they are listed as usual.
+                  </span>
+                </span>
+              </label>
+              {mega && (
+                <div className="flex flex-wrap items-end gap-4 pl-6">
+                  <label className={field}>
+                    Columns
+                    <select
+                      value={mega.columns}
+                      onChange={(event) => onChange({ ...item, mega: { ...mega, columns: Number(event.target.value) } })}
+                      className={`${input} w-24`}
+                    >
+                      {Array.from({ length: MEGA_MAX_COLUMNS }, (_, n) => n + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex min-h-10 items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(mega.center)}
+                      onChange={(event) => onChange({ ...item, mega: { columns: mega.columns, ...(event.target.checked && { center: true }) } })}
+                    />
+                    Centre the links under it
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+          {inMega && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">Picture</span>
+              <span className="text-xs text-muted">Shown above the link in its column of the mega menu. A landscape picture (4:3) works best.</span>
+              <div className="flex flex-wrap items-center gap-3">
+                {item.image && (
+                  // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
+                  <img src={item.image.url} alt="" className="aspect-[4/3] w-32 rounded-md bg-surface object-cover" />
+                )}
+                <ImageUploadButton
+                  upload={upload}
+                  label={item.image ? "Replace picture" : "Upload picture"}
+                  onUploaded={(image) => onChange({ ...item, image })}
+                />
+                {item.image && (
+                  <button type="button" onClick={() => onChange({ ...item, image: undefined })} className="text-sm underline">
+                    Remove picture
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-medium">Move</span>
             {move(moves.up, "Up one", "up one")}

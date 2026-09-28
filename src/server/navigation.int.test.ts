@@ -116,6 +116,31 @@ describe("a store's menus (D85)", () => {
     expect(await deleteMenu(member.account.id, member.store.id, result.id)).toBe(false);
   });
 
+  it("keeps a top link's mega menu and its links' pictures (D87)", async () => {
+    const image = { url: "https://example.no/kopper.webp", width: 1600, height: 1200 };
+    const result = await saveStoreMenu(member, null, {
+      name: `Mega ${run}`,
+      items: [
+        { label: { "nb-NO": "Kjøkken" }, link: { kind: "home" }, depth: 0, mega: { columns: 3, center: false } },
+        { label: { "nb-NO": "Kopper" }, link: { kind: "product", handle: "demo-keramikkopp" }, depth: 1, image },
+      ],
+    });
+    if (!result.ok) throw new Error(result.problems.join(" "));
+    const menu = await storedMenu(result.id);
+    expect(menu.items[0].mega).toEqual({ columns: 3 });
+    expect(menu.items[1].image).toEqual(image);
+    expect(
+      await saveStoreMenu(member, result.id, {
+        name: `Mega ${run}`,
+        items: [
+          { label: {}, link: { kind: "home" }, depth: 0 },
+          { label: {}, link: { kind: "cart" }, depth: 1, mega: { columns: 2 } },
+        ],
+      }),
+    ).toEqual({ ok: false, problems: ["Only a top link can be a mega menu."] });
+    await deleteMenu(member.account.id, member.store.id, result.id);
+  });
+
   it("keeps a logo for dark backgrounds next to the logo (D60)", async () => {
     const logo = { url: "/demo/logo.svg", width: 120, height: 32 };
     const logoDark = { url: "https://example.no/logo-light.png", width: 240, height: 64 };

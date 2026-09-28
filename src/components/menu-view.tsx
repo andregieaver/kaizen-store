@@ -1,4 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
+
+import type { MegaMenu, MenuPicture } from "@/lib/navigation";
 
 import { Icon } from "./icons";
 
@@ -9,6 +12,10 @@ export type MenuLinkNode = {
   text: string;
   external: boolean;
   newTab: boolean;
+  /** A top link's mega menu (D87). */
+  mega?: MegaMenu;
+  /** Shown above the link in a mega menu (D87). */
+  image?: MenuPicture;
   children: MenuLinkNode[];
 };
 
@@ -40,9 +47,19 @@ export function MenuTreeView({
   justify?: string;
 }) {
   if (nodes.length === 0) return null;
-  const anchor = (node: MenuLinkNode, className: string, chevron = false) => {
+  const anchor = (node: MenuLinkNode, className: string, chevron = false, picture = false) => {
     const body = (
       <>
+        {picture && node.image && (
+          <Image
+            src={node.image.url}
+            alt=""
+            width={node.image.width}
+            height={node.image.height}
+            unoptimized
+            className="aspect-[4/3] w-full rounded-lg bg-surface object-cover"
+          />
+        )}
         {node.text}
         {chevron && <Icon name="chevron" className="size-3.5 shrink-0 opacity-70" />}
         {node.newTab && <span className="sr-only"> {newTabLabel}</span>}
@@ -72,9 +89,47 @@ export function MenuTreeView({
         ))}
       </ul>
     );
+    /**
+     * A mega menu (D87): the links under a top link side by side in columns
+     * across the width of the header (or the row the menu is in), each with
+     * its picture and the links under it; centred if asked.
+     */
+    const mega = (node: MenuLinkNode, mega: MegaMenu) => {
+      const columns = Math.max(1, mega.columns);
+      return (
+        <li key={node.key} className="group/menu" data-mega-menu>
+          {/* The link reaches down to the panel's edge, so the panel stays open on the way to it. */}
+          {anchor(node, `${linkClassName} relative gap-1 after:absolute after:inset-x-0 after:top-full after:h-5`, true)}
+          <div className="invisible absolute inset-x-0 top-full z-40 opacity-0 transition-opacity group-focus-within/menu:visible group-focus-within/menu:opacity-100 group-hover/menu:visible group-hover/menu:opacity-100 motion-reduce:transition-none">
+            <div className="border-y border-border bg-background text-foreground shadow-lg">
+              <ul
+                className={`mx-auto flex max-w-[var(--content-width,64rem)] flex-wrap gap-6 px-4 py-6 ${mega.center ? "justify-center text-center" : ""}`}
+              >
+                {node.children.map((child) => (
+                  <li
+                    key={child.key}
+                    className="flex min-w-0 flex-col gap-2"
+                    style={{ width: `calc((100% - ${columns - 1} * 1.5rem) / ${columns})` }}
+                  >
+                    {anchor(child, `flex flex-col gap-2 font-medium hover:underline ${mega.center ? "items-center" : ""}`, false, true)}
+                    {child.children.length > 0 && (
+                      <ul className="flex flex-col gap-1 text-sm">
+                        {child.children.map((grandchild) => (
+                          <li key={grandchild.key}>{anchor(grandchild, "inline-flex min-h-8 items-center text-muted hover:text-foreground hover:underline")}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </li>
+      );
+    };
     return (
       <ul className={`flex flex-wrap items-center gap-1 ${justify}`}>
-        {nodes.map((node) => (
+        {nodes.map((node) => node.mega && node.children.length > 0 ? mega(node, node.mega) : (
           <li key={node.key} className="group/menu relative">
             {anchor(node, `${linkClassName} gap-1`, node.children.length > 0)}
             {node.children.length > 0 && (

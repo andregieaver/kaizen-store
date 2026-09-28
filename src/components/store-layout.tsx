@@ -68,6 +68,8 @@ export async function MenuLinks({
       external,
       newTab: Boolean(item.newTab),
       text: menuLabel(item, market.locale, builtIn, names),
+      ...(item.depth === 0 && item.mega && { mega: item.mega }),
+      ...(item.image && { image: item.image }),
       children: children.map(toNode),
     };
   };

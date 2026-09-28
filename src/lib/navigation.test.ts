@@ -67,6 +67,19 @@ describe("addresses and stored values", () => {
     expect(parseNavigation(null)).toEqual(EMPTY_NAVIGATION);
   });
 
+  it("makes only top links mega menus, with one to six columns and pictures for links (D87)", () => {
+    const item = { label: {}, link: { kind: "home" }, depth: 0 };
+    const image = { url: "https://cdn.example/koppar.webp", width: 1600, height: 1200 };
+    const menu = (items: unknown[]) => menuInput.safeParse({ name: "Main", items }).success;
+    expect(menu([{ ...item, mega: { columns: 4, center: true } }, { ...item, depth: 1, image }])).toBe(true);
+    expect(menu([item, { ...item, depth: 1, mega: { columns: 3 } }])).toBe(false);
+    expect(menu([{ ...item, mega: { columns: 7 } }])).toBe(false);
+    expect(menu([{ ...item, mega: { columns: 0 } }])).toBe(false);
+    expect(menu([{ ...item, image: { ...image, url: "javascript:alert(1)" } }])).toBe(false);
+    // Stored, a damaged setting is left out and the link kept.
+    expect(parseMenuItems([{ ...item, mega: { columns: "four" }, image }])).toEqual([{ ...item, image }]);
+  });
+
   it("reads stored menu items one by one, leaving out a damaged one and making depths sound (D85)", () => {
     expect(
       parseMenuItems([

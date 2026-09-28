@@ -9,9 +9,11 @@ import type { PageType } from "@/lib/page-content";
 import { termTargets } from "@/lib/taxonomy";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listPlatformMenus, menuUses } from "@/server/menus";
+import { uploadsEnabled } from "@/server/media";
 import { listMenuPages } from "@/server/pages";
 import { listTerms } from "@/server/taxonomy";
 
+import { uploadPlatformImageAction } from "../actions";
 import { deletePlatformMenuAction, savePlatformMenuAction } from "./actions";
 
 export const metadata: Metadata = { title: "Menus" };
@@ -92,6 +94,7 @@ async function Menus({ searchParams }: { searchParams: PageProps<"/admin/platfor
         urlPlaceholder: "https://… or /sign-up",
       }}
       save={savePlatformMenuAction}
+      upload={uploadsEnabled() ? uploadPlatformImageAction : null}
       remove={deletePlatformMenuAction}
     />
   );
