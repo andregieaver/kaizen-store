@@ -112,3 +112,23 @@ test("the owner assistant answers only a signed-in owner (D94)", async ({ page, 
   await page.goto("/admin/demo/assistant");
   await expect(page).toHaveURL("/admin/sign-in");
 });
+
+test("an app asking to sign someone in with Kaizen Store sends them to sign in first, and back (D95)", async ({ page }) => {
+  await page.goto("/admin/oauth/consent?authorization_id=abc12345xyz");
+  await expect(page).toHaveURL(/\/admin\/sign-in\?next=%2Fadmin%2Foauth%2Fconsent%3Fauthorization_id%3Dabc12345xyz$/);
+  // The way back is kept through the sign-in form.
+  await expect(page.locator('input[type="hidden"][name="next"]').first()).toHaveValue("/admin/oauth/consent?authorization_id=abc12345xyz");
+  // Kaizen Life's button shows only once it is set up.
+  await expect(page.getByRole("button", { name: "Sign in with Kaizen Life" })).toHaveCount(0);
+  await page.goto("/admin/oauth/consent");
+  await expect(page.getByRole("heading", { name: "This sign-in could not be read" })).toBeVisible();
+});
+
+test("someone from Kaizen Life without a store asks for one with what Kaizen Life knows (D95)", async ({ page }) => {
+  await page.goto("/sign-up?via=kaizen-life&email=kari%40example.com&name=Kari%20Nordmann");
+  await expect(page.getByText("No Kaizen Store account uses kari@example.com yet.")).toBeVisible();
+  await expect(page.getByLabel("Your name")).toHaveValue("Kari Nordmann");
+  await expect(page.getByLabel("Email")).toHaveValue("kari@example.com");
+  await page.goto("/sign-up");
+  await expect(page.getByLabel("Email")).toHaveValue("");
+});

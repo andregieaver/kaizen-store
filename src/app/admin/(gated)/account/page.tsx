@@ -3,14 +3,25 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
+import { createClient } from "@/lib/supabase/server";
 import { requireAccount } from "@/server/auth";
+import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 
-import { setPasswordAction } from "./actions";
+import { connectKaizenLifeAction, disconnectKaizenLifeAction, revokeAppAction, setPasswordAction } from "./actions";
 
 export const metadata: Metadata = { title: "Your account" };
 
-export default async function AccountPage() {
+const smallButton = "min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface";
+
+export default async function AccountPage({ searchParams }: PageProps<"/admin/account">) {
   const account = await requireAccount();
+  const status = (await searchParams)["kaizen-life"];
+  const owner = await isOwner(account);
+  const supabase = await createClient();
+  const [identity, grants] = await Promise.all([
+    owner && kaizenLifeSignInOn() ? kaizenLifeIdentity(supabase) : null,
+    owner ? supabase.auth.oauth.listGrants().then(({ data }) => data ?? [], () => []) : [],
+  ]);
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8">
       <div>
@@ -49,6 +60,67 @@ export default async function AccountPage() {
           </div>
         </ActionForm>
       </section>
+
+      {owner && kaizenLifeSignInOn() && (
+        <section aria-labelledby="kaizen-life-heading" className="flex max-w-md flex-col gap-3">
+          <h2 id="kaizen-life-heading" className="font-medium">
+            Kaizen Life
+          </h2>
+          {status === "failed" && (
+            <p role="alert" className="text-sm">
+              That did not go through. Try again.
+            </p>
+          )}
+          {identity ? (
+            <>
+              <p className="text-sm">
+                Connected{typeof identity.identity_data?.email === "string" ? ` as ${identity.identity_data.email}` : ""}: you can sign in here with
+                your Kaizen Life account.
+              </p>
+              <form action={disconnectKaizenLifeAction}>
+                <button type="submit" className={smallButton}>
+                  Disconnect Kaizen Life
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted">
+                Connect your Kaizen Life account to sign in here with it, even if it uses another email address.
+              </p>
+              <form action={connectKaizenLifeAction}>
+                <button type="submit" className={smallButton}>
+                  Connect Kaizen Life
+                </button>
+              </form>
+            </>
+          )}
+        </section>
+      )}
+
+      {grants.length > 0 && (
+        <section aria-labelledby="apps-heading" className="flex max-w-md flex-col gap-3">
+          <h2 id="apps-heading" className="font-medium">
+            Apps you sign in to with Kaizen Store
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {grants.map((grant) => (
+              <li key={grant.client.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                <span>
+                  {grant.client.name || "An app"}
+                  <span className="block text-xs text-muted">Since {new Date(grant.granted_at).toLocaleDateString("en-GB", { dateStyle: "medium" })}</span>
+                </span>
+                <form action={revokeAppAction}>
+                  <input type="hidden" name="client" value={grant.client.id} />
+                  <button type="submit" className={smallButton}>
+                    Remove
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

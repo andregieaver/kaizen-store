@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 
 import { requestAccess } from "./actions";
+import { KaizenLifePrefill } from "./kaizen-life-prefill";
 
 export const metadata: Metadata = {
   title: "Start your store",
@@ -24,7 +25,8 @@ export default function SignUpPage() {
           to try with demo products.
         </p>
       </div>
-      <ActionForm action={requestAccess} className="flex flex-col gap-4" replaceOnSuccess>
+      <KaizenLifePrefill />
+      <ActionForm action={requestAccess} className="flex flex-col gap-4" replaceOnSuccess id="sign-up-form">
         <label className={field}>
           Your name
           <input name="name" required autoComplete="name" className={control} />

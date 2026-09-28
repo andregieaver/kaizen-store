@@ -1,9 +1,19 @@
 "use server";
 
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import type { FormState } from "@/components/admin/action-form";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/site";
 import { audit, requireAccount } from "@/server/auth";
+import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
+
+async function origin(): Promise<string> {
+  const header = (await headers()).get("origin");
+  return header ? new URL(header).origin : siteUrl();
+}
 
 /** Sets or changes the signed-in account's password. */
 export async function setPasswordAction(_state: FormState, formData: FormData): Promise<FormState> {
@@ -31,4 +41,45 @@ export async function setPasswordAction(_state: FormState, formData: FormData): 
     status: "ok",
     messages: ["Password saved. Next time, sign in with your email and this password."],
   };
+}
+
+/** Connects the account's Kaizen Life account (D95): off to Kaizen Life, back to Your account. Owners only. */
+export async function connectKaizenLifeAction(): Promise<void> {
+  const account = await requireAccount();
+  if (!kaizenLifeSignInOn() || !(await isOwner(account))) redirect("/admin/account");
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.linkIdentity({
+    provider: KAIZEN_LIFE_PROVIDER,
+    options: {
+      redirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/admin/account?kaizen-life=connected")}`,
+      scopes: "openid email profile",
+      skipBrowserRedirect: true,
+    },
+  });
+  if (error || !data?.url) redirect("/admin/account?kaizen-life=failed");
+  redirect(data.url);
+}
+
+/** Disconnects Kaizen Life: it no longer signs this account in. */
+export async function disconnectKaizenLifeAction(): Promise<void> {
+  const account = await requireAccount();
+  const supabase = await createClient();
+  const identity = await kaizenLifeIdentity(supabase);
+  if (identity) {
+    const { error } = await supabase.auth.unlinkIdentity(identity);
+    if (error) redirect("/admin/account?kaizen-life=failed");
+    await audit(account.id, null, "account.kaizen_life_disconnected");
+  }
+  redirect("/admin/account");
+}
+
+/** Takes back an app's permission to sign in with this Kaizen Store account (D95). */
+export async function revokeAppAction(formData: FormData): Promise<void> {
+  const account = await requireAccount();
+  const clientId = String(formData.get("client") ?? "");
+  if (/^[A-Za-z0-9_-]{8,100}$/.test(clientId)) {
+    await (await createClient()).auth.oauth.revokeGrant({ clientId });
+    await audit(account.id, null, "account.oauth_revoked", { clientId });
+  }
+  redirect("/admin/account");
 }

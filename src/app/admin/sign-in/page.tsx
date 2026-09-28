@@ -4,9 +4,11 @@ import { Suspense } from "react";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
+import { safeNext } from "@/lib/password";
 import { getAccount } from "@/server/auth";
+import { kaizenLifeSignInOn } from "@/server/kaizen-life";
 
-import { signIn } from "./actions";
+import { signIn, signInWithKaizenLife } from "./actions";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -17,7 +19,13 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
       <Suspense fallback={null}>
         <Notice searchParams={searchParams} />
       </Suspense>
+      <Suspense fallback={null}>
+        <KaizenLifeButton searchParams={searchParams} />
+      </Suspense>
       <ActionForm action={signIn} className="flex flex-col gap-4">
+        <Suspense fallback={null}>
+          <NextField searchParams={searchParams} />
+        </Suspense>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Email
           <input
@@ -76,8 +84,35 @@ async function Notice({ searchParams }: { searchParams: PageProps<"/admin/sign-i
   if (error === "no-access") {
     return <p role="alert" className="text-sm">That account does not have access yet.</p>;
   }
+  if (error === "owners-only") {
+    return <p role="alert" className="text-sm">Signing in with Kaizen Life is for store owners. Sign in with your email instead.</p>;
+  }
+  if (error === "kaizen-life") {
+    return <p role="alert" className="text-sm">Kaizen Life did not sign you in. Try again, or sign in with your email.</p>;
+  }
   if (error === "link") {
     return <p role="alert" className="text-sm">That link has expired or was already used. Request a new one.</p>;
   }
   return null;
+}
+
+/** Where to go once signed in, such as back to a consent page (D95). */
+async function NextField({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
+  const { next } = await searchParams;
+  return typeof next === "string" ? <input type="hidden" name="next" value={safeNext(next)} /> : null;
+}
+
+/** Store owners can sign in with their Kaizen Life account (D95), once it is set up. */
+async function KaizenLifeButton({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
+  const { next } = await searchParams;
+  if (!kaizenLifeSignInOn()) return null;
+  return (
+    <form action={signInWithKaizenLife} className="flex flex-col gap-2">
+      {typeof next === "string" && <input type="hidden" name="next" value={safeNext(next)} />}
+      <button type="submit" className="min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+        Sign in with Kaizen Life
+      </button>
+      <p className="text-xs text-muted">For store owners with a Kaizen Life account.</p>
+    </form>
+  );
 }

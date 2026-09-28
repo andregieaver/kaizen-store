@@ -385,6 +385,13 @@ of running `playwright install`.
   it emails customers, changes the site or costs money: gated calls are only
   kept (`assistant_approvals`, `approvalSummary()`) and run on the owner's
   yes. It never depends on Kaizen Life.
+- Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
+  the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
+  `KAIZEN_LIFE_SSO=on`) goes through `/auth/callback?via=kaizen-life` and
+  `admitFromKaizenLife()`, which admits owners and platform admins only;
+  apps asking to sign someone in with Kaizen Store land on
+  `/admin/oauth/consent` (owners only). Sign-in shares identity, never
+  store data.
 - Product layouts (D79, `src/lib/product-layout.ts`, `src/components/product-parts.tsx`,
   `src/server/product-layouts.ts`): a product's page is a layout of rows
   with `product` blocks (`PRODUCT_PARTS`) drawn by `ProductPartView` with the

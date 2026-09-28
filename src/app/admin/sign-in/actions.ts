@@ -7,7 +7,9 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { siteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/password";
 import { canSignIn, signInAccount } from "@/server/auth";
+import { KAIZEN_LIFE_PROVIDER, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { admit } from "@/server/sign-in";
 
 const LINK_SENT =
@@ -75,7 +77,28 @@ async function signInWithPassword(formData: FormData): Promise<FormState> {
   if ((await admit(supabase, data.user)) !== "admitted") {
     return { status: "error", messages: ["That account does not have access yet."] };
   }
-  redirect("/admin");
+  redirect(safeNext(String(formData.get("next") ?? "")));
+}
+
+/**
+ * Signing in with Kaizen Life (D95): off to Kaizen Life's sign-in and
+ * consent, back through /auth/callback, which admits store owners only.
+ */
+export async function signInWithKaizenLife(formData: FormData): Promise<void> {
+  if (!kaizenLifeSignInOn()) redirect("/admin/sign-in");
+  const supabase = await supabaseOrNull();
+  if (!supabase) redirect("/admin/sign-in");
+  const next = safeNext(String(formData.get("next") ?? ""));
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: KAIZEN_LIFE_PROVIDER,
+    options: {
+      redirectTo: `${await origin()}/auth/callback?via=kaizen-life&next=${encodeURIComponent(next)}`,
+      scopes: "openid email profile",
+      skipBrowserRedirect: true,
+    },
+  });
+  if (error || !data.url) redirect("/admin/sign-in?error=kaizen-life");
+  redirect(data.url);
 }
 
 /**
@@ -91,7 +114,10 @@ async function requestSignInLink(formData: FormData): Promise<FormState> {
   if (!supabase) return NOT_CONFIGURED;
   const { error } = await supabase.auth.signInWithOtp({
     email: email.data,
-    options: { emailRedirectTo: `${await origin()}/auth/callback`, shouldCreateUser: true },
+    options: {
+      emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent(safeNext(String(formData.get("next") ?? "")))}`,
+      shouldCreateUser: true,
+    },
   });
   if (error) return emailError(error.status);
   return { status: "ok", messages: [LINK_SENT] };
