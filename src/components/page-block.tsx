@@ -94,6 +94,9 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "menu":
       // Its links are looked up where it is shown (`MenuSection`, D85); the editor shows a stand-in.
       return null;
+    case "search":
+      // The store's search is looked up where it is shown (`SearchSection`, D112); the editor shows a stand-in.
+      return null;
     case "separator":
       return <Separator block={block} />;
     case "dualButton":

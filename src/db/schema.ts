@@ -2992,6 +2992,30 @@ export const pages = commerce.table(
 );
 
 /**
+ * Which of a store's pages has a place of its own on its site (D112): its blog
+ * (`/blog`), search page (`/search`) or the page shown for an address that is
+ * not found, each built in the page builder; without one the site's standard
+ * page shows. A page holds at most one role, and deleting it lets the role go.
+ * (The front page and All products page keep their own columns on `stores`.)
+ */
+export const pageRoles = commerce.table(
+  "page_roles",
+  {
+    storeId: storeId().references(() => stores.id),
+    role: text("role").notNull(),
+    pageId: uuid("page_id").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.role] }),
+    unique("page_roles_store_page_key").on(t.storeId, t.pageId),
+    // A store can only choose a page of its own.
+    foreignKey({ name: "page_roles_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
+    check("page_roles_role", sql`${t.role} in ('blog', 'search', 'not_found')`),
+  ],
+);
+
+/**
  * An address a published page had before its slug changed (D42): visiting
  * it redirects permanently to the page's address now. A page taking the
  * address later replaces the redirect.

@@ -115,6 +115,7 @@ import {
   type ProductBlock,
   type ProductPart,
   type MenuBlock,
+  type SearchBlock,
   type SiteBlock,
   type SitePart,
   type ColumnJustify,
@@ -265,6 +266,7 @@ const blockLabels: Record<BlockType, string> = {
   product: "Product",
   site: "Site",
   menu: "Menu",
+  search: "Search",
   separator: "Separator line",
   dualButton: "Dual button",
   accordion: "Accordion",
@@ -290,6 +292,7 @@ const blockThis: Record<BlockType, string> = {
   product: "this product component",
   site: "this site component",
   menu: "this menu",
+  search: "this search",
   separator: "this separator line",
   dualButton: "these buttons",
   accordion: "this accordion",
@@ -645,6 +648,8 @@ export function PageBuilder({
           onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
           productParts={productParts}
           siteParts={siteParts}
+          // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
+          search={grid.owner !== null && !productParts && !siteParts}
           parts={parts}
           library={library}
           onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
@@ -738,6 +743,7 @@ function Sidebar({
   onAddBlock,
   productParts,
   siteParts,
+  search,
   parts,
   library,
   onOpenSaved,
@@ -752,6 +758,8 @@ function Sidebar({
   productParts: boolean;
   /** A header or footer (D80): the site parts its owner has. */
   siteParts: SitePart[] | null;
+  /** The store's search can be added (D112). */
+  search: boolean;
   parts: SavedPart[];
   library: SavedPart[];
   onOpenSaved: (partId: string) => void;
@@ -844,7 +852,7 @@ function Sidebar({
                 </>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {BLOCK_TYPES.map((type) => (
+                {(search ? [...BLOCK_TYPES, "search" as const] : BLOCK_TYPES).map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -1132,6 +1140,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SiteIcon />;
     case "menu":
       return <MenuIcon />;
+    case "search":
+      return <SearchIcon />;
     case "separator":
       return <SeparatorIcon />;
     case "dualButton":
@@ -1787,6 +1797,8 @@ function BlockItem({
           <SiteStandIn block={block} />
         ) : block.type === "menu" && blockHasContent(block) ? (
           <MenuStandIn block={block} menus={actions.grid.menus} />
+        ) : block.type === "search" ? (
+          <SearchStandIn block={block} />
         ) : block.type === "emailForm" || block.type === "newsletter" ? (
           <div className="flex flex-col gap-2">
             {block.recipients.length === 0 && (
@@ -1820,6 +1832,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   product: "Product component.",
   site: "Site component.",
   menu: "A menu: double-click or use the wrench to choose which.",
+  search: "Search.",
   separator: "Separator line.",
   dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
   accordion: "An accordion: its sections need titles. Double-click or use the wrench.",
@@ -2237,6 +2250,45 @@ function Dialogs({
                 />
                 {fontField("Font", block.font, "The site's fonts", (font) =>
                   onRows((current) => patchBlock<MenuBlock>(current, block.id, { font })),
+                )}
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "search"}
+        onClose={onClose}
+        title="Search"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "search" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <Check
+                label="Show what was searched for"
+                hint="The results, with the filters and what the search understood. Off, it is only the search box, which leads to your search page: right for a 404 page or a header."
+                checked={block.results !== false}
+                onChange={(results) => onRows((current) => patchBlock<SearchBlock>(current, block.id, { results: results ? undefined : false }))}
+              />
+            }
+            style={
+              <>
+                {fontField("Font", block.font, "The site's fonts", (font) =>
+                  onRows((current) => patchBlock<SearchBlock>(current, block.id, { font })),
                 )}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -4377,6 +4429,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Site component: change its settings where it is used in a header or footer.</p>
                     ) : block.type === "menu" ? (
                       <p className="text-sm text-muted">Menu: change its settings where it is used.</p>
+                    ) : block.type === "search" ? (
+                      <p className="text-sm text-muted">Search: change its settings where it is used.</p>
                     ) : block.type === "button" ? (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : (
@@ -4462,6 +4516,17 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
 // Menu components (D85)
 // ---------------------------------------------------------------------------
 
+function SearchIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="6" />
+        <path d="m20 20-4.5-4.5" />
+      </svg>
+    </span>
+  );
+}
+
 function MenuIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
@@ -4537,6 +4602,16 @@ function MenuFields({
         checked={Boolean(block.hideOnPhones)}
         onChange={(hideOnPhones) => onChange({ hideOnPhones: hideOnPhones || undefined })}
       />
+    </div>
+  );
+}
+
+/** The store's search on the canvas: a box, and where its results go. */
+function SearchStandIn({ block }: { block: SearchBlock }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">Search the store …</div>
+      <p className="text-xs text-muted">{block.results === false ? "Only the search box." : "The results of what shoppers search for show here."}</p>
     </div>
   );
 }

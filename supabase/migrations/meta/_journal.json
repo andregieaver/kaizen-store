@@ -1240,6 +1240,20 @@
       "when": 1790688285643,
       "tag": "20260929132445_platform_languages",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1790690518154,
+      "tag": "20260929140158_page_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1790690528554,
+      "tag": "20260929140208_page_roles_rules",
+      "breakpoints": true
     }
   ]
 }

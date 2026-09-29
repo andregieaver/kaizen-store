@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { PageState, PageSummary } from "@/server/pages";
+import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 
 const STATE_LABELS: Record<PageState, string> = {
   draft: "Draft",
@@ -20,6 +21,7 @@ export function PagesTable({
   siteBase,
   frontPageId = null,
   productsPageId = null,
+  roles = {},
 }: {
   pages: PageSummary[];
   adminBase: string;
@@ -28,6 +30,8 @@ export function PagesTable({
   frontPageId?: string | null;
   /** A store's All products page (D83), marked in the list. */
   productsPageId?: string | null;
+  /** The pages chosen for the blog, search and 404 places (D112), by page id. */
+  roles?: Record<string, PageRole>;
 }) {
   return (
         <div className="overflow-x-auto rounded-lg border border-border bg-background">
@@ -71,7 +75,9 @@ export function PagesTable({
                             ? `Front page · ${siteBase}`
                             : page.id === productsPageId
                               ? `All products page · ${siteBase}/products`
-                              : `${siteBase}/${page.slug}`}
+                              : roles[page.id]
+                                ? `${ROLE_COPY[roles[page.id]].name}${ROLE_COPY[roles[page.id]].address ? ` · ${siteBase}${ROLE_COPY[roles[page.id]].address}` : ""}`
+                                : `${siteBase}/${page.slug}`}
                         </span>
                       </span>
                     </div>

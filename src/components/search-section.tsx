@@ -1,0 +1,168 @@
+import Link from "next/link";
+import { after } from "next/server";
+import { Suspense } from "react";
+
+import { ProductListing } from "@/components/product-listing";
+import { SearchBox } from "@/components/search-box";
+import { t, type Messages } from "@/lib/i18n";
+import { parseListingParams } from "@/lib/listing-filters";
+import { formatMoney } from "@/lib/money";
+import { marketPath } from "@/lib/paths";
+import type { SearchFilters } from "@/lib/query-understanding";
+import { normalizeQuery } from "@/lib/search";
+import { byName, type Term } from "@/lib/taxonomy";
+import { storeAndMarket, type GridPlace } from "@/server/content-grid";
+import { understandQuery } from "@/server/query-understanding";
+import { queryVector } from "@/server/query-vector";
+import { drawArm, runningExperiment } from "@/server/search-experiment";
+import { logSearch, searchProducts } from "@/server/search";
+import { siteTerms } from "@/server/taxonomy";
+
+/**
+ * The store's search on the site (Phase 2, S1, S2; a page component since
+ * D112): its search box and the store's products in the market that match
+ * what was typed, by its words and, with the store's AI, by its meaning, as
+ * its product cards show them. Nothing found, it offers the store's
+ * categories instead; every search is logged for the store's zero-result
+ * rate. The standard search page and any page of the store's with a Search
+ * component draw it; without `results`, or where the address has no query to
+ * read, it is only the box.
+ */
+export function SearchSection({ place, results = true }: { place: GridPlace; results?: boolean }) {
+  return (
+    <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
+      <Search place={place} results={results} />
+    </Suspense>
+  );
+}
+
+async function Search({ place, results }: { place: GridPlace; results: boolean }) {
+  const shop = place.owner ? await storeAndMarket(place.owner, place.market ?? null) : null;
+  if (!shop) return null;
+  const { store, market } = shop;
+  const m = t(market.lang);
+  const base = marketPath(store.slug, market.slug);
+  const labels = {
+    label: m.search.label,
+    placeholder: m.search.placeholder,
+    submit: m.search.submit,
+    suggestions: m.search.suggestions,
+    showAll: m.search.showAll("#"),
+  };
+  // Without results, or a page whose address cannot carry a search, the box leads to the search page.
+  if (!results || !place.listing) {
+    return <SearchBox store={store.slug} market={market.slug} base={base} defaultValue="" autoFocus={false} labels={labels} />;
+  }
+  const asked = await place.listing.query;
+  const path = place.listing.path;
+  const raw = asked.q;
+  const query = normalizeQuery(typeof raw === "string" ? raw : Array.isArray(raw) ? (raw[0] ?? "") : "");
+  const typed = typeof raw === "string" ? raw.trim().slice(0, 100) : query;
+  // `exact`: the shopper asked for the words as typed, not as understood.
+  const exact = asked.exact === "1";
+  const where = { storeId: store.id, market };
+  // A search test (D77): this search gets hybrid or keyword search alone, drawn now.
+  const experiment = query ? await runningExperiment() : null;
+  const arm = experiment ? drawArm(experiment) : null;
+  const keywordOnly = arm === "keyword";
+  const found = query
+    ? await searchProducts(where, query, keywordOnly ? null : queryVector, exact || keywordOnly ? null : understandQuery)
+    : null;
+  const products = found?.products ?? [];
+  // The search's id goes into its result links, so opening one is recorded against it.
+  const searchId = crypto.randomUUID();
+  if (found) after(() => logSearch(where, query, products.length, found, { id: searchId, experimentId: experiment?.id ?? null, arm }));
+  const terms = query && (products.length === 0 || found?.filters) ? await siteTerms(store.id, "product") : [];
+  const categories = products.length === 0 ? terms.filter((term) => term.kind === "category" && !term.parentId).sort(byName) : [];
+  const understood = found?.filters ? describeFilters(found.filters, terms, m, market) : [];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <SearchBox store={store.slug} market={market.slug} base={base} defaultValue={typed} autoFocus={!query} labels={labels} />
+      {!query ? (
+        <p className="text-muted">{m.search.start}</p>
+      ) : products.length === 0 ? (
+        <div className="flex flex-col gap-3" role="status">
+          <p>{m.search.none(typed)}</p>
+          {understood.length > 0 && <Understood parts={understood} exactHref={exactHref(path, typed)} m={m} typed={typed} />}
+          {categories.length > 0 && (
+            <>
+              <p className="text-muted">{m.search.browse}</p>
+              <ul className="flex flex-wrap gap-2">
+                {categories.map((category) => (
+                  <li key={category.id}>
+                    <Link
+                      href={`${base}/category/${category.slug}`}
+                      className="inline-flex min-h-10 items-center rounded-button border border-border px-4 text-sm hover:bg-surface"
+                    >
+                      {category.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          {understood.length > 0 && <Understood parts={understood} exactHref={exactHref(path, typed)} m={m} typed={typed} />}
+          <ProductListing
+            store={store}
+            market={market}
+            scope={{ ids: products.map((product) => product.id) }}
+            filters={parseListingParams(asked)}
+            products={products}
+            base={base}
+            path={path}
+            keep={{ q: typed, exact: exact ? "1" : "" }}
+            countText={(n) => m.search.results(n, typed)}
+            hrefFor={(product, index) => `${base}/search/go?s=${searchId}&p=${encodeURIComponent(product.handle)}&r=${index + 1}`}
+            tracked
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+const exactHref = (path: string, typed: string) => `${path}?q=${encodeURIComponent(typed)}&exact=1`;
+
+/**
+ * What the store's text model understood a search as (D75), in words
+ * Kaizen writes: category and tag names from the store, prices formatted
+ * here from checked numbers. Nothing the model wrote is shown but the
+ * shopper's own words it kept.
+ */
+function describeFilters(filters: SearchFilters, terms: Term[], m: Messages, market: { locale: string; currency: string }): string[] {
+  const name = (slug: string, kind: Term["kind"]) => terms.find((term) => term.kind === kind && term.slug === slug)?.name;
+  // The shopper's own amount, not a product's price: shown as they typed it, with VAT as products' prices are compared.
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const { minPriceMinor: min, maxPriceMinor: max } = filters;
+  return [
+    filters.text ? m.search.words(filters.text) : null,
+    ...filters.categories.map((slug) => name(slug, "category")),
+    ...filters.tags.map((slug) => name(slug, "tag")),
+    filters.kind ? m.search.kinds[filters.kind] : null,
+    min !== null && max !== null ? m.search.between(money(min), money(max)) : max !== null ? m.search.under(money(max)) : min !== null ? m.search.over(money(min)) : null,
+    filters.inStock ? m.search.inStock : null,
+    m.search.sorts[filters.sort] || null,
+  ].filter((part): part is string => Boolean(part));
+}
+
+function Understood({ parts, exactHref, m, typed }: { parts: string[]; exactHref: string; m: Messages; typed: string }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-muted">{m.search.understood}</span>
+      <ul className="flex flex-wrap gap-2">
+        {parts.map((part) => (
+          <li key={part} className="rounded-button bg-surface px-3 py-1">
+            {part}
+          </li>
+        ))}
+      </ul>
+      <Link href={exactHref} className="underline">
+        {m.search.exact(typed)}
+      </Link>
+    </div>
+  );
+}

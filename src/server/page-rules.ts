@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { PageContent, PageType } from "@/lib/page-content";
+import { pageBlocks, type PageContent, type PageType } from "@/lib/page-content";
 import { productBlocks } from "@/lib/product-layout";
 import { siteLayoutProblem } from "@/lib/site-layout";
 
@@ -12,7 +12,20 @@ type PageOwner = string | null;
  * is saved, and when a global part (D98) changes the pages that use it.
  */
 export function pageRulesProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
-  return ownerGridProblem(owner, content.rows) ?? productLayoutProblem(owner, type, content) ?? siteLayoutProblem(owner, type, content);
+  return (
+    ownerGridProblem(owner, content.rows) ??
+    productLayoutProblem(owner, type, content) ??
+    siteLayoutProblem(owner, type, content) ??
+    searchProblem(owner, type, content)
+  );
+}
+
+/** The store's search (D112) is drawn in a store's pages and articles: Kaizen has no store to search, and headers, footers and product layouts have their own components. */
+function searchProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
+  if (!pageBlocks(content).some((block) => block.type === "search")) return null;
+  if (owner === null) return "Search belongs in a store's pages.";
+  if (type !== "page" && type !== "article") return "Search belongs in a store's pages and articles.";
+  return null;
 }
 
 /**

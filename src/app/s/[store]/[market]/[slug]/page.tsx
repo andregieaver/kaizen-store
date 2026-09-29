@@ -81,6 +81,10 @@ export default async function StorePage({ params, searchParams }: Props) {
   if (page.id === store.frontPageId) permanentRedirect(home);
   // So has the All products page (D83): /products.
   if (page.id === store.productsPageId) permanentRedirect(`${home}/products`);
+  // So have the pages chosen for the blog, search and 404 places (D112).
+  if (page.id === store.pageRoles.blog) permanentRedirect(`${home}/blog`);
+  if (page.id === store.pageRoles.search) permanentRedirect(`${home}/search`);
+  if (page.id === store.pageRoles.not_found) notFound();
   const c = localizePage(page.content, market.locale);
   const origin = storeSiteUrl(store.slug);
 

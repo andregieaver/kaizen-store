@@ -61,6 +61,7 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return b.heading ? { ...b, heading: str("heading", b.heading, 300, "Heading") } : b;
     case "site":
     case "menu":
+    case "search":
       // The site's logo, menus and details have their own texts in each language already (D80, D85).
       return b;
     case "separator":

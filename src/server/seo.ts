@@ -129,6 +129,8 @@ export type PublicStore = {
   frontPageId: string | null;
   /** The All products page (D83), at /products rather than its own address. */
   productsPageId: string | null;
+  /** The pages chosen for the blog, search and 404 places (D112): they have places of their own, not page addresses. */
+  rolePageIds: string[];
 };
 
 /** Every open store, for robots.txt, the sitemap index and Kaizen's llms.txt. */
@@ -138,6 +140,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
     select s.id, s.slug, s.name, s.seo, s.locales, s.is_template, s.setup_completed_at, s.front_page_id, s.products_page_id,
+      (select coalesce(array_agg(r.page_id), '{}') from commerce.page_roles r where r.store_id = s.id) as role_pages,
       greatest(s.created_at, s.setup_completed_at,
         (select max(p.updated_at) from commerce.products p where p.store_id = s.id)) as updated_at,
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
@@ -163,6 +166,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       frontPageId: row.front_page_id ? String(row.front_page_id) : null,
       productsPageId: row.products_page_id ? String(row.products_page_id) : null,
+      rolePageIds: ((row.role_pages ?? []) as string[]).map(String),
     };
   });
 }
@@ -458,7 +462,7 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     }),
     // Its pages (D54) open to search engines, in every market; the front page is the markets' own address.
     ...pages
-      .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId)
+      .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId && !store.rolePageIds.includes(page.id))
       .flatMap((page) => {
         const versions = versionsOf(store.markets, `/${page.slug}`);
         // Every picture on the page (D89), its own first, so search engines tie each to the page it is on.
@@ -601,7 +605,7 @@ export async function storeLlms(slug: string): Promise<string | null> {
         // Its own pages open to AI assistants (D54), in the first market's language.
         heading: "Pages",
         links: pages
-          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId && page.id !== store.productsPageId)
+          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId && page.id !== store.productsPageId && !Object.values(store.pageRoles).includes(page.id))
           .map((page) => {
             const c = localizePage(page.content, market.locale);
             return { title: c.title, url: `${home(market.code)}/${page.slug}`, note: c.seo.description || pageExcerpt(c, 200) };

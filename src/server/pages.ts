@@ -19,6 +19,7 @@ import {
 import { currentGlobal, refreshUses, sameGlobal, type GlobalPart, type PartKind } from "@/lib/global-parts";
 import { mergeLocales } from "@/lib/localization";
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
+import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 
 import { audit, type Account } from "./auth";
 import { findFont, installFonts } from "./fonts";
@@ -477,13 +478,15 @@ export async function setFrontPage(
   if (pageId !== null) {
     const [page] = await db().execute<Row>(sql`
       select published_at is not null as published,
-        id = (select products_page_id from commerce.stores where id = ${storeId}::uuid) as products
+        id = (select products_page_id from commerce.stores where id = ${storeId}::uuid) as products,
+        (select role from commerce.page_roles r where r.store_id = ${storeId}::uuid and r.page_id = pages.id) as role
       from commerce.pages
       where id = ${pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
     `);
     if (!page) return { ok: false, problems: ["That page no longer exists."] };
     if (!page.published) return { ok: false, problems: ["Publish the page before making it the front page."] };
     if (page.products) return { ok: false, problems: ["That page is your All products page. Choose another page for the front page."] };
+    if (page.role) return { ok: false, problems: [`That page is your ${ROLE_COPY[page.role as PageRole]?.name.toLowerCase() ?? "special page"}. Choose another page for the front page.`] };
   }
   await db().execute(sql`update commerce.stores set front_page_id = ${pageId}::uuid where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.front_page_changed", { page: pageId });
@@ -503,13 +506,15 @@ export async function setProductsPage(
 ): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   if (pageId !== null) {
     const [page] = await db().execute<Row>(sql`
-      select published_at is not null as published, id = (select front_page_id from commerce.stores where id = ${storeId}::uuid) as front
+      select published_at is not null as published, id = (select front_page_id from commerce.stores where id = ${storeId}::uuid) as front,
+        (select role from commerce.page_roles r where r.store_id = ${storeId}::uuid and r.page_id = pages.id) as role
       from commerce.pages
       where id = ${pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
     `);
     if (!page) return { ok: false, problems: ["That page no longer exists."] };
     if (!page.published) return { ok: false, problems: ["Publish the page before making it the All products page."] };
     if (page.front) return { ok: false, problems: ["That page is your front page. Choose another page for All products."] };
+    if (page.role) return { ok: false, problems: [`That page is your ${ROLE_COPY[page.role as PageRole]?.name.toLowerCase() ?? "special page"}. Choose another page for All products.`] };
   }
   await db().execute(sql`update commerce.stores set products_page_id = ${pageId}::uuid where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.products_page_changed", { page: pageId });
@@ -520,6 +525,53 @@ export async function setProductsPage(
 export async function productsPageOf(store: { id: string; productsPageId: string | null }): Promise<PublishedPage | null> {
   if (!store.productsPageId) return null;
   return (await listPublishedPages(store.id)).find((page) => page.id === store.productsPageId) ?? null;
+}
+
+/**
+ * Chooses one of a store's published pages for a role (D112): its blog, its
+ * search page or its 404 page; or the standard page again with null. A page
+ * has one place: not the front page, the All products page or another role's.
+ */
+export async function setPageRole(
+  account: Account,
+  storeId: string,
+  role: PageRole,
+  pageId: string | null,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  if (pageId === null) {
+    await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid and role = ${role}`);
+    await audit(account.id, storeId, "store.page_role_changed", { role, page: null });
+    return { ok: true };
+  }
+  const [page] = await db().execute<Row>(sql`
+    select published_at is not null as published,
+      id = (select front_page_id from commerce.stores where id = ${storeId}::uuid) as front,
+      id = (select products_page_id from commerce.stores where id = ${storeId}::uuid) as products,
+      (select role from commerce.page_roles r where r.store_id = ${storeId}::uuid and r.page_id = pages.id) as other_role
+    from commerce.pages
+    where id = ${pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
+  `);
+  const name = ROLE_COPY[role].name.toLowerCase();
+  if (!page) return { ok: false, problems: ["That page no longer exists."] };
+  if (!page.published) return { ok: false, problems: [`Publish the page before making it your ${name}.`] };
+  if (page.front) return { ok: false, problems: [`That page is your front page. Choose another page for your ${name}.`] };
+  if (page.products) return { ok: false, problems: [`That page is your All products page. Choose another page for your ${name}.`] };
+  if (page.other_role && page.other_role !== role) {
+    return { ok: false, problems: [`That page is your ${ROLE_COPY[page.other_role as PageRole]?.name.toLowerCase() ?? "other special page"}. Choose another page for your ${name}.`] };
+  }
+  await db().execute(sql`
+    insert into commerce.page_roles (store_id, role, page_id) values (${storeId}::uuid, ${role}, ${pageId}::uuid)
+    on conflict (store_id, role) do update set page_id = excluded.page_id, updated_at = now()
+  `);
+  await audit(account.id, storeId, "store.page_role_changed", { role, page: pageId });
+  return { ok: true };
+}
+
+/** The store's page for a role (D112) while it is published, else null (the standard page shows). */
+export async function pageForRole(store: { id: string; pageRoles: Partial<Record<PageRole, string>> }, role: PageRole): Promise<PublishedPage | null> {
+  const id = store.pageRoles[role];
+  if (!id) return null;
+  return (await listPublishedPages(store.id)).find((page) => page.id === id) ?? null;
 }
 
 /** An owner's pages (or articles) for the menu editor to link to: published or not, by title. */

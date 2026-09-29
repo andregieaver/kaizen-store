@@ -71,6 +71,7 @@ async function createStore(slug: string): Promise<Store> {
     footerMenuId: null,
     frontPageId: null,
     productsPageId: null,
+    pageRoles: {},
     tracking: {},
     customCode: {},
     customCss: "",

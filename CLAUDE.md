@@ -387,7 +387,13 @@ of running `playwright install`.
   (`stores.front_page_id`, chosen on its Pages list), and one its All
   products page at `/products` (D83, `stores.products_page_id`,
   `productsPageOf()`; its own address redirects there, and product pages'
-  back link names it). A product content grid with `filters` shows the
+  back link names it).
+  A store's blog, search page and 404 page are chosen the same way (D112,
+  `commerce.page_roles`, `pageForRole()`, `PAGE_ROLES` in `src/lib/page-roles.ts`:
+  a new place is a role there, a route that draws `pageForRole()` with the
+  standard page as its fallback, a starter in `starterPage()`, and its page's
+  address left out of the sitemap); the *Search* block (`SearchSection`) draws
+  the store's search in any store page. A product content grid with `filters` shows the
   listing's `ListingControls` over it on store pages, reading the address
   through `GridPlace.listing` (pass it where a route renders a store page);
   the filter dialog is `live` there and on the listing pages, not on search. A store's page is

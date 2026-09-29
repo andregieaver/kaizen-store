@@ -3,12 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ContentGridView } from "@/components/content-grid";
+import { PageEditLink } from "@/components/page-edit-link";
+import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import type { ContentGridBlock } from "@/lib/page-content";
 import { newBlock } from "@/lib/page-rows";
-import { marketPath } from "@/lib/paths";
+import { localizePage } from "@/lib/page-translation";
+import { adminOrigin, marketPath } from "@/lib/paths";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
 import { gridData } from "@/server/content-grid";
+import { pageForRole } from "@/server/pages";
 import { resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
@@ -62,7 +66,17 @@ export async function blogMetadata(params: ShopParams): Promise<Metadata> {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return {};
   const m = t(shop.market.lang);
-  return { title: m.blog, alternates: { canonical: blogPath(shop.store, shop.market.slug) } };
+  const alternates = { canonical: blogPath(shop.store, shop.market.slug) };
+  // The store's own blog page (D112) has its own title and search texts.
+  const page = await pageForRole(shop.store, "blog");
+  if (!page) return { title: m.blog, alternates };
+  const c = localizePage(page.content, shop.market.locale);
+  return {
+    title: c.seo.title || c.title,
+    description: c.seo.description || undefined,
+    alternates,
+    ...(!c.searchEngines && { robots: { index: false } }),
+  };
 }
 
 /** The store's blog: every published article, newest first, with its top categories. */
@@ -71,6 +85,16 @@ export async function StoreBlog({ params }: { params: ShopParams }) {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const { store, market } = shop;
+  // The store's own blog page (D112), built in the page builder, where one is chosen; else the standard list.
+  const page = await pageForRole(store, "blog");
+  if (page) {
+    return (
+      <>
+        <StorePageArticle content={localizePage(page.content, market.locale)} place={{ pageId: page.id, owner: store.id, market: market.slug }} />
+        <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
+      </>
+    );
+  }
   const m = t(market.lang);
   const grid = listing("index");
   const [data, terms] = await Promise.all([

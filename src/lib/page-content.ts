@@ -645,6 +645,20 @@ export type MenuBlock = PartBase & BlockFont & {
   hideOnPhones?: boolean;
 };
 
+/**
+ * The store's search (D112): its search box and, unless `results` is off,
+ * what was searched for, as the standard search page shows it. A store's own
+ * search page is built with it (its address `/search`), and a page that is
+ * only about finding something, such as the 404 page, takes just the box.
+ * A store's pages only.
+ */
+export type SearchBlock = PartBase & BlockFont & {
+  id: string;
+  type: "search";
+  /** Show the results as well as the box (on by default); the box alone leads to the search page. */
+  results?: boolean;
+};
+
 /** A separator line's look (D91). */
 export const SEPARATOR_LINES = { solid: "Solid", dashed: "Dashed", dotted: "Dotted", double: "Double" } as const;
 export type SeparatorLine = keyof typeof SEPARATOR_LINES;
@@ -1039,6 +1053,7 @@ export type PageBlock =
   | ProductBlock
   | SiteBlock
   | MenuBlock
+  | SearchBlock
   | SeparatorBlock
   | DualButtonBlock
   | AccordionBlock
@@ -1127,6 +1142,8 @@ export function blockHasContent(block: PageBlock): boolean {
     case "menu":
       // A menu with no links draws nothing.
       return Boolean(block.menuId);
+    case "search":
+      return true;
     case "separator":
       return true;
     case "dualButton":
@@ -1190,6 +1207,7 @@ export function blockText(block: PageBlock): string {
     case "product":
     case "site":
     case "menu":
+    case "search":
     case "separator":
     case "dualButton":
     case "socialLinks":
@@ -1708,6 +1726,14 @@ const menuBlock = z.object({
   ...partBase,
 });
 
+const searchBlock = z.object({
+  id: itemId,
+  type: z.literal("search"),
+  results: z.boolean().optional(),
+  font: blockFont,
+  ...partBase,
+});
+
 const separatorBlock = z.object({
   id: itemId,
   type: z.literal("separator"),
@@ -2007,6 +2033,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   productBlock,
   siteBlock,
   menuBlock,
+  searchBlock,
   separatorBlock,
   dualButtonBlock,
   accordionBlock,

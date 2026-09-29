@@ -15,7 +15,9 @@ import { AiError, aiFor } from "@/server/ai";
 import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
 import { translatePageTexts } from "@/server/page-translate";
-import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setProductsPage, unpublishPage } from "@/server/pages";
+import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
+import { createRolePage } from "@/server/page-roles";
+import { isPageRole, ROLE_COPY } from "@/lib/page-roles";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
@@ -78,7 +80,7 @@ export async function deleteStorePageAction(storeSlug: string, type: PageType, i
   await deletePage(member.account, member.store.id, id, type);
   pagesChanged(member);
   // A deleted front page (D54) gives the store its product list back.
-  if (member.store.frontPageId === id || member.store.productsPageId === id) updateTag(storeTag(member.store.slug));
+  if (member.store.frontPageId === id || member.store.productsPageId === id || Object.values(member.store.pageRoles).includes(id)) updateTag(storeTag(member.store.slug));
   redirect(`/admin/${member.store.slug}/${PAGE_TYPE_COPY[type].segment}?deleted=1`);
 }
 
@@ -108,6 +110,31 @@ export async function setProductsPageAction(storeSlug: string, _state: FormState
     status: "ok",
     messages: [choice ? "Saved. All products shows this page now." : "Saved. All products shows the standard list now."],
   };
+}
+
+/** Chooses the page for one of the store's special places (D112): its blog, search page or 404 page, or the standard one. */
+export async function setPageRoleAction(storeSlug: string, role: string, _state: FormState, form: FormData): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  if (!isPageRole(role)) return { status: "error", messages: ["Unknown page."] };
+  const choice = String(form.get("page") ?? "");
+  if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
+  const result = await setPageRole(member.account, member.store.id, role, choice || null);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(storeTag(member.store.slug));
+  pagesChanged(member);
+  const name = ROLE_COPY[role].name.toLowerCase();
+  return { status: "ok", messages: [choice ? `Saved. Your ${name} is this page now.` : `Saved. Your ${name} is the standard one now.`] };
+}
+
+/** Makes a starter page for one of the store's special places, published and in place, to change in the builder (D112). */
+export async function createRolePageAction(storeSlug: string, role: string): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  if (!isPageRole(role)) return { status: "error", messages: ["Unknown page."] };
+  const result = await createRolePage(member, role);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(storeTag(member.store.slug));
+  pagesChanged(member);
+  redirect(`/admin/${member.store.slug}/pages/${result.id}`);
 }
 
 /** Which of the store's headers or footers it shows (D80), or the standard one; every page follows at once. */

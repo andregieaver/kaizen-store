@@ -8,6 +8,7 @@ import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
 import type { StoreCurrency } from "@/lib/currency";
 import { localizationOf, type Localization } from "@/lib/localization";
 import { toMarket, type Market } from "@/lib/markets";
+import { isPageRole, type PageRole } from "@/lib/page-roles";
 import { isStoreSlug } from "@/lib/paths";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
 import { parseCustomCode, type CustomCode } from "@/lib/custom-code";
@@ -71,6 +72,8 @@ export type Store = {
   frontPageId: string | null;
   /** The page shown as its All products page at /products (D83), or null for the standard list. */
   productsPageId: string | null;
+  /** The pages chosen for the blog, the search page and the 404 page (D112), by role. */
+  pageRoles: Partial<Record<PageRole, string>>;
   /** Analytics and marketing tools, loaded only with the shopper's consent (D58). */
   tracking: TrackingSettings;
   /** The owner's own code for the head and body (D61), as saved; `liveCustomCode()` says whether it is added. */
@@ -124,6 +127,7 @@ async function loadStore(slug: string): Promise<Store | null> {
         select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
         from commerce.store_currencies c where c.store_id = s.id
       ) as currencies,
+      (select coalesce(jsonb_object_agg(r.role, r.page_id), '{}'::jsonb) from commerce.page_roles r where r.store_id = s.id) as page_roles,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -188,6 +192,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     footerMenuId: text(row.footer_menu_id),
     frontPageId: text(row.front_page_id),
     productsPageId: text(row.products_page_id),
+    pageRoles: Object.fromEntries(Object.entries((row.page_roles ?? {}) as Record<string, string>).filter(([role]) => isPageRole(role))),
     tracking: parseTracking(row.tracking),
     customCode: parseCustomCode(row.custom_code),
     customCss: String(row.custom_css ?? ""),

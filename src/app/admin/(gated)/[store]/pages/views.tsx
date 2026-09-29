@@ -16,6 +16,7 @@ import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { withoutRecipients } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { LAYOUT_TYPES, termContentOf, type PageContent, type PageType } from "@/lib/page-content";
+import { PAGE_ROLES, ROLE_COPY, type PageRole } from "@/lib/page-roles";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember } from "@/server/auth";
 import { getProduct, listProducts } from "@/server/catalog";
@@ -28,9 +29,11 @@ import { bothTerms, listTerms } from "@/server/taxonomy";
 
 import {
   chooseStoreSiteLayoutAction,
+  createRolePageAction,
   createStorePageTermAction,
   deleteStorePageTermAction,
   setFrontPageAction,
+  setPageRoleAction,
   setProductsPageAction,
   updateStorePageTermAction,
 } from "./actions";
@@ -63,6 +66,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   const [pages, query] = await Promise.all([listPages(store.id, type), searchParams]);
   const base = storePagesBase(store, type);
   const context = await storePageContext(store, type);
+  // Pages that have a place of their own (D112) are not offered for another.
+  const roleIds = new Set(Object.values(store.pageRoles));
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -114,6 +119,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           siteBase={context.siteBase}
           frontPageId={type === "page" ? store.frontPageId : null}
           productsPageId={type === "page" ? store.productsPageId : null}
+          roles={type === "page" ? Object.fromEntries(Object.entries(store.pageRoles).map(([role, id]) => [id, role as PageRole])) : {}}
         />
       )}
       {(type === "header" || type === "footer") && (
@@ -129,16 +135,28 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         <FrontPageForm
           storeSlug={store.slug}
           current={store.frontPageId}
-          pages={pages.filter((p) => p.id !== store.productsPageId && (p.state !== "draft" || p.id === store.frontPageId))}
+          pages={pages.filter((p) => p.id !== store.productsPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.frontPageId))}
         />
       )}
       {type === "page" && (
         <ProductsPageForm
           storeSlug={store.slug}
           current={store.productsPageId}
-          pages={pages.filter((p) => p.id !== store.frontPageId && (p.state !== "draft" || p.id === store.productsPageId))}
+          pages={pages.filter((p) => p.id !== store.frontPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.productsPageId))}
         />
       )}
+      {type === "page" &&
+        PAGE_ROLES.map((role) => (
+          <PageRoleForm
+            key={role}
+            storeSlug={store.slug}
+            role={role}
+            current={store.pageRoles[role] ?? null}
+            pages={pages.filter(
+              (p) => p.id !== store.frontPageId && p.id !== store.productsPageId && (!roleIds.has(p.id) || p.id === store.pageRoles[role]) && (p.state !== "draft" || p.id === store.pageRoles[role]),
+            )}
+          />
+        ))}
     </div>
   );
 }
@@ -391,6 +409,52 @@ function ProductsPageForm({
         <p className="text-sm text-muted">This page is not published, so shoppers see the standard list until you publish it again.</p>
       )}
     </ActionForm>
+  );
+}
+
+/**
+ * Which page is one of the store's special places (D112): its blog, search
+ * page or 404 page, or the standard one; and a starter page to begin from,
+ * which looks like the standard page and is published in place.
+ */
+function PageRoleForm({
+  storeSlug,
+  role,
+  current,
+  pages,
+}: {
+  storeSlug: string;
+  role: PageRole;
+  current: string | null;
+  pages: { id: string; title: string; state: string }[];
+}) {
+  const copy = ROLE_COPY[role];
+  const unpublished = pages.find((p) => p.id === current)?.state === "draft";
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby={`role-${role}`}>
+      <h2 id={`role-${role}`} className="font-medium">{copy.name}</h2>
+      <p className="max-w-2xl text-sm text-muted">{copy.hint}</p>
+      <ActionForm action={setPageRoleAction.bind(null, storeSlug, role)} className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
+          {copy.name} shows
+          <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+            <option value="">{copy.standard}</option>
+            {pages.map((page) => (
+              <option key={page.id} value={page.id}>
+                {page.title || "Untitled"}
+                {page.state === "draft" ? " (not published)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <SubmitButton>Save</SubmitButton>
+      </ActionForm>
+      <ActionForm action={createRolePageAction.bind(null, storeSlug, role)} className="flex flex-wrap items-center gap-3">
+        <SubmitButton variant="secondary">Start from a new page</SubmitButton>
+        <span className="text-sm text-muted">Makes a page like the standard one, publishes it here and opens it in the builder.</span>
+      </ActionForm>
+      {unpublished && <p className="text-sm text-muted">This page is not published, so shoppers see {copy.standard.toLowerCase()} until you publish it again.</p>}
+    </section>
   );
 }
 
