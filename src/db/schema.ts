@@ -862,8 +862,6 @@ export const products = commerce.table(
     kind: text("kind").notNull().default("goods"),
     /** The outside host who lists it, when the store is a marketplace (D71); null for the store's own. */
     hostId: uuid("host_id"),
-    /** Category-specific attributes. */
-    attributes: jsonb("attributes").notNull().default({}),
     /** The product's own layout (D79), over its categories', tags' and the store's; foreign key in a custom migration. */
     productLayoutId: uuid("product_layout_id"),
     createdAt: createdAt(),
@@ -1261,6 +1259,69 @@ export const discountCodes = commerce.table(
  * neither, everything. `thresholds` is per market, in the country's own
  * currency, like a code's minimum.
  */
+/**
+ * The groups of custom fields a store defines (D118): each with its fields
+ * (an array of definitions, checked by `fieldGroupInput`), the kinds of thing
+ * it can be on and the rules narrowing which.
+ */
+export const fieldGroups = commerce.table(
+  "field_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    name: text("name").notNull(),
+    /** What templates and exports call it; unique in the store. */
+    slug: text("slug").notNull(),
+    entities: jsonb("entities").notNull().default([]),
+    /** OR of AND rules; none: everywhere the group can be. */
+    location: jsonb("location").notNull().default([]),
+    fields: jsonb("fields").notNull().default([]),
+    position: text("position").notNull().default("main"),
+    active: boolean("active").notNull().default(true),
+    sort: integer("sort").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("field_groups_store_id_key").on(t.storeId, t.id),
+    unique("field_groups_store_slug_key").on(t.storeId, t.slug),
+    check("field_groups_name", sql`length(trim(${t.name})) between 1 and 80`),
+    check("field_groups_slug", sql`${t.slug} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
+    check("field_groups_position", sql`${t.position} in ('main', 'side')`),
+    check("field_groups_entities", sql`jsonb_typeof(${t.entities}) = 'array' and jsonb_array_length(${t.entities}) > 0`),
+    check("field_groups_location", sql`jsonb_typeof(${t.location}) = 'array'`),
+    check("field_groups_fields", sql`jsonb_typeof(${t.fields}) = 'array'`),
+  ],
+);
+
+/**
+ * What was entered in the fields of a product, page or article (D118): one row
+ * per thing and language, `locale` empty for values that are the same in every
+ * language. Keyed by field id in `values`, so renaming a field loses nothing.
+ * No foreign key on `entity_id` (it names rows of different tables): triggers
+ * take the rows away with their thing.
+ */
+export const fieldValues = commerce.table(
+  "field_values",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    entity: text("entity").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    locale: text("locale").notNull().default(""),
+    values: jsonb("values").notNull().default({}),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.entity, t.entityId, t.locale] }),
+    check("field_values_entity", sql`${t.entity} in ('product', 'page', 'article')`),
+    check("field_values_values", sql`jsonb_typeof(${t.values}) = 'object'`),
+  ],
+);
+
 export const campaigns = commerce.table(
   "campaigns",
   {

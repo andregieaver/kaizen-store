@@ -10,6 +10,7 @@ import { siteUrl } from "@/lib/site";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
+import { allActiveFieldGroups } from "@/server/custom-fields";
 import { storeMenuPreviews } from "@/server/menus";
 import type { Store } from "@/server/stores";
 
@@ -67,6 +68,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
+    fields: { groups: await allActiveFieldGroups(store.id) },
     siteCss: store.customCss,
     actions: {
       save: typed(saveStorePageAction),

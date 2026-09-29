@@ -49,6 +49,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
     theme: null,
+    fields: null,
     siteCss: chrome.customCss,
     actions: {
       save: savePageAction.bind(null, type),

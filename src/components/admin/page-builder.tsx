@@ -116,6 +116,7 @@ import {
   type ProductPart,
   type MenuBlock,
   type SearchBlock,
+  type CustomFieldBlock,
   type StorePartBlock,
   type SiteBlock,
   type SitePart,
@@ -158,6 +159,7 @@ import {
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
 
 import type { GridData } from "@/lib/content-grid";
+import type { FieldGroup } from "@/lib/custom-fields";
 import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
@@ -166,7 +168,18 @@ import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
 
-import { ButtonLookFields, Check, Choices, ColorField, editorFor, OptionalColor, TextAlignFields } from "./block-fields";
+import {
+  ButtonLookFields,
+  Check,
+  Choices,
+  ColorField,
+  editorFor,
+  FieldGroupsContext,
+  FieldsSettingsFields,
+  FieldsStandIn,
+  OptionalColor,
+  TextAlignFields,
+} from "./block-fields";
 import { FontPicker, type InstallFont } from "./font-picker";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
@@ -269,6 +282,7 @@ const blockLabels: Record<BlockType, string> = {
   site: "Site",
   menu: "Menu",
   search: "Search",
+  customField: "Custom fields",
   storePart: "Shop page",
   separator: "Separator line",
   dualButton: "Dual button",
@@ -296,6 +310,7 @@ const blockThis: Record<BlockType, string> = {
   site: "this site component",
   menu: "this menu",
   search: "this search",
+  customField: "these custom fields",
   storePart: "this shop component",
   separator: "this separator line",
   dualButton: "these buttons",
@@ -395,6 +410,7 @@ export function PageBuilder({
   productParts = false,
   siteParts = null,
   shopParts = false,
+  fieldGroups = null,
   lang,
 }: {
   /** The language the page is shown in (its main one, or the one it is translated into). */
@@ -407,6 +423,8 @@ export function PageBuilder({
   siteParts?: SitePart[] | null;
   /** A store's page (D113): its palette offers the working pages' components, the cart, checkout and so on. */
   shopParts?: boolean;
+  /** The store's active custom field groups (D118), for the components that show them; null where the owner has none (Kaizen's). */
+  fieldGroups?: FieldGroup[] | null;
   grid: GridContext;
   fonts: BuilderFonts;
   /** Kaizen's saved parts, for a store's pages: a starter library to copy from, not to change (D56). */
@@ -621,114 +639,118 @@ export function PageBuilder({
   };
 
   return (
-    <DndContext
-      id="page-builder"
-      sensors={sensors}
-      collisionDetection={collision}
-      onDragStart={({ active }) => setDragging(dataOf(active))}
-      onDragMove={onDragMove}
-      onDragEnd={onDragEnd}
-      onDragCancel={() => {
-        setDragging(null);
-        setTarget(null);
-      }}
-      accessibility={{
-        announcements: {
-          onDragStart: ({ active }) => `Picked up ${announce(active.id)}.`,
-          onDragOver: ({ over }) => (over ? `Over ${announce(over.id)}.` : undefined),
-          onDragEnd: ({ over }) => (over ? `Dropped at ${announce(over.id)}.` : "Dropped."),
-          onDragCancel: () => "Moving was cancelled.",
-        },
-        screenReaderInstructions: {
-          draggable: "To move it, press Space or Enter, then the arrow keys, and Space or Enter again to drop it.",
-        },
-      }}
-    >
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
-        {translate ? (
-          <TranslateNote translate={translate} />
-        ) : (
-        <Sidebar
-          tab={tab}
-          onTab={setTab}
-          onAddRow={(layout) => addRow(layout)}
-          onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
-          productParts={productParts}
-          siteParts={siteParts}
-          // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
-          search={grid.owner !== null && !productParts && !siteParts}
-          shop={shopParts}
-          parts={parts}
-          library={library}
-          onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
-          onUseLibrary={(part) => placeSaved(part)}
-          rowsFull={rowsFull}
-          blocksFull={blocksFull}
-        />
-        )}
+    <FieldGroupsContext value={fieldGroups}>
+      <DndContext
+        id="page-builder"
+        sensors={sensors}
+        collisionDetection={collision}
+        onDragStart={({ active }) => setDragging(dataOf(active))}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+        onDragCancel={() => {
+          setDragging(null);
+          setTarget(null);
+        }}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active }) => `Picked up ${announce(active.id)}.`,
+            onDragOver: ({ over }) => (over ? `Over ${announce(over.id)}.` : undefined),
+            onDragEnd: ({ over }) => (over ? `Dropped at ${announce(over.id)}.` : "Dropped."),
+            onDragCancel: () => "Moving was cancelled.",
+          },
+          screenReaderInstructions: {
+            draggable: "To move it, press Space or Enter, then the arrow keys, and Space or Enter again to drop it.",
+          },
+        }}
+      >
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
+          {translate ? (
+            <TranslateNote translate={translate} />
+          ) : (
+          <Sidebar
+            tab={tab}
+            onTab={setTab}
+            onAddRow={(layout) => addRow(layout)}
+            onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
+            productParts={productParts}
+            siteParts={siteParts}
+            // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
+            search={grid.owner !== null && !productParts && !siteParts}
+            // Custom fields (D118) are the page's or article's own: a store's pages and articles, when it has any groups.
+            customFields={fieldGroups !== null && grid.owner !== null && !productParts && !siteParts}
+            shop={shopParts}
+            parts={parts}
+            library={library}
+            onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
+            onUseLibrary={(part) => placeSaved(part)}
+            rowsFull={rowsFull}
+            blocksFull={blocksFull}
+          />
+          )}
 
-        {/* The canvas draws with the site's own fonts (D59) and a store's theme (D60), as the site does. */}
-        <div
-          style={fonts.style}
-          // With owners' CSS (D100), whatever it draws stays inside the canvas, even `position: fixed`.
-          className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""} ${css.some((c) => c.trim()) ? "[contain:paint]" : ""}`}
-          {...(fonts.theme && { ...fonts.theme.attributes, "data-theme-canvas": "" })}
-          data-custom-css=""
-        >
-          <FontLinks families={siteFontFamilies(fonts.site)} />
-          {fonts.theme && <style>{fonts.theme.css}</style>}
-          {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin. */}
-          <ScopedCss css={css} root="[data-custom-css]" />
-          <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
+          {/* The canvas draws with the site's own fonts (D59) and a store's theme (D60), as the site does. */}
+          <div
+            style={fonts.style}
+            // With owners' CSS (D100), whatever it draws stays inside the canvas, even `position: fixed`.
+            className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""} ${css.some((c) => c.trim()) ? "[contain:paint]" : ""}`}
+            {...(fonts.theme && { ...fonts.theme.attributes, "data-theme-canvas": "" })}
+            data-custom-css=""
+          >
+            <FontLinks families={siteFontFamilies(fonts.site)} />
+            {fonts.theme && <style>{fonts.theme.css}</style>}
+            {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin. */}
+            <ScopedCss css={css} root="[data-custom-css]" />
+            <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
+          </div>
+
+          {/* On phones the title and settings come first. */}
+          <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">{aside}</div>
         </div>
 
-        {/* On phones the title and settings come first. */}
-        <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">{aside}</div>
-      </div>
+        <DragOverlay dropAnimation={null}>
+          {dragging?.kind === "palette-row" ? (
+            <Tile label={ROW_LAYOUTS[dragging.layout].label} preview={<LayoutPreview layout={dragging.layout} />} lifted />
+          ) : dragging?.kind === "palette-block" ? (
+            <Tile
+              label={
+                dragging.part
+                  ? dragging.type === "site"
+                    ? SITE_PARTS[dragging.part as SitePart]
+                    : PRODUCT_PARTS[dragging.part as ProductPart]
+                  : blockLabels[dragging.type]
+              }
+              preview={<BlockIcon type={dragging.type} />}
+              lifted
+            />
+          ) : dragging?.kind === "block" ? (
+            <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
+          ) : dragging?.kind === "saved" ? (
+            <SavedTile part={findPart(dragging.partId) ?? null} lifted />
+          ) : dragging?.kind === "column" ? (
+            <ColumnPreview column={rows.flatMap((r) => r.columns).find((c) => c.id === dragging.columnId) ?? null} />
+          ) : null}
+        </DragOverlay>
 
-      <DragOverlay dropAnimation={null}>
-        {dragging?.kind === "palette-row" ? (
-          <Tile label={ROW_LAYOUTS[dragging.layout].label} preview={<LayoutPreview layout={dragging.layout} />} lifted />
-        ) : dragging?.kind === "palette-block" ? (
-          <Tile
-            label={
-              dragging.part
-                ? dragging.type === "site"
-                  ? SITE_PARTS[dragging.part as SitePart]
-                  : PRODUCT_PARTS[dragging.part as ProductPart]
-                : blockLabels[dragging.type]
-            }
-            preview={<BlockIcon type={dragging.type} />}
-            lifted
-          />
-        ) : dragging?.kind === "block" ? (
-          <BlockPreview block={findBlock(rows, dragging.blockId)?.block ?? null} />
-        ) : dragging?.kind === "saved" ? (
-          <SavedTile part={findPart(dragging.partId) ?? null} lifted />
-        ) : dragging?.kind === "column" ? (
-          <ColumnPreview column={rows.flatMap((r) => r.columns).find((c) => c.id === dragging.columnId) ?? null} />
-        ) : null}
-      </DragOverlay>
-
-      <Dialogs
-        dialog={dialog}
-        rows={rows}
-        onRows={onRows}
-        open={setDialog}
-        onClose={() => setDialog(null)}
-        parts={parts}
-        onParts={(next, savedId) => {
-          setParts(next);
-          if (savedId) setTab("saved");
-        }}
-        onUse={(part) => placeSaved(part)}
-        upload={upload}
-        startVideo={startVideo}
-        grid={grid}
-        fonts={fonts}
-        translate={translate}
-      />
-    </DndContext>
+        <Dialogs
+          dialog={dialog}
+          rows={rows}
+          onRows={onRows}
+          open={setDialog}
+          onClose={() => setDialog(null)}
+          parts={parts}
+          onParts={(next, savedId) => {
+            setParts(next);
+            if (savedId) setTab("saved");
+          }}
+          onUse={(part) => placeSaved(part)}
+          upload={upload}
+          startVideo={startVideo}
+          grid={grid}
+          fonts={fonts}
+          translate={translate}
+        />
+      </DndContext>
+    </FieldGroupsContext>
   );
 }
 
@@ -752,6 +774,7 @@ function Sidebar({
   productParts,
   siteParts,
   search,
+  customFields,
   shop,
   parts,
   library,
@@ -769,6 +792,8 @@ function Sidebar({
   siteParts: SitePart[] | null;
   /** The store's search can be added (D112). */
   search: boolean;
+  /** The page's own custom fields can be added (D118). */
+  customFields: boolean;
   /** The store's working pages' components can be added (D113). */
   shop: boolean;
   parts: SavedPart[];
@@ -902,7 +927,7 @@ function Sidebar({
                 </>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {(search ? [...BLOCK_TYPES, "search" as const] : BLOCK_TYPES).map((type) => (
+                {[...BLOCK_TYPES, ...(search ? (["search"] as const) : []), ...(customFields ? (["customField"] as const) : [])].map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -1192,6 +1217,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <MenuIcon />;
     case "search":
       return <SearchIcon />;
+    case "customField":
+      return <FieldsIcon />;
     case "storePart":
       return <ShopIcon />;
     case "separator":
@@ -1851,6 +1878,8 @@ function BlockItem({
           <MenuStandIn block={block} menus={actions.grid.menus} />
         ) : block.type === "search" ? (
           <SearchStandIn block={block} />
+        ) : block.type === "customField" ? (
+          <CustomFieldStandIn block={block} />
         ) : block.type === "storePart" ? (
           <StorePartStandIn block={block} />
         ) : block.type === "emailForm" || block.type === "newsletter" ? (
@@ -1887,6 +1916,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   site: "Site component.",
   menu: "A menu: double-click or use the wrench to choose which.",
   search: "Search.",
+  customField: "Custom fields.",
   storePart: "A shop page component.",
   separator: "Separator line.",
   dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
@@ -4550,6 +4580,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Menu: change its settings where it is used.</p>
                     ) : block.type === "search" ? (
                       <p className="text-sm text-muted">Search: change its settings where it is used.</p>
+                    ) : block.type === "customField" ? (
+                      <p className="text-sm text-muted">Custom fields: change its settings where it is used.</p>
                     ) : block.type === "storePart" ? (
                       <p className="text-sm text-muted">Shop page: change its settings where it is used.</p>
                     ) : block.type === "button" ? (
@@ -4744,6 +4776,26 @@ function SearchStandIn({ block }: { block: SearchBlock }) {
       <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">Search the store …</div>
       <p className="text-xs text-muted">{block.results === false ? "Only the search box." : "The results of what shoppers search for show here."}</p>
     </div>
+  );
+}
+
+/** A page's custom fields on the canvas (D118): which, as the canvas has no values. */
+function CustomFieldStandIn({ block }: { block: CustomFieldBlock }) {
+  return (
+    <div className="rounded-md border border-dashed border-border bg-surface p-4">
+      <FieldsStandIn value={block} entities={["page", "article"]} mode="either" />
+    </div>
+  );
+}
+
+function FieldsIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="5" width="16" height="14" rx="2" />
+        <path d="M4 10h16M10 10v9" />
+      </svg>
+    </span>
   );
 }
 
@@ -4953,6 +5005,8 @@ const PART_HELP: Record<ProductPart, string> = {
   withdrawal: "The line on the right of withdrawal, where the product has none (bookings, downloads, made to order).",
   safety: "Product safety: the safety information, manufacturer and responsible person in the EU.",
   related: "Products sharing the most of this one's categories and tags, as the store's product cards.",
+  fields: "The product's custom fields, a group or all its groups, as a table, list or cards: only those set to show on the site, and only those it has a value for.",
+  field: "One custom field of the product, such as its material or warranty. It draws nothing for a product with no value for it.",
 };
 const PART_HEADINGS: Partial<Record<ProductPart, string>> = { description: "Description", safety: "Safety and manufacturer", related: "You may also like" };
 
@@ -5012,6 +5066,9 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
             </label>
           )}
         </>
+      )}
+      {(block.part === "fields" || block.part === "field") && (
+        <FieldsSettingsFields value={block} entities={["product"]} mode={block.part === "field" ? "field" : "group"} onChange={onChange} />
       )}
       {block.part === "related" && (
         <>
@@ -5125,6 +5182,9 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
             {lines(2)}
           </span>
         );
+      case "fields":
+      case "field":
+        return <FieldsStandIn value={block} entities={["product"]} mode={block.part === "field" ? "field" : "group"} />;
       case "related": {
         const columns = block.columns?.desktop ?? 4;
         return (

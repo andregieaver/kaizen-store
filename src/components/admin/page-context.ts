@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { GridData } from "@/lib/content-grid";
+import type { FieldGroup } from "@/lib/custom-fields";
 import type { SiteFonts } from "@/lib/fonts";
 import type { PageType } from "@/lib/page-content";
 import type { TranslateResult } from "@/lib/page-translate-ai";
@@ -61,6 +62,8 @@ export type PageOwnerContext = {
   menusHref: string;
   /** The owner's own CSS for every page of its site (D100), edited in the builder's CSS panel. */
   siteCss: string;
+  /** The store's custom field groups (D118), for the builder's field components and the page's own fields; null for Kaizen, which has none yet. */
+  fields: { groups: FieldGroup[] } | null;
   /** A store's theme for the canvas (D60): CSS for `[data-theme-canvas]` and its attributes; null for Kaizen. */
   theme: { css: string; attributes: Record<string, string> } | null;
   actions: {

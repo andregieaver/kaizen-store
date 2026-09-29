@@ -26,6 +26,7 @@ import type { Store } from "@/server/stores";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
+import { getFieldData } from "@/server/custom-fields";
 
 import {
   chooseStoreSiteLayoutAction,
@@ -226,6 +227,7 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
         library={library}
         terms={terms}
         gridTerms={gridTerms}
+        fieldRoles={[]}
         context={await storePageContext(store, type, account.name ?? "")}
       />
     </>
@@ -247,6 +249,8 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   ]);
   if (!page) notFound();
   const context = await storePageContext(store, type, account.name ?? "");
+  // What is entered in the page's or article's custom fields (D118).
+  const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
   return (
     <>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
@@ -266,6 +270,8 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
         library={library}
         terms={terms}
         gridTerms={gridTerms}
+        fieldData={fieldData}
+        fieldRoles={Object.entries(store.pageRoles).filter(([, id]) => id === page.id).map(([role]) => role)}
         context={context}
       />
     </>

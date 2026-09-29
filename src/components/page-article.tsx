@@ -6,6 +6,7 @@ import type { GridPlace } from "@/server/content-grid";
 
 import { ContentGridSection } from "./content-grid-section";
 import { CustomCss } from "./custom-css";
+import { CustomFieldSection } from "./custom-field-section";
 import { MenuSection } from "./menu-section";
 import { FontLinks } from "./font-links";
 import { FormSection } from "./form-section";
@@ -117,6 +118,8 @@ export function PageRowView({
                           <MenuSection block={block} place={place} />
                         ) : block.type === "search" ? (
                           <SearchSection place={place} results={block.results !== false} />
+                        ) : block.type === "customField" ? (
+                          <CustomFieldSection block={block} place={place} />
                         ) : block.type === "storePart" ? (
                           <StorePartSection block={block} place={place} />
                         ) : block.type === "emailForm" || block.type === "newsletter" ? (

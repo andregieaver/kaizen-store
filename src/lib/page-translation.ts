@@ -57,7 +57,9 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         emptyText: str("emptyText", b.emptyText, 300, "Text when nothing matches"),
       };
     case "product":
-      // Only a heading of the store's own is text to translate; the product's own texts have their languages already.
+    case "customField":
+      // Only a heading of the store's own is text to translate; the product's own texts have their languages already,
+      // and so have custom fields' (D118).
       return b.heading ? { ...b, heading: str("heading", b.heading, 300, "Heading") } : b;
     case "site":
     case "menu":

@@ -43,6 +43,8 @@ export type GridPlace = {
    * grids shoppers filter and sort (D83); without it they show as set.
    */
   listing?: ListingPlace;
+  /** What a saved page of a store is: an article (D57) has its own custom fields' values (D118); a page unless said. */
+  pageType?: "page" | "article";
   /** On a store's working page (D113), the route it stands in for: the components for its cart, checkout and so on draw only there. */
   route?: StoreRoute;
 };

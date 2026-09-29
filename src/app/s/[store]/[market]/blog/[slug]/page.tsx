@@ -108,7 +108,7 @@ export default async function StoreArticlePage({ params }: Props) {
         byline={c.author || store.name}
         lang={market.lang}
         locale={market.locale}
-        place={{ pageId: page.id, owner: store.id, market: market.slug }}
+        place={{ pageId: page.id, owner: store.id, market: market.slug, pageType: "article" }}
       />
       <PageEditLink pageId={page.id} store={store.slug} article adminOrigin={adminOrigin(store.slug)} />
     </div>

@@ -12,7 +12,9 @@ import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib
 import type { Term } from "@/lib/taxonomy";
 import { translateRequest, type TranslateResult } from "@/lib/page-translate-ai";
 import { AiError, aiFor } from "@/server/ai";
+import { db } from "@/db/client";
 import { requireMember, type Membership } from "@/server/auth";
+import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
 import { gridData } from "@/server/content-grid";
 import { translatePageTexts } from "@/server/page-translate";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
@@ -56,6 +58,20 @@ export async function saveStorePageAction(
   }
   const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type });
   if (!result.ok) return { status: "error", problems: result.problems };
+  // Custom fields (D118) come along with the page's JSON; the page is saved, and its fields are checked against the store's groups.
+  const fields = typeof json === "object" && json !== null ? (json as { fields?: unknown }).fields : undefined;
+  if ((type === "page" || type === "article") && fields !== undefined) {
+    const locales = member.store.localization.locales;
+    const problems = await db().transaction(async (tx) => {
+      const facts = await pageFacts(tx, member.store.id, result.id, "draft");
+      if (!facts) return [];
+      return saveFieldData(tx, member.store.id, type, result.id, fields, { facts, locales, main: locales[0] ?? "", requireAll: false });
+    });
+    updateTag(fieldsTag(member.store.id));
+    if (problems.length > 0) {
+      return { status: "error", problems: [`The ${type} was saved, but not its custom fields:`, ...problems] };
+    }
+  }
   // A global part's change (D98) reaches live pages even when this page is only a draft.
   if (publish || result.pages) pagesChanged(member);
   const page = await getPageForEdit(member.store.id, result.id, type);

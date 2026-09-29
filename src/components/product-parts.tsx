@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AppointmentPicker } from "@/components/appointment-picker";
 import { SwitchToBusiness } from "@/components/buyer";
 import { CampaignNotices } from "@/components/campaign-notice";
+import { CustomFieldGroups, CustomFieldView } from "@/components/custom-fields-view";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle } from "@/components/page-article";
 import { HEADING_SIZES } from "@/components/page-block";
@@ -22,6 +23,7 @@ import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
 import { seasonName, seasonPrice } from "@/lib/booking-prices";
 import { rangeCalendar } from "@/lib/booking-ranges";
 import { slotWeek } from "@/lib/booking-slots";
+import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import { inView, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -47,7 +49,7 @@ import type { Store } from "@/server/stores";
  * wishlist heart), price, the business-only notice, the host, the buy
  * section (variants with stock for goods, times for appointments, dates for
  * stays and rentals), the description, the right of withdrawal, product
- * safety and related products. The text parts are the page's cached shell;
+ * safety, related products and the store's custom fields (D118). The text parts are the page's cached shell;
  * what depends on the request (stock, free times and dates) streams in
  * inside the buy section's own `<Suspense>`, so the details stay plain HTML
  * (a finished boundary moves out of line once the page passes ~12 kB).
@@ -201,6 +203,25 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
       );
     case "related":
       return <Related block={block} ctx={ctx} />;
+    case "fields": {
+      // The store's public custom fields (D118): the group chosen, else every group that applies, each under its name.
+      const groups = groupsToShow(product.fields, block.groupId);
+      return (
+        <CustomFieldGroups
+          groups={groups}
+          display={block.display}
+          showLabel={block.showLabel !== false}
+          idPrefix={block.id}
+          headingFor={(group) => groupHeading(block, group, Boolean(block.groupId))}
+        />
+      );
+    }
+    case "field": {
+      const field = fieldToShow(product.fields, block.fieldId);
+      return field ? (
+        <CustomFieldView field={field} display={block.display} showLabel={block.showLabel !== false} heading={fieldHeading(block)} id={headingId} />
+      ) : null;
+    }
   }
 }
 
@@ -228,6 +249,10 @@ export function productPartShows(block: ProductBlock, product: ProductDetail, ca
       return withdrawalText(product, t("en")) !== null;
     case "safety":
       return Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson);
+    case "fields":
+      return groupsToShow(product.fields, block.groupId).length > 0;
+    case "field":
+      return fieldToShow(product.fields, block.fieldId) !== null;
     default:
       return true;
   }

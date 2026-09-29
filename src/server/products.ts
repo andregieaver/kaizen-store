@@ -27,6 +27,7 @@ import type { PlanInterval } from "@/lib/subscriptions";
 import type { Term } from "@/lib/taxonomy";
 
 import { aiFor } from "./ai";
+import { productFacts, saveFieldData } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
 import { listLayoutChoices } from "./product-layouts";
 import type { Store } from "./stores";
@@ -591,6 +592,8 @@ export async function saveProduct(
   context: EditorContext,
   productId: string | null,
   given: ProductInput,
+  /** What was entered in the product's custom fields (D118), as the editor sends it; saved with the rest. */
+  fields?: unknown,
 ): Promise<SaveProductResult> {
   const input = asKind(given);
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
@@ -658,6 +661,17 @@ export async function saveProduct(
           values (${store.id}::uuid, ${saved}::uuid, ${termId}::uuid)
         `);
       }
+      // Custom fields (D118): those of the groups the finished product gets, in the same transaction.
+      const facts = await productFacts(tx, store.id, saved);
+      if (facts) {
+        const fieldProblems = await saveFieldData(tx, store.id, "product", saved, fields, {
+          facts,
+          locales: context.locales,
+          main: context.primaryLocale,
+          requireAll: input.status === "active",
+        });
+        if (fieldProblems.length > 0) throw new FieldProblems(fieldProblems);
+      }
       // Last, so the publishing check sees the finished listing.
       await tx.execute(sql`
         update commerce.products set status = ${input.status}, updated_at = now()
@@ -667,7 +681,15 @@ export async function saveProduct(
     });
     return { ok: true, productId: id };
   } catch (error) {
+    if (error instanceof FieldProblems) return { ok: false, problems: error.problems };
     return { ok: false, problems: [saveProblem(error, input)] };
+  }
+}
+
+/** What is wrong with the custom fields entered: ends the transaction, so nothing is saved. */
+class FieldProblems extends Error {
+  constructor(readonly problems: string[]) {
+    super(problems[0]);
   }
 }
 

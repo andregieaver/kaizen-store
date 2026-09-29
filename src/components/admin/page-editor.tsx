@@ -3,8 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useRef, useState, useTransition } from "react";
 
+import { applicableGroups, EntityFields } from "@/components/admin/entity-fields";
+import { shrinkAndUpload } from "@/components/admin/fields-form";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
+import { changesFrom, EMPTY_DATA, withParents, type FieldData } from "@/lib/custom-fields";
 import { shrinkImage } from "@/lib/image-resize";
 import {
   ALT_MAX,
@@ -88,6 +91,8 @@ export function PageEditor({
   library = [],
   terms: initialTerms,
   gridTerms = {},
+  fieldData: initialFieldData = EMPTY_DATA,
+  fieldRoles = [],
   context,
 }: {
   page: EditablePage | null;
@@ -101,6 +106,9 @@ export function PageEditor({
   gridTerms?: Partial<Record<PageType, Term[]>>;
   /** The owner's page categories and tags (D50). */
   terms: Term[];
+  /** What is entered in the page's custom fields (D118), and the special pages it is chosen for (which group rules may ask about). */
+  fieldData?: FieldData;
+  fieldRoles?: string[];
   context: PageOwnerContext;
 }) {
   const { actions, origin, defaultDescription, upload, reserved, adminBase, siteBase } = context;
@@ -135,6 +143,7 @@ export function PageEditor({
     !page || (!page.published && page.draft.slug === pageSlugFromTitle(page.draft.title, reserved)),
   );
   const [dirty, setDirty] = useState(false);
+  const [fieldData, setFieldData] = useState(initialFieldData);
   const [problems, setProblems] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(notice);
   const [busy, startBusy] = useTransition();
@@ -179,6 +188,28 @@ export function PageEditor({
   /** The page as the language being written reads. */
   const view = translating ? localizePage(content, locale) : content;
 
+  // The custom field groups this page or article gets now (D118): they follow its categories and tags as they change.
+  const fieldGroups =
+    context.type === "page" || context.type === "article"
+      ? applicableGroups(context.fields?.groups ?? [], {
+          entity: context.type,
+          categories: withParents(content.categories, terms),
+          tags: content.tags,
+          roles: fieldRoles,
+        })
+      : [];
+  const pictureUpload = upload
+    ? (file: File) =>
+        shrinkAndUpload(file, async (image, thumbnail) => {
+          const data = new FormData();
+          data.set("image", image);
+          data.set("name", file.name);
+          data.set("thumbnail", thumbnail);
+          const outcome = await upload(data);
+          return outcome.ok ? { ok: true, url: outcome.url, thumbnailUrl: null } : { ok: false, problem: outcome.problem };
+        })
+    : null;
+
   // Leaving with unsaved changes asks first.
   useEffect(() => {
     if (!dirty) return;
@@ -193,7 +224,8 @@ export function PageEditor({
       const sent = content;
       // The globals changed here (D98): the server takes them from this page to every page using them.
       const globalEdits = editedGlobals(sent, known.current);
-      const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify({ ...sent, globalEdits }), publish);
+      const fields = fieldGroups.length > 0 ? changesFrom(fieldGroups.flatMap((g) => g.fields), fieldData, context.languages.map((l) => l.locale)) : undefined;
+      const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify({ ...sent, globalEdits, fields }), publish);
       if (outcome.status === "error") {
         setProblems(outcome.problems);
         return;
@@ -277,6 +309,7 @@ export function PageEditor({
         }}
         library={library}
         productParts={context.type === "product_layout"}
+        fieldGroups={context.fields?.groups ?? null}
         shopParts={context.type === "page" && context.owner !== null}
         siteParts={context.type === "header" || context.type === "footer" ? sitePartsFor(context.owner) : null}
         upload={upload}
@@ -425,6 +458,20 @@ export function PageEditor({
                 manageHref={`${adminBase}/categories`}
               />
             </section>
+            <EntityFields
+              groups={fieldGroups}
+              data={fieldData}
+              onChange={(next) => {
+                setFieldData(next);
+                setDirty(true);
+                setMessage(null);
+              }}
+              locales={context.languages.map((l) => l.locale)}
+              main={main.locale}
+              languageNames={Object.fromEntries(context.languages.map((l) => [l.locale, l.name]))}
+              upload={pictureUpload}
+              locale={locale}
+            />
             <ThumbnailField
               value={content.thumbnail}
               upload={upload}

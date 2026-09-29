@@ -5,11 +5,13 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { z } from "zod";
 
+import type { FieldData } from "@/lib/custom-fields";
 import { productInput, type ProductInput } from "@/lib/product-input";
 import { canWrite, writeRequest, type WrittenText } from "@/lib/product-writing";
 import { AiError, aiFor } from "@/server/ai";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
+import { fieldsTag, getFieldData } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { suggestProductText } from "@/server/product-writer";
 import {
@@ -38,11 +40,15 @@ export type SaveState =
       /** The product as stored, with ids for new variants and contacts. */
       product: ProductInput;
       context: EditorContext;
+      /** What is entered in its custom fields (D118), as stored. */
+      fieldData: FieldData;
     }
   | { status: "error"; problems: string[] };
 
 function refreshCatalogue(member: Membership) {
   updateTag(catalogTag(member.store.id));
+  // A product's custom fields (D118) are read under their own tag.
+  updateTag(fieldsTag(member.store.id));
 }
 
 /**
@@ -69,7 +75,9 @@ export async function saveProductAction(
     return { status: "error", problems: [...new Set(parsed.error.issues.map((issue) => issue.message))] };
   }
   const context = await getEditorContext(member.store);
-  const result = await saveProduct(member.store, context, productId, parsed.data);
+  // Custom fields (D118) come along in the same JSON; the server checks them against the store's own groups.
+  const fields = typeof json === "object" && json !== null ? (json as { fields?: unknown }).fields : undefined;
+  const result = await saveProduct(member.store, context, productId, parsed.data, fields);
   if (!result.ok) return { status: "error", problems: result.problems };
   refreshCatalogue(member);
   // Search by meaning finds the product as saved, without waiting for the cron (D74).
@@ -85,6 +93,7 @@ export async function saveProductAction(
     savedAt: new Date().toISOString(),
     product: input,
     context: fresh,
+    fieldData: await getFieldData(member.store.id, "product", result.productId),
   };
 }
 

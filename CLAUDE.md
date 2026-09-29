@@ -523,6 +523,28 @@ of running `playwright install`.
   `ProductBlock`'s settings, `ProductPartView`, `productPartShows()` and the
   builder's `ProductFields`/`ProductStandIn`. Keep the product's details
   outside `<Suspense>`; only the buy part streams in.
+- Custom fields (D118, `docs/custom-fields.md`, `src/lib/custom-fields.ts`,
+  `src/server/custom-fields.ts`): a store's own groups of fields
+  (`commerce.field_groups`, made at `/admin/{store}/fields` by
+  `FieldGroupEditor`) and what was entered in them for products, pages and
+  articles (`commerce.field_values`: one row per thing and language, `locale`
+  empty for what is the same in all, keyed by the field's `id`, never its
+  name). A group applies by its location rules (`groupApplies()`, OR of AND,
+  evaluated in the browser as the thing changes and on the server when it is
+  saved); a field shows by its conditional logic (`fieldShows()`), and a hidden
+  one is kept but never required. The entry form is `FieldsForm`/`EntityFields`
+  (`applicableGroups()`); values travel in the editor's own JSON (`fields`:
+  `changesFrom()`, a `null` takes a value away) and are written by
+  `saveFieldData()` in the same transaction, checked by `parseFieldChanges()`
+  against the groups the finished thing gets. A new field type is a key in
+  `FIELD_TYPES`, its case in `parseValue()`, `displayText()`, `FieldInput` and
+  the renderer. Only texts are per language (`isTranslatable()`). Fields are
+  private until the owner makes them public: the site reads only public ones
+  through `shownFieldsFor()` (cached under `fieldsTag`, read inside the
+  product page's own cached read), drawn by `CustomFieldsView` in the product
+  layouts' `fields`/`field` parts and the page builder's `customField` block;
+  any change to a group or to values calls `updateTag(fieldsTag())`. Never
+  render a field's value as HTML.
 - Headers and footers (D80, `src/lib/site-layout.ts`, `src/components/site-parts.tsx`,
   `src/server/site-layouts.ts`): pages of type `header` and `footer` built
   with `site` blocks (`SITE_PARTS`, drawn by `SitePartView` with a

@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { createContext, useContext, useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
 import { ListIcon } from "@/components/list-icon";
+import { type FieldDef, type FieldEntity, type FieldGroup } from "@/lib/custom-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { ICONS, type IconName } from "@/lib/icons";
@@ -60,13 +61,17 @@ import {
   BUTTON_LABEL_MAX,
   BUTTON_VARIANTS,
   DUAL_GAP_MAX,
+  FIELD_DISPLAYS,
   FONT_WEIGHTS,
+  HEADING_MAX,
   isLinkAddress,
   SEPARATOR_LINES,
   SEPARATOR_POSITIONS,
   SEPARATOR_THICKNESS_MAX,
   type AccordionBlock,
   type BlockType,
+  type CustomFieldBlock,
+  type FieldDisplay,
   type HeadingSize,
   type FaqBlock,
   type PanelItem,
@@ -172,6 +177,11 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: DualButtonFields,
     Style: DualButtonStyleFields,
+  },
+  customField: {
+    title: "Custom fields",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: CustomFieldFields,
   },
 };
 
@@ -1544,5 +1554,187 @@ function NewsletterFields({ block, onChange }: BlockEditorProps<NewsletterBlock>
               : "Shown when the visitor comes back from the link in their email; right after signing up, they are asked to check their email.",
         }} />
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Custom fields (D118)
+// ---------------------------------------------------------------------------
+
+/**
+ * The store's active field groups (D118), from the page builder, for the
+ * components that show them (a product layout's Custom fields parts and a
+ * page's Custom fields component); null where the owner has none (Kaizen's).
+ */
+export const FieldGroupsContext = createContext<FieldGroup[] | null>(null);
+
+/** What the two components that show fields have in common. */
+export type FieldsSettings = Partial<Pick<CustomFieldBlock, "groupId" | "fieldId" | "display" | "showLabel" | "showHeading" | "heading">>;
+
+/** The groups that can be on the kinds of thing a component shows fields of. */
+export function useFieldGroups(entities: readonly FieldEntity[]): FieldGroup[] {
+  const groups = useContext(FieldGroupsContext);
+  return (groups ?? []).filter((group) => group.entities.some((entity) => entities.includes(entity)));
+}
+
+const ENTITY_WORDS: Record<FieldEntity, string> = { product: "products", page: "pages", article: "articles" };
+const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = { product: "product", page: "page", article: "article" };
+/** What the fields are on, for a sentence: "the product", "the page or article". */
+const thing = (entities: readonly FieldEntity[]) => entities.map((entity) => FIELD_ENTITY_NOUN[entity]).join(" or ");
+
+const fieldOption = (def: FieldDef) => `${def.label}${def.access === "public" ? "" : " (not shown on the site)"}`;
+
+/**
+ * What a component shows of the custom fields: `group` a whole group (none
+ * chosen: every group that applies to the thing), `field` one field of a
+ * group, `either` one or the other. Its display, whether each field's label
+ * shows, and the heading over a group.
+ */
+export function FieldsSettingsFields({
+  value,
+  entities,
+  mode,
+  onChange,
+}: {
+  value: FieldsSettings;
+  entities: readonly FieldEntity[];
+  mode: "group" | "field" | "either";
+  onChange: (patch: FieldsSettings) => void;
+}) {
+  const groups = useFieldGroups(entities);
+  const id = useId();
+  const chosen = value.fieldId ? `f:${value.fieldId}` : value.groupId ? `g:${value.groupId}` : "";
+  const known =
+    chosen === "" ||
+    groups.some((group) => (value.fieldId ? group.fields.some((f) => f.id === value.fieldId) : group.id === value.groupId));
+  const words = entities.map((entity) => ENTITY_WORDS[entity]).join(" and ");
+  const single = mode === "field" || Boolean(value.fieldId);
+  const wholeGroup = !single && Boolean(value.groupId);
+  const pick = (next: string) => {
+    if (next === "") return onChange({ groupId: undefined, fieldId: undefined });
+    const [kind, key] = [next.slice(0, 1), next.slice(2)];
+    if (kind === "g") return onChange({ groupId: key, fieldId: undefined });
+    const group = groups.find((g) => g.fields.some((f) => f.id === key));
+    onChange({ groupId: group?.id, fieldId: key });
+  };
+
+  if (groups.length === 0) {
+    return (
+      <p className="rounded-md bg-surface p-3 text-sm text-muted">
+        There are no custom fields for {words} yet. Make a group under Custom fields in the store&apos;s menu, then choose it here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          {mode === "field" ? "Field" : mode === "group" ? "Group" : "Shows"}
+        </label>
+        <select id={id} value={chosen} onChange={(event) => pick(event.target.value)} className={fieldClass}>
+          {mode !== "field" && <option value="">{`Every group that applies to the ${thing(entities)}`}</option>}
+          {mode === "field" && <option value="">Choose a field</option>}
+          {!known && <option value={chosen}>A field or group that is gone</option>}
+          {groups.map((group) => (
+            <optgroup key={group.id} label={group.name}>
+              {mode !== "field" && <option value={`g:${group.id}`}>{`The whole group: ${group.name}`}</option>}
+              {mode !== "group" && group.fields.map((def) => <option key={def.id} value={`f:${def.id}`}>{fieldOption(def)}</option>)}
+            </optgroup>
+          ))}
+        </select>
+        <p className="text-xs text-muted">Only fields set to be shown on the site are drawn, and only those with a value. A field with none draws nothing.</p>
+      </div>
+      <Choices
+        legend="Show as"
+        options={(Object.keys(FIELD_DISPLAYS) as FieldDisplay[]).map((display) => ({ value: display, label: FIELD_DISPLAYS[display] }))}
+        value={value.display ?? "table"}
+        onChange={(display) => onChange({ display: display === "table" ? undefined : display })}
+      />
+      <Check label="Label of each field" hint="Beside its value." checked={value.showLabel !== false} onChange={(on) => onChange({ showLabel: on ? undefined : false })} />
+      {!single && (
+        <Check
+          label="Group name as a heading"
+          checked={value.showHeading !== false}
+          onChange={(on) => onChange({ showHeading: on ? undefined : false })}
+        />
+      )}
+      {(single || (value.showHeading !== false && wholeGroup)) && (
+        <TextField
+          label="Heading text"
+          value={value.heading ?? ""}
+          max={HEADING_MAX}
+          placeholder={single ? "No heading" : "The group's name"}
+          hint={single ? "Over the field; none unless you write one." : "Empty: the group's name. With every group chosen, each shows under its own name."}
+          onChange={(heading) => onChange({ heading: heading || undefined })}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The page component that shows the fields of the page or article it is on. */
+function CustomFieldFields({ block, onChange }: BlockEditorProps<CustomFieldBlock>) {
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted">
+        Shows the custom fields of the page or article this is on, in the shopper&apos;s language. A page with no value for them shows nothing here.
+      </p>
+      <FieldsSettingsFields value={block} entities={["page", "article"]} mode="either" onChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * How a component that shows custom fields looks on the canvas: what it is
+ * and which fields, as the canvas cannot know a product's or page's values.
+ */
+export function FieldsStandIn({
+  value,
+  entities,
+  mode,
+}: {
+  value: FieldsSettings;
+  entities: readonly FieldEntity[];
+  mode: "group" | "field" | "either";
+}) {
+  const groups = useFieldGroups(entities);
+  const single = mode === "field" || Boolean(value.fieldId);
+  const shownGroups = value.groupId ? groups.filter((g) => g.id === value.groupId) : groups;
+  const field = value.fieldId ? groups.flatMap((g) => g.fields).find((f) => f.id === value.fieldId) : undefined;
+  const publicFields = (g: FieldGroup) => g.fields.filter((f) => f.access === "public");
+  const display = value.display ?? "table";
+
+  const title = single
+    ? `Custom field: ${field?.label ?? "choose one"}`
+    : `Custom fields: ${value.groupId ? (shownGroups[0]?.name ?? "a group that is gone") : "every group that applies"}`;
+  const names = single ? (field ? [field] : []) : shownGroups.flatMap(publicFields);
+  const label = (name: string, n: number) =>
+    display === "cards" ? (
+      <span key={n} className="flex flex-col gap-1 rounded-lg border border-border p-2">
+        {value.showLabel !== false && <span className="text-[10px] font-medium tracking-wide text-muted uppercase">{name}</span>}
+        <span className="h-2.5 w-2/3 rounded bg-foreground/10" />
+      </span>
+    ) : (
+      <span key={n} className="flex items-center gap-3 border-b border-border py-1.5 last:border-b-0">
+        {value.showLabel !== false && <span className="w-1/3 truncate text-muted">{display === "list" ? `${name}:` : name}</span>}
+        <span className="h-2.5 flex-1 rounded bg-foreground/10" />
+      </span>
+    );
+
+  return (
+    <span className="flex flex-col gap-2 text-sm">
+      <span className="font-medium">{title}</span>
+      {names.length > 0 ? (
+        <span className={display === "cards" ? "grid grid-cols-2 gap-2" : "flex flex-col"}>{names.map((f, n) => label(f.label, n))}</span>
+      ) : (
+        <span className="text-xs text-muted">
+          {single && !field
+            ? "Choose a field in the settings."
+            : "None of its fields is set to be shown on the site yet. Set a field's access to Shown on the site."}
+        </span>
+      )}
+      <span className="text-xs text-muted">The values are read from each {thing(entities)} where it is shown; a field with none draws nothing.</span>
+    </span>
   );
 }

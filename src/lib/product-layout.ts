@@ -36,6 +36,7 @@ export const DEFAULT_PRODUCT_LAYOUT: PageContent = {
             part("product-host", "host"),
             part("product-buy", "buy"),
             part("product-description", "description"),
+            part("product-fields", "fields"),
             part("product-withdrawal", "withdrawal"),
             part("product-safety", "safety"),
           ],

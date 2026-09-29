@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { ProductEditor } from "@/components/admin/product-editor";
 import { requireMember } from "@/server/auth";
+import { fieldsForEditor } from "@/server/custom-fields";
 import { getEditorContext, getProductForEdit } from "@/server/products";
 
 import { archiveProductAction } from "../actions";
@@ -19,6 +20,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
   const product = await getProductForEdit(store, context, productId);
   if (!product) notFound();
   const { archived, ...initial } = product;
+  const fields = await fieldsForEditor(store.id, "product", productId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,7 +29,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
           This product is archived: shoppers cannot see it.
         </p>
       )}
-      <ProductEditor {...editorProps(store, context)} productId={productId} initial={initial} />
+      <ProductEditor {...editorProps(store, context)} productId={productId} initial={initial} fields={fields} />
       <form
         action={archiveProductAction.bind(null, store.slug, productId, !archived)}
         className="border-t border-border pt-4"

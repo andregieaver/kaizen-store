@@ -48,6 +48,7 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, part: isShopPart(part) ? part : "cart" };
     case "menu":
     case "search":
+    case "customField":
     case "separator":
       return { id: id(), type };
     case "accordion":
@@ -356,11 +357,29 @@ export type ColumnPatch = Partial<Omit<PageColumn, "id" | "blocks">>;
 /** Settings of a block of one kind (`T`), or those every block has. */
 export type BlockPatch<T extends PageBlock = PageBlock> = Partial<Omit<T, "id" | "type">>;
 
-/** Merges settings in; one set to undefined or false is taken out, so the page stays as small as it can. */
+/**
+ * Settings that are on unless they are `false` (read as `x !== false`): for
+ * these `false` is the setting, so it is kept, where any other `false` is
+ * the same as the setting left out.
+ */
+const ON_UNLESS_OFF: ReadonlySet<string> = new Set([
+  "wishlist",
+  "large",
+  "thumbnails",
+  "showHeading",
+  "showLabel",
+  "results",
+  "structuredData",
+  "controls",
+  "showRating",
+  "confirm",
+]);
+
+/** Merges settings in; one set to undefined or false is taken out, so the page stays as small as it can (`false` stays for the settings that are on unless off). */
 function merge<T extends object>(part: T, patch: object): T {
   const next = { ...part, ...patch } as Record<string, unknown>;
   for (const [key, value] of Object.entries(patch)) {
-    if (value === undefined || value === false) delete next[key];
+    if (value === undefined || (value === false && !ON_UNLESS_OFF.has(key))) delete next[key];
   }
   return next as T;
 }

@@ -2495,3 +2495,128 @@ describe("row-level security", () => {
     expect(rows).toEqual([]);
   });
 });
+
+describe("custom fields (D118)", () => {
+  const group = (storeId: string, slug: string, over: Record<string, unknown> = {}) =>
+    db.query(
+      `insert into commerce.field_groups (store_id, name, slug, entities, location, fields)
+       values ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb) returning id`,
+      [
+        storeId,
+        over.name ?? "Specs",
+        slug,
+        JSON.stringify(over.entities ?? ["product"]),
+        JSON.stringify(over.location ?? []),
+        JSON.stringify(over.fields ?? [{ id: "f_abcdef123456", name: "material", label: "Material", type: "text", access: "public" }]),
+      ],
+    );
+
+  it("keeps groups per store, with a web name that is unique in the store", async () => {
+    await group(store, "specs");
+    await expect(group(store, "specs")).rejects.toThrow();
+    // Another store may use the same name.
+    await group(other, "specs");
+    await expect(group(store, "Not Ok")).rejects.toThrow();
+    await expect(group(store, "no-entities", { entities: [] })).rejects.toThrow();
+    await expect(db.query("insert into commerce.field_groups (store_id, name, slug, position) values ($1, 'x', 'bad-position', 'top')", [store])).rejects.toThrow();
+    await expect(db.query("insert into commerce.field_groups (store_id, name, slug, fields) values ($1, 'x', 'bad-fields', '{}')", [store])).rejects.toThrow();
+  });
+
+  it("keeps one row of values per thing and language, of known things only", async () => {
+    const { id } = await one<{ id: string }>("insert into commerce.products (store_id, handle, tax_code) values ($1, 'fields-one', 'txcd_99999999') returning id", [store]);
+    const put = (locale: string, entity = "product") =>
+      db.query("insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, $2, $3, $4, '{}')", [store, entity, id, locale]);
+    await put("");
+    await put("nb");
+    await expect(put("nb")).rejects.toThrow();
+    await expect(put("", "customer")).rejects.toThrow();
+    await expect(db.query("insert into commerce.field_values (store_id, entity, entity_id, values) values ($1, 'product', $2, '[]')", [store, crypto.randomUUID()])).rejects.toThrow();
+  });
+
+  it("takes a product's or page's values away with it", async () => {
+    const { id: product } = await one<{ id: string }>("insert into commerce.products (store_id, handle, tax_code) values ($1, 'fields-two', 'txcd_99999999') returning id", [store]);
+    const { id: page } = await one<{ id: string }>("insert into commerce.pages (store_id, slug, draft) values ($1, 'fields-page', '{}') returning id", [store]);
+    const { id: article } = await one<{ id: string }>("insert into commerce.pages (store_id, type, slug, draft) values ($1, 'article', 'fields-article', '{}') returning id", [store]);
+    for (const [entity, id] of [["product", product], ["page", page], ["article", article]]) {
+      await db.query("insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, $2, $3, '', '{}')", [store, entity, id]);
+    }
+    await db.query("delete from commerce.products where id = $1", [product]);
+    await db.query("delete from commerce.pages where id = $1", [page]);
+    await db.query("delete from commerce.pages where id = $1", [article]);
+    const { rows } = await db.query("select entity from commerce.field_values where entity_id = any($1)", [[product, page, article]]);
+    expect(rows).toEqual([]);
+  });
+
+  it("copies the template's groups and values to new stores, with rules following the copied categories and tags", async () => {
+    const template = await createStore("fields-template", ["NO"]);
+    await db.query("update commerce.stores set is_template = false where is_template");
+    await db.query("update commerce.stores set is_template = true where id = $1", [template]);
+    const { productId } = await createProduct({ storeId: template });
+    const { id: term } = await one<{ id: string }>(
+      "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'product', 'category', 'Shoes', 'shoes') returning id",
+      [template],
+    );
+    const { id: page } = await one<{ id: string }>(
+      "insert into commerce.pages (store_id, slug, draft, published, published_at) values ($1, 'fields-about', '{}', '{}', now()) returning id",
+      [template],
+    );
+    await group(template, "specs", {
+      location: [
+        [
+          { param: "category", operator: "==", value: term },
+          { param: "kind", operator: "==", value: "goods" },
+        ],
+        [{ param: "audience", operator: "!=", value: "businesses" }],
+      ],
+    });
+    for (const [entity, id] of [["product", productId], ["page", page]]) {
+      await db.query(
+        "insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, $2, $3, 'nb', '{\"f_abcdef123456\": \"Ull\"}')",
+        [template, entity, id],
+      );
+    }
+    // A value for a thing that is not copied (an archived product) stays behind.
+    const { id: archived } = await one<{ id: string }>("insert into commerce.products (store_id, handle, tax_code, status) values ($1, 'fields-archived', 'txcd_99999999', 'archived') returning id", [template]);
+    await db.query("insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, 'product', $2, '', '{}')", [template, archived]);
+
+    const owner = await createAccount("fields-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'fields-copy', 'Copy', $2) as id", [template, owner]);
+
+    const { rows: groups } = await db.query<{ slug: string; location: { param: string; value: string }[][]; fields: { id: string }[] }>(
+      "select slug, location, fields from commerce.field_groups where store_id = $1",
+      [copy],
+    );
+    expect(groups).toHaveLength(1);
+    const { id: copiedTerm } = await one<{ id: string }>("select id from commerce.terms where store_id = $1 and slug = 'shoes'", [copy]);
+    expect(copiedTerm).not.toBe(term);
+    expect(groups[0].location[0].map((rule) => rule.value)).toEqual([copiedTerm, "goods"]);
+    expect(groups[0].location[1]).toEqual([{ param: "audience", operator: "!=", value: "businesses" }]);
+    expect(groups[0].fields[0].id).toBe("f_abcdef123456");
+
+    const { rows: values } = await db.query<{ entity: string; values: Record<string, string> }>(
+      "select entity, values from commerce.field_values where store_id = $1 order by entity",
+      [copy],
+    );
+    expect(values).toEqual([
+      { entity: "page", values: { f_abcdef123456: "Ull" } },
+      { entity: "product", values: { f_abcdef123456: "Ull" } },
+    ]);
+    // The values belong to the copies of their things.
+    const { rows: mine } = await db.query(
+      `select 1 from commerce.field_values v
+        where v.store_id = $1 and (
+          (v.entity = 'product' and exists (select 1 from commerce.products p where p.id = v.entity_id and p.store_id = $1))
+          or (v.entity = 'page' and exists (select 1 from commerce.pages p where p.id = v.entity_id and p.store_id = $1)))`,
+      [copy],
+    );
+    expect(mine).toHaveLength(2);
+    // The copy's own change leaves the template's alone.
+    await db.query("update commerce.field_values set values = '{}' where store_id = $1", [copy]);
+    expect((await db.query("select 1 from commerce.field_values where store_id = $1 and values <> '{}'", [template])).rows.length).toBeGreaterThan(0);
+  });
+
+  it("no longer keeps the unused attributes on products", async () => {
+    const { rows } = await db.query("select 1 from information_schema.columns where table_schema = 'commerce' and table_name = 'products' and column_name = 'attributes'");
+    expect(rows).toEqual([]);
+  });
+});

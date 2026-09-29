@@ -17,6 +17,7 @@ export function pageRulesProblem(owner: PageOwner, type: PageType, content: Page
     productLayoutProblem(owner, type, content) ??
     siteLayoutProblem(owner, type, content) ??
     searchProblem(owner, type, content) ??
+    customFieldProblem(owner, type, content) ??
     storePartProblem(owner, type, content)
   );
 }
@@ -26,6 +27,14 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
   if (!pageBlocks(content).some((block) => block.type === "search")) return null;
   if (owner === null) return "Search belongs in a store's pages.";
   if (type !== "page" && type !== "article") return "Search belongs in a store's pages and articles.";
+  return null;
+}
+
+/** Custom fields (D118) belong to the page or article they are on, so only a store's pages and articles hold the component: Kaizen has none, and headers, footers and product layouts (which have their own product part) show no page's fields. */
+function customFieldProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
+  if (!pageBlocks(content).some((block) => block.type === "customField")) return null;
+  if (owner === null) return "Custom fields belong in a store's pages and articles.";
+  if (type !== "page" && type !== "article") return "Custom fields belong in a store's pages and articles; a product layout has its own Custom fields part.";
   return null;
 }
 

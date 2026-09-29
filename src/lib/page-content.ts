@@ -545,9 +545,15 @@ export const PRODUCT_PARTS = {
   withdrawal: "Right of withdrawal",
   safety: "Product safety",
   related: "Related products",
+  fields: "Custom fields",
+  field: "Custom field",
 } as const;
 export type ProductPart = keyof typeof PRODUCT_PARTS;
 export const RELATED_MAX = 12;
+
+/** How custom fields (D118) are drawn: a specification table, `label: value` lines or small cards. */
+export const FIELD_DISPLAYS = { table: "Table", list: "List", cards: "Cards" } as const;
+export type FieldDisplay = keyof typeof FIELD_DISPLAYS;
 
 /**
  * A part of the product's page (D79). Each part takes only the settings
@@ -577,6 +583,14 @@ export type ProductBlock = PartBase & BlockFont & {
   /** Related products: how many at most, and columns by screen. */
   limit?: number;
   columns?: GridColumns;
+  /** Custom fields (D118): the group (none: all the product's groups in order); a single `field` names its group too. */
+  groupId?: string;
+  /** A single custom field: its id (`f_…`). */
+  fieldId?: string;
+  /** Custom fields: how they are drawn; a table unless set. */
+  display?: FieldDisplay;
+  /** Custom fields: each field's label beside its value; on unless off. */
+  showLabel?: boolean;
 };
 
 /**
@@ -659,6 +673,28 @@ export type SearchBlock = PartBase & BlockFont & {
   type: "search";
   /** Show the results as well as the box (on by default); the box alone leads to the search page. */
   results?: boolean;
+};
+
+/**
+ * The custom fields (D118) of the page or article it is on: one group, one
+ * field of it, or with none chosen all the groups that apply to the page, as a
+ * table, list or cards. Only fields the owner made public are drawn, in the
+ * shopper's language, and it draws nothing when the page has no value for
+ * them. A store's pages and articles only.
+ */
+export type CustomFieldBlock = PartBase & BlockFont & {
+  id: string;
+  type: "customField";
+  /** The group; none chosen: every group that applies to the page. */
+  groupId?: string;
+  /** One field of the group; none: the whole group. */
+  fieldId?: string;
+  display?: FieldDisplay;
+  /** Each field's label beside its value; on unless off. */
+  showLabel?: boolean;
+  /** The group's name over the fields, or `heading`'s own words; on unless off. */
+  showHeading?: boolean;
+  heading?: string;
 };
 
 /**
@@ -1071,6 +1107,7 @@ export type PageBlock =
   | SiteBlock
   | MenuBlock
   | SearchBlock
+  | CustomFieldBlock
   | StorePartBlock
   | SeparatorBlock
   | DualButtonBlock
@@ -1163,6 +1200,9 @@ export function blockHasContent(block: PageBlock): boolean {
     case "search":
     case "storePart":
       return true;
+    case "customField":
+      // The page's own values decide: with none for these fields it draws nothing (D118).
+      return true;
     case "separator":
       return true;
     case "dualButton":
@@ -1228,6 +1268,7 @@ export function blockText(block: PageBlock): string {
     case "menu":
     case "search":
     case "storePart":
+    case "customField":
     case "separator":
     case "dualButton":
     case "socialLinks":
@@ -1700,6 +1741,9 @@ const contentGridBlock = z.object({
   ...partBase,
 });
 
+const fieldIdRule = z.string().regex(/^f_[a-z0-9]{6,24}$/, "A custom field component names an unknown field.");
+const fieldDisplay = z.enum(Object.keys(FIELD_DISPLAYS) as [FieldDisplay, ...FieldDisplay[]]);
+
 const productBlock = z.object({
   id: itemId,
   type: z.literal("product"),
@@ -1713,6 +1757,10 @@ const productBlock = z.object({
   heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
   limit: z.number().int().min(1, "Show at least one related product.").max(RELATED_MAX, `Show at most ${RELATED_MAX} related products.`).optional(),
   columns: contentGridBlock.shape.columns.optional(),
+  groupId: z.uuid().optional(),
+  fieldId: fieldIdRule.optional(),
+  display: fieldDisplay.optional(),
+  showLabel: z.boolean().optional(),
   font: blockFont,
   ...partBase,
 });
@@ -1750,6 +1798,19 @@ const searchBlock = z.object({
   id: itemId,
   type: z.literal("search"),
   results: z.boolean().optional(),
+  font: blockFont,
+  ...partBase,
+});
+
+const customFieldBlock = z.object({
+  id: itemId,
+  type: z.literal("customField"),
+  groupId: z.uuid().optional(),
+  fieldId: fieldIdRule.optional(),
+  display: fieldDisplay.optional(),
+  showLabel: z.boolean().optional(),
+  showHeading: z.boolean().optional(),
+  heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
   font: blockFont,
   ...partBase,
 });
@@ -2062,6 +2123,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   siteBlock,
   menuBlock,
   searchBlock,
+  customFieldBlock,
   storePartBlock,
   separatorBlock,
   dualButtonBlock,

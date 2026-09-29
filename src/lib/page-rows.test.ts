@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PageRow } from "./page-content";
+import type { CustomFieldBlock, PageRow, ProductBlock } from "./page-content";
 import {
   canDuplicateColumn,
   copyColumn,
@@ -19,6 +19,7 @@ import {
   moveRow,
   newBlock,
   newRow,
+  patchBlock,
   patchColumn,
   patchPart,
   patchRow,
@@ -208,6 +209,18 @@ describe("spacing and pictures", () => {
 });
 
 describe("settings (D48)", () => {
+  it("keeps false for the settings that are on unless off, so they can be switched off", () => {
+    let rows = [newRow("1", id)];
+    rows[0].columns[0].blocks.push(newBlock("product", id, "fields"), newBlock("customField", id));
+    const [product, fields] = rows[0].columns[0].blocks.map((b) => b.id);
+    rows = patchBlock<ProductBlock>(rows, product, { showLabel: false, showHeading: false, display: "list" });
+    rows = patchBlock<CustomFieldBlock>(rows, fields, { showLabel: false, display: "cards" });
+    expect(rows[0].columns[0].blocks[0]).toMatchObject({ part: "fields", showLabel: false, showHeading: false, display: "list" });
+    expect(rows[0].columns[0].blocks[1]).toMatchObject({ type: "customField", showLabel: false, display: "cards" });
+    rows = patchBlock<ProductBlock>(rows, product, { showLabel: undefined });
+    expect(rows[0].columns[0].blocks[0]).not.toHaveProperty("showLabel");
+  });
+
   it("merges settings in and takes out those switched off", () => {
     let rows = [newRow("2", id)];
     const rowId = rows[0].id;

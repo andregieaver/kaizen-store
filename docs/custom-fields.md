@@ -5,8 +5,17 @@ Custom Fields (ACF): store owners define their own fields (a size guide, an
 ingredient list, a warranty, a designer's name), fill them in wherever they
 edit a product or a page, and place them in the page builder's templates.
 
-Status: research and design, nothing built. It takes the next free D-number
-when work starts. Nothing here changes the schema or the storefront yet.
+Status: phase 1 is built (D118); phases 2 and 3 are not. What phase 1 does
+differently from the design below, and what it leaves for later:
+
+- The **file** field type moves to phase 2: it needs an upload path for
+  non-pictures and a place in the media library.
+- **Required fields** are asked for when a product is saved as published; a
+  draft may lack them. Pages and articles do not enforce them yet.
+- A picture's description is kept in the field's value, in the main language;
+  showing the library's translated descriptions is phase 2.
+- Deleting a group, or a field from a group, deletes what was entered in it.
+- `products.attributes` was dropped, as recommended.
 
 ## 1. What ACF does (research)
 

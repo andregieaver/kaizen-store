@@ -173,6 +173,8 @@ const messages = {
     /** A product a campaign gives with the order (D114): its price is "Gratis", and this labels the cart's line for it. */
     freeGift: "Gratis",
     giftFrom: (campaign: string) => `Gave: ${campaign}`,
+    /** Yes and no in a store's custom fields (D118). */
+    customFields: { yes: "Ja", no: "Nei" },
     /** What a store's campaigns say on product pages and cards (D115). */
     campaigns: {
       percent: (percent: number) => `${percent} % rabatt`,
@@ -935,6 +937,8 @@ const messages = {
     freeShipping: "Fri frakt",
     freeGift: "Gratis",
     giftFrom: (campaign: string) => `Present: ${campaign}`,
+    /** Yes and no in a store's custom fields (D118). */
+    customFields: { yes: "Ja", no: "Nej" },
     campaigns: {
       percent: (percent: number) => `${percent} % rabatt`,
       multiBuy: (buy: number, pay: number) => `${buy} för ${pay}`,
@@ -1697,6 +1701,8 @@ const messages = {
     freeShipping: "Gratis fragt",
     freeGift: "Gratis",
     giftFrom: (campaign: string) => `Gave: ${campaign}`,
+    /** Yes and no in a store's custom fields (D118). */
+    customFields: { yes: "Ja", no: "Nej" },
     campaigns: {
       percent: (percent: number) => `${percent} % rabat`,
       multiBuy: (buy: number, pay: number) => `${buy} for ${pay}`,
@@ -2457,6 +2463,8 @@ const messages = {
     freeShipping: "Free shipping",
     freeGift: "Free",
     giftFrom: (campaign: string) => `Gift: ${campaign}`,
+    /** Yes and no in a store's custom fields (D118). */
+    customFields: { yes: "Yes", no: "No" },
     campaigns: {
       percent: (percent: number) => `${percent} % off`,
       multiBuy: (buy: number, pay: number) => `${buy} for ${pay}`,

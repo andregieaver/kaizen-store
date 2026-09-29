@@ -20,9 +20,12 @@ import {
   suggestTextAction,
 } from "@/app/admin/(gated)/[store]/products/actions";
 import { AiWriter } from "@/components/admin/ai-writer";
+import { applicableGroups, EntityFields } from "@/components/admin/entity-fields";
+import { shrinkAndUpload } from "@/components/admin/fields-form";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
 import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
+import { changesFrom, withParents, type FieldData, type FieldGroup } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
 import { ratePercent, VAT_CATEGORIES, VAT_CATEGORY_LABELS } from "@/lib/vat";
 import { shrinkImage } from "@/lib/image-resize";
@@ -97,6 +100,8 @@ type Props = {
   storefrontPath: string | null;
   /** The site's address, for the search result preview. */
   siteOrigin: string;
+  /** The store's custom field groups for products (D118), and what is entered in them for this product. */
+  fields: { groups: FieldGroup[]; data: FieldData };
 };
 
 /**
@@ -109,6 +114,7 @@ export function ProductEditor(props: Props) {
   const [product, setProduct] = useState(props.initial);
   const [context, setContext] = useState(props.context);
   const [dirty, setDirty] = useState(false);
+  const [fieldData, setFieldData] = useState(props.fields.data);
   const [result, setResult] = useState<SaveState>({ status: "idle" });
   const [saving, startSaving] = useTransition();
   const [handleTouched, setHandleTouched] = useState(props.productId !== null);
@@ -137,11 +143,22 @@ export function ProductEditor(props: Props) {
 
   const primary = context.primaryLocale;
   const title = product.translations.find((t) => t.locale === primary)?.title ?? "";
+  // The custom field groups this product gets now: they follow its kind, audience, categories and tags as they change (D118).
+  const fieldGroups = applicableGroups(props.fields.groups, {
+    entity: "product",
+    kind: product.kind,
+    audience: product.audience,
+    categories: withParents(product.categories, context.terms),
+    tags: product.tags,
+    roles: [],
+  });
+  const pictureUpload = uploads ? (file: File) => uploadFieldPicture(storeSlug, file) : null;
 
   const save = () => {
-    const payload: ProductInput = {
+    const payload = {
       ...product,
       handle: product.handle || slugify(title) || "product",
+      fields: changesFrom(fieldGroups.flatMap((group) => group.fields), fieldData, context.locales),
     };
     startSaving(async () => {
       const outcome = await saveProductAction(storeSlug, productId, JSON.stringify(payload));
@@ -149,6 +166,7 @@ export function ProductEditor(props: Props) {
       if (outcome.status === "saved") {
         setProduct(outcome.product);
         setContext(outcome.context);
+        setFieldData(outcome.fieldData);
         setDirty(false);
         setHandleTouched(true);
         if (!productId) {
@@ -282,6 +300,20 @@ export function ProductEditor(props: Props) {
           </label>
         )}
       </section>
+      <EntityFields
+        groups={fieldGroups}
+        data={fieldData}
+        onChange={(next) => {
+          setFieldData(next);
+          setDirty(true);
+          if (result.status === "saved") setResult({ status: "idle" });
+          forgetCreated();
+        }}
+        locales={context.locales}
+        main={context.primaryLocale}
+        languageNames={languageNames}
+        upload={pictureUpload}
+      />
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
       {(context.bookingsOn || isBooked(product.kind)) && <KindSection product={product} update={update} />}
       {product.kind === "appointment" && product.appointment && (
@@ -526,6 +558,18 @@ async function uploadPicture(storeSlug: string, file: File): Promise<{ url: stri
   } catch {
     return { problem: `${file.name} could not be read as a picture.` };
   }
+}
+
+/** A picture for a custom field (D118): shrunk in the browser, kept in the store's media library. */
+function uploadFieldPicture(storeSlug: string, file: File) {
+  return shrinkAndUpload(file, async (image, thumbnail) => {
+    const data = new FormData();
+    data.set("image", image);
+    data.set("name", file.name);
+    data.set("thumbnail", thumbnail);
+    const outcome = await uploadImageAction(storeSlug, data);
+    return outcome.ok ? { ok: true, url: outcome.url, thumbnailUrl: outcome.thumbnailUrl } : { ok: false, problem: outcome.problem };
+  });
 }
 
 function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { storeSlug: string; uploads: boolean }) {

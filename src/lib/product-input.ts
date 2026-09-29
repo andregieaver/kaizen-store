@@ -4,6 +4,7 @@ import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./
 import { PRODUCT_AUDIENCES } from "./b2b";
 import { RENTAL_PERIODS } from "./booking-ranges";
 import { minorUnitDigits } from "./money";
+import { isPictureAddress } from "./picture-address";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
 import { VAT_CATEGORIES } from "./vat";
@@ -17,19 +18,7 @@ import {
   planSummary,
 } from "./subscriptions";
 
-/**
- * A picture's address: a web address (http or https), or a path on the
- * store's own site such as the demo pictures' `/demo/notebook.svg`.
- */
-export function isPictureAddress(value: string): boolean {
-  if (/^\/(?![/\\])/.test(value)) return !/\s/.test(value);
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
-  }
-}
+export { isPictureAddress };
 
 const pictureAddress = z
   .string()
