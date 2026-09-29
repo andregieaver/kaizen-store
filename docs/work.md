@@ -5,8 +5,12 @@ app, `/home/user/lifesaver-app`) into Kaizen Store, so that store owners who are
 consultants can sell and manage hours in one system. This is a design and
 porting document for the people who build it. It contains no application code.
 
-Status: proposal. Nothing here is built. It would be recorded as D122 in
-`decisions.md` once the open questions in section 8 are answered.
+Status: the core (W1: schema, libraries, servers, screens for clients,
+assignments, tasks, time, timers, invoices, print pages, settings and overview)
+is built and recorded as D122 in `decisions.md`, with the defaults of section 8.
+Still to build: email and hosted page, credit-note email, recurring invoices,
+reports and CSV, the customer/company link, hour products and ledger, online
+payment, owner tools and events (WP7b, WP8, WP9, WP10, WP1b/WP11, WP12, WP13).
 
 Reading guide. "Life" is `/home/user/lifesaver-app`; every Life path below is
 relative to it. "Store" is this repository. A **source file** is where an
@@ -904,6 +908,154 @@ keeps only settings-level changes.
 
 Not created: milestones, organizations, projections, categories.
 
+#### 4.2a As built in WP1a (schema and database rules)
+
+Migrations `20260929211910_work_module.sql` (tables, generated) and
+`20260929211920_work_rules.sql` (rules). Tables, columns and constraint names
+follow 4.2; what differs or was decided while building, briefly:
+
+* **Tables:** `work_settings`, `work_clients`, `work_assignments`, `work_tasks`,
+  `work_time_entries`, `work_timers`, `work_invoices`, `work_invoice_lines`,
+  `work_invoice_payments`, `work_credit_notes`, `work_recurring_invoices`,
+  `work_events`. **Not created** (WP1b): `work_hour_products`, `work_hour_credits`.
+  `work_time_entries.prepaid_minutes` (default 0) is there already.
+  Money is `bigint` minor units, durations integer minutes, line quantity
+  integer hundredths, discounts basis points, VAT rates fractions
+  (`numeric(6,4)`), foreign amounts `fx_rate numeric(18,8)`.
+* **Nullability the doc left open:** `work_clients.currency` is not null (no
+  default: the server chooses from settings or the country); `billing_address`
+  is `jsonb not null default '{}'` shaped `{ line1, line2, postalCode, city }`;
+  `created_by`, `recorded_by`, `account_id` on events are nullable (system,
+  cron, Stripe). A consumer client (`business = false`) must be `domestic` (check).
+  Line VAT rate must be 0 unless the category is `standard` (check).
+  Caps as 4.3: quantity 0..10 000 000 (100 000.00), unit price 0..1 000 000 000
+  minor units, discount 0..10 000 bp, time entry 1..1440 minutes.
+* **Deletion rules:** everything referencing clients, assignments, invoices,
+  credit notes and payments restricts. Composite foreign keys that only null
+  their own column (`ON DELETE SET NULL (col)`, added in the rules migration):
+  `work_clients.customer_company_id` / `customer_id`,
+  `work_time_entries.task_id` (the key also names the assignment, so a task is
+  always the entry's own assignment's) and `.invoice_line_id`,
+  `work_invoice_lines.assignment_id` / `task_id`. A timer cascades with its
+  assignment or task. **A repeating invoice that has produced invoices cannot be
+  deleted** (restrict): switch it off. `work_invoices.series` is checked to be
+  `work_invoice`, `work_credit_notes.series` `work_credit_note`.
+* **Invoice numbering constraints:** `(status = 'draft') = (number is null)`
+  and `(number is null) = (document_number is null)`; so WP15's imported
+  invoices with a `legacy_number` will need that check relaxed. Unique
+  `(store_id, series, number)`, `(store_id, document_number)`,
+  `(store_id, recurring_invoice_id, recurring_period)`, partial unique
+  `(store_id, assignment_id) where status = 'draft'`, and `public_token`
+  (globally).
+* **`work_credit_notes` extras:** `vat_home_minor`, `fx_rate`, `vat_notes`
+  (copied from the invoice, so the document is complete alone), `reason`
+  (null allowed). `lines` is a jsonb array of
+  `{ line_id, position, description, unit, quantity_hundredths,
+  unit_price_minor, discount_bp, vat_category, vat_rate, excl_minor, vat_minor,
+  incl_minor }` for the credited part.
+* **`work_invoices.vat_notes`** is a jsonb array of keys, for the text module to
+  map: `reverse_charge`, `outside_scope`, `exempt` (lines of those categories on
+  a VAT-registered store's invoice) or `["not_registered"]`. `locale` and
+  `payment_days` are frozen at issue (the client's, else the store's first
+  language or `en`; the invoice's, else the client's, else the settings', else 14).
+* **Timer `work_date`** is the day the clock started **in the store's time
+  zone** (Life used UTC), and a timer left running is logged at most 1440 minutes.
+* **Fully crediting an invoice releases its time entries** (`invoice_line_id`
+  set null by `credit_work_invoice`), so the time can be billed again on the
+  replacement invoice; a partial credit leaves them attached. Entries on a
+  `sent` or `paid` invoice cannot change or be deleted, and only billable
+  entries of the line's own assignment can be put on a *draft* invoice's line.
+* **Series rules (4.4):** `commerce.work_set_series()` sets prefix (up to 10 of
+  `A-Za-z0-9._/-`) and next number; a trigger on `document_series` for the two
+  work series refuses lowering the next number **once a document has been
+  issued in that series** (before the first issue it may go either way, which
+  is how the owner fixes a mistyped start). The first number is therefore set
+  in settings, before the first issue. The issue date is refused if later than
+  today in the store's time zone, or earlier than the previous invoice's unless
+  the caller confirms (`p_allow_earlier_date`); a credit note may not be dated
+  before its invoice.
+* **Not registered for VAT** is `work_settings.vat_registered = false` (rate 0
+  on every line, note `not_registered`). Readiness (`work_invoice_problems`)
+  wants every line's VAT category to fit the client's treatment
+  (`domestic`: `standard` or `exempt`; `reverse_charge`, `outside_scope`,
+  `exempt`: only that category; skipped for a store not registered).
+* **D41 events are queued in SQL** (trigger, like orders): `work_invoice.sent`
+  (draft to sent), `work_invoice.paid` (each move to paid), `work_invoice.credited`
+  (each credit note), `work_client.created`. `hours.*` come with WP1b. WP13 must
+  add the four names to `IntegrationEvent`/`EVENTS` (`src/lib/integrations.ts`),
+  `buildPayload()` and Slack; until then no integration lists them and none are
+  queued. Subject id is the invoice or client id.
+* **`work_events` the database writes** (WP3/WP4 must not duplicate them):
+  `invoice.issued`, `invoice.credited`, `invoice.paid`, `invoice.reopened`
+  (paid back to sent), `payment.recorded`, `payment.reversed`, `payment.refunded`
+  (`entity_type` `invoice`, `entity_id` the invoice), and `time.logged` with
+  `source: "timer"` (`entity_type` `time`). The server writes the rest
+  (`client.*`, `assignment.*`, `task.*`, `invoice.created`, `invoice.deleted`,
+  `invoice.emailed`, manual `time.logged`, `recurring.*`) with
+  `commerce.work_event(store, entity_type, entity_id, type, data, account)`.
+* **Status follows the money:** `paid` when payments plus credit notes cover the
+  total (`paid_at` = the last payment's `received_on` at noon in the store's
+  time zone), back to `sent` if a reversal drops it below, `void` when credit
+  notes cover it. A trigger refuses any other status change (also by hand), and
+  any change to an issued invoice except `status`, `paid_at`, `sent_to`,
+  `public_token` (`updated_at`). Payments must be in the invoice's currency, on
+  an issued invoice, and a `void` one takes only negative rows; a reversal must
+  take back exactly one earlier positive payment of the same invoice, once.
+  Zero-total invoices are not issued (`zero_total`).
+
+**Function contracts** (all `commerce.`, all errors are `RAISE`s whose message
+starts with a `work_*.<reason>` code, so the server can map them):
+
+* `issue_work_invoice(p_store uuid, p_invoice uuid, p_account uuid = null,
+  p_issued_on date = null, p_expected_total_minor bigint = null,
+  p_fx_rate numeric = null, p_allow_earlier_date boolean = false)` returns the
+  issued `work_invoices` row (`select * from ...`). One transaction, gap-free.
+  Reasons: `work_invoice.not_found`, `.not_draft`, `.not_ready: <codes>`
+  (`no_lines`, `zero_total`, `seller_name`, `seller_address`, `seller_country`,
+  `seller_organisation_number`, `seller_vat_number`, `seller_bank_account`,
+  `buyer_address`, `buyer_country`, `buyer_vat_number`,
+  `vat_category_mismatch`), `.total_changed`, `.date_in_future`,
+  `.date_before_previous`, `.fx_rate_required`. `p_fx_rate` = units of the
+  seller's currency per 1 of the invoice's, required exactly when the invoice
+  currency differs from the seller country's (`vat_home_minor` = VAT x rate).
+  Recomputes every line (rate from `commerce.vat_rate(store country,
+  'standard')` for standard lines of a registered store, else 0; amounts as 4.3)
+  and writes them to the lines, then freezes totals, snapshots `seller`
+  (`legal_name, organisation_number, vat_registered, vat_number, address,
+  country, email, bank_account, bic, payment_note, invoice_footer,
+  late_payment_note`) and `buyer` (`name` = legal name else name, `client_name,
+  organisation_number, vat_number, address, country, email, contact_name,
+  business, vat_treatment`), `service_from/to` (from the time on its lines, unless
+  set), sets `due_on = issued_on + payment_days`, `sent_at = now()`.
+* `work_invoice_problems(p_store, p_invoice) returns text[]`: the same checklist
+  as codes, no lock, for the "ready to issue?" panel (`{}` = ready).
+* `credit_work_invoice(p_store uuid, p_invoice uuid, p_account uuid = null,
+  p_reason text = null, p_lines jsonb = null, p_issued_on date = null,
+  p_allow_earlier_date boolean = false)` returns the `work_credit_notes` row.
+  `p_lines` null credits all that is left; else `[{ "line_id": uuid,
+  "quantity_hundredths": int }]` (quantity optional = all that is left of the
+  line); the last part of a line takes exactly what is left of its amounts, so
+  credit notes add up to the invoice. Reasons: `work_credit_note.not_found`,
+  `.status`, `.lines`, `.quantity`, `.nothing_to_credit`, `.date_in_future`,
+  `.date_before_invoice`, `.date_before_previous`, `.currency`, `.too_much`.
+  The refund of money already received is a separate negative payment (the
+  caller records it).
+* `work_start_timer(p_store, p_account, p_assignment, p_task = null) returns
+  table (timer_started_at timestamptz, stopped_entry_id uuid)`: stops and logs a
+  running timer first (`stopped_entry_id` null if none), in one transaction.
+  `work_stop_timer(p_store, p_account, p_note = null) returns setof
+  work_time_entries`: zero rows when nothing runs; minutes = clamp(ceil(elapsed
+  / 60 s), 1, 1440), billable, on the start day in the store's time zone.
+* `work_invoice_amounts(p_store, p_invoice)` returns `total_minor, paid_minor,
+  credited_minor, outstanding_minor`; `work_today(p_store)` the store-time-zone
+  date; `work_line_excl(qty_hundredths, unit_price_minor, discount_bp)` and
+  `work_line_vat(excl_minor, rate)` the 4.3 formulas (half up, exact);
+  `work_set_series(p_store, p_series, p_prefix, p_next_number)`
+  (`work_series.prefix|lower|number|unknown`); `work_event(...)` as above;
+  `work_invoice_computed(p_store, p_invoice)` what a draft would be issued as.
+* Tenancy is by composite key; the guards look rows up by `store_id` too, so a
+  cross-store reference fails either on its foreign key or on a `work_*` guard.
+
 ### 4.3 Money, hours and rounding
 
 * **Life numeric(14,2) -> minor units:** `round(amount * 100)` per value (all
@@ -1206,6 +1358,15 @@ localization, menus, SEO) call `t()` from `src/lib/i18n.ts`. Therefore:
   gets `workOn` (`src/server/stores.ts`, like `bookingsOn`, `deliveriesOn`);
   `setWorkModule()` + `saveWorkModuleAction` + a card on the Features page
   (owner only), audit `work.enabled/disabled`.
+* **WP1a did the data level only:** `Store.workOn` (`src/server/stores.ts`),
+  `MODULES` / `StoreModule` (`src/lib/store-modules.ts`) and the widened
+  `stores_modules` check. **WP5 must wire:** the Features card and
+  `setWorkModule()` (same `array_agg(distinct m) ... array_remove` update as
+  `src/server/bookings.ts`), the store admin layout tab and group,
+  `PageNeeds` (`src/lib/admin-map.ts`: add `"work"`) with its use in
+  `src/server/owner-assistant.ts` (`needs` map beside `bookings`/`deliveries`)
+  and `admin-map.test.ts`, and any `Store` object literals in tests
+  (`workOn: false`, done for `products.int.test.ts`).
 * Turning it **off** hides the pages and stops the cron for that store; data is
   kept.
 * `clone_store()` must **not** copy Work data (clients are the owner's own).

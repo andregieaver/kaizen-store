@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES, adminMapText, findPages, matchPath, pageHref, pagesFor, type AdminArea } from "./admin-map";
+import { MODULES } from "./store-modules";
 
 /** Every page.tsx under a folder, as the route after it (`/orders/[orderId]`). */
 function routes(root: string, prefix = ""): string[] {
@@ -69,5 +70,23 @@ describe("the admin map (D103)", () => {
     expect(text).not.toContain("Calendar [bookings]");
     expect(adminMapText("store", { owner: true, bookings: true })).toContain("Calendar [bookings]");
     expect(pagesFor("platform").some((p) => p.area === "store")).toBe(false);
+  });
+
+  it("has pages behind every module a store can switch on, offered only when it is on", () => {
+    for (const name of MODULES) {
+      const pages = ADMIN_PAGES.filter((p) => p.needs === name);
+      expect(pages.length, `pages that need ${name}`).toBeGreaterThan(0);
+      expect(pagesFor("store").filter((p) => p.needs === name)).toEqual([]);
+      expect(pagesFor("store", { [name]: true })).toEqual(expect.arrayContaining(pages.filter((p) => p.area === "store")));
+    }
+    // Work (D122): one page per entry of its navigation, findable by what owners call things.
+    expect(matchPath("/admin/kaffe/work")?.page.id).toBe("work");
+    expect(matchPath("/admin/kaffe/settings/work")?.page.id).toBe("work.settings");
+    expect(findPages("store", "log my hours with a timer").map((p) => p.id)).not.toContain("work.time");
+    expect(findPages("store", "log my hours with a timer", { work: true })[0]?.id).toBe("work.time");
+    expect(findPages("store", "invoice number prefix", { work: true })[0]?.id).toBe("work.settings");
+    expect(findPages("store", "which invoices are overdue", { work: true })[0]?.id).toBe("work.invoices");
+    expect(adminMapText("store", { owner: true })).not.toContain("[work.settings]");
+    expect(adminMapText("store", { owner: true, work: true })).toContain("Work settings [work.settings]");
   });
 });

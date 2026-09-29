@@ -4,7 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
 import { REMINDER_HOURS, storeTimeZones } from "@/server/bookings";
 
-import { saveBookingsModuleAction, saveDeliveriesModuleAction } from "./actions";
+import { saveBookingsModuleAction, saveDeliveriesModuleAction, saveWorkModuleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Features" };
 
@@ -105,6 +105,38 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
               </span>
             </span>
           </label>
+          {owner && (
+            <div>
+              <SubmitButton>Save</SubmitButton>
+            </div>
+          )}
+        </ActionForm>
+      </section>
+
+      <section aria-labelledby="work-heading" className={card}>
+        <h2 id="work-heading" className="mb-1 font-medium">
+          Work: clients, hours and invoices
+        </h2>
+        <p className="mb-4 text-sm text-muted">
+          For consultants and freelancers who sell their time. Keep your clients and assignments, log the hours you work
+          with a timer or by hand, and turn them into numbered invoices with VAT. Corrections are made with credit notes.
+        </p>
+        <ActionForm action={saveWorkModuleAction.bind(null, store.slug)} className="flex flex-col gap-4">
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="work" defaultChecked={store.workOn} disabled={!owner} className="mt-0.5 size-4" />
+            <span>
+              Use Work
+              <span className="block text-muted">
+                Adds Work to the menu, with clients, invoices, time and reports, and Work settings. Turning it off hides
+                them again; everything you saved is kept.
+              </span>
+            </span>
+          </label>
+          <p className="text-sm text-muted">
+            Before your first invoice you need your business details (legal name, address and organisation number, on the
+            Company page), your bank account, and to say whether you are registered for VAT and give your VAT number if
+            you are. Work settings lists what is still missing.
+          </p>
           {owner && (
             <div>
               <SubmitButton>Save</SubmitButton>

@@ -327,7 +327,7 @@ export const stores = commerce.table(
     businessPopup: boolean("business_popup").notNull().default(false),
     /** On phones, open the slide-out cart (D64) once something is added to it. */
     openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
-    /** Modules the store has switched on (D65): `bookings` for appointments. */
+    /** Modules the store has switched on (D65): `bookings` for appointments, `deliveries` (D102), `work` (D122). */
     modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
     /** Where the store's times are, e.g. appointments' (D65): an IANA time zone. */
     timeZone: text("time_zone").notNull().default("Europe/Oslo"),
@@ -381,7 +381,7 @@ export const stores = commerce.table(
   },
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
-    check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries']::text[]`),
+    check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
     check(
@@ -4632,5 +4632,603 @@ export const aiUsage = commerce.table(
       "ai_usage_amounts",
       sql`${t.requests} >= 0 and ${t.failed} >= 0 and ${t.inputTokens} >= 0 and ${t.outputTokens} >= 0 and ${t.characters} >= 0 and ${t.audioBytes} >= 0 and ${t.audioSeconds} >= 0 and ${t.images} >= 0`,
     ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Work (D122, docs/work.md): clients, assignments, time and invoices
+// ---------------------------------------------------------------------------
+//
+// Foreign keys that must only null their own column when the parent goes
+// (`ON DELETE SET NULL (col)`), which Drizzle cannot express, are added in the
+// `work_rules` migration, as the product layouts' are; their indexes are here.
+// Rules (numbering, immutability, append-only records, timers) are in the same
+// migration, and every table has row-level security on with no policy.
+
+/** A store's Work settings (one row, created when the owner first saves them). Numbering is `document_series`. */
+export const workSettings = commerce.table(
+  "work_settings",
+  {
+    storeId: storeId().primaryKey().references(() => stores.id),
+    /** A store that is not VAT registered invoices at 0 % with the statutory note. */
+    vatRegistered: boolean("vat_registered").notNull().default(true),
+    vatNumber: text("vat_number"),
+    defaultPaymentDays: integer("default_payment_days").default(14),
+    defaultCurrency: char("default_currency", { length: 3 }),
+    /** IBAN or the country's own account number, printed on invoices. */
+    bankAccount: text("bank_account"),
+    bic: text("bic"),
+    /** How to pay: KID, reference, anything the owner wants printed. */
+    paymentNote: text("payment_note"),
+    invoiceFooter: text("invoice_footer"),
+    latePaymentNote: text("late_payment_note"),
+    estimateAlertMinutes: integer("estimate_alert_minutes").default(10),
+    estimateAlertPopup: boolean("estimate_alert_popup").notNull().default(true),
+    estimateAlertSound: boolean("estimate_alert_sound").notNull().default(false),
+    /** Clients see the notes on time entries (on invoices, in My account). */
+    showTimeNotesToClients: boolean("show_time_notes_to_clients").notNull().default(false),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("work_settings_updated_by_idx").on(t.updatedBy),
+    check("work_settings_payment_days", sql`${t.defaultPaymentDays} is null or ${t.defaultPaymentDays} between 1 and 90`),
+    check("work_settings_currency", sql`${t.defaultCurrency} is null or ${t.defaultCurrency} ~ '^[A-Z]{3}$'`),
+    check("work_settings_estimate_alert", sql`${t.estimateAlertMinutes} is null or ${t.estimateAlertMinutes} between 1 and 480`),
+    check("work_settings_texts", sql`length(coalesce(${t.paymentNote}, '')) <= 1000 and length(coalesce(${t.invoiceFooter}, '')) <= 2000 and length(coalesce(${t.latePaymentNote}, '')) <= 2000`),
+  ],
+);
+
+/**
+ * Someone the store bills. Archived, never deleted once it has an invoice
+ * (`work_invoices.client_id` restricts); the legal details on an issued
+ * invoice are a snapshot, so editing a client never rewrites one.
+ */
+export const workClients = commerce.table(
+  "work_clients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    legalName: text("legal_name"),
+    organisationNumber: text("organisation_number"),
+    vatNumber: text("vat_number"),
+    country: char("country", { length: 2 }).references(() => countries.code),
+    /** `{ line1, line2, postalCode, city }`, as customers' addresses. */
+    billingAddress: jsonb("billing_address").notNull().default({}),
+    billingEmail: text("billing_email"),
+    contactName: text("contact_name"),
+    phone: text("phone"),
+    /** The language of its documents, e.g. `nb-NO`. */
+    locale: text("locale"),
+    currency: char("currency", { length: 3 }).notNull(),
+    defaultHourlyRateMinor: bigint("default_hourly_rate_minor", { mode: "number" }),
+    paymentDays: integer("payment_days"),
+    /** A business (may reverse-charge) or a consumer (always domestic VAT). */
+    business: boolean("business").notNull().default(true),
+    /** `domestic`, `reverse_charge`, `outside_scope` or `exempt` (docs/work.md 4.5). */
+    vatTreatment: text("vat_treatment").notNull().default("domestic"),
+    /** The store's customer company and person this client is (D108); nulled when they are deleted. */
+    customerCompanyId: uuid("customer_company_id"),
+    customerId: uuid("customer_id"),
+    /** Hours bought in advance cover logged time before it is invoiced (later package). */
+    usePrepaid: boolean("use_prepaid").notNull().default(true),
+    notes: text("notes"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("work_clients_store_id_key").on(t.storeId, t.id),
+    index("work_clients_sort_idx").on(t.storeId, t.sortOrder, t.name),
+    index("work_clients_company_idx").on(t.storeId, t.customerCompanyId),
+    index("work_clients_customer_idx").on(t.storeId, t.customerId),
+    index("work_clients_country_idx").on(t.country),
+    check("work_clients_name", sql`length(trim(${t.name})) between 1 and 120`),
+    check("work_clients_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("work_clients_rate", sql`${t.defaultHourlyRateMinor} is null or ${t.defaultHourlyRateMinor} between 0 and 1000000000`),
+    check("work_clients_payment_days", sql`${t.paymentDays} is null or ${t.paymentDays} between 1 and 90`),
+    check("work_clients_vat_treatment", sql`${t.vatTreatment} in ('domestic', 'reverse_charge', 'outside_scope', 'exempt')`),
+    check("work_clients_consumer_domestic", sql`${t.business} or ${t.vatTreatment} = 'domestic'`),
+    check("work_clients_address", sql`jsonb_typeof(${t.billingAddress}) = 'object'`),
+    check("work_clients_notes", sql`length(coalesce(${t.notes}, '')) <= 5000`),
+  ],
+);
+
+/** A job for a client. Many invoices may bill one assignment, one draft at a time; `invoiced` is derived. */
+export const workAssignments = commerce.table(
+  "work_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    clientId: uuid("client_id").notNull(),
+    name: text("name").notNull(),
+    status: text("status").notNull().default("active"),
+    billingType: text("billing_type").notNull().default("hourly"),
+    hourlyRateMinor: bigint("hourly_rate_minor", { mode: "number" }),
+    fixedAmountMinor: bigint("fixed_amount_minor", { mode: "number" }),
+    estimatedMinutes: integer("estimated_minutes"),
+    startDate: date("start_date", { mode: "string" }),
+    endDate: date("end_date", { mode: "string" }),
+    estimateAlertMinutes: integer("estimate_alert_minutes").default(10),
+    estimateAlertPopup: boolean("estimate_alert_popup").notNull().default(true),
+    estimateAlertSound: boolean("estimate_alert_sound").notNull().default(false),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("work_assignments_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "work_assignments_client_fk",
+      columns: [t.storeId, t.clientId],
+      foreignColumns: [workClients.storeId, workClients.id],
+    }),
+    index("work_assignments_client_idx").on(t.storeId, t.clientId, t.sortOrder),
+    index("work_assignments_status_idx").on(t.storeId, t.status),
+    index("work_assignments_created_by_idx").on(t.createdBy),
+    check("work_assignments_name", sql`length(trim(${t.name})) between 1 and 160`),
+    check("work_assignments_status", sql`${t.status} in ('active', 'paused', 'done')`),
+    check("work_assignments_billing_type", sql`${t.billingType} in ('hourly', 'fixed_fee')`),
+    check("work_assignments_hourly_rate", sql`${t.hourlyRateMinor} is null or ${t.hourlyRateMinor} between 0 and 1000000000`),
+    check("work_assignments_fixed_amount", sql`${t.fixedAmountMinor} is null or ${t.fixedAmountMinor} between 0 and 100000000000`),
+    check("work_assignments_estimate", sql`${t.estimatedMinutes} is null or ${t.estimatedMinutes} >= 0`),
+    check("work_assignments_dates", sql`${t.startDate} is null or ${t.endDate} is null or ${t.startDate} <= ${t.endDate}`),
+    check("work_assignments_estimate_alert", sql`${t.estimateAlertMinutes} is null or ${t.estimateAlertMinutes} between 1 and 480`),
+  ],
+);
+
+/** A piece of an assignment, with an estimate. */
+export const workTasks = commerce.table(
+  "work_tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    assignmentId: uuid("assignment_id").notNull(),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("open"),
+    estimatedMinutes: integer("estimated_minutes"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("work_tasks_store_id_key").on(t.storeId, t.id),
+    // Lets time entries and timers point at a task of their own assignment only.
+    unique("work_tasks_assignment_key").on(t.storeId, t.assignmentId, t.id),
+    foreignKey({
+      name: "work_tasks_assignment_fk",
+      columns: [t.storeId, t.assignmentId],
+      foreignColumns: [workAssignments.storeId, workAssignments.id],
+    }).onDelete("cascade"),
+    index("work_tasks_sort_idx").on(t.storeId, t.assignmentId, t.sortOrder),
+    check("work_tasks_title", sql`length(trim(${t.title})) between 1 and 200`),
+    check("work_tasks_status", sql`${t.status} in ('open', 'done')`),
+    check("work_tasks_estimate", sql`${t.estimatedMinutes} is null or ${t.estimatedMinutes} >= 0`),
+  ],
+);
+
+/**
+ * A repeating invoice (docs/work.md 1.6): generates draft invoices for a
+ * client on a schedule, and issues them by itself only when `auto_issue` is
+ * on. Instances are ordinary `work_invoices` with `recurring_invoice_id` and
+ * `recurring_period`. Deactivate a template rather than deleting one that
+ * has produced invoices.
+ */
+export const workRecurringInvoices = commerce.table(
+  "work_recurring_invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    clientId: uuid("client_id").notNull(),
+    name: text("name").notNull(),
+    /** The text of the invoice line. */
+    description: text("description").notNull(),
+    unit: text("unit").notNull().default("unit"),
+    quantityHundredths: integer("quantity_hundredths").notNull().default(100),
+    /** Net of VAT. */
+    unitPriceMinor: bigint("unit_price_minor", { mode: "number" }).notNull(),
+    discountBp: integer("discount_bp").notNull().default(0),
+    vatCategory: text("vat_category").notNull().default("standard"),
+    currency: char("currency", { length: 3 }).notNull(),
+    recurrenceInterval: integer("recurrence_interval").notNull().default(1),
+    recurrencePeriod: text("recurrence_period").notNull().default("month"),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }),
+    paymentDays: integer("payment_days"),
+    /** Issue and email each generated invoice on its date; off: a draft is made and the owner is told. */
+    autoIssue: boolean("auto_issue").notNull().default(false),
+    isActive: boolean("is_active").notNull().default(true),
+    /** Occurrences the owner deleted, never generated again. */
+    skippedPeriods: date("skipped_periods", { mode: "string" }).array().notNull().default(sql`'{}'::date[]`),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("work_recurring_invoices_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "work_recurring_invoices_client_fk",
+      columns: [t.storeId, t.clientId],
+      foreignColumns: [workClients.storeId, workClients.id],
+    }),
+    index("work_recurring_invoices_client_idx").on(t.storeId, t.clientId, t.sortOrder, t.name),
+    check("work_recurring_invoices_name", sql`length(trim(${t.name})) between 1 and 120`),
+    check("work_recurring_invoices_description", sql`length(trim(${t.description})) between 1 and 500`),
+    check("work_recurring_invoices_unit", sql`${t.unit} in ('hour', 'unit')`),
+    check("work_recurring_invoices_quantity", sql`${t.quantityHundredths} between 0 and 10000000`),
+    check("work_recurring_invoices_price", sql`${t.unitPriceMinor} between 0 and 1000000000`),
+    check("work_recurring_invoices_discount", sql`${t.discountBp} between 0 and 10000`),
+    check("work_recurring_invoices_vat_category", sql`${t.vatCategory} in ('standard', 'exempt', 'reverse_charge', 'outside_scope')`),
+    check("work_recurring_invoices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("work_recurring_invoices_interval", sql`${t.recurrenceInterval} between 1 and 4`),
+    check("work_recurring_invoices_period", sql`${t.recurrencePeriod} in ('week', 'month', 'year')`),
+    check("work_recurring_invoices_dates", sql`${t.endDate} is null or ${t.endDate} >= ${t.startDate}`),
+    check("work_recurring_invoices_payment_days", sql`${t.paymentDays} is null or ${t.paymentDays} between 1 and 90`),
+  ],
+);
+
+/**
+ * An invoice. A draft is freely editable, deletable and has no number; issuing
+ * it (`commerce.issue_work_invoice`) numbers it from the store's `work_invoice`
+ * series, freezes its amounts and snapshots seller, buyer and VAT notes, after
+ * which only its status, `paid_at`, `sent_to` and `public_token` can change
+ * (a trigger). Corrections are credit notes.
+ */
+export const workInvoices = commerce.table(
+  "work_invoices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    clientId: uuid("client_id").notNull(),
+    assignmentId: uuid("assignment_id"),
+    recurringInvoiceId: uuid("recurring_invoice_id"),
+    /** The occurrence date of the repeating invoice this came from. */
+    recurringPeriod: date("recurring_period", { mode: "string" }),
+    /** `draft`, `sent` (issued), `paid` or `void` (fully credited). */
+    status: text("status").notNull().default("draft"),
+    series: text("series").notNull().default("work_invoice"),
+    number: bigint("number", { mode: "number" }),
+    /** Prefix and number, e.g. `W-1042`; null while a draft. */
+    documentNumber: text("document_number"),
+    issuedOn: date("issued_on", { mode: "string" }),
+    dueOn: date("due_on", { mode: "string" }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    currency: char("currency", { length: 3 }).notNull(),
+    locale: text("locale"),
+    paymentDays: integer("payment_days"),
+    /** The period the lines cover, from their time entries. */
+    serviceFrom: date("service_from", { mode: "string" }),
+    serviceTo: date("service_to", { mode: "string" }),
+    notes: text("notes"),
+    /** The client's purchase order, or a payment reference (KID). */
+    reference: text("reference"),
+    /** Kept current by the app while a draft; recomputed and frozen at issue. */
+    subtotalMinor: bigint("subtotal_minor", { mode: "number" }).notNull().default(0),
+    vatMinor: bigint("vat_minor", { mode: "number" }).notNull().default(0),
+    totalMinor: bigint("total_minor", { mode: "number" }).notNull().default(0),
+    /** The VAT in the seller's own currency and the rate used (units of it per 1 of `currency`), when the invoice is in another. */
+    vatHomeMinor: bigint("vat_home_minor", { mode: "number" }),
+    fxRate: numeric("fx_rate", { precision: 18, scale: 8 }),
+    /** Snapshots at issue: names, numbers, addresses, bank details. */
+    seller: jsonb("seller"),
+    buyer: jsonb("buyer"),
+    /** Statutory notes to print, as keys (`reverse_charge`, `outside_scope`, `exempt`, `not_registered`). */
+    vatNotes: jsonb("vat_notes").notNull().default([]),
+    /** The hosted invoice page's address (docs/work.md 4.7). */
+    publicToken: text("public_token").unique(),
+    sentTo: text("sent_to"),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("work_invoices_store_id_key").on(t.storeId, t.id),
+    unique("work_invoices_series_number_key").on(t.storeId, t.series, t.number),
+    unique("work_invoices_document_number_key").on(t.storeId, t.documentNumber),
+    unique("work_invoices_recurring_period_key").on(t.storeId, t.recurringInvoiceId, t.recurringPeriod),
+    foreignKey({
+      name: "work_invoices_client_fk",
+      columns: [t.storeId, t.clientId],
+      foreignColumns: [workClients.storeId, workClients.id],
+    }),
+    foreignKey({
+      name: "work_invoices_assignment_fk",
+      columns: [t.storeId, t.assignmentId],
+      foreignColumns: [workAssignments.storeId, workAssignments.id],
+    }),
+    foreignKey({
+      name: "work_invoices_recurring_fk",
+      columns: [t.storeId, t.recurringInvoiceId],
+      foreignColumns: [workRecurringInvoices.storeId, workRecurringInvoices.id],
+    }),
+    seriesRef("work_invoices_series_fk", t),
+    // One open draft per assignment; drafts without an assignment are unlimited.
+    uniqueIndex("work_invoices_one_draft_idx").on(t.storeId, t.assignmentId).where(sql`${t.status} = 'draft'`),
+    index("work_invoices_status_idx").on(t.storeId, t.status, sql`${t.issuedOn} desc nulls last`),
+    index("work_invoices_client_idx").on(t.storeId, t.clientId, t.status),
+    index("work_invoices_assignment_idx").on(t.storeId, t.assignmentId),
+    index("work_invoices_due_idx").on(t.storeId, t.dueOn).where(sql`${t.status} = 'sent'`),
+    index("work_invoices_created_by_idx").on(t.createdBy),
+    check("work_invoices_status", sql`${t.status} in ('draft', 'sent', 'paid', 'void')`),
+    check("work_invoices_series", sql`${t.series} = 'work_invoice'`),
+    check("work_invoices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("work_invoices_amounts", sql`${t.subtotalMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.totalMinor} = ${t.subtotalMinor} + ${t.vatMinor}`),
+    // Numbered exactly when issued: a draft never holds a number, so deleting one burns none.
+    check("work_invoices_number", sql`(${t.status} = 'draft') = (${t.number} is null) and (${t.number} is null) = (${t.documentNumber} is null)`),
+    check(
+      "work_invoices_issued",
+      sql`${t.status} = 'draft' or (${t.issuedOn} is not null and ${t.dueOn} is not null and ${t.sentAt} is not null and ${t.seller} is not null and ${t.buyer} is not null and ${t.locale} is not null and ${t.paymentDays} is not null)`,
+    ),
+    check("work_invoices_recurring", sql`(${t.recurringInvoiceId} is null) = (${t.recurringPeriod} is null)`),
+    check("work_invoices_payment_days", sql`${t.paymentDays} is null or ${t.paymentDays} between 1 and 90`),
+    check("work_invoices_service", sql`${t.serviceFrom} is null or ${t.serviceTo} is null or ${t.serviceFrom} <= ${t.serviceTo}`),
+    check("work_invoices_fx", sql`${t.fxRate} is null or ${t.fxRate} > 0`),
+    check("work_invoices_texts", sql`length(coalesce(${t.notes}, '')) <= 5000 and length(coalesce(${t.reference}, '')) <= 200`),
+    check("work_invoices_vat_notes", sql`jsonb_typeof(${t.vatNotes}) = 'array'`),
+  ],
+);
+
+/**
+ * A line on an invoice. Quantity is in hundredths (of an hour or a unit) so a
+ * document can be checked by hand; amounts follow docs/work.md 4.3 exactly.
+ * Lines change only while their invoice is a draft (a trigger).
+ */
+export const workInvoiceLines = commerce.table(
+  "work_invoice_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    invoiceId: uuid("invoice_id").notNull(),
+    position: integer("position").notNull().default(0),
+    /** Where the line came from; nulled (never the line) when that is deleted. */
+    assignmentId: uuid("assignment_id"),
+    taskId: uuid("task_id"),
+    description: text("description").notNull(),
+    /** `hour` or `unit`; `quantity_hundredths` counts hundredths of either. */
+    unit: text("unit").notNull().default("hour"),
+    quantityHundredths: integer("quantity_hundredths").notNull().default(0),
+    /** Net of VAT. */
+    unitPriceMinor: bigint("unit_price_minor", { mode: "number" }).notNull().default(0),
+    discountBp: integer("discount_bp").notNull().default(0),
+    vatCategory: text("vat_category").notNull().default("standard"),
+    /** A fraction such as 0.2500, as `order_lines.tax_rate`; recomputed from `commerce.vat_rate()` at issue. */
+    vatRate: numeric("vat_rate", { precision: 6, scale: 4 }).notNull().default("0"),
+    exclMinor: bigint("excl_minor", { mode: "number" }).notNull().default(0),
+    vatMinor: bigint("vat_minor", { mode: "number" }).notNull().default(0),
+    inclMinor: bigint("incl_minor", { mode: "number" }).notNull().default(0),
+    /** Set when the owner typed or rounded the quantity: syncing time into the line skips it. */
+    quantityManual: boolean("quantity_manual").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("work_invoice_lines_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "work_invoice_lines_invoice_fk",
+      columns: [t.storeId, t.invoiceId],
+      foreignColumns: [workInvoices.storeId, workInvoices.id],
+    }).onDelete("cascade"),
+    index("work_invoice_lines_invoice_idx").on(t.storeId, t.invoiceId, t.position),
+    index("work_invoice_lines_assignment_idx").on(t.storeId, t.assignmentId).where(sql`${t.assignmentId} is not null`),
+    index("work_invoice_lines_task_idx").on(t.storeId, t.taskId).where(sql`${t.taskId} is not null`),
+    check("work_invoice_lines_description", sql`length(trim(${t.description})) between 1 and 500`),
+    check("work_invoice_lines_unit", sql`${t.unit} in ('hour', 'unit')`),
+    check("work_invoice_lines_quantity", sql`${t.quantityHundredths} between 0 and 10000000`),
+    check("work_invoice_lines_price", sql`${t.unitPriceMinor} between 0 and 1000000000`),
+    check("work_invoice_lines_discount", sql`${t.discountBp} between 0 and 10000`),
+    check("work_invoice_lines_vat_category", sql`${t.vatCategory} in ('standard', 'exempt', 'reverse_charge', 'outside_scope')`),
+    check("work_invoice_lines_vat_rate", sql`${t.vatRate} >= 0 and ${t.vatRate} < 1 and (${t.vatCategory} = 'standard' or ${t.vatRate} = 0)`),
+    check("work_invoice_lines_amounts", sql`${t.exclMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.inclMinor} = ${t.exclMinor} + ${t.vatMinor}`),
+  ],
+);
+
+/**
+ * Time worked. Attached to at most one invoice line (`invoice_line_id`), so
+ * nothing is billed twice; once that line's invoice is issued the entry cannot
+ * change or be deleted (a trigger), and it is released again only when the
+ * invoice is fully credited.
+ */
+export const workTimeEntries = commerce.table(
+  "work_time_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    assignmentId: uuid("assignment_id").notNull(),
+    /** Nulled when the task is deleted (foreign key in the rules migration: it names the assignment as well). */
+    taskId: uuid("task_id"),
+    /** Who worked. */
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    workDate: date("work_date", { mode: "string" }).notNull(),
+    minutes: integer("minutes").notNull(),
+    billable: boolean("billable").notNull().default(true),
+    note: text("note"),
+    /** The minutes an hour package already paid for (later package); 0 until then. */
+    prepaidMinutes: integer("prepaid_minutes").notNull().default(0),
+    /** The draft line billing it, kept when issued, nulled if the draft line is deleted (rules migration). */
+    invoiceLineId: uuid("invoice_line_id"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("work_time_entries_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "work_time_entries_assignment_fk",
+      columns: [t.storeId, t.assignmentId],
+      foreignColumns: [workAssignments.storeId, workAssignments.id],
+    }),
+    index("work_time_entries_assignment_idx").on(t.storeId, t.assignmentId, sql`${t.workDate} desc`),
+    index("work_time_entries_task_idx").on(t.storeId, t.assignmentId, t.taskId),
+    index("work_time_entries_date_idx").on(t.storeId, sql`${t.workDate} desc`),
+    index("work_time_entries_account_date_idx").on(t.storeId, t.accountId, sql`${t.workDate} desc`),
+    index("work_time_entries_account_idx").on(t.accountId),
+    index("work_time_entries_line_idx").on(t.storeId, t.invoiceLineId),
+    check("work_time_entries_minutes", sql`${t.minutes} between 1 and 1440`),
+    check("work_time_entries_note", sql`length(coalesce(${t.note}, '')) <= 500`),
+    check("work_time_entries_prepaid", sql`${t.prepaidMinutes} between 0 and ${t.minutes}`),
+  ],
+);
+
+/**
+ * A running timer: one per person per store. Start and stop are the functions
+ * `commerce.work_start_timer` and `commerce.work_stop_timer`.
+ */
+export const workTimers = commerce.table(
+  "work_timers",
+  {
+    storeId: storeId().references(() => stores.id),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    assignmentId: uuid("assignment_id").notNull(),
+    taskId: uuid("task_id"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.accountId] }),
+    foreignKey({
+      name: "work_timers_assignment_fk",
+      columns: [t.storeId, t.assignmentId],
+      foreignColumns: [workAssignments.storeId, workAssignments.id],
+    }).onDelete("cascade"),
+    // A timer's task is one of its own assignment's; deleting the task stops the timer.
+    foreignKey({
+      name: "work_timers_task_fk",
+      columns: [t.storeId, t.assignmentId, t.taskId],
+      foreignColumns: [workTasks.storeId, workTasks.assignmentId, workTasks.id],
+    }).onDelete("cascade"),
+    index("work_timers_account_idx").on(t.accountId),
+    index("work_timers_assignment_idx").on(t.storeId, t.assignmentId, t.taskId),
+  ],
+);
+
+/**
+ * Money received for an invoice. Append-only: a mistake is reversed by a
+ * negative row (`reverses`), a refund is a negative row too. The invoice
+ * becomes `paid` when payments and credit notes cover its total, and `sent`
+ * again if a reversal drops it below (a trigger).
+ */
+export const workInvoicePayments = commerce.table(
+  "work_invoice_payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    invoiceId: uuid("invoice_id").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    receivedOn: date("received_on", { mode: "string" }).notNull(),
+    method: text("method").notNull(),
+    reference: text("reference"),
+    /** The Stripe Checkout session, for an online payment (later package). */
+    providerReference: text("provider_reference"),
+    /** The payment this negative row takes back. */
+    reverses: uuid("reverses"),
+    recordedBy: uuid("recorded_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("work_invoice_payments_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "work_invoice_payments_invoice_fk",
+      columns: [t.storeId, t.invoiceId],
+      foreignColumns: [workInvoices.storeId, workInvoices.id],
+    }),
+    foreignKey({
+      name: "work_invoice_payments_reverses_fk",
+      columns: [t.storeId, t.reverses],
+      foreignColumns: [t.storeId, t.id],
+    }),
+    index("work_invoice_payments_invoice_idx").on(t.storeId, t.invoiceId, t.receivedOn),
+    index("work_invoice_payments_recorded_by_idx").on(t.recordedBy),
+    uniqueIndex("work_invoice_payments_reverses_idx").on(t.storeId, t.reverses).where(sql`${t.reverses} is not null`),
+    uniqueIndex("work_invoice_payments_provider_idx").on(t.storeId, t.providerReference).where(sql`${t.providerReference} is not null`),
+    check("work_invoice_payments_amount", sql`${t.amountMinor} <> 0`),
+    check("work_invoice_payments_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("work_invoice_payments_method", sql`${t.method} in ('bank', 'card', 'cash', 'other', 'stripe', 'prepaid')`),
+    check("work_invoice_payments_reversal", sql`${t.reverses} is null or ${t.amountMinor} < 0`),
+    check("work_invoice_payments_texts", sql`length(coalesce(${t.reference}, '')) <= 200`),
+  ],
+);
+
+/**
+ * A credit note against an issued invoice, numbered from the store's
+ * `work_credit_note` series by `commerce.credit_work_invoice`. Append-only.
+ * Amounts are positive; the document says credit. A full credit voids the
+ * invoice.
+ */
+export const workCreditNotes = commerce.table(
+  "work_credit_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    invoiceId: uuid("invoice_id").notNull(),
+    series: text("series").notNull().default("work_credit_note"),
+    number: bigint("number", { mode: "number" }).notNull(),
+    documentNumber: text("document_number").notNull(),
+    issuedOn: date("issued_on", { mode: "string" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    reason: text("reason"),
+    subtotalMinor: bigint("subtotal_minor", { mode: "number" }).notNull(),
+    vatMinor: bigint("vat_minor", { mode: "number" }).notNull(),
+    totalMinor: bigint("total_minor", { mode: "number" }).notNull(),
+    vatHomeMinor: bigint("vat_home_minor", { mode: "number" }),
+    fxRate: numeric("fx_rate", { precision: 18, scale: 8 }),
+    /** The credited lines, as they were on the invoice, with the credited quantity and amounts. */
+    lines: jsonb("lines").notNull(),
+    seller: jsonb("seller").notNull(),
+    buyer: jsonb("buyer").notNull(),
+    vatNotes: jsonb("vat_notes").notNull().default([]),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("work_credit_notes_store_id_key").on(t.storeId, t.id),
+    unique("work_credit_notes_series_number_key").on(t.storeId, t.series, t.number),
+    unique("work_credit_notes_document_number_key").on(t.storeId, t.documentNumber),
+    foreignKey({
+      name: "work_credit_notes_invoice_fk",
+      columns: [t.storeId, t.invoiceId],
+      foreignColumns: [workInvoices.storeId, workInvoices.id],
+    }),
+    seriesRef("work_credit_notes_series_fk", t),
+    index("work_credit_notes_invoice_idx").on(t.storeId, t.invoiceId),
+    index("work_credit_notes_created_by_idx").on(t.createdBy),
+    check("work_credit_notes_series", sql`${t.series} = 'work_credit_note'`),
+    check("work_credit_notes_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check("work_credit_notes_amounts", sql`${t.subtotalMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.totalMinor} > 0 and ${t.totalMinor} = ${t.subtotalMinor} + ${t.vatMinor}`),
+    check("work_credit_notes_lines", sql`jsonb_typeof(${t.lines}) = 'array' and jsonb_array_length(${t.lines}) > 0`),
+    check("work_credit_notes_reason", sql`length(coalesce(${t.reason}, '')) <= 1000`),
+  ],
+);
+
+/**
+ * What happened to a client, invoice, payment or entry: the invoice's history
+ * panel and the Work activity list. Append-only. `account_id` is null for the
+ * system (the cron). No secrets and no client email in `data`.
+ */
+export const workEvents = commerce.table(
+  "work_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId().references(() => stores.id),
+    entityType: text("entity_type").notNull(),
+    entityId: uuid("entity_id"),
+    /** `invoice.issued`, `payment.recorded`, … (docs/work.md 7.4). */
+    type: text("type").notNull(),
+    data: jsonb("data").notNull().default({}),
+    accountId: uuid("account_id").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("work_events_entity_idx").on(t.storeId, t.entityType, t.entityId, t.createdAt),
+    index("work_events_store_idx").on(t.storeId, t.createdAt),
+    index("work_events_account_idx").on(t.accountId),
+    check("work_events_names", sql`length(${t.entityType}) between 1 and 40 and length(${t.type}) between 1 and 60`),
+    check("work_events_data", sql`jsonb_typeof(${t.data}) = 'object'`),
   ],
 );

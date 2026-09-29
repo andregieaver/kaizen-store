@@ -116,6 +116,7 @@ async function storeOverview({ store }: OwnerToolContext) {
     payments: store.paymentsOn ? (store.paymentsTest ? "on, in test mode" : "on") : "off",
     sells_to: store.audience,
     bookings_module: store.bookingsOn,
+    work_module: store.workOn,
     time_zone: store.timeZone,
     countries: store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency, language: m.lang })),
     products: { active: Number(counts.active_products), drafts: Number(counts.draft_products) },

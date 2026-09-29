@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { minorUnitDigits } from "@/lib/money";
 import { RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
+import { MODULES } from "@/lib/store-modules";
 
 import { createTestDatabase } from "./testing";
 
@@ -150,7 +151,7 @@ describe("stores", () => {
       "select series from commerce.document_series where store_id = $1 order by series",
       [store],
     );
-    expect(series.map((s) => s.series)).toEqual(["credit_note", "invoice", "order"]);
+    expect(series.map((s) => s.series)).toEqual(["credit_note", "invoice", "order", "work_credit_note", "work_invoice"]);
     const orders = await one<{ next_number: number }>(
       "select next_number::int from commerce.document_series where store_id = $1 and series = 'order'",
       [store],
@@ -799,7 +800,7 @@ describe("new stores from the template", () => {
          (select count(*)::int from commerce.product_schemes where store_id = $1) as schemes`,
       [store],
     );
-    expect(extras).toEqual({ series: 3, stripe: true, swish: true, schemes: 1 });
+    expect(extras).toEqual({ series: 5, stripe: true, swish: true, schemes: 1 });
     const shipping = await one<{ amount_minor: number; free_over_minor: number }>(
       "select amount_minor::int, free_over_minor::int from commerce.shipping_rates where store_id = $1",
       [store],
@@ -2710,5 +2711,830 @@ describe("custom fields (D118)", () => {
   it("no longer keeps the unused attributes on products", async () => {
     const { rows } = await db.query("select 1 from information_schema.columns where table_schema = 'commerce' and table_name = 'products' and column_name = 'attributes'");
     expect(rows).toEqual([]);
+  });
+});
+
+describe("work: clients, time and invoices (D122)", () => {
+  type Row = Record<string, unknown>;
+  let workCounter = 0;
+
+  /** A store with the legal details and bank account an invoice needs, and one client with one assignment. */
+  async function workStore(over: { registered?: boolean; country?: string } = {}) {
+    workCounter += 1;
+    const storeId = await createStore(`work-${workCounter}`, ["NO"]);
+    await db.query(
+      `update commerce.stores set legal_name = 'Konsulent AS', organisation_number = '923456789',
+         postal_address = 'Storgata 1, 0155 Oslo', country = $2, contact_email = 'post@konsulent.example',
+         modules = array['work'] where id = $1`,
+      [storeId, over.country ?? "NO"],
+    );
+    await db.query(
+      `insert into commerce.work_settings (store_id, vat_registered, vat_number, bank_account, bic)
+       values ($1, $2, $3, 'NO9386011117947', 'DNBANOKK')`,
+      [storeId, over.registered ?? true, over.registered === false ? null : "NO923456789MVA"],
+    );
+    const account = await createAccount(`work-${workCounter}@example.com`);
+    const clientId = await workClient(storeId);
+    const assignmentId = await workAssignment(storeId, clientId);
+    return { storeId, account, clientId, assignmentId };
+  }
+
+  async function workClient(storeId: string, over: Row = {}): Promise<string> {
+    const { id } = await one<{ id: string }>(
+      `insert into commerce.work_clients (store_id, name, legal_name, country, billing_address, currency, business, vat_treatment, vat_number)
+       values ($1, $2, 'Kunde AS', $3, $4::jsonb, $5, true, $6, $7) returning id`,
+      [
+        storeId,
+        over.name ?? "Kunde",
+        over.country ?? "NO",
+        JSON.stringify({ line1: "Kundeveien 2", postalCode: "0250", city: "Oslo" }),
+        over.currency ?? "NOK",
+        over.vatTreatment ?? "domestic",
+        over.vatNumber ?? null,
+      ],
+    );
+    return id;
+  }
+
+  async function workAssignment(storeId: string, clientId: string, name = "Rådgivning"): Promise<string> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.work_assignments (store_id, client_id, name) values ($1, $2, $3) returning id",
+      [storeId, clientId, name],
+    );
+    return id;
+  }
+
+  async function workDraft(storeId: string, clientId: string, assignmentId: string | null = null, currency = "NOK"): Promise<string> {
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.work_invoices (store_id, client_id, assignment_id, currency) values ($1, $2, $3, $4) returning id",
+      [storeId, clientId, assignmentId, currency],
+    );
+    return id;
+  }
+
+  async function workLine(
+    storeId: string,
+    invoiceId: string,
+    over: { quantity?: number; price?: number; discount?: number; category?: string; assignmentId?: string | null; position?: number } = {},
+  ): Promise<string> {
+    const { id } = await one<{ id: string }>(
+      `insert into commerce.work_invoice_lines (store_id, invoice_id, position, assignment_id, description, quantity_hundredths, unit_price_minor, discount_bp, vat_category)
+       values ($1, $2, $3, $4, 'Consulting', $5, $6, $7, $8) returning id`,
+      [storeId, invoiceId, over.position ?? 0, over.assignmentId ?? null, over.quantity ?? 150, over.price ?? 100000, over.discount ?? 0, over.category ?? "standard"],
+    );
+    return id;
+  }
+
+  const issue = (storeId: string, invoiceId: string, ...rest: unknown[]) =>
+    one<Row>("select * from commerce.issue_work_invoice($1, $2, $3, $4, $5, $6, $7)", [
+      storeId,
+      invoiceId,
+      rest[0] ?? null,
+      rest[1] ?? null,
+      rest[2] ?? null,
+      rest[3] ?? null,
+      rest[4] ?? false,
+    ]);
+
+  /** A draft of 1.5 hours at 1,000.00, issued: 1,500.00 + 25 % VAT. */
+  async function issued(w: { storeId: string; clientId: string; assignmentId: string; account: string }, assignment: string | null = null) {
+    const invoiceId = await workDraft(w.storeId, w.clientId, assignment);
+    const lineId = await workLine(w.storeId, invoiceId, { assignmentId: assignment });
+    const invoice = await issue(w.storeId, invoiceId, w.account);
+    return { invoiceId, lineId, invoice };
+  }
+
+  const nextNumber = async (storeId: string, series = "work_invoice") =>
+    (await one<{ next_number: number }>("select next_number from commerce.document_series where store_id = $1 and series = $2", [storeId, series])).next_number;
+
+  it("is a module a store can switch on, and only the listed ones", async () => {
+    const { storeId } = await workStore();
+    await db.query("update commerce.stores set modules = array['bookings', 'work'] where id = $1", [storeId]);
+    for (const name of MODULES) {
+      await db.query("update commerce.stores set modules = array[$2]::text[] where id = $1", [storeId, name]);
+    }
+    await expect(db.query("update commerce.stores set modules = array['work', 'payroll'] where id = $1", [storeId])).rejects.toThrow(/stores_modules/);
+  });
+
+  it("gives every new store the two Work series, and a copy of a template none of its Work data", async () => {
+    const template = await createStore("work-template", ["NO"]);
+    const series = await db.query<{ series: string; prefix: string; next_number: number }>(
+      "select series, prefix, next_number from commerce.document_series where store_id = $1 and series like 'work\\_%' order by series",
+      [template],
+    );
+    expect(series.rows).toEqual([
+      { series: "work_credit_note", prefix: "WCN-", next_number: 1 },
+      { series: "work_invoice", prefix: "W-", next_number: 1 },
+    ]);
+    // Ordinary series are still there.
+    expect((await db.query("select 1 from commerce.document_series where store_id = $1 and series in ('invoice', 'credit_note', 'order')", [template])).rows).toHaveLength(3);
+
+    const w = await workStore();
+    await db.query("update commerce.stores set is_template = false where is_template");
+    await db.query("update commerce.stores set is_template = true where id = $1", [w.storeId]);
+    await issued(w);
+    const owner = await createAccount("work-template-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'work-copy', 'Copy', $2) as id", [w.storeId, owner]);
+    for (const table of ["work_clients", "work_assignments", "work_invoices", "work_invoice_lines", "work_settings", "work_events"]) {
+      expect((await db.query(`select 1 from commerce.${table} where store_id = $1`, [copy])).rows, table).toEqual([]);
+    }
+    // Its numbering starts from scratch, not from the template's.
+    expect(await nextNumber(copy)).toBe(1);
+    expect(await nextNumber(w.storeId)).toBe(2);
+    await db.query("update commerce.stores set is_template = false where id = $1", [w.storeId]);
+  });
+
+  it("numbers invoices from the store's own series at issue, without gaps or repeats", async () => {
+    const w = await workStore();
+    const drafts = [await workDraft(w.storeId, w.clientId), await workDraft(w.storeId, w.clientId), await workDraft(w.storeId, w.clientId)];
+    for (const draft of drafts) await workLine(w.storeId, draft);
+    // A draft has no number; deleting one burns none.
+    const first = await one<Row>("select number, document_number from commerce.work_invoices where id = $1", [drafts[0]]);
+    expect(first).toEqual({ number: null, document_number: null });
+    const burned = await workDraft(w.storeId, w.clientId);
+    await db.query("delete from commerce.work_invoices where id = $1", [burned]);
+    expect(await nextNumber(w.storeId)).toBe(1);
+
+    // An invoice that is not ready takes no number either.
+    const empty = await workDraft(w.storeId, w.clientId);
+    await expect(issue(w.storeId, empty)).rejects.toThrow(/work_invoice\.not_ready: no_lines/);
+    expect(await nextNumber(w.storeId)).toBe(1);
+
+    // A transaction that fails after the number was taken gives it back.
+    await db.query("begin");
+    const rolledBack = await issue(w.storeId, drafts[0], w.account);
+    expect(rolledBack.document_number).toBe("W-1");
+    await db.query("rollback");
+    expect(await nextNumber(w.storeId)).toBe(1);
+    expect((await one<Row>("select status, number from commerce.work_invoices where id = $1", [drafts[0]]))).toEqual({ status: "draft", number: null });
+
+    const numbers: string[] = [];
+    for (const draft of drafts) numbers.push((await issue(w.storeId, draft, w.account)).document_number as string);
+    expect(numbers).toEqual(["W-1", "W-2", "W-3"]);
+    expect(await nextNumber(w.storeId)).toBe(4);
+    // Unique per store, and another store counts on its own.
+    const v = await workStore();
+    expect((await issued(v)).invoice.document_number).toBe("W-1");
+    await expect(
+      db.query("update commerce.work_invoices set document_number = 'W-1' where id = $1", [drafts[1]]),
+    ).rejects.toThrow();
+  });
+
+  it("lets the owner raise the first number and the prefix before the first issue, and never reuse one after", async () => {
+    const w = await workStore();
+    await db.query("select commerce.work_set_series($1, 'work_invoice', 'FAK-', 1042)", [w.storeId]);
+    expect((await issued(w)).invoice.document_number).toBe("FAK-1042");
+    await db.query("select commerce.work_set_series($1, 'work_invoice', 'F', 2000)", [w.storeId]);
+    expect((await issued(w)).invoice.document_number).toBe("F2000");
+    await expect(db.query("select commerce.work_set_series($1, 'work_invoice', 'F', 1500)", [w.storeId])).rejects.toThrow(/work_series\.lower/);
+    await expect(db.query("update commerce.document_series set next_number = 2000 where store_id = $1 and series = 'work_invoice'", [w.storeId])).rejects.toThrow(/work_series\.lower/);
+    await expect(db.query("select commerce.work_set_series($1, 'work_invoice', 'bad prefix!', 5000)", [w.storeId])).rejects.toThrow(/work_series\.prefix/);
+    await expect(db.query("select commerce.work_set_series($1, 'invoice', 'X', 5000)", [w.storeId])).rejects.toThrow(/work_series\.unknown/);
+    // With nothing issued yet in the credit note series, its number can still be moved either way.
+    await db.query("select commerce.work_set_series($1, 'work_credit_note', 'WCN-', 300)", [w.storeId]);
+    await db.query("select commerce.work_set_series($1, 'work_credit_note', 'WCN-', 7)", [w.storeId]);
+    expect(await nextNumber(w.storeId, "work_credit_note")).toBe(7);
+  });
+
+  it("works out each line and the totals half up, from the store's VAT rate", async () => {
+    const w = await workStore();
+    const invoiceId = await workDraft(w.storeId, w.clientId);
+    // 0.33 h at 10.01: 3.3033 rounds to 3.30; its VAT 0.825 rounds up to 0.83.
+    await workLine(w.storeId, invoiceId, { quantity: 33, price: 1001, position: 0 });
+    // 1 h at 123.45 less 10 %: 111.105 rounds up to 111.11; VAT 27.7775 to 27.78.
+    await workLine(w.storeId, invoiceId, { quantity: 100, price: 12345, discount: 1000, position: 1 });
+    // No VAT on an exempt line.
+    await workLine(w.storeId, invoiceId, { quantity: 200, price: 50000, category: "exempt", position: 2 });
+    const invoice = await issue(w.storeId, invoiceId, w.account);
+    const { rows } = await db.query<Row>(
+      "select excl_minor, vat_minor, incl_minor, vat_rate::float as rate from commerce.work_invoice_lines where invoice_id = $1 order by position",
+      [invoiceId],
+    );
+    expect(rows).toEqual([
+      { excl_minor: 330, vat_minor: 83, incl_minor: 413, rate: 0.25 },
+      { excl_minor: 11111, vat_minor: 2778, incl_minor: 13889, rate: 0.25 },
+      { excl_minor: 100000, vat_minor: 0, incl_minor: 100000, rate: 0 },
+    ]);
+    expect(invoice).toMatchObject({ subtotal_minor: 111441, vat_minor: 2861, total_minor: 114302, status: "sent" });
+    expect(invoice.vat_notes).toEqual(["exempt"]);
+    // The database re-checks the arithmetic of every line, in a draft too.
+    await expect(
+      db.query("update commerce.work_invoice_lines set incl_minor = 1 where invoice_id = $1", [(await workDraft(w.storeId, w.clientId))]),
+    ).resolves.toBeDefined();
+    const other = await workDraft(w.storeId, w.clientId);
+    const line = await workLine(w.storeId, other);
+    await expect(db.query("update commerce.work_invoice_lines set incl_minor = 5 where id = $1", [line])).rejects.toThrow(/work_invoice_lines_amounts/);
+    await expect(db.query("update commerce.work_invoices set total_minor = 5 where id = $1", [other])).rejects.toThrow(/work_invoices_amounts/);
+  });
+
+  it("recomputes the amounts at issue, whatever a draft held, and can be held to the total the person saw", async () => {
+    const w = await workStore();
+    const invoiceId = await workDraft(w.storeId, w.clientId);
+    await workLine(w.storeId, invoiceId);
+    await db.query("update commerce.work_invoices set subtotal_minor = 1, vat_minor = 1, total_minor = 2 where id = $1", [invoiceId]);
+    await expect(issue(w.storeId, invoiceId, w.account, null, 999)).rejects.toThrow(/work_invoice\.total_changed: the total is now 187500/);
+    expect(await nextNumber(w.storeId)).toBe(1);
+    const invoice = await issue(w.storeId, invoiceId, w.account, null, 187500);
+    expect(invoice).toMatchObject({ subtotal_minor: 150000, vat_minor: 37500, total_minor: 187500 });
+  });
+
+  it("snapshots seller, buyer, dates and notes at issue, and refuses when the legal details are not complete", async () => {
+    const bare = await createStore("work-bare", ["NO"]);
+    const client = await one<{ id: string }>(
+      "insert into commerce.work_clients (store_id, name, currency) values ($1, 'Kunde', 'NOK') returning id",
+      [bare],
+    );
+    const draft = await workDraft(bare, client.id);
+    await workLine(bare, draft);
+    const problems = await one<{ p: string[] }>("select commerce.work_invoice_problems($1, $2) as p", [bare, draft]);
+    expect(problems.p).toEqual([
+      "seller_name",
+      "seller_address",
+      "seller_country",
+      "seller_organisation_number",
+      "seller_vat_number",
+      "seller_bank_account",
+      "buyer_address",
+      "buyer_country",
+    ]);
+    await expect(issue(bare, draft)).rejects.toThrow(/work_invoice\.not_ready: seller_name,/);
+
+    const w = await workStore();
+    await db.query("update commerce.work_clients set payment_days = 30, locale = 'nb-NO', billing_email = 'faktura@kunde.example' where id = $1", [w.clientId]);
+    const { invoiceId, invoice } = await issued(w);
+    const today = (await one<{ d: string }>("select commerce.work_today($1)::text as d", [w.storeId])).d;
+    const row = await one<Row>(
+      "select issued_on::text as issued_on, due_on::text as due_on, sent_at is not null as sent, payment_days, locale, currency from commerce.work_invoices where id = $1",
+      [invoiceId],
+    );
+    const due = (await one<{ d: string }>("select ($1::date + 30)::text as d", [today])).d;
+    expect(row).toEqual({ issued_on: today, due_on: due, sent: true, payment_days: 30, locale: "nb-NO", currency: "NOK" });
+    expect(invoice.seller).toMatchObject({
+      legal_name: "Konsulent AS",
+      organisation_number: "923456789",
+      vat_number: "NO923456789MVA",
+      vat_registered: true,
+      address: "Storgata 1, 0155 Oslo",
+      country: "NO",
+      bank_account: "NO9386011117947",
+    });
+    expect(invoice.buyer).toMatchObject({ name: "Kunde AS", client_name: "Kunde", email: "faktura@kunde.example", vat_treatment: "domestic", address: { city: "Oslo" } });
+    // Later edits never rewrite what was issued.
+    await db.query("update commerce.stores set legal_name = 'Nytt navn AS' where id = $1", [w.storeId]);
+    await db.query("update commerce.work_clients set legal_name = 'Annen AS', billing_address = '{}' where id = $1", [w.clientId]);
+    const kept = await one<{ seller: { legal_name: string }; buyer: { name: string } }>("select seller, buyer from commerce.work_invoices where id = $1", [invoiceId]);
+    expect(kept.seller.legal_name).toBe("Konsulent AS");
+    expect(kept.buyer.name).toBe("Kunde AS");
+  });
+
+  it("dates an invoice today at the latest, and not before the previous one unless the owner confirms", async () => {
+    const w = await workStore();
+    const first = await workDraft(w.storeId, w.clientId);
+    await workLine(w.storeId, first);
+    const today = (await one<{ d: string }>("select commerce.work_today($1)::text as d", [w.storeId])).d;
+    await expect(issue(w.storeId, first, w.account, "9999-01-01")).rejects.toThrow(/date_in_future/);
+    await issue(w.storeId, first, w.account, today);
+    const second = await workDraft(w.storeId, w.clientId);
+    await workLine(w.storeId, second);
+    const earlier = (await one<{ d: string }>("select ($1::date - 3)::text as d", [today])).d;
+    await expect(issue(w.storeId, second, w.account, earlier)).rejects.toThrow(/date_before_previous/);
+    expect(await nextNumber(w.storeId)).toBe(2);
+    expect((await issue(w.storeId, second, w.account, earlier, null, null, true)).number).toBe(2);
+  });
+
+  it("charges no VAT to a client under reverse charge, needs their VAT number, and notes it", async () => {
+    const w = await workStore();
+    const client = await workClient(w.storeId, { country: "SE", currency: "NOK", vatTreatment: "reverse_charge" });
+    const draft = await workDraft(w.storeId, client);
+    await workLine(w.storeId, draft, { category: "reverse_charge" });
+    await expect(issue(w.storeId, draft)).rejects.toThrow(/not_ready: buyer_vat_number/);
+    await db.query("update commerce.work_clients set vat_number = 'SE556677889901' where id = $1", [client]);
+    const invoice = await issue(w.storeId, draft, w.account);
+    expect(invoice).toMatchObject({ vat_minor: 0, total_minor: 150000, vat_notes: ["reverse_charge"] });
+    // A standard-rated line does not fit that client, nor a reverse-charge line a domestic one.
+    const wrong = await workDraft(w.storeId, client);
+    await workLine(w.storeId, wrong, { category: "standard" });
+    expect((await one<{ p: string[] }>("select commerce.work_invoice_problems($1, $2) as p", [w.storeId, wrong])).p).toEqual(["vat_category_mismatch"]);
+    const domestic = await workDraft(w.storeId, w.clientId);
+    await workLine(w.storeId, domestic, { category: "reverse_charge" });
+    expect((await one<{ p: string[] }>("select commerce.work_invoice_problems($1, $2) as p", [w.storeId, domestic])).p).toEqual(["vat_category_mismatch"]);
+    // A consumer is always domestic; a line's rate is 0 unless it is standard.
+    await expect(db.query("update commerce.work_clients set business = false where id = $1", [client])).rejects.toThrow(/work_clients_consumer_domestic/);
+    await expect(db.query("update commerce.work_invoice_lines set vat_category = 'exempt', vat_rate = 0.25 where id = $1", [await workLine(w.storeId, domestic)])).rejects.toThrow(/work_invoice_lines_vat_rate/);
+  });
+
+  it("charges no VAT and says so when the store is not VAT registered", async () => {
+    const w = await workStore({ registered: false });
+    const { invoice } = await issued(w);
+    expect(invoice).toMatchObject({ vat_minor: 0, total_minor: 150000, vat_notes: ["not_registered"] });
+    expect(invoice.seller).toMatchObject({ vat_registered: false, vat_number: null });
+  });
+
+  it("states the VAT in the seller's currency when the invoice is in another", async () => {
+    const w = await workStore();
+    const client = await workClient(w.storeId, { currency: "EUR" });
+    const draft = await workDraft(w.storeId, client, null, "EUR");
+    await workLine(w.storeId, draft);
+    await expect(issue(w.storeId, draft, w.account)).rejects.toThrow(/work_invoice\.fx_rate_required/);
+    expect(await nextNumber(w.storeId)).toBe(1);
+    const invoice = await issue(w.storeId, draft, w.account, null, null, 11.5);
+    expect(invoice).toMatchObject({ vat_minor: 37500, vat_home_minor: 431250 });
+    expect(Number(invoice.fx_rate)).toBe(11.5);
+    // In the seller's own currency there is no rate to keep.
+    const { invoice: home } = await issued(w);
+    expect(home).toMatchObject({ vat_home_minor: null, fx_rate: null });
+  });
+
+  it("cannot change an issued invoice, its lines or its snapshots, or delete it", async () => {
+    const w = await workStore();
+    const task = (await one<{ id: string }>("insert into commerce.work_tasks (store_id, assignment_id, title) values ($1, $2, 'Workshop') returning id", [w.storeId, w.assignmentId])).id;
+    const { invoiceId, lineId, invoice } = await issued(w);
+    expect(task).toBeDefined();
+    for (const change of [
+      "set notes = 'changed'",
+      "set total_minor = 1, subtotal_minor = 1, vat_minor = 0",
+      "set due_on = due_on + 30",
+      "set issued_on = issued_on - 1",
+      "set number = 99",
+      "set document_number = 'W-99'",
+      "set seller = '{}'",
+      "set buyer = '{}'",
+      "set vat_notes = '[\"exempt\"]'",
+      "set currency = 'SEK'",
+      "set client_id = client_id, reference = 'PO-1'",
+      "set status = 'draft'",
+      "set status = 'paid'",
+      "set status = 'void'",
+    ]) {
+      await expect(db.query(`update commerce.work_invoices ${change} where id = $1`, [invoiceId]), change).rejects.toThrow(/work_invoice\./);
+    }
+    await expect(db.query("delete from commerce.work_invoices where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoice_lines set description = 'x' where id = $1", [lineId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoice_lines set quantity_hundredths = 1 where id = $1", [lineId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("delete from commerce.work_invoice_lines where id = $1", [lineId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(workLine(w.storeId, invoiceId)).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(issue(w.storeId, invoiceId, w.account)).rejects.toThrow(/work_invoice\.not_draft/);
+    // What may change: who it was sent to, and the hosted page's address.
+    await db.query("update commerce.work_invoices set sent_to = 'faktura@kunde.example', public_token = 'tok-1' where id = $1", [invoiceId]);
+    const after = await one<Row>("select sent_to, public_token, document_number from commerce.work_invoices where id = $1", [invoiceId]);
+    expect(after).toEqual({ sent_to: "faktura@kunde.example", public_token: "tok-1", document_number: invoice.document_number });
+    // A draft cannot be made an invoice by hand, nor an invoice be inserted issued.
+    const draft = await workDraft(w.storeId, w.clientId);
+    await expect(db.query("update commerce.work_invoices set status = 'sent' where id = $1", [draft])).rejects.toThrow();
+    await expect(
+      db.query("insert into commerce.work_invoices (store_id, client_id, currency, status) values ($1, $2, 'NOK', 'sent')", [w.storeId, w.clientId]),
+    ).rejects.toThrow();
+  });
+
+  it("keeps the links of an issued line to a task only as long as the task lives, and the line itself always", async () => {
+    const w = await workStore();
+    const task = (await one<{ id: string }>("insert into commerce.work_tasks (store_id, assignment_id, title) values ($1, $2, 'Workshop') returning id", [w.storeId, w.assignmentId])).id;
+    const invoiceId = await workDraft(w.storeId, w.clientId, w.assignmentId);
+    const lineId = await workLine(w.storeId, invoiceId, { assignmentId: w.assignmentId });
+    await db.query("update commerce.work_invoice_lines set task_id = $2 where id = $1", [lineId, task]);
+    await issue(w.storeId, invoiceId, w.account);
+    await db.query("delete from commerce.work_tasks where id = $1", [task]);
+    const line = await one<Row>("select task_id, description, excl_minor from commerce.work_invoice_lines where id = $1", [lineId]);
+    expect(line).toEqual({ task_id: null, description: "Consulting", excl_minor: 150000 });
+    // The assignment cannot go while an invoice is for it.
+    await expect(db.query("delete from commerce.work_assignments where id = $1", [w.assignmentId])).rejects.toThrow();
+  });
+
+  it("allows one draft per assignment, any number without one, and a new draft once the last is issued", async () => {
+    const w = await workStore();
+    await workDraft(w.storeId, w.clientId, w.assignmentId);
+    await expect(workDraft(w.storeId, w.clientId, w.assignmentId)).rejects.toThrow(/work_invoices_one_draft_idx/);
+    await workDraft(w.storeId, w.clientId);
+    await workDraft(w.storeId, w.clientId);
+    const other = await workAssignment(w.storeId, w.clientId, "Other");
+    const draft = await workDraft(w.storeId, w.clientId, other);
+    await workLine(w.storeId, draft, { assignmentId: other });
+    await issue(w.storeId, draft, w.account);
+    await workDraft(w.storeId, w.clientId, other);
+    // An invoice for an assignment is for that assignment's client.
+    const stranger = await workClient(w.storeId, { name: "Annen" });
+    await expect(workDraft(w.storeId, stranger, w.assignmentId)).rejects.toThrow(/work_invoice\.assignment/);
+  });
+
+  it("puts each hour on at most one draft line, and freezes it with the invoice", async () => {
+    const w = await workStore();
+    const entry = async (minutes = 90, over: Row = {}) =>
+      (
+        await one<{ id: string }>(
+          `insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes, billable, note)
+           values ($1, $2, $3, $4, $5, $6, 'notes') returning id`,
+          [w.storeId, w.assignmentId, w.account, over.date ?? "2026-09-01", minutes, over.billable ?? true],
+        )
+      ).id;
+    const e1 = await entry(60, { date: "2026-09-03" });
+    const e2 = await entry(30, { date: "2026-09-01" });
+    const unbillable = await entry(15, { billable: false });
+    const invoiceId = await workDraft(w.storeId, w.clientId, w.assignmentId);
+    const lineId = await workLine(w.storeId, invoiceId, { assignmentId: w.assignmentId });
+    const attach = (id: string, line: string | null) => db.query("update commerce.work_time_entries set invoice_line_id = $2 where id = $1", [id, line]);
+    await attach(e1, lineId);
+    await attach(e2, lineId);
+    await expect(attach(unbillable, lineId)).rejects.toThrow(/work_time\.billable/);
+    // Time of another assignment does not go on this assignment's line.
+    const elsewhere = await workAssignment(w.storeId, w.clientId, "Elsewhere");
+    const foreign = (await one<{ id: string }>(
+      "insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes) values ($1, $2, $3, '2026-09-02', 10) returning id",
+      [w.storeId, elsewhere, w.account],
+    )).id;
+    await expect(attach(foreign, lineId)).rejects.toThrow(/work_time\.assignment/);
+    // Drafts release time when a line is deleted.
+    await attach(e2, null);
+    await db.query("update commerce.work_time_entries set minutes = 45 where id = $1", [e2]);
+    await attach(e2, lineId);
+    await db.query("delete from commerce.work_invoice_lines where id = $1", [lineId]);
+    expect((await one<Row>("select invoice_line_id from commerce.work_time_entries where id = $1", [e1])).invoice_line_id).toBeNull();
+
+    // The service period comes from the time on the invoice.
+    const line = await workLine(w.storeId, invoiceId, { assignmentId: w.assignmentId });
+    await attach(e1, line);
+    await attach(e2, line);
+    const invoice = await one<Row>("select service_from::text as f, service_to::text as t from commerce.issue_work_invoice($1, $2, $3)", [w.storeId, invoiceId, w.account]);
+    expect(invoice).toEqual({ f: "2026-09-01", t: "2026-09-03" });
+
+    // Issued: the time cannot change, be deleted, or move, and no other time joins the invoice.
+    await expect(db.query("update commerce.work_time_entries set minutes = 5 where id = $1", [e1])).rejects.toThrow(/work_time\.immutable/);
+    await expect(db.query("update commerce.work_time_entries set billable = false where id = $1", [e1])).rejects.toThrow(/work_time\.immutable/);
+    await expect(attach(e1, null)).rejects.toThrow(/work_time\.immutable/);
+    await expect(db.query("delete from commerce.work_time_entries where id = $1", [e1])).rejects.toThrow(/work_time\.immutable/);
+    const late = await entry(20);
+    await expect(attach(late, line)).rejects.toThrow(/work_time\.draft_only/);
+    // Time not on an issued invoice is still free to change.
+    await db.query("update commerce.work_time_entries set minutes = 25 where id = $1", [late]);
+    await db.query("delete from commerce.work_time_entries where id = $1", [late]);
+    // Time is 1 minute to a day.
+    await expect(entry(0)).rejects.toThrow(/work_time_entries_minutes/);
+    await expect(entry(1441)).rejects.toThrow(/work_time_entries_minutes/);
+  });
+
+  it("deleting a draft releases its time and takes its lines, and burns no number", async () => {
+    const w = await workStore();
+    const invoiceId = await workDraft(w.storeId, w.clientId, w.assignmentId);
+    const lineId = await workLine(w.storeId, invoiceId, { assignmentId: w.assignmentId });
+    const { id: entry } = await one<{ id: string }>(
+      "insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes, invoice_line_id) values ($1, $2, $3, '2026-09-01', 30, $4) returning id",
+      [w.storeId, w.assignmentId, w.account, lineId],
+    );
+    await db.query("delete from commerce.work_invoices where id = $1", [invoiceId]);
+    expect((await db.query("select 1 from commerce.work_invoice_lines where invoice_id = $1", [invoiceId])).rows).toEqual([]);
+    expect((await one<Row>("select invoice_line_id from commerce.work_time_entries where id = $1", [entry])).invoice_line_id).toBeNull();
+    expect(await nextNumber(w.storeId)).toBe(1);
+  });
+
+  it("runs one timer per person per store: starting another stops and logs the first", async () => {
+    const w = await workStore();
+    const second = await workAssignment(w.storeId, w.clientId, "Second");
+    const task = (await one<{ id: string }>("insert into commerce.work_tasks (store_id, assignment_id, title) values ($1, $2, 'Task') returning id", [w.storeId, second])).id;
+    const colleague = await createAccount("work-colleague@example.com");
+    const start = (account: string, assignment: string, taskId: string | null = null) =>
+      one<{ timer_started_at: Date; stopped_entry_id: string | null }>("select * from commerce.work_start_timer($1, $2, $3, $4)", [w.storeId, account, assignment, taskId]);
+
+    const first = await start(w.account, w.assignmentId);
+    expect(first.stopped_entry_id).toBeNull();
+    expect((await db.query("select 1 from commerce.work_timers where store_id = $1", [w.storeId])).rows).toHaveLength(1);
+    // The table itself allows one row per person.
+    await expect(
+      db.query("insert into commerce.work_timers (store_id, account_id, assignment_id) values ($1, $2, $3)", [w.storeId, w.account, second]),
+    ).rejects.toThrow(/work_timers_store_id_account_id_pk/);
+    // A colleague has a timer of their own.
+    await start(colleague, w.assignmentId);
+    expect((await db.query("select 1 from commerce.work_timers where store_id = $1", [w.storeId])).rows).toHaveLength(2);
+
+    const restarted = await start(w.account, second, task);
+    expect(restarted.stopped_entry_id).not.toBeNull();
+    const entry = await one<Row>("select assignment_id, task_id, account_id, minutes, billable, work_date::text as d from commerce.work_time_entries where id = $1", [restarted.stopped_entry_id]);
+    expect(entry).toMatchObject({ assignment_id: w.assignmentId, task_id: null, account_id: w.account, minutes: 1, billable: true });
+    const timers = await db.query<Row>("select account_id, assignment_id, task_id from commerce.work_timers where store_id = $1 and account_id = $2", [w.storeId, w.account]);
+    expect(timers.rows).toEqual([{ account_id: w.account, assignment_id: second, task_id: task }]);
+
+    // Stopping logs at least a minute and rounds up: 90 min 30 s is 91 minutes, on the day it started.
+    await db.query("update commerce.work_timers set started_at = now() - interval '90 minutes 30 seconds' where store_id = $1 and account_id = $2", [w.storeId, w.account]);
+    const stopped = await one<Row>("select id, minutes, assignment_id, task_id, note, work_date::text as d from commerce.work_stop_timer($1, $2, 'Workshop')", [w.storeId, w.account]);
+    expect(stopped).toMatchObject({ minutes: 91, assignment_id: second, task_id: task, note: "Workshop" });
+    const started = await one<{ d: string }>("select ((now() - interval '90 minutes 30 seconds') at time zone 'Europe/Oslo')::date::text as d");
+    expect(stopped.d).toBe(started.d);
+    // Nothing running: nothing logged.
+    expect((await db.query("select * from commerce.work_stop_timer($1, $2)", [w.storeId, w.account])).rows).toEqual([]);
+    // A timer forgotten for days logs a day.
+    await start(w.account, w.assignmentId);
+    await db.query("update commerce.work_timers set started_at = now() - interval '3 days' where store_id = $1 and account_id = $2", [w.storeId, w.account]);
+    expect((await one<Row>("select minutes from commerce.work_stop_timer($1, $2)", [w.storeId, w.account])).minutes).toBe(1440);
+    // The history has each logged entry.
+    const events = await db.query<Row>("select type, data->>'source' as source from commerce.work_events where store_id = $1 and entity_type = 'time'", [w.storeId]);
+    expect(events.rows.length).toBe(3);
+    expect(events.rows.every((e) => e.type === "time.logged" && e.source === "timer")).toBe(true);
+    // A task belongs to its assignment, and deleting it stops the timer that ran on it.
+    await expect(start(w.account, w.assignmentId, task)).rejects.toThrow(/work_timers_task_fk/);
+    await start(w.account, second, task);
+    await db.query("delete from commerce.work_tasks where id = $1", [task]);
+    expect((await db.query("select 1 from commerce.work_timers where store_id = $1 and account_id = $2", [w.storeId, w.account])).rows).toEqual([]);
+  });
+
+  it("records payments that only add, and moves the invoice to paid and back", async () => {
+    const w = await workStore();
+    const { invoiceId } = await issued(w);
+    const pay = (amount: number, over: Row = {}) =>
+      one<{ id: string }>(
+        `insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method, reverses, recorded_by)
+         values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
+        [w.storeId, invoiceId, amount, over.currency ?? "NOK", over.date ?? "2026-09-10", over.method ?? "bank", over.reverses ?? null, w.account],
+      );
+    const status = () => one<Row>("select status, paid_at::text as paid_at from commerce.work_invoices where id = $1", [invoiceId]);
+    const amounts = () => one<Row>("select * from commerce.work_invoice_amounts($1, $2)", [w.storeId, invoiceId]);
+
+    await pay(100000);
+    expect((await status()).status).toBe("sent");
+    expect(await amounts()).toEqual({ total_minor: 187500, paid_minor: 100000, credited_minor: 0, outstanding_minor: 87500 });
+    await expect(pay(1000, { currency: "SEK" })).rejects.toThrow(/work_payment\.currency/);
+    await expect(pay(0)).rejects.toThrow(/work_invoice_payments_amount/);
+    await expect(pay(-5, { method: "wire" })).rejects.toThrow(/work_invoice_payments_method/);
+    const last = await pay(87500, { date: "2026-09-12" });
+    const paid = await status();
+    expect(paid.status).toBe("paid");
+    // Noon on the day the money came, in the store's time zone (Oslo is UTC+2 in September).
+    expect(paid.paid_at).toMatch(/^2026-09-12 10:00:00/);
+    expect((await amounts()).outstanding_minor).toBe(0);
+
+    // Records are never changed or deleted; a mistake is reversed by a negative row, once.
+    await expect(db.query("update commerce.work_invoice_payments set amount_minor = 1 where id = $1", [last.id])).rejects.toThrow(/append-only/);
+    await expect(db.query("delete from commerce.work_invoice_payments where id = $1", [last.id])).rejects.toThrow(/append-only/);
+    await expect(pay(-1000, { reverses: last.id })).rejects.toThrow(/work_payment\.reversal/);
+    await pay(-87500, { reverses: last.id, date: "2026-09-13" });
+    expect(await status()).toEqual({ status: "sent", paid_at: null });
+    await expect(pay(-87500, { reverses: last.id })).rejects.toThrow();
+    // A payment that overshoots keeps the invoice paid; a refund of the surplus is a negative row.
+    await pay(87500 + 500);
+    expect((await status()).status).toBe("paid");
+    await pay(-500, { method: "bank" });
+    expect((await status()).status).toBe("paid");
+    // A draft takes no payment.
+    const draft = await workDraft(w.storeId, w.clientId);
+    await expect(
+      db.query("insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 1, 'NOK', '2026-09-10', 'bank')", [w.storeId, draft]),
+    ).rejects.toThrow(/work_payment\.draft/);
+    // Online payments are recorded once per Stripe session.
+    const online = await workStore();
+    const inv = await issued(online);
+    const insertOnline = () =>
+      db.query(
+        "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method, provider_reference) values ($1, $2, 1000, 'NOK', '2026-09-10', 'stripe', 'cs_test_1')",
+        [online.storeId, inv.invoiceId],
+      );
+    await insertOnline();
+    await expect(insertOnline()).rejects.toThrow(/work_invoice_payments_provider_idx/);
+  });
+
+  it("credits an invoice in part or whole with numbered credit notes, and a full credit voids it and frees its time", async () => {
+    const w = await workStore();
+    const invoiceId = await workDraft(w.storeId, w.clientId, w.assignmentId);
+    const lineId = await workLine(w.storeId, invoiceId, { assignmentId: w.assignmentId });
+    const second = await workLine(w.storeId, invoiceId, { assignmentId: w.assignmentId, quantity: 33, price: 1001, position: 1 });
+    const { id: entry } = await one<{ id: string }>(
+      "insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes, invoice_line_id) values ($1, $2, $3, '2026-09-01', 90, $4) returning id",
+      [w.storeId, w.assignmentId, w.account, lineId],
+    );
+    await expect(
+      one("select * from commerce.credit_work_invoice($1, $2, $3)", [w.storeId, invoiceId, w.account]),
+    ).rejects.toThrow(/work_credit_note\.status/);
+    await issue(w.storeId, invoiceId, w.account);
+    const status = async () => (await one<{ status: string }>("select status from commerce.work_invoices where id = $1", [invoiceId])).status;
+    const credit = (lines: unknown = null, reason: string | null = null) =>
+      one<Row>("select * from commerce.credit_work_invoice($1, $2, $3, $4, $5::jsonb)", [w.storeId, invoiceId, w.account, reason, lines === null ? null : JSON.stringify(lines)]);
+
+    // Half of the first line: 0.5 h is 500.00 + 125.00 VAT.
+    const part = await credit([{ line_id: lineId, quantity_hundredths: 50 }], "Half the workshop was cancelled");
+    expect(part).toMatchObject({ document_number: "WCN-1", subtotal_minor: 50000, vat_minor: 12500, total_minor: 62500, currency: "NOK", reason: "Half the workshop was cancelled" });
+    expect(part.lines).toEqual([
+      expect.objectContaining({ line_id: lineId, quantity_hundredths: 50, excl_minor: 50000, vat_minor: 12500, incl_minor: 62500 }),
+    ]);
+    expect(part.seller).toMatchObject({ legal_name: "Konsulent AS" });
+    expect(await status()).toBe("sent");
+    await expect(credit([{ line_id: lineId, quantity_hundredths: 101 }])).rejects.toThrow(/work_credit_note\.quantity/);
+    await expect(credit([{ line_id: lineId, quantity_hundredths: 0 }])).rejects.toThrow(/work_credit_note\.(quantity|lines)/);
+    await expect(credit([{ line_id: "00000000-0000-4000-8000-000000000000" }])).rejects.toThrow(/work_credit_note\.lines/);
+    await expect(credit([])).rejects.toThrow(/work_credit_note\.lines/);
+    // The time is still on the invoice while it stands.
+    await expect(db.query("update commerce.work_time_entries set minutes = 1 where id = $1", [entry])).rejects.toThrow(/work_time\.immutable/);
+
+    // Everything left: the rest of the first line takes exactly what remains of its amounts.
+    const rest = await credit();
+    expect(rest).toMatchObject({ document_number: "WCN-2", subtotal_minor: 100000 + 330, vat_minor: 25000 + 83, total_minor: 125413 });
+    expect(part.total_minor as number + (rest.total_minor as number)).toBe(187500 + 413);
+    expect(await status()).toBe("void");
+    expect((await one<Row>("select invoice_line_id from commerce.work_time_entries where id = $1", [entry])).invoice_line_id).toBeNull();
+    await expect(credit()).rejects.toThrow(/work_credit_note\.status/);
+    expect(second).toBeDefined();
+    // Credit notes never change, and are numbered in their own series.
+    await expect(db.query("update commerce.work_credit_notes set reason = 'x' where id = $1", [part.id])).rejects.toThrow(/append-only/);
+    await expect(db.query("delete from commerce.work_credit_notes where id = $1", [part.id])).rejects.toThrow(/append-only/);
+    expect(await nextNumber(w.storeId, "work_credit_note")).toBe(3);
+    expect(await nextNumber(w.storeId)).toBe(2);
+    // The time can be billed again on a new invoice; a credited invoice takes no more money, only refunds.
+    const fresh = await workDraft(w.storeId, w.clientId, w.assignmentId);
+    const freshLine = await workLine(w.storeId, fresh, { assignmentId: w.assignmentId });
+    await db.query("update commerce.work_time_entries set invoice_line_id = $2 where id = $1", [entry, freshLine]);
+    await expect(
+      db.query("insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 100, 'NOK', '2026-09-10', 'bank')", [w.storeId, invoiceId]),
+    ).rejects.toThrow(/work_payment\.void/);
+    await db.query("insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, -100, 'NOK', '2026-09-10', 'bank')", [w.storeId, invoiceId]);
+    expect(await status()).toBe("void");
+    // The history has it all, oldest first.
+    const events = await db.query<{ type: string }>("select type from commerce.work_events where entity_id = $1 order by id", [invoiceId]);
+    expect(events.rows.map((e) => e.type)).toEqual(["invoice.issued", "invoice.credited", "invoice.credited", "payment.refunded"]);
+  });
+
+  it("credits a paid invoice, and a credit that brings what is owed within what was paid marks it paid", async () => {
+    const w = await workStore();
+    const { invoiceId, lineId } = await issued(w);
+    await db.query(
+      "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method, recorded_by) values ($1, $2, 125000, 'NOK', '2026-09-10', 'bank', $3)",
+      [w.storeId, invoiceId, w.account],
+    );
+    const status = async () => (await one<{ status: string }>("select status from commerce.work_invoices where id = $1", [invoiceId])).status;
+    expect(await status()).toBe("sent");
+    // Crediting a third of the hours (0.5 h) leaves 1,250.00 owed, which is what was paid.
+    await one("select * from commerce.credit_work_invoice($1, $2, $3, null, $4::jsonb)", [w.storeId, invoiceId, w.account, JSON.stringify([{ line_id: lineId, quantity_hundredths: 50 }])]);
+    expect(await status()).toBe("paid");
+    // Crediting the rest voids it, paid or not.
+    await one("select * from commerce.credit_work_invoice($1, $2, $3)", [w.storeId, invoiceId, w.account]);
+    expect(await status()).toBe("void");
+  });
+
+  it("only credits an invoice of its own store, in its currency, and no more than it was", async () => {
+    const w = await workStore();
+    const v = await workStore();
+    const { invoiceId } = await issued(w);
+    await expect(one("select * from commerce.credit_work_invoice($1, $2)", [v.storeId, invoiceId])).rejects.toThrow(/work_credit_note\.not_found/);
+    await expect(
+      db.query(
+        `insert into commerce.work_credit_notes (store_id, invoice_id, number, document_number, issued_on, currency, subtotal_minor, vat_minor, total_minor, lines, seller, buyer)
+         values ($1, $2, 1, 'WCN-1', '2026-09-10', 'NOK', 1, 0, 1, '[{}]', '{}', '{}')`,
+        [v.storeId, invoiceId],
+      ),
+    ).rejects.toThrow(/work_credit_notes_invoice_fk/);
+    const insert = (currency: string, total: number) =>
+      db.query(
+        `insert into commerce.work_credit_notes (store_id, invoice_id, number, document_number, issued_on, currency, subtotal_minor, vat_minor, total_minor, lines, seller, buyer)
+         values ($1, $2, 900, 'WCN-900', '2026-09-10', $3, $4, 0, $4, '[{}]', '{}', '{}')`,
+        [w.storeId, invoiceId, currency, total],
+      );
+    await expect(insert("SEK", 100)).rejects.toThrow(/work_credit_note\.currency/);
+    await expect(insert("NOK", 187501)).rejects.toThrow(/work_credit_note\.too_much/);
+  });
+
+  it("keeps the history of what happened append-only", async () => {
+    const w = await workStore();
+    await db.query("select commerce.work_event($1, 'client', $2, 'client.created', '{\"name\": \"Kunde\"}', $3)", [w.storeId, w.clientId, w.account]);
+    const { id } = await one<{ id: number }>("select id from commerce.work_events where store_id = $1", [w.storeId]);
+    await expect(db.query("update commerce.work_events set type = 'x' where id = $1", [id])).rejects.toThrow(/append-only/);
+    await expect(db.query("delete from commerce.work_events where id = $1", [id])).rejects.toThrow(/append-only/);
+    await expect(db.query("insert into commerce.work_events (store_id, entity_type, type, data) values ($1, 'client', 'x', '[]')", [w.storeId])).rejects.toThrow(/work_events_data/);
+  });
+
+  it("cannot point across stores", async () => {
+    const w = await workStore();
+    const v = await workStore();
+    const mine = await issued(w);
+    const theirs = await issued(v);
+    const expectFk = (statement: string, params: unknown[]) => expect(db.query(statement, params)).rejects.toThrow(/violates foreign key constraint|work_invoice\.assignment|work_time\.draft_only/);
+
+    await expectFk("insert into commerce.work_assignments (store_id, client_id, name) values ($1, $2, 'x')", [v.storeId, w.clientId]);
+    await expectFk("insert into commerce.work_invoices (store_id, client_id, currency) values ($1, $2, 'NOK')", [v.storeId, w.clientId]);
+    await expectFk("insert into commerce.work_invoices (store_id, client_id, assignment_id, currency) values ($1, $2, $3, 'NOK')", [v.storeId, v.clientId, w.assignmentId]);
+    await expectFk("insert into commerce.work_invoice_lines (store_id, invoice_id, description) values ($1, $2, 'x')", [v.storeId, mine.invoiceId]);
+    await expectFk("insert into commerce.work_tasks (store_id, assignment_id, title) values ($1, $2, 'x')", [v.storeId, w.assignmentId]);
+    await expectFk("insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes) values ($1, $2, $3, '2026-09-01', 5)", [v.storeId, w.assignmentId, w.account]);
+    await expectFk("insert into commerce.work_timers (store_id, account_id, assignment_id) values ($1, $2, $3)", [v.storeId, w.account, w.assignmentId]);
+    await expectFk(
+      "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 1, 'NOK', '2026-09-10', 'bank')",
+      [v.storeId, mine.invoiceId],
+    );
+    await expectFk("insert into commerce.work_recurring_invoices (store_id, client_id, name, description, unit_price_minor, currency, start_date) values ($1, $2, 'x', 'x', 1, 'NOK', '2026-09-01')", [v.storeId, w.clientId]);
+    // A time entry cannot go on another store's line, nor take another store's task.
+    const { id: entry } = await one<{ id: string }>(
+      "insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes) values ($1, $2, $3, '2026-09-01', 5) returning id",
+      [v.storeId, v.assignmentId, v.account],
+    );
+    const draft = await workDraft(w.storeId, w.clientId);
+    const line = await workLine(w.storeId, draft);
+    await expectFk("update commerce.work_time_entries set invoice_line_id = $2 where id = $1", [entry, line]);
+    const task = (await one<{ id: string }>("insert into commerce.work_tasks (store_id, assignment_id, title) values ($1, $2, 't') returning id", [w.storeId, w.assignmentId])).id;
+    await expectFk("update commerce.work_time_entries set task_id = $2 where id = $1", [entry, task]);
+    // A client is another store's customer or company only by that store's own rows.
+    const company = (await one<{ id: string }>("insert into commerce.customer_companies (store_id, name) values ($1, 'Kunde AS') returning id", [w.storeId])).id;
+    await expectFk("update commerce.work_clients set customer_company_id = $2 where id = $1", [v.clientId, company]);
+    await expectFk("update commerce.work_clients set customer_id = $2 where id = $1", [v.clientId, (await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, 'kunde@example.com') returning id", [w.storeId])).id]);
+    // Series: an invoice is numbered from its own store's series only.
+    expect(theirs.invoice.document_number).toBe("W-1");
+  });
+
+  it("links a client to a customer company and person, and only lets go of the link when they are deleted", async () => {
+    const w = await workStore();
+    const company = (await one<{ id: string }>("insert into commerce.customer_companies (store_id, name) values ($1, 'Kunde AS') returning id", [w.storeId])).id;
+    const customer = (await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, 'ansvarlig@example.com') returning id", [w.storeId])).id;
+    await db.query("update commerce.work_clients set customer_company_id = $2, customer_id = $3 where id = $1", [w.clientId, company, customer]);
+    await db.query("delete from commerce.customers where id = $1", [customer]);
+    await db.query("delete from commerce.customer_companies where id = $1", [company]);
+    expect(await one<Row>("select store_id = $2 as same_store, customer_company_id, customer_id from commerce.work_clients where id = $1", [w.clientId, w.storeId])).toEqual({ same_store: true, customer_company_id: null, customer_id: null });
+  });
+
+  it("archives a client that has been invoiced rather than deleting it, and deletes one that has not", async () => {
+    const w = await workStore();
+    const { invoiceId } = await issued(w);
+    await expect(db.query("delete from commerce.work_clients where id = $1", [w.clientId])).rejects.toThrow();
+    await db.query("update commerce.work_clients set archived_at = now() where id = $1", [w.clientId]);
+    expect((await one<Row>("select status from commerce.work_invoices where id = $1", [invoiceId])).status).toBe("sent");
+    const lonely = await workClient(w.storeId, { name: "Ingen" });
+    await db.query("delete from commerce.work_clients where id = $1", [lonely]);
+    // A repeating invoice that has made an invoice is switched off, not deleted.
+    const { id: template } = await one<{ id: string }>(
+      `insert into commerce.work_recurring_invoices (store_id, client_id, name, description, unit_price_minor, currency, start_date)
+       values ($1, $2, 'Retainer', 'Monthly retainer', 500000, 'NOK', '2026-09-01') returning id`,
+      [w.storeId, w.clientId],
+    );
+    await db.query("insert into commerce.work_invoices (store_id, client_id, currency, recurring_invoice_id, recurring_period) values ($1, $2, 'NOK', $3, '2026-09-01')", [w.storeId, w.clientId, template]);
+    await expect(
+      db.query("insert into commerce.work_invoices (store_id, client_id, currency, recurring_invoice_id, recurring_period) values ($1, $2, 'NOK', $3, '2026-09-01')", [w.storeId, w.clientId, template]),
+    ).rejects.toThrow(/work_invoices_recurring_period_key/);
+    await expect(db.query("delete from commerce.work_recurring_invoices where id = $1", [template])).rejects.toThrow();
+    // Templates start with auto-issue off, and a period is named by its template as a pair.
+    expect((await one<Row>("select auto_issue, skipped_periods from commerce.work_recurring_invoices where id = $1", [template])).auto_issue).toBe(false);
+    await expect(db.query("insert into commerce.work_invoices (store_id, client_id, currency, recurring_period) values ($1, $2, 'NOK', '2026-10-01')", [w.storeId, w.clientId])).rejects.toThrow(/work_invoices_recurring/);
+  });
+
+  it("queues an integration event, like orders do, when a client is added and an invoice is sent, paid or credited", async () => {
+    const w = await workStore();
+    await db.query(
+      `insert into commerce.store_integrations (store_id, provider, enabled, webhook_url_encrypted, webhook_hint, events)
+       values ($1, 'zapier', true, 'x', 'x', array['work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited'])`,
+      [w.storeId],
+    );
+    const client = await workClient(w.storeId, { name: "Ny kunde" });
+    const { invoiceId, lineId } = await issued(w);
+    await db.query(
+      "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 187500, 'NOK', '2026-09-10', 'bank')",
+      [w.storeId, invoiceId],
+    );
+    await one("select * from commerce.credit_work_invoice($1, $2, $3, null, $4::jsonb)", [w.storeId, invoiceId, w.account, JSON.stringify([{ line_id: lineId, quantity_hundredths: 10 }])]);
+    const queued = await db.query<{ event: string; subject_id: string }>(
+      "select event, subject_id from commerce.integration_deliveries where store_id = $1 order by created_at, event",
+      [w.storeId],
+    );
+    expect(queued.rows.map((e) => e.event).sort()).toEqual(["work_client.created", "work_invoice.credited", "work_invoice.paid", "work_invoice.sent"]);
+    expect(queued.rows.find((e) => e.event === "work_client.created")?.subject_id).toBe(client);
+    expect(queued.rows.find((e) => e.event === "work_invoice.sent")?.subject_id).toBe(invoiceId);
+    // The events an integration did not ask for are not queued.
+    const quiet = await workStore();
+    await issued(quiet);
+    expect((await db.query("select 1 from commerce.integration_deliveries where store_id = $1", [quiet.storeId])).rows).toEqual([]);
+  });
+
+  it("checks the size and shape of what is typed into Work", async () => {
+    const w = await workStore();
+    await expect(db.query("insert into commerce.work_clients (store_id, name, currency) values ($1, '  ', 'NOK')", [w.storeId])).rejects.toThrow(/work_clients_name/);
+    await expect(db.query("insert into commerce.work_clients (store_id, name, currency) values ($1, 'x', 'nok')", [w.storeId])).rejects.toThrow(/work_clients_currency/);
+    await expect(db.query("insert into commerce.work_clients (store_id, name, currency, payment_days) values ($1, 'x', 'NOK', 91)", [w.storeId])).rejects.toThrow(/work_clients_payment_days/);
+    await expect(db.query("insert into commerce.work_clients (store_id, name, currency, vat_treatment) values ($1, 'x', 'NOK', 'zero')", [w.storeId])).rejects.toThrow(/work_clients_vat_treatment/);
+    await expect(db.query("insert into commerce.work_assignments (store_id, client_id, name, status) values ($1, $2, 'x', 'invoiced')", [w.storeId, w.clientId])).rejects.toThrow(/work_assignments_status/);
+    await expect(db.query("insert into commerce.work_assignments (store_id, client_id, name, start_date, end_date) values ($1, $2, 'x', '2026-02-01', '2026-01-01')", [w.storeId, w.clientId])).rejects.toThrow(/work_assignments_dates/);
+    await expect(db.query("insert into commerce.work_tasks (store_id, assignment_id, title, status) values ($1, $2, 'x', 'blocked')", [w.storeId, w.assignmentId])).rejects.toThrow(/work_tasks_status/);
+    const draft = await workDraft(w.storeId, w.clientId);
+    await expect(workLine(w.storeId, draft, { quantity: 10000001 })).rejects.toThrow(/work_invoice_lines_quantity/);
+    await expect(workLine(w.storeId, draft, { price: 1000000001 })).rejects.toThrow(/work_invoice_lines_price/);
+    await expect(workLine(w.storeId, draft, { discount: 10001 })).rejects.toThrow(/work_invoice_lines_discount/);
+    await expect(workLine(w.storeId, draft, { category: "reduced" })).rejects.toThrow(/work_invoice_lines_vat_category/);
+    await expect(db.query("update commerce.work_invoices set number = 1, document_number = 'W-1' where id = $1", [draft])).rejects.toThrow(/work_invoices_number/);
+    await expect(db.query("insert into commerce.work_invoices (store_id, client_id, currency, series) values ($1, $2, 'NOK', 'invoice')", [w.storeId, w.clientId])).rejects.toThrow(/work_invoices_series/);
+    // Zero-value invoices are not issued.
+    const free = await workDraft(w.storeId, w.clientId);
+    await workLine(w.storeId, free, { price: 0 });
+    await expect(issue(w.storeId, free)).rejects.toThrow(/not_ready: zero_total/);
+  });
+
+  it("indexes every foreign key of every Work table", async () => {
+    const { rows: keys } = await db.query<{ tbl: string; conname: string; cols: number[]; indrelid: number }>(
+      `select t.relname as tbl, c.conname, c.conkey::int[] as cols, c.conrelid::int as indrelid
+       from pg_constraint c
+       join pg_class t on t.oid = c.conrelid
+       join pg_namespace n on n.oid = t.relnamespace
+       where c.contype = 'f' and n.nspname = 'commerce' and t.relname like 'work\\_%'`,
+    );
+    expect(keys.length).toBeGreaterThan(30);
+    const { rows: indexes } = await db.query<{ indrelid: number; cols: string }>(
+      "select indrelid::int as indrelid, indkey::text as cols from pg_index where indrelid in (select oid from pg_class where relname like 'work\\_%')",
+    );
+    const missing = keys.filter((key) => {
+      const wanted = [...key.cols].sort().join(",");
+      return !indexes.some((index) => {
+        if (index.indrelid !== key.indrelid) return false;
+        const leading = index.cols.split(" ").map(Number).slice(0, key.cols.length);
+        return leading.sort().join(",") === wanted;
+      });
+    });
+    expect(missing.map((key) => `${key.tbl}.${key.conname}`)).toEqual([]);
   });
 });

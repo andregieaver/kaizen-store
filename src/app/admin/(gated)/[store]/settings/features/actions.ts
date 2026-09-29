@@ -8,6 +8,7 @@ import { bookingsModuleInput, setBookingsModule } from "@/server/bookings";
 import { catalogTag } from "@/server/catalog";
 import { setDeliveriesModule } from "@/server/standing-orders";
 import { storeTag } from "@/server/stores";
+import { setWorkModule } from "@/server/work-settings";
 
 const problems = (messages: string[]): FormState => ({ status: "error", messages });
 
@@ -34,5 +35,14 @@ export async function saveDeliveriesModuleAction(storeSlug: string, _state: Form
   await setDeliveriesModule(member, formData.get("deliveries") === "on");
   updateTag(storeTag(member.store.slug));
   updateTag(catalogTag(member.store.id));
+  return { status: "ok", messages: ["Saved."] };
+}
+
+/** Switches Work on or off (D122): clients, hours and invoices for consultants. Off hides the pages; nothing is deleted. */
+export async function saveWorkModuleAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  if (member.role !== "owner") return problems(["Only an owner can switch features on or off."]);
+  await setWorkModule(member, formData.get("work") === "on");
+  updateTag(storeTag(member.store.slug));
   return { status: "ok", messages: ["Saved."] };
 }

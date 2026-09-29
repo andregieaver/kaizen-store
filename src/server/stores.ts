@@ -42,6 +42,8 @@ export type Store = {
   bookingsOn: boolean;
   /** Weekly deliveries of shoppers' standing lists (D102). */
   deliveriesOn: boolean;
+  /** Work: clients, assignments, time and invoices for consultants (D122). */
+  workOn: boolean;
   /** Where the store's times are, e.g. appointments' (D65). */
   timeZone: string;
   /** Hours before an appointment its reminder goes (D65); 0 sends none. */
@@ -182,6 +184,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     openCartOnAdd: Boolean(row.open_cart_on_add),
     bookingsOn: ((row.modules ?? []) as string[]).includes("bookings"),
     deliveriesOn: ((row.modules ?? []) as string[]).includes("deliveries"),
+    workOn: ((row.modules ?? []) as string[]).includes("work"),
     timeZone: String(row.time_zone ?? "Europe/Oslo"),
     bookingReminderHours: Number(row.booking_reminder_hours ?? 24),
     ...localized(row),

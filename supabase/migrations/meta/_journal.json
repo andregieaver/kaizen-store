@@ -1338,6 +1338,20 @@
       "when": 1790713391592,
       "tag": "20260929202311_field_entities_more_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1790716750576,
+      "tag": "20260929211910_work_module",
+      "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1790716760495,
+      "tag": "20260929211920_work_rules",
+      "breakpoints": true
     }
   ]
 }

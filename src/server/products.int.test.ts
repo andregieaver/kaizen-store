@@ -51,6 +51,7 @@ async function createStore(slug: string): Promise<Store> {
     openCartOnAdd: false,
     bookingsOn: false,
     deliveriesOn: false,
+    workOn: false,
     timeZone: "Europe/Oslo", bookingReminderHours: 24,
     markets: [
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),

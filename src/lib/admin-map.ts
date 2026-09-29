@@ -8,7 +8,7 @@
 export type AdminArea = "store" | "platform" | "account";
 
 /** What must be on for a page to be offered. */
-export type PageNeeds = "bookings" | "deliveries" | "owner";
+export type PageNeeds = "bookings" | "deliveries" | "work" | "owner";
 
 export type AdminPage = {
   /** Stable id the AI opens pages by: `orders`, `order`, `product.new`. */
@@ -153,6 +153,53 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("emails", "/emails", "Emails", "Main", "Every email the store sent to shoppers, and whether it went out.", { keywords: ["sent emails", "email log"] }),
   store("email", "/emails/[emailId]", "Email", "Main", "One email as the shopper got it."),
 
+  // Store: work (D122) ----------------------------------------------------------------------
+  store("work", "/work", "Work", "Work", "The Work overview: unbilled time, invoice drafts, what clients owe and what is overdue, what needs attention and which timers are running.", {
+    needs: "work",
+    tasks: ["See what is unbilled per client", "See overdue invoices", "See who has a timer running", "See what is missing before the first invoice"],
+    keywords: ["consulting", "hours", "clients", "receivables", "unbilled", "freelance", "overview"],
+  }),
+  store("work.clients", "/work/clients", "Clients", "Work", "The people and companies the store bills for its work, with their assignments.", {
+    needs: "work",
+    tasks: ["Add a client", "Find a client", "Archive a client"],
+    keywords: ["customers", "assignments", "consulting", "billing address"],
+  }),
+  store("work.client", "/work/clients/[clientId]", "Work client", "Work", "One client: how they are billed (address, VAT treatment, currency, hourly rate, days to pay), their assignments with time logged and time not yet invoiced, and archiving or deleting the client.", {
+    needs: "work",
+    tasks: ["Change the client's details or hourly rate", "Add an assignment", "Archive or bring back the client", "Delete a client with no history (owners)"],
+    keywords: ["client", "billing address", "vat treatment", "hourly rate", "assignments", "archive"],
+  }),
+  store("work.assignment", "/work/assignments/[assignmentId]", "Assignment", "Work", "One assignment for a client: progress against its estimate, its tasks (added, ordered, estimated, ticked off), the time logged on it and a timer to start on it or any task.", {
+    needs: "work",
+    tasks: ["Add tasks and estimates", "Start or stop a timer", "Log time by hand", "Mark the assignment paused or done", "Edit the rate, fixed fee or estimate warnings"],
+    keywords: ["assignment", "task", "estimate", "timer", "log time", "hours", "fixed fee"],
+  }),
+  store("work.invoices", "/work/invoices", "Work invoices", "Work", "Invoices for hours and services: drafts, issued, overdue, paid and credited, and making a new one.", {
+    needs: "work",
+    tasks: ["Start an invoice from unbilled time", "See what is overdue (?show=overdue)", "See drafts (?show=drafts)", "Issue, record a payment or credit an invoice"],
+    keywords: ["invoice", "credit note", "bill", "payment", "overdue", "hours", "consulting"],
+  }),
+  store("work.invoice", "/work/invoices/[invoiceId]", "Work invoice", "Work", "One invoice: a draft to edit (lines, unbilled time, live totals, the checklist and issuing it), or an issued invoice with its payments, credit notes and history.", {
+    needs: "work",
+    tasks: ["Edit the lines of a draft", "Add unbilled time", "Issue the invoice", "Record or reverse a payment", "Credit the invoice (owners)", "Delete a draft"],
+    keywords: ["invoice", "draft", "issue", "credit note", "payment", "lines", "overdue"],
+  }),
+  store("work.time", "/work/time", "Time", "Work","Time logged on assignments, and starting or stopping a timer.", {
+    needs: "work",
+    tasks: ["Log time", "Start a timer", "See this week's hours"],
+    keywords: ["hours", "timer", "timesheet", "time entries", "track time"],
+  }),
+  store("work.reports", "/work/reports", "Work reports", "Work", "A client's hours and amounts for a period, to print or download as CSV.", {
+    needs: "work",
+    tasks: ["Report a client's period", "Download a CSV"],
+    keywords: ["report", "export", "csv", "hours", "period"],
+  }),
+  store("work.settings", "/settings/work", "Work settings", "Work", "VAT registration, bank details, payment terms and note, invoice footer, estimate warnings and the invoice and credit note numbering, with what is still missing before the first invoice.", {
+    needs: "work",
+    tasks: ["Say whether the business is VAT registered and give the VAT number", "Set the bank account", "Set the days to pay", "Choose the invoice number prefix and start number (before the first invoice)"],
+    keywords: ["invoice settings", "vat", "bank account", "iban", "numbering", "invoice number", "payment terms"],
+  }),
+
   // Store: bookings ----------------------------------------------------------------------
   store("bookings", "/bookings", "Calendar", "Bookings", "The week's appointments, and cancelling or marking no-shows.", {
     needs: "bookings",
@@ -251,9 +298,9 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("integration", "/integrations/[provider]", "Integration", "Store", "Connects one integration, chooses its events, tests it, and shows recent sends."),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
   store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizen's.", { keywords: ["model", "provider", "openai"] }),
-  store("features", "/settings/features", "Features", "Store", "Switches on bookings and subscription boxes, and sets the store's time zone.", {
+  store("features", "/settings/features", "Features", "Store", "Switches on bookings, subscription boxes and Work (clients, hours and invoices), and sets the store's time zone.", {
     needs: "owner",
-    keywords: ["modules", "bookings", "subscription boxes", "time zone"],
+    keywords: ["modules", "bookings", "subscription boxes", "work", "time zone"],
   }),
   store("cookies", "/settings/cookies", "Cookies and tracking", "Store", "The cookie scan, tracking tools, the consent banner and the store's own code.", {
     keywords: ["gdpr", "consent", "pixel", "analytics"],
@@ -372,12 +419,13 @@ export function pageHref(page: AdminPage, params: Record<string, string>, storeS
   return `${areaBase(page.area, storeSlug)}${path}`;
 }
 
-export type SiteFlags = { bookings?: boolean; deliveries?: boolean; owner?: boolean };
+export type SiteFlags = { bookings?: boolean; deliveries?: boolean; work?: boolean; owner?: boolean };
 
 /** Whether a page is offered to this person in this store. */
 export function pageOffered(page: AdminPage, flags: SiteFlags): boolean {
   if (page.needs === "bookings") return Boolean(flags.bookings);
   if (page.needs === "deliveries") return Boolean(flags.deliveries);
+  if (page.needs === "work") return Boolean(flags.work);
   if (page.needs === "owner") return Boolean(flags.owner);
   return true;
 }

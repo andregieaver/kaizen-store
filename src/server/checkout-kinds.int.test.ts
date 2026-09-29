@@ -176,8 +176,9 @@ async function add(sku: string, quantity: number, booking?: { startsAt: string; 
 const addStay = async (nights: number) => add("DEMO-HYTTE", nights, { startsAt: at(nextDay(), times["demo-hytte"].checkIn), resourceId: null });
 
 async function addAppointment() {
-  const week = await appointmentSlots(storeId, product["demo-massasje"], { from: nextDay() });
-  const slot = week?.days.flatMap((d) => d.slots)[0];
+  // The first week with a free time: a fixed day ahead can fall beyond how far ahead the massage is booked, or on a day it is closed.
+  const week = await appointmentSlots(storeId, product["demo-massasje"]);
+  const slot = week?.days.flatMap((d) => d.slots).find((s) => s.resourceIds.length > 0);
   if (!slot) throw new Error("no free massage times");
   await add("DEMO-MASSAGE-60", 1, { startsAt: slot.startsAt, resourceId: null });
 }

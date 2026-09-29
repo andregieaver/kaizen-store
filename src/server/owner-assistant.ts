@@ -197,7 +197,7 @@ export const ASK_KAIZEN_LIFE: ToolDefinition = {
 
 /** What the admin offers this person here: pages behind a module, or for owners only. */
 export function siteFlags(p: Principal): SiteFlags {
-  return p.store ? { bookings: p.store.bookingsOn, deliveries: p.store.deliveriesOn, owner: p.role === "owner" } : {};
+  return p.store ? { bookings: p.store.bookingsOn, deliveries: p.store.deliveriesOn, work: p.store.workOn, owner: p.role === "owner" } : {};
 }
 
 /**
