@@ -7,6 +7,7 @@ import { ProductGrid, ProductListingFor } from "@/components/product-listing";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
+import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
 import { resolveShop } from "@/server/shop";
 import { siteTerms } from "@/server/taxonomy";
@@ -60,7 +61,10 @@ export async function TermProducts({ kind, params, searchParams }: { kind: TermK
     categoryIds: kind === "category" ? withDescendants(terms, [term.id]) : [],
     tagIds: kind === "tag" ? [term.id] : [],
   };
-  const products = await listGridProducts(store.id, market, { ...scope, sort: "oldest", limit: 48 });
+  const [products, notices] = await Promise.all([
+    listGridProducts(store.id, market, { ...scope, sort: "oldest", limit: 48 }),
+    campaignNotices(store.id, market),
+  ]);
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
   const base = marketPath(store.slug, market.slug);
 
@@ -85,7 +89,7 @@ export async function TermProducts({ kind, params, searchParams }: { kind: TermK
       )}
       <Suspense
         fallback={
-          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} />
+          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} notices={notices} />
         }
       >
         <ProductListingFor

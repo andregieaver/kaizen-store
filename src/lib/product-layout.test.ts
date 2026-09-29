@@ -18,6 +18,7 @@ describe("product layouts (D79)", () => {
       "gallery",
       "title",
       "price",
+      "campaigns",
       "notice",
       "host",
       "buy",

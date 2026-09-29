@@ -4915,6 +4915,7 @@ const PART_HELP: Record<ProductPart, string> = {
   gallery: "The product's pictures: the main one swipes, with small ones to choose from.",
   title: "The product's name, the page's main heading, with the heart that saves it to a wishlist.",
   price: "The product's price, from the cheapest variant, with VAT as the shopper sees prices.",
+  campaigns: "The store's running campaigns that reach this product: 20 % off, 3 for 2, a free product over an amount, and until when. Nothing shows when none does.",
   notice: "For products sold only to businesses: tells a private shopper so, and lets them switch.",
   host: "Who hosts a stay or rental listed for an outside host.",
   buy: "Buying it: the variants with stock and Add to cart for goods, free times for appointments, dates for stays and rentals.",
@@ -5047,6 +5048,13 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
           <span>
             <span className={block.large !== false ? "text-2xl font-semibold" : "font-semibold"}>499,00</span>{" "}
             <span className="text-sm text-muted">incl. VAT</span>
+          </span>
+        );
+      case "campaigns":
+        return (
+          <span className="block rounded-lg bg-accent p-3 text-sm text-accent-foreground">
+            <span className="block font-medium">Summer sale: 3 for 2</span>
+            <span className="block opacity-90">The offer is taken off in the cart. (Shown while a campaign reaches the product.)</span>
           </span>
         );
       case "notice":

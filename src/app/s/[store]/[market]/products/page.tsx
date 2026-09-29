@@ -8,6 +8,7 @@ import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath } from "@/lib/paths";
+import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
 import { productsPageOf } from "@/server/pages";
 import { storeShareImage, storeShareTags } from "@/server/seo";
@@ -78,13 +79,16 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   }
 
   const m = t(market.lang);
-  const products = await listGridProducts(store.id, market, { categoryIds: [], tagIds: [], sort: "oldest", limit: 48 });
+  const [products, notices] = await Promise.all([
+    listGridProducts(store.id, market, { categoryIds: [], tagIds: [], sort: "oldest", limit: 48 }),
+    campaignNotices(store.id, market),
+  ]);
   return (
     <>
       <h1 className="mb-4 text-3xl font-heading tracking-tight">{m.allProducts}</h1>
       <Suspense
         fallback={
-          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} />
+          products.length === 0 ? <p>{m.noProducts}</p> : <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} notices={notices} />
         }
       >
         <ProductListingFor store={store} market={market} scope={{}} searchParams={searchParams} base={base} path={path} />

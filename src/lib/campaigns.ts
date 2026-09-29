@@ -14,7 +14,8 @@ import { planPrice } from "./subscriptions";
  * rentals or subscriptions), before the buyer's group discount (D108) and
  * any code (D31), which count what is left. A unit gets at most one
  * campaign: where several apply to the same products, the one that gives the
- * shopper most is used.
+ * shopper most is used; except a percentage set to stack, which also comes off
+ * what the others left, one after the other.
  */
 
 export const CAMPAIGN_KINDS = ["percent", "multi_buy", "gift"] as const;
@@ -45,6 +46,12 @@ export type Campaign = {
   /** What it applies to: these products and every product in these categories and tags; with neither, everything. */
   productIds: string[];
   termIds: string[];
+  /** Only customers in one of these customer groups (D108, their company's too); none for everyone. */
+  tierIds: string[];
+  /** Orders that may get it in all; null for no limit. */
+  usageLimit: number | null;
+  /** A percentage that also applies on top of other campaigns, instead of competing with them. */
+  stacks: boolean;
   createdAt: string;
 };
 
@@ -67,8 +74,10 @@ export type AppliedCampaign = { campaignId: string; name: string; kind: Campaign
 export type CampaignResult = {
   /** Off each line, by key. */
   lineOff: Record<string, number>;
-  /** Which campaign gave it, by key. */
+  /** Which campaign gave it first, by key. */
   lineBy: Record<string, string>;
+  /** Every campaign that gave something on a line, in the order they were taken, by key. */
+  lineParts: Record<string, { campaignId: string; name: string; minor: number }[]>;
   applied: AppliedCampaign[];
   /** Gifts the basket has earned; whether one is in stock is for the caller to say. */
   gifts: { campaignId: string; name: string; variantId: string; quantity: number }[];
@@ -140,9 +149,9 @@ function priceOff(campaign: Campaign, lines: CampaignLine[]): Record<string, num
  * to after the reductions.
  */
 export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], marketCode: string): CampaignResult {
-  const result: CampaignResult = { lineOff: {}, lineBy: {}, applied: [], gifts: [], valueMinor: 0 };
+  const result: CampaignResult = { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0 };
   const ordered = [...campaigns].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
-  let pending = ordered.filter((c) => c.kind !== "gift");
+  let pending = ordered.filter((c) => c.kind !== "gift" && !c.stacks);
   let free = lines;
   while (pending.length > 0) {
     let best: { campaign: Campaign; off: Record<string, number>; total: number } | null = null;
@@ -161,10 +170,26 @@ export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], mar
     for (const [key, amount] of Object.entries(best.off)) {
       result.lineOff[key] = amount;
       result.lineBy[key] = best.campaign.id;
+      result.lineParts[key] = [{ campaignId: best.campaign.id, name: best.campaign.name, minor: amount }];
     }
     result.applied.push({ campaignId: best.campaign.id, name: best.campaign.name, kind: best.campaign.kind, offMinor: best.total });
     free = free.filter((line) => !taken.has(line.key));
     pending = pending.filter((campaign) => campaign !== best!.campaign);
+  }
+
+  // A percentage that stacks comes off what is left of each line it reaches, one campaign after another.
+  for (const campaign of ordered.filter((c) => c.kind === "percent" && c.stacks)) {
+    let total = 0;
+    for (const line of lines.filter((l) => l.discountable && l.unitMinor > 0 && reaches(campaign, l))) {
+      const left = line.unitMinor * line.quantity - (result.lineOff[line.key] ?? 0);
+      const off = left > 0 ? left - planPrice(left, campaign.percent) : 0;
+      if (off <= 0) continue;
+      result.lineOff[line.key] = (result.lineOff[line.key] ?? 0) + off;
+      result.lineBy[line.key] ??= campaign.id;
+      (result.lineParts[line.key] ??= []).push({ campaignId: campaign.id, name: campaign.name, minor: off });
+      total += off;
+    }
+    if (total > 0) result.applied.push({ campaignId: campaign.id, name: campaign.name, kind: campaign.kind, offMinor: total });
   }
 
   result.valueMinor = lines.reduce((sum, line) => sum + line.valueMinor - (result.lineOff[line.key] ?? 0), 0);
@@ -226,6 +251,12 @@ export const campaignInput = z
     scope: z.enum(["all", "some"]).default("all"),
     productIds: z.array(z.uuid()).default([]),
     termIds: z.array(z.uuid()).default([]),
+    /** Customer groups it is for (D108); none for everyone. */
+    tierIds: z.array(z.uuid()).default([]),
+    /** Orders that may get it in all; empty for no limit. */
+    usageLimit: z.preprocess((v) => (v === "" || v === undefined ? null : typeof v === "string" ? Number(v) : v), z.number().int("Whole orders, please.").min(1, "Allow at least one order, or no limit.").max(1_000_000).nullable()).default(null),
+    /** A percentage also applied on top of other campaigns. */
+    stacks: z.boolean().default(false),
     startsAt: z.string().trim().nullable().default(null),
     endsAt: z.string().trim().nullable().default(null),
     active: z.boolean().default(true),
@@ -233,6 +264,7 @@ export const campaignInput = z
   .refine((input) => input.kind !== "multi_buy" || input.payQuantity < input.buyQuantity, {
     message: "Shoppers must pay for fewer items than they buy: 3 for 2, not 2 for 3.",
   })
+  .refine((input) => !input.stacks || input.kind === "percent", { message: "Only a percentage off can be added on top of other campaigns." })
   .refine((input) => input.kind !== "gift" || input.giftVariantId !== null, { message: "Choose the product to give." })
   .refine((input) => input.scope === "all" || input.productIds.length + input.termIds.length > 0, {
     message: "Choose at least one product, category or tag, or let the campaign apply to everything.",

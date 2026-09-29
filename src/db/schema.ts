@@ -1278,6 +1278,12 @@ export const campaigns = commerce.table(
     thresholds: jsonb("thresholds").notNull().default({}),
     productIds: jsonb("product_ids").notNull().default([]),
     termIds: jsonb("term_ids").notNull().default([]),
+    /** Only customers in one of these customer groups (D108), their company's included; none for everyone. */
+    tierIds: jsonb("tier_ids").notNull().default([]),
+    /** Orders that may get it in all; null for no limit. */
+    usageLimit: integer("usage_limit"),
+    /** A percentage that also applies on top of other campaigns instead of competing with them. */
+    stacks: boolean("stacks").notNull().default(false),
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     active: boolean("active").notNull().default(true),
@@ -1296,6 +1302,8 @@ export const campaigns = commerce.table(
       sql`(${t.kind} = 'multi_buy' and ${t.buyQuantity} between 2 and 20 and ${t.payQuantity} between 1 and ${t.buyQuantity} - 1) or (${t.kind} <> 'multi_buy' and ${t.buyQuantity} = 0 and ${t.payQuantity} = 0)`,
     ),
     check("campaigns_gift", sql`(${t.kind} = 'gift' and ${t.giftVariantId} is not null and ${t.giftQuantity} between 1 and 5) or (${t.kind} <> 'gift' and ${t.giftVariantId} is null)`),
+    check("campaigns_usage_limit", sql`${t.usageLimit} is null or ${t.usageLimit} > 0`),
+    check("campaigns_stacks", sql`not ${t.stacks} or ${t.kind} = 'percent'`),
     check("campaigns_dates", sql`${t.startsAt} is null or ${t.endsAt} is null or ${t.startsAt} < ${t.endsAt}`),
   ],
 );
@@ -1921,6 +1929,8 @@ export const orderLines = commerce.table(
     /** The part a campaign gave (D114), and which; a gift line is the whole line, at its list price. */
     campaignDiscountMinor: money("campaign_discount_minor").default(0),
     campaignId: uuid("campaign_id"),
+    /** Every campaign that gave something on this line: `[{ id, name, minor }]`, the first being `campaign_id`. */
+    campaignParts: jsonb("campaign_parts").notNull().default([]),
     gift: boolean("gift").notNull().default(false),
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),

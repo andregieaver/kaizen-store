@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 
+import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { t } from "@/lib/i18n";
 import { chosenFilters, parseListingParams } from "@/lib/listing-filters";
 import type { ContentGridBlock } from "@/lib/page-content";
 import { getBuyer } from "@/server/b2b";
+import { campaignNoticesAt } from "@/server/campaign-notices";
 import { gridData, gridScope, productItem, storeAndMarket, type GridPlace, type ListingPlace } from "@/server/content-grid";
 import { listingFacets, listingProducts } from "@/server/listing";
 import { siteTerms } from "@/server/taxonomy";
@@ -21,14 +23,15 @@ import { ListingControls } from "./product-listing";
 export async function ContentGridSection({ block, place }: { block: ContentGridBlock; place: GridPlace }) {
   const data = await gridData(block, place);
   const { listing } = place;
+  const notices = block.source.type === "products" && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
   if (block.filters && block.source.type === "products" && place.owner && listing) {
     return (
-      <Suspense fallback={<ContentGridView block={block} data={data} />}>
-        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} />
+      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} />}>
+        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} />
       </Suspense>
     );
   }
-  return <ContentGridView block={block} data={data} />;
+  return <ContentGridView block={block} data={data} notices={notices} />;
 }
 
 /** The grid's products as the shopper filters and sorts them, with the controls to do so. */
@@ -38,12 +41,14 @@ async function FilterableGrid({
   market: marketCode,
   listing,
   data,
+  notices,
 }: {
   block: ContentGridBlock;
   owner: string;
   market: string | undefined;
   listing: ListingPlace;
   data: GridData;
+  notices?: CampaignNotices;
 }) {
   const [shop, query] = await Promise.all([storeAndMarket(owner, marketCode ?? null), listing.query]);
   if (!shop) return <ContentGridView block={block} data={data} />;
@@ -77,7 +82,7 @@ async function FilterableGrid({
       {items.length === 0 && !unfiltered ? (
         <p>{m.listing.none}</p>
       ) : (
-        <ContentGridView block={block} data={{ ...data, items }} />
+        <ContentGridView block={block} data={{ ...data, items }} notices={notices} />
       )}
     </div>
   );

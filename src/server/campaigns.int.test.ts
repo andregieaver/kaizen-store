@@ -92,6 +92,22 @@ describe("saving a campaign", () => {
     expect(await save({ name: "Missing", kind: "percent", percent: 10 }, crypto.randomUUID())).toMatchObject({ ok: false });
   });
 
+  it("keeps a limit on orders, customer groups and stacking, and checks the groups are the store's", async () => {
+    const [tier] = await db().execute<Row>(sql`insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Grossist', 10) returning id`);
+    const tierId = String(tier.id);
+    const made = await save({ name: "Limited", kind: "percent", percent: 5, usageLimit: "25", tierIds: [tierId], stacks: true });
+    if (!made.ok || !made.id) throw new Error("not saved");
+    expect(await campaigns.getCampaign(storeId, made.id)).toMatchObject({ usageLimit: 25, tierIds: [tierId], stacks: true });
+    expect(await save({ name: "Ghost group", kind: "percent", percent: 5, tierIds: [crypto.randomUUID()] })).toMatchObject({ ok: false, problems: [expect.stringContaining("customer group")] });
+    expect(await save({ name: "Stacked deal", kind: "multi_buy", buyQuantity: 3, payQuantity: 2, stacks: true })).toMatchObject({ ok: false });
+    expect(await save({ name: "None", kind: "percent", percent: 5, usageLimit: 0 })).toMatchObject({ ok: false });
+    // Changed back to no limit, everyone, and no stacking.
+    expect(await save({ name: "Open", kind: "percent", percent: 5, usageLimit: "", tierIds: [] }, made.id)).toMatchObject({ ok: true });
+    expect(await campaigns.getCampaign(storeId, made.id)).toMatchObject({ usageLimit: null, tierIds: [], stacks: false });
+    await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind, buy_quantity, pay_quantity, stacks) values (${storeId}::uuid, 'y', 'multi_buy', 3, 2, true)`)).rejects.toThrow();
+    await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind, percent, usage_limit) values (${storeId}::uuid, 'z', 'percent', 5, 0)`)).rejects.toThrow();
+  });
+
   it("refuses what the database would: a gift is a gift and a percentage is a percentage", async () => {
     await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind, percent) values (${storeId}::uuid, 'x', 'percent', 0)`)).rejects.toThrow();
     await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind) values (${storeId}::uuid, 'x', 'gift')`)).rejects.toThrow();

@@ -537,6 +537,7 @@ export const PRODUCT_PARTS = {
   gallery: "Pictures",
   title: "Title",
   price: "Price",
+  campaigns: "Campaigns",
   notice: "Business-only notice",
   host: "Host",
   buy: "Buy",

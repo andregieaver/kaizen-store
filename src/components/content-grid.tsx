@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 
 import { audienceClass } from "@/lib/b2b";
+import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { fontClass } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
@@ -9,6 +10,7 @@ import { frameStyle, gridImageShape, type ContentGridBlock } from "@/lib/page-co
 
 import { Carousel } from "./carousel";
 import { HEADING_SIZES, SHAPES, buttonLook } from "./page-block";
+import { CampaignBadge } from "./campaign-notice";
 import { Price } from "./price";
 
 /**
@@ -16,7 +18,7 @@ import { Price } from "./price";
  * site (`ContentGridSection`) and in the page builder's canvas. Columns
  * follow the screen: phones, from tablets (768 px) and computers (1024 px).
  */
-export function ContentGridView({ block, data }: { block: ContentGridBlock; data: GridData }) {
+export function ContentGridView({ block, data, notices }: { block: ContentGridBlock; data: GridData; /** The store's campaigns (D115), for a badge on the products they reach. */ notices?: CampaignNotices }) {
   if (data.items.length === 0) {
     return block.emptyText ? <p className="text-muted">{block.emptyText}</p> : null;
   }
@@ -65,7 +67,8 @@ export function ContentGridView({ block, data }: { block: ContentGridBlock; data
         >
           {block.show.image && item.image && (
             // The heading and button are the links for keyboards and screen readers; the picture is for pointing.
-            <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2]">
+            <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block">
+              {block.source.type === "products" && <CampaignBadge notices={noticesFor(notices, item.id)} m={m} />}
               <Image
                 src={item.image.url}
                 alt=""

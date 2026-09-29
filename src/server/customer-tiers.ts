@@ -170,6 +170,28 @@ export async function memberDiscountFor(runner: Runner, storeId: string, custome
   });
 }
 
+/**
+ * The customer groups a customer is in: their own, and their company's while
+ * the company is switched on (D108). What a campaign for chosen groups reads
+ * (D115); like the discount, it follows the membership, so leaving stops it.
+ */
+export async function customerTierIds(runner: Runner, storeId: string, customerId: string | null): Promise<string[]> {
+  if (!customerId) return [];
+  const [row] = await runner.execute<Row>(sql`
+    select t.id as own, t.active as own_active, ct.id as company, ct.active as company_tier_active, co.active as company_active
+    from commerce.customers c
+    left join commerce.customer_tiers t on t.store_id = c.store_id and t.id = c.tier_id
+    left join commerce.customer_companies co on co.store_id = c.store_id and co.id = c.company_id
+    left join commerce.customer_tiers ct on ct.store_id = co.store_id and ct.id = co.tier_id
+    where c.store_id = ${storeId}::uuid and c.id = ${customerId}::uuid
+  `);
+  if (!row) return [];
+  return [
+    row.own && row.own_active ? String(row.own) : null,
+    row.company && row.company_tier_active && row.company_active ? String(row.company) : null,
+  ].filter((id): id is string => id !== null);
+}
+
 /** A customer's group and company, for their page in the admin. */
 export async function customerAccess(storeId: string, customerId: string): Promise<{ tierId: string | null; companyId: string | null; companyName: string | null; role: string | null } | null> {
   const [row] = await db().execute<Row>(sql`

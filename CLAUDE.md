@@ -572,7 +572,12 @@ of running `playwright install`.
   which count what is left; a free product is an ordinary order line at a full
   discount (`order_lines.gift`), left out of the cart-changed check and of free
   shipping's basket. A new kind of price or line that discounts keeps these
-  together.
+  together. Campaigns may be limited to customer groups, to a number of orders
+  (locked in `placeOrder()`) and may stack (D115). They are announced on product
+  pages (the `campaigns` product part) and cards from `campaignNotices()`, a
+  cached read like the catalogue's: never read them per request there, keep the
+  cache's expiry past five minutes, and refresh `campaignsTag` when a campaign
+  changes (`updateTag` in an action, `ctx.invalidate` in an AI tool).
 - Customer groups and company accounts (D108, `src/lib/customer-tiers.ts`,
   `src/server/customer-tiers.ts`, `src/server/companies.ts`): a group is a
   fixed percentage (`customer_tiers`, `customers.tier_id`); a company

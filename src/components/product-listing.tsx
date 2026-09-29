@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 
 import { FilterDialog, type FilterFacets } from "@/components/filter-dialog";
 import { ProductCard } from "@/components/product-card";
+import type { CampaignNotices } from "@/lib/campaign-notices";
 import { t, type Messages } from "@/lib/i18n";
 import {
   chosenFilters,
@@ -16,6 +17,7 @@ import type { Market } from "@/lib/markets";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import type { Term } from "@/lib/taxonomy";
 import { getBuyer } from "@/server/b2b";
+import { campaignNotices } from "@/server/campaign-notices";
 import type { GridProduct } from "@/server/catalog";
 import { listingFacets, listingProducts, type ListingFacets, type ListingScope } from "@/server/listing";
 import type { Store } from "@/server/stores";
@@ -62,10 +64,11 @@ export async function ProductListing({
   const buyer = await getBuyer(store);
   const viewer = { buyer, audienceBoth: store.audience === "both" };
   const chosen = chosenFilters(filters);
-  const [facets, products, terms] = await Promise.all([
+  const [facets, products, terms, notices] = await Promise.all([
     listingFacets(store.id, market, scope, viewer, m.options as Record<string, string>),
     given && chosen.length === 0 && filters.sort === "featured" ? given : listingProducts(store.id, market, scope, filters, viewer),
     siteTerms(store.id, "product"),
+    campaignNotices(store.id, market),
   ]);
 
   return (
@@ -83,7 +86,7 @@ export async function ProductListing({
       {products.length === 0 ? (
         <p>{chosen.length > 0 ? m.listing.none : m.noProducts}</p>
       ) : (
-        <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} hrefFor={hrefFor} tracked={tracked} />
+        <ProductGrid products={products} market={market} m={m} store={store.slug} base={base} hrefFor={hrefFor} tracked={tracked} notices={notices} />
       )}
     </div>
   );
@@ -187,6 +190,7 @@ export function ProductGrid({
   hrefFor,
   tracked = false,
   columns,
+  notices,
 }: {
   products: GridProduct[];
   market: Market;
@@ -197,6 +201,8 @@ export function ProductGrid({
   tracked?: boolean;
   /** Columns by screen; two on phones and four from tablets unless given. */
   columns?: { mobile: number; tablet: number; desktop: number };
+  /** The store's campaigns (D115), for the badge on each product's card. */
+  notices?: CampaignNotices;
 }) {
   const style = columns
     ? ({
@@ -220,6 +226,7 @@ export function ProductGrid({
           m={m}
           store={store}
           base={base}
+          notices={notices}
         />
       ))}
     </ul>

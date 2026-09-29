@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { AppointmentPicker } from "@/components/appointment-picker";
 import { SwitchToBusiness } from "@/components/buyer";
+import { CampaignNotices } from "@/components/campaign-notice";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle } from "@/components/page-article";
 import { HEADING_SIZES } from "@/components/page-block";
@@ -15,6 +16,7 @@ import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-op
 import { RangePicker } from "@/components/range-picker";
 import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
 import { WishlistHeart } from "@/components/wishlist-heart";
+import { noticesFor, type CampaignNotices as Notices } from "@/lib/campaign-notices";
 import { percentText } from "@/lib/customer-tiers";
 import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
 import { seasonName, seasonPrice } from "@/lib/booking-prices";
@@ -58,6 +60,8 @@ export type ProductPageContext = {
   m: Messages;
   /** The store's All products page (D83), which the back link returns to; else the market's front page. */
   back?: { href: string; title: string } | null;
+  /** The store's campaigns (D115), announced on the page and on its related products' cards. */
+  campaigns?: Notices;
 };
 
 export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: ProductPageContext }) {
@@ -124,6 +128,8 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
           large={block.large !== false}
         />
       );
+    case "campaigns":
+      return <CampaignNotices notices={noticesFor(ctx.campaigns, product.id)} market={market} m={m} />;
     case "notice":
       // Sold only to businesses (B2B): a private shopper is told so, and can switch.
       if (product.audience !== "businesses") return null;
@@ -206,8 +212,10 @@ function galleryImages(product: ProductDetail): ProductDetail["images"] {
 }
 
 /** Whether a part has anything to show for this product; one that has not is left out, space and all. */
-export function productPartShows(block: ProductBlock, product: ProductDetail): boolean {
+export function productPartShows(block: ProductBlock, product: ProductDetail, campaigns?: Notices): boolean {
   switch (block.part) {
+    case "campaigns":
+      return noticesFor(campaigns, product.id).length > 0;
     case "gallery":
       return galleryImages(product).length > 0;
     case "notice":
@@ -258,6 +266,7 @@ async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageCo
         store={store.slug}
         base={marketPath(store.slug, market.slug)}
         columns={block.columns ?? { mobile: 2, tablet: 4, desktop: 4 }}
+        notices={ctx.campaigns}
       />
     </section>
   );
@@ -728,7 +737,7 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
       place={{ pageId: null, owner: store.id, market: market.slug }}
       inAdmin={inAdmin}
       renderBlock={(block) =>
-        block.type === "product" && productPartShows(block, product) ? <ProductPartView block={block} ctx={ctx} /> : null
+        block.type === "product" && productPartShows(block, product, ctx.campaigns) ? <ProductPartView block={block} ctx={ctx} /> : null
       }
     />
   );

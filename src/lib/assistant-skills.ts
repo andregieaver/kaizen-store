@@ -95,10 +95,11 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     when: "The owner wants a discount, a campaign, a sale or more traffic for a period.",
     steps: [
       "Ask what, for whom, how much off and until when.",
-      "create_discount makes the code (kept for their approval); or open discount.new for codes per product or amount.",
+      "A code shoppers type: create_discount (kept for their approval); or open discount.new for codes per product or amount.",
+      "An offer with no code, for a time: create_campaign (a percentage off, 3 for 2, or a free product over an amount, for the store, products, categories or tags; kept for approval). list_campaigns shows what is running.",
       "Tell shoppers: a page or front-page row (page builder), the menu (menus), and, with integrations or email tools they use, their list.",
       "Cart reminders can carry a code to win back carts (cart-reminders).",
-      "After the sale, set_discount_active switches the code off, and weekly-review shows how it went.",
+      "After the sale, set_discount_active switches the code off (set_campaign_active for a campaign, which also stops by itself at its end date), and weekly-review shows how it went.",
     ],
   },
   {

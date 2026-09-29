@@ -3,6 +3,7 @@ import type { Campaign } from "@/lib/campaigns";
 import { formatPriceInput } from "@/lib/product-input";
 import { mainCurrency } from "@/lib/markets";
 import { listGiftChoices } from "@/server/campaigns";
+import { listTiers } from "@/server/customer-tiers";
 import { listProductChoices } from "@/server/discounts";
 import { listTerms } from "@/server/taxonomy";
 import type { Store } from "@/server/stores";
@@ -27,10 +28,11 @@ function osloLocal(iso: string | null): string {
 /** The editor for a new campaign or an existing one, with the store's markets, products, categories and tags. */
 export async function CampaignForm({ store, campaign, orders = 0 }: { store: Store; campaign: Campaign | null; orders?: number }) {
   const locale = store.markets[0]?.locale ?? "nb-NO";
-  const [products, terms, gifts] = await Promise.all([
+  const [products, terms, gifts, tiers] = await Promise.all([
     listProductChoices(store.id, locale),
     listTerms({ storeId: store.id, contentType: "product" }),
     listGiftChoices(store.id, locale),
+    listTiers(store.id),
   ]);
   const currency = (code: string) => store.markets.find((m) => m.code === code)?.currency ?? mainCurrency(store);
   const initial: CampaignDraft = campaign
@@ -46,6 +48,9 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         scope: campaign.productIds.length + campaign.termIds.length > 0 ? "some" : "all",
         productIds: campaign.productIds,
         termIds: campaign.termIds,
+        tierIds: campaign.tierIds,
+        usageLimit: campaign.usageLimit === null ? "" : String(campaign.usageLimit),
+        stacks: campaign.stacks,
         startsAt: osloLocal(campaign.startsAt),
         endsAt: osloLocal(campaign.endsAt),
         active: campaign.active,
@@ -62,6 +67,9 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
         scope: "all",
         productIds: [],
         termIds: [],
+        tierIds: [],
+        usageLimit: "",
+        stacks: false,
         startsAt: "",
         endsAt: "",
         active: true,
@@ -73,6 +81,7 @@ export async function CampaignForm({ store, campaign, orders = 0 }: { store: Sto
       products={products}
       terms={terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind, parentId: t.parentId }))}
       gifts={gifts}
+      tiers={tiers.map((t) => ({ id: t.id, name: t.name, percent: t.percent, active: t.active }))}
       orders={orders}
       save={saveCampaignAction.bind(null, store.slug, campaign?.id ?? null)}
       back={`/admin/${store.slug}/campaigns`}

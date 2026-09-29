@@ -9,6 +9,7 @@ import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { storeHomeJsonLd } from "@/lib/structured-data";
+import { campaignNotices } from "@/server/campaign-notices";
 import { listProducts } from "@/server/catalog";
 import { listPublishedPages } from "@/server/pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
@@ -57,7 +58,7 @@ export default async function MarketHome({ params, searchParams }: Props) {
   if (!loaded) notFound();
   const { store, market, frontPage } = loaded;
   const m = t(market.lang);
-  const products = await listProducts(store.id, market);
+  const [products, notices] = await Promise.all([listProducts(store.id, market), campaignNotices(store.id, market)]);
   const origin = storeSiteUrl(store.slug);
   const productUrl = (handle: string) => marketPath(store.slug, market.slug, `/p/${handle}`);
   const jsonLd = (
@@ -109,6 +110,7 @@ export default async function MarketHome({ params, searchParams }: Props) {
               m={m}
               store={store.slug}
               base={marketPath(store.slug, market.slug)}
+              notices={notices}
             />
           ))}
         </ul>

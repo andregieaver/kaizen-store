@@ -71,7 +71,7 @@ export async function cartSummary(shop: Shop, cart: Cart) {
       discountable: !line.plan && !line.booking && line.unitPriceMinor > 0,
       valueMinor: today(line),
     })),
-    { ships },
+    { ships, customerId: customer?.id ?? null },
   );
   const campaignOff = payable.map((_, i) => campaigns.result.lineOff[String(i)] ?? 0);
   const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0);

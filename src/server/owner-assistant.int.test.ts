@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
+import { approvalSummary, OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
 
 import type { AiConnection } from "./ai";
 import type { Membership } from "./auth";
@@ -116,6 +116,42 @@ describe("the owner assistant (D94)", () => {
       variants: expect.arrayContaining([expect.objectContaining({ prices: expect.arrayContaining([expect.objectContaining({ country: "NO" })]) })]),
     });
     await expect(ownerTools.runOwnerTool(ctx, "list_orders", { limit: 500 })).rejects.toThrow("The arguments could not be read");
+  });
+
+  it("sets up, reads and switches off campaigns, kept for approval like the rest that goes public", async () => {
+    const tags: string[] = [];
+    const ctx = { account: member.account, store: member.store, invalidate: (tag: string) => void tags.push(tag) };
+    expect(OWNER_TOOLS.find((t) => t.name === "create_campaign")).toMatchObject({ gate: "public" });
+    expect(OWNER_TOOLS.find((t) => t.name === "set_campaign_active")).toMatchObject({ gate: "public" });
+    expect(approvalSummary("create_campaign", { name: "Kaffe 3 for 2", kind: "multi_buy", buy_quantity: 3, pay_quantity: 2, categories: ["Hjem"], ends_on: "2026-11-30", usage_limit: 100 })).toBe(
+      'Create the campaign "Kaffe 3 for 2": 3 for 2, categories Hjem, until 2026-11-30, at most 100 orders.',
+    );
+
+    // Named by what the owner says; the product, category and group are found by their names.
+    const [category] = await db().execute<Row>(sql`select name from commerce.terms where store_id = ${member.store.id}::uuid and content_type = 'product' and kind = 'category' limit 1`);
+    const made = await ownerTools.runOwnerTool(ctx, "create_campaign", { name: `Høstsalg ${run}`, kind: "percent", percent: 15, categories: [String(category.name)], products: [productHandle], ends_on: "2099-01-31", stacks: true });
+    expect(made).toMatchObject({ done: expect.stringContaining("is set up and runs now") });
+    expect(tags).toEqual([`campaigns:${member.store.id}`]);
+    const gift = await ownerTools.runOwnerTool(ctx, "create_campaign", { name: `Gratis ${run}`, kind: "gift", gift_sku: "DEMO-NOTEBOOK-LINED", amount: "500", starts_on: "2098-01-01" });
+    expect(gift).toMatchObject({ done: expect.stringContaining("starts 2098-01-01") });
+
+    const listed = (await ownerTools.runOwnerTool(ctx, "list_campaigns", {})) as { campaigns: Record<string, unknown>[] };
+    const sale = listed.campaigns.find((c) => c.name === `Høstsalg ${run}`)!;
+    expect(sale).toMatchObject({ status: "active", gives: "15 % off", adds_on_top_of_other_campaigns: true });
+    expect(sale.applies_to).toEqual(expect.arrayContaining([String(category.name)]));
+    expect(listed.campaigns.find((c) => c.name === `Gratis ${run}`)).toMatchObject({ status: "scheduled", gives: expect.stringContaining("Free product over"), free_product: expect.any(String) });
+
+    expect(await ownerTools.runOwnerTool(ctx, "set_campaign_active", { campaign: `høstsalg ${run}`, active: false })).toMatchObject({ done: expect.stringContaining("is off") });
+    const off = (await ownerTools.runOwnerTool(ctx, "list_campaigns", {})) as { campaigns: Record<string, unknown>[] };
+    expect(off.campaigns.find((c) => c.name === `Høstsalg ${run}`)).toMatchObject({ status: "off" });
+
+    // Said wrong, it says what is missing, and nothing is made.
+    await expect(ownerTools.runOwnerTool(ctx, "create_campaign", { name: "x", kind: "percent" })).rejects.toThrow("how many percent");
+    await expect(ownerTools.runOwnerTool(ctx, "create_campaign", { name: "x", kind: "multi_buy", buy_quantity: 3 })).rejects.toThrow("pay for");
+    await expect(ownerTools.runOwnerTool(ctx, "create_campaign", { name: "x", kind: "gift", gift_sku: "NOPE", amount: "10" })).rejects.toThrow("No product with the SKU NOPE");
+    await expect(ownerTools.runOwnerTool(ctx, "create_campaign", { name: "x", kind: "percent", percent: 5, categories: ["Finnes ikke"] })).rejects.toThrow("No product category");
+    await expect(ownerTools.runOwnerTool(ctx, "create_campaign", { name: "x", kind: "percent", percent: 5, customer_groups: ["Ingen"] })).rejects.toThrow("No customer group");
+    await expect(ownerTools.runOwnerTool(ctx, "set_campaign_active", { campaign: "Finnes ikke", active: true })).rejects.toThrow("No campaign");
   });
 
   let conversationId: string;

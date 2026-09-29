@@ -31,6 +31,7 @@ export const DEFAULT_PRODUCT_LAYOUT: PageContent = {
           blocks: [
             part("product-title", "title"),
             part("product-price", "price"),
+            part("product-campaigns", "campaigns"),
             part("product-notice", "notice"),
             part("product-host", "host"),
             part("product-buy", "buy"),

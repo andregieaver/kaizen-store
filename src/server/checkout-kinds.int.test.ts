@@ -322,6 +322,20 @@ const campaignScenarios: Scenario[] = [
     bookings: 1,
   },
   {
+    name: "a campaign for a customer group with one that stacks, for a group member",
+    fill: () => add("DEMO-MUG-WHITE", 2),
+    campaigns: () => [percentCampaign(20, { tierIds: [tierId] }), percentCampaign(10, { stacks: true })],
+    buyer: "group",
+    bookings: 0,
+  },
+  {
+    name: "a stacking percentage over a 3 for 2 for a group, for a company's employee",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    campaigns: () => [threeForTwo({ tierIds: [tierId] }), percentCampaign(10, { stacks: true })],
+    buyer: "company",
+    bookings: 0,
+  },
+  {
     name: "a 3 for 2 and a free product, for a company's employee, shown in euro",
     fill: () => add("DEMO-MUG-WHITE", 3),
     campaigns: () => [threeForTwo(), freeNotebook()],
@@ -463,5 +477,64 @@ describe("checkout for every kind of product", () => {
       for (const mail of mails) expect(String(mail.html)).not.toMatch(/\/no\/(order|account)/);
       expect(mails.some((mail) => String(mail.html).includes("/no-eur/order/"))).toBe(true);
     }
+  });
+});
+
+describe("campaigns with limits (D115)", () => {
+  const cancel = async (orderId: string) => (await import("./checkout")).cancelUnpaidOrder(orderId, "test");
+
+  it("go only to the customer groups they are for, and to no one who is not signed in", async () => {
+    jar.clear();
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await saveCampaign(member, null, percentCampaign(30, { tierIds: [tierId] }));
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBe(0);
+    // A member of the group gets it; so does an employee of a company in it; not someone in no group.
+    jar.clear();
+    await signInBuyer("group");
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
+    jar.clear();
+    await signInBuyer("company");
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
+    jar.clear();
+    const stranger = await preRegisterCustomer(storeId, `nogroup-${Date.now()}-${run}@example.com`);
+    await startSession(storeId, stranger);
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBe(0);
+  });
+
+  it("stop when their orders are used up, and give a use back when a checkout is cancelled", async () => {
+    jar.clear();
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await saveCampaign(member, null, percentCampaign(50, { usageLimit: 1 }));
+    await add("DEMO-MUG-WHITE", 1);
+    const first = await cartSummary(shop(), await getCart(shop()));
+    expect(first.campaignDiscountMinor).toBeGreaterThan(0);
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null });
+    expect(started).toMatchObject({ ok: true });
+    const open = await getOpenCheckout(storeId, cartId());
+    const order = await getOrder(storeId, open!.orderId);
+    expect(order?.campaignDiscountMinor).toBe(first.campaignDiscountMinor);
+    expect(order?.campaignLabel).toBe("50 % off");
+
+    // The one order took the only use, even while it waits for payment.
+    jar.clear();
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBe(0);
+    const [again] = await db().execute<Row>(sql`select count(*)::int as n from commerce.campaigns where store_id = ${storeId}::uuid`);
+    expect(Number(again.n)).toBe(1);
+    // And checkout cannot take a use that is gone: the order is placed at the full price.
+    const second = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null });
+    expect(second).toMatchObject({ ok: true });
+    const secondOrder = await getOrder(storeId, (await getOpenCheckout(storeId, cartId()))!.orderId);
+    expect(secondOrder?.campaignDiscountMinor).toBe(0);
+
+    // A cancelled checkout gives the use back.
+    await cancel(open!.orderId);
+    jar.clear();
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
   });
 });

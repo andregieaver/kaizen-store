@@ -14,6 +14,7 @@ import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { headerOverlays } from "@/lib/site-layout";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
+import { campaignNotices } from "@/server/campaign-notices";
 import { productsPageOf } from "@/server/pages";
 import { productLayoutFor } from "@/server/product-layouts";
 import { siteLayoutFor } from "@/server/site-layouts";
@@ -108,12 +109,12 @@ export default async function ProductPage({ params }: Props) {
   const back = productsPage
     ? { href: marketPath(store.slug, market.slug, "/products"), title: localizePage(productsPage.content, market.locale).title }
     : null;
-  const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back };
-
-  const [layout, header] = await Promise.all([
+  const [layout, header, campaigns] = await Promise.all([
     productLayoutFor(store.id, product.id).then((own) => own ?? DEFAULT_PRODUCT_LAYOUT),
     siteLayoutFor(store.id, "header"),
+    campaignNotices(store.id, market),
   ]);
+  const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns };
   // A header over every page (D80) lies over a product page whose layout starts with a background.
   const over = headerOverlays(header?.content.overlay, { front: false, categories: [], tags: [], rows: layout.rows });
 

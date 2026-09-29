@@ -29,6 +29,9 @@ const campaign = (over: Partial<Campaign>): Campaign => ({
   thresholds: {},
   productIds: [],
   termIds: [],
+  tierIds: [],
+  usageLimit: null,
+  stacks: false,
   createdAt: `2026-01-01T00:00:${String(n).padStart(2, "0")}Z`,
   ...over,
 });
@@ -117,6 +120,47 @@ describe("campaigns that meet", () => {
   });
 });
 
+describe("a percentage that stacks", () => {
+  it("comes off what the campaign that won left, and off lines nothing else reached", () => {
+    const sale = campaign({ percent: 20 });
+    const extra = campaign({ percent: 10, stacks: true });
+    const result = applyCampaigns([sale, extra], [line("a", 10000)], "NO");
+    // 20 % of 100,00 is 20,00; 10 % of the 80,00 left is 8,00.
+    expect(result.lineOff).toEqual({ a: 2800 });
+    expect(result.lineParts.a.map((p) => [p.campaignId, p.minor])).toEqual([[sale.id, 2000], [extra.id, 800]]);
+    expect(result.lineBy).toEqual({ a: sale.id });
+    expect(result.applied.map((a) => [a.campaignId, a.offMinor])).toEqual([[sale.id, 2000], [extra.id, 800]]);
+    // Alone, it is just a percentage.
+    expect(applyCampaigns([extra], [line("a", 10000)], "NO").lineOff).toEqual({ a: 1000 });
+  });
+
+  it("comes off the units a 3 for 2 left paid for, and never below nothing", () => {
+    const deal = campaign({ kind: "multi_buy" });
+    const extra = campaign({ percent: 50, stacks: true });
+    const two = applyCampaigns([deal, extra], [line("a", 1000, 3)], "NO");
+    // One of three free (1000), then 50 % of the 2000 left.
+    expect(two.lineOff).toEqual({ a: 2000 });
+    const all = applyCampaigns([campaign({ percent: 100 }), extra], [line("a", 1000)], "NO");
+    expect(all.lineOff).toEqual({ a: 1000 });
+    expect(all.applied).toHaveLength(1);
+  });
+
+  it("stacks in the order they were made, and reaches only its own products", () => {
+    const first = campaign({ percent: 10, stacks: true, productIds: ["p-a"] });
+    const second = campaign({ percent: 10, stacks: true });
+    const result = applyCampaigns([second, first], [line("a", 10000), line("b", 10000)], "NO");
+    expect(result.lineOff).toEqual({ a: 1000 + 900, b: 1000 });
+    expect(result.lineParts.a.map((p) => p.campaignId)).toEqual([first.id, second.id]);
+  });
+
+  it("counts towards a free product's amount", () => {
+    const extra = campaign({ percent: 50, stacks: true });
+    const gift = campaign({ kind: "gift", giftVariantId: "v", thresholds: { NO: 6000 } });
+    expect(applyCampaigns([extra, gift], [line("a", 10000)], "NO").gifts).toEqual([]);
+    expect(applyCampaigns([extra, gift], [line("a", 12000)], "NO").gifts).toHaveLength(1);
+  });
+});
+
 describe("a free product over an amount", () => {
   const gift = (over: Partial<Campaign> = {}) => campaign({ kind: "gift", giftVariantId: "v-gift", thresholds: { NO: 50000 }, ...over });
 
@@ -181,6 +225,11 @@ describe("the admin's form", () => {
     // "Only some" needs something chosen: else it would be everything.
     expect(campaignInput.safeParse({ ...base, scope: "some" }).success).toBe(false);
     expect(campaignInput.safeParse({ ...base, scope: "some", termIds: [crypto.randomUUID()] }).success).toBe(true);
+    // Uses, customer groups, and stacking only for a percentage.
+    expect(campaignInput.safeParse({ ...base, usageLimit: "50", tierIds: [crypto.randomUUID()], stacks: true }).data).toMatchObject({ usageLimit: 50, stacks: true });
+    expect(campaignInput.safeParse({ ...base, usageLimit: "" }).data?.usageLimit).toBeNull();
+    expect(campaignInput.safeParse({ ...base, usageLimit: 0 }).success).toBe(false);
+    expect(campaignInput.safeParse({ ...base, kind: "multi_buy", stacks: true }).success).toBe(false);
   });
   it("is described for the list", () => {
     const money = (minor: number, code: string) => `${code} ${minor / 100}`;

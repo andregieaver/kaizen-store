@@ -1275,6 +1275,13 @@
       "when": 1790699631020,
       "tag": "20260929163351_campaigns_gift_index",
       "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1790700285401,
+      "tag": "20260929164445_campaign_limits",
+      "breakpoints": true
     }
   ]
 }

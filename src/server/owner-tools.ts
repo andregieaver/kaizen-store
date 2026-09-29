@@ -24,6 +24,9 @@ import { deliveryRounds } from "./standing-orders";
 import { listSubscriptions } from "./subscriptions";
 import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
 import { catalogTag } from "./catalog";
+import { campaignsTag } from "./campaign-notices";
+import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
+import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { listDiscounts, saveDiscount } from "./discounts";
 import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
 import { listOrders } from "./orders";
@@ -346,6 +349,33 @@ async function listDiscountsTool({ store }: OwnerToolContext) {
   };
 }
 
+async function listCampaignsTool({ store }: OwnerToolContext) {
+  const rows = await listCampaigns(store.id);
+  const [terms, products] = await Promise.all([
+    db().execute<Row>(sql`select id, name from commerce.terms where store_id = ${store.id}::uuid and content_type = 'product'`),
+    db().execute<Row>(sql`
+      select p.id, coalesce((select title from commerce.product_translations where product_id = p.id order by locale limit 1), p.handle) as title
+      from commerce.products p where p.store_id = ${store.id}::uuid`),
+  ]);
+  const name = (rows: Row[], id: string) => String(rows.find((r) => String(r.id) === id)?.name ?? rows.find((r) => String(r.id) === id)?.title ?? id);
+  return {
+    campaigns: rows.map((c) => ({
+      name: c.name,
+      status: campaignStatus(c),
+      gives: describeCampaign(c, (minor, marketCode) => money(store, minor, store.markets.find((m) => m.code === marketCode)?.currency ?? "NOK")),
+      free_product: c.giftTitle,
+      applies_to: c.productIds.length + c.termIds.length === 0 ? "everything" : [...c.productIds.map((id) => name(products, id)), ...c.termIds.map((id) => name(terms, id))],
+      only_for_customer_groups: c.tierIds.length > 0 ? c.tierIds.length : undefined,
+      adds_on_top_of_other_campaigns: c.stacks || undefined,
+      runs: { from: c.startsAt, until: c.endsAt },
+      orders: c.orders,
+      orders_limit: c.usageLimit,
+      given: Object.entries(c.given).map(([currency, minor]) => money(store, minor, currency)),
+    })),
+    page: adminLink(store, "/campaigns"),
+  };
+}
+
 async function listPagesTool({ store }: OwnerToolContext, { type }: OwnerToolInput<"list_pages">) {
   const pages = await listPages(store.id, type);
   return {
@@ -624,6 +654,77 @@ async function setDiscountActiveTool(ctx: OwnerToolContext, { code, active }: Ow
   return { done: `The code ${String(rows[0].code)} is ${active ? "on" : "off"}.` };
 }
 
+/** The ids of a store's product categories or tags named by owners, in their own words. */
+async function termIdsByName(store: Store, kind: "category" | "tag", names: string[] = []): Promise<string[]> {
+  const ids: string[] = [];
+  for (const wanted of names) {
+    const rows = await db().execute<Row>(sql`
+      select id from commerce.terms
+      where store_id = ${store.id}::uuid and content_type = 'product' and kind = ${kind} and (lower(name) = lower(${wanted}) or slug = lower(${wanted}))
+      limit 3
+    `);
+    if (rows.length === 0) return fail(`No product ${kind} "${wanted}" in this store. Use list_products or the store's categories to find it.`);
+    if (rows.length > 1) return fail(`Several ${kind}s are called "${wanted}". Name one by its address.`);
+    ids.push(String(rows[0].id));
+  }
+  return ids;
+}
+
+async function createCampaignTool(ctx: OwnerToolContext, input: OwnerToolInput<"create_campaign">) {
+  const { store } = ctx;
+  const market = store.markets[0];
+  if (input.kind === "percent" && !input.percent) return fail("Say how many percent off.");
+  if (input.kind === "multi_buy" && (!input.buy_quantity || !input.pay_quantity)) return fail("Say how many the shopper buys and how many they pay for: 3 and 2 for 3 for 2.");
+  let giftVariantId: string | null = null;
+  if (input.kind === "gift") {
+    if (!input.gift_sku) return fail("Say which product to give, by its SKU (get_product lists each variant's SKU).");
+    if (!input.amount || !market) return fail("Say what the basket must come to for the free product.");
+    const [variant] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${store.id}::uuid and upper(sku) = upper(${input.gift_sku})`);
+    if (!variant) return fail(`No product with the SKU ${input.gift_sku} in this store. Use get_product to find it.`);
+    giftVariantId = String(variant.id);
+  }
+  const productIds = await Promise.all((input.products ?? []).map((ref) => findProductId(store, ref)));
+  const termIds = [...(await termIdsByName(store, "category", input.categories)), ...(await termIdsByName(store, "tag", input.tags))];
+  const tierIds: string[] = [];
+  for (const wanted of input.customer_groups ?? []) {
+    const [tier] = await db().execute<Row>(sql`select id from commerce.customer_tiers where store_id = ${store.id}::uuid and lower(name) = lower(${wanted})`);
+    if (!tier) return fail(`No customer group "${wanted}" in this store.`);
+    tierIds.push(String(tier.id));
+  }
+  const result = await saveCampaign({ account: ctx.account, store, role: "owner" }, null, {
+    name: input.name,
+    kind: input.kind,
+    percent: input.percent ?? 10,
+    buyQuantity: input.buy_quantity ?? 3,
+    payQuantity: input.pay_quantity ?? 2,
+    giftVariantId,
+    giftQuantity: input.gift_quantity,
+    thresholds: input.kind === "gift" && market ? { [market.code]: input.amount ?? "" } : {},
+    scope: productIds.length + termIds.length > 0 ? "some" : "all",
+    productIds,
+    termIds,
+    tierIds,
+    usageLimit: input.usage_limit ?? null,
+    stacks: input.kind === "percent" && input.stacks,
+    startsAt: input.starts_on ? `${input.starts_on}T00:00` : null,
+    endsAt: input.ends_on ? `${input.ends_on}T23:59` : null,
+    active: true,
+  });
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(campaignsTag(store.id));
+  return { done: `The campaign "${input.name}" is set up${input.starts_on ? ` and starts ${input.starts_on}` : " and runs now"}.`, admin: result.id ? adminLink(store, `/campaigns/${result.id}`) : adminLink(store, "/campaigns") };
+}
+
+async function setCampaignActiveTool(ctx: OwnerToolContext, { campaign, active }: OwnerToolInput<"set_campaign_active">) {
+  const rows = await db().execute<Row>(sql`select id, name from commerce.campaigns where store_id = ${ctx.store.id}::uuid and lower(name) = lower(${campaign})`);
+  if (rows.length === 0) return fail(`No campaign "${campaign}" in this store. Use list_campaigns to find it.`);
+  if (rows.length > 1) return fail(`Several campaigns are called "${campaign}". Rename one first, in the admin.`);
+  const result = await setCampaignActive({ account: ctx.account, store: ctx.store, role: "owner" }, String(rows[0].id), active);
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(campaignsTag(ctx.store.id));
+  return { done: `The campaign ${String(rows[0].name)} is ${active ? "on" : "off"}.` };
+}
+
 // Reaching customers, the team and the stock (D104) -------------------------------------------
 
 async function listIntegrationsTool({ store }: OwnerToolContext) {
@@ -760,6 +861,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   low_stock: lowStock,
   list_bookings: listBookingsTool,
   list_discounts: listDiscountsTool,
+  list_campaigns: listCampaignsTool,
   list_pages: listPagesTool,
   search_insights: searchInsights,
   add_order_note: addOrderNoteTool,
@@ -779,6 +881,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   refund_order: refundOrderTool,
   create_discount: createDiscountTool,
   set_discount_active: setDiscountActiveTool,
+  create_campaign: createCampaignTool,
+  set_campaign_active: setCampaignActiveTool,
   customer_insights: customerInsights,
   product_performance: productPerformance,
   sales_trend: salesTrend,

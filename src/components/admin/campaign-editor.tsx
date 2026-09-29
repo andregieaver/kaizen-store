@@ -20,6 +20,10 @@ export type CampaignDraft = {
   scope: "all" | "some";
   productIds: string[];
   termIds: string[];
+  /** Customer groups it is for; none for everyone. */
+  tierIds: string[];
+  usageLimit: string;
+  stacks: boolean;
   startsAt: string;
   endsAt: string;
   active: boolean;
@@ -47,6 +51,7 @@ export function CampaignEditor({
   products,
   terms,
   gifts,
+  tiers,
   orders,
   save,
   back,
@@ -56,6 +61,8 @@ export function CampaignEditor({
   products: { id: string; title: string }[];
   terms: { id: string; name: string; kind: "category" | "tag"; parentId: string | null }[];
   gifts: { variantId: string; label: string }[];
+  /** The store's customer groups (D108). */
+  tiers: { id: string; name: string; percent: number; active: boolean }[];
   /** Orders that got something from it. */
   orders: number;
   save: Save;
@@ -66,7 +73,7 @@ export function CampaignEditor({
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, startSaving] = useTransition();
   const set = <K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => setD((current) => ({ ...current, [key]: value }));
-  const toggle = (key: "productIds" | "termIds", id: string, on: boolean) => set(key, on ? [...d[key], id] : d[key].filter((x) => x !== id));
+  const toggle = (key: "productIds" | "termIds" | "tierIds", id: string, on: boolean) => set(key, on ? [...d[key], id] : d[key].filter((x) => x !== id));
 
   const submit = () =>
     startSaving(async () => {
@@ -82,6 +89,9 @@ export function CampaignEditor({
         scope: d.scope,
         productIds: d.productIds,
         termIds: d.termIds,
+        tierIds: d.tierIds,
+        usageLimit: d.usageLimit || null,
+        stacks: d.kind === "percent" && d.stacks,
         startsAt: d.startsAt || null,
         endsAt: d.endsAt || null,
         active: d.active,
@@ -159,6 +169,17 @@ export function CampaignEditor({
           <label className={`${label} max-w-40`}>
             Percent off
             <input type="number" min={1} max={100} value={d.percent} onChange={(event) => set("percent", event.target.value)} required inputMode="numeric" className={input} />
+          </label>
+        )}
+        {d.kind === "percent" && (
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" checked={d.stacks} onChange={(event) => set("stacks", event.target.checked)} className="mt-0.5 size-4" />
+            <span>
+              Also apply on top of other campaigns
+              <span className={`block ${hint}`}>
+                Normally a product gets one campaign, the one that gives the shopper most. With this on, the percentage also comes off what the other campaign left, one after the other.
+              </span>
+            </span>
           </label>
         )}
 
@@ -292,10 +313,54 @@ export function CampaignEditor({
           </label>
         </div>
         <p className={hint}>Norwegian time. It starts and stops by itself; without dates it runs while it is switched on.</p>
+        <label className={`${label} max-w-56`}>
+          Orders it can go to in all (optional)
+          <input type="number" min={1} value={d.usageLimit} onChange={(event) => set("usageLimit", event.target.value)} placeholder="No limit" inputMode="numeric" className={input} />
+          <span className={hint}>An order counts once, however many products it took effect on. It stops by itself when they are used up.</span>
+        </label>
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" checked={d.active} onChange={(event) => set("active", event.target.checked)} className="size-4" />
           Switched on
         </label>
+      </section>
+
+      <section aria-labelledby="who-heading" className={card}>
+        <h2 id="who-heading" className="font-medium">
+          Who
+        </h2>
+        {tiers.length === 0 ? (
+          <p className="text-sm text-muted">It is for every shopper. Make customer groups under Customer groups to give a campaign to some customers only.</p>
+        ) : (
+          <>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="sr-only">Who it is for</legend>
+              <label className="flex min-h-10 items-center gap-3 text-sm">
+                <input type="radio" name="who" checked={d.tierIds.length === 0} onChange={() => set("tierIds", [])} className="size-4" />
+                Every shopper
+              </label>
+              <label className="flex min-h-10 items-center gap-3 text-sm">
+                <input type="radio" name="who" checked={d.tierIds.length > 0} onChange={() => d.tierIds.length === 0 && set("tierIds", [tiers[0].id])} className="size-4" />
+                Only customers in these groups
+              </label>
+            </fieldset>
+            {d.tierIds.length > 0 && (
+              <ul className="grid gap-1 rounded-md border border-border p-2 sm:grid-cols-2">
+                {tiers.map((tier) => (
+                  <li key={tier.id}>
+                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-surface">
+                      <input type="checkbox" checked={d.tierIds.includes(tier.id)} onChange={(event) => toggle("tierIds", tier.id, event.target.checked)} className="size-4" />
+                      {tier.name}
+                      {!tier.active && <span className={hint}> (switched off)</span>}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className={hint}>
+              Shoppers must be signed in to My account. A company&apos;s employees are in its group. A campaign for chosen groups is not announced on product pages, which are the same for everyone.
+            </p>
+          </>
+        )}
       </section>
 
       <div className="flex items-center gap-3">

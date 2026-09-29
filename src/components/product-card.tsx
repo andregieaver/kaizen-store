@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { CampaignBadge } from "@/components/campaign-notice";
 import { Price } from "@/components/price";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { audienceClass } from "@/lib/b2b";
+import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { ProductSummary } from "@/server/catalog";
@@ -16,6 +18,7 @@ export function ProductCard({
   store,
   base,
   tracked = false,
+  notices,
 }: {
   product: ProductSummary;
   href: string;
@@ -29,6 +32,8 @@ export function ProductCard({
   /** The store's slug and the market's path, for the wishlist heart (D34). */
   store: string;
   base: string;
+  /** The store's campaigns (D115): the offer on this product shows as a badge. */
+  notices?: CampaignNotices;
 }) {
   return (
     // The theme draws the card (D60): its picture's shape, and plain, bordered or raised, left or centred.
@@ -41,6 +46,7 @@ export function ProductCard({
         productId={product.id}
         labels={{ save: m.wishlist.save(product.title), saved: m.wishlist.saved, removed: m.wishlist.removed }}
       />
+      <CampaignBadge notices={noticesFor(notices, product.id)} m={m} />
       {product.image && (
         <Image
           src={product.image.url}

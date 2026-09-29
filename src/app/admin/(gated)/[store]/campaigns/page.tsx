@@ -109,13 +109,18 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                     </td>
                     <td className="hidden px-4 py-2 sm:table-cell">
                       {c.orders}
+                      {c.usageLimit !== null && ` of ${c.usageLimit}`}
                       {Object.entries(c.given).map(([currency, minor]) => (
                         <span key={currency} className="block text-xs text-muted">
                           {formatMoney(minor, currency, locale)} given
                         </span>
                       ))}
                     </td>
-                    <td className="px-4 py-2">{STATUS[status]}</td>
+                    <td className="px-4 py-2">
+                      {c.usageLimit !== null && c.orders >= c.usageLimit && status === "active" ? "Used up" : STATUS[status]}
+                      {c.tierIds.length > 0 && <span className="block text-xs text-muted">For {c.tierIds.length === 1 ? "a customer group" : `${c.tierIds.length} customer groups`}</span>}
+                      {c.stacks && <span className="block text-xs text-muted">Adds on top</span>}
+                    </td>
                     <td className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
                         <form action={setCampaignActiveAction.bind(null, store.slug, c.id, !c.active)}>

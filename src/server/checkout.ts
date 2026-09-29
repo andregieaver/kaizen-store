@@ -289,6 +289,8 @@ export async function placeOrder(
         /** What a campaign took off (D114), which one, and whether the line is a free product it gave. */
         campaign: 0,
         campaignId: null as string | null,
+        /** Each campaign that gave something on the line, kept with the order line (D115). */
+        parts: [] as { campaignId: string; name: string; minor: number }[],
         gift: false,
         total: unit * quantity,
         title,
@@ -316,13 +318,14 @@ export async function placeOrder(
         discountable: !p.recurring && !p.range && p.line.kind === "goods" && p.unit > 0,
         valueMinor: p.unit * p.quantity,
       })),
-      { ships: physical.length > 0 },
+      { ships: physical.length > 0, customerId, lock: true },
     );
     priced.forEach((p, i) => {
       const off = outcome.result.lineOff[String(i)] ?? 0;
       if (off === 0) return;
       p.campaign = off;
-      p.campaignId = outcome.result.lineBy[String(i)] ?? null;
+      p.parts = outcome.result.lineParts[String(i)] ?? [];
+      p.campaignId = p.parts[0]?.campaignId ?? null;
       p.discount = off;
       p.total = p.unit * p.quantity - off;
     });
@@ -338,12 +341,8 @@ export async function placeOrder(
       lines.push(row);
       const p = price(row);
       const whole = p.unit * p.quantity;
-      priced.push({ ...p, gift: true, campaign: whole, campaignId: gift.campaignId, discount: whole, total: 0 });
+      priced.push({ ...p, gift: true, campaign: whole, campaignId: gift.campaignId, parts: [{ campaignId: gift.campaignId, name: gift.campaignName, minor: whole }], discount: whole, total: 0 });
     }
-    const campaignNames = new Map([
-      ...outcome.result.applied.map((a) => [a.campaignId, a.name] as const),
-      ...outcome.gifts.map((g) => [g.campaignId, g.campaignName] as const),
-    ]);
 
     // Lock the stock rows, then count what is free: on hand minus live holds.
     const toShip = lines.filter((l) => l.delivery === "physical");
@@ -478,7 +477,7 @@ export async function placeOrder(
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
     const memberTotal = priced.reduce((sum, p) => sum + p.member, 0);
     const campaignTotal = priced.reduce((sum, p) => sum + p.campaign, 0);
-    const campaignText = campaignLabel(priced.filter((p) => p.campaign > 0).map((p) => campaignNames.get(p.campaignId ?? "") ?? ""));
+    const campaignText = campaignLabel(priced.flatMap((p) => p.parts.map((part) => part.name)));
     // Appointments paid at the venue, or with a deposit now (D66): the part left for the venue.
     const venue = priced.map((p) =>
       venuePart(
@@ -526,7 +525,7 @@ export async function placeOrder(
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
-          campaign_discount_minor, campaign_id, gift
+          campaign_discount_minor, campaign_id, campaign_parts, gift
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${vatIncluded(p.total, p.rate)},
@@ -536,7 +535,7 @@ export async function placeOrder(
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
           ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
           ${p.range && p.startsAt ? p.count : null},
-          ${p.campaign}, ${p.campaignId}::uuid, ${p.gift}
+          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}
         )
         returning id
       `);

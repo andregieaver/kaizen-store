@@ -16,6 +16,7 @@ import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { parsePrice } from "@/lib/product-input";
 
 import { audit, type Membership } from "./auth";
+import { customerTierIds } from "./customer-tiers";
 import { osloTime } from "./discounts";
 import type { SaveResult } from "./settings";
 
@@ -47,6 +48,9 @@ function toCampaign(row: Row): Campaign {
     thresholds: (row.thresholds ?? {}) as Record<string, number>,
     productIds: ids(row.product_ids),
     termIds: ids(row.term_ids),
+    tierIds: ids(row.tier_ids),
+    usageLimit: row.usage_limit === null || row.usage_limit === undefined ? null : Number(row.usage_limit),
+    stacks: Boolean(row.stacks),
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
@@ -59,6 +63,9 @@ export type CampaignListRow = Campaign & {
   given: Record<string, number>;
 };
 
+/** Whether an order line got something from the campaign with this id (an SQL expression), through its parts (D115). */
+const partOf = (id: string) => sql.raw(`ol.campaign_parts @> jsonb_build_array(jsonb_build_object('id', ${id}::text))`);
+
 export async function listCampaigns(storeId: string): Promise<CampaignListRow[]> {
   const rows = await db().execute<Row>(sql`
     select c.*,
@@ -68,12 +75,13 @@ export async function listCampaigns(storeId: string): Promise<CampaignListRow[]>
          where v.store_id = c.store_id and v.id = c.gift_variant_id) as gift_title,
       (select count(distinct ol.order_id)::int from commerce.order_lines ol
          join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-         where ol.store_id = c.store_id and ol.campaign_id = c.id and o.status <> 'cancelled') as orders,
+         where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled') as orders,
       (select coalesce(jsonb_object_agg(currency, total), '{}'::jsonb) from (
-         select o.currency, sum(ol.campaign_discount_minor)::bigint as total
+         select o.currency, sum((part ->> 'minor')::bigint)::bigint as total
          from commerce.order_lines ol
          join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-         where ol.store_id = c.store_id and ol.campaign_id = c.id and o.status not in ('cancelled', 'pending_payment')
+         cross join lateral jsonb_array_elements(ol.campaign_parts) part
+         where ol.store_id = c.store_id and part ->> 'id' = c.id::text and o.status not in ('cancelled', 'pending_payment')
          group by o.currency) g) as given
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid
@@ -120,6 +128,14 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
 
   const productIds = c.scope === "all" ? [] : [...new Set(c.productIds)];
   const termIds = c.scope === "all" ? [] : [...new Set(c.termIds)];
+  const tierIds = [...new Set(c.tierIds)];
+  if (tierIds.length > 0) {
+    const [row] = await db().execute<Row>(sql`
+      select count(*)::int as n from commerce.customer_tiers
+      where store_id = ${store.id}::uuid and id in (${sql.join(tierIds.map((t) => sql`${t}::uuid`), sql`, `)})
+    `);
+    if (Number(row.n) !== tierIds.length) problems.push("A chosen customer group no longer exists.");
+  }
   if (productIds.length > 0) {
     const [row] = await db().execute<Row>(sql`
       select count(*)::int as n from commerce.products
@@ -157,6 +173,8 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     thresholds: JSON.stringify(thresholds),
     productIds: JSON.stringify(productIds),
     termIds: JSON.stringify(termIds),
+    tierIds: JSON.stringify(tierIds),
+    stacks: c.kind === "percent" && c.stacks,
   };
   const [row] = id
     ? await db().execute<Row>(sql`
@@ -164,6 +182,7 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
           name = ${c.name}, kind = ${c.kind}, percent = ${values.percent}, buy_quantity = ${values.buy}, pay_quantity = ${values.pay},
           gift_variant_id = ${values.gift}::uuid, gift_quantity = ${values.giftQuantity}, thresholds = ${values.thresholds}::jsonb,
           product_ids = ${values.productIds}::jsonb, term_ids = ${values.termIds}::jsonb,
+          tier_ids = ${values.tierIds}::jsonb, usage_limit = ${c.usageLimit}, stacks = ${values.stacks},
           starts_at = ${startsAt}::timestamptz, ends_at = ${endsAt}::timestamptz, active = ${c.active}, updated_at = now()
         where store_id = ${store.id}::uuid and id = ${id}::uuid
         returning id
@@ -171,11 +190,11 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     : await db().execute<Row>(sql`
         insert into commerce.campaigns (
           store_id, name, kind, percent, buy_quantity, pay_quantity, gift_variant_id, gift_quantity, thresholds,
-          product_ids, term_ids, starts_at, ends_at, active
+          product_ids, term_ids, tier_ids, usage_limit, stacks, starts_at, ends_at, active
         ) values (
           ${store.id}::uuid, ${c.name}, ${c.kind}, ${values.percent}, ${values.buy}, ${values.pay}, ${values.gift}::uuid,
           ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
-          ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
+          ${values.tierIds}::jsonb, ${c.usageLimit}, ${values.stacks}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
         )
         returning id
       `);
@@ -207,16 +226,48 @@ export async function setCampaignActive({ account, store }: Membership, id: stri
 // In the cart and checkout
 // ---------------------------------------------------------------------------
 
-/** The campaigns running now, their amounts in the currency shown (D109). */
-export async function runningCampaigns(runner: Runner, storeId: string, market: Market, now = new Date()): Promise<Campaign[]> {
-  const rows = await runner.execute<Row>(sql`select * from commerce.campaigns where store_id = ${storeId}::uuid and active`);
+/**
+ * The campaigns running now that this customer may have, their amounts in
+ * the currency shown (D109): switched on, within their dates, for everyone or
+ * a customer group the customer is in (D108), and with uses left (D115). In
+ * checkout, pass the transaction and `lock`: a campaign with a limit is then
+ * locked while the order is placed, so two checkouts cannot both take its last
+ * use.
+ */
+export async function runningCampaigns(
+  runner: Runner,
+  storeId: string,
+  market: Market,
+  { customerId = null, lock = false, now = new Date() }: { customerId?: string | null; lock?: boolean; now?: Date } = {},
+): Promise<Campaign[]> {
+  // Only a campaign with a limit is locked, so checkouts that use none do not wait for each other.
+  if (lock) {
+    await runner.execute(sql`
+      select 1 from commerce.campaigns where store_id = ${storeId}::uuid and active and usage_limit is not null
+      order by id for update
+    `);
+  }
+  const rows = await runner.execute<Row>(sql`
+    select c.*, case when c.usage_limit is null then 0 else (
+      select count(distinct ol.order_id)::int from commerce.order_lines ol
+      join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
+      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled'
+    ) end as used
+    from commerce.campaigns c
+    where c.store_id = ${storeId}::uuid and c.active
+  `);
+  const tiers = rows.some((row) => ids(row.tier_ids).length > 0) ? await customerTierIds(runner, storeId, customerId) : [];
   return rows
-    .map(toCampaign)
-    .filter((c) => campaignRunning(c, now))
-    .map((c) => ({
-      ...c,
-      thresholds: c.thresholds[market.code] === undefined ? c.thresholds : { ...c.thresholds, [market.code]: shown(market, c.thresholds[market.code]) },
-    }));
+    .filter((row) => {
+      const campaign = toCampaign(row);
+      if (!campaignRunning(campaign, now)) return false;
+      if (campaign.tierIds.length > 0 && !campaign.tierIds.some((id) => tiers.includes(id))) return false;
+      return campaign.usageLimit === null || Number(row.used) < campaign.usageLimit;
+    })
+    .map((row) => {
+      const c = toCampaign(row);
+      return { ...c, thresholds: c.thresholds[market.code] === undefined ? c.thresholds : { ...c.thresholds, [market.code]: shown(market, c.thresholds[market.code]) } };
+    });
 }
 
 /** Each product's categories, their parents and its tags, so a campaign for "Shoes" reaches what is in "Sneakers". */
@@ -259,7 +310,7 @@ export type GiftItem = {
 
 export type CampaignOutcome = { result: CampaignResult; gifts: GiftItem[] };
 
-const none: CampaignOutcome = { result: { lineOff: {}, lineBy: {}, applied: [], gifts: [], valueMinor: 0 }, gifts: [] };
+const none: CampaignOutcome = { result: { lineOff: {}, lineBy: {}, lineParts: {}, applied: [], gifts: [], valueMinor: 0 }, gifts: [] };
 
 /**
  * What the running campaigns do to a basket: the reductions per line, and
@@ -271,10 +322,10 @@ export async function evaluateCampaigns(
   runner: Runner,
   { storeId, market }: { storeId: string; market: Market },
   lines: BasketLine[],
-  { ships }: { ships: boolean },
+  { ships, customerId = null, lock = false }: { ships: boolean; customerId?: string | null; lock?: boolean },
 ): Promise<CampaignOutcome> {
   if (lines.length === 0) return none;
-  const campaigns = await runningCampaigns(runner, storeId, market);
+  const campaigns = await runningCampaigns(runner, storeId, market, { customerId, lock });
   if (campaigns.length === 0) return none;
   const terms = await termsOfProducts(runner, storeId, [...new Set(lines.map((l) => l.productId))]);
   const result = applyCampaigns(

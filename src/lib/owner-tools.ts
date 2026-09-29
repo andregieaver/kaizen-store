@@ -96,6 +96,11 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "list_campaigns",
+    "The store's campaigns (offers without a code): name, what each gives (a percentage off, 3 for 2, a free product over an amount), what it applies to, when it runs, its limits, how many orders got it and what it has given.",
+    z.object({}),
+  ),
+  tool(
     "list_pages",
     "The store's pages or blog articles: title, address and whether they are published.",
     z.object({ type: z.enum(["page", "article"]).default("page") }),
@@ -255,6 +260,35 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "create_campaign",
+    "Creates a campaign, an offer that needs no code, for a time: a percentage off, buy N pay for M (3 for 2), or a free product when the basket comes to an amount. For the whole store, or only the products, categories or tags named. It takes money off goods bought once, before customer groups' discounts and codes. Needs the owner's approval.",
+    z.object({
+      name: z.string().trim().min(1).max(80).describe("What shoppers see in the cart: \"Summer sale\", \"3 for 2 on mugs\"."),
+      kind: z.enum(["percent", "multi_buy", "gift"]),
+      percent: z.number().int().min(1).max(100).optional().describe("How much off, for a percentage."),
+      buy_quantity: z.number().int().min(2).max(20).optional().describe("How many the shopper buys, for multi_buy: 3 in 3 for 2."),
+      pay_quantity: z.number().int().min(1).max(19).optional().describe("How many they pay for, for multi_buy: 2 in 3 for 2."),
+      gift_sku: z.string().trim().min(1).max(100).optional().describe("The SKU of the free product, for a gift: goods the store ships."),
+      gift_quantity: z.number().int().min(1).max(5).default(1),
+      amount: z.string().trim().max(30).optional().describe("What the basket must come to for a gift, in the store's main country's currency, such as 500."),
+      products: z.array(productRef).max(50).optional().describe("Only these products; leave out with categories and tags for the whole store."),
+      categories: z.array(z.string().trim().min(1).max(80)).max(20).optional().describe("Product categories by name; their subcategories are included."),
+      tags: z.array(z.string().trim().min(1).max(80)).max(20).optional().describe("Product tags by name."),
+      customer_groups: z.array(z.string().trim().min(1).max(80)).max(20).optional().describe("Only customers in these customer groups, by name."),
+      starts_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-01.").optional().describe("The first day, as 2026-10-01; from now unless given."),
+      ends_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-01.").optional().describe("The last day, as 2026-10-31."),
+      usage_limit: z.number().int().min(1).max(1_000_000).optional().describe("How many orders it can go to in all."),
+      stacks: z.boolean().default(false).describe("For a percentage: also apply on top of other campaigns."),
+    }),
+    "public",
+  ),
+  tool(
+    "set_campaign_active",
+    "Switches a campaign off, or back on, by its name. Needs the owner's approval.",
+    z.object({ campaign: z.string().trim().min(1).max(80), active: z.boolean() }),
+    "public",
+  ),
+  tool(
     "email_customer",
     "Emails one customer of the store, in the store's name, with a subject and a message you write with the owner (replies go to the store's contact email). Plain text; no prices, stock or promises the tools did not give. Needs the owner's approval.",
     z.object({
@@ -339,6 +373,19 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Create the code ${text("code").toUpperCase()}: ${input.kind === "free_shipping" ? "free shipping" : `${text("percent") || "10"} % off`}${input.ends_at ? `, until ${text("ends_at")}` : ""}${input.usage_limit ? `, at most ${text("usage_limit")} uses` : ""}${input.once_per_customer ? ", once per customer" : ""}.`;
     case "set_discount_active":
       return `${input.active ? "Switch on" : "Switch off"} the code ${text("code").toUpperCase()}.`;
+    case "create_campaign": {
+      const gives =
+        input.kind === "multi_buy"
+          ? `${text("buy_quantity")} for ${text("pay_quantity")}`
+          : input.kind === "gift"
+            ? `a free product (${text("gift_sku")}) when the basket comes to ${text("amount")}`
+            : `${text("percent")} % off`;
+      const list = (key: string) => (Array.isArray(input[key]) ? (input[key] as unknown[]).map(String).join(", ") : "");
+      const reach = [list("products") && `products ${list("products")}`, list("categories") && `categories ${list("categories")}`, list("tags") && `tags ${list("tags")}`].filter(Boolean).join("; ");
+      return `Create the campaign "${text("name")}": ${gives}, ${reach || "for the whole store"}${input.starts_on ? `, from ${text("starts_on")}` : ""}${input.ends_on ? `, until ${text("ends_on")}` : ""}${list("customer_groups") ? `, only for the customer groups ${list("customer_groups")}` : ""}${input.usage_limit ? `, at most ${text("usage_limit")} orders` : ""}${input.stacks ? ", on top of other campaigns" : ""}.`;
+    }
+    case "set_campaign_active":
+      return `${input.active ? "Switch on" : "Switch off"} the campaign "${text("campaign")}".`;
     case "email_customer":
       return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;
     case "resend_order_email":
