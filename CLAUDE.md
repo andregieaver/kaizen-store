@@ -672,7 +672,7 @@ of running `playwright install`.
   the `incoming-webhook` scope, `SLACK_CLIENT_ID`/`_SECRET`, callback
   `/api/integrations/slack/callback`) or paste a webhook; Kaizen keeps no
   Slack token. A new event gets a message there too.
-- Weekly deliveries (D102, `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,
+- Subscription boxes (D102, named so in every text shoppers and staff read; `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,
   `/s/{store}/{market}/deliveries`, `/admin/{store}/deliveries`): a module
   (`deliveries`). A shopper's standing list (`standing_orders`, lines in
   `standing_order_lines`) on a store's delivery day (`delivery_schedules`)

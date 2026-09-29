@@ -252,7 +252,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               {weekly && toCharge && (
                 <div className="mb-4 flex flex-col gap-1 text-sm">
                   <p>
-                    Weekly delivery for {formatDeliveryDate(weekly.date, locale)}. Marking it sent charges {money(order.totalMinor)} to the
+                    Subscription box delivery for {formatDeliveryDate(weekly.date, locale)}. Marking it sent charges {money(order.totalMinor)} to the
                     customer&apos;s card{weekly.cardLabel ? ` (${weekly.cardLabel})` : ""} first; if the card is refused, it is not marked sent and
                     the customer is emailed a link to pay.
                   </p>

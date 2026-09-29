@@ -5,13 +5,13 @@
 const text = {
   nb: {
     deliveries: {
-      startedSubject: (store: string) => `Den faste leveringen din fra ${store} er klar`,
-      startedHeading: "Den faste leveringen din er klar",
+      startedSubject: (store: string) => `Abonnementsboksen din fra ${store} er klar`,
+      startedHeading: "Abonnementsboksen din er klar",
       startedIntro: (day: string, cutoff: string) =>
         `Vi leverer listen din hver ${day}. Du kan endre den til ${cutoff} før hver levering; endringer etter det gjelder neste.`,
       startedCharge:
         "Vi trekker kortet ditt for hver levering når den er på vei, for det den inneholder til dagens priser. Endrer du ingenting, blir neste levering lik den forrige.",
-      startedCancel: "Du kan hoppe over en levering, sette den på pause eller avslutte når du vil, fra siden for den faste leveringen.",
+      startedCancel: "Du kan hoppe over en levering, sette den på pause eller avslutte når du vil, fra siden for abonnementsboksen.",
       preparedSubject: (store: string, date: string) => `Leveringen din fra ${store} ${date}`,
       preparedHeading: "Neste levering",
       preparedIntro: (date: string) => `Leveringen din ${date} blir pakket nå.`,
@@ -20,7 +20,7 @@ const text = {
       leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} av ${wanted}` : `${title}: utsolgt`),
       nothingIntro: (date: string) =>
         `Ingenting på listen din var å få til leveringen ${date}, så det blir ingen levering og ingen trekk denne gangen.`,
-      manage: "Se eller endre den faste leveringen",
+      manage: "Se eller endre abonnementsboksen",
       cardSubject: (store: string, number: string) => `Betal leveringen ${number} fra ${store}`,
       cardHeading: "Kortet ditt ble ikke trukket",
       cardIntro: (number: string, amount: string) =>
@@ -111,13 +111,13 @@ const text = {
   },
   sv: {
     deliveries: {
-      startedSubject: (store: string) => `Din fasta leverans från ${store} är klar`,
-      startedHeading: "Din fasta leverans är klar",
+      startedSubject: (store: string) => `Din prenumerationsbox från ${store} är klar`,
+      startedHeading: "Din prenumerationsbox är klar",
       startedIntro: (day: string, cutoff: string) =>
         `Vi levererar din lista varje ${day}. Du kan ändra den till ${cutoff} före varje leverans; ändringar efter det gäller nästa.`,
       startedCharge:
         "Vi drar pengarna från ditt kort för varje leverans när den är på väg, för det den innehåller till dagens priser. Ändrar du inget blir nästa leverans likadan som den förra.",
-      startedCancel: "Du kan hoppa över en leverans, pausa eller avsluta när du vill, på sidan för din fasta leverans.",
+      startedCancel: "Du kan hoppa över en leverans, pausa eller avsluta när du vill, på sidan för din prenumerationsbox.",
       preparedSubject: (store: string, date: string) => `Din leverans från ${store} ${date}`,
       preparedHeading: "Nästa leverans",
       preparedIntro: (date: string) => `Din leverans ${date} packas nu.`,
@@ -126,7 +126,7 @@ const text = {
       leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} av ${wanted}` : `${title}: slutsåld`),
       nothingIntro: (date: string) =>
         `Inget på din lista gick att få till leveransen ${date}, så det blir ingen leverans och inget köp den här gången.`,
-      manage: "Se eller ändra din fasta leverans",
+      manage: "Se eller ändra din prenumerationsbox",
       cardSubject: (store: string, number: string) => `Betala leveransen ${number} från ${store}`,
       cardHeading: "Ditt kort drogs inte",
       cardIntro: (number: string, amount: string) =>
@@ -217,13 +217,13 @@ const text = {
   },
   da: {
     deliveries: {
-      startedSubject: (store: string) => `Din faste levering fra ${store} er klar`,
-      startedHeading: "Din faste levering er klar",
+      startedSubject: (store: string) => `Din abonnementsboks fra ${store} er klar`,
+      startedHeading: "Din abonnementsboks er klar",
       startedIntro: (day: string, cutoff: string) =>
         `Vi leverer din liste hver ${day}. Du kan ændre den indtil ${cutoff} før hver levering; ændringer derefter gælder den næste.`,
       startedCharge:
         "Vi trækker dit kort for hver levering, når den er på vej, for det den indeholder til dagens priser. Ændrer du intet, bliver næste levering som den forrige.",
-      startedCancel: "Du kan springe en levering over, sætte den på pause eller afslutte når som helst på siden for din faste levering.",
+      startedCancel: "Du kan springe en levering over, sætte den på pause eller afslutte når som helst på siden for din abonnementsboks.",
       preparedSubject: (store: string, date: string) => `Din levering fra ${store} ${date}`,
       preparedHeading: "Næste levering",
       preparedIntro: (date: string) => `Din levering ${date} bliver pakket nu.`,
@@ -232,7 +232,7 @@ const text = {
       leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} af ${wanted}` : `${title}: udsolgt`),
       nothingIntro: (date: string) =>
         `Intet på din liste kunne fås til leveringen ${date}, så der er ingen levering og intet træk denne gang.`,
-      manage: "Se eller ændr din faste levering",
+      manage: "Se eller ændr din abonnementsboks",
       cardSubject: (store: string, number: string) => `Betal leveringen ${number} fra ${store}`,
       cardHeading: "Dit kort blev ikke trukket",
       cardIntro: (number: string, amount: string) =>
@@ -323,13 +323,13 @@ const text = {
   },
   en: {
     deliveries: {
-      startedSubject: (store: string) => `Your weekly delivery from ${store} is set up`,
-      startedHeading: "Your weekly delivery is set up",
+      startedSubject: (store: string) => `Your subscription box from ${store} is set up`,
+      startedHeading: "Your subscription box is set up",
       startedIntro: (day: string, cutoff: string) =>
         `We deliver your list every ${day}. Change it until ${cutoff} before each delivery; changes after that go into the next one.`,
       startedCharge:
         "We charge your card for each delivery when it is on its way, for what it holds at that day's prices. If you change nothing, the next delivery is the same as the last.",
-      startedCancel: "You can skip a delivery, pause or end your weekly delivery at any time on its page.",
+      startedCancel: "You can skip a delivery, pause or end your subscription box at any time on its page.",
       preparedSubject: (store: string, date: string) => `Your delivery from ${store} on ${date}`,
       preparedHeading: "Your next delivery",
       preparedIntro: (date: string) => `Your delivery on ${date} is being packed.`,
@@ -338,7 +338,7 @@ const text = {
       leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} of ${wanted}` : `${title}: sold out`),
       nothingIntro: (date: string) =>
         `Nothing on your list could be had for the delivery on ${date}, so there is no delivery and no charge this time.`,
-      manage: "See or change your weekly delivery",
+      manage: "See or change your subscription box",
       cardSubject: (store: string, number: string) => `Please pay for your delivery ${number} from ${store}`,
       cardHeading: "Your card was not charged",
       cardIntro: (number: string, amount: string) =>

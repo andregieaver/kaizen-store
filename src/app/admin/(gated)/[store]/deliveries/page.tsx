@@ -9,7 +9,7 @@ import { deliveryRounds, listStandingOrders, type ScheduleView } from "@/server/
 
 import { saveScheduleAction } from "./actions";
 
-export const metadata: Metadata = { title: "Weekly deliveries" };
+export const metadata: Metadata = { title: "Subscription boxes" };
 
 const card = "rounded-lg border border-border bg-background p-5";
 const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
@@ -39,14 +39,14 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Weekly deliveries</h1>
+        <h1 className="text-2xl font-semibold">Subscription boxes</h1>
         <p className="text-sm text-muted">
           At each cutoff, shoppers&apos; lists become that delivery&apos;s orders at the day&apos;s prices, with their stock held. Send each
           order from its page: the customer&apos;s card is charged as you mark it sent. Times are in {store.timeZone.replace("_", " ")}.
         </p>
         {!store.deliveriesOn && (
           <p className="mt-2 text-sm">
-            Weekly deliveries are off.{" "}
+            Subscription boxes are off.{" "}
             <Link href={`/admin/${store.slug}/settings/features`} className="underline">
               Switch them on under Features
             </Link>
@@ -125,7 +125,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
             {rounds.length === 0 ? "Add your first delivery day" : "Add a delivery day"}
           </h2>
           <p className="mb-4 text-sm text-muted">
-            One day of the week in one market. Shoppers choose it when they start their weekly delivery, and can change it later.
+            One day of the week in one market. Shoppers choose it when they start their subscription box, and can change it later.
           </p>
           <ScheduleForm storeSlug={store.slug} schedule={null} markets={store.markets.map((m) => m.code)} />
         </section>
@@ -136,7 +136,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
           Lists
         </h2>
         {lists.length === 0 ? (
-          <p className="text-sm text-muted">No shopper has started a weekly delivery yet.</p>
+          <p className="text-sm text-muted">No shopper has started a subscription box yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">

@@ -87,10 +87,10 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
 
       <section aria-labelledby="deliveries-heading" className={card}>
         <h2 id="deliveries-heading" className="mb-1 font-medium">
-          Weekly deliveries
+          Subscription boxes
         </h2>
         <p className="mb-4 text-sm text-muted">
-          Shoppers keep a standing list, such as a grocery box, delivered on your delivery days. At each cutoff the list
+          Shoppers keep a list of what they want in their box, delivered on your delivery days. At each cutoff the list
           becomes that delivery&apos;s order at the day&apos;s prices, with its stock held; the card they saved is charged when you
           send it. A list nobody changes repeats.
         </p>
@@ -98,9 +98,9 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="deliveries" defaultChecked={store.deliveriesOn} disabled={!owner} className="mt-0.5 size-4" />
             <span>
-              Offer weekly deliveries
+              Offer subscription boxes
               <span className="block text-muted">
-                Adds Weekly deliveries to the menu (delivery days, lists and each delivery&apos;s orders), a Weekly delivery page to My
+                Adds Subscription boxes to the menu (delivery days, lists and each delivery&apos;s orders), a Subscription box page to My
                 account, and a button to add products to it on their pages. Uses the time zone above.
               </span>
             </span>

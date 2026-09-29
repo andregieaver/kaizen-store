@@ -9,12 +9,12 @@ function osloWeekday(ms: number): number {
 }
 
 /**
- * Weekly deliveries (D102) as a shopper uses them: the page asks for the
+ * Subscription boxes (D102) as a shopper uses them: the page asks for the
  * agreement and a card, products go on the list from their pages, the list
  * is changed, a delivery skipped, and a change after the cutoff leaves the
  * delivery being packed as it was.
  */
-test("a shopper keeps a weekly delivery list", async ({ page }) => {
+test("a shopper keeps a subscription box list", async ({ page }) => {
   const slug = `ukeskasse-${Date.now().toString(36)}`;
   const email = `${slug}@example.com`;
   const sql = testDb();
@@ -35,8 +35,8 @@ test("a shopper keeps a weekly delivery list", async ({ page }) => {
 
   // Signed out, the page asks the shopper to sign in.
   await page.goto(`/s/${slug}/no/deliveries`);
-  await expect(page.getByRole("heading", { level: 1, name: "Fast levering" })).toBeVisible();
-  await expect(page.getByText("Logg inn eller opprett en konto for å starte fast levering.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Abonnementsboks" })).toBeVisible();
+  await expect(page.getByText("Logg inn eller opprett en konto for å starte en abonnementsboks.")).toBeVisible();
 
   await page.goto(`/s/${slug}/no/account?tab=register`);
   await page.getByLabel("Navn").fill("Kari Nordmann");
@@ -44,11 +44,11 @@ test("a shopper keeps a weekly delivery list", async ({ page }) => {
   await page.getByLabel("Passord").fill("blå fjord seiler stille");
   await page.getByRole("button", { name: "Opprett konto" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Hei, Kari!" })).toBeVisible();
-  await page.getByRole("link", { name: /Fast levering/ }).click();
+  await page.getByRole("link", { name: /Abonnementsboks/ }).click();
 
   // Starting: a delivery day, the address and the agreement; this store takes no payments yet.
   // (Pages visited before stay in the document, hidden: look only in the form.)
-  const start = page.getByRole("region", { name: "Start fast levering" });
+  const start = page.getByRole("region", { name: "Start abonnementsboks" });
   await expect(start).toBeVisible();
   await expect(start.getByRole("radio", { name: /, endre til/ })).toBeChecked();
   await expect(start.getByLabel("Navn")).toHaveValue("Kari Nordmann");
@@ -75,8 +75,8 @@ test("a shopper keeps a weekly delivery list", async ({ page }) => {
 
   // From the product page onto the list.
   await page.goto(`/s/${slug}/no/p/demo-keramikkopp`);
-  await page.getByRole("button", { name: "Legg til i fast levering" }).click();
-  await expect(page.getByText("Lagt til i den faste leveringen.")).toBeVisible();
+  await page.getByRole("button", { name: "Legg til i abonnementsboks" }).click();
+  await expect(page.getByText("Lagt til i abonnementsboksen.")).toBeVisible();
   await page.getByRole("link", { name: "Se listen" }).click();
 
   await expect(page.getByRole("heading", { name: "Listen din" })).toBeVisible();

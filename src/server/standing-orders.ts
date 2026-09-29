@@ -549,7 +549,7 @@ export async function startCardSetup(
         customer: stripeCustomer,
         client_reference_id: listId,
         metadata: { standing_order_id: listId, store_id: shop.storeId },
-        setup_intent_data: { metadata: { standing_order_id: listId }, description: "Weekly delivery" },
+        setup_intent_data: { metadata: { standing_order_id: listId }, description: "Subscription box" },
         locale: stripeLocale(shop.market.lang) as Stripe.Checkout.SessionCreateParams.Locale,
         success_url: `${base}/deliveries?setup={CHECKOUT_SESSION_ID}`,
         cancel_url: `${base}/deliveries`,
@@ -854,7 +854,7 @@ export async function chargeDelivery(storeId: string, orderId: string): Promise<
     join commerce.standing_orders l on l.store_id = sd.store_id and l.id = sd.standing_order_id
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
   `);
-  if (!row) return { ok: false, problem: "This is not a weekly delivery." };
+  if (!row) return { ok: false, problem: "This is not a subscription box delivery." };
   if (row.status !== "pending_payment") return { ok: false, problem: "This delivery is already paid or cancelled." };
   const stripe = row.mode ? platformStripe(row.mode as PaymentModeName) : null;
   if (!stripe || !row.stripe_account || !row.stripe_customer || !row.payment_method) {
