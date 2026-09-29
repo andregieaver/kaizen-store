@@ -117,3 +117,31 @@ const YES =
 export function saysYes(text: string): boolean {
   return YES.test(text) && !NO.test(text);
 }
+
+/** A live voice model (D105) takes at most this much text appended at once (about 500 tokens). */
+export const LIVE_APPEND_MAX = 1800;
+
+/** Text for a live voice model to say, cut at a sentence end to what it takes at once. */
+export function clipForLive(text: string): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (t.length <= LIVE_APPEND_MAX) return t;
+  const cut = t.slice(0, LIVE_APPEND_MAX);
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("? "), cut.lastIndexOf("! "));
+  return (end > 600 ? cut.slice(0, end + 1) : cut).trim();
+}
+
+export type LiveTurn = { role: "user" | "assistant"; text: string };
+
+/** Turns of a live call sent by the page, checked: shape, size, and nothing empty; a segment's leading ">" is dropped. */
+export function readLiveTurns(raw: unknown): LiveTurn[] {
+  if (!Array.isArray(raw)) return [];
+  const out: LiveTurn[] = [];
+  for (const t of raw.slice(-60)) {
+    if (!t || typeof t !== "object") continue;
+    const { role, text } = t as { role?: unknown; text?: unknown };
+    if ((role !== "user" && role !== "assistant") || typeof text !== "string") continue;
+    const clean = text.replace(/\s+/g, " ").replace(/^[>\s]+/, "").trim().slice(0, 4000);
+    if (clean) out.push({ role, text: clean });
+  }
+  return out;
+}

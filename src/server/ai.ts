@@ -48,6 +48,12 @@ export type AiSettings = {
   imageBaseUrl: string | null;
   imageApiKeyHint: string | null;
   imageQuality: ImageQuality | null;
+  /** Live voice (D105): the full-duplex model and its voice, and another provider's (with its own key) or null for this one's. */
+  liveModel: string | null;
+  liveVoice: string | null;
+  liveProvider: AiProviderId | null;
+  liveBaseUrl: string | null;
+  liveApiKeyHint: string | null;
   minSimilarity: number;
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
@@ -66,7 +72,12 @@ export type AiConnection = AiSettings & {
   space: string | null;
   /** Where pictures are made (D92): this provider's address and key, or another's; null without a picture model. */
   image: ImageConnection | null;
+  /** Where live voice calls go (D105); null without a live model. */
+  live: LiveConnection | null;
 };
+
+/** A live voice model and where to reach it. */
+export type LiveConnection = { provider: AiProviderId; apiUrl: string; apiKey: string; model: string; voice: string | null };
 
 /** A picture model and where to reach it. */
 export type ImageConnection = { provider: AiProviderId; apiUrl: string; apiKey: string; model: string; quality: ImageQuality | null };
@@ -87,6 +98,11 @@ function toSettings(row: Row): AiSettings {
     imageBaseUrl: row.image_base_url ? String(row.image_base_url) : null,
     imageApiKeyHint: row.image_api_key_hint ? String(row.image_api_key_hint) : null,
     imageQuality: row.image_quality ? (String(row.image_quality) as ImageQuality) : null,
+    liveModel: row.live_model ? String(row.live_model) : null,
+    liveVoice: row.live_voice ? String(row.live_voice) : null,
+    liveProvider: row.live_provider ? (String(row.live_provider) as AiProviderId) : null,
+    liveBaseUrl: row.live_base_url ? String(row.live_base_url) : null,
+    liveApiKeyHint: row.live_api_key_hint ? String(row.live_api_key_hint) : null,
     minSimilarity: Number(row.min_similarity),
     embeddingEuOnly: Boolean(row.embedding_eu_only),
     textEuOnly: Boolean(row.text_eu_only),
@@ -117,7 +133,30 @@ function toConnection(row: Row, source: AiConnection["source"]): AiConnection | 
     return null;
   }
   const space = settings.embeddingModel ? embeddingSpace(settings.provider, settings.baseUrl, settings.embeddingModel) : null;
-  return { ...settings, source, apiUrl, apiKey, space, image: imageConnection(row, settings, { apiUrl, apiKey }, key) };
+  return {
+    ...settings,
+    source,
+    apiUrl,
+    apiKey,
+    space,
+    image: imageConnection(row, settings, { apiUrl, apiKey }, key),
+    live: liveConnection(row, settings, { apiUrl, apiKey }, key),
+  };
+}
+
+/** Where the row's live voice calls go: its own provider, or the other it names with that one's key; null without a model. */
+function liveConnection(row: Row, settings: AiSettings, own: { apiUrl: string; apiKey: string }, key: Buffer): LiveConnection | null {
+  if (!settings.liveModel) return null;
+  const voice = settings.liveVoice;
+  if (!settings.liveProvider) return { provider: settings.provider, ...own, model: settings.liveModel, voice };
+  const apiUrl = apiBaseUrl(settings.liveProvider, settings.liveBaseUrl);
+  if (!apiUrl || !row.live_api_key_encrypted) return null;
+  try {
+    const apiKey = decryptSecret(String(row.live_api_key_encrypted), key);
+    return { provider: settings.liveProvider, apiUrl, apiKey, model: settings.liveModel, voice };
+  } catch {
+    return null;
+  }
 }
 
 /** Where the row's pictures are made: its own provider, or the other one it names with that one's key; null without a model. */
@@ -192,12 +231,25 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
   } else if (input.imageProvider && !(existing?.imageProvider === input.imageProvider && existing.imageBaseUrl === imageBaseUrl)) {
     return { ok: false, problems: [`Paste an API key for pictures from ${providerInfo(input.imageProvider).name}.`] };
   }
+  // Live voice from another provider (D105), kept the same way.
+  const liveBaseUrl = input.liveProvider === "custom" ? (checkBaseUrl(input.liveBaseUrl) as { ok: true; url: string }).url : null;
+  let liveEncrypted: string | null = null;
+  let liveHint: string | null = null;
+  if (input.liveProvider && input.liveApiKey) {
+    const key = encryptionKey();
+    if (!key) return { ok: false, problems: ["Kaizen cannot keep the key safe right now, so it was not saved. Try again later."] };
+    liveEncrypted = encryptSecret(input.liveApiKey, key);
+    liveHint = keyHint(input.liveApiKey);
+  } else if (input.liveProvider && !(existing?.liveProvider === input.liveProvider && existing.liveBaseUrl === liveBaseUrl)) {
+    return { ok: false, problems: [`Paste an API key for the live voice from ${providerInfo(input.liveProvider).name}.`] };
+  }
 
   await db().execute(sql`
     insert into commerce.ai_providers (
       store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model, text_model,
       transcription_model, speech_model, speech_voice,
       image_model, image_provider, image_base_url, image_api_key_encrypted, image_api_key_hint, image_quality,
+      live_model, live_voice, live_provider, live_base_url, live_api_key_encrypted, live_api_key_hint,
       min_similarity, embedding_eu_only, text_eu_only, zero_data_retention, enabled, updated_by
     ) values (
       ${storeId}::uuid, ${input.provider}, ${baseUrl}, ${encrypted ?? ""}, ${hint ?? ""}, ${input.embeddingModel}, ${input.textModel},
@@ -207,6 +259,9 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       case when ${input.imageProvider}::text is not null then coalesce(${imageEncrypted}::text, (select p.image_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
       case when ${input.imageProvider}::text is not null then coalesce(${imageHint}::text, (select p.image_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
       ${input.imageQuality},
+      ${input.liveModel}, ${input.liveVoice}, ${input.liveProvider}, ${liveBaseUrl},
+      case when ${input.liveProvider}::text is not null then coalesce(${liveEncrypted}::text, (select p.live_api_key_encrypted from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
+      case when ${input.liveProvider}::text is not null then coalesce(${liveHint}::text, (select p.live_api_key_hint from commerce.ai_providers p where p.store_id is not distinct from ${storeId}::uuid)) end,
       ${input.minSimilarity}, ${input.embeddingEuOnly}, ${input.textEuOnly}, ${input.zeroDataRetention}, ${input.enabled}, ${accountId}::uuid
     )
     on conflict (store_id) do update set
@@ -218,6 +273,9 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       image_model = excluded.image_model, image_provider = excluded.image_provider, image_base_url = excluded.image_base_url,
       image_api_key_encrypted = excluded.image_api_key_encrypted, image_api_key_hint = excluded.image_api_key_hint,
       image_quality = excluded.image_quality,
+      live_model = excluded.live_model, live_voice = excluded.live_voice, live_provider = excluded.live_provider,
+      live_base_url = excluded.live_base_url, live_api_key_encrypted = excluded.live_api_key_encrypted,
+      live_api_key_hint = excluded.live_api_key_hint,
       min_similarity = excluded.min_similarity, embedding_eu_only = excluded.embedding_eu_only,
       text_eu_only = excluded.text_eu_only, zero_data_retention = excluded.zero_data_retention,
       enabled = excluded.enabled, updated_at = now(), updated_by = excluded.updated_by
@@ -238,6 +296,11 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     enabled: input.enabled,
     newKey: Boolean(encrypted),
     newImageKey: Boolean(imageEncrypted),
+    liveModel: input.liveModel,
+    liveVoice: input.liveVoice,
+    liveProvider: input.liveProvider,
+    liveBaseUrl,
+    newLiveKey: Boolean(liveEncrypted),
   });
   return { ok: true };
 }

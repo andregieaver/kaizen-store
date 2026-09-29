@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isNoiseTranscript, saysYes, speakable, takeSentences } from "./speech-text";
+import { clipForLive, isNoiseTranscript, LIVE_APPEND_MAX, readLiveTurns, saysYes, speakable, takeSentences } from "./speech-text";
 
 describe("voice mode's text (D104)", () => {
   it("speaks whole sentences as they arrive and keeps the rest", () => {
@@ -40,5 +40,17 @@ describe("voice mode's text (D104)", () => {
   it("hears a plain yes, in several languages, and not a hedged one", () => {
     for (const yes of ["Yes, do it", "ok", "Ja, gjør det", "Japp", "Godkänn", "go ahead please"]) expect(saysYes(yes), yes).toBe(true);
     for (const no of ["No", "Yes, but don't send it yet", "Nei, ikke ennå", "wait", "What is it?", "Yesterday's orders"]) expect(saysYes(no), no).toBe(false);
+  });
+
+  it("cuts what a live voice says at a sentence end, and reads a call's turns defensively (D105)", () => {
+    const long = "This is one sentence of the answer. ".repeat(80);
+    const clipped = clipForLive(long);
+    expect(clipped.length).toBeLessThanOrEqual(LIVE_APPEND_MAX);
+    expect(clipped.endsWith(".")).toBe(true);
+    expect(clipForLive("  Short  and\nsweet. ")).toBe("Short and sweet.");
+    expect(readLiveTurns([{ role: "user", text: ">  Hei " }, { role: "system", text: "x" }, { role: "assistant", text: "   " }, "junk", { role: "assistant", text: 5 }])).toEqual([
+      { role: "user", text: "Hei" },
+    ]);
+    expect(readLiveTurns("nope")).toEqual([]);
   });
 });

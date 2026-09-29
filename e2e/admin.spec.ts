@@ -114,6 +114,11 @@ test("the AI manager answers only a signed-in owner or platform admin (D94, D103
   // Voice mode's speech (D104) too.
   expect((await request.post("/admin/demo/assistant/speak", { data: { text: "Hei" } })).status()).toBe(404);
   expect((await request.post("/admin/platform/assistant/speak", { data: { text: "Hei" } })).status()).toBe(404);
+  // Live voice calls (D105) too.
+  for (const path of ["live", "live/delegate", "live/transcript"]) {
+    expect((await request.post(`/admin/demo/assistant/${path}`, { data: {} })).status(), path).toBe(404);
+    expect((await request.post(`/admin/platform/assistant/${path}`, { data: {} })).status(), path).toBe(404);
+  }
   await page.goto("/admin/demo/assistant");
   await expect(page).toHaveURL("/admin/sign-in");
   await page.goto("/admin/platform/assistant");

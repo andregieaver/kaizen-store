@@ -3657,6 +3657,18 @@ export const aiProviders = commerce.table(
     imageApiKeyHint: text("image_api_key_hint"),
     /** `low`, `medium`, `high` or `auto` where the model takes one; none leaves it to the model. */
     imageQuality: text("image_quality"),
+    /**
+     * Live voice (D105): a full-duplex voice model the AI manager talks
+     * through (`/live/sessions` over WebRTC), with its voice; from this row's
+     * provider, or another with its own address and key, as pictures. None
+     * leaves voice mode to the hands-free loop (D104).
+     */
+    liveModel: text("live_model"),
+    liveVoice: text("live_voice"),
+    liveProvider: text("live_provider"),
+    liveBaseUrl: text("live_base_url"),
+    liveApiKeyEncrypted: text("live_api_key_encrypted"),
+    liveApiKeyHint: text("live_api_key_hint"),
     /** How similar a product must be to a query to be found by meaning, from 0 to 1. */
     minSimilarity: real("min_similarity").notNull().default(0.3),
     /**
@@ -3697,6 +3709,13 @@ export const aiProviders = commerce.table(
       sql`(${t.imageProvider} is null) = (${t.imageApiKeyEncrypted} is null) and (${t.imageApiKeyEncrypted} is null) = (${t.imageApiKeyHint} is null)`,
     ),
     check("ai_providers_image_quality", sql`coalesce(${t.imageQuality} in ('low', 'medium', 'high', 'auto'), true)`),
+    check("ai_providers_live_model", sql`coalesce(length(${t.liveModel}) between 1 and 200, true) and coalesce(length(${t.liveVoice}) between 1 and 100, true)`),
+    check("ai_providers_live_provider", sql`coalesce(${t.liveProvider} in ('gateway', 'mistral', 'openai', 'openai_eu', 'google', 'custom'), true)`),
+    check("ai_providers_live_base_url", sql`(${t.liveProvider} is not distinct from 'custom') = (${t.liveBaseUrl} is not null)`),
+    check(
+      "ai_providers_live_key",
+      sql`(${t.liveProvider} is null) = (${t.liveApiKeyEncrypted} is null) and (${t.liveApiKeyEncrypted} is null) = (${t.liveApiKeyHint} is null)`,
+    ),
   ],
 );
 

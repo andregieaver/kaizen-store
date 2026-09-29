@@ -8,12 +8,13 @@ import { matchPath } from "@/lib/admin-map";
 import { TOOL_WORDS } from "@/lib/manager-tools";
 import { GATE_WORDS } from "@/lib/owner-tools";
 
+import { useLiveVoice, type LiveState } from "./live-voice";
 import { useVoice, type VoiceStatus } from "./voice-mode";
 import type { Approval, AssistantEvent, AssistantMessage, Conversation, ConversationSummary } from "@/server/owner-assistant";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; problem: string };
 
-export type Abilities = { text: boolean; hear: boolean; speak: boolean };
+export type Abilities = { text: boolean; hear: boolean; speak: boolean; live: boolean };
 
 export type AiManagerActions = {
   decide: (approvalId: string, approve: boolean) => Promise<Approval | null>;
@@ -132,20 +133,55 @@ export function AiManagerChat({
     onProblem: setProblem,
   });
   const speaking = voice.active || aloud;
+  // A live voice call (D105), where the site has a live voice model: preferred for voice mode.
+  const live = useLiveVoice({
+    base,
+    onDelegated: ({ navigate, approvals: kept }) => {
+      if (kept.length) {
+        setApprovals((current) => {
+          const next = current.filter((a) => !kept.some((k) => k.id === a.id));
+          return [...next, ...kept];
+        });
+      }
+      for (const page of navigate) {
+        setOpened((current) => [...current, page]);
+        if (panel) router.push(page.href);
+      }
+    },
+    onEnded: (id) => {
+      if (id) void open(id, true);
+    },
+  });
+  const canCall = abilities.live;
+  const talking = voice.active || live.active;
+
+  function startTalking() {
+    if (canCall) void live.start(conversationId);
+    else if (canTalk) void voice.start();
+  }
 
   // Opened from the launcher's microphone: start talking.
-  const { start: startVoiceMode, stop: stopVoiceMode } = voice;
+  const startRef = useRef(startTalking);
   useEffect(() => {
-    if (startVoice > 0 && canTalk) void startVoiceMode();
-  }, [startVoice, canTalk, startVoiceMode]);
+    startRef.current = startTalking;
+  });
+  useEffect(() => {
+    if (startVoice > 0) startRef.current();
+  }, [startVoice]);
 
-  // Escape ends voice mode.
+  // Escape ends voice mode and calls.
+  const { stop: stopVoiceMode } = voice;
+  const { stop: stopCall } = live;
   useEffect(() => {
-    if (!voice.active) return;
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && stopVoiceMode();
+    if (!talking) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      stopVoiceMode();
+      stopCall();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [voice.active, stopVoiceMode]);
+  }, [talking, stopVoiceMode, stopCall]);
 
   useEffect(() => {
     const box = scrollRef.current;
@@ -169,10 +205,11 @@ export function AiManagerChat({
     inputRef.current?.focus();
   }
 
-  async function open(id: string) {
+  async function open(id: string, afterCall = false) {
     setShowList(false);
     const found = await actions.load(id);
     if (!found) return setProblem("That conversation is gone.");
+    if (afterCall) setList((current) => (current.some((c) => c.id === found.id) ? current : [{ id: found.id, title: found.title, updatedAt: new Date().toISOString() }, ...current]));
     setConversationId(found.id);
     setMessages(found.messages);
     setApprovals(found.approvals);
@@ -249,7 +286,7 @@ export function AiManagerChat({
         if (panel) {
           router.push(event.href);
           // On phones the panel steps aside for the page, unless they are talking to it.
-          if (!voice.active) onNavigate?.();
+          if (!talking) onNavigate?.();
         }
         return;
       case "approval":
@@ -384,6 +421,11 @@ export function AiManagerChat({
           )}
           {thread}
           {streaming && <Bubble message={{ id: "streaming", role: "assistant", content: streaming, tools: [], feedback: null, createdAt: "" }} />}
+          {/* The call as it is said; kept in the conversation when it ends. */}
+          {live.active &&
+            live.turns.map((turn, i) => (
+              <Bubble key={`live-${i}`} message={{ id: `live-${i}`, role: turn.role, content: turn.text, tools: [], feedback: null, createdAt: "" }} />
+            ))}
           {waiting.map((approval) => (
             <ApprovalCard key={approval.id} approval={approval} onDecide={decide} />
           ))}
@@ -406,7 +448,12 @@ export function AiManagerChat({
               {problem}
             </p>
           )}
-          {startVoice > 0 && !canTalk && (
+          {live.error && !live.active && (
+            <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+              {live.error}
+            </p>
+          )}
+          {startVoice > 0 && !canTalk && !canCall && (
             <p role="status" className="text-sm">
               Voice mode needs a speech-to-text model and a voice.{" "}
               <Link href={settingsHref} className="underline" onClick={onNavigate}>
@@ -425,6 +472,9 @@ export function AiManagerChat({
         }}
         className={`flex flex-col gap-2 border-t border-border bg-background ${panel ? "p-3" : "sticky bottom-0 pt-3"}`}
       >
+        {live.active && (
+          <CallBar state={live.state} working={live.working} muted={live.muted} onMute={live.toggleMute} onEnd={live.stop} />
+        )}
         {voice.active && (
           <VoiceBar status={voice.status} level={voice.level} muted={voice.muted} onMute={voice.toggleMute} onInterrupt={voice.interrupt} onEnd={voice.stop} />
         )}
@@ -457,13 +507,18 @@ export function AiManagerChat({
               Send
             </button>
           )}
-          {canTalk && !voice.active && (
-            <button type="button" className={secondary} onClick={() => void voice.start()} title="Talk hands-free: it listens, answers aloud and listens again">
+          {(canCall || canTalk) && !talking && (
+            <button
+              type="button"
+              className={secondary}
+              onClick={startTalking}
+              title={canCall ? "Talk with it as on a call: it hears you while it speaks" : "Talk hands-free: it listens, answers aloud and listens again"}
+            >
               <MicIcon className="mr-1.5 size-4" />
               Voice mode
             </button>
           )}
-          {abilities.speak && !voice.active && (
+          {abilities.speak && !talking && (
             <label className="ml-auto flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -554,6 +609,29 @@ function VoiceBar({
         {muted ? "Unmute" : "Mute"}
       </button>
       <button type="button" onClick={onEnd} className="rounded-md bg-foreground px-2 py-1 text-xs text-background" title="End voice mode (Esc)">
+        End
+      </button>
+    </div>
+  );
+}
+
+/** A live call's state (D105): connecting, then a circle that breathes while the call is on. */
+function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; working: boolean; muted: boolean; onMute: () => void; onEnd: () => void }) {
+  const on = state === "live";
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border p-2" aria-label="Voice call">
+      <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
+        <span className={`absolute inset-0 rounded-full bg-foreground/15 ${on && !muted ? "animate-ping [animation-duration:2s]" : ""}`} />
+        <span className={`size-6 rounded-full bg-foreground ${working || !on ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
+      </span>
+      <div className="min-w-0 flex-1" role="status" aria-live="polite">
+        <p className="text-sm font-medium">{!on ? "Connecting …" : muted ? "Muted" : working ? "Looking into it …" : "On a call: just talk"}</p>
+        <p className="truncate text-xs text-muted">{on ? "It hears you while it speaks; talk over it any time." : "Allow the microphone if the browser asks."}</p>
+      </div>
+      <button type="button" onClick={onMute} aria-pressed={muted} disabled={!on} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50">
+        {muted ? "Unmute" : "Mute"}
+      </button>
+      <button type="button" onClick={onEnd} className="rounded-md bg-foreground px-2 py-1 text-xs text-background" title="End the call (Esc)">
         End
       </button>
     </div>

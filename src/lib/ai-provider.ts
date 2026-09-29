@@ -31,6 +31,13 @@ export type AiProviderInfo = {
    * new name in the settings.
    */
   imageModels: string[];
+  /**
+   * Live voice models (D105), full duplex through `/live/sessions` over
+   * WebRTC, and their voices, as suggestions: a newer one is a new name in
+   * the settings.
+   */
+  liveModels: string[];
+  liveVoices: string[];
   /** Vercel AI Gateway takes EU-only and zero-retention options per request. */
   gateway: boolean;
 };
@@ -47,6 +54,8 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     speechModels: [],
     voices: [],
     imageModels: [],
+    liveModels: [],
+    liveVoices: [],
     gateway: true,
   },
   {
@@ -60,6 +69,8 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     speechModels: [],
     voices: [],
     imageModels: [],
+    liveModels: [],
+    liveVoices: [],
     gateway: false,
   },
   {
@@ -73,6 +84,8 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     speechModels: ["gpt-4o-mini-tts", "tts-1"],
     voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
     imageModels: ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"],
+    liveModels: ["gpt-live-1"],
+    liveVoices: ["marin", "cedar", "coral", "sage", "ballad", "verse", "ash", "alloy", "echo", "shimmer"],
     gateway: false,
   },
   {
@@ -87,6 +100,8 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     speechModels: ["gpt-4o-mini-tts", "tts-1"],
     voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
     imageModels: ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"],
+    liveModels: ["gpt-live-1"],
+    liveVoices: ["marin", "cedar", "coral", "sage", "ballad", "verse", "ash", "alloy", "echo", "shimmer"],
     gateway: false,
   },
   {
@@ -100,6 +115,8 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     speechModels: [],
     voices: [],
     imageModels: [],
+    liveModels: [],
+    liveVoices: [],
     gateway: false,
   },
   {
@@ -113,6 +130,8 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     speechModels: [],
     voices: [],
     imageModels: [],
+    liveModels: [],
+    liveVoices: [],
     gateway: false,
   },
 ];
@@ -225,6 +244,25 @@ export const aiProviderInput = z
           z.enum(Object.keys(IMAGE_QUALITIES) as [ImageQuality, ...ImageQuality[]], { error: "Choose a picture quality." }),
         ]),
       ),
+    // Live voice (D105): optional, like pictures; another provider needs its own key.
+    liveModel: z.string().default("").pipe(modelName),
+    liveVoice: z
+      .string()
+      .default("")
+      .pipe(
+        z
+          .string()
+          .trim()
+          .max(100, "A voice's name is at most 100 characters.")
+          .regex(/^[\w.:/@+-]*$/, "A voice's name has only letters, digits and . : / @ + - _.")
+          .transform((value) => value || null),
+      ),
+    liveProvider: z
+      .string()
+      .default("")
+      .pipe(z.union([z.literal("").transform(() => null), z.enum(AI_PROVIDER_IDS, { error: "Choose where the live voice comes from." })])),
+    liveBaseUrl: z.string().trim().max(300).default(""),
+    liveApiKey: z.string().trim().max(500, "That key is too long.").default(""),
     minSimilarity: z.coerce
       .number({ error: "The similarity is a number from 0 to 1." })
       .min(0, "The similarity is a number from 0 to 1.")
@@ -245,6 +283,13 @@ export const aiProviderInput = z
     }
     if (value.imageProvider && !value.imageModel) {
       ctx.addIssue({ code: "custom", message: "Name the picture model to use with the other provider.", path: ["imageModel"] });
+    }
+    if (value.liveProvider === "custom") {
+      const checked = checkBaseUrl(value.liveBaseUrl);
+      if (!checked.ok) ctx.addIssue({ code: "custom", message: `Live voice: ${checked.problem}`, path: ["liveBaseUrl"] });
+    }
+    if (value.liveProvider && !value.liveModel) {
+      ctx.addIssue({ code: "custom", message: "Name the live voice model to use with the other provider.", path: ["liveModel"] });
     }
     if (!value.embeddingModel && !value.textModel) {
       ctx.addIssue({ code: "custom", message: "Name at least one model.", path: ["embeddingModel"] });
@@ -269,6 +314,11 @@ export function aiFormValues(formData: FormData) {
     imageBaseUrl: String(formData.get("imageBaseUrl") ?? ""),
     imageApiKey: String(formData.get("imageApiKey") ?? ""),
     imageQuality: String(formData.get("imageQuality") ?? ""),
+    liveModel: String(formData.get("liveModel") ?? ""),
+    liveVoice: String(formData.get("liveVoice") ?? ""),
+    liveProvider: String(formData.get("liveProvider") ?? ""),
+    liveBaseUrl: String(formData.get("liveBaseUrl") ?? ""),
+    liveApiKey: String(formData.get("liveApiKey") ?? ""),
     minSimilarity: String(formData.get("minSimilarity") ?? DEFAULT_MIN_SIMILARITY),
     embeddingEuOnly: formData.get("embeddingEuOnly") === "on",
     textEuOnly: formData.get("textEuOnly") === "on",

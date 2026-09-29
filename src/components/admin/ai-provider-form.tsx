@@ -20,6 +20,11 @@ export type AiFormSettings = {
   imageBaseUrl: string | null;
   imageApiKeyHint: string | null;
   imageQuality: ImageQuality | null;
+  liveModel: string | null;
+  liveVoice: string | null;
+  liveProvider: AiProviderId | null;
+  liveBaseUrl: string | null;
+  liveApiKeyHint: string | null;
   minSimilarity: number;
   embeddingEuOnly: boolean;
   textEuOnly: boolean;
@@ -52,6 +57,11 @@ export function AiProviderForm({
   const [imageProvider, setImageProvider] = useState<AiProviderId | "">(settings?.imageProvider ?? "");
   const imageInfo = providerInfo(imageProvider || provider);
   const keptImageKey = settings?.imageProvider && settings.imageProvider === imageProvider ? settings.imageApiKeyHint : null;
+  // The live voice (D105) likewise.
+  const [liveProvider, setLiveProvider] = useState<AiProviderId | "">(settings?.liveProvider ?? "");
+  const liveInfo = providerInfo(liveProvider || provider);
+  const keptLiveKey = settings?.liveProvider && settings.liveProvider === liveProvider ? settings.liveApiKeyHint : null;
+  const liveSaved = settings && (settings.liveProvider ?? "") === liveProvider;
 
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
@@ -255,6 +265,87 @@ export function AiProviderForm({
           </select>
           <p className="font-normal text-muted">Sent only where the model takes it; a model that does not is asked without it.</p>
         </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-sm font-medium">Live voice</legend>
+        <p className="text-sm text-muted">
+          A full-duplex voice model for the AI manager&apos;s voice mode: it hears while it speaks, so people talk with it as on a
+          phone call, and it hands anything that needs the store&apos;s data or a change to the AI manager. Any live model the provider
+          offers can be named. Empty: voice mode listens and answers with the models above instead. The call&apos;s audio goes to
+          this provider, so choose one whose data processing suits you.
+        </p>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex flex-col gap-1 text-sm font-medium">
+            <label htmlFor={`${id}-live-provider`}>Live voice from</label>
+            <select
+              id={`${id}-live-provider`}
+              name="liveProvider"
+              value={liveProvider}
+              onChange={(e) => setLiveProvider(e.target.value as AiProviderId | "")}
+              className={field}
+            >
+              <option value="">The provider above ({info.name})</option>
+              {AI_PROVIDERS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}, with its own key
+                </option>
+              ))}
+            </select>
+          </div>
+          <ModelField
+            key={`live-${liveProvider || provider}`}
+            id={`${id}-live`}
+            name="liveModel"
+            label="Live voice model"
+            hint="Newest first where Kaizen knows them; type any other."
+            suggestions={liveInfo.liveModels}
+            defaultValue={liveSaved ? (settings.liveModel ?? "") : ""}
+          />
+          <ModelField
+            key={`live-voice-${liveProvider || provider}`}
+            id={`${id}-live-voice`}
+            name="liveVoice"
+            label="Its voice"
+            hint="Empty: the model's own."
+            suggestions={liveInfo.liveVoices}
+            defaultValue={liveSaved ? (settings.liveVoice ?? "") : ""}
+          />
+        </div>
+        {liveProvider === "custom" && (
+          <div className="flex flex-col gap-1 text-sm font-medium">
+            <label htmlFor={`${id}-live-base`}>Live voice API address</label>
+            <input
+              id={`${id}-live-base`}
+              name="liveBaseUrl"
+              type="url"
+              inputMode="url"
+              required
+              spellCheck={false}
+              defaultValue={settings?.liveBaseUrl ?? ""}
+              placeholder="https://api.example.com/v1"
+              className={`${field} font-mono text-sm`}
+            />
+            <p className="font-normal text-muted">Kaizen adds /live/sessions to this address.</p>
+          </div>
+        )}
+        {liveProvider && (
+          <div className="flex flex-col gap-1 text-sm font-medium">
+            <label htmlFor={`${id}-live-key`}>{keptLiveKey ? `New API key for ${liveInfo.name}` : `API key for ${liveInfo.name}`}</label>
+            <input
+              id={`${id}-live-key`}
+              name="liveApiKey"
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              required={!keptLiveKey}
+              className={`${field} font-mono text-sm`}
+            />
+            <p className="font-normal text-muted">
+              {keptLiveKey ? `Leave empty to keep the saved key (${keptLiveKey}). ` : ""}Kept encrypted and only ever sent to {liveInfo.name}.
+            </p>
+          </div>
+        )}
       </fieldset>
 
       {/* Hidden rather than left out for other providers, so switching back keeps them. */}

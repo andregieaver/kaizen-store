@@ -15,6 +15,9 @@ const assistant = await import("./owner-assistant");
 const stores = await import("./stores");
 
 type Row = Record<string, unknown>;
+// Tool answers are loose JSON, read field by field here.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Answer = Record<string, any>;
 
 const run = Date.now().toString(36);
 let member: Membership;
@@ -89,7 +92,7 @@ afterAll(async () => {
 
 describe("the AI manager's analyses (D104)", () => {
   it("groups customers by how they buy, counted in code", async () => {
-    const insights = (await ownerTools.runOwnerTool(ctx(), "customer_insights", { days: 90 })) as Record<string, any>;
+    const insights = (await ownerTools.runOwnerTool(ctx(), "customer_insights", { days: 90 })) as Answer;
     expect(insights.customers_ever).toBe(3);
     expect(insights.came_back).toMatchObject({ customers: 2, share: "66.7 %" });
     expect(insights.in_period).toEqual({ customers: 2, new: 1, returning: 1 });
@@ -101,21 +104,21 @@ describe("the AI manager's analyses (D104)", () => {
   });
 
   it("says what sells, what to reorder and how the weeks went", async () => {
-    const performance = (await ownerTools.runOwnerTool(ctx(), "product_performance", { days: 30 })) as Record<string, any>;
+    const performance = (await ownerTools.runOwnerTool(ctx(), "product_performance", { days: 30 })) as Answer;
     expect(performance.best_sellers[0]).toMatchObject({ units: 30, orders: 3, stock: 10 });
 
     // 30 sold in 30 days, 10 left: 1 a day, lasting 10 days; 30 + 7 days need 37.
-    const restock = (await ownerTools.runOwnerTool(ctx(), "restock_suggestions", { days: 30, cover_days: 30, lead_days: 7 })) as Record<string, any>;
+    const restock = (await ownerTools.runOwnerTool(ctx(), "restock_suggestions", { days: 30, cover_days: 30, lead_days: 7 })) as Answer;
     expect(restock.to_reorder).toEqual([expect.objectContaining({ sku: variant.sku, in_stock: 10, per_day: 1, lasts_days: 10, suggested_order: 27, order_now: false })]);
-    const urgent = (await ownerTools.runOwnerTool(ctx(), "restock_suggestions", { days: 30, cover_days: 30, lead_days: 14 })) as Record<string, any>;
+    const urgent = (await ownerTools.runOwnerTool(ctx(), "restock_suggestions", { days: 30, cover_days: 30, lead_days: 14 })) as Answer;
     expect(urgent.urgent).toBe(1);
 
-    const trend = (await ownerTools.runOwnerTool(ctx(), "sales_trend", { period: "month", count: 3 })) as Record<string, any>;
+    const trend = (await ownerTools.runOwnerTool(ctx(), "sales_trend", { period: "month", count: 3 })) as Answer;
     expect(trend.series).toHaveLength(3);
     expect(trend.series.at(-1)).toMatchObject({ so_far: true });
     expect(trend.series.reduce((sum: number, s: { orders: number }) => sum + s.orders, 0)).toBeGreaterThanOrEqual(3);
 
-    const funnel = (await ownerTools.runOwnerTool(ctx(), "sales_funnel", { days: 30 })) as Record<string, any>;
+    const funnel = (await ownerTools.runOwnerTool(ctx(), "sales_funnel", { days: 30 })) as Answer;
     expect(funnel).toMatchObject({ orders_placed: expect.any(Number), orders_paid: expect.any(Number) });
     expect(funnel.note).toContain("not tracked");
   });

@@ -80,11 +80,17 @@ export type AssistantEvent =
   | { type: "done"; message: AssistantMessage }
   | { type: "error"; message: string };
 
-export type AssistantAbilities = { text: boolean; hear: boolean; speak: boolean };
+/** What the AI manager can do here: text, the hands-free voice (hear and speak, D104) and a live voice call (D105). */
+export type AssistantAbilities = { text: boolean; hear: boolean; speak: boolean; live: boolean };
 
 export async function assistantAbilities(storeId: string | null): Promise<AssistantAbilities> {
   const connection = await aiFor(storeId);
-  return { text: Boolean(connection?.textModel), hear: Boolean(connection?.transcriptionModel), speak: canSpeak(connection) };
+  return {
+    text: Boolean(connection?.textModel),
+    hear: Boolean(connection?.transcriptionModel),
+    speak: canSpeak(connection),
+    live: Boolean(connection?.textModel && connection.live),
+  };
 }
 
 // Conversations -------------------------------------------------------------------
@@ -143,7 +149,7 @@ export async function deleteConversation(p: Principal, id: string): Promise<bool
   return rows.length > 0;
 }
 
-async function addMessage(p: Principal, conversationId: string, role: "user" | "assistant", content: string, tools: ToolTrail[] = []) {
+export async function addMessage(p: Principal, conversationId: string, role: "user" | "assistant", content: string, tools: ToolTrail[] = []) {
   const [row] = await db().execute<Row>(sql`
     insert into commerce.assistant_messages (store_id, conversation_id, role, content, tools)
     values (${storeIdOf(p)}, ${conversationId}::uuid, ${role}, ${content.slice(0, 20_000)}, ${JSON.stringify(tools)}::jsonb)
@@ -307,6 +313,12 @@ export type TurnInput = {
   later?: (task: () => Promise<unknown>) => void;
   /** Spoken in voice mode (D104): the answer is read aloud, so it is written to be heard. */
   voice?: boolean;
+  /**
+   * For a live voice call (D105): the request is the person's last message,
+   * already saved, so it is not kept again; and the answer is not kept, since
+   * the call's transcript keeps what the voice said.
+   */
+  live?: { reuseSaved: boolean };
   /** Kaizen Life's assistant is asking (D96): answer without asking it back. */
   fromKaizenLife?: boolean;
   /** The connection to use; the site's own (D73) unless given (tests). */
@@ -379,7 +391,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
       order by created_at limit 10
     `),
   ]);
-  await addMessage(p, conversationId, "user", text);
+  if (!input.live?.reuseSaved) await addMessage(p, conversationId, "user", text);
 
   const ctx: ManagerContext = {
     account,
@@ -448,7 +460,9 @@ export async function runTurn(input: TurnInput): Promise<void> {
     return;
   }
   const answered = reply.trim() || "(No answer.)";
-  const saved = await addMessage(p, conversationId, "assistant", answered, trail);
+  const saved = input.live
+    ? { id: "live", role: "assistant" as const, content: answered, tools: trail, feedback: null, createdAt: new Date().toISOString() }
+    : await addMessage(p, conversationId, "assistant", answered, trail);
   emit({ type: "done", message: saved });
   if (input.later && !input.fromKaizenLife && reply.trim()) {
     input.later(() =>

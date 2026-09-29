@@ -2062,6 +2062,13 @@ describe("AI providers (D73)", () => {
     await expect(images("image_provider = 'custom'")).rejects.toThrow(/ai_providers_image_base_url/);
     await expect(images("image_quality = 'ultra'")).rejects.toThrow(/ai_providers_image_quality/);
     await images("image_provider = null, image_api_key_encrypted = null, image_api_key_hint = null");
+    // A live voice (D105) from another provider carries its key too.
+    await images("live_model = 'live-1', live_voice = 'warm', live_provider = 'openai', live_api_key_encrypted = 'v1.z', live_api_key_hint = '…7777'");
+    await expect(images("live_api_key_hint = null")).rejects.toThrow(/ai_providers_live_key/);
+    await expect(images("live_provider = 'custom'")).rejects.toThrow(/ai_providers_live_base_url/);
+    await expect(images("live_provider = 'acme'")).rejects.toThrow(/ai_providers_live_provider/);
+    await expect(images("live_voice = ''")).rejects.toThrow(/ai_providers_live_model/);
+    await images("live_provider = null, live_api_key_encrypted = null, live_api_key_hint = null");
     await db.query("delete from commerce.ai_providers");
   });
 });

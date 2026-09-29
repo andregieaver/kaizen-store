@@ -1205,6 +1205,13 @@
       "when": 1790663420040,
       "tag": "20260929063020_ai_manager_memory",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1790669392241,
+      "tag": "20260929080952_live_voice",
+      "breakpoints": true
     }
   ]
 }

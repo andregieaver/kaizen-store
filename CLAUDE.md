@@ -415,6 +415,12 @@ of running `playwright install`.
   A kept change is approved in words only through `decide_approval`, whose
   handler checks `saysYes()` on the person's own message and that the
   change was kept before it.
+  Live voice (D105, `src/server/live-voice.ts`, `useLiveVoice` in
+  `src/components/admin/live-voice.ts`): with a live model in the AI
+  settings (`AiConnection.live`), voice mode is a WebRTC call made by
+  `…/assistant/live` (the key stays on the server); the voice has no tools
+  and delegates to `…/live/delegate`, which runs the request as a `runTurn()`
+  in voice mode (`live`), and the transcript is kept by `…/live/transcript`.
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
   `KAIZEN_LIFE_SSO=on`) goes through `/auth/callback?via=kaizen-life` and
