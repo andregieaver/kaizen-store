@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSelectedLayoutSegment } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * The store admin's navigation (D39): the main sections as tabs along the
@@ -10,7 +9,7 @@ import type { ReactNode } from "react";
  * on phones). The page being viewed, or one inside its section, is marked.
  */
 
-export type NavItem = { href: string; label: string; exact?: boolean };
+export type NavItem = { href: string; label: string; exact?: boolean; /** A count to show beside it, such as requests waiting. */ badge?: number };
 export type NavGroup = { heading: string; items: NavItem[] };
 
 function useIsCurrent() {
@@ -32,11 +31,22 @@ export function StoreTabs({ items, label }: { items: NavItem[]; label: string })
               className="flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
             >
               {item.label}
+              <Badge count={item.badge} />
             </Link>
           </li>
         ))}
       </ul>
     </nav>
+  );
+}
+
+/** A small count beside a link's label. */
+function Badge({ count }: { count?: number }) {
+  if (!count) return null;
+  return (
+    <span className="ml-1.5 rounded-full bg-foreground px-1.5 py-0.5 text-xs leading-none text-background" aria-label={`${count} waiting`}>
+      {count > 99 ? "99+" : count}
+    </span>
   );
 }
 
@@ -57,6 +67,7 @@ export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: str
                   className="flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-surface aria-[current=page]:bg-surface aria-[current=page]:font-medium"
                 >
                   {item.label}
+                  <Badge count={item.badge} />
                 </Link>
               </li>
             ))}
@@ -65,14 +76,4 @@ export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: str
       ))}
     </nav>
   );
-}
-
-/** Admin areas that are not a store; any other first segment is a store's slug. */
-const NOT_STORES = new Set(["platform", "account", "stores"]);
-
-/** Shows its children except in a store's admin, which has a header of its own. */
-export function OutsideStoreAdmin({ children }: { children: ReactNode }) {
-  const segment = useSelectedLayoutSegment();
-  const inStore = segment !== null && !segment.startsWith("__") && !NOT_STORES.has(segment);
-  return inStore ? null : children;
 }

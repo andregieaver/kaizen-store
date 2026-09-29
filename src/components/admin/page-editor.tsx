@@ -253,7 +253,7 @@ export function PageEditor({
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
   return (
-    // Full width (see `PlatformMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter.
+    // Full width (see `AdminMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter.
     <div className="flex flex-col gap-6 pb-28">
       <PageBuilder
         // A new language starts with its dialogs closed.

@@ -29,7 +29,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
   const base = "/admin/account/usage";
   const keep = store ? `&store=${store.slug}` : "";
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div>
           <h1 className="text-2xl font-semibold">AI usage</h1>
@@ -62,6 +62,6 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
       ) : (
         <UsageReport rows={rows} days={days} scope="owner" />
       )}
-    </main>
+    </div>
   );
 }

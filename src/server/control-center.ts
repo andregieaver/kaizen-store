@@ -1,0 +1,149 @@
+import "server-only";
+
+import { sql } from "drizzle-orm";
+
+import { db } from "@/db/client";
+import { LOW_STOCK_AT, type SalesFigure, type StoreFigures } from "@/lib/control-center";
+import { totalOf } from "@/lib/ai-usage";
+
+import { usageRows } from "./ai-usage";
+import type { Account } from "./auth";
+
+type Row = Record<string, unknown>;
+
+/** An order paid for: a captured payment, online or at the venue. */
+const paid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
+
+export type LatestOrder = { id: string; number: string; storeSlug: string; storeName: string; name: string | null; status: string; totalMinor: number; currency: string; placedAt: string };
+
+export type ControlCenter = {
+  stores: StoreFigures[];
+  latest: LatestOrder[];
+  ai: { requests: number; failed: number };
+};
+
+const idList = (ids: string[]) => sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
+
+/**
+ * The bird's-eye view of every store an account works in (D107): status,
+ * plan, payments, the last 7 days' sales against the 7 before, orders waiting
+ * to be sent, stock running out, and the latest orders (`onlyStore`: one
+ * store's, for its own overview). A handful of queries
+ * for all stores together, counted here in code (D94), never per store.
+ */
+export async function controlCenter(account: Account, onlyStore?: string): Promise<ControlCenter> {
+  const storeRows = await db().execute<Row>(sql`
+    select s.id, s.slug, s.name, s.status, s.setup_completed_at, m.role,
+           p.name as plan_name, b.status as billing_status, b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancelling,
+           pr.enabled as payments_on, pr.active_mode,
+           exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready
+    from commerce.store_members m
+    join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
+    left join commerce.store_billing b on b.store_id = s.id
+    left join commerce.plans p on p.id = b.plan_id
+    left join commerce.payment_providers pr on pr.store_id = s.id and pr.provider = 'stripe'
+    where m.account_id = ${account.id}::uuid and m.disabled_at is null${onlyStore ? sql` and s.slug = ${onlyStore}` : sql``}
+    order by (m.role = 'owner') desc, lower(s.name), s.slug
+  `);
+  if (storeRows.length === 0) return { stores: [], latest: [], ai: { requests: 0, failed: 0 } };
+  const ids = storeRows.map((r) => String(r.id));
+  const onlyId = onlyStore ? ids[0] : null;
+
+  const [salesRows, sendRows, stockRows, latestRows, usage] = await Promise.all([
+    db().execute<Row>(sql`
+      select o.store_id, o.currency,
+        coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
+        count(*) filter (where o.placed_at >= now() - interval '7 days')::int as orders,
+        coalesce(sum(o.total_minor) filter (where o.placed_at < now() - interval '7 days'), 0)::bigint as prior,
+        count(*) filter (where o.placed_at < now() - interval '7 days')::int as prior_orders
+      from commerce.orders o
+      where o.store_id in (${idList(ids)}) and o.placed_at >= now() - interval '14 days'
+        and o.status <> 'cancelled' and ${paid}
+      group by o.store_id, o.currency
+    `),
+    db().execute<Row>(sql`
+      select o.store_id, count(*)::int as n, min(o.placed_at) as oldest
+      from commerce.orders o
+      where o.store_id in (${idList(ids)}) and o.status = 'paid'
+        and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')
+      group by o.store_id
+    `),
+    db().execute<Row>(sql`
+      select x.store_id, count(*) filter (where x.stock <= ${LOW_STOCK_AT})::int as low, count(*) filter (where x.stock <= 0)::int as out
+      from (
+        select v.store_id, v.id, coalesce(sum(l.on_hand), 0) as stock
+        from commerce.product_variants v
+        join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
+        left join commerce.inventory_levels l on l.variant_id = v.id
+        where v.store_id in (${idList(ids)}) and v.active and v.delivery = 'physical'
+        group by v.store_id, v.id
+      ) x
+      group by x.store_id
+    `),
+    db().execute<Row>(sql`
+      select o.id, o.number, o.status, o.total_minor, o.currency, o.placed_at, s.slug, s.name as store_name,
+             nullif(o.shipping_address ->> 'name', '') as name
+      from commerce.orders o
+      join commerce.stores s on s.id = o.store_id
+      where o.store_id in (${idList(ids)}) and o.status not in ('pending_payment', 'cancelled')
+      order by o.placed_at desc
+      limit 8
+    `),
+    usageRows({ days: 7, ownedBy: account.id, storeId: onlyId }),
+  ]);
+
+  const salesBy = new Map<string, SalesFigure[]>();
+  for (const r of salesRows) {
+    const list = salesBy.get(String(r.store_id)) ?? [];
+    list.push({ currency: String(r.currency), week: Number(r.week), prior: Number(r.prior), orders: Number(r.orders), priorOrders: Number(r.prior_orders) });
+    salesBy.set(String(r.store_id), list);
+  }
+  const sendBy = new Map(sendRows.map((r) => [String(r.store_id), r]));
+  const stockBy = new Map(stockRows.map((r) => [String(r.store_id), r]));
+
+  const stores: StoreFigures[] = storeRows.map((r) => {
+    const id = String(r.id);
+    const on = Boolean(r.payments_on);
+    const live = r.active_mode === "live";
+    const send = sendBy.get(id);
+    const stock = stockBy.get(id);
+    return {
+      slug: String(r.slug),
+      name: String(r.name),
+      role: r.role as StoreFigures["role"],
+      suspended: r.status === "suspended",
+      open: Boolean(r.setup_completed_at),
+      plan: r.billing_status
+        ? {
+            name: r.plan_name ? String(r.plan_name) : "Plan",
+            status: String(r.billing_status),
+            endsAt: r.current_period_end ? new Date(String(r.current_period_end)).toISOString() : null,
+            cancelling: Boolean(r.cancelling),
+          }
+        : null,
+      payments: !on ? "off" : live ? (r.live_ready ? "live" : "setup") : "test",
+      sales: (salesBy.get(id) ?? []).sort((a, b) => b.week - a.week),
+      toSend: Number(send?.n ?? 0),
+      oldestToSend: send?.oldest ? new Date(String(send.oldest)).toISOString() : null,
+      lowStock: Number(stock?.low ?? 0),
+      outOfStock: Number(stock?.out ?? 0),
+    };
+  });
+
+  const ai = totalOf(usage);
+  return {
+    stores,
+    latest: latestRows.map((r) => ({
+      id: String(r.id),
+      number: String(r.number),
+      storeSlug: String(r.slug),
+      storeName: String(r.store_name),
+      name: r.name ? String(r.name) : null,
+      status: String(r.status),
+      totalMinor: Number(r.total_minor),
+      currency: String(r.currency),
+      placedAt: new Date(String(r.placed_at)).toISOString(),
+    })),
+    ai: { requests: ai.requests, failed: ai.failed },
+  };
+}

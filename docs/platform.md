@@ -39,7 +39,7 @@ otherwise.
 1. **Request.** Anyone can ask for a store at `/sign-up` (name, email, store
    name). It is stored in `commerce.access_requests`; repeat requests from the
    same email are merged, and the page never says which emails have asked.
-2. **Approval.** Platform admins see waiting requests at `/admin/platform`,
+2. **Approval.** Platform admins see waiting requests at `/admin/platform/requests`,
    adjust the store name and address, and approve or decline.
    `commerce.approve_access_request()` creates the account (or reuses one),
    copies the template with `commerce.clone_store()` and records the decision,

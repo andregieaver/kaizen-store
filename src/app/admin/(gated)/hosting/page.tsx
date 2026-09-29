@@ -13,7 +13,7 @@ export default async function HostingPage() {
   const hostings = await listHostings(account);
   if (hostings.length === 1) redirect(`/admin/hosting/${hostings[0].slug}`);
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <h1 className="text-2xl font-semibold">Hosting</h1>
       {hostings.length === 0 ? (
         <p className="text-sm text-muted">You do not host for any store.</p>
@@ -29,6 +29,6 @@ export default async function HostingPage() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

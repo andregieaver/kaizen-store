@@ -1,8 +1,11 @@
-import Link from "next/link";
+import { Suspense } from "react";
 
+import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
+import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
-import { PlatformMain } from "@/components/admin/platform-main";
+import type { NavGroup, NavItem } from "@/components/admin/store-admin-nav";
 import { requirePlatformAdmin } from "@/server/auth";
+import { countPendingRequests } from "@/server/platform";
 
 import {
   decidePlatformApprovalAction,
@@ -13,69 +16,102 @@ import {
   startPlatformAssistantAction,
 } from "./assistant/actions";
 
-/** Kaizen's own admin: access requests, stores' plans and fees, plans, Stripe. */
+/** The page editor (a page's own address, or a new page) uses the whole width; the rest of the platform admin has its sidebar. */
+const FULL_WIDTH = String.raw`^/admin/platform/(pages|articles|headers|footers)/(new|[0-9a-f-]{36})$`;
+
+const base = "/admin/platform";
+
+const groups: NavGroup[] = [
+  {
+    heading: "Website",
+    items: [
+      { href: `${base}/pages`, label: "Pages" },
+      { href: `${base}/articles`, label: "Blog" },
+      { href: `${base}/media`, label: "Media" },
+      { href: `${base}/menus`, label: "Menus" },
+      { href: `${base}/navigation`, label: "Header and footer" },
+      { href: `${base}/headers`, label: "Headers" },
+      { href: `${base}/footers`, label: "Footers" },
+      { href: `${base}/fonts`, label: "Fonts" },
+      { href: `${base}/seo`, label: "Search" },
+      { href: `${base}/cookies`, label: "Cookies" },
+      { href: `${base}/google-reviews`, label: "Google reviews" },
+    ],
+  },
+  {
+    heading: "Billing",
+    items: [
+      { href: `${base}/discounts`, label: "Discounts" },
+      { href: `${base}/plan-reminders`, label: "Plan reminders" },
+      { href: `${base}/stripe`, label: "Stripe" },
+    ],
+  },
+  {
+    heading: "AI",
+    items: [
+      { href: `${base}/ai`, label: "AI", exact: true },
+      { href: `${base}/ai/usage`, label: "AI usage" },
+      { href: `${base}/chat`, label: "Chat agent" },
+      { href: `${base}/search-test`, label: "Search test" },
+    ],
+  },
+  { heading: "Communication", items: [{ href: `${base}/emails`, label: "Emails" }] },
+];
+
+/**
+ * Kaizen's own admin (D107), in the same shell as a store's: the level
+ * switcher and account menu in the header, the operator's daily sections as
+ * tabs, everything else in the sidebar under headings.
+ */
 export default async function PlatformLayout({ children }: LayoutProps<"/admin/platform">) {
-  await requirePlatformAdmin();
-  const nav = [
-    { href: "/admin/platform", label: "Access requests" },
-    { href: "/admin/platform/assistant", label: "AI manager" },
-    { href: "/admin/platform/customers", label: "Customers" },
-    { href: "/admin/platform/stores", label: "Stores" },
-    { href: "/admin/platform/plans", label: "Plans" },
-    { href: "/admin/platform/discounts", label: "Discounts" },
-    { href: "/admin/platform/plan-reminders", label: "Plan reminders" },
-    { href: "/admin/platform/stripe", label: "Stripe" },
-    { href: "/admin/platform/pages", label: "Pages" },
-    { href: "/admin/platform/articles", label: "Blog" },
-    { href: "/admin/platform/media", label: "Media" },
-    { href: "/admin/platform/menus", label: "Menus" },
-    { href: "/admin/platform/navigation", label: "Header and footer" },
-    { href: "/admin/platform/headers", label: "Headers" },
-    { href: "/admin/platform/footers", label: "Footers" },
-    { href: "/admin/platform/fonts", label: "Fonts" },
-    { href: "/admin/platform/seo", label: "Search" },
-    { href: "/admin/platform/cookies", label: "Cookies" },
-    { href: "/admin/platform/emails", label: "Emails" },
-    { href: "/admin/platform/ai", label: "AI" },
-    { href: "/admin/platform/ai/usage", label: "AI usage" },
-    { href: "/admin/platform/chat", label: "Chat agent" },
-    { href: "/admin/platform/google-reviews", label: "Google reviews" },
-    { href: "/admin/platform/search-test", label: "Search test" },
+  const account = await requirePlatformAdmin();
+  const waiting = await countPendingRequests();
+  const tabs: NavItem[] = [
+    { href: base, label: "Overview", exact: true },
+    { href: `${base}/requests`, label: "Requests", badge: waiting },
+    { href: `${base}/customers`, label: "Customers" },
+    { href: `${base}/stores`, label: "Stores" },
+    { href: `${base}/plans`, label: "Plans" },
+    // Kaizen's AI manager (D103), from every platform page.
+    { href: `${base}/assistant`, label: "AI manager" },
   ];
   return (
-    <>
-      <div className="border-b border-border bg-background">
-        <nav aria-label="Kaizen platform" className="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-2">
-          <span className="font-medium">Platform</span>
-          <ul className="flex flex-wrap gap-1 text-sm">
-            {nav.map((item) => (
-              <li key={item.href}>
-                <Link href={item.href} className="rounded px-2 py-1 hover:bg-surface">
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-          {/* Kaizen's AI manager (D103), from every platform page. */}
-          <div className="ml-auto">
-            <AiManagerLauncher
-              area="platform"
-              base="/admin/platform/assistant"
-              siteName="Kaizen"
-              settingsHref="/admin/platform/ai"
-              start={startPlatformAssistantAction}
-              actions={{
-                decide: decidePlatformApprovalAction,
-                remove: deletePlatformConversationAction,
-                load: loadPlatformConversationAction,
-                rate: ratePlatformAnswerAction,
-                hear: platformHearAction,
-              }}
-            />
-          </div>
-        </nav>
-      </div>
-      <PlatformMain>{children}</PlatformMain>
-    </>
+    <AdminFrame
+      switcher={
+        <Suspense fallback={<span className="px-2 font-medium">Platform</span>}>
+          <LevelSwitcher account={account} level="platform" label="Platform" />
+        </Suspense>
+      }
+      actions={
+        <AiManagerLauncher
+          area="platform"
+          base={`${base}/assistant`}
+          siteName="Kaizen"
+          settingsHref={`${base}/ai`}
+          start={startPlatformAssistantAction}
+          actions={{
+            decide: decidePlatformApprovalAction,
+            remove: deletePlatformConversationAction,
+            load: loadPlatformConversationAction,
+            rate: ratePlatformAnswerAction,
+            hear: platformHearAction,
+          }}
+        />
+      }
+      account={<AdminAccountMenu account={account} role="Platform" />}
+      tabs={tabs}
+      groups={groups}
+      tabsLabel="Platform sections"
+      menuTitle={<span className="font-medium">Platform</span>}
+      menuFooter={
+        <>
+          <MenuFooterLink href="/admin">Control center</MenuFooterLink>
+          <MenuFooterLink href="/admin/account">Your account</MenuFooterLink>
+        </>
+      }
+      fullWidth={FULL_WIDTH}
+    >
+      {children}
+    </AdminFrame>
   );
 }

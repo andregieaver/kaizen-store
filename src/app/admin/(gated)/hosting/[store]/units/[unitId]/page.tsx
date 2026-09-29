@@ -41,7 +41,7 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
     removeFeed: hostRemoveFeedAction.bind(null, store.slug),
   };
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div>
         <Link href={`/admin/hosting/${store.slug}`} className="text-sm underline">
           {host.name}
@@ -76,6 +76,6 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
           </ActionForm>
         </section>
       )}
-    </main>
+    </div>
   );
 }

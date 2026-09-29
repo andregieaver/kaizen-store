@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StoresList } from "@/components/admin/stores-list";
 import { listStores, requireAccount } from "@/server/auth";
+import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 
 import { createStoreAction } from "./actions";
@@ -14,12 +16,12 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 /** All the account's stores, and a way to create another. */
 export default async function AllStoresPage() {
   const account = await requireAccount();
-  const stores = await listStores(account);
+  const [stores, hostings] = await Promise.all([listStores(account), listHostings(account)]);
   const owned = stores.filter((store) => store.role === "owner").length;
   const canCreate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold">Your stores</h1>
         <p className="text-sm text-muted">Each store has its own products, Stripe account and plan.</p>
@@ -63,6 +65,23 @@ export default async function AllStoresPage() {
           </ActionForm>
         </section>
       )}
-    </main>
+      {hostings.length > 0 && (
+        <section aria-labelledby="hosting-heading" className="flex flex-col gap-2">
+          <h2 id="hosting-heading" className="text-lg font-semibold">
+            Hosting
+          </h2>
+          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+            {hostings.map((h) => (
+              <li key={h.slug} className="p-4">
+                <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">
+                  {h.name}
+                </Link>
+                <span className="block text-muted">As {h.hostName}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
   );
 }

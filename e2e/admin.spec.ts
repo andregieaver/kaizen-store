@@ -68,6 +68,11 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/hosting/demo",
     "/admin/platform/ai/usage",
     "/admin/account/usage",
+    // The three levels (D107).
+    "/admin",
+    "/admin/stores",
+    "/admin/account/billing",
+    "/admin/platform/requests",
   ];
   for (const path of paths) {
     await page.goto(path);
@@ -92,6 +97,9 @@ test("admin pages send nothing of theirs to a visitor without a session, before 
     "/admin/platform/seo",
     "/admin/platform/ai/usage",
     "/admin/account/usage",
+    "/admin/account/billing",
+    "/admin/platform/requests",
+    "/admin/stores",
     "/admin/demo/customers",
     "/admin/demo/orders",
     "/admin/demo/wishlists",

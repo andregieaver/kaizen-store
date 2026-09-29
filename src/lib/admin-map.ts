@@ -234,8 +234,13 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("staff", "/staff", "Team", "Account", "The store's members and their roles.", { needs: "owner", keywords: ["users", "roles", "invite"] }),
 
   // Outside a store --------------------------------------------------------------------------
-  account("stores", "", "Your stores", "The stores you work in."),
+  account("stores", "", "Control center", "Every store you run at a glance: what needs you first, the week's sales and orders, stock running out, and the latest orders.", {
+    keywords: ["overview", "dashboard", "home", "all my stores", "bird's eye", "attention"],
+  }),
   account("stores.all", "/stores", "Stores", "Your stores, and creating another."),
+  account("account.billing", "/account/billing", "Billing", "The plan of each store you own, what it costs, when it renews and Kaizen's fee.", {
+    keywords: ["plan", "subscription", "invoice", "renews", "fee", "cost"],
+  }),
   account("account.usage", "/account/usage", "AI usage", "What the AI used for the stores you own, per provider and model and per store.", {
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "ai", "provider", "model"],
     tasks: ["See your total AI usage per provider and model", "See usage per store", "Choose the period"],
@@ -245,7 +250,10 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   }),
 
   // Platform ---------------------------------------------------------------------------------
-  platform("requests", "", "Access requests", "Platform", "People asking to open a store: approving creates it and emails a sign-in link.", {
+  platform("overview", "", "Overview", "Platform", "The operator's first look: requests waiting, stores by state, plans, failed emails and AI use.", {
+    keywords: ["dashboard", "home", "attention", "status"],
+  }),
+  platform("requests", "/requests", "Access requests", "Platform", "People asking to open a store: approving creates it and emails a sign-in link.", {
     keywords: ["sign-ups", "waiting list", "approve"],
   }),
   platform("customers", "/customers", "Customers", "Platform", "Store owners with their stores, plans and invoices."),

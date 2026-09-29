@@ -1,18 +1,14 @@
-import Link from "next/link";
 import { Suspense } from "react";
 
-import { AdminColorSwitch, AdminColorSync } from "@/components/admin/admin-colors";
-import { SignOutForm } from "@/components/admin/admin-trail";
+import { AdminColorSync } from "@/components/admin/admin-colors";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
-import { Avatar } from "@/components/avatar";
-import { OutsideStoreAdmin } from "@/components/admin/store-admin-nav";
 import { getAccount } from "@/server/auth";
-import { avatarFor } from "@/server/avatars";
-import { countPendingRequests } from "@/server/platform";
 
-import { colorModeAction } from "./account/actions";
-import { signOut } from "./actions";
-
+/**
+ * Every signed-in admin page (D107). Each level draws its own header
+ * with the shared shell (`AdminFrame`): the platform, a store, the owner's
+ * control center and hosting; what is common is here, who may be here.
+ */
 export default function GatedLayout({ children }: LayoutProps<"/admin">) {
   return (
     <Suspense fallback={<p className="p-8 text-sm text-muted">Loading …</p>}>
@@ -25,39 +21,10 @@ export default function GatedLayout({ children }: LayoutProps<"/admin">) {
 async function Gate({ children }: { children: React.ReactNode }) {
   const account = await getAccount();
   if (!account) return <SessionRecovery />;
-  const pending = account.platformAdmin ? await countPendingRequests() : 0;
-
   return (
     <div className="flex min-h-screen flex-col">
       <SessionKeeper />
       <AdminColorSync saved={account.colorMode ?? "system"} />
-      {/* A store's admin has its own header, with the same links (D39). */}
-      <OutsideStoreAdmin>
-        <header className="border-b border-border bg-background">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3">
-            <Link href="/admin" className="font-semibold">
-              Kaizen
-            </Link>
-            <div className="flex items-center gap-3 text-sm">
-              {account.platformAdmin && (
-                <Link href="/admin/platform" className="underline">
-                  Platform{pending > 0 ? ` (${pending} waiting)` : ""}
-                </Link>
-              )}
-              <Link
-                href="/admin/account"
-                className="flex items-center gap-2 text-muted underline"
-                title="Your account"
-              >
-                <Avatar avatar={avatarFor(account)} size={28} />
-                {account.email}
-              </Link>
-              <AdminColorSwitch save={colorModeAction} />
-              <SignOutForm action={signOut} />
-            </div>
-          </div>
-        </header>
-      </OutsideStoreAdmin>
       {children}
     </div>
   );

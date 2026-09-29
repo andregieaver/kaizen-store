@@ -210,6 +210,18 @@ of running `playwright install`.
 
 ## Admin
 
+- The admin's three levels (D107, `docs/admin-navigation.md`): platform
+  (`/admin/platform`), the store owner's control center (`/admin`,
+  `/admin/stores`, `/admin/account/…`) and a store (`/admin/{store}`), all in
+  one shell, `AdminFrame`: the level switcher and account menu in the header
+  (`LevelSwitcher`, `AdminAccountMenu`), the level's daily sections as `tabs`,
+  the rest as sidebar `groups`. A level's layout supplies only those; a new
+  page goes in exactly one level's tabs or groups and in `ADMIN_PAGES`. The
+  owner's overview is `controlCenter()` (`src/server/control-center.ts`, pure
+  parts in `src/lib/control-center.ts`); the platform's is `platformOverview()`.
+  Owner pages go under `/admin/account/…`, never a new `/admin/{word}`, which
+  would take a store address. A layout's auth check does not stop its page
+  streaming: every page checks for itself.
 - `/admin` has its own root layout. People sign in with email and password, or
   with a Supabase magic link (`/admin/sign-in` → email → `/auth/callback` or
   `/auth/confirm`); only accounts (`commerce.accounts`) that belong to a store

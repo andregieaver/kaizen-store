@@ -46,7 +46,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
   const base = `/admin/hosting/${store.slug}`;
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-4 py-8">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <div>
         <p className="text-sm text-muted">{store.name}</p>
         <h1 className="text-2xl font-semibold">{host.name}</h1>
@@ -156,6 +156,6 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         )}
         <p className="text-sm text-muted">To change a listing&apos;s text, pictures or prices, ask the store.</p>
       </section>
-    </main>
+    </div>
   );
 }

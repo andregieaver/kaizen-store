@@ -40,7 +40,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
     owner && lifeLinkOn() ? lifeLink(account.id) : null,
   ]);
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold">Your account</h1>
         <p className="text-sm text-muted">
@@ -215,6 +215,6 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           </ul>
         </section>
       )}
-    </main>
+    </div>
   );
 }
