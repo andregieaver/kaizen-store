@@ -334,6 +334,15 @@ export async function sendTestPlanReminder(actor: Account, stepId: string): Prom
   });
 }
 
+/** The currency of Kaizen's own country, for a sample plan while there are no plans. */
+async function sampleCurrency(): Promise<string> {
+  const [row] = await db().execute<Row>(sql`
+    select m.currency from commerce.markets m join commerce.stores s on s.id = m.store_id
+    where s.is_template and m.active order by (m.code = s.country) desc nulls last, m.created_at, m.code limit 1
+  `);
+  return row ? String(row.currency) : "EUR";
+}
+
 /** What the editor's preview shows: a sample plan. */
 export async function planReminderPreview(): Promise<{ currency: string; sample: ReminderLine[]; storeName: string }> {
   const [sample] = await db().execute<Row>(sql`
@@ -343,7 +352,7 @@ export async function planReminderPreview(): Promise<{ currency: string; sample:
   `);
   const plan: PlanShown = sample
     ? { name: String(sample.name), amountMinor: Number(sample.amount_minor), currency: String(sample.currency), interval: String(sample.interval) }
-    : { name: "Standard", amountMinor: 49900, currency: "NOK", interval: "month" };
+    : { name: "Standard", amountMinor: 49900, currency: await sampleCurrency(), interval: "month" };
   return { currency: plan.currency, sample: [planLine(plan)], storeName: "Your store" };
 }
 

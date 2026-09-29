@@ -34,3 +34,11 @@ describe("currencies", () => {
     expect(currencyChoices(loc, "SEK")).toEqual(["SEK"]);
   });
 });
+
+describe("a store's main currency", () => {
+  it("is its own country's, or euro before it has one", async () => {
+    const { mainCurrency } = await import("./markets");
+    expect(mainCurrency({ markets: [se, no] })).toBe("SEK");
+    expect(mainCurrency({ markets: [] })).toBe("EUR");
+  });
+});

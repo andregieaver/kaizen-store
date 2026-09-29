@@ -10,7 +10,9 @@ import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
 import { t, type Messages } from "@/lib/i18n";
-import { toMarket, type Market, type MarketRow } from "@/lib/markets";
+import { conversionFor, localizationOf } from "@/lib/localization";
+import { marketSlug } from "@/lib/market-slug";
+import { findMarket, toMarket, type Market, type MarketRow } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
@@ -31,11 +33,13 @@ type Row = Record<string, unknown>;
  */
 
 /** What an email needs of its store, read fresh (webhooks and jobs run outside the page cache). */
-export type EmailStore = Pick<Store, "id" | "slug" | "name" | "details" | "markets">;
+export type EmailStore = Pick<Store, "id" | "slug" | "name" | "details" | "markets" | "localization">;
 
 async function storeById(storeId: string): Promise<EmailStore | null> {
   const [row] = await db().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country,
+    select s.id, s.slug, s.name, s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.locales,
+      (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
+         from commerce.store_currencies c where c.store_id = s.id) as currencies,
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
         order by (m.code = s.country) desc nulls last, m.created_at) filter (where m.code is not null), '[]') as markets
     from commerce.stores s
@@ -45,6 +49,7 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
   `);
   if (!row) return null;
   const text = (value: unknown) => (value === null || value === undefined ? null : String(value));
+  const markets = (row.markets as MarketRow[]).map(toMarket);
   return {
     id: String(row.id),
     slug: String(row.slug),
@@ -56,19 +61,38 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
       postalAddress: text(row.postal_address),
       country: text(row.country),
     },
-    markets: (row.markets as MarketRow[]).map(toMarket),
+    markets,
+    localization: localizationOf(
+      ((row.locales ?? []) as string[]).map(String),
+      ((row.currencies ?? []) as { currency: string; rate: string | number | null; roundTo: number }[]).map((c) => ({
+        currency: String(c.currency).trim(),
+        rate: c.rate === null ? null : Number(c.rate),
+        roundTo: Number(c.roundTo),
+      })),
+      markets,
+    ),
   };
 }
 
-/** The store, the order's market and its language, for one order's emails. */
-async function context(storeId: string, marketCode: string, locale: string) {
+/**
+ * The store, the order's market and its language, for one order's emails. The
+ * market is the country as the shopper saw it (D109): its links keep their
+ * language and currency while the store still offers them, else lead to the
+ * country's own address, which always exists.
+ */
+async function context(storeId: string, marketCode: string, locale: string, currency?: string) {
   const store = await storeById(storeId);
   if (!store) return null;
   const native: Market | undefined = store.markets.find((m) => m.code === marketCode) ?? store.markets[0];
   if (!native) return null;
   const lang = locale.split("-")[0] || native.lang;
-  // The shopper's language (D109): numbers and dates read as they chose; links lead to the country's own address, which always exists.
-  const market: Market = locale ? { ...native, locale, lang } : native;
+  const wanted = marketSlug(native.code, { lang, currency: currency ?? native.nativeCurrency }, { lang: native.ownLocale.split("-")[0], currency: native.nativeCurrency });
+  const view = findMarket(store.markets, wanted, {
+    locales: store.localization.locales,
+    conversion: (from, to) => conversionFor(store.localization, from, to),
+  });
+  // Numbers and dates read as the shopper chose, whatever the store offers now.
+  const market: Market = { ...(view ?? native), locale: locale || native.locale, lang };
   return { store, market, lang, text: emailText(lang), m: t(lang) };
 }
 
@@ -193,7 +217,7 @@ export async function sendOrderConfirmation(
 ): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
   if (!order || !order.email || order.status === "pending_payment" || order.status === "cancelled") return null;
-  const ctx = await context(storeId, order.marketCode, order.locale);
+  const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
@@ -274,7 +298,7 @@ async function orderNotice(
 ): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
   if (!order?.email) return null;
-  const ctx = await context(storeId, order.marketCode, order.locale);
+  const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
@@ -750,7 +774,7 @@ async function bookingEmail(
   const line = order?.lines.find((l): l is BookedLine => l.booking?.id === bookingId);
   if (!order?.email || !line) return null;
   const money = (minor: number) => formatMoney(minor, order.currency, order.locale);
-  const ctx = await context(storeId, order.marketCode, order.locale);
+  const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
   const when = formatBookingTime(line.booking.startsAt, order.locale, line.booking.timeZone);

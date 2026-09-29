@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { describeDelay } from "@/lib/cart-reminders";
 import { formatMoney } from "@/lib/money";
+import { mainCurrency } from "@/lib/markets";
 import { requireMember } from "@/server/auth";
 import {
   cartReminderStats,
@@ -109,7 +110,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Sales after reminders</span>
-            <span className="text-2xl font-semibold">{recovered || formatMoney(0, store.markets[0]?.currency ?? "NOK", locale)}</span>
+            <span className="text-2xl font-semibold">{recovered || formatMoney(0, mainCurrency(store), locale)}</span>
           </div>
         </div>
       </section>

@@ -149,7 +149,7 @@ export function batchItems(items: readonly TranslateItem[], maxCharacters = 5000
 /** The messages that ask for a batch: the rules, then the texts by a short id. */
 export function translationMessages(from: string, to: string, batch: readonly TranslateItem[]): { role: "system" | "user"; content: string }[] {
   const rules = [
-    `You translate the texts of one web page of an online store from ${from} into ${to}.`,
+    `You translate texts of an online store (a web page, a product or a menu) from ${from} into ${to}.`,
     "Translate faithfully and naturally, in the same tone. Do not add, remove or improve anything: no new claims, prices, discounts, promises or urgency.",
     "Keep numbers, brand and product names, web addresses and email addresses as they are.",
     "Each text says what it is (\"what\") and its longest length in characters (\"maxChars\", 0 for none); stay within it.",

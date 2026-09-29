@@ -1,6 +1,7 @@
 import { DiscountEditor, type DiscountDraft } from "@/components/admin/discount-editor";
 import type { StoreDiscount } from "@/lib/discounts";
 import { formatPriceInput } from "@/lib/product-input";
+import { mainCurrency } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 import { listProductChoices } from "@/server/discounts";
 
@@ -23,7 +24,7 @@ function osloLocal(iso: string | null): string {
 /** The editor for a new code or an existing one, with the store's markets and products. */
 export async function DiscountForm({ store, discount }: { store: Store; discount: (StoreDiscount & { used: number }) | null }) {
   const products = await listProductChoices(store.id, store.markets[0]?.locale ?? "nb-NO");
-  const currency = (code: string) => store.markets.find((m) => m.code === code)?.currency ?? "NOK";
+  const currency = (code: string) => store.markets.find((m) => m.code === code)?.currency ?? mainCurrency(store);
   const texts = (values: Record<string, number>) =>
     Object.fromEntries(Object.entries(values).map(([code, minor]) => [code, formatPriceInput(minor, currency(code))]));
   const initial: DiscountDraft = discount

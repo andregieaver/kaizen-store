@@ -100,6 +100,13 @@ of running `playwright install`.
   in `checkout-kinds.int.test.ts`. Page translations can be written by AI from
   the builder's sidebar (`src/lib/page-translate-ai.ts`); it only suggests, and
   every answer is checked (shape, length, `findClaims()`).
+  A whole store is translated from `/admin/{store}/translate` (D110,
+  `src/lib/store-translate.ts`, `src/server/store-translate.ts`): suggestions
+  are read and ticked by a person before `applyTranslations()` writes them;
+  pages are only saved as drafts, and legal texts (`isLegalPage()`, a product's
+  safety information) start unticked. Never fall back to a currency of your own
+  (`mainCurrency(store)`), and a new translatable text is added to that module's
+  worklist as well as to the editor.
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag
   `catalog` and `catalog:{storeId}`); stock is read per request inside
   `<Suspense>`.

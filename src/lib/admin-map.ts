@@ -195,6 +195,10 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("localization", "/settings/localization", "Languages and currencies", "Store", "The languages and currencies the store offers, each country's language, and the rates amounts are converted at.", {
     keywords: ["translate", "euro", "exchange rate", "multilingual", "language", "currency", "ECB"],
   }),
+  store("translate", "/translate", "Translate the store", "Store", "Translate products, menus, pages and articles into another language with AI, reading and keeping each text before it is saved.", {
+    keywords: ["translation", "language", "AI", "multilingual", "products", "legal"],
+    tasks: ["Translate the store into English", "Find what is not translated yet"],
+  }),
   store("search", "/search", "Search", "Store", "What shoppers searched for in the last 30 days, and searches that found nothing.", {
     keywords: ["site search", "queries"],
   }),

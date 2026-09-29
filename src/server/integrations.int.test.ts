@@ -167,6 +167,8 @@ describe("events (D41)", () => {
 
 describe("a test (D41)", () => {
   it("sends the latest order, or a sample, even before the service is switched on, and says how it went", async () => {
+    // The sample is in the store's own country and currency.
+    await db().execute(sql`update commerce.stores set country = 'NO' where id = ${storeId}::uuid`);
     expect(await integrations.sendTest(member, "make")).toEqual({ ok: false, status: null, error: "Save the webhook address first." });
     await integrations.saveIntegration(member, "make", { url: "https://hook.eu2.make.com/abc123", events: ["order.paid"], enabled: false });
     expect(await integrations.sendTest(member, "make")).toEqual({ ok: true, status: 200, error: null });

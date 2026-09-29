@@ -281,6 +281,7 @@ export async function ensureTestAccount(
     from commerce.stores s where s.id = ${storeId}::uuid
   `);
   if (!store) return { ok: false, problem: "Unknown store." };
+  if (!store.currency) return { ok: false, problem: "The store sells to no country yet, so its test account has no currency." };
   const email = store.email ? String(store.email) : "test@kaizenstore.cloud";
   // Admin pages opened together ask at the same time: the same minute and
   // place give the same request, which Stripe answers with one account.
@@ -291,7 +292,7 @@ export async function ensureTestAccount(
     created = await makeTestAccount(stripe, {
       displayName: `${String(store.name)} (test)`,
       email,
-      currency: String(store.currency ?? "NOK"),
+      currency: String(store.currency),
       description: `Test store for ${String(store.name)} on Kaizen`,
       metadata: { store_id: storeId, store_slug: String(store.slug), kaizen_test_account: "true" },
       idempotencyKey: `kaizen-test-account-${storeId}-${minute}-${ip}`,

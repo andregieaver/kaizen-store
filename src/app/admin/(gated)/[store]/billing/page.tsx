@@ -4,6 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatMoney } from "@/lib/money";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
+import { mainCurrency } from "@/lib/markets";
 import { requireMember } from "@/server/auth";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
@@ -34,12 +35,12 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   const current = plans.find((plan) => plan.id === billing?.planId);
   const inNorway = (store.details.country ?? "NO") === "NO";
 
-  // Prices in the store's own currency, else in NOK.
-  const storeCurrency = store.markets[0]?.currency ?? "NOK";
+  // Prices in the store's own currency, else in the first one the plans have.
+  const storeCurrency = mainCurrency(store);
   const offered = plans.filter((plan) => plan.active && plan.prices.some((p) => p.active));
   const currency = offered.some((plan) => plan.prices.some((p) => p.active && p.currency === storeCurrency))
     ? storeCurrency
-    : "NOK";
+    : (offered.flatMap((plan) => plan.prices).find((p) => p.active)?.currency ?? storeCurrency);
 
   // A code waiting for the plan to be chosen: the plans show what they cost with it.
   const waiting = billing?.discount && !billing.discount.appliedAt ? billing.discount : null;

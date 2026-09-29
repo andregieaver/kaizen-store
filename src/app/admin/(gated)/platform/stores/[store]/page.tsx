@@ -7,6 +7,7 @@ import { CustomerBar } from "@/components/admin/customer-bar";
 import { InvoiceList } from "@/components/admin/plan-invoices";
 import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
+import { mainCurrency } from "@/lib/markets";
 import { billingMode, getStoreBilling, listPlans, listStoreInvoices } from "@/server/billing";
 import { listStorePeople } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
@@ -35,7 +36,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
   const mode = billingMode();
   const onPlan = isOnPlan(billing.status);
   const offered = plans.filter((plan) => plan.active && plan.prices.some((p) => p.active));
-  const currency = store.markets[0]?.currency ?? "NOK";
+  const currency = mainCurrency(store);
   const suggested =
     billing.priceId ??
     offered.flatMap((plan) => plan.prices).find((p) => p.active && p.currency === currency && p.interval === "month")?.id;

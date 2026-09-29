@@ -108,6 +108,11 @@ beforeAll(async () => {
     values (${storeId}::uuid, 'test', ${`acct_kinds${run}`}, 'active', false)
   `);
   await db().execute(sql`update commerce.payment_providers set enabled = true, active_mode = 'test' where store_id = ${storeId}::uuid`);
+  // The store offers euro (D109), at the rate `noInEuro` uses.
+  await db().execute(sql`
+    insert into commerce.store_currencies (store_id, currency, rate, round_to, position)
+    values (${storeId}::uuid, 'NOK', 11.5, 1, 0), (${storeId}::uuid, 'EUR', 1, 1, 1)
+  `);
   // The demo lamp as a download (D24), as the demo has none of its own.
   await db().execute(sql`
     update commerce.product_variants set delivery = 'digital' where store_id = ${storeId}::uuid and sku = 'DEMO-LAMP'
@@ -383,5 +388,16 @@ describe("checkout for every kind of product", () => {
     const booked = paid?.lines.filter((l) => l.booking) ?? [];
     expect(booked.map((l) => l.booking?.status)).toEqual(Array(scenario.bookings).fill("confirmed"));
     expect(await getOpenCheckout(storeId, cartId())).toBeNull();
+    // The emails about it link back to the currency it was bought in (D109).
+    if (scenario.euro) {
+      await db().execute(sql`update commerce.orders set email = ${`shopper-${run}@example.com`} where id = ${open!.orderId}::uuid`);
+      await (await import("./shopper-emails")).sendOrderConfirmation(storeId, open!.orderId);
+      const mails = await db().execute<Row>(sql`
+        select html from commerce.email_messages where store_id = ${storeId}::uuid and order_id = ${open!.orderId}::uuid
+      `);
+      expect(mails.length).toBeGreaterThan(0);
+      for (const mail of mails) expect(String(mail.html)).not.toMatch(/\/no\/(order|account)/);
+      expect(mails.some((mail) => String(mail.html).includes("/no-eur/order/"))).toBe(true);
+    }
   });
 });

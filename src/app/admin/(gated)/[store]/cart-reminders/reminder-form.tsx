@@ -2,6 +2,7 @@ import { ReminderEditor } from "@/components/admin/reminder-editor";
 import type { ReminderText } from "@/lib/cart-reminders";
 import { describeDiscount } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
+import { mainCurrency } from "@/lib/markets";
 import { reminderLanguages } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
 import type { Store } from "@/server/stores";
@@ -18,7 +19,7 @@ export async function ReminderForm({
 }) {
   const [languages, discounts] = await Promise.all([reminderLanguages(store.id), listDiscounts(store.id)]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
-  const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? "NOK";
+  const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);
   const money = (minor: number, marketCode: string) => formatMoney(minor, currencyOf(marketCode), locale);
   return (
     <ReminderEditor

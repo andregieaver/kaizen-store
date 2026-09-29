@@ -298,7 +298,13 @@ export async function buildPayload(
       order by placed_at desc limit 1
     `);
     const order = latest ? await orderData(store.id, store.slug, String(latest.id)) : null;
-    return { ...head, test: true, order: order ?? SAMPLE_ORDER };
+    if (order) return { ...head, test: true, order };
+    // A store with no orders yet gets a sample in its own country and currency.
+    const [market] = await db().execute<Row>(sql`
+      select m.code, m.currency from commerce.markets m join commerce.stores s on s.id = m.store_id
+      where s.id = ${store.id}::uuid and m.active order by (m.code = s.country) desc nulls last, m.created_at, m.code limit 1
+    `);
+    return { ...head, test: true, order: sampleOrder(market ? String(market.code) : "", market ? String(market.currency) : "") };
   }
   if (!delivery.subjectId) return null;
   if (delivery.event.startsWith("order.")) {
@@ -317,29 +323,32 @@ export async function buildPayload(
 }
 
 /** What a test sends when the store has no orders yet: the fields a real order has. */
-const SAMPLE_ORDER = {
-  id: "00000000-0000-4000-8000-000000000000",
-  number: "1001",
-  status: "paid",
-  placed_at: "2026-01-01T12:00:00.000Z",
-  market: "NO",
-  currency: "NOK",
-  email: "kari.nordmann@example.com",
-  customer_name: "Kari Nordmann",
-  subtotal: 398,
-  shipping: 99,
-  discount: 0,
-  discount_code: "",
-  vat: 99.4,
-  total: 497,
-  refunded: 0,
-  shipping_address: { name: "Kari Nordmann", line1: "Storgata 1", line2: "", postal_code: "0155", city: "Oslo", country: "NO", phone: "" },
-  billing_address: { name: "Kari Nordmann", line1: "Storgata 1", line2: "", postal_code: "0155", city: "Oslo", country: "NO", phone: "" },
-  lines: [{ sku: "SAMPLE-1", title: "Sample product", quantity: 2, unit_price: 199, total: 398, delivery: "physical" }],
-  shipment: null,
-  subscription_id: null,
-  admin_url: "",
-};
+function sampleOrder(country: string, currency: string) {
+  const address = { name: "Sample Customer", line1: "Sample Street 1", line2: "", postal_code: "12345", city: "Sample City", country, phone: "" };
+  return {
+    id: "00000000-0000-4000-8000-000000000000",
+    number: "1001",
+    status: "paid",
+    placed_at: "2026-01-01T12:00:00.000Z",
+    market: country,
+    currency,
+    email: "customer@example.com",
+    customer_name: "Sample Customer",
+    subtotal: 398,
+    shipping: 99,
+    discount: 0,
+    discount_code: "",
+    vat: 99.4,
+    total: 497,
+    refunded: 0,
+    shipping_address: address,
+    billing_address: address,
+    lines: [{ sku: "SAMPLE-1", title: "Sample product", quantity: 2, unit_price: 199, total: 398, delivery: "physical" }],
+    shipment: null,
+    subscription_id: null,
+    admin_url: "",
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Sending

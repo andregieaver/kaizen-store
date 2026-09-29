@@ -122,6 +122,9 @@ export function findMarket(
   return showMarket({ code: own.code, currency: own.nativeCurrency, defaultLocale: own.ownLocale }, { locale, currency, conversion });
 }
 
+/** The currency a store's own country keeps its prices in, which its markets list first; euro for a store with no country yet. */
+export const mainCurrency = (store: { markets: readonly Pick<Market, "nativeCurrency">[] }): string => store.markets[0]?.nativeCurrency ?? "EUR";
+
 /** The market to suggest for a visitor's country, if the store sells there. */
 export function marketForCountry(
   markets: readonly Market[],

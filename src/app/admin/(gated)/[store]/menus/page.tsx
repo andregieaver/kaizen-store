@@ -48,11 +48,10 @@ export default async function MenusPage({ params, searchParams }: PageProps<"/ad
 async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchParams: PageProps<"/admin/[store]/menus">["searchParams"] }) {
   const { store } = await requireMember(storeSlug);
   const { menu: wanted } = await searchParams;
-  const home = store.markets[0];
   const [menus, uses, products, terms, pages, articles, blogTerms] = await Promise.all([
     listStoreMenus(store.id),
     menuUses(store.id),
-    listMenuProducts(store.id, home?.locale ?? "nb-NO"),
+    listMenuProducts(store.id, store.localization.locales[0] ?? "en-GB"),
     listTerms({ storeId: store.id, contentType: "product" }),
     listMenuPages(store.id),
     listMenuPages(store.id, "article"),

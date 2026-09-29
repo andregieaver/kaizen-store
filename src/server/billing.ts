@@ -915,14 +915,15 @@ export async function portalUrl(
   }
 }
 
-/** The currencies plans can be priced in: those of the markets Kaizen launched (NOK first). */
+/** The currencies plans can be priced in: those of the markets Kaizen launched, its own country's first. */
 export async function planCurrencies(): Promise<string[]> {
   const rows = await db().execute<Row>(sql`
-    select distinct m.currency from commerce.markets m
+    select m.currency, bool_or(m.code = s.country) as own from commerce.markets m
     join commerce.stores s on s.id = m.store_id
     where s.is_template and m.active
+    group by m.currency order by own desc, m.currency
   `);
-  return rows.map((row) => String(row.currency)).sort((a, b) => (a === "NOK" ? -1 : b === "NOK" ? 1 : a.localeCompare(b)));
+  return rows.map((row) => String(row.currency));
 }
 
 // ---------------------------------------------------------------------------

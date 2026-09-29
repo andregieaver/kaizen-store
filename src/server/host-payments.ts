@@ -155,13 +155,14 @@ export async function ensureHostTestAccount(
     where h.store_id = ${storeId}::uuid and h.id = ${hostId}::uuid
   `);
   if (!host) return { ok: false, problem: "Unknown host." };
+  if (!host.currency) return { ok: false, problem: "The store sells to no country yet, so the host's account has no currency." };
   const minute = Math.floor(Date.now() / 60_000) * 60_000;
   let created: Stripe.V2.Core.Account;
   try {
     created = await makeTestAccount(stripe, {
       displayName: `${String(host.name)} (test)`,
       email: String(host.email),
-      currency: String(host.currency ?? "NOK"),
+      currency: String(host.currency),
       description: `Test host ${String(host.name)} on Kaizen`,
       metadata: { store_id: storeId, store_slug: String(host.slug), host_id: hostId, kaizen_test_account: "true" },
       idempotencyKey: `kaizen-host-test-account-${hostId}-${minute}`,
