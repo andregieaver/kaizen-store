@@ -97,7 +97,15 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                   </span>
                 )}
               </span>
-              <span className="whitespace-nowrap">{money(line.unitPriceMinor * line.quantity)}</span>
+              <span className="whitespace-nowrap">
+                {line.gift ? (
+                  <>
+                    <span className="text-muted line-through">{money(line.unitPriceMinor * line.quantity)}</span> {m.freeGift}
+                  </>
+                ) : (
+                  money(line.unitPriceMinor * line.quantity)
+                )}
+              </span>
             </li>
           ))}
         </ul>

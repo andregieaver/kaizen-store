@@ -1254,6 +1254,52 @@ export const discountCodes = commerce.table(
   ],
 );
 
+/**
+ * A store's campaigns (D114): offers without a code, for a time: a
+ * percentage off, "buy N pay for M", or a free product over an amount. What
+ * they reach is `product_ids` and the categories and tags in `term_ids`; with
+ * neither, everything. `thresholds` is per market, in the country's own
+ * currency, like a code's minimum.
+ */
+export const campaigns = commerce.table(
+  "campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    name: text("name").notNull(),
+    kind: text("kind").notNull(),
+    percent: integer("percent").notNull().default(0),
+    buyQuantity: integer("buy_quantity").notNull().default(0),
+    payQuantity: integer("pay_quantity").notNull().default(0),
+    giftVariantId: uuid("gift_variant_id"),
+    giftQuantity: integer("gift_quantity").notNull().default(1),
+    thresholds: jsonb("thresholds").notNull().default({}),
+    productIds: jsonb("product_ids").notNull().default([]),
+    termIds: jsonb("term_ids").notNull().default([]),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("campaigns_store_id_key").on(t.storeId, t.id),
+    variantRef("campaigns_gift_variant_fk", { storeId: t.storeId, variantId: t.giftVariantId }),
+    index("campaigns_store_idx").on(t.storeId, t.active),
+    index("campaigns_gift_variant_idx").on(t.storeId, t.giftVariantId),
+    check("campaigns_kind", sql`${t.kind} in ('percent', 'multi_buy', 'gift')`),
+    check("campaigns_percent", sql`(${t.kind} = 'percent' and ${t.percent} between 1 and 100) or (${t.kind} <> 'percent' and ${t.percent} = 0)`),
+    check(
+      "campaigns_multi_buy",
+      sql`(${t.kind} = 'multi_buy' and ${t.buyQuantity} between 2 and 20 and ${t.payQuantity} between 1 and ${t.buyQuantity} - 1) or (${t.kind} <> 'multi_buy' and ${t.buyQuantity} = 0 and ${t.payQuantity} = 0)`,
+    ),
+    check("campaigns_gift", sql`(${t.kind} = 'gift' and ${t.giftVariantId} is not null and ${t.giftQuantity} between 1 and 5) or (${t.kind} <> 'gift' and ${t.giftVariantId} is null)`),
+    check("campaigns_dates", sql`${t.startsAt} is null or ${t.endsAt} is null or ${t.startsAt} < ${t.endsAt}`),
+  ],
+);
+
 const marketRef = (
   name: string,
   cols: { storeId: AnyPgColumn; marketCode: AnyPgColumn; currency: AnyPgColumn },
@@ -1738,6 +1784,9 @@ export const orders = commerce.table(
     memberDiscountMinor: money("member_discount_minor").default(0),
     memberLabel: text("member_label"),
     memberPercent: numeric("member_percent", { precision: 5, scale: 2 }),
+    /** The part of the discount that campaigns gave (D114), and their names as sold; the rest is the code's and the group's. */
+    campaignDiscountMinor: money("campaign_discount_minor").default(0),
+    campaignLabel: text("campaign_label"),
     /** VAT contained in the total. Prices are VAT-inclusive. */
     taxMinor: money("tax_minor"),
     totalMinor: money("total_minor"),
@@ -1804,6 +1853,7 @@ export const orders = commerce.table(
       sql`${t.totalMinor} = ${t.subtotalMinor} + ${t.shippingMinor} - ${t.discountMinor}`,
     ),
     check("orders_member_discount", sql`${t.memberDiscountMinor} between 0 and ${t.discountMinor}`),
+    check("orders_campaign_discount", sql`${t.campaignDiscountMinor} between 0 and ${t.discountMinor}`),
     check("orders_tax_within_total", sql`${t.taxMinor} <= ${t.totalMinor}`),
     check("orders_balance", sql`${t.balanceMinor} between 0 and ${t.totalMinor}`),
   ],
@@ -1868,6 +1918,10 @@ export const orderLines = commerce.table(
     discountMinor: money("discount_minor").default(0),
     /** The part of the discount that is the buyer's group or company discount (D108). */
     memberDiscountMinor: money("member_discount_minor").default(0),
+    /** The part a campaign gave (D114), and which; a gift line is the whole line, at its list price. */
+    campaignDiscountMinor: money("campaign_discount_minor").default(0),
+    campaignId: uuid("campaign_id"),
+    gift: boolean("gift").notNull().default(false),
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
     /** The part of the total paid at the venue (D66): all of it, or what a deposit leaves. */
@@ -1900,6 +1954,7 @@ export const orderLines = commerce.table(
       sql`${t.unitPriceMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.taxMinor} >= 0`,
     ),
     check("order_lines_member_discount", sql`${t.memberDiscountMinor} between 0 and ${t.discountMinor}`),
+    check("order_lines_campaign_discount", sql`${t.campaignDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
   ],
 );

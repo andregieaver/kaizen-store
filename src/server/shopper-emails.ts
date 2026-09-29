@@ -134,7 +134,8 @@ function orderLines(
         label: line.booking
           ? `${isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}, ${bookingWhen(line.booking, order.locale, m)}`
           : `${line.quantity} × ${line.title}`,
-        value: money(line.unitPriceMinor * line.quantity),
+        // A free product a campaign gave (D114): its price is all taken off below.
+        value: line.gift ? `${money(line.unitPriceMinor * line.quantity)} (${m.freeGift})` : money(line.unitPriceMinor * line.quantity),
         image: line.image ? absoluteUrl(line.image, origin) : null,
       })),
       { label: text.subtotal, value: money(order.subtotalMinor), muted: true },

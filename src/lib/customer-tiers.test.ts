@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { companyInput, companyPercent, discountParts, memberDiscount, memberLineOff, parseInviteEmails, percentText, tierInput } from "./customer-tiers";
+import { companyInput, companyPercent, discountNote, discountParts, memberDiscount, memberLineOff, parseInviteEmails, percentText, tierInput } from "./customer-tiers";
 
 describe("discount groups and company accounts (D108)", () => {
   it("reads a group's and a company's settings, with whole percentages", () => {
@@ -47,12 +47,21 @@ describe("discount groups and company accounts (D108)", () => {
   });
 
   it("splits an order's discount into the group's and the code's", () => {
-    expect(discountParts({ discountMinor: 1_500, memberDiscountMinor: 1_000, memberLabel: "Acme AS", memberPercent: 10, discountCode: "SUMMER" })).toEqual({
+    expect(discountParts({ discountMinor: 1_500, memberDiscountMinor: 1_000, memberLabel: "Acme AS", memberPercent: 10, discountCode: "SUMMER", campaignDiscountMinor: 0, campaignLabel: null })).toEqual({
+      campaignMinor: 0,
+      campaignLabel: null,
       memberMinor: 1_000,
       memberLabel: "Acme AS",
       memberPercent: 10,
       codeMinor: 500,
       code: "SUMMER",
     });
+  });
+
+  it("puts campaigns first, then the group's, then the code's", () => {
+    const order = { discountMinor: 2_000, memberDiscountMinor: 300, memberLabel: "Acme AS", memberPercent: 10, discountCode: "SUMMER", campaignDiscountMinor: 1_200, campaignLabel: "3 for 2" };
+    expect(discountParts(order)).toMatchObject({ campaignMinor: 1_200, memberMinor: 300, codeMinor: 500 });
+    expect(discountNote(order)).toBe("3 for 2, Acme AS 10 %, SUMMER");
+    expect(discountNote({ ...order, discountMinor: 1_200, memberDiscountMinor: 0, discountCode: null })).toBe("3 for 2");
   });
 });

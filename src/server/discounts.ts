@@ -104,7 +104,7 @@ export async function getDiscount(storeId: string, id: string): Promise<(StoreDi
 }
 
 /** An ISO time from the admin's `datetime-local`, read as Norwegian time. */
-function osloTime(value: string | null): string | null {
+export function osloTime(value: string | null): string | null {
   if (!value) return null;
   const local = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value) ? value : null;
   if (!local) {
@@ -314,7 +314,7 @@ export async function checkCodeForOrder(
     select shipping_minor, member_percent from commerce.orders where store_id = ${shop.storeId}::uuid and id = ${orderId}::uuid
   `);
   const lines = await db().execute<Row>(sql`
-    select ol.id, v.product_id, ol.unit_price_minor, ol.member_discount_minor, ol.quantity, ol.selling_plan_id is not null as recurring
+    select ol.id, v.product_id, ol.unit_price_minor, ol.member_discount_minor, ol.campaign_discount_minor, ol.quantity, ol.selling_plan_id is not null as recurring
     from commerce.order_lines ol
     join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
     where ol.store_id = ${shop.storeId}::uuid and ol.order_id = ${orderId}::uuid
@@ -322,13 +322,13 @@ export async function checkCodeForOrder(
   if (!order) return { ok: false, problem: "not_applicable", minimumMinor: null };
   const result = applyDiscount(found.discount, {
     marketCode: shop.market.code,
-    // The code counts what the buyer's group or company discount left (D108), as placing the order does.
+    // The code counts what a campaign (D114) and the buyer's group or company discount (D108) left, as placing the order does.
     lines: lines.map((line) => ({
       key: String(line.id),
       productId: String(line.product_id),
       unitMinor: Number(line.member_discount_minor) > 0 ? planPrice(Number(line.unit_price_minor), Number(order.member_percent)) : Number(line.unit_price_minor),
       quantity: Number(line.quantity),
-      todayMinor: Number(line.unit_price_minor) * Number(line.quantity) - Number(line.member_discount_minor),
+      todayMinor: Number(line.unit_price_minor) * Number(line.quantity) - Number(line.member_discount_minor) - Number(line.campaign_discount_minor),
       recurring: Boolean(line.recurring),
     })),
     shippingMinor: Number(order.shipping_minor),

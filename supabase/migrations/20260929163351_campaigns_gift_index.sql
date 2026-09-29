@@ -1,0 +1,1 @@
+CREATE INDEX "campaigns_gift_variant_idx" ON "commerce"."campaigns" USING btree ("store_id","gift_variant_id");

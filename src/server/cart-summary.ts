@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cartSubtotal } from "@/lib/cart";
-import { memberLineOff } from "@/lib/customer-tiers";
+import { memberOffAfterCampaign } from "@/lib/campaigns";
 import { vatIncluded } from "@/lib/checkout";
 import { venuePart } from "@/lib/pay-later";
 import { basketShipping, planPrice } from "@/lib/subscriptions";
@@ -9,6 +9,7 @@ import { basketShipping, planPrice } from "@/lib/subscriptions";
 import { db } from "@/db/client";
 
 import type { Cart, CartLine, Shop } from "./cart";
+import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { getCustomer } from "./customers";
 import { previewCartDiscount } from "./discounts";
@@ -58,7 +59,25 @@ export async function cartSummary(shop: Shop, cart: Cart) {
   // The buyer's group or company discount (D108), off what is bought once, before any code, as checkout takes it.
   const customer = await getCustomer(storeId);
   const member = await memberDiscountFor(db(), storeId, customer?.id ?? null);
-  const memberOff = payable.map((line) => (member && !line.plan && line.unitPriceMinor > 0 ? memberLineOff(line.unitPriceMinor, line.quantity, member.percent) : 0));
+  // Campaigns (D114) come first: reductions on goods bought once, and the free products the basket has earned.
+  const campaigns = await evaluateCampaigns(
+    db(),
+    { storeId, market },
+    payable.map((line, i) => ({
+      key: String(i),
+      productId: line.productId,
+      unitMinor: line.unitPriceMinor,
+      quantity: line.quantity,
+      discountable: !line.plan && !line.booking && line.unitPriceMinor > 0,
+      valueMinor: today(line),
+    })),
+    { ships },
+  );
+  const campaignOff = payable.map((_, i) => campaigns.result.lineOff[String(i)] ?? 0);
+  const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0);
+  const memberOff = payable.map((line, i) =>
+    member && !line.plan && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
+  );
   const memberDiscountMinor = memberOff.reduce((sum, off) => sum + off, 0);
   // The discount code, checked against this basket as checkout will (D31).
   const code = await previewCartDiscount(
@@ -70,7 +89,7 @@ export async function cartSummary(shop: Shop, cart: Cart) {
         // What the code is taken off: the price after the group's discount for what is bought once.
         unitMinor: member && !line.plan ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
         quantity: line.quantity,
-        todayMinor: today(line) - memberOff[i],
+        todayMinor: today(line) - campaignOff[i] - memberOff[i],
         recurring: line.plan !== null,
       })),
       shippingMinor: shipping ?? 0,
@@ -78,7 +97,7 @@ export async function cartSummary(shop: Shop, cart: Cart) {
   );
   const applied = code?.ok ? code.applied : null;
   const codeDiscountMinor = applied?.totalMinor ?? 0;
-  const discountMinor = codeDiscountMinor + memberDiscountMinor;
+  const discountMinor = codeDiscountMinor + memberDiscountMinor + campaignDiscountMinor;
   // A recurring percentage lowers what each renewal costs, and so its shipping.
   const renewUnit = (line: (typeof payable)[number], i: number) => applied?.renewalUnits[String(i)] ?? line.unitPriceMinor;
   const renewing = payable
@@ -100,7 +119,8 @@ export async function cartSummary(shop: Shop, cart: Cart) {
   const renewal = plan ? renewing + renewalShipping : null;
   const codeLine = (i: number) => applied?.lines[String(i)] ?? 0;
   const memberLine = (i: number) => memberOff[i] ?? 0;
-  const lineDiscount = (i: number) => codeLine(i) + memberLine(i);
+  const campaignLine = (i: number) => campaignOff[i] ?? 0;
+  const lineDiscount = (i: number) => codeLine(i) + memberLine(i) + campaignLine(i);
   const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor;
   const vat =
     payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i), line.vatRate), 0) +
@@ -131,6 +151,11 @@ export async function cartSummary(shop: Shop, cart: Cart) {
     member,
     memberDiscountMinor,
     codeDiscountMinor,
+    /** What campaigns give (D114): the names of those that reduced something, the amount, and the free products earned. */
+    campaignDiscountMinor,
+    campaignNames: campaigns.result.applied.map((a) => a.name),
+    campaignLine,
+    gifts: campaigns.gifts,
     renewal,
     lineDiscount,
     codeLine,

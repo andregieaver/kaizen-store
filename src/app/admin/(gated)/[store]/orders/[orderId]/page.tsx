@@ -194,7 +194,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       </td>
                       <td className="py-2 font-mono text-xs">{line.sku}</td>
                       <td className="py-2 text-right">{line.quantity}</td>
-                      <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}</td>
+                      <td className="py-2 text-right">{money(line.unitPriceMinor * line.quantity)}{line.gift && <span className="block text-xs text-muted">Free gift</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -207,6 +207,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 <div className="flex justify-between">
                   <dt>
                     Discount
+                    {order.campaignDiscountMinor > 0 && order.campaignLabel && (
+                      <span className="text-xs text-muted">
+                        {" "}
+                        (<Link href={`/admin/${store.slug}/campaigns`} className="underline">{order.campaignLabel}</Link>, −{money(order.campaignDiscountMinor)})
+                      </span>
+                    )}
                     {order.memberDiscountMinor > 0 && order.memberLabel && (
                       <span className="text-xs text-muted">
                         {" "}

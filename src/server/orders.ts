@@ -45,6 +45,9 @@ export type OrderView = {
   memberDiscountMinor: number;
   memberLabel: string | null;
   memberPercent: number | null;
+  /** The part campaigns gave (D114), by name. */
+  campaignDiscountMinor: number;
+  campaignLabel: string | null;
   taxMinor: number;
   totalMinor: number;
   /** Still to be paid at the venue (D66); 0 once staff mark it paid. */
@@ -66,6 +69,8 @@ export type OrderView = {
     image: string | null;
     /** The VAT rate it was sold at (D65). */
     taxRate: number;
+    /** A free product a campaign gave (D114): its price is all taken off. */
+    gift: boolean;
     /** The part of its total paid at the venue (D66). */
     venueMinor: number;
     /** An appointment's time (D65), who with, and where it stands, shown in the store's time zone. */
@@ -132,6 +137,8 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   memberDiscountMinor: Number(row.member_discount_minor ?? 0),
   memberLabel: row.member_label ? String(row.member_label) : null,
   memberPercent: row.member_percent === null || row.member_percent === undefined ? null : Number(row.member_percent),
+  campaignDiscountMinor: Number(row.campaign_discount_minor ?? 0),
+  campaignLabel: row.campaign_label ? String(row.campaign_label) : null,
   taxMinor: Number(row.tax_minor),
   totalMinor: Number(row.total_minor),
   balanceMinor: Number(row.balance_minor ?? 0),
@@ -149,6 +156,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     delivery: parseDelivery(line.delivery),
     image: line.image ? String(line.image) : null,
     taxRate: Number(line.tax_rate ?? 0),
+    gift: Boolean(line.gift),
     venueMinor: Number(line.venue_minor ?? 0),
     booking: line.starts_at
       ? {
@@ -184,7 +192,7 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
-      select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate,
+      select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.gift,
         (select coalesce(m.thumbnail_url, m.url)
           from commerce.product_variants v
           join commerce.product_media m on m.product_id = v.product_id

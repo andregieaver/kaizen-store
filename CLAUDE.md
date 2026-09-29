@@ -562,6 +562,17 @@ of running `playwright install`.
   (`src/components/admin/terms.tsx`) manage and choose them; changes
   `updateTag(termsTag(scope))`. Menus link to them by address (D52), to
   `/s/{store}/{market}/category|tag/{slug}` and Kaizen's `/category|tag/{slug}`.
+- Campaigns (D114, `src/lib/campaigns.ts`, `src/server/campaigns.ts`,
+  `/admin/{store}/campaigns` under Sales): offers without a code, for a time: a
+  percentage off, "buy N pay for M", a free product over an amount, for the
+  store, products, or categories and tags. `evaluateCampaigns()` is what the
+  cart (`cartSummary()`) and `placeOrder()` both use, so they agree
+  (`checkout-kinds.int.test.ts` needs a scenario for a new kind). Campaigns come
+  off goods bought once before the group's discount (D108) and codes (D31),
+  which count what is left; a free product is an ordinary order line at a full
+  discount (`order_lines.gift`), left out of the cart-changed check and of free
+  shipping's basket. A new kind of price or line that discounts keeps these
+  together.
 - Customer groups and company accounts (D108, `src/lib/customer-tiers.ts`,
   `src/server/customer-tiers.ts`, `src/server/companies.ts`): a group is a
   fixed percentage (`customer_tiers`, `customers.tier_id`); a company

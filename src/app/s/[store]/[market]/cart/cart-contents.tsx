@@ -6,6 +6,7 @@ import { DiscountCodeForm } from "@/components/discount-code-form";
 import { discountNote } from "@/lib/customer-tiers";
 import { companyRequired, withoutVat } from "@/lib/b2b";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
+import { campaignLabel } from "@/lib/campaigns";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, type Messages } from "@/lib/i18n";
@@ -68,6 +69,9 @@ export async function CartContents({
     discountMinor,
     member,
     memberDiscountMinor,
+    campaignDiscountMinor,
+    campaignNames,
+    gifts,
     renewal,
     lineDiscount,
     total,
@@ -214,6 +218,32 @@ export async function CartContents({
             </div>
           </li>
         ))}
+        {/* Free products a campaign gives (D114): nothing to count or remove, and nothing to pay. */}
+        {gifts.map((gift) => (
+          <li key={`gift:${gift.campaignId}:${gift.variantId}`} className={`flex py-4 ${drawer ? "gap-3" : "gap-4"}`}>
+            {gift.image && (
+              <Image
+                src={gift.image.url}
+                alt={gift.image.alt}
+                width={96}
+                height={96}
+                unoptimized
+                className={`${drawer ? "size-16" : "size-24"} shrink-0 rounded-md bg-surface object-cover`}
+              />
+            )}
+            <div className="flex min-w-0 flex-1 justify-between gap-4">
+              <div className="min-w-0">
+                <p className="font-medium">
+                  {gift.quantity > 1 && `${gift.quantity} × `}
+                  {gift.title}
+                </p>
+                {Object.keys(gift.options).length > 0 && <p className="text-sm text-muted">{optionLabel(m, gift.options)}</p>}
+                <p className="text-sm text-muted">{m.giftFrom(gift.campaignName)}</p>
+              </div>
+              <p className="shrink-0 text-right font-medium whitespace-nowrap">{m.freeGift}</p>
+            </div>
+          </li>
+        ))}
       </ul>
 
       <aside
@@ -245,7 +275,7 @@ export async function CartContents({
               <dt>
                 {m.discount}{" "}
                 <span className="text-sm text-muted">
-                  ({discountNote({ discountMinor, memberDiscountMinor, memberLabel: member?.label ?? null, memberPercent: member?.percent ?? null, discountCode: applied ? (code?.code ?? null) : null })})
+                  ({discountNote({ discountMinor, memberDiscountMinor, memberLabel: member?.label ?? null, memberPercent: member?.percent ?? null, discountCode: applied ? (code?.code ?? null) : null, campaignDiscountMinor, campaignLabel: campaignLabel(campaignNames) })})
                 </span>
               </dt>
               <dd>

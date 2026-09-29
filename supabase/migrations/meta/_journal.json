@@ -1261,6 +1261,20 @@
       "when": 1790696725585,
       "tag": "20260929154525_page_roles_shop",
       "breakpoints": true
+    },
+    {
+      "idx": 180,
+      "version": "7",
+      "when": 1790698388236,
+      "tag": "20260929161308_campaigns",
+      "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1790699631020,
+      "tag": "20260929163351_campaigns_gift_index",
+      "breakpoints": true
     }
   ]
 }

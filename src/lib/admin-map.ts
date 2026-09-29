@@ -163,6 +163,12 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("hosts.dac7", "/hosts/dac7", "DAC7 report", "Bookings", "The yearly DAC7 tax report on hosts' income.", { needs: "bookings", keywords: ["tax", "dac7"] }),
 
   // Store: sales ---------------------------------------------------------------------------
+  store("campaigns", "/campaigns", "Campaigns", "Sales", "Offers without a code, for a time: a percentage off, buy more and pay for fewer (3 for 2), or a free product above a basket amount, for the whole store, chosen products, categories or tags.", {
+    tasks: ["Start a sale", "Set up 3 for 2", "Give a free product over an amount", "Schedule a campaign", "Switch a campaign off"],
+    keywords: ["sale", "offer", "promotion", "3 for 2", "bundle", "free gift", "discount", "black friday", "time-limited"],
+  }),
+  store("campaign.new", "/campaigns/new", "New campaign", "Sales", "Creates a campaign: what it gives, what it applies to, and when it runs."),
+  store("campaign", "/campaigns/[campaignId]", "Campaign", "Sales", "One campaign: what it gives, what it applies to, when it runs, and switching it off or deleting it."),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"] }),
   store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails and their customer group."),
   store("customer-groups", "/customer-groups", "Customer groups", "Sales", "Discount groups such as Wholesale: a fixed percentage off for the customers in them.", {

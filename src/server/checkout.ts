@@ -2,7 +2,7 @@ import "server-only";
 
 import { randomBytes } from "node:crypto";
 
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import { after } from "next/server";
 import type Stripe from "stripe";
 
@@ -17,7 +17,7 @@ import { marketPath, storeOrigin } from "@/lib/paths";
 import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
 import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
-import { memberLineOff } from "@/lib/customer-tiers";
+import { campaignLabel, memberOffAfterCampaign } from "@/lib/campaigns";
 import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
@@ -29,6 +29,7 @@ import { storeFeeBps } from "./billing";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
 import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
+import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { findUsableDiscount } from "./discounts";
 import { commissionOf, hostCheckoutAccount } from "./host-payments";
@@ -117,6 +118,40 @@ export type PlaceResult = { ok: true; order: PlacedOrder } | { ok: false; proble
 export type CheckoutConsent = { digital?: boolean; subscription?: boolean };
 
 /**
+ * The rows `placeOrder()` prices, from a source that has the columns of a cart line (`store_id`,
+ * `variant_id`, `quantity`, `selling_plan_id`, `starts_at`, `resource_id`): the shopper's cart lines, or
+ * the free products a campaign gives (D114), which are sold like any other line.
+ */
+function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
+  return tx.execute<Row>(sql`
+      select
+        cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id, p.audience,
+        cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
+        coalesce((sp.signup_fee ->> ${market.code})::bigint, 0) as signup_fee,
+        (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
+        coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
+        commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
+        coalesce(tl.title, tf.title, p.handle) as title,
+        cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
+        p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
+        (p.status = 'active' and v.active and ${bookable}) as sellable
+      from ${source}
+      join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
+      join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+      left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${market.locale}
+      left join lateral (
+        select title from commerce.product_translations where product_id = p.id order by locale limit 1
+      ) tf on true
+      left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
+      left join commerce.selling_plans sp
+        on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
+      left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id
+      where ${where}
+      order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at
+  `);
+}
+
+/**
  * Turns an open cart into an order waiting for payment, at today's prices,
  * and holds its stock for the length of a Stripe Checkout session. Stock is
  * checked under row locks, so two shoppers cannot both get the last item.
@@ -141,32 +176,13 @@ export async function placeOrder(
     `);
     if (!cart) return { ok: false, problem: "empty" };
 
-    const lines = await tx.execute<Row>(sql`
-      select
-        cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id, p.audience,
-        cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
-        coalesce((sp.signup_fee ->> ${market.code})::bigint, 0) as signup_fee,
-        (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
-        coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
-        commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
-        coalesce(tl.title, tf.title, p.handle) as title,
-        cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
-        p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
-        (p.status = 'active' and v.active and ${bookable}) as sellable
-      from commerce.cart_lines cl
-      join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
-      join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
-      left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${market.locale}
-      left join lateral (
-        select title from commerce.product_translations where product_id = p.id order by locale limit 1
-      ) tf on true
-      left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
-      left join commerce.selling_plans sp
-        on sp.store_id = cl.store_id and sp.id = cl.selling_plan_id and sp.product_id = p.id
-      left join commerce.appointment_settings aps on aps.store_id = p.store_id and aps.product_id = p.id
-      where cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid
-      order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at
-    `);
+    const cartLines = await orderLineRows(
+      tx,
+      market,
+      sql`commerce.cart_lines cl`,
+      sql`cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid`,
+    );
+    const lines: Row[] = [...cartLines];
     if (lines.length === 0) return { ok: false, problem: "empty" };
     // A subscription is bought in the country's own currency only (D109).
     if (!isNative(market) && lines.some((l) => l.selling_plan_id !== null)) return { ok: false, problem: "unavailable" };
@@ -207,49 +223,6 @@ export async function placeOrder(
     const digital = lines.some((l) => l.delivery === "digital");
     if (digital && !consent.digital) return { ok: false, problem: "consent" };
 
-    // Lock the stock rows, then count what is free: on hand minus live holds.
-    const variantIds = sql.join(
-      [sql`null::uuid`, ...physical.map((l) => sql`${String(l.variant_id)}::uuid`)],
-      sql`, `,
-    );
-    const levels = await tx.execute<Row>(sql`
-      select l.variant_id, l.location_id, l.on_hand
-      from commerce.inventory_levels l
-      join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
-      where l.store_id = ${storeId}::uuid and l.variant_id in (${variantIds})
-      order by loc.created_at
-      for update of l
-    `);
-    const holds = await tx.execute<Row>(sql`
-      select variant_id, location_id, sum(quantity)::int as held
-      from commerce.inventory_reservations
-      where store_id = ${storeId}::uuid and variant_id in (${variantIds})
-        and released_at is null and expires_at > now()
-      group by variant_id, location_id
-    `);
-    const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
-
-    const allocations: { variantId: string; locationId: string; quantity: number }[] = [];
-    // The same variant can be bought once and subscribed to: count it together.
-    const wantedByVariant = new Map<string, number>();
-    for (const line of physical) {
-      const id = String(line.variant_id);
-      wantedByVariant.set(id, (wantedByVariant.get(id) ?? 0) + Number(line.quantity));
-    }
-    for (const [variantId, quantity] of wantedByVariant) {
-      const line = { variant_id: variantId };
-      let wanted = quantity;
-      for (const level of levels.filter((l) => l.variant_id === line.variant_id)) {
-        const free = Number(level.on_hand) - (heldAt.get(`${level.variant_id}:${level.location_id}`) ?? 0);
-        const take = Math.min(Math.max(free, 0), wanted);
-        if (take > 0) {
-          allocations.push({ variantId: String(line.variant_id), locationId: String(level.location_id), quantity: take });
-          wanted -= take;
-        }
-      }
-      if (wanted > 0) return { ok: false, problem: "stock" };
-    }
-
     const [rate] = await tx.execute<Row>(sql`
       select amount_minor, free_over_minor from commerce.shipping_rates
       where store_id = ${storeId}::uuid and market_code = ${market.code}
@@ -265,7 +238,7 @@ export async function placeOrder(
     // Stays and rentals are priced by their nights' seasons, with a fee (D70).
     const ranged = lines.filter((l) => l.starts_at && (l.kind === "stay" || l.kind === "rental"));
     const pricing = await rangePricing(tx, storeId, ranged.map((l) => String(l.product_id)), market.code, market);
-    const priced = lines.map((line) => {
+    const price = (line: Row) => {
       // A stay or rental is one line at its whole price; `count` is its nights, days or hours.
       const count = Number(line.quantity);
       const isRange = Boolean(line.starts_at) && (line.kind === "stay" || line.kind === "rental");
@@ -313,6 +286,10 @@ export async function placeOrder(
         discount: 0,
         /** The part of the discount that is the buyer's group or company discount (D108). */
         member: 0,
+        /** What a campaign took off (D114), which one, and whether the line is a free product it gave. */
+        campaign: 0,
+        campaignId: null as string | null,
+        gift: false,
         total: unit * quantity,
         title,
         recurring,
@@ -323,7 +300,96 @@ export async function placeOrder(
         range,
         period,
       };
+    };
+    const priced = lines.map(price);
+
+    // Campaigns (D114): reductions on goods bought once, and the free products the basket has earned,
+    // before the buyer's group discount and any code, which count what is left.
+    const outcome = await evaluateCampaigns(
+      tx,
+      { storeId, market },
+      priced.map((p, i) => ({
+        key: String(i),
+        productId: String(p.line.product_id),
+        unitMinor: p.unit,
+        quantity: p.quantity,
+        discountable: !p.recurring && !p.range && p.line.kind === "goods" && p.unit > 0,
+        valueMinor: p.unit * p.quantity,
+      })),
+      { ships: physical.length > 0 },
+    );
+    priced.forEach((p, i) => {
+      const off = outcome.result.lineOff[String(i)] ?? 0;
+      if (off === 0) return;
+      p.campaign = off;
+      p.campaignId = outcome.result.lineBy[String(i)] ?? null;
+      p.discount = off;
+      p.total = p.unit * p.quantity - off;
     });
+    // A free product is a line at its list price, all of it taken off, so it is shipped, held and shown like any other.
+    for (const gift of outcome.gifts) {
+      const [row] = await orderLineRows(
+        tx,
+        market,
+        sql`(values (${storeId}::uuid, ${gift.variantId}::uuid, ${gift.quantity}::int, null::uuid, null::timestamptz, null::uuid)) as cl (store_id, variant_id, quantity, selling_plan_id, starts_at, resource_id)`,
+        sql`true`,
+      );
+      if (!row || !row.sellable || !row.plan_ok || row.amount_minor === null) continue;
+      lines.push(row);
+      const p = price(row);
+      const whole = p.unit * p.quantity;
+      priced.push({ ...p, gift: true, campaign: whole, campaignId: gift.campaignId, discount: whole, total: 0 });
+    }
+    const campaignNames = new Map([
+      ...outcome.result.applied.map((a) => [a.campaignId, a.name] as const),
+      ...outcome.gifts.map((g) => [g.campaignId, g.campaignName] as const),
+    ]);
+
+    // Lock the stock rows, then count what is free: on hand minus live holds.
+    const toShip = lines.filter((l) => l.delivery === "physical");
+    const variantIds = sql.join(
+      [sql`null::uuid`, ...toShip.map((l) => sql`${String(l.variant_id)}::uuid`)],
+      sql`, `,
+    );
+    const levels = await tx.execute<Row>(sql`
+      select l.variant_id, l.location_id, l.on_hand
+      from commerce.inventory_levels l
+      join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
+      where l.store_id = ${storeId}::uuid and l.variant_id in (${variantIds})
+      order by loc.created_at
+      for update of l
+    `);
+    const holds = await tx.execute<Row>(sql`
+      select variant_id, location_id, sum(quantity)::int as held
+      from commerce.inventory_reservations
+      where store_id = ${storeId}::uuid and variant_id in (${variantIds})
+        and released_at is null and expires_at > now()
+      group by variant_id, location_id
+    `);
+    const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
+
+    const allocations: { variantId: string; locationId: string; quantity: number }[] = [];
+    // The same variant can be bought once and subscribed to: count it together.
+    const wantedByVariant = new Map<string, number>();
+    for (const line of toShip) {
+      const id = String(line.variant_id);
+      wantedByVariant.set(id, (wantedByVariant.get(id) ?? 0) + Number(line.quantity));
+    }
+    for (const [variantId, quantity] of wantedByVariant) {
+      const line = { variant_id: variantId };
+      let wanted = quantity;
+      for (const level of levels.filter((l) => l.variant_id === line.variant_id)) {
+        const free = Number(level.on_hand) - (heldAt.get(`${level.variant_id}:${level.location_id}`) ?? 0);
+        const take = Math.min(Math.max(free, 0), wanted);
+        if (take > 0) {
+          allocations.push({ variantId: String(line.variant_id), locationId: String(level.location_id), quantity: take });
+          wanted -= take;
+        }
+      }
+      if (wanted > 0) return { ok: false, problem: "stock" };
+    }
+
+
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
       ...new Map(
@@ -348,7 +414,7 @@ export async function placeOrder(
     // subscription pays shipping on each delivery (D25).
     const shippingFor = () =>
       basketShipping(
-        priced.map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
+        priced.filter((p) => !p.gift).map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
         shippingRate,
         { trial },
       );
@@ -359,9 +425,9 @@ export async function placeOrder(
     const member = await memberDiscountFor(tx, storeId, customerId);
     if (member) {
       for (const p of priced) {
-        if (p.recurring || p.unit <= 0) continue;
-        p.member = memberLineOff(p.unit, p.quantity, member.percent);
-        p.discount = p.member;
+        if (p.gift || p.recurring || p.unit <= 0) continue;
+        p.member = memberOffAfterCampaign(p.unit, p.quantity, p.campaign, member.percent);
+        p.discount = p.campaign + p.member;
         p.total = p.unit * p.quantity - p.discount;
       }
     }
@@ -401,7 +467,7 @@ export async function placeOrder(
           p.renewUnit = renewal;
           lowered.add(i);
         }
-        p.discount = p.member + (applied.lines[String(i)] ?? 0);
+        p.discount = p.campaign + p.member + (applied.lines[String(i)] ?? 0);
         p.total = p.unit * p.quantity - p.discount;
       });
       if (lowered.size > 0) basket = shippingFor();
@@ -411,6 +477,8 @@ export async function placeOrder(
     const shipping = basket.first;
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
     const memberTotal = priced.reduce((sum, p) => sum + p.member, 0);
+    const campaignTotal = priced.reduce((sum, p) => sum + p.campaign, 0);
+    const campaignText = campaignLabel(priced.filter((p) => p.campaign > 0).map((p) => campaignNames.get(p.campaignId ?? "") ?? ""));
     // Appointments paid at the venue, or with a deposit now (D66): the part left for the venue.
     const venue = priced.map((p) =>
       venuePart(
@@ -438,14 +506,15 @@ export async function placeOrder(
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
         company_name, organisation_number, balance_minor, host_id,
-        member_discount_minor, member_label, member_percent
+        member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
         ${subtotal}, ${shipping}, ${discountTotal}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
         ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
         ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
-        ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null}
+        ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null},
+        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}
       )
       returning id
     `);
@@ -456,7 +525,8 @@ export async function placeOrder(
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
-          selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count
+          selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
+          campaign_discount_minor, campaign_id, gift
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${vatIncluded(p.total, p.rate)},
@@ -465,7 +535,8 @@ export async function placeOrder(
           ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
           ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
-          ${p.range && p.startsAt ? p.count : null}
+          ${p.range && p.startsAt ? p.count : null},
+          ${p.campaign}, ${p.campaignId}::uuid, ${p.gift}
         )
         returning id
       `);
@@ -593,9 +664,9 @@ export async function placeOrder(
         // not already in a lowered subscriber's price. In a subscription,
         // shipping is a line, so free shipping is in the coupon too.
         discount:
-          discount || memberTotal > 0
+          discount || memberTotal > 0 || campaignTotal > 0
             ? {
-                code: [discount?.code, memberTotal > 0 ? member!.label : null].filter(Boolean).join(" + "),
+                code: [discount?.code, memberTotal > 0 ? member!.label : null, campaignTotal > 0 ? campaignText : null].filter(Boolean).join(" + "),
                 couponMinor:
                   priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount), 0) +
                   (rhythm ? shippingDiscount : 0),
@@ -1049,7 +1120,8 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
          from commerce.order_lines ol
          -- An appointment's time is on its booking (D65).
          left join commerce.bookings b on b.store_id = ol.store_id and b.order_line_id = ol.id
-         where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null)
+         -- A free product a campaign gave (D114) is not in the cart.
+         where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null and not ol.gift)
       -- A code put on or taken off the cart changes the price too (D31).
       or (select c.discount_code from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
          is distinct from o.discount_code as changed,

@@ -208,7 +208,15 @@ function Summary({
                 </span>
               )}
             </span>
-            <span className="whitespace-nowrap">{net(line.unitPriceMinor * line.quantity, line.taxRate)}</span>
+            <span className="whitespace-nowrap">
+              {line.gift ? (
+                <>
+                  <span className="text-muted line-through">{net(line.unitPriceMinor * line.quantity, line.taxRate)}</span> {m.freeGift}
+                </>
+              ) : (
+                net(line.unitPriceMinor * line.quantity, line.taxRate)
+              )}
+            </span>
           </li>
         ))}
       </ul>

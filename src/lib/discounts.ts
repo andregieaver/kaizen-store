@@ -119,8 +119,10 @@ export function applyDiscount(
     for (const line of eligible) {
       const lowered = planPrice(line.unitMinor, discount.percent);
       if (line.recurring && discount.recurring) applied.renewalUnits[line.key] = lowered;
-      // In a free trial nothing is charged today, so nothing comes off today.
-      const off = line.todayMinor === 0 ? 0 : (line.unitMinor - lowered) * line.quantity;
+      // In a free trial nothing is charged today, so nothing comes off today. A line a campaign has
+      // reduced (D114) is no longer whole units at one price: the percentage comes off what is left.
+      const campaignReduced = !line.recurring && line.todayMinor > 0 && line.unitMinor * line.quantity !== line.todayMinor;
+      const off = line.todayMinor === 0 ? 0 : campaignReduced ? line.todayMinor - planPrice(line.todayMinor, discount.percent) : (line.unitMinor - lowered) * line.quantity;
       if (off > 0) applied.lines[line.key] = off;
     }
     if (Object.keys(applied.lines).length === 0 && Object.keys(applied.renewalUnits).length === 0) {

@@ -95,24 +95,36 @@ export function percentText(value: number): string {
   return String(Math.round(value * 100) / 100);
 }
 
-/** An order's discount split into the group's and the code's, for showing them as two lines. */
-export function discountParts(order: { discountMinor: number; memberDiscountMinor: number; memberLabel: string | null; memberPercent: number | null; discountCode: string | null }) {
-  const member = Math.min(order.memberDiscountMinor, order.discountMinor);
+/** An order's discount split into the campaigns', the group's and the code's, for showing them as lines. */
+export function discountParts(order: {
+  discountMinor: number;
+  memberDiscountMinor: number;
+  memberLabel: string | null;
+  memberPercent: number | null;
+  discountCode: string | null;
+  campaignDiscountMinor: number;
+  campaignLabel: string | null;
+}) {
+  const campaign = Math.min(order.campaignDiscountMinor, order.discountMinor);
+  const member = Math.min(order.memberDiscountMinor, order.discountMinor - campaign);
   return {
+    campaignMinor: campaign,
+    campaignLabel: order.campaignLabel,
     memberMinor: member,
     memberLabel: order.memberLabel,
     memberPercent: order.memberPercent,
-    codeMinor: order.discountMinor - member,
+    codeMinor: order.discountMinor - campaign - member,
     code: order.discountCode,
   };
 }
 
-/** What a discount row says it is from: the group or company and its percent, and the code: "Acme AS 10 %, SUMMER". */
+/** What a discount row says it is from: the campaigns, the group or company and its percent, and the code: "Summer sale, Acme AS 10 %, SUMMER". */
 export function discountNote(order: Parameters<typeof discountParts>[0]): string | null {
   const parts = discountParts(order);
   const from = [
+    parts.campaignMinor > 0 ? parts.campaignLabel : null,
     parts.memberMinor > 0 && parts.memberLabel ? `${parts.memberLabel}${parts.memberPercent ? ` ${percentText(parts.memberPercent)} %` : ""}` : null,
-    parts.codeMinor > 0 || (!parts.memberMinor && parts.code) ? parts.code : null,
+    parts.codeMinor > 0 || (!parts.memberMinor && !parts.campaignMinor && parts.code) ? parts.code : null,
   ].filter(Boolean);
   return from.length > 0 ? from.join(", ") : null;
 }

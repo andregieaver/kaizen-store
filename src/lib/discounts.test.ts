@@ -148,3 +148,19 @@ describe("platformDiscountSummary", () => {
     );
   });
 });
+
+describe("a percentage code on a line a campaign has reduced (D114)", () => {
+  it("comes off what is left, not off whole units", () => {
+    // Three at 100 with one free: 200 left. 20 % of 200 is 40.
+    const reduced = line("a", 10000, 3, { todayMinor: 20000 });
+    const result = applyDiscount(base, { marketCode: "NO", lines: [reduced, line("b", 5000)], shippingMinor: 0 });
+    expect(result).toMatchObject({ ok: true, applied: { lines: { a: 4000, b: 1000 } } });
+  });
+
+  it("takes nothing from a free product", () => {
+    const gift = line("g", 5000, 1, { todayMinor: 0 });
+    const result = applyDiscount(base, { marketCode: "NO", lines: [gift, line("b", 5000)], shippingMinor: 0 });
+    expect(result).toMatchObject({ ok: true, applied: { lines: { b: 1000 } } });
+  });
+});
+

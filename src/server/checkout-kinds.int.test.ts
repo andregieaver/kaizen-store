@@ -80,6 +80,7 @@ const { getOrder, getShopperOrder } = await import("./orders");
 const { appointmentSlots } = await import("./appointments");
 const { rentalTimes } = await import("./ranges");
 const { saveDiscount, setCartCode } = await import("./discounts");
+const { saveCampaign } = await import("./campaigns");
 const { preRegisterCustomer, startSession } = await import("./customers");
 
 const run = Date.now().toString(36);
@@ -211,6 +212,10 @@ type Scenario = {
   euro?: boolean;
   /** Who buys (D108): in a discount group, or an employee of a company that gives half of one. */
   buyer?: "group" | "company";
+  /** Campaigns running while it is bought (D114), made from the demo store's products. */
+  campaigns?: () => Record<string, unknown>[];
+  /** What they give: reductions, and free products added to the order. */
+  gifts?: number;
   /** Lines with a time, confirmed once paid. */
   bookings: number;
 };
@@ -280,6 +285,52 @@ const scenarios: Scenario[] = [
 
 let tierId: string;
 let companyId: string;
+let homeCategory: string;
+
+const percentCampaign = (percent: number, over: Record<string, unknown> = {}) => ({ name: `${percent} % off`, kind: "percent", percent, ...over });
+const threeForTwo = (over: Record<string, unknown> = {}) => ({ name: "3 for 2", kind: "multi_buy", buyQuantity: 3, payQuantity: 2, ...over });
+const freeNotebook = (over: Record<string, unknown> = {}) => ({ name: "Free notebook", kind: "gift", giftVariantId: variant["DEMO-NOTEBOOK-LINED"], thresholds: { NO: "1" }, ...over });
+
+const campaignScenarios: Scenario[] = [
+  { name: "goods with a percentage campaign", fill: () => add("DEMO-MUG-WHITE", 2), campaigns: () => [percentCampaign(20)], bookings: 0 },
+  {
+    name: "a 3 for 2 campaign on a category, over two products",
+    fill: async () => {
+      await add("DEMO-MUG-WHITE", 3);
+      await add("DEMO-NOTEBOOK-LINED", 1);
+    },
+    campaigns: () => [threeForTwo({ scope: "some", termIds: [homeCategory] })],
+    bookings: 0,
+  },
+  {
+    name: "a free product over an amount",
+    fill: () => add("DEMO-MUG-WHITE", 2),
+    campaigns: () => [freeNotebook()],
+    gifts: 1,
+    bookings: 0,
+  },
+  {
+    name: "campaigns with a customer group's discount and a code, on goods and a stay",
+    fill: async () => {
+      await addStay(2);
+      await add("DEMO-MUG-WHITE", 3);
+    },
+    campaigns: () => [percentCampaign(15, { scope: "some", productIds: [product["demo-keramikkopp"]] }), freeNotebook({ thresholds: { NO: "100" } })],
+    gifts: 1,
+    code: `TI${run}`.toUpperCase(),
+    buyer: "group",
+    bookings: 1,
+  },
+  {
+    name: "a 3 for 2 and a free product, for a company's employee, shown in euro",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    campaigns: () => [threeForTwo(), freeNotebook()],
+    gifts: 1,
+    buyer: "company",
+    euro: true,
+    bookings: 0,
+  },
+];
 
 const euroScenarios: Scenario[] = [
   { name: "goods, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), euro: true, bookings: 0 },
@@ -313,6 +364,8 @@ async function signInBuyer(kind: "group" | "company"): Promise<string> {
 
 describe("checkout for every kind of product", () => {
   beforeAll(async () => {
+    const [home] = await db().execute<Row>(sql`select id from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' and slug = 'hjem'`);
+    homeCategory = String(home.id);
     const made = await saveDiscount(member, null, { code: `TI${run}`.toUpperCase(), kind: "percent", percent: 10 });
     if (!made.ok) throw new Error(made.problems.join(" "));
     const [tier] = await db().execute<Row>(sql`
@@ -326,9 +379,15 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each([...scenarios, ...euroScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios, ...campaignScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
     view = scenario.euro ? noInEuro : no;
+    // Campaigns run only in the scenarios that make them (D114).
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    for (const input of scenario.campaigns?.() ?? []) {
+      const saved = await saveCampaign(member, null, input);
+      if (!saved.ok) throw new Error(saved.problems.join(" "));
+    }
     if (scenario.massage) {
       await db().execute(sql`
         update commerce.appointment_settings set payment = ${scenario.massage}, deposit_percent = 30
@@ -345,6 +404,8 @@ describe("checkout for every kind of product", () => {
     const summary = await cartSummary(shop(), cart);
     expect(summary.blocked).toBe(false);
     if (scenario.code) expect(summary.discountMinor).toBeGreaterThan(0);
+    if (scenario.campaigns) expect(summary.campaignDiscountMinor + summary.gifts.length).toBeGreaterThan(0);
+    expect(summary.gifts).toHaveLength(scenario.gifts ?? 0);
     expect(cart.currency).toBe(scenario.euro ? "EUR" : "NOK");
     if (scenario.buyer) expect(summary.member).toMatchObject({ percent: scenario.buyer === "group" ? 10 : 5 });
     else expect(summary.member).toBeNull();
@@ -358,13 +419,16 @@ describe("checkout for every kind of product", () => {
 
     // The order is what the cart page showed: total, VAT, and what is left for the venue.
     const order = await getOrder(storeId, open!.orderId);
-    expect({ total: order?.totalMinor, vat: order?.taxMinor, balance: order?.balanceMinor, member: order?.memberDiscountMinor, off: order?.discountMinor }).toEqual({
+    expect({ total: order?.totalMinor, vat: order?.taxMinor, balance: order?.balanceMinor, member: order?.memberDiscountMinor, campaign: order?.campaignDiscountMinor, off: order?.discountMinor }).toEqual({
       total: summary.total,
       vat: summary.vat,
       balance: summary.balance,
       member: summary.memberDiscountMinor,
-      off: summary.discountMinor,
+      campaign: summary.campaignDiscountMinor + summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0),
+      off: summary.discountMinor + summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0),
     });
+    // The free products are lines of the order, at no cost, and they are what the cart showed.
+    expect(order?.lines.filter((l) => l.gift).map((l) => [l.variantId, l.quantity, l.totalMinor])).toEqual(summary.gifts.map((g) => [g.variantId, g.quantity, 0]));
     // Stripe is asked for what is due now, no more and no less.
     const { params } = fake.created.at(-1)!;
     expect(chargedNow(params)).toBe(summary.dueNowMinor);
