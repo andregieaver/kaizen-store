@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { summarizeUsage } from "@/lib/ai-usage";
 import { formatMoney } from "@/lib/money";
 import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerToolName } from "@/lib/owner-tools";
 import { marketPath, storeHref } from "@/lib/paths";
@@ -16,6 +17,7 @@ import { listEmails } from "./email";
 import { findClaims } from "@/lib/claims";
 
 import { listIntegrations, postToSlack } from "./integrations";
+import { ownedStores, usageRows } from "./ai-usage";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
 import { deliveryRounds } from "./standing-orders";
@@ -741,6 +743,13 @@ async function postToSlackTool({ store }: OwnerToolContext, { message }: OwnerTo
   return { done: "Posted to the store's Slack channel." };
 }
 
+async function aiUsageTool({ account, store }: OwnerToolContext, { days, scope }: OwnerToolInput<"ai_usage">) {
+  const all = scope === "all_my_stores";
+  if (all && (await ownedStores(account.id)).length === 0) return fail("The account owns no store.");
+  const rows = await usageRows({ days, ...(all ? { ownedBy: account.id } : { storeId: store.id, ownedBy: account.id }) });
+  return { period: `the last ${days} days, today included`, covers: all ? "every store the owner owns" : store.name, ...summarizeUsage(rows), admin: "/admin/account/usage" };
+}
+
 const HANDLERS: Record<OwnerToolName, Handler> = {
   store_overview: storeOverview,
   sales_summary: salesSummary,
@@ -779,6 +788,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   email_customer: emailCustomerTool,
   resend_order_email: resendOrderEmailTool,
   set_stock: setStockTool,
+  ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,
 };
 

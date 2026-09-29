@@ -28,7 +28,7 @@ describe("the admin map (D103)", () => {
       ...routes(path.join(gated, "platform"))
         .filter((r) => !listed("platform").has(r))
         .map((r) => `platform ${r || "/"}`),
-      ...["", "/stores", "/account"].filter((r) => !listed("account").has(r)).map((r) => `account ${r || "/"}`),
+      ...["", "/stores", "/account", "/account/usage"].filter((r) => !listed("account").has(r)).map((r) => `account ${r || "/"}`),
     ];
     expect(missing).toEqual([]);
     // And nothing listed that is not a page.

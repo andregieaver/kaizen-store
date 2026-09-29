@@ -78,7 +78,7 @@ export async function understandQuery(
   const [instructions] = understandingMessages("", context);
   const key = cacheKey(textModel, instructions.content, query);
   return cached(storeId, "filters", key, async () => {
-    const ai = await aiFor(storeId);
+    const ai = await aiFor(storeId, { feature: "search" });
     if (!ai?.textModel || ai.textModel !== textModel) throw new AiError("The store's text model changed.");
     return understandWith(ai, query, context);
   }, UNDERSTAND_WAIT_MS);

@@ -384,7 +384,7 @@ async function keywordIds(storeId: string | null, text: string, limit: number): 
 
 /** The ids a query finds by meaning with the site's AI, nearest first; none without AI or when it fails. */
 async function meaningIds(storeId: string | null, text: string, limit: number): Promise<string[]> {
-  const connection = await aiFor(storeId);
+  const connection = await aiFor(storeId, { feature: "media" });
   if (!connection?.space) return [];
   try {
     const { vectors } = await embedTexts(connection, [text], 5000);
@@ -626,7 +626,7 @@ export async function refreshMediaEmbeddings(): Promise<{ sites: number; embedde
   for (const row of owners) {
     const owner = { storeId: row.store_id ? String(row.store_id) : null, storeSlug: row.slug ? String(row.slug) : null };
     try {
-      const connection = await aiFor(owner.storeId);
+      const connection = await aiFor(owner.storeId, { feature: "media" });
       if (connection) embedded += (await embedMedia(owner, connection)).embedded;
     } catch (error) {
       console.warn(`[media] refresh failed for ${owner.storeSlug ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);

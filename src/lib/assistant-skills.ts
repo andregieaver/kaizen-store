@@ -244,7 +244,7 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     when: "The platform admin asks how Kaizen is doing, for a review or what needs attention.",
     steps: [
       "Call platform_overview for stores, plans and requests.",
-      "Call plan_reminder_stats for plan checkouts left unfinished, and list_platform_emails for emails that failed.",
+      "Call plan_reminder_stats for plan checkouts left unfinished, list_platform_emails for emails that failed, and platform_ai_usage for how much of the AI was used, by whom and on whose key.",
       "Say what needs doing first (waiting requests, failed emails, stores without a plan), each with its page.",
     ],
   },

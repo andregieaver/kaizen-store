@@ -236,6 +236,10 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   // Outside a store --------------------------------------------------------------------------
   account("stores", "", "Your stores", "The stores you work in."),
   account("stores.all", "/stores", "Stores", "Your stores, and creating another."),
+  account("account.usage", "/account/usage", "AI usage", "What the AI used for the stores you own, per provider and model and per store.", {
+    keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "ai", "provider", "model"],
+    tasks: ["See your total AI usage per provider and model", "See usage per store", "Choose the period"],
+  }),
   account("account", "/account", "Your account", "Your name, picture, password, light or dark, and Kaizen Life.", {
     keywords: ["profile", "password", "avatar", "dark mode"],
   }),
@@ -284,6 +288,10 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   platform("emails", "/emails", "Emails", "Platform", "Every email Kaizen and the stores sent, and email setup."),
   platform("email", "/emails/[emailId]", "Email", "Platform", "One email."),
   platform("ai", "/ai", "AI", "Platform", "Kaizen's default AI provider and models, and the search eval.", { keywords: ["model", "provider"] }),
+  platform("ai.usage", "/ai/usage", "AI usage", "Platform", "What every store, store owner account and Kaizen itself used of the AI, per provider and model.", {
+    keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "provider", "model"],
+    tasks: ["See total usage per provider and model", "See usage per store owner account and per store", "Choose the period"],
+  }),
   platform("chat", "/chat", "Chat agent", "Kaizen site", "Kaizen's public site chat agent and its knowledge base."),
   platform("google-reviews", "/google-reviews", "Google reviews", "Kaizen site", "Kaizen's own Google reviews for testimonials."),
   platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),

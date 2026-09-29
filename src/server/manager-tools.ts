@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { ADMIN_PAGES, findPages, pageHref, pageOffered, pageParams, type SiteFlags } from "@/lib/admin-map";
+import { groupUsage, summarizeUsage, withOwner } from "@/lib/ai-usage";
 import { ASSISTANT_SKILLS } from "@/lib/assistant-skills";
 import {
   MANAGER_TOOLS_BY_NAME,
@@ -20,6 +21,7 @@ import { siteUrl } from "@/lib/site";
 
 import type { AiConnection } from "./ai";
 import { countStoresWithOwnAi } from "./ai";
+import { usageRows } from "./ai-usage";
 import { keepMemory, memoriesFor, deleteMemory } from "./assistant-memory";
 import { audit, type Account } from "./auth";
 import { getStoreBilling, listPlans, listStoreBilling } from "./billing";
@@ -337,6 +339,24 @@ async function listPlatformEmails(_ctx: ManagerContext, { failed_only, limit }: 
     .map((e) => ({ what: e.kind, to: e.to, subject: e.subject, store: e.storeName ?? "Kaizen", status: e.status, error: e.error, sent: e.createdAt }));
 }
 
+async function platformAiUsage(_ctx: ManagerContext, { days, store, owner }: PlatformToolInput<"platform_ai_usage">) {
+  let storeId: string | null = null;
+  let ownedBy: string | null = null;
+  if (store) {
+    const found = await getStore(store);
+    if (!found) return fail(`No store at ${store}.`);
+    storeId = found.id;
+  }
+  if (owner) {
+    const [account] = await db().execute<Row>(sql`select id from commerce.accounts where lower(email) = lower(${owner})`);
+    if (!account) return fail(`No account with the email ${owner}.`);
+    ownedBy = String(account.id);
+  }
+  const rows = await usageRows({ days, storeId, ownedBy });
+  const owners = groupUsage(rows, withOwner).slice(0, 12).map((g) => ({ owner: g.label, ...(g.sub && { email: g.sub }), requests: g.sums.requests, tokens: g.sums.inputTokens + g.sums.outputTokens }));
+  return { period: `the last ${days} days, today included`, ...summarizeUsage(rows), by_store_owner_account: owners, admin: "/admin/platform/ai/usage" };
+}
+
 const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   platform_overview: platformOverview,
   list_access_requests: listRequests,
@@ -349,6 +369,7 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   get_owner: getOwner,
   plan_reminder_stats: planReminders,
   list_platform_emails: listPlatformEmails,
+  platform_ai_usage: platformAiUsage,
 };
 
 /** Runs a platform tool for a platform admin; gated ones only once approved. */

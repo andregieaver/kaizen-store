@@ -17,7 +17,7 @@ const QUERY_TIMEOUT_MS = 10_000;
  */
 export async function queryVector(storeId: string, space: string, text: string): Promise<number[]> {
   return cached(storeId, "vector", cacheKey(space, text), async () => {
-    const ai = await aiFor(storeId);
+    const ai = await aiFor(storeId, { feature: "search" });
     if (!ai || ai.space !== space) throw new AiError("The store's search model changed.");
     const { vectors } = await embedTexts(ai, [text], QUERY_TIMEOUT_MS);
     return vectors[0];

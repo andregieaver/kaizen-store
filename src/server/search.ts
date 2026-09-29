@@ -276,7 +276,7 @@ export async function searchProducts(
 ): Promise<SearchResult> {
   const text = normalizeQuery(query);
   if (!text) return { products: [], semanticBest: null, meaningOnly: 0, filters: null };
-  const ai = await aiFor(shop.storeId);
+  const ai = await aiFor(shop.storeId, { feature: "search" });
   const textModel = understand && ai?.textModel && worthUnderstanding(text) ? ai.textModel : null;
   const [vector, understood] = await Promise.all([
     ai?.space && vectorFor ? vectorFor(shop.storeId, ai.space, text).catch(skipped("Search by meaning")) : null,

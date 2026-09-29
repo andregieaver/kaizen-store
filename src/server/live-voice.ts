@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { clipForLive, readLiveTurns, type LiveTurn } from "@/lib/speech-text";
 
 import { aiFor, type LiveConnection } from "./ai";
+import { recordLiveSeconds, recordUsage, type UsageContext } from "./ai-usage";
 import { addMessage, runTurn, type Approval, type AssistantEvent, type Principal } from "./owner-assistant";
 
 type Row = Record<string, unknown>;
@@ -39,9 +40,10 @@ const CONTINUE_MS = 6 * 60 * 60 * 1000;
 
 export class LiveVoiceError extends Error {}
 
-export async function liveConnectionFor(p: Principal): Promise<LiveConnection | null> {
-  const connection = await aiFor(p.store?.id ?? null);
-  return connection?.textModel ? connection.live : null;
+/** The live voice model for the person's site, and whose key it uses (D106). */
+export async function liveConnectionFor(p: Principal): Promise<{ live: LiveConnection; source: "platform" | "store"; context: UsageContext } | null> {
+  const connection = await aiFor(p.store?.id ?? null, { feature: "ai_manager", accountId: p.account.id });
+  return connection?.textModel && connection.live && connection.usage ? { live: connection.live, source: connection.source, context: connection.usage } : null;
 }
 
 /** The conversation the call is kept in: the one open, else a recent one, else a new one. */
@@ -124,8 +126,9 @@ export type LiveSession = { sdp: string; sessionId: string; conversationId: stri
 
 /** Starts a call: the page's WebRTC offer goes to the provider with the session made here, and its answer comes back. */
 export async function startLiveSession(p: Principal, input: { sdp: string; conversationId: string | null }): Promise<LiveSession> {
-  const live = await liveConnectionFor(p);
-  if (!live) throw new LiveVoiceError("No live voice model is set up under AI.");
+  const found = await liveConnectionFor(p);
+  if (!found) throw new LiveVoiceError("No live voice model is set up under AI.");
+  const { live } = found;
   const conversation = await pickConversation(p, input.conversationId);
   const response = await fetch(`${live.apiUrl}/live/sessions`, {
     method: "POST",
@@ -179,6 +182,8 @@ export async function startLiveSession(p: Principal, input: { sdp: string; conve
     conversation.history.length > 0
       ? "They just opened a voice call with you, continuing your recent conversation. Greet them warmly, by name if you know it, and in one short sentence offer to pick up where you left off, without saying what it was about."
       : "They just opened a voice call with you. Greet them warmly in one short sentence, by name if you know it, and ask what they'd like to do.";
+  // A call is one request; its length is added when the page ends it (`endLiveCall()`), and its tokens are the provider's to bill.
+  await recordUsage(found.context, { source: found.source, provider: live.provider, model: live.model, kind: "live", sessionRef: data.session.id });
   return { sdp: data.transport.sdp, sessionId: data.session.id, conversationId: conversation.id, opening };
 }
 
@@ -282,4 +287,10 @@ export async function delegateLive(
     approvals: [...approvals.values()],
     ...(error && { failed: true }),
   };
+}
+
+/** A call ended: its length, as the person's own page reports it, is added to the usage its start recorded. */
+export async function endLiveCall(p: Principal, sessionId: unknown, seconds: unknown): Promise<void> {
+  if (typeof sessionId !== "string" || typeof seconds !== "number") return;
+  await recordLiveSeconds(p.account.id, p.store?.id ?? null, sessionId, seconds);
 }

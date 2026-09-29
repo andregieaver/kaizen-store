@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
@@ -41,6 +42,14 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
       <div>
         <h1 className="text-2xl font-semibold">AI</h1>
         <p className="text-sm text-muted">{current}</p>
+        {owner && (
+          <p className="mt-1 text-sm">
+            <Link href={`/admin/account/usage?store=${store.slug}`} className="underline">
+              See the AI usage
+            </Link>{" "}
+            of this store, per provider and model.
+          </p>
+        )}
       </div>
 
       <section aria-labelledby="about" className={card}>

@@ -5,5 +5,5 @@ import { getMembership } from "@/server/auth";
 export async function POST(request: Request, { params }: RouteContext<"/admin/[store]/assistant/speak">) {
   const member = await getMembership((await params).store);
   if (!member || member.role !== "owner") return new Response("Not found", { status: 404 });
-  return assistantSpeech(request, member.store.id);
+  return assistantSpeech(request, member.store.id, member.account.id);
 }

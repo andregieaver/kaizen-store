@@ -78,6 +78,8 @@ export function useLiveVoice(options: {
   const flushTimerRef = useRef<number | null>(null);
   const lastInputEndRef = useRef(-1);
   const pendingRef = useRef(0);
+  /** The provider's session and when the call began, to report its length once, when it ends (usage, D106). */
+  const sessionRef = useRef<{ id: string; startedAt: number } | null>(null);
 
   useEffect(() => {
     optionsRef.current = options;
@@ -235,14 +237,27 @@ export function useLiveVoice(options: {
     setMuted(false);
   }, []);
 
+  /** Says how long the call lasted, once. */
+  const reportLength = useCallback((beacon: boolean) => {
+    const session = sessionRef.current;
+    const conversationId = conversationRef.current;
+    if (!session || !conversationId) return;
+    sessionRef.current = null;
+    const url = `${optionsRef.current.base}/live/transcript`;
+    const body = JSON.stringify({ conversationId, turns: [], sessionId: session.id, seconds: Math.round((Date.now() - session.startedAt) / 1000) });
+    if (beacon && typeof navigator.sendBeacon === "function") navigator.sendBeacon(url, body);
+    else void enqueue(() => fetch(url, { method: "POST", body, keepalive: true, headers: { "Content-Type": "application/json" } }).catch(() => undefined));
+  }, [enqueue]);
+
   const end = useCallback(() => {
     const conversationId = conversationRef.current;
     flush(true);
+    reportLength(false);
     cleanup();
     setState("idle");
     // Once the last turns are kept, the conversation shows the whole call.
     void queueRef.current.then(() => optionsRef.current.onEnded(conversationId));
-  }, [cleanup, flush]);
+  }, [cleanup, flush, reportLength]);
 
   const stop = useCallback(() => {
     send({ type: "session.close" });
@@ -348,9 +363,10 @@ export function useLiveVoice(options: {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sdp: offer.sdp, conversationId }),
         });
-        const data = (await response.json().catch(() => null)) as { sdp?: string; conversationId?: string; opening?: string; error?: string } | null;
+        const data = (await response.json().catch(() => null)) as { sdp?: string; sessionId?: string; conversationId?: string; opening?: string; error?: string } | null;
         if (!response.ok || !data?.sdp) throw new Error(data?.error ?? "The call could not start.");
         conversationRef.current = data.conversationId ?? null;
+        sessionRef.current = data.sessionId ? { id: data.sessionId, startedAt: Date.now() } : null;
         openingRef.current = data.opening ?? null;
         await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
         flushTimerRef.current = window.setInterval(() => flush(), FLUSH_EVERY_MS);
@@ -377,11 +393,14 @@ export function useLiveVoice(options: {
   // Leaving the page mid-call still keeps what was said.
   useEffect(() => {
     const onHide = () => {
-      if (pcRef.current) flush(true, true);
+      if (pcRef.current) {
+        flush(true, true);
+        reportLength(true);
+      }
     };
     window.addEventListener("pagehide", onHide);
     return () => window.removeEventListener("pagehide", onHide);
-  }, [flush]);
+  }, [flush, reportLength]);
 
   // Unmounting (the panel closed) ends the call.
   useEffect(
@@ -389,10 +408,11 @@ export function useLiveVoice(options: {
       if (pcRef.current) {
         send({ type: "session.close" });
         flush(true);
+        reportLength(false);
         cleanup();
       }
     },
-    [cleanup, flush, send],
+    [cleanup, flush, reportLength, send],
   );
 
   return { state, active: state === "connecting" || state === "live", error, turns, muted, working, start, stop, toggleMute };

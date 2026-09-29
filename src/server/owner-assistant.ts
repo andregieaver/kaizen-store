@@ -350,7 +350,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
   const { store, account } = p;
   const text = input.message.trim().slice(0, 4000);
   if (!text) return emit({ type: "error", message: "Write something first." });
-  const connection = input.connection === undefined ? await aiFor(store?.id ?? null) : input.connection;
+  const connection = input.connection === undefined ? await aiFor(store?.id ?? null, { feature: "ai_manager", accountId: account.id }) : input.connection;
   if (!connection?.textModel) {
     return emit({
       type: "error",
@@ -641,7 +641,7 @@ export async function rateAnswer(
   if (value !== null && later) {
     const storeId = p.store?.id ?? null;
     later(async () => {
-      const connection = await aiFor(storeId);
+      const connection = await aiFor(storeId, { feature: "ai_manager", accountId: p.account.id });
       if (!connection?.textModel) return;
       const [asked] = await db().execute<Row>(sql`
         select content from commerce.assistant_messages

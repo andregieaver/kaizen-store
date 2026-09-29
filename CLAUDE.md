@@ -421,6 +421,15 @@ of running `playwright install`.
   `…/assistant/live` (the key stays on the server); the voice has no tools
   and delegates to `…/live/delegate`, which runs the request as a `runTurn()`
   in voice mode (`live`), and the transcript is kept by `…/live/transcript`.
+  AI usage (D106, `src/server/ai-usage.ts`, `src/lib/ai-usage.ts`,
+  `commerce.ai_usage`): every model call in `src/server/ai.ts` goes through
+  `metered()`, which records it for the store its connection was made for:
+  get connections with `aiFor(storeId, { feature, accountId })` and name what
+  the call is for (`AI_FEATURES`; a new feature is added there). A new kind of
+  call is wrapped in `metered()` with the provider's own token figures
+  (`tokensOrEstimate()`). Reports: `/admin/platform/ai/usage` and
+  `/admin/account/usage` (`UsageReport`); sums are worked out in
+  `src/lib/ai-usage.ts`. Money is never shown.
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
   `KAIZEN_LIFE_SSO=on`) goes through `/auth/callback?via=kaizen-life` and

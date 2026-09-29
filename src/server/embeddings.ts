@@ -101,7 +101,7 @@ const onKaizensAi = sql`not exists (select 1 from commerce.ai_providers a where 
 
 /** Brings one store's vectors up to date with the AI it uses, after its products change. */
 export async function refreshStoreEmbeddings(storeId: string, limit = PER_RUN): Promise<EmbedRun> {
-  const connection = await aiFor(storeId);
+  const connection = await aiFor(storeId, { feature: "embeddings" });
   if (!connection) return { embedded: 0, failed: null };
   return embedWith(connection, sql`t.store_id = ${storeId}::uuid`, limit);
 }
@@ -114,7 +114,7 @@ export async function refreshEmbeddings(): Promise<{ embedded: number; failed: n
     embedded += run.embedded;
     if (run.failed) failed += 1;
   };
-  const kaizen = await aiFor(null);
+  const kaizen = await aiFor(null, { feature: "embeddings" });
   if (kaizen) count(await embedWith(kaizen, onKaizensAi));
   const own = await db().execute<Row>(sql`select store_id from commerce.ai_providers where store_id is not null and enabled and embedding_model is not null`);
   for (const row of own) count(await refreshStoreEmbeddings(String(row.store_id)));

@@ -247,7 +247,7 @@ export async function refreshKnowledge(): Promise<{ sites: number; cut: number; 
     const storeId = agent.store_id ? String(agent.store_id) : null;
     try {
       cut += (await syncPageKnowledge(storeId)).cut;
-      const connection = await aiFor(storeId);
+      const connection = await aiFor(storeId, { feature: "knowledge" });
       if (connection) embedded += (await embedKnowledge(storeId, connection)).embedded;
     } catch (error) {
       console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
@@ -260,7 +260,7 @@ export async function refreshKnowledge(): Promise<{ sites: number; cut: number; 
 export async function refreshSiteKnowledge(storeId: string | null): Promise<void> {
   try {
     await syncPageKnowledge(storeId);
-    const connection = await aiFor(storeId);
+    const connection = await aiFor(storeId, { feature: "knowledge" });
     if (connection) await embedKnowledge(storeId, connection);
   } catch (error) {
     console.warn(`[knowledge] refresh failed for ${storeId ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
@@ -298,7 +298,7 @@ export async function searchKnowledge(storeId: string | null, query: string, loc
     limit ${limit * 2}
   `);
   const meaning = (async () => {
-    const connection = await aiFor(storeId);
+    const connection = await aiFor(storeId, { feature: "chat_agent" });
     if (!connection?.space) return [] as Row[];
     try {
       const { vectors } = await embedTexts(connection, [query], 5000);

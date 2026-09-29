@@ -170,7 +170,7 @@ export async function studioAbilities(storeId: string | null): Promise<{ text: b
 }
 
 async function textConnection(storeId: string | null): Promise<AiConnection | string> {
-  const connection = await aiFor(storeId);
+  const connection = await aiFor(storeId, { feature: "page_studio" });
   return connection?.textModel ? connection : "Set up an AI text model under AI settings to build pages with AI.";
 }
 
@@ -396,7 +396,7 @@ export async function fillPicture(owner: StudioOwner, pageId: string, raw: unkno
   const parsed = pictureJobInput.safeParse(raw);
   if (!parsed.success) return { ok: false, problem: "The picture could not be read." };
   const job = parsed.data;
-  const connection = await aiFor(owner.storeId);
+  const connection = await aiFor(owner.storeId, { feature: "page_studio" });
   if (!connection?.image) return { ok: false, problem: "Set up a picture model under AI settings to make pictures." };
   const [page] = await db().execute<Row>(sql`
     select id from commerce.pages where id = ${pageId}::uuid and store_id is not distinct from ${owner.storeId}::uuid and type = 'page'
@@ -441,7 +441,7 @@ export const PICTURE_JOBS_MAX = PICTURES_MAX;
 
 /** What the owner said, written down by the site's speech-to-text model. */
 export async function hearOwner(storeId: string | null, audio: Blob): Promise<StudioResult<{ text: string }>> {
-  const connection = await aiFor(storeId);
+  const connection = await aiFor(storeId, { feature: "ai_manager" });
   if (!connection?.transcriptionModel) return { ok: false, problem: "Set up a speech-to-text model under AI settings to talk to the AI." };
   const type = audio.type || "audio/webm";
   const extension = type.includes("mp4") ? "mp4" : type.includes("ogg") ? "ogg" : type.includes("wav") ? "wav" : "webm";
@@ -456,7 +456,7 @@ export async function hearOwner(storeId: string | null, audio: Blob): Promise<St
 
 /** The AI's words read out by the site's text-to-speech model, as MP3 in base64. */
 export async function speakToOwner(storeId: string | null, text: string): Promise<StudioResult<{ audio: string }>> {
-  const connection = await aiFor(storeId);
+  const connection = await aiFor(storeId, { feature: "ai_manager" });
   if (!connection?.speechModel || !connection.speechVoice) return { ok: false, problem: "No voice is set up." };
   try {
     return { ok: true, audio: Buffer.from(await speakText(connection, text.slice(0, 1500))).toString("base64") };

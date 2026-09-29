@@ -13,9 +13,11 @@ import {
   type AiProviderId,
   type ImageQuality,
 } from "@/lib/ai-provider";
+import { estimateTokens, readTokens, type AiKind, type AiFeature, type UsageAmounts } from "@/lib/ai-usage";
 import { cosineSimilarity } from "@/lib/vectors";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 
+import { recordUsage, type UsageContext } from "./ai-usage";
 import { audit } from "./auth";
 import { encryptionKey } from "./settings";
 
@@ -74,6 +76,8 @@ export type AiConnection = AiSettings & {
   image: ImageConnection | null;
   /** Where live voice calls go (D105); null without a live model. */
   live: LiveConnection | null;
+  /** Who its calls are for, so each is recorded as usage (D106); set by `aiFor()`, none for tests' own connections. */
+  usage?: UsageContext;
 };
 
 /** A live voice model and where to reach it. */
@@ -179,7 +183,7 @@ function imageConnection(row: Row, settings: AiSettings, own: { apiUrl: string; 
  * while that is on; null means no AI (features fall back to what works
  * without it). With a null store, Kaizen's.
  */
-export async function aiFor(storeId: string | null): Promise<AiConnection | null> {
+export async function aiFor(storeId: string | null, tag: { feature: AiFeature; accountId?: string | null } = { feature: "other" }): Promise<AiConnection | null> {
   const rows = await readDb().execute<Row>(sql`
     select * from commerce.ai_providers
     where enabled and (store_id is null ${storeId ? sql`or store_id = ${storeId}::uuid` : sql``})
@@ -187,7 +191,8 @@ export async function aiFor(storeId: string | null): Promise<AiConnection | null
   `);
   for (const row of rows) {
     const connection = toConnection(row, row.store_id ? "store" : "platform");
-    if (connection) return connection;
+    // Every call made with it is recorded for the store it was asked for (D106), whichever key pays.
+    if (connection) return { ...connection, usage: { storeId, feature: tag.feature, accountId: tag.accountId ?? null } };
   }
   return null;
 }
@@ -330,6 +335,50 @@ export class AiError extends Error {
   }
 }
 
+/** What a call used, in a form to record (D106). */
+type Metered<T> = { value: T; amounts?: Partial<UsageAmounts>; estimated?: boolean };
+
+/**
+ * Runs a call to a model and records it as usage (D106): once, however
+ * many times it is tried inside, with the tokens the provider reported or,
+ * where it reported none, an estimate marked as such. A failure is
+ * recorded too and thrown on.
+ */
+async function metered<T>(connection: AiConnection, meter: { kind: AiKind; provider: AiProviderId; model: string }, run: () => Promise<Metered<T>>): Promise<T> {
+  const context = connection.usage;
+  if (!context) return (await run()).value;
+  const event = { source: connection.source, provider: meter.provider, model: meter.model, kind: meter.kind };
+  let result: Metered<T>;
+  try {
+    result = await run();
+  } catch (error) {
+    await recordUsage(context, { ...event, failed: true });
+    throw error;
+  }
+  await recordUsage(context, { ...event, amounts: result.amounts, estimated: result.estimated });
+  return result.value;
+}
+
+/** Tokens an answer reports, else counted from the text sent and received; `estimated` says which. */
+function tokensOrEstimate(usage: unknown, sent: number, received: number): { amounts: Partial<UsageAmounts>; estimated: boolean } {
+  const reported = readTokens(usage);
+  return reported
+    ? { amounts: reported, estimated: false }
+    : { amounts: { inputTokens: estimateTokens(sent), outputTokens: estimateTokens(received) }, estimated: true };
+}
+
+/** The characters of the words in messages (pictures in them are not counted). */
+function wordsIn(messages: (ChatMessage | ToolChatMessage)[]): number {
+  let total = 0;
+  for (const message of messages) {
+    const content = (message as { content?: unknown }).content;
+    if (typeof content === "string") total += content.length;
+    else if (Array.isArray(content)) for (const part of content as ContentPart[]) if (part.type === "text") total += part.text.length;
+    for (const call of (message as { tool_calls?: ToolCall[] }).tool_calls ?? []) total += call.function.name.length + call.function.arguments.length;
+  }
+  return total;
+}
+
 const EU = { scope: "zone", geoRegion: "eu" } as const;
 
 /** Vercel AI Gateway's options for a request: EU data centres and zero retention, as set. */
@@ -400,20 +449,18 @@ export type Embeddings = { vectors: number[][]; region: string | null };
 
 /** Vectors for texts, in order, from the connection's embedding model. */
 export async function embedTexts(connection: AiConnection, texts: string[], timeoutMs = 10_000): Promise<Embeddings> {
-  if (!connection.embeddingModel) throw new AiError("No embedding model is set.");
+  const model = connection.embeddingModel;
+  if (!model) throw new AiError("No embedding model is set.");
   if (texts.length === 0) return { vectors: [], region: null };
-  const json = await post(
-    connection,
-    "/embeddings",
-    { model: connection.embeddingModel, input: texts, ...gatewayOptions(connection, connection.embeddingEuOnly) },
-    timeoutMs,
-  );
-  const data = ((json.data ?? []) as Row[]).slice().sort((a, b) => Number(a.index) - Number(b.index));
-  const vectors = data.map((item) => item.embedding as number[]);
-  if (vectors.length !== texts.length || vectors.some((v) => !Array.isArray(v) || v.length === 0 || v.length !== vectors[0].length)) {
-    throw new AiError("The provider's answer did not hold one vector per text.");
-  }
-  return { vectors, region: servedRegion(json) };
+  return metered(connection, { kind: "embedding", provider: connection.provider, model }, async () => {
+    const json = await post(connection, "/embeddings", { model, input: texts, ...gatewayOptions(connection, connection.embeddingEuOnly) }, timeoutMs);
+    const data = ((json.data ?? []) as Row[]).slice().sort((a, b) => Number(a.index) - Number(b.index));
+    const vectors = data.map((item) => item.embedding as number[]);
+    if (vectors.length !== texts.length || vectors.some((v) => !Array.isArray(v) || v.length === 0 || v.length !== vectors[0].length)) {
+      throw new AiError("The provider's answer did not hold one vector per text.");
+    }
+    return { value: { vectors, region: servedRegion(json) }, ...tokensOrEstimate(json.usage, texts.reduce((n, t) => n + t.length, 0), 0) };
+  });
 }
 
 /** Tuning a text model may refuse, and which models refused which (per server instance). */
@@ -441,7 +488,16 @@ export async function completeText(
   messages: ChatMessage[],
   options: { maxTokens?: number; timeoutMs?: number; temperature?: number; reasoningEffort?: "low" } = {},
 ): Promise<{ text: string; region: string | null }> {
-  if (!connection.textModel) throw new AiError("No text model is set.");
+  const textModel = connection.textModel;
+  if (!textModel) throw new AiError("No text model is set.");
+  return metered(connection, { kind: "text", provider: connection.provider, model: textModel }, () => completeTextOnce(connection, messages, options));
+}
+
+async function completeTextOnce(
+  connection: AiConnection,
+  messages: ChatMessage[],
+  options: { maxTokens?: number; timeoutMs?: number; temperature?: number; reasoningEffort?: "low" },
+): Promise<Metered<{ text: string; region: string | null }>> {
   const limit = options.maxTokens ?? 1000;
   // Tuning some models refuse (reasoning models take no temperature; others know no reasoning effort),
   // left out once refused, and remembered, so later calls ask once.
@@ -485,7 +541,10 @@ export async function completeText(
     const cut = choice?.finish_reason === "length";
     throw new AiError(cut ? "The answer was cut off at its length limit." : "The provider's answer held no text.");
   }
-  return { text: message.content, region: servedRegion(message) ?? servedRegion(json) };
+  return {
+    value: { text: message.content, region: servedRegion(message) ?? servedRegion(json) },
+    ...tokensOrEstimate(json.usage, wordsIn(messages), message.content.length),
+  };
 }
 
 // The chat agent (D81) ----------------------------------------------------
@@ -508,7 +567,17 @@ export async function chatWithTools(
   tools: ToolDefinition[],
   options: { maxTokens?: number; timeoutMs?: number } = {},
 ): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
-  if (!connection.textModel) throw new AiError("No text model is set.");
+  const textModel = connection.textModel;
+  if (!textModel) throw new AiError("No text model is set.");
+  return metered(connection, { kind: "text", provider: connection.provider, model: textModel }, () => chatWithToolsOnce(connection, messages, tools, options));
+}
+
+async function chatWithToolsOnce(
+  connection: AiConnection,
+  messages: ToolChatMessage[],
+  tools: ToolDefinition[],
+  options: { maxTokens?: number; timeoutMs?: number },
+): Promise<Metered<{ content: string | null; toolCalls: ToolCall[] }>> {
   const limit = options.maxTokens ?? 800;
   const json = await post(
     connection,
@@ -533,7 +602,10 @@ export async function chatWithTools(
     }));
   const content = typeof message.content === "string" && message.content.trim() ? message.content : null;
   if (!content && toolCalls.length === 0) throw new AiError("The provider's answer held no text.");
-  return { content, toolCalls };
+  return {
+    value: { content, toolCalls },
+    ...tokensOrEstimate(json.usage, wordsIn(messages) + JSON.stringify(tools).length, (content?.length ?? 0) + toolCalls.reduce((n, c) => n + c.function.arguments.length, 0)),
+  };
 }
 
 /**
@@ -548,7 +620,21 @@ export async function streamWithTools(
   onText: (delta: string) => void,
   options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<{ content: string | null; toolCalls: ToolCall[] }> {
-  if (!connection.textModel) throw new AiError("No text model is set.");
+  const textModel = connection.textModel;
+  if (!textModel) throw new AiError("No text model is set.");
+  return metered(connection, { kind: "text", provider: connection.provider, model: textModel }, () => streamWithToolsOnce(connection, messages, tools, onText, options));
+}
+
+/** Providers known to send the tokens used with a streamed answer when asked (`stream_options`); others are asked nothing new. */
+const STREAM_USAGE = new Set<AiProviderId>(["openai", "openai_eu", "gateway", "google"]);
+
+async function streamWithToolsOnce(
+  connection: AiConnection,
+  messages: ToolChatMessage[],
+  tools: ToolDefinition[],
+  onText: (delta: string) => void,
+  options: { maxTokens?: number; timeoutMs?: number; signal?: AbortSignal },
+): Promise<Metered<{ content: string | null; toolCalls: ToolCall[] }>> {
   const limit = options.maxTokens ?? 1200;
   const timeout = AbortSignal.timeout(options.timeoutMs ?? 60_000);
   let response: Response;
@@ -561,6 +647,7 @@ export async function streamWithTools(
         messages,
         ...(tools.length > 0 && { tools: tools.map((tool) => ({ type: "function", function: tool })), tool_choice: "auto" }),
         stream: true,
+        ...(STREAM_USAGE.has(connection.provider) && { stream_options: { include_usage: true } }),
         ...(connection.provider === "openai" || connection.provider === "openai_eu" ? { max_completion_tokens: limit } : { max_tokens: limit }),
         ...gatewayOptions(connection, connection.textEuOnly),
       }),
@@ -587,6 +674,7 @@ export async function streamWithTools(
   const calls = new Map<number, { id: string; name: string; args: string }>();
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "";
+  let usage: unknown = null;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -602,6 +690,7 @@ export async function streamWithTools(
       } catch {
         continue;
       }
+      if (chunk.usage) usage = chunk.usage;
       const delta = (((chunk.choices ?? []) as Row[])[0]?.delta ?? {}) as Row;
       if (typeof delta.content === "string" && delta.content) {
         content += delta.content;
@@ -624,7 +713,10 @@ export async function streamWithTools(
     .map(([index, call]) => ({ id: call.id || `call-${index}`, type: "function" as const, function: { name: call.name, arguments: call.args || "{}" } }));
   const text = content.trim() ? content : null;
   if (!text && toolCalls.length === 0) throw new AiError("The provider's answer held no text.");
-  return { content: text, toolCalls };
+  return {
+    value: { content: text, toolCalls },
+    ...tokensOrEstimate(usage, wordsIn(messages) + JSON.stringify(tools).length, content.length + toolCalls.reduce((n, c) => n + c.function.arguments.length, 0)),
+  };
 }
 
 /** Whether the connection can hear and speak: both voice models and a voice are set. */
@@ -633,27 +725,35 @@ export const canSpeak = (connection: AiConnection | null): connection is AiConne
 
 /** What a visitor said, written down by the connection's speech-to-text model. */
 export async function transcribeAudio(connection: AiConnection, audio: Blob, fileName: string, language: string | null): Promise<string> {
-  if (!connection.transcriptionModel) throw new AiError("No speech-to-text model is set.");
-  const form = new FormData();
-  form.set("model", connection.transcriptionModel);
-  form.set("file", audio, fileName);
-  form.set("response_format", "json");
-  if (language) form.set("language", language);
-  const response = await send(connection, "/audio/transcriptions", form, 30_000);
-  const json = (await response.json().catch(() => ({}))) as Row;
-  return typeof json.text === "string" ? json.text.trim() : "";
+  const model = connection.transcriptionModel;
+  if (!model) throw new AiError("No speech-to-text model is set.");
+  return metered(connection, { kind: "transcription", provider: connection.provider, model }, async () => {
+    const form = new FormData();
+    form.set("model", model);
+    form.set("file", audio, fileName);
+    form.set("response_format", "json");
+    if (language) form.set("language", language);
+    const response = await send(connection, "/audio/transcriptions", form, 30_000);
+    const json = (await response.json().catch(() => ({}))) as Row;
+    // Some models report tokens, others the length of the recording.
+    const usage = (json.usage ?? {}) as Row;
+    const seconds = typeof usage.seconds === "number" ? usage.seconds : typeof json.duration === "number" ? json.duration : 0;
+    return {
+      value: typeof json.text === "string" ? json.text.trim() : "",
+      amounts: { audioBytes: audio.size, audioSeconds: seconds, ...(readTokens(json.usage) ?? {}) },
+    };
+  });
 }
 
 /** Text read out by the connection's text-to-speech model and voice, as MP3. */
 export async function speakText(connection: AiConnection, text: string): Promise<ArrayBuffer> {
-  if (!connection.speechModel || !connection.speechVoice) throw new AiError("No text-to-speech model or voice is set.");
-  const response = await send(
-    connection,
-    "/audio/speech",
-    JSON.stringify({ model: connection.speechModel, voice: connection.speechVoice, input: text, response_format: "mp3" }),
-    30_000,
-  );
-  return response.arrayBuffer();
+  const model = connection.speechModel;
+  const voice = connection.speechVoice;
+  if (!model || !voice) throw new AiError("No text-to-speech model or voice is set.");
+  return metered(connection, { kind: "speech", provider: connection.provider, model }, async () => {
+    const response = await send(connection, "/audio/speech", JSON.stringify({ model, voice, input: text, response_format: "mp3" }), 30_000);
+    return { value: await response.arrayBuffer(), amounts: { characters: text.length } };
+  });
 }
 
 // Pictures (D92) -----------------------------------------------------------
@@ -681,6 +781,13 @@ export async function generateImage(
 ): Promise<{ bytes: Uint8Array }> {
   const image = connection.image;
   if (!image) throw new AiError("No picture model is set.");
+  return metered(connection, { kind: "image", provider: image.provider, model: image.model }, async () => {
+    const made = await generateImageOnce(image, prompt, options);
+    return { value: { bytes: made.bytes }, amounts: { images: 1, ...(readTokens(made.usage) ?? {}) } };
+  });
+}
+
+async function generateImageOnce(image: ImageConnection, prompt: string, options: { shape?: ImageShape; timeoutMs?: number }): Promise<{ bytes: Uint8Array; usage: unknown }> {
   const model = `${image.apiUrl}|${image.model}`;
   const refused = refusedImageOptions.get(model) ?? new Set<string>();
   const extra: Record<string, unknown> = {
@@ -704,7 +811,7 @@ export async function generateImage(
   if (typeof first?.b64_json === "string" && first.b64_json) {
     const bytes = new Uint8Array(Buffer.from(first.b64_json, "base64"));
     if (bytes.byteLength > IMAGE_MAX_BYTES) throw new AiError("The picture was too large.");
-    return { bytes };
+    return { bytes, usage: json.usage };
   }
   // Some models answer with an address to fetch the picture from, for a short while.
   if (typeof first?.url === "string" && first.url.startsWith("https://")) {
@@ -717,7 +824,7 @@ export async function generateImage(
     if (!response.ok) throw new AiError(`The picture could not be fetched from the provider (${response.status}).`);
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength === 0 || bytes.byteLength > IMAGE_MAX_BYTES) throw new AiError("The picture was empty or too large.");
-    return { bytes };
+    return { bytes, usage: json.usage };
   }
   throw new AiError("The provider's answer held no picture.");
 }
@@ -815,5 +922,6 @@ export async function testAi(connection: AiConnection): Promise<AiTest> {
 /** The saved settings of Kaizen (null) or a store, ready to test; null when none can be used. */
 export async function ownConnection(storeId: string | null): Promise<AiConnection | null> {
   const [row] = await db().execute<Row>(sql`select * from commerce.ai_providers where ${owned(storeId)}`);
-  return row ? toConnection(row, storeId ? "store" : "platform") : null;
+  const connection = row ? toConnection(row, storeId ? "store" : "platform") : null;
+  return connection && { ...connection, usage: { storeId, feature: "ai_test", accountId: null } };
 }

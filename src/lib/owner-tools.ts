@@ -188,6 +188,14 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "ai_usage",
+    "How much of the AI the store used in a period: requests and tokens in total, per provider and model, per feature (such as the AI manager or the chat agent) and, for all their stores, per store; and whether it ran on Kaizen's AI or the owner's own key.",
+    z.object({
+      days: z.number().int().min(1).max(365).default(30),
+      scope: z.enum(["this_store", "all_my_stores"]).default("this_store").describe("Only this store, or every store the owner owns."),
+    }),
+  ),
+  tool(
     "add_order_note",
     "Adds a note to an order's history, for the store's staff only; the customer never sees it.",
     z.object({ order: orderRef, note: z.string().trim().min(1).max(1000) }),

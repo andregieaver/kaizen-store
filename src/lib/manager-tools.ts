@@ -116,6 +116,15 @@ export const PLATFORM_TOOLS = [
     "The latest emails Kaizen and the stores sent: what, to whom, from which store and whether they went out. `failed_only` shows those that did not.",
     z.object({ failed_only: z.boolean().default(false), limit: z.number().int().min(1).max(50).default(20) }),
   ),
+  tool(
+    "platform_ai_usage",
+    "How much of the AI every store and Kaizen itself used in a period: requests and tokens in total, per provider and model, per store, per feature, and how much ran on Kaizen's own key. Ask for one store or store owner account to see theirs, per provider and model.",
+    z.object({
+      days: z.number().int().min(1).max(365).default(30),
+      store: z.string().trim().max(60).optional().describe("A store's address (slug) to look at only that store."),
+      owner: z.string().trim().max(200).optional().describe("A store owner's email to look at only the stores they own."),
+    }),
+  ),
 ] as const satisfies readonly OwnerTool[];
 
 export type ManagerToolName = (typeof MANAGER_TOOLS)[number]["name"];
@@ -184,5 +193,7 @@ export const TOOL_WORDS: Record<string, string> = {
   get_owner: "Reading the owner",
   plan_reminder_stats: "Looking at plan reminders",
   list_platform_emails: "Looking at emails",
+  platform_ai_usage: "Looking at AI usage",
+  ai_usage: "Looking at AI usage",
   ask_kaizen_life: "Asking Kaizen Life",
 };

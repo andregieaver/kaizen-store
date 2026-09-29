@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { providerInfo } from "@/lib/ai-provider";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
+import { requirePlatformAdmin } from "@/server/auth";
 
 import { evalPlatformAiAction, removePlatformAiAction, savePlatformAiAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
 
@@ -18,6 +20,7 @@ const card = "rounded-lg border border-border bg-background p-5";
  * products are embedded again with a new search model.
  */
 export default async function PlatformAiPage() {
+  await requirePlatformAdmin();
   const [settings, ownCount] = await Promise.all([getAiSettings(null), countStoresWithOwnAi()]);
   const status = settings
     ? `${settings.enabled ? "On" : "Off"} · ${providerInfo(settings.provider).name}` +
@@ -29,6 +32,12 @@ export default async function PlatformAiPage() {
       <div>
         <h1 className="text-2xl font-semibold">AI</h1>
         <p className="text-sm text-muted">{status}</p>
+        <p className="mt-1 text-sm">
+          <Link href="/admin/platform/ai/usage" className="underline">
+            AI usage
+          </Link>
+          : what every store and Kaizen itself used, per provider and model.
+        </p>
       </div>
 
       <section aria-labelledby="provider" className={card}>

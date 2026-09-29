@@ -4134,3 +4134,58 @@ export const standingDeliveries = commerce.table(
     check("standing_deliveries_order", sql`(${t.outcome} = 'ordered') = (${t.orderId} is not null)`),
   ],
 );
+
+/**
+ * Every call to an AI model (D106), one row each: what was asked of which
+ * provider and model, for which store and its owner's account, whose key
+ * paid for it (Kaizen's or the store's own), and what it used. Kept 400
+ * days. Written by `recordUsage()` from the calls in `src/server/ai.ts`;
+ * read by the usage pages of the platform and of store owners.
+ */
+export const aiUsage = commerce.table(
+  "ai_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: createdAt(),
+    /** The store it was for; null for Kaizen's own (the platform's AI manager, its chat agent). Kept as a total when the store is deleted. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "set null" }),
+    /** The store's owner account when it was made (the first owner): who the usage is charged to in reports. */
+    ownerAccountId: uuid("owner_account_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** The signed-in person who asked, where there was one (the AI manager, the page studio). */
+    actorAccountId: uuid("actor_account_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** Whose key was used: `platform` (Kaizen's) or `store` (the owner's own). */
+    source: text("source").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    /** `text`, `embedding`, `transcription`, `speech`, `image` or `live`. */
+    kind: text("kind").notNull(),
+    /** What in Kaizen asked (`AI_FEATURES` in `src/lib/ai-usage.ts`). */
+    feature: text("feature").notNull().default("other"),
+    requests: integer("requests").notNull().default(1),
+    /** Requests the provider refused or that failed; they still count as requests. */
+    failed: integer("failed").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    /** Text read out by speech models. */
+    characters: integer("characters").notNull().default(0),
+    audioBytes: integer("audio_bytes").notNull().default(0),
+    audioSeconds: integer("audio_seconds").notNull().default(0),
+    images: integer("images").notNull().default(0),
+    /** The tokens are counted here (about four characters each) because the provider did not say. */
+    estimated: boolean("estimated").notNull().default(false),
+    /** A live voice call's session at its provider, to add its length when it ends. */
+    sessionRef: text("session_ref"),
+  },
+  (t) => [
+    index("ai_usage_created_idx").on(t.createdAt),
+    index("ai_usage_store_idx").on(t.storeId, t.createdAt),
+    index("ai_usage_owner_idx").on(t.ownerAccountId, t.createdAt),
+    index("ai_usage_actor_idx").on(t.actorAccountId),
+    check("ai_usage_source", sql`${t.source} in ('platform', 'store')`),
+    check("ai_usage_kind", sql`${t.kind} in ('text', 'embedding', 'transcription', 'speech', 'image', 'live')`),
+    check(
+      "ai_usage_amounts",
+      sql`${t.requests} >= 0 and ${t.failed} >= 0 and ${t.inputTokens} >= 0 and ${t.outputTokens} >= 0 and ${t.characters} >= 0 and ${t.audioBytes} >= 0 and ${t.audioSeconds} >= 0 and ${t.images} >= 0`,
+    ),
+  ],
+);

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
@@ -73,6 +74,18 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
         <p className="text-sm text-muted">How the admin looks for you. Your stores keep the colours set under Design.</p>
         <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} />
       </section>
+
+      {owner && (
+        <section aria-labelledby="usage-heading" className="flex max-w-md flex-col gap-3">
+          <h2 id="usage-heading" className="font-medium">
+            AI usage
+          </h2>
+          <p className="text-sm text-muted">What the AI used for your stores, per provider and model and per store.</p>
+          <Link href="/admin/account/usage" className={`${smallButton} inline-flex w-fit items-center`}>
+            See AI usage
+          </Link>
+        </section>
+      )}
 
       <section aria-labelledby="password-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="password-heading" className="font-medium">

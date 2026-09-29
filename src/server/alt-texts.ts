@@ -95,7 +95,7 @@ export async function writeAltText(
   if (!row) return { ok: false, problem: "That file is no longer in the library." };
   if (row.kind !== "image") return { ok: false, problem: "Alt texts are written for pictures only." };
   if (row.alt_source === "staff" && !options.replace) return { ok: false, problem: "Staff wrote this picture's alt text." };
-  const connection = options.connection === undefined ? await aiFor(owner.storeId) : options.connection;
+  const connection = options.connection === undefined ? await aiFor(owner.storeId, { feature: "media" }) : options.connection;
   if (!connection?.textModel) return { ok: false, problem: "Set up an AI text model under AI settings to write alt texts.", ai: true };
   const site = options.site === undefined ? await altSite(owner) : options.site;
   if (!site) return { ok: false, problem: "The store has no markets, so no language to write in." };
@@ -161,7 +161,7 @@ export async function writeAltTexts(
   owner: MediaOwner,
   options: { since: Date; rewrite?: boolean; limit?: number },
 ): Promise<AltRun> {
-  const [connection, site] = await Promise.all([aiFor(owner.storeId), altSite(owner)]);
+  const [connection, site] = await Promise.all([aiFor(owner.storeId, { feature: "media" }), altSite(owner)]);
   const due = await dueForAltText(owner, options.since, Boolean(options.rewrite), site);
   if (!connection?.textModel) {
     return { written: 0, failed: 0, remaining: due.length, problem: "Set up an AI text model under AI settings to write alt texts." };

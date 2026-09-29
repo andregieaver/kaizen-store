@@ -170,7 +170,7 @@ export async function suggestTextAction(storeSlug: string, productId: string | n
   if (!canWrite(parsed.data.kind, parsed.data.facts)) {
     return { ok: false, problem: parsed.data.kind === "improve" ? "Write a description first." : "Give the product a title first." };
   }
-  const connection = await aiFor(member.store.id);
+  const connection = await aiFor(member.store.id, { feature: "product_writer", accountId: member.account.id });
   if (!connection?.textModel) return { ok: false, problem: "The store has no AI text model. Choose one under Settings → AI." };
   try {
     const { written, model } = await suggestProductText(

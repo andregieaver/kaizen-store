@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { AiError, aiFor, speakText } from "./ai";
 import { sameSite } from "./chat-route";
-import { delegateLive, LiveVoiceError, saveLiveTurns, startLiveSession } from "./live-voice";
+import { delegateLive, endLiveCall, LiveVoiceError, saveLiveTurns, startLiveSession } from "./live-voice";
 import { runTurn, type AssistantEvent, type Principal } from "./owner-assistant";
 
 const turnInput = z.object({
@@ -85,11 +85,11 @@ const speechInput = z.object({ text: z.string().trim().min(1).max(600) });
  * starts before the answer is done. MP3, with the site's own voice (D73).
  * The route has checked who is asking.
  */
-export async function assistantSpeech(request: Request, storeId: string | null): Promise<Response> {
+export async function assistantSpeech(request: Request, storeId: string | null, accountId: string): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
   const input = speechInput.safeParse(await request.json().catch(() => null));
   if (!input.success) return Response.json({ error: "Nothing to say." }, { status: 400 });
-  const connection = await aiFor(storeId);
+  const connection = await aiFor(storeId, { feature: "ai_manager", accountId });
   if (!connection?.speechModel || !connection.speechVoice) return Response.json({ error: "No voice is set up." }, { status: 409 });
   try {
     const audio = await speakText(connection, input.data.text);
@@ -153,5 +153,8 @@ export async function liveTranscriptResponse(request: Request, principal: Princi
   }
   const saved = await saveLiveTurns(principal, body?.conversationId, body?.turns);
   if (saved === null) return Response.json({ error: "Unknown conversation." }, { status: 404 });
+  // The page's last message also says how long the call was (usage, D106).
+  const ended = body as { sessionId?: unknown; seconds?: unknown } | null;
+  if (ended?.sessionId !== undefined) await endLiveCall(principal, ended.sessionId, ended.seconds);
   return Response.json({ saved });
 }

@@ -49,7 +49,7 @@ export async function chatContext(raw: unknown): Promise<ChatContext | Response>
     site = { kind: "kaizen" };
   }
   const lang = site.kind === "store" ? site.market.lang : "en";
-  const [agent, connection] = await Promise.all([getChatAgent(storeId), aiFor(storeId)]);
+  const [agent, connection] = await Promise.all([getChatAgent(storeId), aiFor(storeId, { feature: "chat_agent" })]);
   if (!agent?.enabled || !connection?.textModel) return fail(404, t(lang).chat.closed);
   return { site, storeId, agent, connection, lang, request: parsed.data };
 }

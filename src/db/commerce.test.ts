@@ -1598,6 +1598,38 @@ describe("the AI manager (D103)", () => {
   });
 });
 
+describe("AI usage (D106)", () => {
+  it("keeps a row per call with checked amounts, and keeps the totals when an account goes", async () => {
+    const owner = await createAccount("usage-owner@example.com");
+    const shop = await createStore("usage-shop", ["NO"]);
+    const insert = (set = "") =>
+      db.query(
+        `insert into commerce.ai_usage (store_id, owner_account_id, source, provider, model, kind ${set ? ", " + set.split("=")[0] : ""})
+         values ($1, $2, 'platform', 'openai', 'text-a', 'text' ${set ? ", " + set.split("=")[1] : ""}) returning id`,
+        [shop, owner],
+      );
+    await insert();
+    await insert("input_tokens=1200");
+    await expect(insert("input_tokens=-1")).rejects.toThrow(/ai_usage_amounts/);
+    await expect(db.query("insert into commerce.ai_usage (source, provider, model, kind) values ('nobody', 'openai', 'm', 'text')")).rejects.toThrow(/ai_usage_source/);
+    await expect(db.query("insert into commerce.ai_usage (source, provider, model, kind) values ('store', 'openai', 'm', 'video')")).rejects.toThrow(/ai_usage_kind/);
+    // Kaizen's own use has no store.
+    await db.query("insert into commerce.ai_usage (source, provider, model, kind, feature) values ('platform', 'openai', 'text-a', 'text', 'ai_manager')");
+    const defaults = await one<{ requests: number; failed: number; feature: string; estimated: boolean }>(
+      "select requests, failed, feature, estimated from commerce.ai_usage where store_id = $1 order by input_tokens limit 1",
+      [shop],
+    );
+    expect(defaults).toEqual({ requests: 1, failed: 0, feature: "other", estimated: false });
+    // A deleted account leaves its usage (stores are closed, not deleted), so the platform's totals do not shrink.
+    await db.query("delete from commerce.accounts where id = $1", [owner]);
+    const left = await one<{ n: number; stores: number; owners: number }>(
+      "select count(*)::int as n, count(store_id)::int as stores, count(owner_account_id)::int as owners from commerce.ai_usage where model = 'text-a' and feature = 'other'",
+    );
+    expect(left).toEqual({ n: 2, stores: 2, owners: 0 });
+    await db.query("delete from commerce.ai_usage");
+  });
+});
+
 describe("weekly deliveries (D102)", () => {
   it("keep schedules, one open list per customer, a card before a list is on, and each delivery day once", async () => {
     const shop = await createStore("weekly-test", ["NO"]);
