@@ -277,6 +277,7 @@ export function PageEditor({
         }}
         library={library}
         productParts={context.type === "product_layout"}
+        shopParts={context.type === "page" && context.owner !== null}
         siteParts={context.type === "header" || context.type === "footer" ? sitePartsFor(context.owner) : null}
         upload={upload}
         startVideo={context.startVideo}

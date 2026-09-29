@@ -1,25 +1,40 @@
 import { newPageContent, type ContentGridBlock, type PageContent, type PageRow } from "./page-content";
 import { newBlock, newRow, type NewId } from "./page-rows";
 import type { Messages } from "./i18n";
+import { STORE_PART_KEYS, isStorePart, type StorePart } from "./store-parts";
 
 /**
  * Pages of a store that have a place of their own on its site (D112), built in
  * the page builder like its front page and All products page: one of the
  * store's published pages is chosen for each, and the site's standard page
  * shows until one is. The blog (`/blog`), the search page (`/search`) and the
- * page shown when an address is not found (a real 404).
+ * page shown when an address is not found (a real 404); and (D113) the
+ * store's working pages, each holding the component that draws it
+ * (`STORE_PARTS`): cart, checkout, order confirmation, My account, sign-in,
+ * wishlists, a subscription, weekly deliveries and cookies.
  */
-export const PAGE_ROLES = ["blog", "search", "not_found"] as const;
+export const PAGE_ROLES = ["blog", "search", "not_found", ...STORE_PART_KEYS] as const;
 export type PageRole = (typeof PAGE_ROLES)[number];
 
 export const isPageRole = (value: unknown): value is PageRole => (PAGE_ROLES as readonly unknown[]).includes(value);
+
+/** The working page a role draws with its component, if it is one of them. */
+export const partOfRole = (role: PageRole): StorePart | null => (isStorePart(role) ? role : null);
+
+/** How the admin groups the roles. */
+export const ROLE_GROUPS: readonly { name: string; roles: readonly PageRole[] }[] = [
+  { name: "Content pages", roles: ["blog", "search", "not_found"] },
+  { name: "Shopping", roles: ["cart", "checkout", "order"] },
+  { name: "Customer account", roles: ["account", "sign_in", "wishlist", "subscription", "deliveries"] },
+  { name: "Information", roles: ["cookies"] },
+];
 
 export const ROLE_COPY: Record<
   PageRole,
   {
     /** What the admin calls it. */
     name: string;
-    /** Where it shows, after the store's market address; empty for the 404 page. */
+    /** Where it shows, after the store's market address; empty where it has no fixed address (the 404 page, an order, a subscription). */
     address: string;
     /** What shoppers see until a page is chosen. */
     standard: string;
@@ -49,6 +64,69 @@ export const ROLE_COPY: Record<
     hint: "What shoppers see when an address on your store does not exist: a short message, or one of your published pages. It is shown with a 404 status, so search engines know the address is gone. A Search component with only the box helps shoppers find what they wanted.",
     slug: "page-not-found",
   },
+  cart: {
+    name: "Cart page",
+    address: "/cart",
+    standard: "The standard cart",
+    hint: "What shoppers see at the cart (/cart): the standard page, or one of your published pages with the Cart component. On phones the cart still slides out over the page.",
+    slug: "cart-page",
+  },
+  checkout: {
+    name: "Checkout page",
+    address: "/checkout",
+    standard: "The standard checkout",
+    hint: "What shoppers see when they pay (/checkout): the standard page, or one of your published pages with the Checkout component, which holds the order summary and the payment form.",
+    slug: "checkout-page",
+  },
+  order: {
+    name: "Order confirmation page",
+    address: "",
+    standard: "The standard confirmation",
+    hint: "What shoppers see after paying, and when they open their order from an email: the standard page, or one of your published pages with the Order confirmation component. Its address carries the order, so the page itself has none.",
+    slug: "order-confirmation",
+  },
+  account: {
+    name: "My account page",
+    address: "/account",
+    standard: "The standard My account",
+    hint: "What shoppers see at My account (/account): the standard page, or one of your published pages with the My account component. Signed out, the component is the sign-in form, unless you choose a sign-in page.",
+    slug: "my-account",
+  },
+  sign_in: {
+    name: "Sign-in page",
+    address: "/account",
+    standard: "The sign-in form on My account",
+    hint: "What shoppers who are not signed in see at My account (/account): the sign-in form on the account page, or one of your published pages with the Sign-in component. Emailed sign-in links keep their own page.",
+    slug: "sign-in-page",
+  },
+  wishlist: {
+    name: "Wishlist page",
+    address: "/wishlist",
+    standard: "The standard wishlists",
+    hint: "What shoppers see at their wishlists (/wishlist): the standard page, or one of your published pages with the Wishlists component.",
+    slug: "wishlist-page",
+  },
+  subscription: {
+    name: "Subscription page",
+    address: "",
+    standard: "The standard subscription page",
+    hint: "What shoppers see when they open a subscription from an email or My account to pause, skip or cancel it: the standard page, or one of your published pages with the Subscription component. Its address carries a link's secret, so the page itself has none.",
+    slug: "subscription-page",
+  },
+  deliveries: {
+    name: "Weekly deliveries page",
+    address: "/deliveries",
+    standard: "The standard deliveries page",
+    hint: "What shoppers see at their weekly deliveries (/deliveries), when you offer them: the standard page, or one of your published pages with the Weekly deliveries component.",
+    slug: "deliveries-page",
+  },
+  cookies: {
+    name: "Cookies page",
+    address: "/cookies",
+    standard: "The standard cookies page",
+    hint: "What shoppers see at your cookies page (/cookies): the standard list of what the site sets, or one of your published pages with the Cookies component. Keep the component: the list must stay reachable.",
+    slug: "cookie-policy",
+  },
 };
 
 
@@ -70,6 +148,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
   };
   const base = newPageContent();
   const page = (title: string, rows: PageRow[]): PageContent => ({ ...base, title, slug: ROLE_COPY[role].slug, rows });
+  const part = (which: StorePart) => newBlock("storePart", id, which);
   switch (role) {
     case "blog": {
       const grid = newBlock("contentGrid", id) as ContentGridBlock;
@@ -91,6 +170,25 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
         ),
       ]);
     }
+    // The working pages (D113): the component brings its own heading where the heading depends on the shopper's state.
+    case "cart":
+      return page(m.cart, [row(heading(m.cart)), row(part("cart"))]);
+    case "checkout":
+      return page(m.checkoutTitle, [row(heading(m.checkoutTitle)), row(part("checkout"))]);
+    case "sign_in":
+      return page(m.account.title, [row(heading(m.account.title)), row(part("sign_in"))]);
+    case "order":
+      return page(m.thanks, [row(part("order"))]);
+    case "account":
+      return page(m.account.title, [row(part("account"))]);
+    case "wishlist":
+      return page(m.wishlist.title, [row(part("wishlist"))]);
+    case "subscription":
+      return page(m.subscription, [row(part("subscription"))]);
+    case "deliveries":
+      return page(m.deliveries.title, [row(part("deliveries"))]);
+    case "cookies":
+      return page(m.cookies, [row(part("cookies"))]);
   }
 }
 

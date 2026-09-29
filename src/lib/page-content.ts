@@ -4,6 +4,7 @@ import { cssProblem } from "./custom-css";
 import { fontFamily } from "./fonts";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
+import { STORE_PART_KEYS, type StorePart } from "./store-parts";
 import { termIdsSchema } from "./taxonomy";
 import { ICONS, type IconName } from "./icons";
 import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "./social-links";
@@ -659,6 +660,20 @@ export type SearchBlock = PartBase & BlockFont & {
   results?: boolean;
 };
 
+/**
+ * One of a store's working pages (D113): the cart, checkout, order
+ * confirmation, My account, sign-in, wishlists, a subscription, weekly
+ * deliveries or the cookies page, drawn where a page built in the page
+ * builder holds it. It draws only on its own route (the page chosen for that
+ * role, `src/lib/page-roles.ts`), so it does nothing elsewhere. A store's
+ * pages only.
+ */
+export type StorePartBlock = PartBase & BlockFont & {
+  id: string;
+  type: "storePart";
+  part: StorePart;
+};
+
 /** A separator line's look (D91). */
 export const SEPARATOR_LINES = { solid: "Solid", dashed: "Dashed", dotted: "Dotted", double: "Double" } as const;
 export type SeparatorLine = keyof typeof SEPARATOR_LINES;
@@ -1054,6 +1069,7 @@ export type PageBlock =
   | SiteBlock
   | MenuBlock
   | SearchBlock
+  | StorePartBlock
   | SeparatorBlock
   | DualButtonBlock
   | AccordionBlock
@@ -1143,6 +1159,7 @@ export function blockHasContent(block: PageBlock): boolean {
       // A menu with no links draws nothing.
       return Boolean(block.menuId);
     case "search":
+    case "storePart":
       return true;
     case "separator":
       return true;
@@ -1208,6 +1225,7 @@ export function blockText(block: PageBlock): string {
     case "site":
     case "menu":
     case "search":
+    case "storePart":
     case "separator":
     case "dualButton":
     case "socialLinks":
@@ -1734,6 +1752,14 @@ const searchBlock = z.object({
   ...partBase,
 });
 
+const storePartBlock = z.object({
+  id: itemId,
+  type: z.literal("storePart"),
+  part: z.enum(STORE_PART_KEYS as [StorePart, ...StorePart[]]),
+  font: blockFont,
+  ...partBase,
+});
+
 const separatorBlock = z.object({
   id: itemId,
   type: z.literal("separator"),
@@ -2034,6 +2060,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   siteBlock,
   menuBlock,
   searchBlock,
+  storePartBlock,
   separatorBlock,
   dualButtonBlock,
   accordionBlock,

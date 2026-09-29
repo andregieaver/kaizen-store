@@ -1254,6 +1254,13 @@
       "when": 1790690528554,
       "tag": "20260929140208_page_roles_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1790696725585,
+      "tag": "20260929154525_page_roles_shop",
+      "breakpoints": true
     }
   ]
 }

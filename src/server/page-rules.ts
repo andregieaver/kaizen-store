@@ -16,7 +16,8 @@ export function pageRulesProblem(owner: PageOwner, type: PageType, content: Page
     ownerGridProblem(owner, content.rows) ??
     productLayoutProblem(owner, type, content) ??
     siteLayoutProblem(owner, type, content) ??
-    searchProblem(owner, type, content)
+    searchProblem(owner, type, content) ??
+    storePartProblem(owner, type, content)
   );
 }
 
@@ -25,6 +26,13 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
   if (!pageBlocks(content).some((block) => block.type === "search")) return null;
   if (owner === null) return "Search belongs in a store's pages.";
   if (type !== "page" && type !== "article") return "Search belongs in a store's pages and articles.";
+  return null;
+}
+
+/** A store's working pages (D113) are components of a store's pages, not of articles, headers, footers or Kaizen's own. */
+function storePartProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
+  if (!pageBlocks(content).some((block) => block.type === "storePart")) return null;
+  if (owner === null || type !== "page") return "The cart, checkout, account and other shop components belong in a store's pages.";
   return null;
 }
 

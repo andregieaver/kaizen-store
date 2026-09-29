@@ -7,6 +7,7 @@ import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
+import { PAGE_ROLES, roleAddress } from "@/lib/page-roles";
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
@@ -82,9 +83,13 @@ export default async function StorePage({ params, searchParams }: Props) {
   // So has the All products page (D83): /products.
   if (page.id === store.productsPageId) permanentRedirect(`${home}/products`);
   // So have the pages chosen for the blog, search and 404 places (D112).
-  if (page.id === store.pageRoles.blog) permanentRedirect(`${home}/blog`);
-  if (page.id === store.pageRoles.search) permanentRedirect(`${home}/search`);
-  if (page.id === store.pageRoles.not_found) notFound();
+  // A working page (D113) too: its address is its route's, or none (an order's, a subscription's, the 404 page's).
+  const role = PAGE_ROLES.find((r) => page.id === store.pageRoles[r]);
+  if (role) {
+    const address = roleAddress(role, home);
+    if (address) permanentRedirect(address);
+    notFound();
+  }
   const c = localizePage(page.content, market.locale);
   const origin = storeSiteUrl(store.slug);
 

@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { newPageContent, pageBlocks, type PageContent } from "@/lib/page-content";
+import { PAGE_ROLES } from "@/lib/page-roles";
+import { STORE_PART_KEYS } from "@/lib/store-parts";
 
 import type { Membership } from "./auth";
 
@@ -100,18 +102,23 @@ describe("choosing a page for a place", () => {
   });
 
   it("refuses a place the database does not know", async () => {
-    await expect(db().execute(sql`insert into commerce.page_roles (store_id, role, page_id) values (${storeId}::uuid, 'cart', ${crypto.randomUUID()}::uuid)`)).rejects.toThrow();
+    await expect(db().execute(sql`insert into commerce.page_roles (store_id, role, page_id) values (${storeId}::uuid, 'basket', ${crypto.randomUUID()}::uuid)`)).rejects.toThrow();
   });
 });
 
 describe("a starter page", () => {
   it("is made published and in place, in the store's language, and can be made again", async () => {
-    for (const role of ["blog", "search", "not_found"] as const) {
+    for (const role of PAGE_ROLES) {
       const result = await roles.createRolePage(await asMember(), role);
-      expect(result.ok, JSON.stringify(result)).toBe(true);
+      expect(result.ok, `${role}: ${JSON.stringify(result)}`).toBe(true);
     }
     const store = (await getStore(slug))!;
-    expect(Object.keys(store.pageRoles).sort()).toEqual(["blog", "not_found", "search"]);
+    expect(Object.keys(store.pageRoles).sort()).toEqual([...PAGE_ROLES].sort());
+    // A working page holds the component that draws it (D113).
+    for (const part of STORE_PART_KEYS) {
+      const page = (await pages.pageForRole(store, part))!;
+      expect(pageBlocks(page.content).find((b) => b.type === "storePart"), part).toMatchObject({ part });
+    }
     const search = (await pages.pageForRole(store, "search"))!;
     expect(search.slug).toBe("search-page");
     expect(pageBlocks(search.content).some((b) => b.type === "search")).toBe(true);
@@ -143,15 +150,38 @@ describe("the search component", () => {
   });
 });
 
+describe("the shop components", () => {
+  const withPart = (): PageContent =>
+    content("with-part", { rows: [{ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks: [{ id: "s", type: "storePart", part: "cart" }] }] }] as PageContent["rows"] });
+
+  it("belong in a store's pages only", () => {
+    expect(rules.pageRulesProblem(storeId, "page", withPart())).toBeNull();
+    expect(rules.pageRulesProblem(storeId, "article", withPart())).toMatch(/store's pages/);
+    expect(rules.pageRulesProblem(null, "page", withPart())).toMatch(/store's pages/);
+    expect(rules.pageRulesProblem(storeId, "footer", withPart())).toBeTruthy();
+  });
+
+  it("are refused when Kaizen's page is saved with one", async () => {
+    expect(await pages.savePage(member.account, null, null, withPart(), { publish: false })).toMatchObject({ ok: false });
+  });
+
+  it("keep a page from being another place's page", async () => {
+    const store = (await getStore(slug))!;
+    // The cart page made above cannot also be the checkout page or the front page.
+    expect(await pages.setPageRole(member.account, storeId, "checkout", store.pageRoles.cart!)).toMatchObject({ ok: false, problems: [expect.stringContaining("cart page")] });
+    expect(await pages.setFrontPage(member.account, storeId, store.pageRoles.cart!)).toMatchObject({ ok: false });
+  });
+});
+
 describe("a new store", () => {
-  it("gets copies of the template's blog, search and 404 pages", async () => {
+  it("gets copies of the template's special pages", async () => {
     // This store stands in as the template: its published pages and their places are copied.
     const [owner] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`copy-${run}@example.com`}, 'C') returning id`);
     const [copy] = await db().execute<Row>(sql`select commerce.clone_store(${storeId}::uuid, ${`copy-${run}`}, 'Kopi', ${String(owner.id)}::uuid) as id`);
     const rows = await db().execute<Row>(sql`select r.role, p.slug, p.store_id from commerce.page_roles r join commerce.pages p on p.id = r.page_id where r.store_id = ${String(copy.id)}::uuid order by r.role`);
-    expect(rows.map((r) => r.role)).toEqual(["blog", "not_found", "search"]);
+    expect(rows.map((r) => r.role)).toEqual([...PAGE_ROLES].sort());
     expect(rows.every((r) => String(r.store_id) === String(copy.id))).toBe(true);
     const store = (await getStore(`copy-${run}`))!;
-    expect(Object.keys(store.pageRoles).sort()).toEqual(["blog", "not_found", "search"]);
+    expect(Object.keys(store.pageRoles).sort()).toEqual([...PAGE_ROLES].sort());
   });
 });

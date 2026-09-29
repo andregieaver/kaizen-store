@@ -2,13 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { PageEditLink } from "@/components/page-edit-link";
+import { RolePage } from "@/components/role-page";
 import { SearchSection } from "@/components/search-section";
-import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
-import { localizePage } from "@/lib/page-translation";
-import { adminOrigin, marketPath } from "@/lib/paths";
-import { pageForRole } from "@/server/pages";
+import { marketPath } from "@/lib/paths";
 import { resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/search">;
@@ -36,20 +33,13 @@ async function Search({ params, searchParams }: Pick<Props, "params" | "searchPa
   if (!shop) notFound();
   const { store, market } = shop;
   const path = `${marketPath(store.slug, market.slug)}/search`;
-  const page = await pageForRole(store, "search");
-  const place = { pageId: page?.id ?? null, owner: store.id, market: market.slug, listing: { query: searchParams, path } };
-  if (page) {
-    return (
-      <>
-        <StorePageArticle content={localizePage(page.content, market.locale)} place={place} />
-        <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
-      </>
-    );
-  }
+  const place = { pageId: null, owner: store.id, market: market.slug, listing: { query: searchParams, path } };
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-heading tracking-tight">{t(market.lang).search.title}</h1>
-      <SearchSection place={place} />
-    </div>
+    <RolePage store={store} market={market} role="search" place={place}>
+      <div className="flex flex-col gap-6">
+        <h1 className="text-3xl font-heading tracking-tight">{t(market.lang).search.title}</h1>
+        <SearchSection place={place} />
+      </div>
+    </RolePage>
   );
 }

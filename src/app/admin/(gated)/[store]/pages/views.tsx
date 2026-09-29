@@ -16,7 +16,7 @@ import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { withoutRecipients } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { LAYOUT_TYPES, termContentOf, type PageContent, type PageType } from "@/lib/page-content";
-import { PAGE_ROLES, ROLE_COPY, type PageRole } from "@/lib/page-roles";
+import { ROLE_COPY, ROLE_GROUPS, type PageRole } from "@/lib/page-roles";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember } from "@/server/auth";
 import { getProduct, listProducts } from "@/server/catalog";
@@ -145,18 +145,34 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           pages={pages.filter((p) => p.id !== store.frontPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.productsPageId))}
         />
       )}
-      {type === "page" &&
-        PAGE_ROLES.map((role) => (
-          <PageRoleForm
-            key={role}
-            storeSlug={store.slug}
-            role={role}
-            current={store.pageRoles[role] ?? null}
-            pages={pages.filter(
-              (p) => p.id !== store.frontPageId && p.id !== store.productsPageId && (!roleIds.has(p.id) || p.id === store.pageRoles[role]) && (p.state !== "draft" || p.id === store.pageRoles[role]),
-            )}
-          />
-        ))}
+      {type === "page" && (
+        <section className="flex flex-col gap-4" aria-labelledby="special-pages">
+          <div className="flex flex-col gap-1">
+            <h2 id="special-pages" className="text-lg font-semibold">Special pages</h2>
+            <p className="max-w-2xl text-sm text-muted">
+              Your store&apos;s working pages, the blog and the 404 page have a standard look. Build any of them in the
+              page builder instead: choose one of your published pages for it, or start from a new page that looks like
+              the standard one. The standard page shows until you do.
+            </p>
+          </div>
+          {ROLE_GROUPS.map((group) => (
+            <div key={group.name} className="flex flex-col gap-3">
+              <h3 className="text-sm font-medium text-muted">{group.name}</h3>
+              {group.roles.map((role) => (
+                <PageRoleForm
+                  key={role}
+                  storeSlug={store.slug}
+                  role={role}
+                  current={store.pageRoles[role] ?? null}
+                  pages={pages.filter(
+                    (p) => p.id !== store.frontPageId && p.id !== store.productsPageId && (!roleIds.has(p.id) || p.id === store.pageRoles[role]) && (p.state !== "draft" || p.id === store.pageRoles[role]),
+                  )}
+                />
+              ))}
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
@@ -413,8 +429,8 @@ function ProductsPageForm({
 }
 
 /**
- * Which page is one of the store's special places (D112): its blog, search
- * page or 404 page, or the standard one; and a starter page to begin from,
+ * Which page is one of the store's special places (D112, D113): its blog,
+ * search page, 404 page or one of its working pages, or the standard one; and a starter page to begin from,
  * which looks like the standard page and is published in place.
  */
 function PageRoleForm({
@@ -432,7 +448,7 @@ function PageRoleForm({
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby={`role-${role}`}>
-      <h2 id={`role-${role}`} className="font-medium">{copy.name}</h2>
+      <h4 id={`role-${role}`} className="font-medium">{copy.name}</h4>
       <p className="max-w-2xl text-sm text-muted">{copy.hint}</p>
       <ActionForm action={setPageRoleAction.bind(null, storeSlug, role)} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">

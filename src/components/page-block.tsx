@@ -97,6 +97,9 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "search":
       // The store's search is looked up where it is shown (`SearchSection`, D112); the editor shows a stand-in.
       return null;
+    case "storePart":
+      // A working page's component draws where it is shown (`StorePartSection`, D113); the editor shows a stand-in.
+      return null;
     case "separator":
       return <Separator block={block} />;
     case "dualButton":

@@ -1,0 +1,298 @@
+import Link from "next/link";
+
+import { DeleteAccountButton, DetailsForm, PasswordForm, SignOutButton } from "@/components/account-forms";
+import { AccountAccess } from "@/components/account-sign-in";
+import { Avatar } from "@/components/avatar";
+import { AvatarPicker } from "@/components/avatar-picker";
+import { t, type Messages } from "@/lib/i18n";
+import type { Market } from "@/lib/markets";
+import type { StoreQuery } from "@/lib/store-parts";
+import { formatMoney } from "@/lib/money";
+import { marketPath } from "@/lib/paths";
+import { renewalState, type PlanInterval } from "@/lib/subscriptions";
+import { avatarFor } from "@/server/avatars";
+import {
+  getCustomer,
+  type CustomerSubscription,
+  lastShippingAddress,
+  listCustomerOrders,
+  listCustomerSubscriptions,
+} from "@/server/customers";
+import { companyOf } from "@/server/companies";
+import type { Store } from "@/server/stores";
+
+import { avatarAction } from "./actions";
+
+/**
+ * My account (D28): signing in, then the customer's orders, subscriptions,
+ * details and password in one place. The account page shows it, and so does a
+ * store's own page for it (D113).
+ */
+export function AccountSection(props: { store: Store; market: Market; query: Promise<StoreQuery> }) {
+  return (
+    <div className="mx-auto flex max-w-2xl flex-col gap-8">
+      <Account {...props} />
+    </div>
+  );
+}
+
+async function Account({ store, market, query }: { store: Store; market: Market; query: Promise<StoreQuery> }) {
+  const m = t(market.lang);
+  const a = m.account;
+  const customer = await getCustomer(store.id);
+
+  if (!customer) {
+    return (
+      <>
+        <h1 className="text-3xl font-heading tracking-tight">{a.title}</h1>
+        <SignInForm store={store} market={market} query={query} />
+      </>
+    );
+  }
+
+  const [orders, subscriptions, lastAddress, mine] = await Promise.all([
+    listCustomerOrders(store.id, customer.id),
+    listCustomerSubscriptions(store.id, customer.id),
+    customer.address.line1 ? Promise.resolve(null) : lastShippingAddress(store.id, customer.id),
+    companyOf(store.id, customer.id),
+  ]);
+  const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
+  const base = marketPath(store.slug, market.slug);
+  // Until the customer saves their own, the address their last order went to.
+  const address = lastAddress ?? customer.address;
+  const avatar = avatarFor(customer);
+  const avatarColours = "bg-accent text-accent-foreground";
+
+  return (
+    <>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar avatar={avatar} size={56} className={avatarColours} />
+          <div className="min-w-0">
+            <h1 className="text-3xl font-heading tracking-tight">{a.hello(customer.name.split(" ")[0] ?? "")}</h1>
+            <p className="break-words text-sm text-muted">{a.signedInAs(customer.email)}</p>
+          </div>
+        </div>
+        <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
+      </div>
+
+      {mine && (
+        <Link
+          href={`${base}/account/company`}
+          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
+        >
+          <span>
+            <span className="font-medium">
+              {m.companyAccount.title}: {mine.company.name}
+            </span>
+            <span className="block text-sm text-muted">
+              {mine.role === "owner" ? m.companyAccount.cardIntroOwner : m.companyAccount.cardIntroEmployee}
+            </span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+
+      {store.deliveriesOn && (
+        <Link
+          href={`${base}/deliveries`}
+          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
+        >
+          <span>
+            <span className="font-medium">{m.deliveries.title}</span>
+            <span className="block text-sm text-muted">{m.deliveries.intro}</span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+
+      <section aria-labelledby="orders-heading" className="flex flex-col gap-3">
+        <h2 id="orders-heading" className="text-xl font-heading">{a.orders}</h2>
+        {orders.length === 0 ? (
+          <p className="text-muted">{a.noOrders}</p>
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {orders.map((order) => (
+              <li key={order.id}>
+                <Link
+                  href={`${base}/account/orders/${order.id}`}
+                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-4 hover:bg-surface"
+                >
+                  <span>
+                    <span className="font-medium">{a.order(order.number)}</span>
+                    <span className="block text-sm text-muted">
+                      {date(order.placedAt)} · {a.items(order.items)}
+                    </span>
+                  </span>
+                  <span className="text-right">
+                    <span className="block">{formatMoney(order.totalMinor, order.currency, market.locale)}</span>
+                    <span className="block text-sm text-muted">{a.status[order.status] ?? order.status}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="subscriptions-heading" className="flex flex-col gap-3">
+        <h2 id="subscriptions-heading" className="text-xl font-heading">{a.subscriptions}</h2>
+        {subscriptions.length === 0 ? (
+          <p className="text-muted">{a.noSubscriptions}</p>
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {subscriptions.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <span className="min-w-0">
+                  <span className="font-medium">{s.titles.join(", ")}</span>
+                  <span className="block text-sm text-muted">
+                    {m.planEvery(s.interval, s.intervalCount)} · {formatMoney(s.totalMinor, s.currency, market.locale)} ·{" "}
+                    {m.subscriptionStatus[s.status as keyof typeof m.subscriptionStatus] ?? s.status}
+                  </span>
+                  {s.status !== "cancelled" && <RenewalNote subscription={s} m={m} date={date} />}
+                </span>
+                <Link
+                  href={`${base}/subscription/${s.manageToken}`}
+                  className="inline-flex min-h-11 items-center rounded-button border border-border px-5"
+                >
+                  {a.manage}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="details-heading" className="flex flex-col gap-3">
+        <h2 id="details-heading" className="text-xl font-heading">{a.details}</h2>
+        <DetailsForm
+          store={store.slug}
+          market={market.slug}
+          values={{
+            name: customer.name,
+            phone: customer.phone,
+            line1: address.line1 ?? "",
+            line2: address.line2 ?? "",
+            postalCode: address.postalCode ?? "",
+            city: address.city ?? "",
+          }}
+          labels={{
+            name: a.name,
+            phone: a.phone,
+            address: a.address,
+            addressLine2: a.addressLine2,
+            postalCode: a.postalCode,
+            city: a.city,
+            save: a.save,
+            saving: a.saving,
+          }}
+          company={
+            store.audience === "consumers"
+              ? undefined
+              : { name: customer.companyName, number: customer.organisationNumber, labels: m.company }
+          }
+        />
+      </section>
+
+      <section aria-labelledby="picture-heading" className="flex flex-col gap-3">
+        <h2 id="picture-heading" className="text-xl font-heading">{a.pictureTitle}</h2>
+        <AvatarPicker
+          avatar={avatar}
+          ownPicture={Boolean(customer.avatarPath)}
+          action={avatarAction.bind(null, store.slug, market.slug)}
+          avatarClassName={avatarColours}
+          buttonClassName="min-h-11 rounded-button border border-border px-5 disabled:opacity-40"
+          labels={{
+            choose: a.pictureChoose,
+            change: a.pictureChange,
+            remove: a.pictureRemove,
+            working: a.pictureWorking,
+            hint: a.pictureHint,
+            unreadable: a.pictureUnreadable,
+          }}
+        />
+      </section>
+
+      <section aria-labelledby="password-heading" className="flex flex-col gap-3">
+        <h2 id="password-heading" className="text-xl font-heading">{a.security}</h2>
+        <p className="text-sm text-muted">{customer.hasPassword ? a.passwordSet : a.passwordNone}</p>
+        <PasswordForm
+          store={store.slug}
+          market={market.slug}
+          email={customer.email}
+          hasPassword={customer.hasPassword}
+          labels={{ newPassword: a.newPassword, rule: a.passwordRule, save: a.setPassword, remove: a.removePassword, saving: a.saving }}
+        />
+      </section>
+
+      <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-border pt-6">
+        <h2 id="delete-heading" className="font-heading">{a.deleteTitle}</h2>
+        <p className="text-sm text-muted">{a.deleteIntro}</p>
+        <DeleteAccountButton store={store.slug} market={market.slug} labels={{ button: a.deleteButton, confirm: a.deleteConfirm }} />
+      </section>
+    </>
+  );
+}
+
+/** Signing in or creating an account (D28), where the shopper is not signed in; `?tab=register` opens on Create account, e.g. from a link in the store's menu. */
+export async function SignInForm({ store, market, query }: { store: Store; market: Market; query: Promise<StoreQuery> }) {
+  const a = t(market.lang).account;
+  const register = (await query).tab === "register";
+  return (
+    <AccountAccess
+      store={store.slug}
+      market={market.slug}
+      initialTab={register ? "register" : "sign-in"}
+      labels={{
+        intro: a.signInIntro,
+        email: a.email,
+        sendCode: a.sendCode,
+        sending: a.sending,
+        code: a.code,
+        signIn: a.signIn,
+        signingIn: a.signingIn,
+        newCode: a.newCode,
+        otherEmail: a.otherEmail,
+        usePassword: a.usePassword,
+        useCode: a.useCode,
+        password: a.password,
+        tabSignIn: a.tabSignIn,
+        tabRegister: a.tabRegister,
+        registerIntro: a.registerIntro,
+        name: a.name,
+        register: a.register,
+        registering: a.registering,
+        forgotPassword: a.forgotPassword,
+        chooseNewPassword: a.chooseNewPassword,
+        resetIntro: a.resetIntro,
+        newPassword: a.newPassword,
+        passwordRule: a.passwordRule,
+        saveAndSignIn: a.saveAndSignIn,
+      }}
+    />
+  );
+}
+
+/** The next step of a running subscription: it ends, is paused, is in its trial, or renews (D29). */
+function RenewalNote({
+  subscription,
+  m,
+  date,
+}: {
+  subscription: CustomerSubscription;
+  m: Messages;
+  date: (iso: string) => string;
+}) {
+  const state = renewalState({ ...subscription, interval: subscription.interval as PlanInterval });
+  if (!state) return null;
+  const when = date(state.date.toISOString());
+  const text =
+    state.kind === "ends"
+      ? m.endsOn(when)
+      : state.kind === "paused"
+        ? m.pausedUntil(when)
+        : state.kind === "trial"
+          ? m.trialUntil(when)
+          : m.nextRenewal(when);
+  return <span className="block text-sm text-muted">{text}</span>;
+}

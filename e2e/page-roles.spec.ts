@@ -80,3 +80,78 @@ test("a store with none chosen keeps the standard pages", async ({ page, request
   expect(missing.status()).toBe(404);
   expect(await missing.text()).toContain("Siden finnes ikke");
 });
+
+/**
+ * The working pages (D113): the cart, sign-in, wishlists and cookies built in
+ * the page builder, each holding the component that draws it, which draws
+ * only on its own route.
+ */
+async function storeWithShopPages(roles: string[]): Promise<string> {
+  const slug = `shop-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const sql = testDb();
+  try {
+    const [request] = await sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Ola', 'Handlebutikk') returning id`;
+    const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Handlebutikk', null) as id`;
+    for (const role of roles) {
+      const content = page(`${role} egen`, `${role.replace("_", "-")}-egen`, [heading(`Egen ${role}`), { id: "p", type: "storePart", part: role }]);
+      const [row] = await sql`
+        insert into commerce.pages (store_id, slug, draft, published, published_at)
+        values (${id}, ${content.slug}, ${sql.json(content as never)}, ${sql.json(content as never)}, now()) returning id`;
+      await sql`insert into commerce.page_roles (store_id, role, page_id) values (${id}, ${role}, ${row.id})`;
+    }
+    // A page that is no one's place holding a component: it draws nothing there.
+    const stray = page("Ekstra", "ekstra-side", [heading("Ekstra side"), { id: "p", type: "storePart", part: "cart" }]);
+    await sql`insert into commerce.pages (store_id, slug, draft, published, published_at) values (${id}, ${stray.slug}, ${sql.json(stray as never)}, ${sql.json(stray as never)}, now())`;
+  } finally {
+    await sql.end();
+  }
+  return slug;
+}
+
+test("a store's own cart, sign-in, wishlist and cookies pages hold the working components", async ({ page: browser, request }) => {
+  const slug = await storeWithShopPages(["cart", "sign_in", "wishlist", "cookies"]);
+
+  await browser.goto(`/s/${slug}/no/cart`);
+  await expect(browser.getByRole("heading", { level: 1, name: "Egen cart" })).toBeVisible();
+  await expect(browser.getByText("Handlekurven er tom.")).toBeVisible();
+
+  // Signed out, My account is the store's sign-in page.
+  await browser.goto(`/s/${slug}/no/account`);
+  await expect(browser.getByRole("heading", { level: 1, name: "Egen sign_in" })).toBeVisible();
+  await expect(browser.getByLabel("E-post")).toBeVisible();
+
+  await browser.goto(`/s/${slug}/no/wishlist`);
+  await expect(browser.getByRole("heading", { name: "Egen wishlist" })).toBeVisible();
+  await expect(browser.getByRole("heading", { level: 1, name: "Ønskeliste" })).toBeVisible();
+
+  await browser.goto(`/s/${slug}/no/cookies`);
+  await expect(browser.getByRole("heading", { name: "Egen cookies" })).toBeVisible();
+  await expect(browser.getByRole("heading", { level: 1, name: "Informasjonskapsler" })).toBeVisible();
+
+  // A component elsewhere draws nothing; and the pages' own addresses lead to their places.
+  await browser.goto(`/s/${slug}/no/ekstra-side`);
+  await expect(browser.getByRole("heading", { level: 1, name: "Ekstra side" })).toBeVisible();
+  await expect(browser.getByText("Handlekurven er tom.")).toHaveCount(0);
+  const moved = await request.get(`/s/${slug}/no/cart-egen`, { maxRedirects: 0 });
+  expect([301, 308]).toContain(moved.status());
+  expect(moved.headers().location).toContain(`/s/${slug}/no/cart`);
+  const signIn = await request.get(`/s/${slug}/no/sign-in-egen`, { maxRedirects: 0 });
+  expect(signIn.headers().location).toContain(`/s/${slug}/no/account`);
+});
+
+test("My account page alone shows its sign-in form to shoppers who are not signed in", async ({ page: browser }) => {
+  const slug = await storeWithShopPages(["account"]);
+  await browser.goto(`/s/${slug}/no/account`);
+  await expect(browser.getByRole("heading", { name: "Egen account" })).toBeVisible();
+  await expect(browser.getByRole("heading", { level: 1, name: "Min konto" })).toBeVisible();
+  await expect(browser.getByLabel("E-post")).toBeVisible();
+});
+
+test("a store with none chosen keeps the standard cart, account and cookies pages", async ({ page }) => {
+  await page.goto("/s/demo/no/cart");
+  await expect(page.getByRole("heading", { level: 1, name: "Handlekurv" })).toBeVisible();
+  await page.goto("/s/demo/no/account");
+  await expect(page.getByRole("heading", { level: 1, name: "Min konto" })).toBeVisible();
+  await page.goto("/s/demo/no/cookies");
+  await expect(page.getByRole("heading", { level: 1, name: "Informasjonskapsler" })).toBeVisible();
+});

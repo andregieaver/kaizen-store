@@ -15,6 +15,7 @@ import {
   type Spacing,
 } from "./page-content";
 import { copyWithUses } from "./global-parts";
+import { isStorePart, type StorePart } from "./store-parts";
 
 /**
  * The page builder's edits (D43), as pure functions on a page's rows: each
@@ -37,12 +38,14 @@ export function newRow(layout: RowLayout, id: NewId): PageRow {
 }
 
 /** A new block of a kind; a product or site component (D79, D80) shows `part`. */
-export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePart = "title"): PageBlock {
+export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePart | StorePart = "title"): PageBlock {
   switch (type) {
     case "product":
       return { id: id(), type, part: part in PRODUCT_PARTS ? (part as ProductPart) : "title" };
     case "site":
       return { id: id(), type, part: part in SITE_PARTS ? (part as SitePart) : "logo" };
+    case "storePart":
+      return { id: id(), type, part: isStorePart(part) ? part : "cart" };
     case "menu":
     case "search":
     case "separator":

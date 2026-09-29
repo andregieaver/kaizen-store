@@ -8,6 +8,7 @@ import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
 import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType, termContentOf } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
+import type { StoreRoute } from "@/lib/store-parts";
 import { marketIn } from "./shop";
 import { summarize } from "@/lib/seo";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
@@ -42,6 +43,8 @@ export type GridPlace = {
    * grids shoppers filter and sort (D83); without it they show as set.
    */
   listing?: ListingPlace;
+  /** On a store's working page (D113), the route it stands in for: the components for its cart, checkout and so on draw only there. */
+  route?: StoreRoute;
 };
 
 /** Where a filterable grid reads its choices, and the address they go to. */

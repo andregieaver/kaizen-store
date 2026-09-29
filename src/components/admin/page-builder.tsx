@@ -116,10 +116,12 @@ import {
   type ProductPart,
   type MenuBlock,
   type SearchBlock,
+  type StorePartBlock,
   type SiteBlock,
   type SitePart,
   type ColumnJustify,
 } from "@/lib/page-content";
+import { STORE_PART_KEYS, STORE_PARTS, type StorePart } from "@/lib/store-parts";
 import {
   copyBlock,
   copyColumn,
@@ -195,7 +197,7 @@ export const newId = () =>
 /** What is dragged, and what it is dropped on. */
 type DragData =
   | { kind: "palette-row"; layout: RowLayout }
-  | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart }
+  | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart | StorePart }
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
   | { kind: "column"; columnId: string; rowId: string }
@@ -267,6 +269,7 @@ const blockLabels: Record<BlockType, string> = {
   site: "Site",
   menu: "Menu",
   search: "Search",
+  storePart: "Shop page",
   separator: "Separator line",
   dualButton: "Dual button",
   accordion: "Accordion",
@@ -293,6 +296,7 @@ const blockThis: Record<BlockType, string> = {
   site: "this site component",
   menu: "this menu",
   search: "this search",
+  storePart: "this shop component",
   separator: "this separator line",
   dualButton: "these buttons",
   accordion: "this accordion",
@@ -390,6 +394,7 @@ export function PageBuilder({
   library = [],
   productParts = false,
   siteParts = null,
+  shopParts = false,
   lang,
 }: {
   /** The language the page is shown in (its main one, or the one it is translated into). */
@@ -400,6 +405,8 @@ export function PageBuilder({
   productParts?: boolean;
   /** A header or footer (D80): its palette offers the site's parts its owner has. */
   siteParts?: SitePart[] | null;
+  /** A store's page (D113): its palette offers the working pages' components, the cart, checkout and so on. */
+  shopParts?: boolean;
   grid: GridContext;
   fonts: BuilderFonts;
   /** Kaizen's saved parts, for a store's pages: a starter library to copy from, not to change (D56). */
@@ -438,7 +445,7 @@ export function PageBuilder({
   const addRow = (layout: RowLayout, index = rows.length) => {
     if (!rowsFull) onRows((current) => insertRow(current, newRow(layout, newId), index));
   };
-  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart) => {
+  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | StorePart) => {
     if (blocksFull) return;
     const block = newBlock(type, newId, part);
     onRows((current) => {
@@ -650,6 +657,7 @@ export function PageBuilder({
           siteParts={siteParts}
           // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
           search={grid.owner !== null && !productParts && !siteParts}
+          shop={shopParts}
           parts={parts}
           library={library}
           onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
@@ -744,6 +752,7 @@ function Sidebar({
   productParts,
   siteParts,
   search,
+  shop,
   parts,
   library,
   onOpenSaved,
@@ -754,12 +763,14 @@ function Sidebar({
   tab: Tab;
   onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
-  onAddBlock: (type: BlockType, part?: ProductPart | SitePart) => void;
+  onAddBlock: (type: BlockType, part?: ProductPart | SitePart | StorePart) => void;
   productParts: boolean;
   /** A header or footer (D80): the site parts its owner has. */
   siteParts: SitePart[] | null;
   /** The store's search can be added (D112). */
   search: boolean;
+  /** The store's working pages' components can be added (D113). */
+  shop: boolean;
   parts: SavedPart[];
   library: SavedPart[];
   onOpenSaved: (partId: string) => void;
@@ -844,6 +855,26 @@ function Sidebar({
                         label={SITE_PARTS[part]}
                         preview={<BlockIcon type="site" />}
                         onAdd={() => onAddBlock("site", part)}
+                        disabled={blocksFull}
+                      />
+                    ))}
+                  </div>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
+                </>
+              )}
+              {shop && (
+                <>
+                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Shop pages</h3>
+                  <p className="text-xs text-muted">Each draws its working page where the page you choose for it is shown, and nothing elsewhere.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {STORE_PART_KEYS.map((part) => (
+                      <PaletteTile
+                        key={part}
+                        id={`palette:shop:${part}`}
+                        data={{ kind: "palette-block", type: "storePart", part }}
+                        label={STORE_PARTS[part].name}
+                        preview={<BlockIcon type="storePart" />}
+                        onAdd={() => onAddBlock("storePart", part)}
                         disabled={blocksFull}
                       />
                     ))}
@@ -1142,6 +1173,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <MenuIcon />;
     case "search":
       return <SearchIcon />;
+    case "storePart":
+      return <ShopIcon />;
     case "separator":
       return <SeparatorIcon />;
     case "dualButton":
@@ -1799,6 +1832,8 @@ function BlockItem({
           <MenuStandIn block={block} menus={actions.grid.menus} />
         ) : block.type === "search" ? (
           <SearchStandIn block={block} />
+        ) : block.type === "storePart" ? (
+          <StorePartStandIn block={block} />
         ) : block.type === "emailForm" || block.type === "newsletter" ? (
           <div className="flex flex-col gap-2">
             {block.recipients.length === 0 && (
@@ -1833,6 +1868,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   site: "Site component.",
   menu: "A menu: double-click or use the wrench to choose which.",
   search: "Search.",
+  storePart: "A shop page component.",
   separator: "Separator line.",
   dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
   accordion: "An accordion: its sections need titles. Double-click or use the wrench.",
@@ -2289,6 +2325,59 @@ function Dialogs({
               <>
                 {fontField("Font", block.font, "The site's fonts", (font) =>
                   onRows((current) => patchBlock<SearchBlock>(current, block.id, { font })),
+                )}
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "storePart"}
+        onClose={onClose}
+        title="Shop page"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "storePart" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <div className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Shows
+                  <select
+                    value={block.part}
+                    onChange={(event) => onRows((current) => patchBlock<StorePartBlock>(current, block.id, { part: event.target.value as StorePart }))}
+                    className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
+                  >
+                    {STORE_PART_KEYS.map((part) => (
+                      <option key={part} value={part}>
+                        {STORE_PARTS[part].name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="text-sm text-muted">{STORE_PARTS[block.part].hint}</p>
+                <p className="text-sm text-muted">
+                  It shows only on the page you choose for it under Pages, in the special pages, and nothing elsewhere.
+                </p>
+              </div>
+            }
+            style={
+              <>
+                {fontField("Font", block.font, "The site's fonts", (font) =>
+                  onRows((current) => patchBlock<StorePartBlock>(current, block.id, { font })),
                 )}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -4431,6 +4520,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Menu: change its settings where it is used.</p>
                     ) : block.type === "search" ? (
                       <p className="text-sm text-muted">Search: change its settings where it is used.</p>
+                    ) : block.type === "storePart" ? (
+                      <p className="text-sm text-muted">Shop page: change its settings where it is used.</p>
                     ) : block.type === "button" ? (
                       <ButtonFields block={block} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : (
@@ -4527,6 +4618,16 @@ function SearchIcon() {
   );
 }
 
+function ShopIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0" />
+      </svg>
+    </span>
+  );
+}
+
 function MenuIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
@@ -4612,6 +4713,17 @@ function SearchStandIn({ block }: { block: SearchBlock }) {
     <div className="flex flex-col gap-2">
       <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">Search the store …</div>
       <p className="text-xs text-muted">{block.results === false ? "Only the search box." : "The results of what shoppers search for show here."}</p>
+    </div>
+  );
+}
+
+/** A working page's component on the canvas (D113): what it is, and that the site draws it with the shopper's own data. */
+function StorePartStandIn({ block }: { block: StorePartBlock }) {
+  const copy = STORE_PARTS[block.part];
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
+      <p className="text-sm font-medium">{copy.name}</p>
+      <p className="text-xs text-muted">{copy.hint} It shows on the page chosen for it, with the shopper&apos;s own data.</p>
     </div>
   );
 }

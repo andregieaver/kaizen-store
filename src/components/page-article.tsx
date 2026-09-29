@@ -12,6 +12,7 @@ import { FormSection } from "./form-section";
 import { GoogleReviewsSection } from "./google-reviews-section";
 import { PageBlockView } from "./page-block";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "./page-parts";
+import { StorePartSection } from "./store-part-section";
 import { SearchSection } from "./search-section";
 
 /**
@@ -116,6 +117,8 @@ export function PageRowView({
                           <MenuSection block={block} place={place} />
                         ) : block.type === "search" ? (
                           <SearchSection place={place} results={block.results !== false} />
+                        ) : block.type === "storePart" ? (
+                          <StorePartSection block={block} place={place} />
                         ) : block.type === "emailForm" || block.type === "newsletter" ? (
                           <FormSection block={block} place={place} />
                         ) : block.type === "testimonials" && block.source === "google" ? (

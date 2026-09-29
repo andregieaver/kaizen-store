@@ -3011,7 +3011,7 @@ export const pageRoles = commerce.table(
     unique("page_roles_store_page_key").on(t.storeId, t.pageId),
     // A store can only choose a page of its own.
     foreignKey({ name: "page_roles_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
-    check("page_roles_role", sql`${t.role} in ('blog', 'search', 'not_found')`),
+    check("page_roles_role", sql`${t.role} in ('blog', 'search', 'not_found', 'cart', 'checkout', 'order', 'account', 'sign_in', 'wishlist', 'subscription', 'deliveries', 'cookies')`),
   ],
 );
 

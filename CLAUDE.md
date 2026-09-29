@@ -393,7 +393,14 @@ of running `playwright install`.
   a new place is a role there, a route that draws `pageForRole()` with the
   standard page as its fallback, a starter in `starterPage()`, and its page's
   address left out of the sitemap); the *Search* block (`SearchSection`) draws
-  the store's search in any store page. A product content grid with `filters` shows the
+  the store's search in any store page. The working pages are roles too (D113:
+  cart, checkout, order, account, sign_in, wishlist, subscription, deliveries,
+  cookies): a route draws its page with `<RolePage role route>` (the standard
+  page as children), and the page holds a *shop component* (`StorePartBlock`,
+  `STORE_PARTS` in `src/lib/store-parts.ts`, drawn by `StorePartSection`) that
+  draws only on its own route (`GridPlace.route`), from the route's
+  `*-section.tsx` (never inline in a `page.tsx`); a new working page is a role,
+  a part, a section, a case in `StorePartSection` and a starter. A product content grid with `filters` shows the
   listing's `ListingControls` over it on store pages, reading the address
   through `GridPlace.listing` (pass it where a route renders a store page);
   the filter dialog is `live` there and on the listing pages, not on search. A store's page is
