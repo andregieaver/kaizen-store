@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { z } from "zod";
 
+import { AiError, aiFor, speakText } from "./ai";
 import { sameSite } from "./chat-route";
 import { runTurn, type AssistantEvent, type Principal } from "./owner-assistant";
 
@@ -12,6 +13,8 @@ const turnInput = z.object({
   message: z.string().trim().min(1).max(4000),
   /** The admin page the person is on. */
   path: z.string().max(500).nullish(),
+  /** Said in voice mode: the answer is read aloud. */
+  voice: z.boolean().optional(),
 });
 
 /**
@@ -54,6 +57,7 @@ export async function assistantTurn(request: Request, principal: Principal): Pro
           invalidate: (tag) => revalidateTag(tag, "max"),
           signal: request.signal,
           path: input.data.path,
+          voice: input.data.voice === true,
           later: (task) => tasks.push(task),
         });
       } catch (error) {
@@ -70,4 +74,27 @@ export async function assistantTurn(request: Request, principal: Principal): Pro
     },
   });
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store" } });
+}
+
+const speechInput = z.object({ text: z.string().trim().min(1).max(600) });
+
+/**
+ * One piece of the AI manager's answer, spoken (D104): voice mode sends
+ * each sentence as it is written and plays the pieces in turn, so speech
+ * starts before the answer is done. MP3, with the site's own voice (D73).
+ * The route has checked who is asking.
+ */
+export async function assistantSpeech(request: Request, storeId: string | null): Promise<Response> {
+  if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
+  const input = speechInput.safeParse(await request.json().catch(() => null));
+  if (!input.success) return Response.json({ error: "Nothing to say." }, { status: 400 });
+  const connection = await aiFor(storeId);
+  if (!connection?.speechModel || !connection.speechVoice) return Response.json({ error: "No voice is set up." }, { status: 409 });
+  try {
+    const audio = await speakText(connection, input.data.text);
+    return new Response(audio, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "no-store" } });
+  } catch (error) {
+    if (!(error instanceof AiError)) throw error;
+    return Response.json({ error: error.message }, { status: 502 });
+  }
 }

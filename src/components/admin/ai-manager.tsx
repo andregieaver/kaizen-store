@@ -7,6 +7,8 @@ import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } fr
 import { matchPath } from "@/lib/admin-map";
 import { TOOL_WORDS } from "@/lib/manager-tools";
 import { GATE_WORDS } from "@/lib/owner-tools";
+
+import { useVoice, type VoiceStatus } from "./voice-mode";
 import type { Approval, AssistantEvent, AssistantMessage, Conversation, ConversationSummary } from "@/server/owner-assistant";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; problem: string };
@@ -19,7 +21,6 @@ export type AiManagerActions = {
   load: (conversationId: string) => Promise<Conversation | null>;
   rate: (messageId: string, value: 1 | -1 | null) => Promise<boolean>;
   hear: ((form: FormData) => Promise<Result<{ text: string }>>) | null;
-  speak: ((text: string) => Promise<Result<{ audio: string }>>) | null;
 };
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
@@ -31,12 +32,6 @@ const STARTERS: Record<"store" | "platform", string[]> = {
   store: ["How is the store doing this week?", "What needs my attention?", "What should I do next to get ready?", "How do I run a sale?"],
   platform: ["How is Kaizen doing?", "Who is waiting for access?", "Which emails failed?", "Show me the stores without a plan."],
 };
-
-/** The browser's recording formats, best first. */
-function recorderType(): string | undefined {
-  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
-  return types.find((type) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(type));
-}
 
 /** Text with the admin's own paths and web addresses as links; the rest stays text, never HTML. */
 function Linked({ text, onOpen }: { text: string; onOpen?: () => void }) {
@@ -85,6 +80,7 @@ export function AiManagerChat({
   variant,
   inputRef: givenInputRef,
   onNavigate,
+  startVoice = 0,
 }: {
   area: "store" | "platform";
   /** The AI manager's page; its turn route is `{base}/turn`. */
@@ -99,6 +95,8 @@ export function AiManagerChat({
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   /** The panel closes on phones when it opens a page. */
   onNavigate?: () => void;
+  /** Asked to talk (the launcher's microphone, counted per click): voice mode starts. */
+  startVoice?: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -116,30 +114,44 @@ export function AiManagerChat({
   const [working, setWorking] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [recording, setRecording] = useState(false);
   const [aloud, setAloud] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const busyRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<(text: string) => void>(() => undefined);
   const panel = variant === "panel";
+  const canTalk = abilities.hear && abilities.speak && actions.hear !== null;
+  const voice = useVoice({
+    speakUrl: `${base}/speak`,
+    hear: actions.hear,
+    onUtterance: (text) => {
+      // Still answering the last one: listen again rather than talk over it.
+      if (busyRef.current) return voice.finish();
+      sendRef.current(text);
+    },
+    onProblem: setProblem,
+  });
+  const speaking = voice.active || aloud;
+
+  // Opened from the launcher's microphone: start talking.
+  const { start: startVoiceMode, stop: stopVoiceMode } = voice;
+  useEffect(() => {
+    if (startVoice > 0 && canTalk) void startVoiceMode();
+  }, [startVoice, canTalk, startVoiceMode]);
+
+  // Escape ends voice mode.
+  useEffect(() => {
+    if (!voice.active) return;
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && stopVoiceMode();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [voice.active, stopVoiceMode]);
 
   useEffect(() => {
     const box = scrollRef.current;
     if (box && panel) box.scrollTop = box.scrollHeight;
     else if (box) box.lastElementChild?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages, approvals, streaming, working, panel]);
-
-  const say = async (text: string) => {
-    if (!aloud || !actions.speak) return;
-    const spoken = await actions.speak(text);
-    if (!spoken.ok) return;
-    audioRef.current?.pause();
-    const audio = new Audio(`data:audio/mpeg;base64,${spoken.audio}`);
-    audioRef.current = audio;
-    void audio.play().catch(() => undefined);
-  };
 
   function remember(id: string | null) {
     if (!panel) window.history.replaceState(window.history.state, "", id ? `${base}?c=${id}` : base);
@@ -171,10 +183,12 @@ export function AiManagerChat({
 
   async function send(text: string) {
     const words = text.trim();
-    if (!words || busy) return;
+    if (!words || busyRef.current) return;
     setDraft("");
     setProblem(null);
+    busyRef.current = true;
     setBusy(true);
+    if (speaking) voice.expectAnswer();
     setStreaming("");
     setOpened([]);
     setWorking("Thinking");
@@ -185,7 +199,7 @@ export function AiManagerChat({
       const response = await fetch(`${base}/turn`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ conversationId, message: words, path: window.location.pathname }),
+        body: JSON.stringify({ conversationId, message: words, path: window.location.pathname, voice: voice.active }),
         signal: controller.signal,
       });
       if (!response.ok || !response.body) throw new Error((await response.json().catch(() => null))?.error ?? "The AI manager could not be reached.");
@@ -203,6 +217,9 @@ export function AiManagerChat({
       if (!controller.signal.aborted) setProblem(error instanceof Error ? error.message : "The AI manager could not be reached.");
     } finally {
       abortRef.current = null;
+      busyRef.current = false;
+      // The rest of the answer is spoken; in voice mode it then listens again.
+      if (speaking) voice.finish();
       setBusy(false);
       setWorking(null);
       setStreaming("");
@@ -220,6 +237,7 @@ export function AiManagerChat({
       case "text":
         setWorking(null);
         setStreaming((current) => current + event.delta);
+        if (speaking) voice.feed(event.delta);
         return;
       case "round":
         setStreaming("");
@@ -230,16 +248,19 @@ export function AiManagerChat({
         // In the panel the page opens behind it; its own page offers a link instead of leaving the conversation.
         if (panel) {
           router.push(event.href);
-          onNavigate?.();
+          // On phones the panel steps aside for the page, unless they are talking to it.
+          if (!voice.active) onNavigate?.();
         }
         return;
       case "approval":
-        setApprovals((current) => [...current, event.approval]);
+        // New, or one answered in words during the turn.
+        setApprovals((current) =>
+          current.some((a) => a.id === event.approval.id) ? current.map((a) => (a.id === event.approval.id ? event.approval : a)) : [...current, event.approval],
+        );
         return;
       case "done":
         setMessages((current) => [...current, event.message]);
         setStreaming("");
-        void say(event.message.content);
         return;
       case "error":
         setProblem(event.message);
@@ -269,50 +290,6 @@ export function AiManagerChat({
     if (!(await actions.remove(id))) return;
     setList((current) => current.filter((c) => c.id !== id));
     if (id === conversationId) startNew();
-  }
-
-  async function talk() {
-    const hear = actions.hear;
-    if (!hear) return;
-    if (recorderRef.current) {
-      recorderRef.current.stop();
-      return;
-    }
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setProblem("The browser did not let the page use the microphone.");
-      return;
-    }
-    audioRef.current?.pause();
-    const type = recorderType();
-    const recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
-    const chunks: Blob[] = [];
-    const limit = window.setTimeout(() => recorder.state === "recording" && recorder.stop(), 60_000);
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data);
-    };
-    recorder.onstop = () => {
-      window.clearTimeout(limit);
-      stream.getTracks().forEach((track) => track.stop());
-      recorderRef.current = null;
-      setRecording(false);
-      const audio = new Blob(chunks, { type: recorder.mimeType || type || "audio/webm" });
-      if (audio.size === 0) return;
-      const form = new FormData();
-      form.set("audio", audio, "message");
-      setWorking("Listening");
-      void (async () => {
-        const heard = await hear(form);
-        setWorking(null);
-        if (!heard.ok) return setProblem(heard.problem);
-        sendRef.current(heard.text);
-      })();
-    };
-    recorderRef.current = recorder;
-    recorder.start();
-    setRecording(true);
   }
 
   if (!abilities.text) {
@@ -429,6 +406,15 @@ export function AiManagerChat({
               {problem}
             </p>
           )}
+          {startVoice > 0 && !canTalk && (
+            <p role="status" className="text-sm">
+              Voice mode needs a speech-to-text model and a voice.{" "}
+              <Link href={settingsHref} className="underline" onClick={onNavigate}>
+                Set them up under AI
+              </Link>
+              .
+            </p>
+          )}
         </div>
       )}
 
@@ -439,6 +425,9 @@ export function AiManagerChat({
         }}
         className={`flex flex-col gap-2 border-t border-border bg-background ${panel ? "p-3" : "sticky bottom-0 pt-3"}`}
       >
+        {voice.active && (
+          <VoiceBar status={voice.status} level={voice.level} muted={voice.muted} onMute={voice.toggleMute} onInterrupt={voice.interrupt} onEnd={voice.stop} />
+        )}
         <label htmlFor={inputId} className="sr-only">
           Message to the AI manager
         </label>
@@ -468,14 +457,23 @@ export function AiManagerChat({
               Send
             </button>
           )}
-          {abilities.hear && actions.hear && (
-            <button type="button" className={secondary} onClick={() => void talk()} aria-pressed={recording} disabled={busy && !recording}>
-              {recording ? "Stop and send" : "Talk"}
+          {canTalk && !voice.active && (
+            <button type="button" className={secondary} onClick={() => void voice.start()} title="Talk hands-free: it listens, answers aloud and listens again">
+              <MicIcon className="mr-1.5 size-4" />
+              Voice mode
             </button>
           )}
-          {abilities.speak && actions.speak && (
+          {abilities.speak && !voice.active && (
             <label className="ml-auto flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={aloud} onChange={(event) => setAloud(event.target.checked)} className="size-4" />
+              <input
+                type="checkbox"
+                checked={aloud}
+                onChange={(event) => {
+                  setAloud(event.target.checked);
+                  if (!event.target.checked) voice.stopSpeaking();
+                }}
+                className="size-4"
+              />
               Read aloud
             </label>
           )}
@@ -494,6 +492,70 @@ export function AiManagerChat({
         <div className="max-h-[60dvh] overflow-y-auto">{history}</div>
       </nav>
       {conversationView}
+    </div>
+  );
+}
+
+export function MicIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+    </svg>
+  );
+}
+
+const VOICE_WORDS: Record<VoiceStatus, { label: string; hint: string }> = {
+  off: { label: "", hint: "" },
+  starting: { label: "Starting", hint: "Allow the microphone if the browser asks." },
+  listening: { label: "Listening", hint: "Talk when you are ready; a short pause sends it." },
+  hearing: { label: "Hearing you", hint: "Pause when you are done." },
+  thinking: { label: "Thinking", hint: "Working on it." },
+  speaking: { label: "Speaking", hint: "Talk to cut in, or tap Interrupt." },
+};
+
+/** Voice mode's state (D104): a circle that follows the microphone, what it is doing, and its controls. */
+function VoiceBar({
+  status,
+  level,
+  muted,
+  onMute,
+  onInterrupt,
+  onEnd,
+}: {
+  status: VoiceStatus;
+  level: number;
+  muted: boolean;
+  onMute: () => void;
+  onInterrupt: () => void;
+  onEnd: () => void;
+}) {
+  const words = muted && (status === "listening" || status === "hearing") ? { label: "Muted", hint: "Unmute to talk." } : VOICE_WORDS[status];
+  const busy = status === "thinking" || status === "starting";
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border p-2" aria-label="Voice mode">
+      <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
+        <span
+          className="absolute inset-0 rounded-full bg-foreground/15 transition-transform duration-75"
+          style={{ transform: `scale(${status === "speaking" ? 1.15 : 0.8 + level * 0.9})` }}
+        />
+        <span className={`size-6 rounded-full bg-foreground ${busy || status === "speaking" ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
+      </span>
+      <div className="min-w-0 flex-1" role="status" aria-live="polite">
+        <p className="text-sm font-medium">{words.label} …</p>
+        <p className="truncate text-xs text-muted">{words.hint}</p>
+      </div>
+      {status === "speaking" && (
+        <button type="button" onClick={onInterrupt} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
+          Interrupt
+        </button>
+      )}
+      <button type="button" onClick={onMute} aria-pressed={muted} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
+        {muted ? "Unmute" : "Mute"}
+      </button>
+      <button type="button" onClick={onEnd} className="rounded-md bg-foreground px-2 py-1 text-xs text-background" title="End voice mode (Esc)">
+        End
+      </button>
     </div>
   );
 }
@@ -548,7 +610,7 @@ function ApprovalCard({ approval, onDecide }: { approval: Approval; onDecide: (a
   return (
     <div className="flex max-w-[46rem] flex-col gap-2 rounded-lg border border-border p-3" role="group" aria-label="Waiting for your approval">
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{GATE_WORDS[approval.category]}</p>
-      <p className="text-sm">{approval.summary}</p>
+      <p className="text-sm whitespace-pre-wrap wrap-anywhere">{approval.summary}</p>
       {approval.status === "pending" ? (
         <div className="flex gap-2">
           <button type="button" className={primary} onClick={() => onDecide(approval, true)}>

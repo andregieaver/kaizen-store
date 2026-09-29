@@ -9,7 +9,6 @@ import {
   deletePlatformConversationAction,
   loadPlatformConversationAction,
   platformHearAction,
-  platformSpeakAction,
   ratePlatformAnswerAction,
   startPlatformAssistantAction,
 } from "./assistant/actions";
@@ -70,7 +69,6 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
                 load: loadPlatformConversationAction,
                 rate: ratePlatformAnswerAction,
                 hear: platformHearAction,
-                speak: platformSpeakAction,
               }}
             />
           </div>

@@ -216,9 +216,11 @@ export function whereText(p: Principal, path: string | null | undefined): string
 
 const memoryLine = (m: Memory) => `- [${m.id}] ${m.kind}${m.storeId ? "" : ", everywhere"}: ${m.content}`;
 
+export type Waiting = { id: string; summary: string };
+
 export function managerPrompt(
   p: Principal,
-  options: { now?: Date; withLife?: boolean; where?: string | null; memories?: Memory[] } = {},
+  options: { now?: Date; withLife?: boolean; where?: string | null; memories?: Memory[]; waiting?: Waiting[]; voice?: boolean } = {},
 ): string {
   const { store, account } = p;
   const now = options.now ?? new Date();
@@ -244,6 +246,7 @@ export function managerPrompt(
     "- Amounts come written out by the tools: repeat them as given. Never add up, average or convert amounts yourself: the tools do the sums.",
     "- Look things up before acting on them, so you use real numbers, names and ids.",
     "- Changes that send something, change what a site shows or cost money are not made by you: your call is kept for them to approve, with a button under your answer. Say plainly what is waiting for their yes. Never say it is done before it is.",
+    "- They may answer a waiting change in words instead (\"yes, send it\", \"no\"): then carry out that answer with decide_approval, by its id. Only for a change they answered in this message; if their answer is unclear, ask.",
     "- If a tool refuses or fails, say what it said. If no tool can do what is asked, say so and open or name the admin page that can.",
     "- Answer in the language they write in. Keep answers short and concrete, in plain text: short lines or simple lists, no tables and no HTML.",
     ...(options.withLife
@@ -268,6 +271,20 @@ export function managerPrompt(
     `The admin (section: page [id]):`,
     adminMapText(area, siteFlags(p)),
     ...(options.where ? ["", "Where they are now:", options.where] : []),
+    ...(options.waiting?.length
+      ? ["", "Changes waiting for their yes (id: what it does):", ...options.waiting.map((w) => `- [${w.id}] ${w.summary.replace(/\s+/g, " ").slice(0, 300)}`)]
+      : []),
+    ...(options.voice
+      ? [
+          "",
+          "They are talking to you by voice, and your answer is read aloud:",
+          "- Speak in plain sentences: no lists, tables, Markdown, links, addresses or ids (the screen shows those; say \"I've opened it\" or \"it's on the screen\").",
+          "- Lead with the answer, then the next step. Usually two to four sentences, at most about 100 words; offer more if there is more.",
+          "- Say amounts and numbers as the tools wrote them.",
+          "- Before a longer lookup you may say a few words first, such as \"Let me check.\"",
+          "- When a change waits for their yes, say in one sentence what it will do and ask them to say yes or no.",
+        ]
+      : []),
     "",
     "What you know about them:",
     memories.length ? memories.map(memoryLine).join("\n") : "Nothing yet.",
@@ -288,6 +305,8 @@ export type TurnInput = {
   path?: string | null;
   /** Runs work after the answer is sent (the route's `after()`): learning from the turn. Without it, nothing is learned. */
   later?: (task: () => Promise<unknown>) => void;
+  /** Spoken in voice mode (D104): the answer is read aloud, so it is written to be heard. */
+  voice?: boolean;
   /** Kaizen Life's assistant is asking (D96): answer without asking it back. */
   fromKaizenLife?: boolean;
   /** The connection to use; the site's own (D73) unless given (tests). */
@@ -341,7 +360,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
     conversationId = String(row.id);
     emit({ type: "conversation", id: conversationId, title });
   }
-  const [history, memories, withLife] = await Promise.all([
+  const startedAt = new Date();
+  const [history, memories, withLife, waiting] = await Promise.all([
     db().execute<Row>(sql`
       select role, content from (
         select role, content, created_at, id from commerce.assistant_messages
@@ -353,6 +373,11 @@ export async function runTurn(input: TurnInput): Promise<void> {
       return [] as Memory[];
     }),
     !input.fromKaizenLife && lifeLinkOn() ? lifeLink(account.id).then((link) => link !== null) : Promise.resolve(false),
+    db().execute<Row>(sql`
+      select id, summary from commerce.assistant_approvals
+      where conversation_id = ${conversationId}::uuid and account_id = ${account.id}::uuid and status = 'pending'
+      order by created_at limit 10
+    `),
   ]);
   await addMessage(p, conversationId, "user", text);
 
@@ -363,10 +388,29 @@ export async function runTurn(input: TurnInput): Promise<void> {
     connection,
     navigate: (href, label) => emit({ type: "navigate", href, label }),
     invalidate: input.invalidate,
+    turn: {
+      conversationId,
+      said: text,
+      startedAt,
+      decide: async (approvalId, approve) => {
+        const decided = await decideApproval(p, approvalId, approve, input.invalidate, { note: false });
+        if (decided) emit({ type: "approval", approval: decided });
+        return decided;
+      },
+    },
   };
   const tools = [...(store ? OWNER_TOOLS : PLATFORM_TOOLS).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
   const messages: ToolChatMessage[] = [
-    { role: "system", content: managerPrompt(p, { withLife, where: whereText(p, input.path), memories }) },
+    {
+      role: "system",
+      content: managerPrompt(p, {
+        withLife,
+        where: whereText(p, input.path),
+        memories,
+        voice: input.voice,
+        waiting: waiting.map((row) => ({ id: String(row.id), summary: String(row.summary) })),
+      }),
+    },
     ...history.map((row) => ({ role: row.role === "user" ? ("user" as const) : ("assistant" as const), content: String(row.content) })),
     { role: "user", content: text },
   ];
@@ -523,6 +567,8 @@ export async function decideApproval(
   approvalId: string,
   approve: boolean,
   invalidate: (tag: string) => void,
+  /** `note: false` when answered in words during a turn, whose answer says what happened. */
+  { note = true }: { note?: boolean } = {},
 ): Promise<Approval | null> {
   if (!/^[0-9a-f-]{36}$/i.test(approvalId)) return null;
   const [claimed] = await db().execute<Row>(sql`
@@ -533,7 +579,7 @@ export async function decideApproval(
   if (!claimed) return null;
   const conversationId = String(claimed.conversation_id);
   if (!approve) {
-    await addMessage(p, conversationId, "assistant", `Declined: ${claimed.summary}`);
+    if (note) await addMessage(p, conversationId, "assistant", `Declined: ${claimed.summary}`);
     return toApproval(claimed);
   }
   let result: { done?: string; error?: string };
@@ -553,7 +599,7 @@ export async function decideApproval(
     update commerce.assistant_approvals set status = ${result.error ? "failed" : "done"}, result = ${JSON.stringify(result)}::jsonb
     where id = ${approvalId}::uuid returning *
   `);
-  await addMessage(p, conversationId, "assistant", result.done ?? `Could not: ${result.error}`, [{ name: String(claimed.tool), ok: !result.error }]);
+  if (note) await addMessage(p, conversationId, "assistant", result.done ?? `Could not: ${result.error}`, [{ name: String(claimed.tool), ok: !result.error }]);
   return toApproval(row);
 }
 

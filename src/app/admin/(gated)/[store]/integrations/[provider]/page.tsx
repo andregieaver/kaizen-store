@@ -43,7 +43,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
   const chosen = new Set(integration?.events ?? DEFAULT_EVENTS);
   const slack = provider === "slack";
   const addToSlack = slack && owner && slackAppOn();
-  const eventLabel = (id: string) => (id === "test" ? "Test" : (EVENTS.find((e) => e.id === id)?.label ?? id));
+  const eventLabel = (id: string) => (id === "test" ? "Test" : id === "assistant.message" ? "Message from the AI manager" : (EVENTS.find((e) => e.id === id)?.label ?? id));
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">

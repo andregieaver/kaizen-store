@@ -15,7 +15,7 @@ import {
   type Conversation,
   type Principal,
 } from "@/server/owner-assistant";
-import { hearOwner, speakToOwner } from "@/server/page-ai";
+import { hearOwner } from "@/server/page-ai";
 import { readRecording, unreadable } from "@/server/page-studio-input";
 
 /** Kaizen's AI manager's actions (D103): for platform admins only. */
@@ -53,7 +53,3 @@ export async function platformHearAction(form: FormData) {
   return audio ? hearOwner(null, audio) : unreadable;
 }
 
-export async function platformSpeakAction(text: string) {
-  await principal();
-  return typeof text === "string" && text.trim() ? speakToOwner(null, text) : unreadable;
-}

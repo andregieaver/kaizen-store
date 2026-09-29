@@ -15,6 +15,7 @@ import {
 } from "@/lib/manager-tools";
 import { formatMoney } from "@/lib/money";
 import { readToolInput } from "@/lib/owner-tools";
+import { saysYes } from "@/lib/speech-text";
 import { siteUrl } from "@/lib/site";
 
 import type { AiConnection } from "./ai";
@@ -46,6 +47,15 @@ export type ManagerContext = {
   /** Tells the person's browser to open a page. */
   navigate: (href: string, label: string) => void;
   invalidate: (tag: string) => void;
+  /** The turn being answered, for deciding kept changes in words (D104); none outside a turn. */
+  turn?: {
+    conversationId: string;
+    /** What the person said in this turn. */
+    said: string;
+    startedAt: Date;
+    /** Runs the person's answer (`decideApproval()`), reporting it to their browser. */
+    decide: (approvalId: string, approve: boolean) => Promise<{ status: string; outcome: string | null } | null>;
+  };
 };
 
 const fail = (message: string): never => {
@@ -114,6 +124,32 @@ async function recallTool(ctx: ManagerContext, { query }: ManagerToolInput<"reca
   return found.map((m) => ({ id: m.id, kind: m.kind, content: m.content, about: m.storeName ?? "everywhere" }));
 }
 
+// Answers in words (D104) --------------------------------------------------------------------
+
+/**
+ * A change kept for approval, answered in words: only one of this
+ * conversation's, asked for before this message, and approved only when
+ * the message plainly says yes (`saysYes()`), whatever the model thinks.
+ */
+async function decideApprovalTool(ctx: ManagerContext, { approval, approve }: ManagerToolInput<"decide_approval">) {
+  const turn = ctx.turn;
+  if (!turn) return fail("Answers are given with the buttons here.");
+  const [row] = await db().execute<Row>(sql`
+    select summary, status, created_at from commerce.assistant_approvals
+    where id = ${approval}::uuid and conversation_id = ${turn.conversationId}::uuid and account_id = ${ctx.account.id}::uuid
+      and ${ctx.store ? sql`store_id = ${ctx.store.id}::uuid` : sql`store_id is null`}
+  `);
+  if (!row) return fail("There is no such change waiting in this conversation.");
+  if (row.status !== "pending") return fail(`That change is already ${String(row.status)}.`);
+  if (new Date(String(row.created_at)) >= turn.startedAt) return fail("They have not seen this change yet: ask them first.");
+  if (approve && !saysYes(turn.said)) return fail("Their message is not a plain yes: ask them to confirm, or they can use the button.");
+  const decided = await turn.decide(approval, approve);
+  if (!decided) return fail("That change was already decided.");
+  return approve
+    ? { done: decided.status === "failed" ? `It could not be done: ${decided.outcome ?? ""}` : (decided.outcome ?? "Done."), what: String(row.summary) }
+    : { done: "Declined; nothing was done.", what: String(row.summary) };
+}
+
 type Handler = (ctx: ManagerContext, input: never) => Promise<unknown>;
 
 const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
@@ -123,6 +159,7 @@ const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
   remember: rememberTool,
   forget: forgetTool,
   recall: recallTool,
+  decide_approval: decideApprovalTool,
 };
 
 export async function runManagerTool(ctx: ManagerContext, name: string, raw: unknown): Promise<unknown> {

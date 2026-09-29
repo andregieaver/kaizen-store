@@ -48,6 +48,11 @@ export const MANAGER_TOOLS = [
     "Searches everything you remember about the person, beyond what is in your instructions.",
     z.object({ query: z.string().trim().min(2).max(200) }),
   ),
+  tool(
+    "decide_approval",
+    "Carries out the person's answer to a change waiting for their yes (listed in your instructions with its id), when they answer it in words, spoken or typed, in this message. Approving needs a plain yes from them in this message; never approve what they did not clearly agree to.",
+    z.object({ approval: z.uuid(), approve: z.boolean() }),
+  ),
 ] as const satisfies readonly OwnerTool[];
 
 const slug = z
@@ -143,6 +148,17 @@ export const TOOL_WORDS: Record<string, string> = {
   wishlist_insights: "Looking at wishlists",
   list_emails: "Looking at emails",
   subscription_boxes: "Looking at subscription boxes",
+  customer_insights: "Looking at customers",
+  product_performance: "Looking at products' sales",
+  sales_trend: "Working out the trend",
+  sales_funnel: "Following carts to orders",
+  restock_suggestions: "Working out what to reorder",
+  list_integrations: "Looking at integrations",
+  email_customer: "Preparing the email",
+  resend_order_email: "Preparing the email",
+  set_stock: "Preparing the change",
+  post_to_slack: "Preparing the message",
+  decide_approval: "Carrying out your answer",
   add_order_note: "Adding a note",
   mark_order_sent: "Preparing the shipment",
   cancel_booking: "Preparing the cancellation",

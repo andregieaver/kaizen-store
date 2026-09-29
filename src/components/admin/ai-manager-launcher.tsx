@@ -6,7 +6,8 @@ import { createPortal } from "react-dom";
 
 import type { ConversationSummary } from "@/server/owner-assistant";
 
-import { AiManagerChat, type Abilities, type AiManagerActions } from "./ai-manager";
+import { AiManagerChat, MicIcon, type Abilities, type AiManagerActions } from "./ai-manager";
+import { unlockVoiceAudio } from "./voice-mode";
 
 export type AiManagerStart = () => Promise<{ abilities: Abilities; conversations: ConversationSummary[] }>;
 
@@ -44,6 +45,8 @@ export function AiManagerLauncher({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState<Awaited<ReturnType<AiManagerStart>> | null>(null);
+  /** Counts the microphone's clicks: each asks the panel to start voice mode. */
+  const [talk, setTalk] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const onItsPage = pathname === base;
@@ -134,6 +137,7 @@ export function AiManagerLauncher({
             variant="panel"
             inputRef={inputRef}
             onNavigate={closeOnPhones}
+            startVoice={talk}
           />
         ) : (
           <p className="p-4 text-sm text-muted" role="status">
@@ -158,6 +162,22 @@ export function AiManagerLauncher({
         <span className="sr-only sm:not-sr-only">AI manager</span>
         <kbd className="hidden rounded border border-background/30 px-1 font-sans text-xs opacity-80 md:inline">⌘K</kbd>
       </button>
+      {!onItsPage && (
+        <button
+          type="button"
+          onClick={() => {
+            // Sound is allowed only from a click: unlock it now, before the panel loads.
+            unlockVoiceAudio();
+            setTalk((n) => n + 1);
+            toggle(true);
+          }}
+          title="Talk to the AI manager (voice mode)"
+          aria-label="Talk to the AI manager"
+          className="inline-flex size-9 items-center justify-center rounded-full border border-border hover:bg-surface"
+        >
+          <MicIcon className="size-4" />
+        </button>
+      )}
       {/* Only open after a click, so only in the browser: drawn over the page from the body. */}
       {panel ? createPortal(panel, document.body) : null}
     </>

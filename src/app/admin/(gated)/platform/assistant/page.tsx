@@ -9,7 +9,6 @@ import {
   deletePlatformConversationAction,
   loadPlatformConversationAction,
   platformHearAction,
-  platformSpeakAction,
   ratePlatformAnswerAction,
 } from "./actions";
 
@@ -42,7 +41,6 @@ export default async function PlatformAssistantPage({ searchParams }: PageProps<
         load: loadPlatformConversationAction,
         rate: ratePlatformAnswerAction,
         hear: abilities.hear ? platformHearAction : null,
-        speak: abilities.speak ? platformSpeakAction : null,
       }}
     />
   );

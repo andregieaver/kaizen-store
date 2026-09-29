@@ -306,8 +306,11 @@ export function sendShipped(
   storeId: string,
   orderId: string,
   shipment: { id: string; carrier: string; trackingNumber: string; trackingUrl: string | null },
+  { resend = false }: { resend?: boolean } = {},
 ) {
-  return orderNotice(storeId, orderId, "order.sent", `order-sent:${shipment.id}`, ({ order, text, store }) => {
+  // Sent again on request: a key of its own, so the first sending does not stop it.
+  const key = resend ? `order-sent:${shipment.id}:again:${crypto.randomUUID()}` : `order-sent:${shipment.id}`;
+  return orderNotice(storeId, orderId, "order.sent", key, ({ order, text, store }) => {
     const address = addressText(order);
     return {
       subject: text.shippedSubject(store.name, order.number),
@@ -553,6 +556,49 @@ export async function sendRenewalReminder(
     replyTo: store.details.contactEmail,
     idempotencyKey: `subscription-reminder:${subscription.id}:${chargeAt.toISOString()}`,
     subscriptionId: subscription.id,
+  });
+}
+
+/**
+ * A message from the store to one customer (D104), written with the owner
+ * and sent on their yes: the subject and paragraphs as given, in the
+ * customer's language's frame, with the store's footer and a reply-to of
+ * its contact email; with an order, a link to it too.
+ */
+export async function sendStoreMessage(
+  storeId: string,
+  message: { to: string; subject: string; text: string; orderId: string | null; marketCode: string | null; locale: string | null },
+): Promise<SendOutcome | null> {
+  const store = await storeById(storeId);
+  if (!store) return null;
+  const market = store.markets.find((m) => m.code === message.marketCode) ?? store.markets[0];
+  if (!market) return null;
+  const ctx = await context(storeId, market.code, message.locale ?? market.locale);
+  if (!ctx) return null;
+  const url = message.orderId ? await orderUrl(storeId, ctx.store, ctx.market, message.orderId) : null;
+  const paragraphs = message.text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const email = renderEmail({
+    subject: message.subject,
+    preview: paragraphs[0]?.slice(0, 140) ?? message.subject,
+    lang: ctx.lang,
+    footer: footer(ctx.store, ctx.text),
+    blocks: [
+      ...paragraphs.map((text) => ({ type: "paragraph" as const, text })),
+      ...(url ? [{ type: "button" as const, text: ctx.text.seeOrder, url }] : []),
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "store.message",
+    to: message.to,
+    email,
+    fromName: ctx.store.name,
+    replyTo: ctx.store.details.contactEmail,
+    idempotencyKey: `store-message:${crypto.randomUUID()}`,
+    orderId: message.orderId,
   });
 }
 

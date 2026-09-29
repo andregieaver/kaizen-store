@@ -13,7 +13,10 @@ import { cancelBooking, listBookings } from "./bookings";
 import { cartReminderStats } from "./cart-reminders";
 import { findCustomer, getCustomerDetail, listCustomers } from "./customer-admin";
 import { listEmails } from "./email";
-import { listIntegrations } from "./integrations";
+import { findClaims } from "@/lib/claims";
+
+import { listIntegrations, postToSlack } from "./integrations";
+import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
 import { deliveryRounds } from "./standing-orders";
 import { listSubscriptions } from "./subscriptions";
@@ -24,7 +27,7 @@ import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./
 import { listOrders } from "./orders";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
-import { sendBookingCancelled, sendRefunded, sendShipped } from "./shopper-emails";
+import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -431,7 +434,7 @@ async function setupProgressTool({ store }: OwnerToolContext) {
 
 async function storeCheckup(ctx: OwnerToolContext) {
   const { store } = ctx;
-  const [[counts], [low], progress, integrations] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid'
@@ -453,6 +456,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
     `),
     getSetupProgress(store),
     listIntegrations(store.id),
+    restockSuggestions({ store }, { days: 30, cover_days: 30, lead_days: 7 }),
   ]);
   const findings: { what: string; page: string }[] = [];
   const add = (when: boolean, what: string, page: string) => when && findings.push({ what, page: adminLink(store, page) });
@@ -460,6 +464,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
   add(Number(counts.late_orders) > 0, `${counts.late_orders} paid order(s) have waited more than two days to be sent.`, "/orders?show=to-send");
   add(Number(counts.to_send) > 0 && Number(counts.late_orders) === 0, `${counts.to_send} paid order(s) are waiting to be sent.`, "/orders?show=to-send");
   add(Number(low.n) > 0, `${low.n} variant(s) have 3 or fewer left in stock.`, "/products");
+  add(restock.urgent > 0, `${restock.urgent} variant(s) will run out within a week at the current pace: restock_suggestions says how many to order.`, "/products");
   add(Number(counts.searches_missed) > 0, `${counts.searches_missed} different search(es) found nothing this week.`, "/search");
   add(Number(counts.approvals) > 0, `${counts.approvals} change(s) you asked me for are waiting for your approval.`, "/assistant");
   add(Number(counts.drafts) > 0, `${counts.drafts} product(s) are drafts, not on the site.`, "/products");
@@ -617,6 +622,125 @@ async function setDiscountActiveTool(ctx: OwnerToolContext, { code, active }: Ow
   return { done: `The code ${String(rows[0].code)} is ${active ? "on" : "off"}.` };
 }
 
+// Reaching customers, the team and the stock (D104) -------------------------------------------
+
+async function listIntegrationsTool({ store }: OwnerToolContext) {
+  const connected = await listIntegrations(store.id);
+  return {
+    connected: connected.map((i) => ({
+      service: i.provider,
+      on: i.enabled,
+      events: i.events,
+      last_sent: i.lastDelivery ? { status: i.lastDelivery.status, at: i.lastDelivery.at } : null,
+      failed_this_week: i.recentFailures,
+      admin: adminLink(store, `/integrations/${i.provider}`),
+    })),
+    available: ["zapier", "make", "slack"].filter((p) => !connected.some((i) => i.provider === p)),
+    note: "Zapier and Make pass the store's events on to other tools, such as newsletters or spreadsheets; Slack posts them to a channel. Connect them under Integrations.",
+    admin: adminLink(store, "/integrations"),
+  };
+}
+
+/** Words the claims filter (D76) finds in AI-written text for customers, which must be rewritten first. */
+function claimsIn(...texts: string[]): string[] {
+  return [...new Set(texts.flatMap((text) => findClaims(text).map((c) => c.phrase)))];
+}
+
+async function emailCustomerTool({ store }: OwnerToolContext, { to, subject, message }: OwnerToolInput<"email_customer">) {
+  const claims = claimsIn(subject, message);
+  if (claims.length) return fail(`Rewrite without claims the store cannot back: ${claims.join(", ")}.`);
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to);
+  // Only the store's own customers: someone who ordered, or has an account here.
+  const [found] = isEmail
+    ? await db().execute<Row>(sql`
+        select email, id as order_id, market_code, locale from (
+          select o.email, o.id, o.market_code, o.locale, o.created_at from commerce.orders o
+          where o.store_id = ${store.id}::uuid and lower(o.email) = lower(${to})
+          union all
+          select c.email, null::uuid, null, c.locale, c.created_at from commerce.customers c
+          where c.store_id = ${store.id}::uuid and lower(c.email) = lower(${to})
+        ) found order by (id is null), created_at desc limit 1
+      `)
+    : await db().execute<Row>(sql`
+        select o.email, o.id as order_id, o.market_code, o.locale from commerce.orders o
+        where o.store_id = ${store.id}::uuid and o.id = ${await findOrderId(store, to)}::uuid and o.email <> ''
+      `);
+  if (!found) return fail(`${to} is not a customer of this store. Use list_customers or get_order.`);
+  const outcome = await sendStoreMessage(store.id, {
+    to: String(found.email),
+    subject,
+    text: message,
+    // Linked to the order when written about one; a message to an email alone links none.
+    orderId: isEmail ? null : String(found.order_id),
+    marketCode: found.market_code ? String(found.market_code) : null,
+    locale: found.locale ? String(found.locale) : null,
+  });
+  if (outcome === "failed" || outcome === null) return fail("The email could not be sent. Try again later.");
+  return { done: outcome === "logged" ? `Written to ${String(found.email)} (email is not set up here, so it was only logged).` : `Emailed ${String(found.email)}.` };
+}
+
+async function resendOrderEmailTool({ store }: OwnerToolContext, { order, which }: OwnerToolInput<"resend_order_email">) {
+  const orderId = await findOrderId(store, order);
+  if (which === "confirmation") {
+    const outcome = await sendOrderConfirmation(store.id, orderId, { resend: true });
+    if (!outcome || outcome === "failed") return fail("The confirmation could not be sent: the order has no email, or is not paid.");
+    return { done: `The order confirmation for ${order} went to the customer again.` };
+  }
+  const [shipment] = await db().execute<Row>(sql`
+    select id, carrier, tracking_number, tracking_url from commerce.shipments
+    where store_id = ${store.id}::uuid and order_id = ${orderId}::uuid order by created_at desc limit 1
+  `);
+  if (!shipment) return fail(`Order ${order} has not been sent yet.`);
+  const outcome = await sendShipped(
+    store.id,
+    orderId,
+    {
+      id: String(shipment.id),
+      carrier: String(shipment.carrier),
+      trackingNumber: String(shipment.tracking_number),
+      trackingUrl: shipment.tracking_url ? String(shipment.tracking_url) : null,
+    },
+    { resend: true },
+  );
+  if (!outcome || outcome === "failed") return fail("The shipping notice could not be sent.");
+  return { done: `The shipping notice for ${order} went to the customer again.` };
+}
+
+async function setStockTool(ctx: OwnerToolContext, { sku, quantity }: OwnerToolInput<"set_stock">) {
+  const { store } = ctx;
+  const variants = await db().execute<Row>(sql`
+    select v.id, v.product_id, (select count(*)::int from commerce.inventory_levels l where l.variant_id = v.id) as places
+    from commerce.product_variants v
+    where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical' and lower(v.sku) = lower(${sku})
+  `);
+  if (variants.length === 0) return fail(`No shipped variant with the SKU ${sku}. Use get_product for SKUs.`);
+  if (variants.length > 1) return fail(`More than one variant has the SKU ${sku}: set it on the product page.`);
+  const variant = variants[0];
+  if (Number(variant.places) > 1) return fail(`${sku} is kept in more than one place: set it on the product page.`);
+  await db().transaction(async (tx) => {
+    const [place] = await tx.execute<Row>(sql`
+      select coalesce(
+        (select location_id from commerce.inventory_levels where variant_id = ${String(variant.id)}::uuid limit 1),
+        (select id from commerce.inventory_locations where store_id = ${store.id}::uuid and active order by created_at limit 1)
+      ) as location_id
+    `);
+    if (!place?.location_id) return fail("The store has no stock location yet: save the product once on its page.");
+    await tx.execute(sql`
+      insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+      values (${store.id}::uuid, ${String(variant.id)}::uuid, ${String(place.location_id)}::uuid, ${quantity})
+      on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
+    `);
+  });
+  ctx.invalidate(catalogTag(store.id));
+  return { done: `${sku} now has ${quantity} in stock.`, admin: adminLink(store, `/products/${String(variant.product_id)}`) };
+}
+
+async function postToSlackTool({ store }: OwnerToolContext, { message }: OwnerToolInput<"post_to_slack">) {
+  const outcome = await postToSlack(store.id, message);
+  if (!outcome.ok) return fail(`Slack did not take it: ${outcome.error ?? "no answer"}.`);
+  return { done: "Posted to the store's Slack channel." };
+}
+
 const HANDLERS: Record<OwnerToolName, Handler> = {
   store_overview: storeOverview,
   sales_summary: salesSummary,
@@ -646,6 +770,16 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   refund_order: refundOrderTool,
   create_discount: createDiscountTool,
   set_discount_active: setDiscountActiveTool,
+  customer_insights: customerInsights,
+  product_performance: productPerformance,
+  sales_trend: salesTrend,
+  sales_funnel: salesFunnel,
+  restock_suggestions: restockSuggestions,
+  list_integrations: listIntegrationsTool,
+  email_customer: emailCustomerTool,
+  resend_order_email: resendOrderEmailTool,
+  set_stock: setStockTool,
+  post_to_slack: postToSlackTool,
 };
 
 /**

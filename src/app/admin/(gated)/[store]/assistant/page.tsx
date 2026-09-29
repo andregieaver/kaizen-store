@@ -7,7 +7,6 @@ import { assistantAbilities, getConversation, listConversations } from "@/server
 
 import {
   assistantHearAction,
-  assistantSpeakAction,
   decideApprovalAction,
   deleteConversationAction,
   loadConversationAction,
@@ -44,7 +43,6 @@ export default async function StoreAssistantPage({ params, searchParams }: PageP
         load: loadConversationAction.bind(null, slug),
         rate: rateAnswerAction.bind(null, slug),
         hear: abilities.hear ? assistantHearAction.bind(null, slug) : null,
-        speak: abilities.speak ? assistantSpeakAction.bind(null, slug) : null,
       }}
     />
   );

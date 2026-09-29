@@ -405,7 +405,16 @@ of running `playwright install`.
   thumb (`readLearned()` refuses personal details and secrets),
   `memoriesFor()` each turn, `fadeMemories()` daily; people see and change
   it on the Memory tab and can turn learning off. It never depends on Kaizen
-  Life.
+  Life. Analyses (D104, `src/server/owner-insights.ts`) count in code from
+  paid orders (a captured payment); AI text for customers (`email_customer`)
+  passes `findClaims()`. Voice mode (D104, `useVoice` in
+  `src/components/admin/voice-mode.ts`, pure text rules in
+  `src/lib/speech-text.ts`): hands-free listening by loudness, the site's
+  speech-to-text, the answer spoken sentence by sentence through
+  `assistantSpeech()` (`…/assistant/speak`), barge-in; turns carry `voice`.
+  A kept change is approved in words only through `decide_approval`, whose
+  handler checks `saysYes()` on the person's own message and that the
+  change was kept before it.
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
   `KAIZEN_LIFE_SSO=on`) goes through `/auth/callback?via=kaizen-life` and

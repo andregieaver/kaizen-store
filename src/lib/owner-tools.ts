@@ -151,6 +151,43 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "customer_insights",
+    "How customers buy: how many come back, new and returning customers in the period, average order, time between orders, the best customers, and customers at risk of not coming back (with their emails, for a win-back).",
+    z.object({ days: z.number().int().min(7).max(730).default(90).describe("The period for new and returning customers and the average order.") }),
+  ),
+  tool(
+    "product_performance",
+    "Each product's sales in a period: units, orders and takings, how often it was wished for and opened from search, its stock, and products in stock that did not sell.",
+    z.object({ days: z.number().int().min(1).max(365).default(30) }),
+  ),
+  tool(
+    "sales_trend",
+    "Paid orders and takings per day, week or month, with the change from the one before (worked out in code).",
+    z.object({
+      period: z.enum(["day", "week", "month"]).default("week"),
+      count: z.number().int().min(2).max(24).default(8).describe("How many days, weeks or months back, the current one included."),
+    }),
+  ),
+  tool(
+    "sales_funnel",
+    "From cart to paid order in a period: carts, checkouts started and left, orders placed and paid, carts won back by reminders, and searches that found nothing or led nowhere. Product views are not tracked.",
+    z.object({ days: z.number().int().min(1).max(365).default(30) }),
+  ),
+  tool(
+    "restock_suggestions",
+    "What to reorder: each shipped product's sales per day, the days its stock lasts, and how many to order to cover the days asked for plus the supplier's delivery time. Worked out in code from paid orders.",
+    z.object({
+      days: z.number().int().min(7).max(365).default(30).describe("The sales period the pace is taken from."),
+      cover_days: z.number().int().min(1).max(365).default(30).describe("How many days the new stock should last."),
+      lead_days: z.number().int().min(0).max(120).default(7).describe("Days from ordering until the goods arrive."),
+    }),
+  ),
+  tool(
+    "list_integrations",
+    "The store's connected services (Zapier, Make and Slack): which events each gets, and whether deliveries have failed lately.",
+    z.object({}),
+  ),
+  tool(
     "add_order_note",
     "Adds a note to an order's history, for the store's staff only; the customer never sees it.",
     z.object({ order: orderRef, note: z.string().trim().min(1).max(1000) }),
@@ -210,6 +247,37 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "email_customer",
+    "Emails one customer of the store, in the store's name, with a subject and a message you write with the owner (replies go to the store's contact email). Plain text; no prices, stock or promises the tools did not give. Needs the owner's approval.",
+    z.object({
+      to: z.string().trim().min(1).max(200).describe("The customer's email, or an order number to write to its customer."),
+      subject: z.string().trim().min(1).max(150),
+      message: z.string().trim().min(1).max(3000).describe("The email's text, in the customer's language, signed as the store."),
+    }),
+    "send",
+  ),
+  tool(
+    "resend_order_email",
+    "Sends a customer their order confirmation, or the latest shipping notice with its tracking, again. Needs the owner's approval.",
+    z.object({ order: orderRef, which: z.enum(["confirmation", "shipped"]).default("confirmation") }),
+    "send",
+  ),
+  tool(
+    "set_stock",
+    "Sets how many of a variant are in stock, by its SKU (from get_product or restock_suggestions), such as after a delivery from a supplier. Needs the owner's approval.",
+    z.object({
+      sku: z.string().trim().min(1).max(100),
+      quantity: z.number().int().min(0).max(1_000_000).describe("The new number in stock, not the number to add."),
+    }),
+    "public",
+  ),
+  tool(
+    "post_to_slack",
+    "Posts a message to the store's Slack channel (connected under Integrations), such as a note to the team. Never customers' emails, phones or addresses. Needs the owner's approval.",
+    z.object({ message: z.string().trim().min(1).max(2000) }),
+    "send",
+  ),
+  tool(
     "unpublish_page",
     "Takes a published page or article off the site; its draft is kept. Needs the owner's approval.",
     z.object({ page: z.uuid("A page is given by its id, from list_pages."), type: z.enum(["page", "article"]).default("page") }),
@@ -263,6 +331,14 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Create the code ${text("code").toUpperCase()}: ${input.kind === "free_shipping" ? "free shipping" : `${text("percent") || "10"} % off`}${input.ends_at ? `, until ${text("ends_at")}` : ""}${input.usage_limit ? `, at most ${text("usage_limit")} uses` : ""}${input.once_per_customer ? ", once per customer" : ""}.`;
     case "set_discount_active":
       return `${input.active ? "Switch on" : "Switch off"} the code ${text("code").toUpperCase()}.`;
+    case "email_customer":
+      return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;
+    case "resend_order_email":
+      return `Send the ${input.which === "shipped" ? "shipping notice" : "order confirmation"} for order ${text("order")} to its customer again.`;
+    case "set_stock":
+      return `Set the stock of ${text("sku")} to ${text("quantity")}.`;
+    case "post_to_slack":
+      return `Post to the store's Slack channel: "${text("message")}"`;
     case "approve_access_request":
       return `Approve ${text("request")}'s request: create the store at /s/${text("slug")} and email them a sign-in link.`;
     case "decline_access_request":

@@ -15,7 +15,7 @@ import {
   type Approval,
   type Conversation,
 } from "@/server/owner-assistant";
-import { hearOwner, speakToOwner } from "@/server/page-ai";
+import { hearOwner } from "@/server/page-ai";
 import { readRecording, unreadable } from "@/server/page-studio-input";
 
 /** The store's AI manager's actions (D94, D103): for the store's owners only. */
@@ -59,7 +59,3 @@ export async function assistantHearAction(storeSlug: string, form: FormData) {
   return audio ? hearOwner(member.store.id, audio) : unreadable;
 }
 
-export async function assistantSpeakAction(storeSlug: string, text: string) {
-  const member = await requireOwner(storeSlug);
-  return typeof text === "string" && text.trim() ? speakToOwner(member.store.id, text) : unreadable;
-}

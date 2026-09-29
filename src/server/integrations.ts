@@ -13,7 +13,7 @@ import {
 import { minorUnitDigits } from "@/lib/money";
 import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { siteUrl } from "@/lib/site";
-import { slackMessage } from "@/lib/slack";
+import { escapeSlack, slackMessage } from "@/lib/slack";
 
 import { audit, type Membership } from "./auth";
 import { getOrder, type Address } from "./orders";
@@ -531,6 +531,29 @@ export async function sendTest({ account, store }: Membership, provider: Provide
     left join commerce.store_integrations i on i.store_id = d.store_id and i.provider = d.provider
   `);
   await audit(account.id, store.id, "integration.test_sent", { provider });
+  return attempt(toClaimed(row));
+}
+
+/**
+ * A message to the store's Slack channel from the AI manager (D104), on the
+ * owner's yes: sent at once through the same queue and log as events, as
+ * text that cannot mention anyone or become a link.
+ */
+export async function postToSlack(storeId: string, text: string): Promise<Outcome> {
+  const integration = await getIntegration(storeId, "slack");
+  if (!integration?.enabled) return { ok: false, status: null, error: "Slack is not connected under Integrations." };
+  const body = escapeSlack(text.slice(0, 2000));
+  const payload = { text: body, blocks: [{ type: "section", text: { type: "mrkdwn", text: body } }], unfurl_links: false, unfurl_media: false };
+  const [row] = await db().execute<Row>(sql`
+    with made as (
+      insert into commerce.integration_deliveries (store_id, provider, event, payload, next_attempt_at)
+      values (${storeId}::uuid, 'slack', 'assistant.message', ${JSON.stringify(payload)}::jsonb, now() + interval '5 minutes')
+      returning *
+    )
+    select ${claimedColumns}
+    from made d join commerce.stores s on s.id = d.store_id
+    left join commerce.store_integrations i on i.store_id = d.store_id and i.provider = d.provider
+  `);
   return attempt(toClaimed(row));
 }
 

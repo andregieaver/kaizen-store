@@ -17,7 +17,6 @@ import { countPendingRequests } from "@/server/platform";
 import { colorModeAction } from "../account/actions";
 import {
   assistantHearAction,
-  assistantSpeakAction,
   decideApprovalAction,
   deleteConversationAction,
   loadConversationAction,
@@ -162,7 +161,6 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
                     load: loadConversationAction.bind(null, store.slug),
                     rate: rateAnswerAction.bind(null, store.slug),
                     hear: assistantHearAction.bind(null, store.slug),
-                    speak: assistantSpeakAction.bind(null, store.slug),
                   }}
                 />
               )}
