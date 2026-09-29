@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { t } from "./i18n";
 import { pageBlocks, pageInput } from "./page-content";
 import { isPageRole, PAGE_ROLES, partOfRole, roleAddress, ROLE_COPY, ROLE_GROUPS, starterPage } from "./page-roles";
-import { STORE_PART_KEYS } from "./store-parts";
+import { STORE_PART_KEYS, piecesOf, routeOfPart } from "./store-parts";
 
 let n = 0;
 const id = () => `id-${n++}`;
@@ -30,8 +30,12 @@ describe("a store's special pages", () => {
     expect(PAGE_ROLES.filter((role) => partOfRole(role)).sort()).toEqual([...STORE_PART_KEYS].sort());
     expect(partOfRole("blog")).toBeNull();
     for (const part of STORE_PART_KEYS) {
-      const blocks = pageBlocks(starterPage(part, t("en"), id, home));
-      expect(blocks.filter((b) => b.type === "storePart")).toEqual([expect.objectContaining({ type: "storePart", part })]);
+      const blocks = pageBlocks(starterPage(part, t("en"), id, home)).filter((b) => b.type === "storePart");
+      // The cart, checkout and order start from all their pieces (D117), the others from the one component.
+      const pieces = piecesOf(part).filter((piece) => piece !== "cart_continue");
+      if (pieces.length > 0) expect(blocks.map((b) => b.part)).toEqual(expect.arrayContaining(pieces));
+      else expect(blocks).toEqual([expect.objectContaining({ type: "storePart", part })]);
+      for (const block of blocks) expect(routeOfPart(block.part)).toBe(part);
     }
     // The cart and checkout bring no heading of their own, so the starter has one.
     for (const role of ["cart", "checkout", "sign_in"] as const) {
@@ -73,6 +77,7 @@ describe("a store's special pages", () => {
     const block = { id: "b", type: "storePart", part: "wishlist" };
     const withBlock = (b: unknown) => ({ ...page, rows: [{ ...page.rows[0], columns: [{ id: "c", blocks: [b] }] }] });
     expect(pageInput.safeParse(withBlock(block)).success).toBe(true);
+    expect(pageInput.safeParse(withBlock({ ...block, part: "cart_lines" })).success).toBe(true);
     expect(pageInput.safeParse(withBlock({ ...block, part: "basket" })).success).toBe(false);
     expect(pageInput.safeParse(withBlock({ id: "b", type: "storePart" })).success).toBe(false);
   });

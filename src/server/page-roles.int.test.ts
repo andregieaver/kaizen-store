@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeDb, db } from "@/db/client";
 import { newPageContent, pageBlocks, type PageContent } from "@/lib/page-content";
 import { PAGE_ROLES } from "@/lib/page-roles";
-import { STORE_PART_KEYS } from "@/lib/store-parts";
+import { STORE_PART_KEYS, routeOfPart } from "@/lib/store-parts";
 
 import type { Membership } from "./auth";
 
@@ -117,7 +117,9 @@ describe("a starter page", () => {
     // A working page holds the component that draws it (D113).
     for (const part of STORE_PART_KEYS) {
       const page = (await pages.pageForRole(store, part))!;
-      expect(pageBlocks(page.content).find((b) => b.type === "storePart"), part).toMatchObject({ part });
+      const blocks = pageBlocks(page.content).filter((b) => b.type === "storePart");
+      expect(blocks.length, part).toBeGreaterThan(0);
+      for (const block of blocks) expect(routeOfPart(block.part), part).toBe(part);
     }
     const search = (await pages.pageForRole(store, "search"))!;
     expect(search.slug).toBe("search-page");

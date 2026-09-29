@@ -1,7 +1,7 @@
 import { newPageContent, type ContentGridBlock, type PageContent, type PageRow } from "./page-content";
 import { newBlock, newRow, type NewId } from "./page-rows";
 import type { Messages } from "./i18n";
-import { STORE_PART_KEYS, isStorePart, type StorePart } from "./store-parts";
+import { STORE_PART_KEYS, isStorePart, type ShopPart, type StorePart } from "./store-parts";
 
 /**
  * Pages of a store that have a place of their own on its site (D112), built in
@@ -68,21 +68,21 @@ export const ROLE_COPY: Record<
     name: "Cart page",
     address: "/cart",
     standard: "The standard cart",
-    hint: "What shoppers see at the cart (/cart): the standard page, or one of your published pages with the Cart component. On phones the cart still slides out over the page.",
+    hint: "What shoppers see at the cart (/cart): the standard page, or one of your published pages with the Cart component, or with its pieces (items, summary, discount code, checkout button) laid out as you like. On phones the cart still slides out over the page.",
     slug: "cart-page",
   },
   checkout: {
     name: "Checkout page",
     address: "/checkout",
     standard: "The standard checkout",
-    hint: "What shoppers see when they pay (/checkout): the standard page, or one of your published pages with the Checkout component, which holds the order summary and the payment form.",
+    hint: "What shoppers see when they pay (/checkout): the standard page, or one of your published pages with the Checkout component, which holds the order summary and the payment form, or with its pieces laid out as you like. Keep the payment form: it is how the order gets paid.",
     slug: "checkout-page",
   },
   order: {
     name: "Order confirmation page",
     address: "",
     standard: "The standard confirmation",
-    hint: "What shoppers see after paying, and when they open their order from an email: the standard page, or one of your published pages with the Order confirmation component. Its address carries the order, so the page itself has none.",
+    hint: "What shoppers see after paying, and when they open their order from an email: the standard page, or one of your published pages with the Order confirmation component, or with its pieces (thank you, items, totals, downloads, address …) laid out as you like. Its address carries the order, so the page itself has none.",
     slug: "order-confirmation",
   },
   account: {
@@ -148,7 +148,13 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
   };
   const base = newPageContent();
   const page = (title: string, rows: PageRow[]): PageContent => ({ ...base, title, slug: ROLE_COPY[role].slug, rows });
-  const part = (which: StorePart) => newBlock("storePart", id, which);
+  const part = (which: ShopPart) => newBlock("storePart", id, which);
+  /** A row of columns, each holding these blocks. */
+  const columns = (layout: "right-sidebar", ...columnBlocks: ReturnType<typeof newBlock>[][]): PageRow => {
+    const r = newRow(layout, id);
+    columnBlocks.forEach((blocks, i) => r.columns[i].blocks.push(...blocks));
+    return r;
+  };
   switch (role) {
     case "blog": {
       const grid = newBlock("contentGrid", id) as ContentGridBlock;
@@ -171,14 +177,29 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
       ]);
     }
     // The working pages (D113): the component brings its own heading where the heading depends on the shopper's state.
+    // The cart, checkout and order come in pieces (D117), laid out as the standard pages are.
     case "cart":
-      return page(m.cart, [row(heading(m.cart)), row(part("cart"))]);
+      return page(m.cart, [
+        row(heading(m.cart)),
+        columns("right-sidebar", [part("cart_lines")], [part("cart_summary"), part("cart_code"), part("cart_checkout")]),
+      ]);
     case "checkout":
-      return page(m.checkoutTitle, [row(heading(m.checkoutTitle)), row(part("checkout"))]);
+      return page(m.checkoutTitle, [
+        row(heading(m.checkoutTitle)),
+        columns(
+          "right-sidebar",
+          [part("checkout_payment"), part("checkout_back")],
+          [part("checkout_items"), part("checkout_code"), part("checkout_totals")],
+        ),
+      ]);
     case "sign_in":
       return page(m.account.title, [row(heading(m.account.title)), row(part("sign_in"))]);
     case "order":
-      return page(m.thanks, [row(part("order"))]);
+      return page(m.thanks, [
+        row(part("order_status")),
+        row(part("order_account"), part("order_bookings"), part("order_lines"), part("order_totals")),
+        row(part("order_subscription"), part("order_downloads"), part("order_address"), part("order_continue")),
+      ]);
     case "account":
       return page(m.account.title, [row(part("account"))]);
     case "wishlist":

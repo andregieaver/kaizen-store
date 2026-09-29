@@ -121,7 +121,7 @@ import {
   type SitePart,
   type ColumnJustify,
 } from "@/lib/page-content";
-import { STORE_PART_KEYS, STORE_PARTS, type StorePart } from "@/lib/store-parts";
+import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, type ShopPart } from "@/lib/store-parts";
 import {
   copyBlock,
   copyColumn,
@@ -197,7 +197,7 @@ export const newId = () =>
 /** What is dragged, and what it is dropped on. */
 type DragData =
   | { kind: "palette-row"; layout: RowLayout }
-  | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart | StorePart }
+  | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart | ShopPart }
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
   | { kind: "column"; columnId: string; rowId: string }
@@ -445,7 +445,7 @@ export function PageBuilder({
   const addRow = (layout: RowLayout, index = rows.length) => {
     if (!rowsFull) onRows((current) => insertRow(current, newRow(layout, newId), index));
   };
-  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | StorePart) => {
+  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | ShopPart) => {
     if (blocksFull) return;
     const block = newBlock(type, newId, part);
     onRows((current) => {
@@ -763,7 +763,7 @@ function Sidebar({
   tab: Tab;
   onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
-  onAddBlock: (type: BlockType, part?: ProductPart | SitePart | StorePart) => void;
+  onAddBlock: (type: BlockType, part?: ProductPart | SitePart | ShopPart) => void;
   productParts: boolean;
   /** A header or footer (D80): the site parts its owner has. */
   siteParts: SitePart[] | null;
@@ -879,6 +879,25 @@ function Sidebar({
                       />
                     ))}
                   </div>
+                  {PIECE_GROUPS.map((group) => (
+                    <div key={group.route} className="flex flex-col gap-3">
+                      <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{group.name}</h3>
+                      <p className="text-xs text-muted">{group.hint}</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {piecesOf(group.route).map((part) => (
+                          <PaletteTile
+                            key={part}
+                            id={`palette:shop:${part}`}
+                            data={{ kind: "palette-block", type: "storePart", part }}
+                            label={shopPartCopy(part).name}
+                            preview={<BlockIcon type="storePart" />}
+                            onAdd={() => onAddBlock("storePart", part)}
+                            disabled={blocksFull}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                   <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
                 </>
               )}
@@ -2358,17 +2377,28 @@ function Dialogs({
                   Shows
                   <select
                     value={block.part}
-                    onChange={(event) => onRows((current) => patchBlock<StorePartBlock>(current, block.id, { part: event.target.value as StorePart }))}
+                    onChange={(event) => onRows((current) => patchBlock<StorePartBlock>(current, block.id, { part: event.target.value as ShopPart }))}
                     className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
                   >
-                    {STORE_PART_KEYS.map((part) => (
-                      <option key={part} value={part}>
-                        {STORE_PARTS[part].name}
-                      </option>
+                    <optgroup label="Whole pages">
+                      {STORE_PART_KEYS.map((part) => (
+                        <option key={part} value={part}>
+                          {STORE_PARTS[part].name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {PIECE_GROUPS.map((group) => (
+                      <optgroup key={group.route} label={group.name}>
+                        {piecesOf(group.route).map((part) => (
+                          <option key={part} value={part}>
+                            {shopPartCopy(part).name}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </label>
-                <p className="text-sm text-muted">{STORE_PARTS[block.part].hint}</p>
+                <p className="text-sm text-muted">{shopPartCopy(block.part).hint}</p>
                 <p className="text-sm text-muted">
                   It shows only on the page you choose for it under Pages, in the special pages, and nothing elsewhere.
                 </p>
@@ -4719,7 +4749,7 @@ function SearchStandIn({ block }: { block: SearchBlock }) {
 
 /** A working page's component on the canvas (D113): what it is, and that the site draws it with the shopper's own data. */
 function StorePartStandIn({ block }: { block: StorePartBlock }) {
-  const copy = STORE_PARTS[block.part];
+  const copy = shopPartCopy(block.part);
   return (
     <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
       <p className="text-sm font-medium">{copy.name}</p>

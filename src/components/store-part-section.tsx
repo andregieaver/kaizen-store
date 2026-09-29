@@ -1,16 +1,41 @@
 import { Suspense } from "react";
 
 import { AccountSection, SignInForm } from "@/app/s/[store]/[market]/account/account-section";
-import { CartContents } from "@/app/s/[store]/[market]/cart/cart-contents";
-import { Checkout } from "@/app/s/[store]/[market]/checkout/checkout-section";
+import {
+  CartCheckout,
+  CartCode,
+  CartContents,
+  CartContinue,
+  CartLines,
+  CartSummary,
+} from "@/app/s/[store]/[market]/cart/cart-contents";
+import {
+  Checkout,
+  CheckoutBack,
+  CheckoutCode,
+  CheckoutItems,
+  CheckoutPayment,
+  CheckoutTotals,
+} from "@/app/s/[store]/[market]/checkout/checkout-section";
 import { CookiesSection } from "@/app/s/[store]/[market]/cookies/cookies-section";
 import { DeliveriesSection } from "@/app/s/[store]/[market]/deliveries/deliveries-section";
-import { OrderDetails } from "@/app/s/[store]/[market]/order/[orderId]/order-section";
+import {
+  OrderAccount,
+  OrderAddress,
+  OrderBookings,
+  OrderContinue,
+  OrderDetails,
+  OrderDownloads,
+  OrderLines,
+  OrderStatus,
+  OrderSubscription,
+  OrderTotals,
+} from "@/app/s/[store]/[market]/order/[orderId]/order-section";
 import { SubscriptionSection } from "@/app/s/[store]/[market]/subscription/[token]/subscription-section";
 import { WishlistSection } from "@/app/s/[store]/[market]/wishlist/wishlist-section";
 import { t } from "@/lib/i18n";
 import type { StorePartBlock } from "@/lib/page-content";
-import type { StoreRoute } from "@/lib/store-parts";
+import { routeOfPart, type ShopPart, type StoreRoute } from "@/lib/store-parts";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 
 /**
@@ -19,26 +44,77 @@ import { storeAndMarket, type GridPlace } from "@/server/content-grid";
  * subscription, weekly deliveries or the cookies list, the same components
  * the standard pages are made of. It draws only on the route it belongs to,
  * where the address carries what it needs (`place.route`); anywhere else it
- * draws nothing.
+ * draws nothing. The cart, checkout and order pages also come in pieces
+ * (D117, `STORE_PIECES`), each the same component the whole page is made of.
  */
 export function StorePartSection({ block, place }: { block: StorePartBlock; place: GridPlace }) {
   const route = place.route;
-  if (!route || route.part !== block.part || !place.owner) return null;
+  if (!route || route.part !== routeOfPart(block.part) || !place.owner) return null;
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
-      <Part owner={place.owner} market={place.market ?? null} route={route} />
+      <Part owner={place.owner} market={place.market ?? null} route={route} part={block.part} />
     </Suspense>
   );
 }
 
-async function Part({ owner, market: marketCode, route }: { owner: string; market: string | null; route: StoreRoute }) {
+async function Part({
+  owner,
+  market: marketCode,
+  route,
+  part,
+}: {
+  owner: string;
+  market: string | null;
+  route: StoreRoute;
+  part: ShopPart;
+}) {
   const shop = await storeAndMarket(owner, marketCode);
   if (!shop) return null;
   const { store, market } = shop;
   const query = route.query ?? Promise.resolve({});
-  switch (route.part) {
+  const m = t(market.lang);
+  const order = route.param ? { store, market, orderId: route.param, query } : null;
+  switch (part) {
+    case "cart_lines":
+      return <CartLines store={store} market={market} m={m} />;
+    case "cart_summary":
+      return <CartSummary store={store} market={market} m={m} />;
+    case "cart_code":
+      return <CartCode store={store} market={market} m={m} />;
+    case "cart_checkout":
+      return <CartCheckout store={store} market={market} m={m} />;
+    case "cart_continue":
+      return <CartContinue store={store} market={market} m={m} />;
+    case "checkout_items":
+      return <CheckoutItems store={store} market={market} />;
+    case "checkout_code":
+      return <CheckoutCode store={store} market={market} />;
+    case "checkout_totals":
+      return <CheckoutTotals store={store} market={market} />;
+    case "checkout_payment":
+      return <CheckoutPayment store={store} market={market} />;
+    case "checkout_back":
+      return <CheckoutBack store={store} market={market} />;
+    case "order_status":
+      return order && <OrderStatus {...order} />;
+    case "order_account":
+      return order && <OrderAccount {...order} />;
+    case "order_bookings":
+      return order && <OrderBookings {...order} />;
+    case "order_lines":
+      return order && <OrderLines {...order} />;
+    case "order_totals":
+      return order && <OrderTotals {...order} />;
+    case "order_subscription":
+      return order && <OrderSubscription {...order} />;
+    case "order_downloads":
+      return order && <OrderDownloads {...order} />;
+    case "order_address":
+      return order && <OrderAddress {...order} />;
+    case "order_continue":
+      return order && <OrderContinue {...order} />;
     case "cart":
-      return <CartContents store={store} market={market} m={t(market.lang)} />;
+      return <CartContents store={store} market={market} m={m} />;
     case "checkout":
       return <Checkout store={store} market={market} />;
     case "order":

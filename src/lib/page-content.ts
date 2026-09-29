@@ -4,7 +4,7 @@ import { cssProblem } from "./custom-css";
 import { fontFamily } from "./fonts";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
-import { STORE_PART_KEYS, type StorePart } from "./store-parts";
+import { SHOP_PART_KEYS, type ShopPart } from "./store-parts";
 import { termIdsSchema } from "./taxonomy";
 import { ICONS, type IconName } from "./icons";
 import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "./social-links";
@@ -665,14 +665,15 @@ export type SearchBlock = PartBase & BlockFont & {
  * One of a store's working pages (D113): the cart, checkout, order
  * confirmation, My account, sign-in, wishlists, a subscription, weekly
  * deliveries or the cookies page, drawn where a page built in the page
- * builder holds it. It draws only on its own route (the page chosen for that
+ * builder holds it; or (D117) one piece of the cart, checkout or order page,
+ * to lay out as the owner likes. It draws only on its own route (the page chosen for that
  * role, `src/lib/page-roles.ts`), so it does nothing elsewhere. A store's
  * pages only.
  */
 export type StorePartBlock = PartBase & BlockFont & {
   id: string;
   type: "storePart";
-  part: StorePart;
+  part: ShopPart;
 };
 
 /** A separator line's look (D91). */
@@ -1756,7 +1757,7 @@ const searchBlock = z.object({
 const storePartBlock = z.object({
   id: itemId,
   type: z.literal("storePart"),
-  part: z.enum(STORE_PART_KEYS as [StorePart, ...StorePart[]]),
+  part: z.enum(SHOP_PART_KEYS as [ShopPart, ...ShopPart[]]),
   font: blockFont,
   ...partBase,
 });

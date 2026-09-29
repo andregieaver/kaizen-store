@@ -400,7 +400,15 @@ of running `playwright install`.
   `STORE_PARTS` in `src/lib/store-parts.ts`, drawn by `StorePartSection`) that
   draws only on its own route (`GridPlace.route`), from the route's
   `*-section.tsx` (never inline in a `page.tsx`); a new working page is a role,
-  a part, a section, a case in `StorePartSection` and a starter. A product content grid with `filters` shows the
+  a part, a section, a case in `StorePartSection` and a starter.
+  The cart, checkout and order also come in pieces (D117, `STORE_PIECES`,
+  `routeOfPart()`, each a `storePart` block): the section draws the whole from
+  the same functions the pieces are (`cart-contents.tsx`, `checkout-section.tsx`,
+  `order-section.tsx`), reading the cart, checkout or order once per request
+  through `perRequest()`; a piece is bare and draws nothing when it has nothing
+  to show, so a new one is a key in `STORE_PIECES`, a function in the section,
+  a case in `StorePartSection` and a place in the starter, never a role.
+  A product content grid with `filters` shows the
   listing's `ListingControls` over it on store pages, reading the address
   through `GridPlace.listing` (pass it where a route renders a store page);
   the filter dialog is `live` there and on the listing pages, not on search. A store's page is
