@@ -10,6 +10,7 @@ import { db } from "@/db/client";
 import { chooseBusinessBuyer } from "./b2b";
 import { removeAvatarFiles } from "./media";
 import type { Address } from "./orders";
+import { forgetStandingOrders } from "./standing-orders";
 
 type Row = Record<string, unknown>;
 
@@ -461,6 +462,8 @@ export async function updateCustomerDetails(
  * Orders stay, as bookkeeping law requires, but no longer belong to an account.
  */
 export async function deleteCustomer(storeId: string, customerId: string): Promise<void> {
+  // A weekly delivery's list and saved card go too (D102); its orders stay.
+  await forgetStandingOrders(storeId, customerId);
   const picture = await db().transaction(async (tx) => {
     await tx.execute(sql`update commerce.orders set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);
     await tx.execute(sql`update commerce.subscriptions set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);

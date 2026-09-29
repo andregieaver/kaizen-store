@@ -37,6 +37,8 @@ export type Store = {
   openCartOnAdd: boolean;
   /** Appointments and bookings are switched on (D65). */
   bookingsOn: boolean;
+  /** Weekly deliveries of shoppers' standing lists (D102). */
+  deliveriesOn: boolean;
   /** Where the store's times are, e.g. appointments' (D65). */
   timeZone: string;
   /** Hours before an appointment its reminder goes (D65); 0 sends none. */
@@ -156,6 +158,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     businessPopup: Boolean(row.business_popup) && row.audience === "both",
     openCartOnAdd: Boolean(row.open_cart_on_add),
     bookingsOn: ((row.modules ?? []) as string[]).includes("bookings"),
+    deliveriesOn: ((row.modules ?? []) as string[]).includes("deliveries"),
     timeZone: String(row.time_zone ?? "Europe/Oslo"),
     bookingReminderHours: Number(row.booking_reminder_hours ?? 24),
     markets: (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(

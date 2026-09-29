@@ -13,6 +13,7 @@ import { toMarket, type Market, type MarketRow } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
+import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-orders";
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
@@ -329,11 +330,12 @@ export function sendRefunded(storeId: string, orderId: string, refundId: string,
   }));
 }
 
-export function sendCancelled(storeId: string, orderId: string, amountMinor: number) {
+export function sendCancelled(storeId: string, orderId: string, amountMinor: number, { unpaid = false }: { unpaid?: boolean } = {}) {
   return orderNotice(storeId, orderId, "order.cancelled", `order-cancelled:${orderId}`, ({ order, text, money, store, m }) => ({
     subject: text.cancelledSubject(store.name, order.number),
     heading: text.cancelledHeading,
-    intro: text.cancelledIntro(order.number, money(amountMinor)),
+    // A weekly delivery cancelled before it was sent (D102) was never charged.
+    intro: unpaid ? text.cancelledUnpaidIntro(order.number) : text.cancelledIntro(order.number, money(amountMinor)),
     // Its appointments come out of the shopper's calendar too (D65).
     attachments: calendarAttachment(bookedLines(order, "cancelled").map((line) => bookingEvent(line, store, m, true))),
   }));
@@ -794,5 +796,148 @@ export async function sendBookingStaffChange(
     idempotencyKey: `booking.staff_${change}:${bookingId}:${line.booking.sequence}`,
     orderId: order.id,
     attachments: calendarAttachment([bookingEvent(line, store, t("en"), change === "cancelled")]),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Weekly deliveries (D102)
+// ---------------------------------------------------------------------------
+
+/** A list's shopper, market and delivery day, for its emails. */
+async function listContext(storeId: string, listId: string) {
+  const [row] = await db().execute<Row>(sql`
+    select l.id, c.email, c.locale, d.market_code, d.delivery_weekday, d.cutoff_days, d.cutoff_time, m.default_locale
+    from commerce.standing_orders l
+    join commerce.customers c on c.store_id = l.store_id and c.id = l.customer_id
+    join commerce.delivery_schedules d on d.store_id = l.store_id and d.id = l.schedule_id
+    join commerce.markets m on m.store_id = d.store_id and m.code = d.market_code
+    where l.store_id = ${storeId}::uuid and l.id = ${listId}::uuid
+  `);
+  if (!row?.email) return null;
+  const locale = String(row.default_locale);
+  const ctx = await context(storeId, String(row.market_code), locale);
+  if (!ctx) return null;
+  const listUrl = `${storeSiteUrl(ctx.store.slug)}${marketPath(ctx.store.slug, ctx.market.slug, "/deliveries")}`;
+  const schedule = { deliveryWeekday: Number(row.delivery_weekday), cutoffDays: Number(row.cutoff_days) };
+  return { ...ctx, email: String(row.email), locale, listUrl, schedule, cutoffTime: String(row.cutoff_time) };
+}
+
+/** The shopper's agreement to a weekly delivery, confirmed: when, how it is charged, and how to stop. */
+export async function sendDeliveryStarted(storeId: string, listId: string): Promise<SendOutcome | null> {
+  const ctx = await listContext(storeId, listId);
+  if (!ctx) return null;
+  const { store, text, locale, schedule } = ctx;
+  const d = text.deliveries;
+  const cutoff = `${weekdayName(cutoffWeekday(schedule), locale)} ${ctx.cutoffTime}`;
+  const intro = d.startedIntro(weekdayName(schedule.deliveryWeekday, locale), cutoff);
+  const email = renderEmail({
+    subject: d.startedSubject(store.name),
+    preview: intro,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: d.startedHeading },
+      { type: "paragraph", text: intro },
+      { type: "paragraph", text: d.startedCharge },
+      { type: "paragraph", text: d.startedCancel },
+      { type: "button", text: d.manage, url: ctx.listUrl },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "delivery.started",
+    to: ctx.email,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `delivery-started:${listId}`,
+  });
+}
+
+/** At the cutoff: what the next delivery holds and what it will cost, what was left out, or that there is none. */
+export async function sendDeliveryPrepared(storeId: string, listId: string, date: string): Promise<SendOutcome | null> {
+  const ctx = await listContext(storeId, listId);
+  if (!ctx) return null;
+  const [delivery] = await db().execute<Row>(sql`
+    select order_id, left_out from commerce.standing_deliveries
+    where store_id = ${storeId}::uuid and standing_order_id = ${listId}::uuid and delivery_date = ${date}::date
+  `);
+  if (!delivery) return null;
+  const { store, market, text, m, locale } = ctx;
+  const d = text.deliveries;
+  const day = formatDeliveryDate(date, locale);
+  const leftOut = (delivery.left_out ?? []) as { title: string; wanted: number; got: number }[];
+  const order = delivery.order_id ? await getOrder(storeId, String(delivery.order_id)) : null;
+  const money = (minor: number) => formatMoney(minor, order?.currency ?? market.currency, market.locale);
+  const intro = order ? d.preparedIntro(day) : d.nothingIntro(day);
+  const email = renderEmail({
+    subject: d.preparedSubject(store.name, day),
+    preview: intro,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: d.preparedHeading },
+      { type: "paragraph", text: intro },
+      ...(order
+        ? [
+            orderLines(order, text, m, money, storeSiteUrl(store.slug)),
+            { type: "paragraph" as const, text: d.preparedCharge(money(order.totalMinor)) },
+          ]
+        : []),
+      ...(leftOut.length > 0
+        ? [
+            {
+              type: "paragraph" as const,
+              text: `${d.leftOutHeading}:\n${leftOut.map((l) => d.leftOutLine(l.title, l.wanted, l.got)).join("\n")}`,
+            },
+          ]
+        : []),
+      ...(order ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${addressText(order) ?? ""}` }] : []),
+      { type: "button", text: d.manage, url: ctx.listUrl },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "delivery.prepared",
+    to: ctx.email,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `delivery-prepared:${listId}:${date}`,
+    orderId: order?.id ?? null,
+  });
+}
+
+/** The card did not pay for a delivery being sent: a link to pay, and to use another card from now on. */
+export async function sendDeliveryCard(storeId: string, orderId: string): Promise<SendOutcome | null> {
+  const [row] = await db().execute<Row>(sql`
+    select standing_order_id from commerce.standing_deliveries where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
+  `);
+  const order = await getOrder(storeId, orderId);
+  const ctx = row ? await listContext(storeId, String(row.standing_order_id)) : null;
+  if (!ctx || !order) return null;
+  const { store, market, text } = ctx;
+  const d = text.deliveries;
+  const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
+  const intro = d.cardIntro(order.number, money(order.totalMinor));
+  const email = renderEmail({
+    subject: d.cardSubject(store.name, order.number),
+    preview: intro,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: d.cardHeading },
+      { type: "paragraph", text: intro },
+      { type: "button", text: d.payNow, url: ctx.listUrl },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "delivery.card_failed",
+    to: ctx.email,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    orderId,
   });
 }

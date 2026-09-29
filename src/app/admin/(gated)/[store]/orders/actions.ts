@@ -17,6 +17,7 @@ import {
   VENUE_METHODS,
 } from "@/server/order-admin";
 import { sendCancelled, sendOrderConfirmation, sendRefunded, sendShipped } from "@/server/shopper-emails";
+import { chargeDelivery, deliveryOfOrder } from "@/server/standing-orders";
 
 export type OrderActionState = { ok: boolean; message: string | null };
 
@@ -53,6 +54,17 @@ export async function sendOrderAction(
       notify: form.get("notify") === "on",
     });
   if (!input.success) return failed("Check the tracking link: it must start with https://.");
+  // A weekly delivery (D102) is paid as it is sent: its card is charged first, and a refusal stops the sending.
+  let charged = false;
+  if (found.order.status === "pending_payment" && (await deliveryOfOrder(found.member.store.id, orderId))) {
+    const charge = await chargeDelivery(found.member.store.id, orderId);
+    if (!charge.ok) {
+      refresh();
+      return failed(charge.problem);
+    }
+    charged = true;
+    await sendOrderConfirmation(found.member.store.id, orderId);
+  }
   const shipment = await markSent(
     found.member.store.id,
     orderId,
@@ -62,7 +74,12 @@ export async function sendOrderAction(
   if (!shipment) return failed("Only paid orders can be sent.");
   if (input.data.notify) await sendShipped(found.member.store.id, orderId, shipment);
   refresh();
-  return done(input.data.notify ? "Marked as sent, and the customer has been told." : "Marked as sent.");
+  const paid = charged ? "The card was charged, and the order is " : "";
+  return done(
+    input.data.notify
+      ? `${paid ? `${paid}marked as sent` : "Marked as sent"}, and the customer has been told.`
+      : `${paid ? `${paid}marked as sent` : "Marked as sent"}.`,
+  );
 }
 
 /** Refunds an amount through Stripe and puts chosen items back in stock. */
@@ -102,7 +119,7 @@ export async function cancelOrderAction(
   const reason = String(form.get("reason") ?? "").trim().slice(0, 500) || "Cancelled by the store";
   const outcome = await cancelOrder(found.member.store.id, orderId, reason, found.member.account.id);
   if (!outcome.ok) return failed(outcome.problem);
-  if (form.get("notify") === "on") await sendCancelled(found.member.store.id, orderId, outcome.amountMinor);
+  if (form.get("notify") === "on") await sendCancelled(found.member.store.id, orderId, outcome.amountMinor, { unpaid: outcome.unpaid });
   refresh();
   return done("The order is cancelled.");
 }

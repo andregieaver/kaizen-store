@@ -6,8 +6,10 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
+import { cancelUnpaidOrder } from "./checkout";
 import { reverseHostCommission } from "./host-payments";
 import { getOrder, type Address, type OrderView } from "./orders";
+import { isDeliveryOrder } from "./standing-orders";
 import { platformStripe } from "./stripe";
 
 type Row = Record<string, unknown>;
@@ -195,7 +197,7 @@ export type RefundInput = {
 };
 
 export type RefundOutcome =
-  | { ok: true; refundId: string; amountMinor: number }
+  | { ok: true; refundId: string; amountMinor: number; unpaid?: boolean }
   | { ok: false; problem: string };
 
 /** The Stripe payment behind an order's payment row: its PaymentIntent, on the store's account. */
@@ -355,6 +357,12 @@ export async function cancelOrder(
 ): Promise<RefundOutcome> {
   const order = await getOrderAdmin(storeId, orderId);
   if (!order) return { ok: false, problem: "This order no longer exists." };
+  // A weekly delivery not yet sent (D102) is not charged yet: cancelling it lets its stock go.
+  if (order.status === "pending_payment" && (await isDeliveryOrder(storeId, orderId))) {
+    await cancelUnpaidOrder(orderId, `cancelled by staff: ${reason}`);
+    await event(storeId, orderId, "order.cancelled_by_staff", { reason, refunded: 0 }, "staff");
+    return { ok: true, refundId: "", amountMinor: 0, unpaid: true };
+  }
   if (order.status !== "paid") {
     return { ok: false, problem: order.status === "fulfilled" ? "The order is already sent: refund it instead." : "Only paid orders can be cancelled." };
   }

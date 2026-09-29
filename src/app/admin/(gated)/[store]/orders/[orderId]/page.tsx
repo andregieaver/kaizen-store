@@ -18,10 +18,12 @@ import { bookingWhen } from "@/lib/booking-text";
 import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
+import { formatDeliveryDate } from "@/lib/standing-orders";
 import { requireMember } from "@/server/auth";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
+import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, type Address, type OrderEvent } from "@/server/orders";
 import { listCartAdds } from "@/server/wishlist-admin";
 
@@ -57,13 +59,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const { store: slug, orderId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
     listEmails({ storeId: store.id, orderId }),
     customerSummary(store.id, orderId),
     listCartAdds(store.id, { orderId }),
+    deliveryOfOrder(store.id, orderId),
   ]);
   if (!order) notFound();
   const locale = store.markets[0]?.locale ?? order.locale;
@@ -71,6 +74,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const when = (iso: string) =>
     new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
+  // A weekly delivery (D102) waits for payment until it is sent: sending charges its card.
+  const toCharge = weekly !== null && order.status === "pending_payment";
   const cancelledAfterPayment = order.status === "cancelled" && order.paidMinor > 0;
   const restockable = order.lines
     .filter((l) => l.variantId && l.delivery === "physical" && l.quantity > l.restocked)
@@ -108,7 +113,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </Link>
           <h1 className="text-2xl font-semibold">Order #{order.number}</h1>
           <p className="text-sm text-muted">
-            {cancelledAfterPayment ? "Cancelled and refunded" : STATUS_LABELS[order.status]} · placed {when(order.placedAt)} ·{" "}
+            {cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]} · placed{" "}
+            {when(order.placedAt)} ·{" "}
             {order.marketCode}
             {order.subscriptionId && (
               <>
@@ -240,9 +246,19 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
-          {paid && order.ships && (
+          {(paid || toCharge) && order.ships && (
             <section aria-labelledby="sending" className={card}>
-              <h2 id="sending" className="mb-3 font-medium">{order.shipments.length > 0 ? "Sent" : "Send the order"}</h2>
+              <h2 id="sending" className="mb-3 font-medium">{order.shipments.length > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}</h2>
+              {weekly && toCharge && (
+                <div className="mb-4 flex flex-col gap-1 text-sm">
+                  <p>
+                    Weekly delivery for {formatDeliveryDate(weekly.date, locale)}. Marking it sent charges {money(order.totalMinor)} to the
+                    customer&apos;s card{weekly.cardLabel ? ` (${weekly.cardLabel})` : ""} first; if the card is refused, it is not marked sent and
+                    the customer is emailed a link to pay.
+                  </p>
+                  {weekly.lastFailure && <p role="alert" className="text-red-700 dark:text-red-400">Last try: {weekly.lastFailure}</p>}
+                </div>
+              )}
               {order.shipments.length > 0 && (
                 <ul className="mb-4 flex flex-col gap-1 text-sm">
                   {order.shipments.map((s) => (
@@ -302,7 +318,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
-          {order.status === "paid" && (
+          {(order.status === "paid" || toCharge) && (
             <section aria-labelledby="cancel" className={card}>
               <h2 id="cancel" className="mb-1 font-medium">Cancel the order</h2>
               {order.subscriptionId && (
@@ -310,7 +326,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   This cancels this order only. The subscription goes on unless you also cancel it on its page.
                 </p>
               )}
-              <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} />
+              <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} />
             </section>
           )}
 

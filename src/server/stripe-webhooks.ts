@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
+import { adoptDeliveryCard, isDeliveryOrder } from "./standing-orders";
 import { markCheckoutRecovered } from "./cart-reminders";
 import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
 import { recordHostCommission } from "./host-payments";
@@ -75,8 +76,10 @@ export async function applySession(
   `);
   if (!payment) return; // Not a session this store created.
   const orderId = String(payment.order_id);
+  // A weekly delivery paid by link (D102): its address and contact are the list's, and it stays when the link lapses.
+  const delivery = await isDeliveryOrder(storeId, orderId);
 
-  if (session.status === "complete") await saveCustomer(storeId, orderId, session);
+  if (session.status === "complete" && !delivery) await saveCustomer(storeId, orderId, session);
 
   const failed = eventType === "checkout.session.async_payment_failed";
   const expired = session.status === "expired" || eventType === "checkout.session.expired";
@@ -85,6 +88,7 @@ export async function applySession(
     await completeOrderPayment(orderId, session.id);
     await setPaymentStatus(storeId, session.id, "captured");
     if (session.mode === "subscription") await activateSubscription(storeId, orderId, session);
+    if (delivery) await adoptDeliveryCard(storeId, orderId, session);
     // A host's booking (D71): the store's commission is owed to it now.
     await recordHostCommission(storeId, orderId);
     // Paid: no reminders about this cart, or others with the same email (D33).
@@ -99,7 +103,7 @@ export async function applySession(
     await sendBookingStaffNotices(storeId, orderId);
     if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
   } else if (failed || expired) {
-    await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
+    if (!delivery) await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
     await setPaymentStatus(storeId, session.id, failed ? "failed" : "cancelled");
   }
 }

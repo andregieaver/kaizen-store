@@ -17,6 +17,7 @@ import { payHostCommissions } from "@/server/host-payments";
 import { pruneSearchLog } from "@/server/search";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
+import { prepareDueDeliveries } from "@/server/standing-orders";
 
 /**
  * Every five minutes, from Supabase's scheduler: the stores' cart reminders
@@ -29,12 +30,13 @@ import { sendDueBookingReminders } from "@/server/shopper-emails";
  * vectors, and their counts older than two days forgotten (D81); media
  * libraries' vectors for search by meaning (D88); and alt texts written by
  * the sites' AI for new pictures (D89), whose pages and catalogues then
- * show them.
+ * show them; and shoppers' weekly delivery lists whose cutoff has passed
+ * made into that delivery's orders (D102).
  */
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -48,13 +50,14 @@ async function run(request: Request) {
     refreshMediaEmbeddings(),
     refreshAltTexts(),
     pruneFormSubmissions(),
+    prepareDueDeliveries(),
   ]);
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

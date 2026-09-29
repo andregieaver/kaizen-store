@@ -1170,6 +1170,27 @@
       "when": 1790638271639,
       "tag": "20260928233111_slack",
       "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1790642124263,
+      "tag": "20260929003524_weekly_deliveries",
+      "breakpoints": true
+    },
+    {
+      "idx": 168,
+      "version": "7",
+      "when": 1790642127718,
+      "tag": "20260929003527_weekly_deliveries_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1790644326812,
+      "tag": "20260929011206_reserve_deliveries_slug",
+      "breakpoints": true
     }
   ]
 }

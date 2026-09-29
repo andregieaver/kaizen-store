@@ -1565,6 +1565,70 @@ describe("owners' own CSS (D100)", () => {
   });
 });
 
+describe("weekly deliveries (D102)", () => {
+  it("keep schedules, one open list per customer, a card before a list is on, and each delivery day once", async () => {
+    const shop = await createStore("weekly-test", ["NO"]);
+    await db.query("update commerce.stores set modules = array['deliveries'] where id = $1", [shop]);
+    await expect(db.query("update commerce.stores set modules = array['groceries'] where id = $1", [shop])).rejects.toThrow(/stores_modules/);
+    const schedule = (values: string) =>
+      db.query(
+        `insert into commerce.delivery_schedules (store_id, market_code, currency, name, delivery_weekday, cutoff_days, cutoff_time)
+         values ($1, 'NO', 'NOK', ${values}) returning id`,
+        [shop],
+      );
+    const { rows } = await schedule("'Thursday', 4, 2, '23:59'");
+    const scheduleId = (rows[0] as { id: string }).id;
+    await expect(schedule("'Bad day', 8, 2, '23:59'")).rejects.toThrow(/delivery_schedules_weekday/);
+    await expect(schedule("'Bad cutoff', 4, 0, '23:59'")).rejects.toThrow(/delivery_schedules_cutoff_days/);
+    await expect(schedule("'Bad time', 4, 2, '24:00'")).rejects.toThrow(/delivery_schedules_cutoff_time/);
+    await expect(
+      db.query(
+        "insert into commerce.delivery_schedules (store_id, market_code, currency, name, delivery_weekday) values ($1, 'NO', 'EUR', 'x', 4)",
+        [shop],
+      ),
+    ).rejects.toThrow(/delivery_schedules_market_fk/);
+
+    const { id: customer } = await one<{ id: string }>(
+      "insert into commerce.customers (store_id, email) values ($1, 'weekly@example.com') returning id",
+      [shop],
+    );
+    const list = (status: string, paymentMethod: string | null) =>
+      db.query(
+        "insert into commerce.standing_orders (store_id, customer_id, schedule_id, status, payment_method) values ($1, $2, $3, $4, $5) returning id",
+        [shop, customer, scheduleId, status, paymentMethod],
+      );
+    await expect(list("active", null)).rejects.toThrow(/standing_orders_card/);
+    const { rows: made } = await list("setup", null);
+    const listId = (made[0] as { id: string }).id;
+    await expect(list("setup", null)).rejects.toThrow(/standing_orders_one_open/);
+    await db.query("update commerce.standing_orders set status = 'cancelled' where id = $1", [listId]);
+    await expect(list("active", "pm_123")).resolves.toBeDefined();
+
+    const { variantId } = await createProduct({ storeId: shop });
+    const line = (quantity: number) =>
+      db.query("insert into commerce.standing_order_lines (store_id, standing_order_id, variant_id, quantity) values ($1, $2, $3, $4)", [
+        shop,
+        listId,
+        variantId,
+        quantity,
+      ]);
+    await expect(line(0)).rejects.toThrow(/standing_order_lines_quantity/);
+    await expect(line(100)).rejects.toThrow(/standing_order_lines_quantity/);
+    await line(3);
+
+    const day = (outcome: string, orderId: string | null) =>
+      db.query("insert into commerce.standing_deliveries (store_id, standing_order_id, delivery_date, outcome, order_id) values ($1, $2, '2026-10-01', $3, $4)", [
+        shop,
+        listId,
+        outcome,
+        orderId,
+      ]);
+    await expect(day("ordered", null)).rejects.toThrow(/standing_deliveries_order/);
+    await day("skipped", null);
+    await expect(day("empty", null)).rejects.toThrow(/standing_deliveries_list_day_key/);
+  });
+});
+
 describe("integrations with Slack (D101)", () => {
   it("take Slack beside Zapier and Make, and no other service", async () => {
     const shop = await createStore("slack-test", ["NO"]);

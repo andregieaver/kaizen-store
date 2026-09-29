@@ -162,18 +162,25 @@ export function RefundForm({
 }
 
 /** Cancels a paid order before it is sent; asks first. */
-export function CancelForm({ storeSlug, orderId, amountLabel, hasEmail }: Ids & { amountLabel: string; hasEmail: boolean }) {
+export function CancelForm({
+  storeSlug,
+  orderId,
+  amountLabel,
+  hasEmail,
+  unpaid = false,
+}: Ids & { amountLabel: string; hasEmail: boolean; /** Not charged yet (a weekly delivery, D102): nothing to refund. */ unpaid?: boolean }) {
   const [state, action, pending] = useActionState(cancelOrderAction.bind(null, storeSlug, orderId), initial);
   return (
     <form
       action={action}
       onSubmit={(event) => {
-        if (!window.confirm(`Cancel the order and refund ${amountLabel}? Items go back in stock.`)) event.preventDefault();
+        const question = unpaid ? "Cancel this delivery? Nothing is charged, and its items are no longer held." : `Cancel the order and refund ${amountLabel}? Items go back in stock.`;
+        if (!window.confirm(question)) event.preventDefault();
       }}
       className="flex flex-col gap-3"
     >
       <p className="text-sm text-muted">
-        Refunds {amountLabel}, puts every item back in stock and stops download links.
+        {unpaid ? "Nothing has been charged. Its items are no longer held for it." : <>Refunds {amountLabel}, puts every item back in stock and stops download links.</>}
       </p>
       <label className={label}>
         <span>

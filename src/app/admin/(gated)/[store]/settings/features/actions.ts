@@ -6,6 +6,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
 import { bookingsModuleInput, setBookingsModule } from "@/server/bookings";
 import { catalogTag } from "@/server/catalog";
+import { setDeliveriesModule } from "@/server/standing-orders";
 import { storeTag } from "@/server/stores";
 
 const problems = (messages: string[]): FormState => ({ status: "error", messages });
@@ -21,6 +22,16 @@ export async function saveBookingsModuleAction(storeSlug: string, _state: FormSt
   });
   if (!parsed.success) return problems([...new Set(parsed.error.issues.map((issue) => issue.message))]);
   await setBookingsModule(member, parsed.data);
+  updateTag(storeTag(member.store.slug));
+  updateTag(catalogTag(member.store.id));
+  return { status: "ok", messages: ["Saved."] };
+}
+
+/** Switches weekly deliveries on or off (D102): shoppers' standing lists, delivered on the store's days. */
+export async function saveDeliveriesModuleAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await requireMember(storeSlug);
+  if (member.role !== "owner") return problems(["Only an owner can switch features on or off."]);
+  await setDeliveriesModule(member, formData.get("deliveries") === "on");
   updateTag(storeTag(member.store.slug));
   updateTag(catalogTag(member.store.id));
   return { status: "ok", messages: ["Saved."] };

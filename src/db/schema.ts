@@ -370,7 +370,7 @@ export const stores = commerce.table(
   },
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
-    check("stores_modules", sql`${t.modules} <@ array['bookings']::text[]`),
+    check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries']::text[]`),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
     check(
@@ -2722,7 +2722,7 @@ export const pages = commerce.table(
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'download', 'order', 'p', 'products', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
     ),
     // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
     check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),
@@ -3964,5 +3964,152 @@ export const assistantApprovals = commerce.table(
     index("assistant_approvals_account_idx").on(t.accountId),
     check("assistant_approvals_category", sql`${t.category} in ('send', 'public', 'spend')`),
     check("assistant_approvals_status", sql`${t.status} in ('pending', 'done', 'declined', 'failed')`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Weekly deliveries (D102)
+// ---------------------------------------------------------------------------
+
+/**
+ * When a store delivers shoppers' standing lists (D102): one day of the
+ * week in one market, and the cutoff, a number of days before at a time in
+ * the store's time zone. At the cutoff each list becomes that delivery's
+ * order.
+ */
+export const deliverySchedules = commerce.table(
+  "delivery_schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    name: text("name").notNull(),
+    /** ISO weekday of the delivery: 1 Monday … 7 Sunday. */
+    deliveryWeekday: integer("delivery_weekday").notNull(),
+    /** The cutoff: this many days before the delivery day, at this time (HH:MM). */
+    cutoffDays: integer("cutoff_days").notNull().default(2),
+    cutoffTime: text("cutoff_time").notNull().default("23:59"),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("delivery_schedules_store_id_key").on(t.storeId, t.id),
+    marketRef("delivery_schedules_market_fk", t),
+    index("delivery_schedules_market_idx").on(t.storeId, t.marketCode, t.currency),
+    check("delivery_schedules_name", sql`length(trim(${t.name})) between 1 and 80`),
+    check("delivery_schedules_weekday", sql`${t.deliveryWeekday} between 1 and 7`),
+    check("delivery_schedules_cutoff_days", sql`${t.cutoffDays} between 1 and 7`),
+    check("delivery_schedules_cutoff_time", sql`${t.cutoffTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`),
+  ],
+);
+
+/**
+ * A shopper's standing list (D102): what they want in each delivery until
+ * they change it, the address, and the card saved on the store's Stripe
+ * account that is charged when a delivery is sent. One open list per
+ * customer and store.
+ */
+export const standingOrders = commerce.table(
+  "standing_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    customerId: uuid("customer_id").notNull(),
+    scheduleId: uuid("schedule_id").notNull(),
+    /** `setup` until the card is saved, then `active`, `paused` or `cancelled`. */
+    status: text("status").notNull().default("setup"),
+    shippingAddress: jsonb("shipping_address").notNull().default({}),
+    /** The card, on the store's connected account (`stripe_account`, in `mode`). */
+    stripeAccount: text("stripe_account"),
+    mode: text("mode"),
+    stripeCustomer: text("stripe_customer"),
+    paymentMethod: text("payment_method"),
+    /** How the card reads to the shopper: "Visa •••• 4242". */
+    cardLabel: text("card_label").notNull().default(""),
+    /** The Stripe Checkout session saving the card, until it is done. */
+    setupSession: text("setup_session"),
+    /** When the shopper agreed to be charged each delivery as it is sent (evidence). */
+    consentAt: timestamp("consent_at", { withTimezone: true }),
+    /** Delivery days the shopper skips. */
+    skipDates: date("skip_dates", { mode: "string" }).array().notNull().default(sql`'{}'::date[]`),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("standing_orders_store_id_key").on(t.storeId, t.id),
+    customerRef("standing_orders_customer_fk", t),
+    foreignKey({
+      name: "standing_orders_schedule_fk",
+      columns: [t.storeId, t.scheduleId],
+      foreignColumns: [deliverySchedules.storeId, deliverySchedules.id],
+    }),
+    uniqueIndex("standing_orders_one_open").on(t.storeId, t.customerId).where(sql`${t.status} <> 'cancelled'`),
+    index("standing_orders_customer_idx").on(t.storeId, t.customerId),
+    index("standing_orders_schedule_idx").on(t.storeId, t.scheduleId, t.status),
+    check("standing_orders_status", sql`${t.status} in ('setup', 'active', 'paused', 'cancelled')`),
+    check("standing_orders_mode", sql`${t.mode} is null or ${t.mode} in ('test', 'live')`),
+    check("standing_orders_card", sql`${t.status} in ('setup', 'cancelled') or ${t.paymentMethod} is not null`),
+  ],
+);
+
+/** What a standing list holds (D102): a variant and how many, until the shopper changes it. */
+export const standingOrderLines = commerce.table(
+  "standing_order_lines",
+  {
+    storeId: storeId(),
+    standingOrderId: uuid("standing_order_id").notNull(),
+    variantId: uuid("variant_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.standingOrderId, t.variantId] }),
+    foreignKey({
+      name: "standing_order_lines_list_fk",
+      columns: [t.storeId, t.standingOrderId],
+      foreignColumns: [standingOrders.storeId, standingOrders.id],
+    }).onDelete("cascade"),
+    variantRef("standing_order_lines_variant_fk", t),
+    index("standing_order_lines_store_list_idx").on(t.storeId, t.standingOrderId),
+    index("standing_order_lines_variant_idx").on(t.storeId, t.variantId),
+    check("standing_order_lines_quantity", sql`${t.quantity} between 1 and 99`),
+  ],
+);
+
+/**
+ * Each delivery day of a list (D102), written at its cutoff: the order it
+ * became, or why there was none. Unique per list and day, so the cutoff job
+ * makes each delivery once.
+ */
+export const standingDeliveries = commerce.table(
+  "standing_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    standingOrderId: uuid("standing_order_id").notNull(),
+    deliveryDate: date("delivery_date", { mode: "string" }).notNull(),
+    /** `ordered`, or none: `skipped`, `paused`, `empty` (nothing on the list) or `unavailable` (nothing to be had). */
+    outcome: text("outcome").notNull(),
+    orderId: uuid("order_id"),
+    /** What the list asked for that the delivery could not hold: [{ title, wanted, got }]. */
+    leftOut: jsonb("left_out").notNull().default([]),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("standing_deliveries_list_day_key").on(t.standingOrderId, t.deliveryDate),
+    foreignKey({
+      name: "standing_deliveries_list_fk",
+      columns: [t.storeId, t.standingOrderId],
+      foreignColumns: [standingOrders.storeId, standingOrders.id],
+    }),
+    orderRef("standing_deliveries_order_fk", t),
+    index("standing_deliveries_store_list_idx").on(t.storeId, t.standingOrderId, t.deliveryDate),
+    uniqueIndex("standing_deliveries_order_idx").on(t.storeId, t.orderId),
+    check("standing_deliveries_outcome", sql`${t.outcome} in ('ordered', 'skipped', 'paused', 'empty', 'unavailable')`),
+    check("standing_deliveries_order", sql`(${t.outcome} = 'ordered') = (${t.orderId} is not null)`),
   ],
 );

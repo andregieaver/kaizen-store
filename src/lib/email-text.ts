@@ -4,6 +4,29 @@
  */
 const text = {
   nb: {
+    deliveries: {
+      startedSubject: (store: string) => `Den faste leveringen din fra ${store} er klar`,
+      startedHeading: "Den faste leveringen din er klar",
+      startedIntro: (day: string, cutoff: string) =>
+        `Vi leverer listen din hver ${day}. Du kan endre den til ${cutoff} før hver levering; endringer etter det gjelder neste.`,
+      startedCharge:
+        "Vi trekker kortet ditt for hver levering når den er på vei, for det den inneholder til dagens priser. Endrer du ingenting, blir neste levering lik den forrige.",
+      startedCancel: "Du kan hoppe over en levering, sette den på pause eller avslutte når du vil, fra siden for den faste leveringen.",
+      preparedSubject: (store: string, date: string) => `Leveringen din fra ${store} ${date}`,
+      preparedHeading: "Neste levering",
+      preparedIntro: (date: string) => `Leveringen din ${date} blir pakket nå.`,
+      preparedCharge: (amount: string) => `Vi trekker ${amount} fra kortet ditt når den er på vei.`,
+      leftOutHeading: "Ikke med denne gangen",
+      leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} av ${wanted}` : `${title}: utsolgt`),
+      nothingIntro: (date: string) =>
+        `Ingenting på listen din var å få til leveringen ${date}, så det blir ingen levering og ingen trekk denne gangen.`,
+      manage: "Se eller endre den faste leveringen",
+      cardSubject: (store: string, number: string) => `Betal leveringen ${number} fra ${store}`,
+      cardHeading: "Kortet ditt ble ikke trukket",
+      cardIntro: (number: string, amount: string) =>
+        `Vi fikk ikke trukket ${amount} for leveringen ${number}. Betal her; kortet du betaler med, brukes til de neste leveringene.`,
+      payNow: "Betal leveringen",
+    },
     orderSubject: (store: string, number: string) => `Ordrebekreftelse ${number} fra ${store}`,
     orderHeading: "Takk for bestillingen!",
     orderIntro: (number: string) => `Vi har mottatt betalingen for ordre ${number}.`,
@@ -35,6 +58,7 @@ const text = {
     cancelledHeading: "Bestillingen er kansellert",
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er kansellert, og ${amount} er refundert.`,
+    cancelledUnpaidIntro: (number: string) => `Ordre ${number} er kansellert. Ingenting ble trukket.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
     bookingMovedHeading: "Timen er flyttet",
@@ -86,6 +110,29 @@ const text = {
     },
   },
   sv: {
+    deliveries: {
+      startedSubject: (store: string) => `Din fasta leverans från ${store} är klar`,
+      startedHeading: "Din fasta leverans är klar",
+      startedIntro: (day: string, cutoff: string) =>
+        `Vi levererar din lista varje ${day}. Du kan ändra den till ${cutoff} före varje leverans; ändringar efter det gäller nästa.`,
+      startedCharge:
+        "Vi drar pengarna från ditt kort för varje leverans när den är på väg, för det den innehåller till dagens priser. Ändrar du inget blir nästa leverans likadan som den förra.",
+      startedCancel: "Du kan hoppa över en leverans, pausa eller avsluta när du vill, på sidan för din fasta leverans.",
+      preparedSubject: (store: string, date: string) => `Din leverans från ${store} ${date}`,
+      preparedHeading: "Nästa leverans",
+      preparedIntro: (date: string) => `Din leverans ${date} packas nu.`,
+      preparedCharge: (amount: string) => `Vi drar ${amount} från ditt kort när den är på väg.`,
+      leftOutHeading: "Inte med den här gången",
+      leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} av ${wanted}` : `${title}: slutsåld`),
+      nothingIntro: (date: string) =>
+        `Inget på din lista gick att få till leveransen ${date}, så det blir ingen leverans och inget köp den här gången.`,
+      manage: "Se eller ändra din fasta leverans",
+      cardSubject: (store: string, number: string) => `Betala leveransen ${number} från ${store}`,
+      cardHeading: "Ditt kort drogs inte",
+      cardIntro: (number: string, amount: string) =>
+        `Vi kunde inte dra ${amount} för leveransen ${number}. Betala här; kortet du betalar med används för kommande leveranser.`,
+      payNow: "Betala leveransen",
+    },
     orderSubject: (store: string, number: string) => `Orderbekräftelse ${number} från ${store}`,
     orderHeading: "Tack för din beställning!",
     orderIntro: (number: string) => `Vi har tagit emot betalningen för order ${number}.`,
@@ -117,6 +164,7 @@ const text = {
     cancelledHeading: "Beställningen har avbrutits",
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} har avbrutits och ${amount} har återbetalats.`,
+    cancelledUnpaidIntro: (number: string) => `Order ${number} är avbruten. Inget har dragits.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
     bookingMovedHeading: "Tiden är flyttad",
@@ -168,6 +216,29 @@ const text = {
     },
   },
   da: {
+    deliveries: {
+      startedSubject: (store: string) => `Din faste levering fra ${store} er klar`,
+      startedHeading: "Din faste levering er klar",
+      startedIntro: (day: string, cutoff: string) =>
+        `Vi leverer din liste hver ${day}. Du kan ændre den indtil ${cutoff} før hver levering; ændringer derefter gælder den næste.`,
+      startedCharge:
+        "Vi trækker dit kort for hver levering, når den er på vej, for det den indeholder til dagens priser. Ændrer du intet, bliver næste levering som den forrige.",
+      startedCancel: "Du kan springe en levering over, sætte den på pause eller afslutte når som helst på siden for din faste levering.",
+      preparedSubject: (store: string, date: string) => `Din levering fra ${store} ${date}`,
+      preparedHeading: "Næste levering",
+      preparedIntro: (date: string) => `Din levering ${date} bliver pakket nu.`,
+      preparedCharge: (amount: string) => `Vi trækker ${amount} på dit kort, når den er på vej.`,
+      leftOutHeading: "Ikke med denne gang",
+      leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} af ${wanted}` : `${title}: udsolgt`),
+      nothingIntro: (date: string) =>
+        `Intet på din liste kunne fås til leveringen ${date}, så der er ingen levering og intet træk denne gang.`,
+      manage: "Se eller ændr din faste levering",
+      cardSubject: (store: string, number: string) => `Betal leveringen ${number} fra ${store}`,
+      cardHeading: "Dit kort blev ikke trukket",
+      cardIntro: (number: string, amount: string) =>
+        `Vi kunne ikke trække ${amount} for leveringen ${number}. Betal her; kortet du betaler med, bruges til de næste leveringer.`,
+      payNow: "Betal leveringen",
+    },
     orderSubject: (store: string, number: string) => `Ordrebekræftelse ${number} fra ${store}`,
     orderHeading: "Tak for din bestilling!",
     orderIntro: (number: string) => `Vi har modtaget betalingen for ordre ${number}.`,
@@ -199,6 +270,7 @@ const text = {
     cancelledHeading: "Bestillingen er annulleret",
     cancelledIntro: (number: string, amount: string) =>
       `Ordre ${number} er annulleret, og ${amount} er refunderet.`,
+    cancelledUnpaidIntro: (number: string) => `Ordre ${number} er annulleret. Intet blev trukket.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `Ny tid hos ${store}: ${when}`,
     bookingMovedHeading: "Tiden er flyttet",
@@ -250,6 +322,29 @@ const text = {
     },
   },
   en: {
+    deliveries: {
+      startedSubject: (store: string) => `Your weekly delivery from ${store} is set up`,
+      startedHeading: "Your weekly delivery is set up",
+      startedIntro: (day: string, cutoff: string) =>
+        `We deliver your list every ${day}. Change it until ${cutoff} before each delivery; changes after that go into the next one.`,
+      startedCharge:
+        "We charge your card for each delivery when it is on its way, for what it holds at that day's prices. If you change nothing, the next delivery is the same as the last.",
+      startedCancel: "You can skip a delivery, pause or end your weekly delivery at any time on its page.",
+      preparedSubject: (store: string, date: string) => `Your delivery from ${store} on ${date}`,
+      preparedHeading: "Your next delivery",
+      preparedIntro: (date: string) => `Your delivery on ${date} is being packed.`,
+      preparedCharge: (amount: string) => `We charge ${amount} to your card when it is on its way.`,
+      leftOutHeading: "Not in this delivery",
+      leftOutLine: (title: string, wanted: number, got: number) => (got > 0 ? `${title}: ${got} of ${wanted}` : `${title}: sold out`),
+      nothingIntro: (date: string) =>
+        `Nothing on your list could be had for the delivery on ${date}, so there is no delivery and no charge this time.`,
+      manage: "See or change your weekly delivery",
+      cardSubject: (store: string, number: string) => `Please pay for your delivery ${number} from ${store}`,
+      cardHeading: "Your card was not charged",
+      cardIntro: (number: string, amount: string) =>
+        `We could not charge ${amount} for delivery ${number}. Please pay here; the card you pay with is used for your next deliveries.`,
+      payNow: "Pay for the delivery",
+    },
     orderSubject: (store: string, number: string) => `Order confirmation ${number} from ${store}`,
     orderHeading: "Thank you for your order!",
     orderIntro: (number: string) => `We have received the payment for order ${number}.`,
@@ -281,6 +376,7 @@ const text = {
     cancelledHeading: "Your order is cancelled",
     cancelledIntro: (number: string, amount: string) =>
       `Order ${number} is cancelled and ${amount} has been refunded.`,
+    cancelledUnpaidIntro: (number: string) => `Order ${number} is cancelled. Nothing was charged.`,
     /** Appointments (D65). */
     bookingMovedSubject: (store: string, when: string) => `New time at ${store}: ${when}`,
     bookingMovedHeading: "Your appointment has moved",

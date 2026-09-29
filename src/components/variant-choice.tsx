@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { AddToCart, type AddToCartLabels } from "./add-to-cart";
+import { AddToDelivery, type AddToDeliveryLabels } from "./add-to-delivery";
 import { Dropdown } from "./dropdown";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
 
@@ -65,6 +66,7 @@ export function VariantPurchase({
   cartHref,
   openCart,
   labels,
+  delivery,
 }: {
   variants: OfferedVariant[];
   store: string;
@@ -72,6 +74,8 @@ export function VariantPurchase({
   cartHref: string;
   openCart: boolean;
   labels: AddToCartLabels & { chooseVariant: string };
+  /** Weekly deliveries (D102): the variants that can go on the list, and where the list is. */
+  delivery?: { variants: string[]; listHref: string; labels: AddToDeliveryLabels };
 }) {
   const [chosen, setChosen] = useVariantChoice(variants[0]?.id ?? "");
   const variant = variants.find((v) => v.id === chosen) ?? variants[0];
@@ -118,6 +122,9 @@ export function VariantPurchase({
             openCart={openCart}
             labels={labels}
           />
+          {delivery?.variants.includes(variant.id) && (
+            <AddToDelivery key={`delivery-${variant.id}`} store={store} market={market} variantId={variant.id} listHref={delivery.listHref} labels={delivery.labels} />
+          )}
         </div>
       </div>
     </div>

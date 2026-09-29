@@ -577,7 +577,26 @@ async function VariantsWithStock({
             tryAgain: m.tryAgain,
             goToCart: m.goToCart,
             chooseVariant: m.chooseVariantLabel,
-          }}
+          }}          // Weekly deliveries (D102): the store's own goods to ship, bought once, can go on a list.
+          delivery={
+            store.deliveriesOn && product.kind === "goods" && !product.subscriptionOnly
+              ? {
+                  variants: product.variants.filter((v) => v.delivery === "physical").map((v) => v.id),
+                  listHref: marketPath(store.slug, market.slug, "/deliveries"),
+                  labels: {
+                    add: m.deliveries.addToList,
+                    adding: m.adding,
+                    added: m.deliveries.addedToList,
+                    seeList: m.deliveries.seeList,
+                    needsList: m.deliveries.needsList,
+                    needsSignIn: m.deliveries.needsSignIn,
+                    notListable: m.deliveries.notListable,
+                    full: m.deliveries.listFull,
+                    tryAgain: m.tryAgain,
+                  },
+                }
+              : undefined
+          }
         />
       <ProductBar
         store={store.slug}

@@ -116,6 +116,19 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
         <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
       </div>
 
+      {store.deliveriesOn && (
+        <Link
+          href={`${base}/deliveries`}
+          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
+        >
+          <span>
+            <span className="font-medium">{m.deliveries.title}</span>
+            <span className="block text-sm text-muted">{m.deliveries.intro}</span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+
       <section aria-labelledby="orders-heading" className="flex flex-col gap-3">
         <h2 id="orders-heading" className="text-xl font-heading">{a.orders}</h2>
         {orders.length === 0 ? (

@@ -672,6 +672,19 @@ of running `playwright install`.
   the `incoming-webhook` scope, `SLACK_CLIENT_ID`/`_SECRET`, callback
   `/api/integrations/slack/callback`) or paste a webhook; Kaizen keeps no
   Slack token. A new event gets a message there too.
+- Weekly deliveries (D102, `src/lib/standing-orders.ts`, `src/server/standing-orders.ts`,
+  `/s/{store}/{market}/deliveries`, `/admin/{store}/deliveries`): a module
+  (`deliveries`). A shopper's standing list (`standing_orders`, lines in
+  `standing_order_lines`) on a store's delivery day (`delivery_schedules`)
+  becomes that delivery's order at the cutoff (`prepareDueDeliveries()` in the
+  five-minute cron, `standing_deliveries` once per list and day), always
+  through `placeOrder()` from a cart of its own; a change after a cutoff first
+  makes that delivery (`prepareDueFor()`). The order waits for payment until
+  sent: Mark sent calls `chargeDelivery()` (the card saved in Stripe's setup
+  mode, off session) and only a paid order is marked sent; a refusal emails a
+  pay link (`startDeliveryPayment()`), and `applySession()` neither cancels a
+  delivery's order nor changes its address. Rounds and cutoffs come from
+  `nextRound()`/`currentRound()` in the store's time zone.
 - Secrets in the database (Kaizen's webhook secrets, old per-store keys) are
   encrypted with `SETTINGS_ENCRYPTION_KEY` (`src/lib/secret-box.ts`) and never
   sent to the browser.

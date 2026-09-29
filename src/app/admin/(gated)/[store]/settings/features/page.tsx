@@ -4,7 +4,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requireMember } from "@/server/auth";
 import { REMINDER_HOURS, storeTimeZones } from "@/server/bookings";
 
-import { saveBookingsModuleAction } from "./actions";
+import { saveBookingsModuleAction, saveDeliveriesModuleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Features" };
 
@@ -81,6 +81,34 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
             </div>
           ) : (
             <p className="text-sm text-muted">Only an owner can switch features on or off.</p>
+          )}
+        </ActionForm>
+      </section>
+
+      <section aria-labelledby="deliveries-heading" className={card}>
+        <h2 id="deliveries-heading" className="mb-1 font-medium">
+          Weekly deliveries
+        </h2>
+        <p className="mb-4 text-sm text-muted">
+          Shoppers keep a standing list, such as a grocery box, delivered on your delivery days. At each cutoff the list
+          becomes that delivery&apos;s order at the day&apos;s prices, with its stock held; the card they saved is charged when you
+          send it. A list nobody changes repeats.
+        </p>
+        <ActionForm action={saveDeliveriesModuleAction.bind(null, store.slug)} className="flex flex-col gap-4">
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" name="deliveries" defaultChecked={store.deliveriesOn} disabled={!owner} className="mt-0.5 size-4" />
+            <span>
+              Offer weekly deliveries
+              <span className="block text-muted">
+                Adds Weekly deliveries to the menu (delivery days, lists and each delivery&apos;s orders), a Weekly delivery page to My
+                account, and a button to add products to it on their pages. Uses the time zone above.
+              </span>
+            </span>
+          </label>
+          {owner && (
+            <div>
+              <SubmitButton>Save</SubmitButton>
+            </div>
           )}
         </ActionForm>
       </section>

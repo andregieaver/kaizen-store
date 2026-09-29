@@ -1335,6 +1335,7 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "category",
   "checkout",
   "cookies",
+  "deliveries",
   "download",
   "order",
   "p",
