@@ -40,6 +40,10 @@ export type OrderView = {
   /** What a discount code took off, and the code (D31). */
   discountMinor: number;
   discountCode: string | null;
+  /** The part of the discount that is the buyer's group or company discount (D108), its name and the percent given. */
+  memberDiscountMinor: number;
+  memberLabel: string | null;
+  memberPercent: number | null;
   taxMinor: number;
   totalMinor: number;
   /** Still to be paid at the venue (D66); 0 once staff mark it paid. */
@@ -124,6 +128,9 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   shippingMinor: Number(row.shipping_minor),
   discountMinor: Number(row.discount_minor ?? 0),
   discountCode: row.discount_code ? String(row.discount_code) : null,
+  memberDiscountMinor: Number(row.member_discount_minor ?? 0),
+  memberLabel: row.member_label ? String(row.member_label) : null,
+  memberPercent: row.member_percent === null || row.member_percent === undefined ? null : Number(row.member_percent),
   taxMinor: Number(row.tax_minor),
   totalMinor: Number(row.total_minor),
   balanceMinor: Number(row.balance_minor ?? 0),

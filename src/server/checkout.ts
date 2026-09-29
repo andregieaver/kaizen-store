@@ -17,6 +17,7 @@ import { marketPath, storeOrigin } from "@/lib/paths";
 import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
 import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
+import { memberLineOff } from "@/lib/customer-tiers";
 import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
@@ -28,6 +29,7 @@ import { storeFeeBps } from "./billing";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
 import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
+import { memberDiscountFor } from "./customer-tiers";
 import { findUsableDiscount } from "./discounts";
 import { commissionOf, hostCheckoutAccount } from "./host-payments";
 import { getCheckoutAccount } from "./settings";
@@ -75,7 +77,10 @@ export type PlacedOrder = {
   balanceMinor: number;
   /** The company it is bought for (B2B), put on the invoice. */
   company: { name: string; number: string } | null;
-  /** The discount code, and what Stripe takes off as a one-time coupon. */
+  /**
+   * What Stripe takes off as a one-time coupon, and its name: the discount
+   * code (D31), the buyer's group or company discount (D108), or both.
+   */
   discount: { code: string; couponMinor: number } | null;
   /** The host whose listings these are (D71), paid on their own Stripe account; null for the store's own. */
   hostId: string | null;
@@ -303,6 +308,8 @@ export async function placeOrder(
         unit,
         renewUnit: lineUnit,
         discount: 0,
+        /** The part of the discount that is the buyer's group or company discount (D108). */
+        member: 0,
         total: unit * quantity,
         title,
         recurring,
@@ -344,6 +351,18 @@ export async function placeOrder(
       );
     let basket = shippingFor();
 
+    // The buyer's group or company discount (D108): off what is bought once, before any
+    // code, which then counts the lowered prices. Not off subscriptions, sign-up fees or shipping.
+    const member = await memberDiscountFor(tx, storeId, customerId);
+    if (member) {
+      for (const p of priced) {
+        if (p.recurring || p.unit <= 0) continue;
+        p.member = memberLineOff(p.unit, p.quantity, member.percent);
+        p.discount = p.member;
+        p.total = p.unit * p.quantity - p.discount;
+      }
+    }
+
     // The cart's discount code (D31), checked again here under a lock, so
     // two checkouts cannot both take a code's last use.
     let discount: { id: string; code: string } | null = null;
@@ -361,7 +380,8 @@ export async function placeOrder(
             lines: priced.map((p, i) => ({
               key: String(i),
               productId: String(p.line.product_id),
-              unitMinor: p.renewUnit,
+              // What the code is taken off: the price after the group's discount for what is bought once.
+              unitMinor: member && !p.recurring ? planPrice(p.unit, member.percent) : p.renewUnit,
               quantity: p.quantity,
               todayMinor: p.total,
               recurring: p.recurring,
@@ -378,7 +398,7 @@ export async function placeOrder(
           p.renewUnit = renewal;
           lowered.add(i);
         }
-        p.discount = applied.lines[String(i)] ?? 0;
+        p.discount = p.member + (applied.lines[String(i)] ?? 0);
         p.total = p.unit * p.quantity - p.discount;
       });
       if (lowered.size > 0) basket = shippingFor();
@@ -387,6 +407,7 @@ export async function placeOrder(
     }
     const shipping = basket.first;
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
+    const memberTotal = priced.reduce((sum, p) => sum + p.member, 0);
     // Appointments paid at the venue, or with a deposit now (D66): the part left for the venue.
     const venue = priced.map((p) =>
       venuePart(
@@ -413,13 +434,15 @@ export async function placeOrder(
         store_id, number, market_code, currency, locale, cart_id, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
-        company_name, organisation_number, balance_minor, host_id
+        company_name, organisation_number, balance_minor, host_id,
+        member_discount_minor, member_label, member_percent
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
         ${subtotal}, ${shipping}, ${discountTotal}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
         ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
-        ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid
+        ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
+        ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null}
       )
       returning id
     `);
@@ -428,12 +451,12 @@ export async function placeOrder(
     for (const [i, p] of priced.entries()) {
       const [orderLine] = await tx.execute<Row>(sql`
         insert into commerce.order_lines (
-          store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
+          store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
-          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.total}, ${vatIncluded(p.total, p.rate)},
+          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${vatIncluded(p.total, p.rate)},
           ${p.rate}, ${String(p.line.tax_code)},
           ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
           ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
@@ -566,12 +589,15 @@ export async function placeOrder(
         // Stripe takes it as a one-time coupon: everything off today that is
         // not already in a lowered subscriber's price. In a subscription,
         // shipping is a line, so free shipping is in the coupon too.
-        discount: discount && {
-          code: discount.code,
-          couponMinor:
-            priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount), 0) +
-            (rhythm ? shippingDiscount : 0),
-        },
+        discount:
+          discount || memberTotal > 0
+            ? {
+                code: [discount?.code, memberTotal > 0 ? member!.label : null].filter(Boolean).join(" + "),
+                couponMinor:
+                  priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount), 0) +
+                  (rhythm ? shippingDiscount : 0),
+              }
+            : null,
         hostId,
       },
     };

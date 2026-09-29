@@ -76,6 +76,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       heading: "Sales",
       items: [
         { href: `${base}/customers`, label: "Customers" },
+        { href: `${base}/customer-groups`, label: "Customer groups" },
+        { href: `${base}/companies`, label: "Companies" },
         // Weekly deliveries (D102), once switched on.
         ...(store.deliveriesOn ? [{ href: `${base}/deliveries`, label: "Subscription boxes" }] : []),
         { href: `${base}/cart-reminders`, label: "Cart reminders" },

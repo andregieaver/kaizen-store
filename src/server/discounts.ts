@@ -15,6 +15,7 @@ import {
 } from "@/lib/discounts";
 import type { Market } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";
+import { planPrice } from "@/lib/subscriptions";
 
 import { audit, type Membership } from "./auth";
 import { readCartId, type Shop } from "./cart";
@@ -300,10 +301,10 @@ export async function checkCodeForOrder(
   const found = await findUsableDiscount(db(), shop.storeId, text, { market: shop.market, customerId: customer?.id ?? null });
   if (!found.ok) return { ok: false, problem: found.problem, minimumMinor: null };
   const [order] = await db().execute<Row>(sql`
-    select shipping_minor from commerce.orders where store_id = ${shop.storeId}::uuid and id = ${orderId}::uuid
+    select shipping_minor, member_percent from commerce.orders where store_id = ${shop.storeId}::uuid and id = ${orderId}::uuid
   `);
   const lines = await db().execute<Row>(sql`
-    select ol.id, v.product_id, ol.unit_price_minor, ol.quantity, ol.selling_plan_id is not null as recurring
+    select ol.id, v.product_id, ol.unit_price_minor, ol.member_discount_minor, ol.quantity, ol.selling_plan_id is not null as recurring
     from commerce.order_lines ol
     join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
     where ol.store_id = ${shop.storeId}::uuid and ol.order_id = ${orderId}::uuid
@@ -311,12 +312,13 @@ export async function checkCodeForOrder(
   if (!order) return { ok: false, problem: "not_applicable", minimumMinor: null };
   const result = applyDiscount(found.discount, {
     marketCode: shop.market.code,
+    // The code counts what the buyer's group or company discount left (D108), as placing the order does.
     lines: lines.map((line) => ({
       key: String(line.id),
       productId: String(line.product_id),
-      unitMinor: Number(line.unit_price_minor),
+      unitMinor: Number(line.member_discount_minor) > 0 ? planPrice(Number(line.unit_price_minor), Number(order.member_percent)) : Number(line.unit_price_minor),
       quantity: Number(line.quantity),
-      todayMinor: Number(line.unit_price_minor) * Number(line.quantity),
+      todayMinor: Number(line.unit_price_minor) * Number(line.quantity) - Number(line.member_discount_minor),
       recurring: Boolean(line.recurring),
     })),
     shippingMinor: Number(order.shipping_minor),

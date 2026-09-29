@@ -2432,6 +2432,59 @@ describe("variant pictures", () => {
   });
 });
 
+describe("customer groups and company accounts (D108)", () => {
+  it("keeps a group's percentage within 1 and 100, and its name once per store", async () => {
+    await db.query("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Wholesale', 10)", [store]);
+    await expect(db.query("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'wholesale', 5)", [store])).rejects.toThrow();
+    await expect(db.query("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Free', 0)", [store])).rejects.toThrow();
+    await expect(db.query("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Over', 101)", [store])).rejects.toThrow();
+    // Another store may use the same name.
+    await db.query("insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'Wholesale', 20)", [other]);
+  });
+
+  it("puts a customer in a group or company of their own store only, in one company with a role", async () => {
+    const { id: tier } = await one<{ id: string }>("select id from commerce.customer_tiers where store_id = $1 and name = 'Wholesale'", [store]);
+    const { id: foreign } = await one<{ id: string }>("select id from commerce.customer_tiers where store_id = $1", [other]);
+    const { id: company } = await one<{ id: string }>(
+      "insert into commerce.customer_companies (store_id, name, tier_id) values ($1, 'Acme AS', $2) returning id",
+      [store, tier],
+    );
+    // A company cannot take another store's group.
+    await expect(db.query("insert into commerce.customer_companies (store_id, name, tier_id) values ($1, 'Bad AS', $2)", [store, foreign])).rejects.toThrow();
+    await db.query("insert into commerce.customers (store_id, email, tier_id) values ($1, 'tier@example.com', $2)", [store, tier]);
+    await expect(db.query("insert into commerce.customers (store_id, email, tier_id) values ($1, 'x@example.com', $2)", [store, foreign])).rejects.toThrow();
+    await db.query("insert into commerce.customers (store_id, email, company_id, company_role) values ($1, 'boss@example.com', $2, 'owner')", [store, company]);
+    // A company member has a role; a customer with no company has none.
+    await expect(db.query("insert into commerce.customers (store_id, email, company_id) values ($1, 'a@example.com', $2)", [store, company])).rejects.toThrow();
+    await expect(db.query("insert into commerce.customers (store_id, email, company_role) values ($1, 'b@example.com', 'employee')", [store])).rejects.toThrow();
+    await expect(db.query("insert into commerce.customers (store_id, email, company_id, company_role) values ($1, 'c@example.com', $2, 'boss')", [store, company])).rejects.toThrow();
+    // A group in use cannot be deleted from under its customers.
+    await expect(db.query("delete from commerce.customer_tiers where id = $1", [tier])).rejects.toThrow();
+  });
+
+  it("allows one open invitation per company and address, and a new one once it is withdrawn", async () => {
+    const { id: company } = await one<{ id: string }>("select id from commerce.customer_companies where store_id = $1 and name = 'Acme AS'", [store]);
+    const invite = (email: string, hash: string, status = "pending") =>
+      db.query(
+        "insert into commerce.company_invites (store_id, company_id, email, token_hash, status, expires_at) values ($1, $2, $3, $4, $5, now() + interval '1 day')",
+        [store, company, email, hash, status],
+      );
+    await invite("Ane@example.com", "h1");
+    await expect(invite("ane@example.com", "h2")).rejects.toThrow();
+    await db.query("update commerce.company_invites set status = 'revoked' where token_hash = 'h1'");
+    await invite("ane@example.com", "h3");
+    await expect(invite("bo@example.com", "h3")).rejects.toThrow();
+    await expect(invite("cy@example.com", "h4", "maybe")).rejects.toThrow();
+  });
+
+  it("keeps the group's or company's part of a discount within the discount, on orders and their lines", async () => {
+    const checks = await db.query<{ conname: string }>(
+      "select conname from pg_constraint where conname in ('orders_member_discount', 'order_lines_member_discount')",
+    );
+    expect(checks.rows.map((r) => r.conname).sort()).toEqual(["order_lines_member_discount", "orders_member_discount"]);
+  });
+});
+
 describe("row-level security", () => {
   it("is enabled on every commerce table", async () => {
     const { rows } = await db.query<{ relname: string }>(

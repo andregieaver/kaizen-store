@@ -1305,6 +1305,70 @@ export const inventoryLevels = commerce.table(
 // Customers and carts
 // ---------------------------------------------------------------------------
 
+/**
+ * A group of customers with a fixed discount on what they buy (D108): a
+ * wholesale price for a store selling to businesses. Customers are put in one
+ * by staff (`customers.tier_id`); a company's members get its tier's discount
+ * through the company. Tiers in use are switched off, never deleted.
+ */
+export const customerTiers = commerce.table(
+  "customer_tiers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    /** Whole percent off everything bought once (not subscriptions, sign-up fees or shipping). */
+    percent: integer("percent").notNull(),
+    note: text("note").notNull().default(""),
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("customer_tiers_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("customer_tiers_store_name_idx").on(t.storeId, sql`lower(${t.name})`),
+    check("customer_tiers_percent", sql`${t.percent} between 1 and 100`),
+    check("customer_tiers_name", sql`length(${t.name}) between 1 and 80`),
+  ],
+);
+
+/**
+ * A company that buys from the store (D108): its tier's discount goes to its
+ * members, employees at `employeeSharePercent` of it. Its main account
+ * (`customers.company_role = 'owner'`) invites and removes the employees.
+ */
+export const customerCompanies = commerce.table(
+  "customer_companies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    /** Filled in at checkout for its members, so they buy as a business. */
+    organisationNumber: text("organisation_number").notNull().default(""),
+    tierId: uuid("tier_id"),
+    /** The part of the tier's discount employees get: 100 is all of it, 50 is half. */
+    employeeSharePercent: integer("employee_share_percent").notNull().default(100),
+    /** The most accounts (main accounts and employees) the company can have. */
+    maxMembers: integer("max_members").notNull().default(25),
+    /** Switched off: its members get no discount and it invites no one. */
+    active: boolean("active").notNull().default(true),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("customer_companies_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("customer_companies_store_name_idx").on(t.storeId, sql`lower(${t.name})`),
+    foreignKey({
+      name: "customer_companies_tier_fk",
+      columns: [t.storeId, t.tierId],
+      foreignColumns: [customerTiers.storeId, customerTiers.id],
+    }),
+    check("customer_companies_share", sql`${t.employeeSharePercent} between 0 and 100`),
+    check("customer_companies_max", sql`${t.maxMembers} between 1 and 1000`),
+    check("customer_companies_name", sql`length(${t.name}) between 1 and 120`),
+  ],
+);
+
 export const customers = commerce.table(
   "customers",
   {
@@ -1323,6 +1387,11 @@ export const customers = commerce.table(
     organisationNumber: text("organisation_number").notNull().default(""),
     /** Their profile picture (D97): a path in the `avatars` bucket; without one, Gravatar, then initials. */
     avatarPath: text("avatar_path"),
+    /** Their own discount group (D108), set by staff. */
+    tierId: uuid("tier_id"),
+    /** The company they belong to and their part in it (D108): its main account, or an employee. */
+    companyId: uuid("company_id"),
+    companyRole: text("company_role"),
     /** scrypt hash, when the customer has chosen a password; sign-in by emailed code always works. */
     passwordHash: text("password_hash"),
     failedSignIns: integer("failed_sign_ins").notNull().default(0),
@@ -1342,6 +1411,86 @@ export const customers = commerce.table(
     unique("customers_store_id_key").on(t.storeId, t.id),
     unique("customers_store_auth_user_key").on(t.storeId, t.authUserId),
     uniqueIndex("customers_store_email_idx").on(t.storeId, sql`lower(${t.email})`),
+    foreignKey({
+      name: "customers_tier_fk",
+      columns: [t.storeId, t.tierId],
+      foreignColumns: [customerTiers.storeId, customerTiers.id],
+    }),
+    foreignKey({
+      name: "customers_company_fk",
+      columns: [t.storeId, t.companyId],
+      foreignColumns: [customerCompanies.storeId, customerCompanies.id],
+    }),
+    index("customers_tier_idx").on(t.storeId, t.tierId),
+    index("customers_company_idx").on(t.storeId, t.companyId),
+    check(
+      "customers_company_role",
+      sql`(${t.companyId} is null and ${t.companyRole} is null) or (${t.companyId} is not null and ${t.companyRole} is not null and ${t.companyRole} in ('owner', 'employee'))`,
+    ),
+  ],
+);
+
+/**
+ * An invitation to join a company as an employee (D108), sent by email. The
+ * token in the link is kept only as a hash. Pending until accepted (which
+ * opens or reuses the invitee's account and joins it to the company), revoked
+ * by the company or the store, or ended when the employee is removed later.
+ */
+export const companyInvites = commerce.table(
+  "company_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    companyId: uuid("company_id").notNull(),
+    email: text("email").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    status: text("status").notNull().default("pending"),
+    /** The company account that invited them; null when the store did. */
+    invitedBy: uuid("invited_by"),
+    /** The account that accepted it. */
+    customerId: uuid("customer_id"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "company_invites_company_fk",
+      columns: [t.storeId, t.companyId],
+      foreignColumns: [customerCompanies.storeId, customerCompanies.id],
+    }).onDelete("cascade"),
+    index("company_invites_company_idx").on(t.storeId, t.companyId, t.createdAt),
+    uniqueIndex("company_invites_one_pending_idx")
+      .on(t.companyId, sql`lower(${t.email})`)
+      .where(sql`${t.status} = 'pending'`),
+    check("company_invites_status", sql`${t.status} in ('pending', 'accepted', 'revoked', 'ended')`),
+  ],
+);
+
+/**
+ * A one-time link that signs a customer in (D108), emailed when they join a
+ * company. Kept as a hash, valid for a week, and used from a page with a
+ * button, so a mail scanner opening the link does not spend it.
+ */
+export const customerSignInLinks = commerce.table(
+  "customer_sign_in_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    customerId: uuid("customer_id").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: "customer_sign_in_links_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    index("customer_sign_in_links_customer_idx").on(t.storeId, t.customerId),
   ],
 );
 
@@ -1483,6 +1632,14 @@ export const orders = commerce.table(
     subtotalMinor: money("subtotal_minor"),
     shippingMinor: money("shipping_minor").default(0),
     discountMinor: money("discount_minor").default(0),
+    /**
+     * The part of the discount that is the buyer's group or company discount
+     * (D108), the rest being the discount code's; the group's name and the
+     * percent they got, as sold.
+     */
+    memberDiscountMinor: money("member_discount_minor").default(0),
+    memberLabel: text("member_label"),
+    memberPercent: numeric("member_percent", { precision: 5, scale: 2 }),
     /** VAT contained in the total. Prices are VAT-inclusive. */
     taxMinor: money("tax_minor"),
     totalMinor: money("total_minor"),
@@ -1548,6 +1705,7 @@ export const orders = commerce.table(
       "orders_total_adds_up",
       sql`${t.totalMinor} = ${t.subtotalMinor} + ${t.shippingMinor} - ${t.discountMinor}`,
     ),
+    check("orders_member_discount", sql`${t.memberDiscountMinor} between 0 and ${t.discountMinor}`),
     check("orders_tax_within_total", sql`${t.taxMinor} <= ${t.totalMinor}`),
     check("orders_balance", sql`${t.balanceMinor} between 0 and ${t.totalMinor}`),
   ],
@@ -1610,6 +1768,8 @@ export const orderLines = commerce.table(
     bookedCount: integer("booked_count"),
     unitPriceMinor: money("unit_price_minor"),
     discountMinor: money("discount_minor").default(0),
+    /** The part of the discount that is the buyer's group or company discount (D108). */
+    memberDiscountMinor: money("member_discount_minor").default(0),
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
     /** The part of the total paid at the venue (D66): all of it, or what a deposit leaves. */
@@ -1641,6 +1801,7 @@ export const orderLines = commerce.table(
       "order_lines_amounts_non_negative",
       sql`${t.unitPriceMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.taxMinor} >= 0`,
     ),
+    check("order_lines_member_discount", sql`${t.memberDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
   ],
 );

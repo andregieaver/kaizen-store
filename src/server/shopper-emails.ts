@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { bookingWhen, isRange } from "@/lib/booking-text";
+import { discountNote } from "@/lib/customer-tiers";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
@@ -113,7 +114,7 @@ function orderLines(
       ...(order.discountMinor > 0
         ? [
             {
-              label: order.discountCode ? `${text.discount} (${order.discountCode})` : text.discount,
+              label: discountNote(order) ? `${text.discount} (${discountNote(order)})` : text.discount,
               value: `−${money(order.discountMinor)}`,
               muted: true,
             },
@@ -429,6 +430,118 @@ export async function sendWelcome(
     fromName: store.name,
     replyTo: store.details.contactEmail,
     idempotencyKey: `account-welcome:${customerId}`,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Company accounts (D108)
+// ---------------------------------------------------------------------------
+
+/** Where an email about a company is read: the market whose language and address it uses. */
+export type EmailMarket = { marketCode: string; locale: string };
+
+/** The invitation to join a company as an employee, with the link that accepts it. */
+export async function sendCompanyInvite(
+  storeId: string,
+  { marketCode, locale }: EmailMarket,
+  invite: { id: string; to: string; token: string; inviter: string; company: string; percent: number | null; expiresAt: string },
+): Promise<SendOutcome | null> {
+  const ctx = await context(storeId, marketCode, locale);
+  if (!ctx) return null;
+  const { store, market, text } = ctx;
+  const c = text.company;
+  const url = `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/account/company/invite/${invite.token}`)}`;
+  const email = renderEmail({
+    subject: c.inviteSubject(invite.company, store.name),
+    preview: c.inviteHeading(invite.company),
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: c.inviteHeading(invite.company) },
+      { type: "paragraph", text: c.inviteIntro(invite.inviter, invite.company, store.name) },
+      ...(invite.percent ? [{ type: "paragraph" as const, text: c.inviteDiscount(String(invite.percent)) }] : []),
+      { type: "button", text: c.inviteButton, url },
+      { type: "paragraph", text: c.inviteExpires(new Date(invite.expiresAt).toLocaleDateString(market.locale, { dateStyle: "medium" })) },
+      { type: "paragraph", text: c.inviteIgnore },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "company.invite",
+    to: invite.to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `company-invite:${invite.id}:${invite.token.slice(0, 8)}`,
+  });
+}
+
+/**
+ * The confirmation once an invitation is accepted: for a new account and for
+ * one the person already had, with a link that signs them in once.
+ */
+export async function sendCompanyJoined(
+  storeId: string,
+  { marketCode, locale }: EmailMarket,
+  joined: { customerId: string; to: string; token: string; company: string; percent: number | null; existing: boolean },
+): Promise<SendOutcome | null> {
+  const ctx = await context(storeId, marketCode, locale);
+  if (!ctx) return null;
+  const { store, market, text } = ctx;
+  const c = text.company;
+  const url = `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, `/account/sign-in/${joined.token}`)}`;
+  const email = renderEmail({
+    subject: c.joinedSubject(store.name),
+    preview: c.joinedHeading(joined.company),
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: c.joinedHeading(joined.company) },
+      { type: "paragraph", text: joined.existing ? c.joinedExisting(joined.to) : c.joinedNew(joined.to) },
+      ...(joined.percent ? [{ type: "paragraph" as const, text: c.joinedDiscount(String(joined.percent)) }] : []),
+      { type: "button", text: c.joinedButton, url },
+      { type: "paragraph", text: c.joinedLinkNote },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "company.joined",
+    to: joined.to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `company-joined:${joined.customerId}:${joined.token.slice(0, 8)}`,
+  });
+}
+
+/** Told to someone taken out of a company: the company discount no longer applies. */
+export async function sendCompanyEnded(
+  storeId: string,
+  { marketCode, locale }: EmailMarket,
+  ended: { key: string; to: string; company: string },
+): Promise<SendOutcome | null> {
+  const ctx = await context(storeId, marketCode, locale);
+  if (!ctx) return null;
+  const { store, text } = ctx;
+  const c = text.company;
+  const email = renderEmail({
+    subject: c.endedSubject(ended.company),
+    preview: c.endedHeading,
+    lang: ctx.lang,
+    footer: footer(store, text),
+    blocks: [
+      { type: "heading", text: c.endedHeading },
+      { type: "paragraph", text: c.endedIntro(ended.company, store.name) },
+    ],
+  });
+  return sendEmail({
+    storeId,
+    kind: "company.ended",
+    to: ended.to,
+    email,
+    fromName: store.name,
+    replyTo: store.details.contactEmail,
+    idempotencyKey: `company-ended:${ended.key}`,
   });
 }
 

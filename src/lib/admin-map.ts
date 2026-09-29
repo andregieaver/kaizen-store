@@ -164,7 +164,17 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
 
   // Store: sales ---------------------------------------------------------------------------
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"] }),
-  store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions and emails."),
+  store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails and their customer group."),
+  store("customer-groups", "/customer-groups", "Customer groups", "Sales", "Discount groups such as Wholesale: a fixed percentage off for the customers in them.", {
+    keywords: ["wholesale", "b2b", "tier", "price list", "trade discount", "fixed discount", "customer roles"],
+    tasks: ["Make a group with a fixed discount", "Put customers in a group"],
+  }),
+  store("customer-group", "/customer-groups/[groupId]", "Customer group", "Sales", "One discount group: its percentage, its customers and the companies using it."),
+  store("b2b-companies", "/companies", "Companies", "Sales", "Companies that buy from the store: a discount group, a main account that invites employees, and the share of the discount employees get.", {
+    keywords: ["b2b", "business customers", "employees", "company account", "invite", "wholesale"],
+    tasks: ["Make a company with a main account", "Invite or remove a company's employees"],
+  }),
+  store("b2b-company", "/companies/[companyId]", "Company", "Sales", "One company: settings, its accounts, invitations, and inviting or removing employees."),
   store("deliveries", "/deliveries", "Subscription boxes", "Sales", "Delivery days, the round being packed and shoppers' subscription box lists.", {
     needs: "deliveries",
     tasks: ["Add a delivery day", "Send and charge this round's orders"],

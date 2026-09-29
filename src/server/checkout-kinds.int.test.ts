@@ -79,6 +79,7 @@ const { getOrder, getShopperOrder } = await import("./orders");
 const { appointmentSlots } = await import("./appointments");
 const { rentalTimes } = await import("./ranges");
 const { saveDiscount, setCartCode } = await import("./discounts");
+const { preRegisterCustomer, startSession } = await import("./customers");
 
 const run = Date.now().toString(36);
 const slug = `kinds-${run}`;
@@ -190,6 +191,8 @@ type Scenario = {
   /** How each appointment is paid (D66), set before the cart is filled. */
   massage?: "now" | "deposit" | "venue";
   code?: string;
+  /** Who buys (D108): in a discount group, or an employee of a company that gives half of one. */
+  buyer?: "group" | "company";
   /** Lines with a time, confirmed once paid. */
   bookings: number;
 };
@@ -227,12 +230,64 @@ const scenarios: Scenario[] = [
     code: `TI${run}`.toUpperCase(),
     bookings: 2,
   },
+  { name: "goods for a customer in a discount group", fill: () => add("DEMO-MUG-WHITE", 3), buyer: "group", bookings: 0 },
+  {
+    name: "a stay, a massage and a mug with a code, for a company's employee",
+    fill: async () => {
+      await addStay(2);
+      await addAppointment();
+      await add("DEMO-MUG-WHITE", 1);
+    },
+    massage: "deposit",
+    code: `TI${run}`.toUpperCase(),
+    buyer: "company",
+    bookings: 2,
+  },
+  {
+    // A subscription is not lowered by the group's discount: only what is bought once.
+    name: "goods and a subscription for a customer in a discount group",
+    fill: async () => {
+      const [plan] = await db().execute<Row>(sql`
+        insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent)
+        values (${storeId}::uuid, ${product["demo-notatbok"]}::uuid, 'month', 3, 0) returning id
+      `);
+      await add("DEMO-NOTEBOOK-LINED", 1, undefined, String(plan.id));
+      await add("DEMO-MUG-WHITE", 2);
+    },
+    consent: { subscription: true },
+    buyer: "group",
+    bookings: 0,
+  },
 ];
+
+let tierId: string;
+let companyId: string;
+
+/** A signed-in customer, in a 10 % group or an employee of a company whose employees get half of it. */
+async function signInBuyer(kind: "group" | "company"): Promise<string> {
+  const customerId = await preRegisterCustomer(storeId, `${kind}-${Date.now()}-${run}@example.com`);
+  if (kind === "group") {
+    await db().execute(sql`update commerce.customers set tier_id = ${tierId}::uuid where id = ${customerId}::uuid`);
+  } else {
+    await db().execute(sql`update commerce.customers set company_id = ${companyId}::uuid, company_role = 'employee' where id = ${customerId}::uuid`);
+  }
+  await startSession(storeId, customerId);
+  return customerId;
+}
 
 describe("checkout for every kind of product", () => {
   beforeAll(async () => {
     const made = await saveDiscount(member, null, { code: `TI${run}`.toUpperCase(), kind: "percent", percent: 10 });
     if (!made.ok) throw new Error(made.problems.join(" "));
+    const [tier] = await db().execute<Row>(sql`
+      insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Wholesale', 10) returning id
+    `);
+    tierId = String(tier.id);
+    const [company] = await db().execute<Row>(sql`
+      insert into commerce.customer_companies (store_id, name, tier_id, employee_share_percent)
+      values (${storeId}::uuid, 'Acme AS', ${tierId}::uuid, 50) returning id
+    `);
+    companyId = String(company.id);
   });
 
   it.each(scenarios)("$name: from the cart to the payment form to a paid order", async (scenario) => {
@@ -243,6 +298,7 @@ describe("checkout for every kind of product", () => {
         where store_id = ${storeId}::uuid and product_id = ${product["demo-massasje"]}::uuid
       `);
     }
+    const buyerId = scenario.buyer ? await signInBuyer(scenario.buyer) : null;
     await scenario.fill();
     if (scenario.code) expect(await setCartCode(shop(), scenario.code)).toBe(true);
 
@@ -252,9 +308,11 @@ describe("checkout for every kind of product", () => {
     const summary = await cartSummary(shop(), cart);
     expect(summary.blocked).toBe(false);
     if (scenario.code) expect(summary.discountMinor).toBeGreaterThan(0);
+    if (scenario.buyer) expect(summary.member).toMatchObject({ percent: scenario.buyer === "group" ? 10 : 5 });
+    else expect(summary.member).toBeNull();
 
     // "Til kassen": Kaizen's checkout page, with Stripe's form.
-    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", scenario.consent ?? {});
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", scenario.consent ?? {}, { customerId: buyerId });
     expect(started).toEqual({ ok: true, url: `${origin}/s/${slug}/no/checkout` });
     const open = await getOpenCheckout(storeId, cartId());
     // The page shows the form, not "the cart has changed" with a button to start again.
@@ -262,10 +320,12 @@ describe("checkout for every kind of product", () => {
 
     // The order is what the cart page showed: total, VAT, and what is left for the venue.
     const order = await getOrder(storeId, open!.orderId);
-    expect({ total: order?.totalMinor, vat: order?.taxMinor, balance: order?.balanceMinor }).toEqual({
+    expect({ total: order?.totalMinor, vat: order?.taxMinor, balance: order?.balanceMinor, member: order?.memberDiscountMinor, off: order?.discountMinor }).toEqual({
       total: summary.total,
       vat: summary.vat,
       balance: summary.balance,
+      member: summary.memberDiscountMinor,
+      off: summary.discountMinor,
     });
     // Stripe is asked for what is due now, no more and no less.
     const { params } = fake.created.at(-1)!;
@@ -280,7 +340,7 @@ describe("checkout for every kind of product", () => {
       status: "complete",
       payment_status: "paid",
       mode: params.mode,
-      ...(params.mode === "subscription" && { subscription: `sub_kinds_${run}` }),
+      ...(params.mode === "subscription" && { subscription: `sub_kinds_${run}_${open!.orderId}` }),
     });
     const paid = await getShopperOrder(storeId, open!.orderId, open!.sessionId);
     expect(paid?.status).toBe("paid");

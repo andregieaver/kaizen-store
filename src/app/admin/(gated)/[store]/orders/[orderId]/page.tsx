@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/order-actions";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { bookingWhen } from "@/lib/booking-text";
+import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
@@ -206,6 +207,13 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 <div className="flex justify-between">
                   <dt>
                     Discount
+                    {order.memberDiscountMinor > 0 && order.memberLabel && (
+                      <span className="text-xs text-muted">
+                        {" "}
+                        ({order.memberLabel}
+                        {order.memberPercent ? ` ${percentText(order.memberPercent)} %` : ""}, −{money(order.memberDiscountMinor)})
+                      </span>
+                    )}
                     {order.discountCode && (
                       <>
                         {" "}

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
+import { discountNote } from "@/lib/customer-tiers";
 import { companyRequired, withoutVat } from "@/lib/b2b";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
@@ -65,6 +66,8 @@ export async function CartContents({
     code,
     applied,
     discountMinor,
+    member,
+    memberDiscountMinor,
     renewal,
     lineDiscount,
     total,
@@ -237,10 +240,13 @@ export async function CartContents({
               <dd>{shipping === 0 ? m.freeShipping : net(shipping)}</dd>
             </div>
           )}
-          {discountMinor > 0 && code && (
+          {discountMinor > 0 && (
             <div className="flex justify-between gap-4">
               <dt>
-                {m.discount} <span className="text-sm text-muted">({code.code})</span>
+                {m.discount}{" "}
+                <span className="text-sm text-muted">
+                  ({discountNote({ discountMinor, memberDiscountMinor, memberLabel: member?.label ?? null, memberPercent: member?.percent ?? null, discountCode: applied ? (code?.code ?? null) : null })})
+                </span>
               </dt>
               <dd>
                 −

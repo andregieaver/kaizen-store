@@ -15,6 +15,7 @@ import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-op
 import { RangePicker } from "@/components/range-picker";
 import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
 import { WishlistHeart } from "@/components/wishlist-heart";
+import { percentText } from "@/lib/customer-tiers";
 import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
 import { seasonName, seasonPrice } from "@/lib/booking-prices";
 import { rangeCalendar } from "@/lib/booking-ranges";
@@ -28,6 +29,9 @@ import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { stockLevel } from "@/lib/pricing";
 import { productJsonLd } from "@/lib/structured-data";
 import { planPrice } from "@/lib/subscriptions";
+import { db } from "@/db/client";
+import { memberDiscountFor } from "@/server/customer-tiers";
+import { getCustomer } from "@/server/customers";
 import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
 import { getAvailability, type EconomicOperator, type ProductDetail } from "@/server/catalog";
 import { relatedProducts } from "@/server/listing";
@@ -137,6 +141,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
         return (
           <section aria-label={m.booking.chooseTime} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
+              <MemberNotice store={store} m={m} />
               <AppointmentBooking store={store} product={product} market={market} m={m} />
             </Suspense>
           </section>
@@ -147,6 +152,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
         return (
           <section aria-label={m.stay.chooseDates} className={forBusiness}>
             <Suspense fallback={<p className="text-sm text-muted">{m.booking.loading}</p>}>
+              <MemberNotice store={store} m={m} />
               <RangeBooking store={store} product={product} market={market} m={m} />
             </Suspense>
           </section>
@@ -158,6 +164,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
             {m.variants}
           </h2>
           <Suspense fallback={<p className="text-sm text-muted">{m.checkingStock}</p>}>
+            <MemberNotice store={store} m={m} />
             <VariantsWithStock store={store} product={product} market={market} m={m} />
           </Suspense>
         </section>
@@ -485,6 +492,17 @@ async function RangeBooking({
 }
 
 /** Stock is read per request, so this renders after the cached page shell. */
+/**
+ * What the signed-in customer's group or company discount is (D108), said
+ * where they choose: the price above is the list price, and the discount is
+ * taken off in the cart. Read per request, inside the buy section's Suspense.
+ */
+async function MemberNotice({ store, m }: { store: Store; m: Messages }) {
+  const customer = await getCustomer(store.id);
+  const discount = await memberDiscountFor(db(), store.id, customer?.id ?? null);
+  return discount ? <p className="mb-2 text-sm">{m.companyAccount.memberNotice(percentText(discount.percent))}</p> : null;
+}
+
 async function VariantsWithStock({
   store,
   product,

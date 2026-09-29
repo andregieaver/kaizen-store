@@ -1,11 +1,16 @@
 import "server-only";
 
 import { cartSubtotal } from "@/lib/cart";
+import { memberLineOff } from "@/lib/customer-tiers";
 import { vatIncluded } from "@/lib/checkout";
 import { venuePart } from "@/lib/pay-later";
-import { basketShipping } from "@/lib/subscriptions";
+import { basketShipping, planPrice } from "@/lib/subscriptions";
+
+import { db } from "@/db/client";
 
 import type { Cart, CartLine, Shop } from "./cart";
+import { memberDiscountFor } from "./customer-tiers";
+import { getCustomer } from "./customers";
 import { previewCartDiscount } from "./discounts";
 import { getCheckoutInfo } from "./orders";
 
@@ -50,6 +55,11 @@ export async function cartSummary(shop: Shop, cart: Cart) {
     { trial },
   );
   const shipping = !ships ? 0 : checkout.shipping ? basket.first : null;
+  // The buyer's group or company discount (D108), off what is bought once, before any code, as checkout takes it.
+  const customer = await getCustomer(storeId);
+  const member = await memberDiscountFor(db(), storeId, customer?.id ?? null);
+  const memberOff = payable.map((line) => (member && !line.plan && line.unitPriceMinor > 0 ? memberLineOff(line.unitPriceMinor, line.quantity, member.percent) : 0));
+  const memberDiscountMinor = memberOff.reduce((sum, off) => sum + off, 0);
   // The discount code, checked against this basket as checkout will (D31).
   const code = await previewCartDiscount(
     { storeId, market },
@@ -57,16 +67,18 @@ export async function cartSummary(shop: Shop, cart: Cart) {
       lines: payable.map((line, i) => ({
         key: String(i),
         productId: line.productId,
-        unitMinor: line.unitPriceMinor,
+        // What the code is taken off: the price after the group's discount for what is bought once.
+        unitMinor: member && !line.plan ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
         quantity: line.quantity,
-        todayMinor: today(line),
+        todayMinor: today(line) - memberOff[i],
         recurring: line.plan !== null,
       })),
       shippingMinor: shipping ?? 0,
     },
   );
   const applied = code?.ok ? code.applied : null;
-  const discountMinor = applied?.totalMinor ?? 0;
+  const codeDiscountMinor = applied?.totalMinor ?? 0;
+  const discountMinor = codeDiscountMinor + memberDiscountMinor;
   // A recurring percentage lowers what each renewal costs, and so its shipping.
   const renewUnit = (line: (typeof payable)[number], i: number) => applied?.renewalUnits[String(i)] ?? line.unitPriceMinor;
   const renewing = payable
@@ -86,7 +98,9 @@ export async function cartSummary(shop: Shop, cart: Cart) {
         ).renewal
       : basket.renewal;
   const renewal = plan ? renewing + renewalShipping : null;
-  const lineDiscount = (i: number) => applied?.lines[String(i)] ?? 0;
+  const codeLine = (i: number) => applied?.lines[String(i)] ?? 0;
+  const memberLine = (i: number) => memberOff[i] ?? 0;
+  const lineDiscount = (i: number) => codeLine(i) + memberLine(i);
   const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor;
   const vat =
     payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i), line.vatRate), 0) +
@@ -113,8 +127,14 @@ export async function cartSummary(shop: Shop, cart: Cart) {
     code,
     applied,
     discountMinor,
+    /** What the buyer's group or company gives, its name and percent, and what a code gives: `discountMinor` is both. */
+    member,
+    memberDiscountMinor,
+    codeDiscountMinor,
     renewal,
     lineDiscount,
+    codeLine,
+    memberLine,
     total,
     vat,
     balance,

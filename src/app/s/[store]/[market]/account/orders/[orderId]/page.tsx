@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { OwnBookings } from "@/components/own-bookings";
+import { discountNote } from "@/lib/customer-tiers";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
@@ -111,7 +112,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
             <div className="flex justify-between">
               <dt>
                 {m.discount}
-                {order.discountCode && <span className="text-sm text-muted"> ({order.discountCode})</span>}
+                {discountNote(order) && <span className="text-sm text-muted"> ({discountNote(order)})</span>}
               </dt>
               <dd>−{money(order.discountMinor)}</dd>
             </div>

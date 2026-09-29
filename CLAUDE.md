@@ -518,6 +518,22 @@ of running `playwright install`.
   (`src/components/admin/terms.tsx`) manage and choose them; changes
   `updateTag(termsTag(scope))`. Menus link to them by address (D52), to
   `/s/{store}/{market}/category|tag/{slug}` and Kaizen's `/category|tag/{slug}`.
+- Customer groups and company accounts (D108, `src/lib/customer-tiers.ts`,
+  `src/server/customer-tiers.ts`, `src/server/companies.ts`): a group is a
+  fixed percentage (`customer_tiers`, `customers.tier_id`); a company
+  (`customer_companies`, `customers.company_id`/`company_role`) has a group and
+  the share of it its employees get. A customer's discount is always read from
+  their membership by `memberDiscountFor()`, never copied, so leaving stops it
+  at once. It comes off what is bought once, before any code: `cartSummary()`
+  and `placeOrder()` both use `memberLineOff()`, and the order keeps its part
+  (`member_discount_minor`, `member_label`, `member_percent`); a new kind of
+  price or line that discounts must keep the two together
+  (`checkout-kinds.int.test.ts`). Draw an order's discount row with
+  `discountNote()`. Invitations and sign-in links keep only a hash of their
+  token and act from a page with a button, never from opening the link;
+  accepting goes through `acceptInvite()` only. Customer routes for these live
+  under `/account/…`, as a new top-level `/s/{store}/{market}/{word}` would
+  reserve a page address.
 - Selling to businesses (D63, `src/lib/b2b.ts`, `src/server/b2b.ts`): stores
   sell to `consumers`, `businesses` or `both` (`stores.audience`). Prices are
   always kept and charged with VAT; businesses see them without it. Draw

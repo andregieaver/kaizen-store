@@ -19,6 +19,7 @@ import {
   listCustomerOrders,
   listCustomerSubscriptions,
 } from "@/server/customers";
+import { companyOf } from "@/server/companies";
 import { resolveShop } from "@/server/shop";
 
 import { avatarAction } from "./actions";
@@ -91,10 +92,11 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
     );
   }
 
-  const [orders, subscriptions, lastAddress] = await Promise.all([
+  const [orders, subscriptions, lastAddress, mine] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
     listCustomerSubscriptions(store.id, customer.id),
     customer.address.line1 ? Promise.resolve(null) : lastShippingAddress(store.id, customer.id),
+    companyOf(store.id, customer.id),
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
   const base = marketPath(store.slug, market.slug);
@@ -115,6 +117,23 @@ async function Account({ params, searchParams }: { params: Props["params"]; sear
         </div>
         <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
       </div>
+
+      {mine && (
+        <Link
+          href={`${base}/account/company`}
+          className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"
+        >
+          <span>
+            <span className="font-medium">
+              {m.companyAccount.title}: {mine.company.name}
+            </span>
+            <span className="block text-sm text-muted">
+              {mine.role === "owner" ? m.companyAccount.cardIntroOwner : m.companyAccount.cardIntroEmployee}
+            </span>
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
 
       {store.deliveriesOn && (
         <Link

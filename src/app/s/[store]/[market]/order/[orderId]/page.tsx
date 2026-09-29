@@ -9,6 +9,7 @@ import { OwnBookings } from "@/components/own-bookings";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
+import { discountNote } from "@/lib/customer-tiers";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { t, type Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
@@ -115,7 +116,7 @@ async function OrderDetails({
             <div className="flex justify-between">
               <dt>
                 {m.discount}
-                {order.discountCode && <span className="text-sm text-muted"> ({order.discountCode})</span>}
+                {discountNote(order) && <span className="text-sm text-muted"> ({discountNote(order)})</span>}
               </dt>
               <dd>−{money(order.discountMinor)}</dd>
             </div>

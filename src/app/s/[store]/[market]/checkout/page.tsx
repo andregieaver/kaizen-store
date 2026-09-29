@@ -7,6 +7,7 @@ import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
 import { LineThumbnail } from "@/components/line-thumbnail";
+import { discountNote } from "@/lib/customer-tiers";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
@@ -250,7 +251,7 @@ function Summary({
           <div className="flex justify-between">
             <dt>
               {m.discount}
-              {order.discountCode && <span className="text-sm text-muted"> ({order.discountCode})</span>}
+              {discountNote(order) && <span className="text-sm text-muted"> ({discountNote(order)})</span>}
             </dt>
             <dd>−{money(business ? discountNet : order.discountMinor)}</dd>
           </div>

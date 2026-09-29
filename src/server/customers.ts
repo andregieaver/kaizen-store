@@ -53,8 +53,8 @@ export async function checkPassword(password: string, stored: string): Promise<b
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
-const normalEmail = (email: string) => email.trim().toLowerCase();
+export const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
+export const normalEmail = (email: string) => email.trim().toLowerCase();
 
 // ---------------------------------------------------------------------------
 // Codes
@@ -111,6 +111,21 @@ export async function verifySignInCode(storeId: string, email: string, code: str
   return customerId;
 }
 
+/**
+ * The customer with this email, made if there is none, without the email
+ * proven (D108): an account staff or a company opens ahead of the person,
+ * who proves the email when they sign in. Never changes an existing one.
+ */
+export async function preRegisterCustomer(storeId: string, email: string): Promise<string> {
+  const address = normalEmail(email);
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.customers (store_id, email) values (${storeId}::uuid, ${address})
+    on conflict (store_id, lower(email)) do update set email = commerce.customers.email
+    returning id
+  `);
+  return String(row.id);
+}
+
 /** The customer with this email, created if new, with the email now proven theirs. */
 async function upsertCustomer(storeId: string, email: string): Promise<string> {
   const [row] = await db().execute<Row>(sql`
@@ -124,7 +139,7 @@ async function upsertCustomer(storeId: string, email: string): Promise<string> {
 }
 
 /** Links the store's orders and subscriptions with this email to the customer. */
-async function claimOrders(storeId: string, customerId: string, email: string) {
+export async function claimOrders(storeId: string, customerId: string, email: string) {
   await db().execute(sql`
     update commerce.orders set customer_id = ${customerId}::uuid
     where store_id = ${storeId}::uuid and lower(email) = ${email} and customer_id is null

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
@@ -11,7 +12,10 @@ import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requireMember } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
+import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
+
+import { setCustomerGroupAction } from "../../customer-groups/actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -30,8 +34,13 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
   if (!ref) notFound();
   // An order's or subscription's id finds its customer; the page lives at the customer's own address.
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}`);
-  const [customer, emails] = await Promise.all([getCustomerDetail(store.id, ref), listEmails({ storeId: store.id, to: ref.email, limit: 20 })]);
+  const [customer, emails, groups] = await Promise.all([
+    getCustomerDetail(store.id, ref),
+    listEmails({ storeId: store.id, to: ref.email, limit: 20 }),
+    listTiers(store.id),
+  ]);
   if (!customer) notFound();
+  const access = customer.customerId ? await customerAccess(store.id, customer.customerId) : null;
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
@@ -199,6 +208,40 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
               </>
             )}
           </section>
+          {customer.customerId && (
+            <section aria-labelledby="discount" className={`${card} text-sm`}>
+              <h2 id="discount" className="mb-2 font-medium">Discount</h2>
+              {access?.companyName && (
+                <p className="mb-2">
+                  {access.role === "owner" ? "Main account of " : "Employee of "}
+                  <Link href={`${base}/companies/${access.companyId}`} className="underline">
+                    {access.companyName}
+                  </Link>
+                  , which gives its discount.
+                </p>
+              )}
+              <ActionForm action={setCustomerGroupAction.bind(null, store.slug, customer.customerId)} className="flex flex-col gap-2">
+                <label className="flex flex-col gap-1 font-medium">
+                  Customer group
+                  <select name="groupId" defaultValue={access?.tierId ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 font-normal">
+                    <option value="">None</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} ({group.percent} %){group.active ? "" : ", switched off"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div>
+                  <SubmitButton variant="secondary">Save</SubmitButton>
+                </div>
+              </ActionForm>
+              <p className="mt-2 text-xs text-muted">
+                With a company too, the better of the two discounts applies. <Link href={`${base}/customer-groups`} className="underline">Customer groups</Link>
+              </p>
+            </section>
+          )}
+
           <section aria-labelledby="more" className={`${card} text-sm`}>
             <h2 id="more" className="mb-2 font-medium">Account and preferences</h2>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
