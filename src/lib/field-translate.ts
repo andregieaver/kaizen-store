@@ -86,6 +86,16 @@ function labelSlots(def: FieldDef, where = ""): LabelSlot[] {
       });
     }
   }
+  // Flexible content's layouts are named for shoppers too (an aria label): their words are listed with the fields'.
+  for (const layout of def.layouts ?? []) {
+    if (layout.label.trim() === "") continue;
+    slots.push({
+      key: `${def.id}.layout.${layout.key}`,
+      label: `${at}Layout of ${cut(def.label)}`,
+      source: layout.label,
+      labels: layout.labels,
+    });
+  }
   for (const sub of subFieldsOf(def)) slots.push(...labelSlots(sub, cut(def.label)));
   return slots;
 }
@@ -132,10 +142,15 @@ export function withDefinitionTexts(
       labelled(choice, text(`${def.id}.choice.${choice.key}`)),
     );
     const subs = def.subFields?.map(one);
+    const layouts = def.layouts?.map((layout) => ({
+      ...labelled(layout, text(`${def.id}.layout.${layout.key}`)),
+      subFields: layout.subFields.map(one),
+    }));
     return {
       ...labelled(def, text(`${def.id}.label`)),
       ...(choices && hasChoices(def.type) && { choices }),
       ...(subs && isStructural(def.type) && { subFields: subs }),
+      ...(layouts && def.type === "flexible" && { layouts }),
     };
   };
   return fields.map((def) => (def.access === "public" ? one(def) : def));
@@ -327,7 +342,7 @@ export function valueChanges(
 }
 
 /** The kinds of thing whose field values are in the worklist. */
-export type ValueEntity = "product" | "variant" | "page" | "article" | "term";
+export type ValueEntity = "product" | "variant" | "page" | "article" | "term" | "store";
 
 /**
  * What a variant is called in the worklist: its product's title, then its SKU
@@ -349,6 +364,7 @@ const UNIT_KINDS: Record<ValueEntity, string> = {
   page: "Page fields",
   article: "Article fields",
   term: "Category or tag fields",
+  store: "Store fields",
 };
 
 /**

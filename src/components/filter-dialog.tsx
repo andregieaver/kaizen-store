@@ -8,9 +8,12 @@ import {
   LISTING_SORTS,
   listingQuery,
   NO_FILTERS,
+  parseRangeNumber,
+  rangeOf,
   type ListingFilters,
   type ListingSort,
   type OptionFilter,
+  type RangeFilter,
 } from "@/lib/listing-filters";
 import type { ProductKind } from "@/lib/query-understanding";
 
@@ -23,6 +26,8 @@ export type FilterFacets = {
   options: { name: string; label: string; values: Choice[] }[];
   /** The store's custom fields offered as filters (D118), titled in the shopper's language. */
   fields: { name: string; label: string; values: Choice[] }[];
+  /** Number and measurement fields offered as ranges (D120): the unit they compare in, the least and most, and how that reads. */
+  ranges: { name: string; label: string; unit: string; min: number; max: number; hint: string }[];
   price: { min: number; max: number } | null;
 };
 
@@ -86,6 +91,7 @@ export function FilterDialog({
   const [draft, setDraft] = useState<ListingFilters>(filters);
   const [minText, setMinText] = useState(filters.minPrice === null ? "" : String(filters.minPrice));
   const [maxText, setMaxText] = useState(filters.maxPrice === null ? "" : String(filters.maxPrice));
+  const [rangeTexts, setRangeTexts] = useState(() => textsOf(filters.ranges));
   const [pending, start] = useTransition();
   const chosen = filterCount(filters);
 
@@ -94,6 +100,7 @@ export function FilterDialog({
     setDraft(filters);
     setMinText(filters.minPrice === null ? "" : String(filters.minPrice));
     setMaxText(filters.maxPrice === null ? "" : String(filters.maxPrice));
+    setRangeTexts(textsOf(filters.ranges));
     dialog.current?.showModal();
     document.documentElement.style.overflow = "hidden";
     requestAnimationFrame(() => setOpen(true));
@@ -128,7 +135,16 @@ export function FilterDialog({
     return text.trim() && Number.isFinite(number) && number >= 0 ? number : null;
   };
 
-  const chosenNow = () => ({ ...draft, minPrice: amount(minText), maxPrice: amount(maxText) });
+  /** The dialog's own ranges as typed; one it does not offer (it no longer narrows the page) stays as it is. */
+  const rangesNow = (): RangeFilter[] => [
+    ...filters.ranges.filter((range) => !facets.ranges.some((offered) => offered.name === range.name)),
+    ...facets.ranges.flatMap((offered) => {
+      const typed = rangeTexts[offered.name];
+      const range = typed ? rangeOf(offered.name, parseRangeNumber(typed.min), parseRangeNumber(typed.max)) : null;
+      return range ? [range] : [];
+    }),
+  ];
+  const chosenNow = () => ({ ...draft, minPrice: amount(minText), maxPrice: amount(maxText), ranges: rangesNow() });
   const apply = () => {
     const query = listingQuery(chosenNow(), keep);
     start(() => {
@@ -146,7 +162,7 @@ export function FilterDialog({
 
   // Live: each choice reaches the address a moment after it is made (typing a price waits for a pause).
   const shown = listingQuery(filters, keep);
-  const wanted = open && live ? listingQuery({ ...draft, minPrice: amount(minText), maxPrice: amount(maxText) }, keep) : shown;
+  const wanted = open && live ? listingQuery(chosenNow(), keep) : shown;
   useEffect(() => {
     if (!live || wanted === shown) return;
     const timer = window.setTimeout(() => start(() => router.replace(`${path}${wanted}`, { scroll: false })), 250);
@@ -156,6 +172,7 @@ export function FilterDialog({
     setDraft({ ...NO_FILTERS, sort: draft.sort });
     setMinText("");
     setMaxText("");
+    setRangeTexts({});
   };
 
   const chip = (pressed: boolean) =>
@@ -342,6 +359,21 @@ export function FilterDialog({
               );
             })}
 
+            {facets.ranges.map((range) => {
+              const typed = rangeTexts[range.name] ?? { min: "", max: "" };
+              const set = (end: "min" | "max") => (value: string) =>
+                setRangeTexts((current) => ({ ...current, [range.name]: { ...typed, [end]: value } }));
+              return (
+                <Section key={`range-${range.name}`} legend={range.label}>
+                  <div className="grid grid-cols-2 gap-3">
+                    <PriceField label={labels.priceFrom} currency={range.unit} value={typed.min} onChange={set("min")} placeholder={String(range.min)} signed={range.min < 0} />
+                    <PriceField label={labels.priceTo} currency={range.unit} value={typed.max} onChange={set("max")} placeholder={String(range.max)} signed={range.min < 0} />
+                  </div>
+                  <p className="mt-2 text-sm text-muted">{range.hint}</p>
+                </Section>
+              );
+            })}
+
             {facets.price && (
               <Section legend={labels.price}>
                 <div className="grid grid-cols-2 gap-3">
@@ -386,6 +418,13 @@ export function FilterDialog({
   );
 }
 
+/** What each range's ends read as in the two fields. */
+function textsOf(ranges: RangeFilter[]): Record<string, { min: string; max: string }> {
+  return Object.fromEntries(
+    ranges.map((range) => [range.name, { min: range.min === null ? "" : String(range.min), max: range.max === null ? "" : String(range.max) }]),
+  );
+}
+
 function Section({ legend, children }: { legend: string; children: ReactNode }) {
   return (
     <fieldset className="min-w-0">
@@ -401,12 +440,15 @@ function PriceField({
   value,
   onChange,
   placeholder,
+  signed = false,
 }: {
   label: string;
   currency: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  /** A number that may be below zero, such as a temperature. */
+  signed?: boolean;
 }) {
   return (
     <label className="flex flex-col gap-1 text-sm">
@@ -414,9 +456,9 @@ function PriceField({
       <span className="flex min-h-11 items-center gap-2 rounded-md border border-border px-3 focus-within:ring-2 focus-within:ring-(--accent)">
         <input
           type="text"
-          inputMode="decimal"
+          inputMode={signed ? "text" : "decimal"}
           value={value}
-          onChange={(event) => onChange(event.target.value.replace(/[^\d.,]/g, ""))}
+          onChange={(event) => onChange(event.target.value.replace(signed ? /[^\d.,-]/g : /[^\d.,]/g, ""))}
           placeholder={placeholder}
           className="w-full min-w-0 bg-transparent outline-none"
         />

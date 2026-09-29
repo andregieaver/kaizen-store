@@ -32,9 +32,13 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
 
 /** Custom fields (D118) belong to the page or article they are on, so only a store's pages and articles hold the component: Kaizen has none, and headers, footers and product layouts (which have their own product part) show no page's fields. */
 function customFieldProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
-  if (!pageBlocks(content).some((block) => block.type === "customField")) return null;
+  if (!pageBlocks(content).some((block) => block.type === "customField" || block.type === "fieldLoop")) return null;
   if (owner === null) return "Custom fields belong in a store's pages and articles.";
-  if (type !== "page" && type !== "article") return "Custom fields belong in a store's pages and articles; a product layout has its own Custom fields part.";
+  if (type !== "page" && type !== "article") {
+    // A header, footer or product layout has no page of its own to take fields from: only the store's own fields (D120) can be shown there.
+    const foreign = pageBlocks(content).some((block) => block.type === "fieldLoop" || (block.type === "customField" && block.source !== "store"));
+    if (foreign) return "Custom fields belong in a store's pages and articles; in a header, footer or product layout the component can only show the store's own fields (choose The store), and a product layout has its own Custom fields part.";
+  }
   return null;
 }
 

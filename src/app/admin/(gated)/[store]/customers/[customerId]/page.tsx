@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
@@ -16,6 +17,7 @@ import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
 
 import { setCustomerGroupAction } from "../../customer-groups/actions";
+import { saveCustomerFieldsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -160,6 +162,16 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
               </ul>
             )}
           </section>
+
+          {/* Custom fields (D120) are kept for the customer's account, so a guest has none. */}
+          {customer.customerId && (
+            <StaffFieldsSection
+              store={store}
+              entity="customer"
+              id={customer.customerId}
+              save={saveCustomerFieldsAction.bind(null, store.slug, customer.customerId)}
+            />
+          )}
 
           <section aria-labelledby="emails" className={card}>
             <h2 id="emails" className="mb-3 font-medium">Emails</h2>

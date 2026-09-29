@@ -2529,7 +2529,7 @@ describe("custom fields (D118)", () => {
     await put("");
     await put("nb");
     await expect(put("nb")).rejects.toThrow();
-    await expect(put("", "customer")).rejects.toThrow();
+    await expect(put("", "widget")).rejects.toThrow();
     await expect(db.query("insert into commerce.field_values (store_id, entity, entity_id, values) values ($1, 'product', $2, '[]')", [store, crypto.randomUUID()])).rejects.toThrow();
   });
 
@@ -2643,6 +2643,68 @@ describe("custom fields (D118)", () => {
     // The copy's own change leaves the template's alone.
     await db.query("update commerce.field_values set values = '{}' where store_id = $1", [copy]);
     expect((await db.query("select 1 from commerce.field_values where store_id = $1 and values <> '{}'", [template])).rows.length).toBeGreaterThan(0);
+  });
+
+  it("keeps values for the store itself, customers and orders, and takes a customer's and an order's away with them (D120)", async () => {
+    const { id: customer } = await one<{ id: string }>(
+      "insert into commerce.customers (store_id, email) values ($1, 'fields-customer@example.com') returning id",
+      [store],
+    );
+    const order = await createOrder("K-FIELDS-1");
+    const put = (entity: string, id: string) =>
+      db.query("insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, $2, $3, '', '{\"f_abcdef123456\": \"x\"}')", [store, entity, id]);
+    await put("store", store);
+    await put("customer", customer);
+    await put("order", order);
+    // Only the known kinds of thing.
+    await expect(put("staff", customer)).rejects.toThrow(/field_values_entity/);
+
+    await db.query("delete from commerce.customers where id = $1", [customer]);
+    await db.query("delete from commerce.orders where id = $1", [order]);
+    const { rows } = await db.query<{ entity: string }>(
+      "select entity from commerce.field_values where store_id = $1 and entity in ('store', 'customer', 'order')",
+      [store],
+    );
+    // The store's own stay: they belong to the store.
+    expect(rows.map((r) => r.entity)).toEqual(["store"]);
+  });
+
+  it("copies the template's own store fields to a new store, never a customer's or an order's (D120)", async () => {
+    const template = await createStore("fields-template-store", ["NO"]);
+    await db.query("update commerce.stores set is_template = false where is_template");
+    await db.query("update commerce.stores set is_template = true where id = $1", [template]);
+    await group(template, "about-store", { entities: ["store"] });
+    const { id: customer } = await one<{ id: string }>(
+      "insert into commerce.customers (store_id, email) values ($1, 'template-customer@example.com') returning id",
+      [template],
+    );
+    const { id: order } = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email,
+         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address)
+       values ($1, 'K-TPL-1', 'NO', 'NOK', 'nb-NO', 'a@example.com', 1000, 0, 0, 200, 1000, '{}', '{}') returning id`,
+      [template],
+    );
+    const put = (entity: string, id: string, locale: string, values: string) =>
+      db.query("insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, $2, $3, $4, $5::jsonb)", [template, entity, id, locale, values]);
+    await put("store", template, "", '{"f_abcdef123456": "Kaffe"}');
+    await put("store", template, "nb", '{"f_abcdef123456": "Kaffe på norsk"}');
+    await put("customer", customer, "", '{"f_abcdef123456": "Private"}');
+    await put("order", order, "", '{"f_abcdef123456": "Private"}');
+
+    const owner = await createAccount("fields-store-owner@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'fields-store-copy', 'Copy', $2) as id", [template, owner]);
+    const { rows } = await db.query<{ entity: string; entity_id: string; locale: string; values: Record<string, string> }>(
+      "select entity, entity_id, locale, values from commerce.field_values where store_id = $1 order by entity, locale",
+      [copy],
+    );
+    // The copy's own values are kept under the copy's id, in every language; nothing personal came along.
+    expect(rows).toEqual([
+      { entity: "store", entity_id: copy, locale: "", values: { f_abcdef123456: "Kaffe" } },
+      { entity: "store", entity_id: copy, locale: "nb", values: { f_abcdef123456: "Kaffe på norsk" } },
+    ]);
+    // A group for the store is copied like the others.
+    const { rows: groups } = await db.query<{ entities: string[] }>("select entities from commerce.field_groups where store_id = $1", [copy]);
+    expect(groups.map((g) => g.entities)).toEqual([["store"]]);
   });
 
   it("no longer keeps the unused attributes on products", async () => {

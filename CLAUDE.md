@@ -580,6 +580,29 @@ of running `playwright install`.
   `create_field_group`, the last two gated). A new kind of thing with fields is
   an entry in `FIELD_ENTITIES`, `LOCATION_PARAMS`, `Facts` and `factsFor()`, a
   cleanup trigger, `clone_store()` and its own editor.
+  Phase 3 (D120): **money** fields (`{ amountMinor, currency }`, only in a
+  currency the store offers, `moneyCurrencies(store)`; shown converted to the
+  market's currency at the store's rates by `convertMinor`, else in its own,
+  never with a VAT label; never `chat`, never a structured-data property) and
+  **flexible content** (`layouts`, each a named set of sub fields; rows are
+  `{ id, layout, …cells }`, stored like a repeater's: use `rowFieldsOf()`,
+  rows of a layout that is gone are dropped on save and skipped on read).
+  The **store** (`entity 'store'`, id = the store's; edited at
+  `/admin/{store}/fields/store`, shown by a `customField` block, a product
+  part or a binding with `source: 'store'`, allowed in headers and footers only
+  so) and **customers** and **orders** (`staffGroupProblem()`: groups only for
+  those two, no rules, nothing public, no picture, gallery or file; never read
+  on the shopper's side: `field-values-readers.test.ts` lists the modules that
+  may read `field_values` and fails if another does; customer values go with
+  the customer, `customerFieldExport()` is the export). A **field loop**
+  (`fieldLoop` block, product part `loop`, `src/lib/field-loop.ts`) draws a
+  repeater's rows as cards, a list, a grid or columns from slots (picture,
+  title, text, link, badge) filled with the row's sub fields, never nested
+  links. A content grid's `tileFields` (up to three plain fields) are read for
+  all its items at once (`shownFieldsForItems()`, one batch, group rules
+  honoured). A number or measurement field with `filter` is a range filter
+  (`f.<name>.min`/`.max`, a measurement compared in its first unit only).
+- Modals (D121, `src/lib/page-modal.ts`, `src/components/page-modal.tsx`, `ModalFields`): a row with `modal` set (`RowModal`: key, triggers, frequency, look) is not in the page's flow; `PageRowView` draws it through `ModalRow` in a native `<dialog>` (`PageModal`), so pages, articles, headers and footers (site-wide), product layouts and Kaizen's pages all get it. Its content is an ordinary row; its Style tab is the panel's (`rowBox(row, mode, true)`, `modalPanelStyle()`). Anything counting rows for the page's flow uses `flowRows()` (`pageRoomClass`, `headerOverlays`, main heading); a new such count does too. Its dialog id `modal-{key}` is a page id (`htmlIds()`, `repeatedHtmlId()`), and `copyRow()` gives a copy a fresh key. Triggers are delegated listeners (one click listener on `document`, `hashchange`, timers, `mouseout`), never inline handlers; the timer and exit intent open by themselves at most once per page view, never over another modal, never on working pages (`autoAllowed()`) or in the builder. Frequency (`shouldAutoOpen()`, `rememberClose()`) is stored as `kaizen_modal_{key}`, a `preferences` item in `KNOWN_COOKIES`, written only after consent (`mayRemember()`), and declared by `usesRememberedModals()`. New interface text goes in `m.modal`.
 - Headers and footers (D80, `src/lib/site-layout.ts`, `src/components/site-parts.tsx`,
   `src/server/site-layouts.ts`): pages of type `header` and `footer` built
   with `site` blocks (`SITE_PARTS`, drawn by `SitePartView` with a

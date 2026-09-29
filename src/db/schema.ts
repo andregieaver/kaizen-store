@@ -1297,7 +1297,8 @@ export const fieldGroups = commerce.table(
 );
 
 /**
- * What was entered in the fields of a product, page or article (D118): one row
+ * What was entered in the fields of a product, page or article (D118), and of
+ * the store itself, a customer or an order (D120): one row
  * per thing and language, `locale` empty for values that are the same in every
  * language. Keyed by field id in `values`, so renaming a field loses nothing.
  * No foreign key on `entity_id` (it names rows of different tables): triggers
@@ -1317,7 +1318,10 @@ export const fieldValues = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.entity, t.entityId, t.locale] }),
-    check("field_values_entity", sql`${t.entity} in ('product', 'page', 'article', 'variant', 'term')`),
+    check(
+      "field_values_entity",
+      sql`${t.entity} in ('product', 'page', 'article', 'variant', 'term', 'store', 'customer', 'order')`,
+    ),
     check("field_values_values", sql`jsonb_typeof(${t.values}) = 'object'`),
   ],
 );

@@ -9,6 +9,7 @@ import {
   localized,
   newRowId,
   readField,
+  rowFieldsOf,
   subFieldsOf,
   valuesFor,
   writeField,
@@ -17,14 +18,17 @@ import {
   type FieldFile,
   type FieldGroup,
   type FieldImage,
+  type FieldLayout,
   type FieldLink,
   type FieldLookups,
   type FieldMeasurement,
+  type FieldMoney,
   type FieldValue,
   type FieldVideo,
   type Values,
 } from "@/lib/custom-fields";
 import { moveItem } from "@/lib/field-group-editor";
+import { amountText, isMoney, parseAmount } from "@/lib/field-money";
 import { EMPTY_DOC, type RichTextDoc } from "@/lib/page-content";
 import { shrinkImage } from "@/lib/image-resize";
 
@@ -335,6 +339,17 @@ function FieldInput({
         </div>,
       );
     }
+    case "money":
+      return wrap(
+        <MoneyInput
+          id={id}
+          label={def.label}
+          value={isMoney(value) ? value : undefined}
+          currencies={lookups.currencies ?? []}
+          placeholder={def.placeholder}
+          onChange={onChange}
+        />,
+      );
     case "select":
       return wrap(
         <select
@@ -556,6 +571,18 @@ function FieldInput({
     case "repeater":
       return (
         <RepeaterField
+          def={def}
+          rows={asRows(value)}
+          inheritedRows={asRows(inherited)}
+          ctx={ctx}
+          onChange={onChange}
+          legend={label}
+          help={help}
+        />
+      );
+    case "flexible":
+      return (
+        <FlexibleField
           def={def}
           rows={asRows(value)}
           inheritedRows={asRows(inherited)}
@@ -889,6 +916,240 @@ function RepeaterField({
         {status}
       </p>
     </fieldset>
+  );
+}
+
+/**
+ * Flexible content: rows that each take one of the layouts the owner defined,
+ * added by choosing a layout, moved and removed like a repeater's rows (in the
+ * main language only). Another language writes the texts in each row, which
+ * follow the row wherever it is moved. A row shows its layout's fields.
+ */
+function FlexibleField({
+  def,
+  rows,
+  inheritedRows,
+  ctx,
+  onChange,
+  legend,
+  help,
+}: {
+  def: FieldDef;
+  rows: Values[];
+  inheritedRows: Values[];
+  ctx: Ctx;
+  onChange: (value: FieldValue | undefined) => void;
+  legend: ReactNode;
+  help: ReactNode;
+}) {
+  const [status, setStatus] = useState("");
+  const [choosing, setChoosing] = useState(false);
+  const structure = ctx.from === undefined;
+  const layouts = def.layouts ?? [];
+  const { canAdd, canRemove } = rowLimits(def, rows.length);
+  const needed = rowsNeeded(def, rows.length);
+  const mainRows = new Map(inheritedRows.map((row) => [String(row.id), row]));
+  const most = Math.min(def.maxRows ?? 100, 100);
+  const layoutName = (layout: FieldLayout) => localized(layout.label, layout.labels, ctx.locale);
+
+  const rowId = (row: Values) => String(row.id);
+  const setRow = (id: string, cells: Values, layout: unknown) =>
+    onChange(rows.map((row) => (rowId(row) === id ? { ...cells, id, layout: String(layout) } : row)));
+  const add = (layout: FieldLayout) => {
+    onChange([...rows, { id: newRowId(), layout: layout.key }]);
+    setChoosing(false);
+    setStatus(`Row ${rows.length + 1} added, ${layoutName(layout)}.`);
+  };
+  const remove = (index: number) => {
+    onChange(rows.filter((_, i) => i !== index));
+    setStatus(`Row ${index + 1} removed.`);
+  };
+  const move = (from: number, to: number) => {
+    onChange(moveItem(rows, from, to));
+    setStatus(`Row ${from + 1} moved to place ${to + 1} of ${rows.length}.`);
+  };
+
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+      <legend className="px-1 font-medium">{legend}</legend>
+      {help}
+      {!structure && (
+        <p className={`${hint} text-xs`}>
+          {`Rows are added, removed and moved in ${ctx.from}. Here you write the texts in them.`}
+        </p>
+      )}
+      {rows.length === 0 ? (
+        <p className={`${hint} text-xs`}>{structure ? "No rows yet." : `No rows yet. Add them in ${ctx.from}.`}</p>
+      ) : (
+        <ol className="flex flex-col gap-3">
+          {rows.map((row, index) => {
+            const layout = def.layouts?.find((l) => l.key === row.layout);
+            const fields = rowFieldsOf(def, row);
+            if (!layout || fields === null) return null;
+            const subs = editableSubs(fields, ctx.locale, ctx.main);
+            const inherited = mainRows.get(rowId(row));
+            const eff = ctx.from ? { ...inherited, ...row } : row;
+            return (
+              <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-muted">
+                    Row {index + 1}: {layoutName(layout)}
+                  </span>
+                  {structure && (
+                    <RowButtons
+                      name={`row ${index + 1} (${layoutName(layout)}) of ${def.label}`}
+                      index={index}
+                      count={rows.length}
+                      canRemove={canRemove}
+                      onMove={(to) => move(index, to)}
+                      onRemove={() => remove(index)}
+                    />
+                  )}
+                </div>
+                {subs.length === 0 ? (
+                  <p className={`${hint} text-xs`}>Nothing in this layout is translated. Change it in {ctx.from}.</p>
+                ) : (
+                  <CellFields
+                    subs={subs}
+                    own={row}
+                    eff={eff}
+                    inherited={inherited}
+                    ctx={ctx}
+                    onChange={(cells) => setRow(rowId(row), cells, row.layout)}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {structure && (
+        <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => (layouts.length === 1 ? add(layouts[0]) : setChoosing((open) => !open))}
+              disabled={!canAdd || layouts.length === 0}
+              aria-expanded={layouts.length > 1 ? choosing : undefined}
+              className={button}
+            >
+              {def.buttonLabel || "Add row"}
+            </button>
+            {!canAdd && (
+              <span className={`${hint} text-xs`}>
+                The most is {most} {most === 1 ? "row" : "rows"}.
+              </span>
+            )}
+          </div>
+          {choosing && canAdd && (
+            <div role="group" aria-label={`Choose a layout for the new row of ${def.label}`} className="flex flex-wrap gap-2">
+              {layouts.map((layout) => (
+                <button key={layout.key} type="button" onClick={() => add(layout)} className={button}>
+                  {layoutName(layout)}
+                </button>
+              ))}
+              <button type="button" onClick={() => setChoosing(false)} className={`${button} text-muted`}>
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {needed && <p className="text-xs text-red-700 dark:text-red-400">{needed}</p>}
+      <p role="status" aria-live="polite" className="sr-only">
+        {status}
+      </p>
+    </fieldset>
+  );
+}
+
+/**
+ * An amount of money: the amount typed with the currency's decimals (a comma
+ * works too) and a currency chosen among those the store offers, its main one
+ * first. Kept as whole minor units, so nothing is ever rounded in a float.
+ */
+function MoneyInput({
+  id,
+  label,
+  value,
+  currencies,
+  placeholder,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: FieldMoney | undefined;
+  currencies: string[];
+  placeholder?: string;
+  onChange: (value: FieldMoney | undefined) => void;
+}) {
+  const key = value ? `${value.amountMinor}|${value.currency}` : "";
+  const [text, setText] = useState(value ? amountText(value.amountMinor, value.currency) : "");
+  const [currency, setCurrency] = useState(value?.currency ?? currencies[0] ?? "");
+  // A value changed from outside (another language, an import) replaces what was typed.
+  const [seen, setSeen] = useState(key);
+  if (seen !== key) {
+    setSeen(key);
+    if (value) {
+      setText(amountText(value.amountMinor, value.currency));
+      setCurrency(value.currency);
+    } else if (parseAmount(text, currency) !== null) {
+      setText("");
+    }
+  }
+  // A saved currency the store no longer offers stays in the list, so what was entered is still shown as it is.
+  const options = currency !== "" && !currencies.includes(currency) ? [currency, ...currencies] : currencies;
+  const minor = text.trim() === "" ? null : parseAmount(text, currency);
+  const invalid = text.trim() !== "" && minor === null;
+  const problemId = `${id}-problem`;
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <input
+          id={id}
+          type="text"
+          inputMode="decimal"
+          value={text}
+          placeholder={placeholder ?? "0.00"}
+          aria-invalid={invalid}
+          aria-describedby={invalid ? problemId : undefined}
+          onChange={(event) => {
+            const next = event.target.value;
+            setText(next);
+            if (next.trim() === "") onChange(undefined);
+            else {
+              const parsed = parseAmount(next, currency);
+              if (parsed !== null && currency !== "") onChange({ amountMinor: parsed, currency });
+            }
+          }}
+          className={input}
+        />
+        <select
+          aria-label={`${label}: currency`}
+          value={currency}
+          disabled={options.length === 0}
+          onChange={(event) => {
+            const next = event.target.value;
+            setCurrency(next);
+            const parsed = parseAmount(text, next);
+            if (parsed !== null) onChange({ amountMinor: parsed, currency: next });
+          }}
+          className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+        >
+          {options.length === 0 && <option value="">No currency</option>}
+          {options.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </select>
+      </div>
+      {invalid && (
+        <p id={problemId} role="alert" className="text-xs text-red-700 dark:text-red-400">
+          Write an amount of zero or more with at most as many decimals as {currency || "the currency"} has.
+        </p>
+      )}
+    </div>
   );
 }
 

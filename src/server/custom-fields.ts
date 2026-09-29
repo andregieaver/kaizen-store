@@ -10,6 +10,9 @@ import {
   MAX_LOOKUPS,
   needsLookups,
   subFieldsOf,
+  holdsMoney,
+  moneyProblems,
+  tidyFlexible,
   type FieldChanges,
   type FieldFile,
   type FieldLink,
@@ -22,10 +25,12 @@ import {
   groupApplies,
   importGroups,
   isFieldEntity,
+  isStaffEntity,
   isTranslatable,
   parseFieldChanges,
   requiredProblems,
   shownGroup,
+  staffGroupProblem,
   type Facts,
   type FieldData,
   type FieldDef,
@@ -34,7 +39,9 @@ import {
   type FieldValue,
   type Values,
   type ShownGroup,
+  type FieldWords,
 } from "@/lib/custom-fields";
+import { moneyCurrencies, shownMoney } from "@/lib/field-money";
 import { usesSearch } from "@/lib/field-search";
 import { t } from "@/lib/i18n";
 import type { PageContent } from "@/lib/page-content";
@@ -44,7 +51,8 @@ import { audit, type Membership } from "./auth";
 import { isOwnFieldFile } from "./media";
 import type { SaveResult } from "./settings";
 import { refreshFieldSearch, refreshStoreFieldSearch } from "./field-search";
-import { getStore } from "./stores";
+import { marketIn } from "./shop";
+import { getStore, storeTag } from "./stores";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -110,7 +118,9 @@ export async function allActiveFieldGroups(storeId: string): Promise<FieldGroup[
   cacheLife("hours");
   cacheTag(fieldsTag(storeId));
   const rows = await readDb().execute<Row>(sql`
-    select * from commerce.field_groups where store_id = ${storeId}::uuid and active order by sort, created_at
+    select * from commerce.field_groups
+    where store_id = ${storeId}::uuid and active and not (entities ?| array['customer', 'order'])
+    order by sort, created_at
   `);
   return rows.map(toGroup);
 }
@@ -325,11 +335,30 @@ export async function termRuleFacts(run: Runner, storeId: string, termId: string
   return { entity: "term", termKind: String(row.kind), content: String(row.content_type), categories: [], tags: [], roles: [] };
 }
 
+/** The store's own fields (D120): one set for the whole store, keyed by the store's id, with nothing for rules to ask about. */
+export async function storeRuleFacts(run: Runner, storeId: string, id: string): Promise<Facts | null> {
+  if (id !== storeId) return null;
+  const [row] = await run.execute<Row>(sql`select id from commerce.stores where id = ${storeId}::uuid`);
+  return row ? { entity: "store", categories: [], tags: [], roles: [] } : null;
+}
+
+/** A customer's or an order's fields (D120, staff only): the thing must be the store's own; there are no rules to ask about. */
+export async function staffRuleFacts(run: Runner, storeId: string, entity: "customer" | "order", id: string): Promise<Facts | null> {
+  const [row] = await run.execute<Row>(
+    entity === "customer"
+      ? sql`select id from commerce.customers where store_id = ${storeId}::uuid and id = ${id}::uuid`
+      : sql`select id from commerce.orders where store_id = ${storeId}::uuid and id = ${id}::uuid`,
+  );
+  return row ? { entity, categories: [], tags: [], roles: [] } : null;
+}
+
 /** What group rules ask about a thing of any kind, as it is now in the database. */
 export function factsFor(run: Runner, storeId: string, entity: FieldEntity, id: string): Promise<Facts | null> {
   if (entity === "product") return productFacts(run, storeId, id);
   if (entity === "variant") return variantFacts(run, storeId, id);
   if (entity === "term") return termRuleFacts(run, storeId, id);
+  if (entity === "store") return storeRuleFacts(run, storeId, id);
+  if (entity === "customer" || entity === "order") return staffRuleFacts(run, storeId, entity, id);
   return pageFacts(run, storeId, id);
 }
 
@@ -409,16 +438,26 @@ async function writeFieldData(
   options: { facts: Facts; locales: readonly string[]; main: string; requireAll: boolean },
 ): Promise<string[]> {
   if (raw === undefined || raw === null) return [];
-  const groups = (await activeFieldGroups(storeId, entity)).filter((g) => groupApplies(g, options.facts));
+  // A customer's or an order's groups are for staff alone: one that somehow holds anything else or a public field is not used.
+  const groups = (await activeFieldGroups(storeId, entity)).filter(
+    (g) => groupApplies(g, options.facts) && (!isStaffEntity(entity) || staffGroupProblem(g) === null),
+  );
   const defs = groups.flatMap((g) => g.fields);
   if (defs.length === 0) return [];
 
   const { changes, problems } = parseFieldChanges(defs, raw, options.locales, options.main);
   if (problems.length > 0) return problems;
+  // Money is in a currency the store offers (D120).
+  if (defs.some(holdsMoney)) {
+    const offered = await offeredCurrencies(storeId);
+    const wrong = moneyProblems(defs, changes, offered);
+    if (wrong.length > 0) return wrong;
+  }
   await keepOwnRelations(run, storeId, defs, changes);
 
   const existing = await getFieldData(storeId, entity, entityId, run);
-  const next = applyChanges(existing, changes);
+  // Rows of a layout that flexible content no longer has go with it, and so do the words written for them.
+  const next = tidyFlexible(defs, applyChanges(existing, changes));
   if (options.requireAll) {
     const missing = groups.flatMap((g) => requiredProblems(g.fields, next, options.main));
     if (missing.length > 0) return missing;
@@ -466,6 +505,13 @@ export async function saveTermFields({ account, store }: Membership, termId: str
   return { ok: true };
 }
 
+/** The currencies a store offers for money fields, its main one first (`store.localization`, D109). */
+async function offeredCurrencies(storeId: string, run: Runner = db()): Promise<string[]> {
+  const [row] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  const store = row ? await getStore(String(row.slug)) : null;
+  return store ? moneyCurrencies(store) : [];
+}
+
 /** Ids of the store's own things that a value points at, by kind of field, for the field types that point at some. */
 function pointsAt(def: FieldDef, value: FieldValue | null | undefined, into: { product: Set<string>; page: Set<string>; term: Set<string> }): void {
   if (value === null || value === undefined) return;
@@ -483,8 +529,9 @@ function pointsAt(def: FieldDef, value: FieldValue | null | undefined, into: { p
     else if (link.kind === "category" || link.kind === "tag") into.term.add(link.ref);
   } else if (def.type === "group") {
     for (const sub of subFieldsOf(def)) pointsAt(sub, (value as Values)[sub.id], into);
-  } else if (def.type === "repeater") {
-    // Rows as they are kept shared (a list), or a language's words by row id (an object).
+  } else if (def.type === "repeater" || def.type === "flexible") {
+    // Rows as they are kept shared (a list), or a language's words by row id (an object). A flexible row's cells are
+    // found by id among all its layouts' fields (ids are unique in a group), so each is checked as its own field.
     const rows = Array.isArray(value) ? (value as Values[]) : Object.values(value as unknown as Record<string, Values>);
     for (const row of rows) for (const sub of subFieldsOf(def)) pointsAt(sub, row[sub.id], into);
   }
@@ -535,13 +582,14 @@ async function keepOwnRelations(run: Runner, storeId: string, defs: FieldDef[], 
       }
       return Object.keys(cells).length > 0 ? cells : null;
     }
-    if (def.type === "repeater") {
-      // Rows keep their place and id; only what they point at can go.
+    if (def.type === "repeater" || def.type === "flexible") {
+      // Rows keep their place, id (and layout); only what they point at can go.
       const cleanRow = (row: Values): Values => {
         const next: Values = {};
         if (row.id !== undefined) next.id = row.id;
+        if (row.layout !== undefined) next.layout = row.layout;
         for (const id of Object.keys(row)) {
-          if (id === "id") continue;
+          if (id === "id" || id === "layout") continue;
           const sub = subFieldsOf(def).find((f) => f.id === id);
           const kept = sub ? clean(sub, row[id]) : row[id];
           if (kept !== null && kept !== undefined) next[id] = kept;
@@ -629,7 +677,8 @@ export async function termFieldsForEditor(storeId: string, termId: string): Prom
 /** The store's products, published pages and articles, and categories and tags an editor can choose from (the first of each, by name). */
 export async function fieldLookups(storeId: string): Promise<FieldLookups> {
   const run = db();
-  const [products, pages, terms] = await Promise.all([
+  const [currencies, products, pages, terms] = await Promise.all([
+    offeredCurrencies(storeId, run),
     run.execute<Row>(sql`
       select p.id, coalesce((select title from commerce.product_translations where product_id = p.id order by locale limit 1), p.handle) as title
       from commerce.products p where p.store_id = ${storeId}::uuid and p.status <> 'archived'
@@ -648,12 +697,28 @@ export async function fieldLookups(storeId: string): Promise<FieldLookups> {
     products: products.map((r) => ({ id: String(r.id), title: String(r.title) })),
     pages: pages.map((r) => ({ id: String(r.id), title: String(r.title), type: r.type === "article" ? "article" : "page" })),
     terms: terms.map((r) => ({ id: String(r.id), name: String(r.name), kind: r.kind === "tag" ? "tag" : "category" })),
+    currencies,
   };
 }
 
 // ---------------------------------------------------------------------------
 // On the site
 // ---------------------------------------------------------------------------
+
+/**
+ * What values are worded with for a shopper (D120): yes and no in their language, and money in
+ * their market's currency at the store's rates (`shown()`'s conversion, between any two currencies
+ * the store has a rate for; in its own currency when it has none), never with a VAT label.
+ */
+function fieldWords(store: Awaited<ReturnType<typeof getStore>>, marketSlug: string, locale: string, lang: string): FieldWords {
+  const m = t(lang);
+  const market = store ? marketIn(store, marketSlug) : undefined;
+  return {
+    yes: m.customFields.yes,
+    no: m.customFields.no,
+    money: (value) => shownMoney(value, locale, store && market ? { currency: market.currency, rates: store.localization.rates } : undefined),
+  };
+}
 
 /**
  * The public fields of a product, page or article, in the shopper's language,
@@ -671,19 +736,24 @@ export async function shownFieldsFor(
   "use cache";
   cacheLife("hours");
   cacheTag(fieldsTag(storeId));
-  const groups = await activeFieldGroups(storeId, entity);
+  // A customer's or an order's fields (D120) are for staff alone, whatever the data says.
+  if (isStaffEntity(entity)) return [];
+  // The store's own fields are the store's, under its own id.
+  if (entity === "store" && entityId !== storeId) return [];
+  const groups = (await activeFieldGroups(storeId, entity)).filter((g) => !g.entities.some(isStaffEntity));
   if (groups.length === 0) return [];
   const run = readDb();
   const [slug] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
   const store = slug ? await getStore(String(slug.slug)) : null;
+  // Money is shown at the store's rates: a change to its currencies refreshes it.
+  if (store) cacheTag(storeTag(store.slug));
   const main = store?.localization.locales[0] ?? locale;
   const facts = await factsFor(run, storeId, entity, entityId);
   if (!facts) return [];
   const applying = groups.filter((g) => groupApplies(g, facts) && g.fields.some((f) => f.access === "public"));
   if (applying.length === 0) return [];
   const data = await getFieldData(storeId, entity, entityId, run);
-  const m = t(lang);
-  const words = { yes: m.customFields.yes, no: m.customFields.no };
+  const words = fieldWords(store, marketSlug, locale, lang);
   const shown = applying.map((g) => shownGroup(g, data, locale, main, words, { publicOnly: true }));
   if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, shown);
   return shown.filter((g) => g.fields.length > 0);
@@ -714,6 +784,7 @@ export async function shownFieldsForVariants(
   if (applying.length === 0) return {};
   const [slug] = await run.execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
   const store = slug ? await getStore(String(slug.slug)) : null;
+  if (store) cacheTag(storeTag(store.slug));
   const main = store?.localization.locales[0] ?? locale;
   const rows = await run.execute<Row>(sql`
     select fv.entity_id, fv.locale, fv.values
@@ -729,8 +800,7 @@ export async function shownFieldsForVariants(
     else own.translations[String(row.locale)] = (row.values ?? {}) as Values;
     data.set(id, own);
   }
-  const m = t(lang);
-  const words = { yes: m.customFields.yes, no: m.customFields.no };
+  const words = fieldWords(store, marketSlug, locale, lang);
   const out: Record<string, ShownGroup[]> = {};
   for (const [id, own] of data) out[id] = applying.map((g) => shownGroup(g, own, locale, main, words, { publicOnly: true }));
   if (store) await resolveRelations(run, storeId, store.slug, marketSlug, locale, Object.values(out).flat());
@@ -763,6 +833,7 @@ async function resolveRelations(
       visit(field);
       if (field.children) each(field.children, visit);
       for (const row of field.rows ?? []) each(row, visit);
+      for (const block of field.blocks ?? []) each(block.fields, visit);
     }
   };
   const idsOf = (field: ShownField): { kind: "product" | "page" | "term"; id: string }[] => {
@@ -837,8 +908,11 @@ async function resolveRelations(
         ...field,
         ...(field.children && { children: prune(field.children) }),
         ...(field.rows && { rows: field.rows.map(prune).filter((row) => row.length > 0) }),
+        ...(field.blocks && { blocks: field.blocks.map((block) => ({ ...block, fields: prune(block.fields) })).filter((block) => block.fields.length > 0) }),
       }))
-      .filter((field) => (field.children ? field.children.length > 0 : field.rows ? field.rows.length > 0 : true));
+      .filter((field) =>
+        field.children ? field.children.length > 0 : field.rows ? field.rows.length > 0 : field.blocks ? field.blocks.length > 0 : true,
+      );
   for (const group of groups) group.fields = prune(group.fields);
 }
 

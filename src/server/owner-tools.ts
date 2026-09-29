@@ -15,7 +15,7 @@ import { cartReminderStats } from "./cart-reminders";
 import { findCustomer, getCustomerDetail, listCustomers } from "./customer-admin";
 import { listEmails } from "./email";
 import { findClaims } from "@/lib/claims";
-import { fieldShows, groupApplies, isEmptyValue, isTranslatable, readField, valuesFor, type Facts } from "@/lib/custom-fields";
+import { fieldShows, groupApplies, isEmptyValue, isStaffEntity, isTranslatable, readField, valuesFor, type Facts } from "@/lib/custom-fields";
 import {
   buildFieldGroup,
   describeLocation,
@@ -29,7 +29,7 @@ import {
 } from "@/lib/field-tools";
 import { t } from "@/lib/i18n";
 
-import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts, productFacts, saveFieldData, saveFieldGroup } from "./custom-fields";
+import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts, productFacts, saveFieldData, saveFieldGroup, storeRuleFacts } from "./custom-fields";
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
@@ -47,7 +47,7 @@ import { listOrders } from "./orders";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
-import type { Store } from "./stores";
+import { storeTag, type Store } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -881,8 +881,16 @@ const mainOf = (store: Store) => store.localization.locales[0] ?? "en";
 
 type FieldTarget = { id: string; title: string; facts: Facts; editor: string; tags: string[] };
 
-/** The product, page or article a tool means, the store's only, with what group rules ask about it. */
-async function findFieldTarget(store: Store, entity: ToolFieldEntity, ref: string): Promise<FieldTarget> {
+/** The product, page or article a tool means (or the store itself, which needs no `ref`), the store's only, with what group rules ask about it. */
+async function findFieldTarget(store: Store, entity: ToolFieldEntity, item: string | undefined): Promise<FieldTarget> {
+  if (entity === "store") {
+    // The store's own fields (D120): one set for the whole site.
+    const facts = await storeRuleFacts(db(), store.id, store.id);
+    if (!facts) return fail("The store could not be found.");
+    return { id: store.id, title: store.name, facts, editor: adminLink(store, "/fields/store"), tags: [storeTag(store.slug)] };
+  }
+  const ref = item ?? "";
+  if (ref === "") return fail(`Say which ${entity} with item: its id, ${entity === "product" ? "handle or title" : "address (slug) or id"}.`);
   if (entity === "product") {
     const id = await findProductId(store, ref);
     const [[head], facts] = await Promise.all([
@@ -908,7 +916,8 @@ async function findFieldTarget(store: Store, entity: ToolFieldEntity, ref: strin
 }
 
 async function listFieldGroupsTool({ store }: OwnerToolContext) {
-  const groups = await listFieldGroups(store.id);
+  // Customers' and orders' groups are for staff and never shown here (D120).
+  const groups = (await listFieldGroups(store.id)).filter((g) => !g.entities.some(isStaffEntity));
   const termIds = [...new Set(groups.flatMap(termIdsInRules))];
   const terms = termIds.length
     ? await db().execute<Row>(sql`select id, name from commerce.terms where store_id = ${store.id}::uuid and id in (${sql.join(termIds.map((id) => sql`${id}::uuid`), sql`, `)})`)

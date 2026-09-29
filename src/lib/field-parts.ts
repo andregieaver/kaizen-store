@@ -1,4 +1,4 @@
-import type { FieldImage, FieldVideo, ShownField, ShownGroup, ShownLink } from "./custom-fields";
+import type { FieldImage, FieldVideo, ShownBlock, ShownField, ShownGroup, ShownLink } from "./custom-fields";
 import { isPictureAddress } from "./picture-address";
 import { embedUrl } from "./video-embed";
 
@@ -104,6 +104,18 @@ export const drawableChildren = (field: ShownField): ShownField[] => (field.chil
 export const drawableRows = (field: ShownField): ShownField[][] =>
   (field.rows ?? []).map((row) => row.filter(drawable)).filter((row) => row.length > 0);
 
+/** Flexible content's rows with only what can be drawn; a row with nothing left is dropped, and each keeps its layout. */
+export const drawableBlocks = (field: ShownField): ShownBlock[] =>
+  (field.blocks ?? []).map((block) => ({ ...block, fields: block.fields.filter(drawable) })).filter((block) => block.fields.length > 0);
+
+/**
+ * Whether a value says what it is without its label, as content in a flexible
+ * row (a paragraph, a picture, a video, a link) does; a number, a date or an
+ * amount does not, and keeps its label there.
+ */
+export const standsAlone = (field: ShownField): boolean =>
+  ["text", "textarea", "richText", "image", "gallery", "video", "link", "file", "product", "page", "term", "group"].includes(field.type);
+
 /** A repeater's table columns: each field (by id) in order of first appearance, so a row that lacks one gets an empty cell. */
 export function repeaterColumns(rows: ShownField[][]): { id: string; label: string }[] {
   const columns = new Map<string, string>();
@@ -124,6 +136,8 @@ export function drawable(field: ShownField): boolean {
       return drawableChildren(field).length > 0;
     case "repeater":
       return drawableRows(field).length > 0;
+    case "flexible":
+      return drawableBlocks(field).length > 0;
     case "checkbox":
       return (field.items ?? []).some((item) => item.trim() !== "");
     case "richText":

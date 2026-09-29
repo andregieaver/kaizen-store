@@ -1,5 +1,6 @@
 import type { ProductAudience } from "./b2b";
 import type { PriceView } from "./pricing";
+import type { TileField } from "./tile-fields";
 
 /**
  * What a content grid (D51) shows, as looked up on the server: its items,
@@ -19,6 +20,8 @@ export type GridItem = {
   audience?: ProductAudience;
   /** Articles only (D57): when it was first published, shown on its tile. */
   date?: string;
+  /** The custom fields the grid's tiles show under the title (D120), as label and words. */
+  fields?: TileField[];
 };
 
 export type GridData = { items: GridItem[]; lang: string; locale: string };

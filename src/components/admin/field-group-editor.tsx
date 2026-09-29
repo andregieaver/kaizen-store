@@ -32,8 +32,10 @@ import {
   isStructural,
   newField,
   slugOf,
+  subFieldsOf,
   type FieldData,
   type FieldDef,
+  isStaffEntity,
   type FieldEntity,
   type FieldGroup,
   type FieldGroupInput,
@@ -89,6 +91,7 @@ export function FieldGroupEditor({
   terms,
   roles,
   languages,
+  currencies,
   save,
   base,
   actions,
@@ -99,6 +102,8 @@ export function FieldGroupEditor({
   roles: { value: string; label: string }[];
   /** The store's languages, the main one first. */
   languages: FieldLanguage[];
+  /** The currencies the store offers, its main one first, for a money field in the preview. */
+  currencies?: string[];
   save: Save;
   /** The list's address (`/admin/{store}/fields`). */
   base: string;
@@ -172,7 +177,7 @@ export function FieldGroupEditor({
 
   const addField = (type: FieldType) => {
     const created = newField(type, names);
-    markFresh([created.id, ...(created.subFields ?? []).map((sub) => sub.id)]);
+    markFresh([created.id, ...subFieldsOf(created).map((sub) => sub.id)]);
     setFields([...fields, created], `${FIELD_TYPES[type].label} field added.`);
     setPicking(false);
     setEditing(created.id);
@@ -194,7 +199,7 @@ export function FieldGroupEditor({
   const copyField = (id: string) => {
     const result = duplicateField(fields, id);
     if (!result) return;
-    markFresh([result.copy.id, ...(result.copy.subFields ?? []).map((sub) => sub.id)]);
+    markFresh([result.copy.id, ...subFieldsOf(result.copy).map((sub) => sub.id)]);
     setFields(result.fields, `${result.copy.label} added below.`);
     setEditing(result.copy.id);
   };
@@ -205,10 +210,16 @@ export function FieldGroupEditor({
 
   const editingIndex = editing ? fields.findIndex((f) => f.id === editing) : -1;
   const editingField = editingIndex >= 0 ? fields[editingIndex] : null;
+  // Customers and orders are for staff only (D120): a group on them is on nothing else, has no rules and no public field.
+  const staffOnly = draft.entities.some(isStaffEntity);
   const setEntity = (entity: FieldEntity, on: boolean) =>
     change((g) => {
-      const entities = FIELD_ENTITY_KEYS.filter((e) => (e === entity ? on : g.entities.includes(e)));
-      return entities.length === 0 ? g : { ...g, entities };
+      let entities = FIELD_ENTITY_KEYS.filter((e) => (e === entity ? on : g.entities.includes(e)));
+      if (entities.length === 0) return g;
+      if (on) entities = entities.filter((e) => isStaffEntity(e) === isStaffEntity(entity));
+      return entities.some(isStaffEntity)
+        ? { ...g, entities, location: [], fields: withoutPublic(g.fields) }
+        : { ...g, entities };
     });
 
   const previewGroup: FieldGroup = {
@@ -297,7 +308,18 @@ export function FieldGroupEditor({
                 {FIELD_ENTITIES[entity]}
               </label>
             ))}
-            <p className={hint}>At least one. Which of them the group is on is set under “Where it applies”.</p>
+            <p className={hint}>
+              At least one. Which of them the group is on is set under “Where it applies”. The store has one set of
+              values, filled in under Store details. Customers and orders are for staff only and go with nothing else.
+            </p>
+            {staffOnly && (
+              <p className={hint}>
+                What staff enter here is never shown on the site, to shoppers or to the chat assistant. A customer&apos;s
+                values are personal data and are deleted with the customer; an order&apos;s stay with the order, which is
+                kept for bookkeeping, so keep out of it what you do not need. Pictures and files are kept in the
+                store&apos;s public storage under addresses nobody can guess: do not put anything sensitive in them.
+              </p>
+            )}
           </fieldset>
           <fieldset className="flex flex-col gap-1">
             <legend className="mb-1 text-sm font-medium">Position in the editor</legend>
@@ -419,7 +441,7 @@ export function FieldGroupEditor({
             main={main}
             upload={null}
             fileUpload={null}
-            lookups={EMPTY_LOOKUPS}
+            lookups={currencies ? { ...EMPTY_LOOKUPS, currencies } : EMPTY_LOOKUPS}
             languageName={languageName}
           />
         </div>
@@ -433,6 +455,7 @@ export function FieldGroupEditor({
         fresh={editingField ? fresh.has(editingField.id) : false}
         freshIds={fresh}
         onFresh={markFresh}
+        staffOnly={staffOnly}
         languages={languages}
         onApply={(next) => {
           setFields(
@@ -445,6 +468,17 @@ export function FieldGroupEditor({
       />
     </div>
   );
+}
+
+/** The fields with nothing public left: a group for customers or orders shows nothing on the site (and so is no filter, search or chat fact either). */
+function withoutPublic(fields: FieldDef[]): FieldDef[] {
+  return fields.map((field) => {
+    const { filter: _filter, search: _search, chat: _chat, subFields, ...rest } = field;
+    void _filter;
+    void _search;
+    void _chat;
+    return { ...rest, access: "private", ...(subFields && { subFields: withoutPublic(subFields) }) };
+  });
 }
 
 function FieldList({
@@ -608,6 +642,10 @@ function LocationBuilder({
   const params = locationParamsFor(draft.entities);
   const location = draft.location;
   const everywhere = entitiesText(draft.entities).toLowerCase();
+  // The store, customers and orders have nothing for rules to ask about.
+  if (params.length === 0) {
+    return <p className="text-sm">No rules: the group is on all of the {everywhere}.</p>;
+  }
 
   const valueOptions = (param: string): { value: string; label: string }[] => {
     if (param === "role") return roles;

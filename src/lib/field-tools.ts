@@ -19,6 +19,7 @@ import {
   type FieldGroupInput,
   type FieldType,
   type FieldValue,
+  type FieldWords,
   type LocationRule,
 } from "./custom-fields";
 import { richTextPlain, type BlockNode, type InlineNode, type RichTextDoc } from "./page-content";
@@ -27,13 +28,15 @@ import { richTextPlain, type BlockNode, type InlineNode, type RichTextDoc } from
  * What the AI manager's custom-fields tools may do (D118, phase 2): read
  * every kind of field, but fill in and create only the simple ones (words,
  * numbers, yes or no, choices, dates). Pictures, files, links, things that
- * point at other things, and groups and repeaters take the admin's editor.
+ * point at other things, money (its currency and amount are the owner's to
+ * choose, and never guessed from words) and groups, repeaters and flexible
+ * content take the admin's editor.
  * Pure, so the tool catalogue (`owner-tools.ts`), the server handlers and the
  * tests share it.
  */
 
 /** The kinds of thing the tools can fill in and make groups for. */
-export const TOOL_FIELD_ENTITIES = ["product", "page", "article"] as const satisfies readonly FieldEntity[];
+export const TOOL_FIELD_ENTITIES = ["product", "page", "article", "store"] as const satisfies readonly FieldEntity[];
 export type ToolFieldEntity = (typeof TOOL_FIELD_ENTITIES)[number];
 
 /** The types the tools can fill in and create: plain text, numbers, choices and dates. */
@@ -108,11 +111,11 @@ export function fieldValueText(
   def: FieldDef,
   value: FieldValue,
   locale: string,
-  words: { yes: string; no: string },
+  words: FieldWords,
   max = 400,
 ): string {
   if (def.type === "group") return "a group of fields that is filled in (change it in the admin)";
-  if (def.type === "repeater") {
+  if (def.type === "repeater" || def.type === "flexible") {
     const rows = Array.isArray(value) ? value.length : 0;
     return `${rows} ${rows === 1 ? "row" : "rows"} (change them in the admin)`;
   }

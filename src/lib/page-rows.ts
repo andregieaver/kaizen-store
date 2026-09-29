@@ -15,6 +15,7 @@ import {
   type Spacing,
 } from "./page-content";
 import { copyWithUses } from "./global-parts";
+import { modalDomId, slugifyKey, uniqueKey } from "./page-modal";
 import { isShopPart, type ShopPart } from "./store-parts";
 
 /**
@@ -51,6 +52,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
     case "customField":
     case "separator":
       return { id: id(), type };
+    case "fieldLoop":
+      return { id: id(), type, layout: "cards", columns: 3, slots: {} };
     case "accordion":
     case "tabs":
     case "faq":
@@ -215,9 +218,15 @@ export function equalLayout(count: number): RowLayout {
   return String(Math.max(1, Math.min(6, count))) as RowLayout;
 }
 
-/** The custom ids (D48) used on the page, so that a copy does not take one again. */
+/**
+ * The custom ids (D48) used on the page, so that a copy does not take one
+ * again: with a modal's own (`modal-{key}`, D121), which is an id of the page.
+ */
 export function htmlIds(rows: PageRow[]): Set<string> {
-  return new Set(pageParts(rows).flatMap((part) => (part.htmlId ? [part.htmlId] : [])));
+  return new Set([
+    ...pageParts(rows).flatMap((part) => (part.htmlId ? [part.htmlId] : [])),
+    ...rows.flatMap((row) => (row.modal ? [modalDomId(row.modal.key)] : [])),
+  ]);
 }
 
 /** A part keeps its custom id only while no other part has it; the id is then taken. */
@@ -248,7 +257,25 @@ export const copyColumn = (column: PageColumn, id: NewId, taken = new Set<string
 export const copyRow = (row: PageRow, id: NewId, taken = new Set<string>()): PageRow =>
   row.global
     ? copyWithUses("row", structuredClone(row), id)
-    : keepHtmlId({ ...structuredClone(row), id: id(), columns: row.columns.map((c) => copyColumn(c, id, taken)) }, taken);
+    : withFreshModalKey(
+        keepHtmlId({ ...structuredClone(row), id: id(), columns: row.columns.map((c) => copyColumn(c, id, taken)) }, taken),
+        taken,
+      );
+
+/**
+ * A copy of a modal row (D121) keeps its setting but takes a key of its own
+ * (`promo` → `promo-2`), since a modal's address name is used once on a page;
+ * the id it takes is then taken.
+ */
+function withFreshModalKey(row: PageRow, taken: Set<string>): PageRow {
+  if (!row.modal) return row;
+  const key = uniqueKey(
+    slugifyKey(row.modal.key),
+    [...taken].flatMap((id) => (id.startsWith("modal-") ? [id.slice("modal-".length)] : [])),
+  );
+  taken.add(modalDomId(key));
+  return { ...row, modal: { ...row.modal, key } };
+}
 
 /** A copy of the row, with new ids throughout, right after it. */
 export function duplicateRow(rows: PageRow[], rowId: string, id: NewId): PageRow[] {

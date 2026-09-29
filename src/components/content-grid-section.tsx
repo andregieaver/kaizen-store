@@ -5,9 +5,10 @@ import type { GridData } from "@/lib/content-grid";
 import { t } from "@/lib/i18n";
 import { chosenFilters, parseListingParams } from "@/lib/listing-filters";
 import type { ContentGridBlock } from "@/lib/page-content";
+import { tileFieldIds } from "@/lib/tile-fields";
 import { getBuyer } from "@/server/b2b";
 import { campaignNoticesAt } from "@/server/campaign-notices";
-import { gridData, gridScope, productItem, storeAndMarket, type GridPlace, type ListingPlace } from "@/server/content-grid";
+import { gridData, gridScope, productItem, storeAndMarket, withTileFields, type GridPlace, type ListingPlace } from "@/server/content-grid";
 import { listingFacets, listingProducts } from "@/server/listing";
 import { siteTerms } from "@/server/taxonomy";
 
@@ -66,7 +67,15 @@ async function FilterableGrid({
     unfiltered ? null : listingProducts(store.id, market, scope, filters, viewer),
     siteTerms(store.id, "product"),
   ]);
-  const items = products ? products.slice(0, block.limit).map((product) => productItem(store.slug, market.slug, product)) : data.items;
+  const items = products
+    ? await withTileFields(
+        store.id,
+        "product",
+        market,
+        tileFieldIds(block),
+        products.slice(0, block.limit).map((product) => productItem(store.slug, market.slug, product)),
+      )
+    : data.items;
 
   return (
     <div className="flex flex-col gap-4">

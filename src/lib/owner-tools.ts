@@ -36,8 +36,8 @@ export const tool = <N extends string, I extends z.ZodType>(name: N, description
 const limit = (max: number, fallback: number) => z.number().int().min(1).max(max).default(fallback).describe(`How many at most (1–${max}).`);
 /** An order by its number (as the owner says it, such as 1042) or its id. */
 const orderRef = z.string().trim().min(1).max(64).describe("The order's number, such as 1042, or its id.");
-const fieldEntity = z.enum(TOOL_FIELD_ENTITIES).describe("What the fields are on: a product, a page or a blog article.");
-const fieldThing = z.string().trim().min(1).max(200).describe("The product's id, handle or title, or the page's or article's id or address (slug).");
+const fieldEntity = z.enum(TOOL_FIELD_ENTITIES).describe("What the fields are on: a product, a page, a blog article, or the store itself (its own site-wide fields such as opening hours or a brand story).");
+const fieldThing = z.string().trim().min(1).max(200).describe("The product's id, handle or title, or the page's or article's id or address (slug). Leave it out for the store itself.");
 const productRef = z.string().trim().min(1).max(200).describe("The product's id, its handle, or its title as listed.");
 
 export const OWNER_TOOLS = [
@@ -106,13 +106,13 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "list_field_groups",
-    "The store's custom field groups (extra fields such as a size guide, ingredients or a warranty): name, what each group is on (products, pages or articles), where it applies in words, whether it is on, and each field's label, name, type, whether it is required, whether it shows on the site (public) or only for staff (private), and its choices. Use it before get_fields, set_fields or create_field_group.",
+    "The store's custom field groups (extra fields such as a size guide, ingredients or a warranty): name, what each group is on (products, pages, articles or the store itself), where it applies in words, whether it is on, and each field's label, name, type, whether it is required, whether it shows on the site (public) or only for staff (private), and its choices. Use it before get_fields, set_fields or create_field_group.",
     z.object({}),
   ),
   tool(
     "get_fields",
-    "The custom fields that apply to one product, page or article, with what is entered in each (short readable text, in the store's main language; long text is cut). Fields that do not apply to it are left out. Use it to answer what a product's material, size guide or warranty says, or before changing it.",
-    z.object({ entity: fieldEntity, item: fieldThing }),
+    "The custom fields that apply to one product, page or article (or to the store itself: entity store, no item), with what is entered in each (short readable text, in the store's main language; long text is cut). Fields that do not apply to it are left out. Use it to answer what a product's material, size guide or warranty says, or before changing it.",
+    z.object({ entity: fieldEntity, item: fieldThing.optional() }),
   ),
   tool(
     "list_pages",
@@ -306,7 +306,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "create_field_group",
-    "Makes a group of custom fields for products, pages or articles, on every one of that kind: a name and its fields, each with a label, a type, and choices for select, radio, button group and checkbox types. Fields are private (only staff see them) unless you set access public because the owner wants them on the site; the site then shows them through the product layout's Custom fields component (the standard product page shows public groups after the description). Only plain types can be made here: pictures, files, links, things that point at products or pages, groups and repeaters are made in the admin editor. Needs the owner's approval.",
+    "Makes a group of custom fields for products, pages, articles or the store itself, on every one of that kind: a name and its fields, each with a label, a type, and choices for select, radio, button group and checkbox types. Fields are private (only staff see them) unless you set access public because the owner wants them on the site; the site then shows them through the product layout's Custom fields component (the standard product page shows public groups after the description). Only plain types can be made here: pictures, files, links, things that point at products or pages, groups and repeaters are made in the admin editor. Needs the owner's approval.",
     z.object({
       name: z.string().trim().min(1).max(80).describe("The group's name, such as Specifications or Size guide."),
       entity: fieldEntity.default("product"),
@@ -328,10 +328,10 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "set_fields",
-    "Fills in, changes or clears (null) custom fields on one product, page or article, by the fields' names from get_fields or list_field_groups. Plain types only: text, numbers, yes or no, choices (by their label), dates and the like; text is written in the store's main language and must not carry claims the store cannot back. Pictures, files, links, groups and repeaters are changed in the admin editor. What changes shows on the site if the field is public. Needs the owner's approval.",
+    "Fills in, changes or clears (null) custom fields on one product, page or article, or on the store itself (entity store, no item), by the fields' names from get_fields or list_field_groups. Plain types only: text, numbers, yes or no, choices (by their label), dates and the like; text is written in the store's main language and must not carry claims the store cannot back. Pictures, files, links, groups and repeaters are changed in the admin editor. What changes shows on the site if the field is public. Needs the owner's approval.",
     z.object({
       entity: fieldEntity,
-      item: fieldThing,
+      item: fieldThing.optional(),
       values: z
         .record(
           z.string().trim().min(1).max(80),
@@ -442,13 +442,13 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "create_field_group": {
       const fields = Array.isArray(input.fields) ? (input.fields as { label?: unknown; type?: unknown; access?: unknown }[]) : [];
       const list = fields.map((f) => `${String(f.label)} (${String(f.type ?? "text")}${f.access === "public" ? ", shown on the site" : ""})`).join(", ");
-      const on = { product: "products", page: "pages", article: "articles" }[String(input.entity ?? "product")] ?? "products";
+      const on = { product: "products", page: "pages", article: "articles", store: "the store" }[String(input.entity ?? "product")] ?? "products";
       return `Create the custom field group "${text("name")}" for ${on}: ${list}.`;
     }
     case "set_fields": {
       const values = typeof input.values === "object" && input.values !== null ? Object.entries(input.values as Record<string, unknown>) : [];
       const show = (v: unknown) => (v === null ? "cleared" : Array.isArray(v) ? `"${v.join(", ")}"` : typeof v === "string" ? `"${v.length > 200 ? `${v.slice(0, 199)}…` : v}"` : String(v));
-      return `Set the custom fields of the ${text("entity") || "product"} "${text("item")}": ${values.map(([name, v]) => `${name} ${v === null ? "" : "= "}${show(v)}`).join("; ")}.`;
+      return `Set the custom fields of ${input.entity === "store" ? "the store" : `the ${text("entity") || "product"} "${text("item")}"`}: ${values.map(([name, v]) => `${name} ${v === null ? "" : "= "}${show(v)}`).join("; ")}.`;
     }
     case "email_customer":
       return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;

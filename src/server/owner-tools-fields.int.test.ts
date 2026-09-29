@@ -484,7 +484,8 @@ describe("custom fields in the AI manager (D118)", () => {
       description: expect.stringContaining("kept for the owner to approve"),
     });
     expect(mcp.MCP_TOOLS.find((t) => t.name === "get_fields")?.inputSchema).toMatchObject({
-      required: ["store", "entity", "item"],
+      // The item is left out for the store itself (D120).
+      required: ["store", "entity"],
     });
     expect(mcp.MCP_TOOLS.find((t) => t.name === "list_field_groups")).toBeTruthy();
   });

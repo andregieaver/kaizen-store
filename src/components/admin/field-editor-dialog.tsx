@@ -10,6 +10,7 @@ import {
   FIELD_WIDTHS,
   MAX_CHOICES,
   MAX_GALLERY,
+  MAX_LAYOUTS,
   MAX_REPEATER_ROWS,
   MAX_SUB_FIELDS,
   TEXTAREA_MAX,
@@ -23,6 +24,7 @@ import {
   type Choice,
   type Condition,
   type FieldDef,
+  type FieldLayout,
   type FieldType,
 } from "@/lib/custom-fields";
 import {
@@ -33,15 +35,23 @@ import {
   duplicateSubField,
   fieldProblems,
   hasTypeSettings,
+  addLayout,
+  duplicateLayout,
+  layoutHolder,
+  layoutKey,
+  layoutsSummary,
   moveItem,
   moveSubField,
   newCondition,
   parseUnits,
+  removeLayout,
   removeSubField,
+  replaceLayout,
   replaceSubField,
   settleCondition,
   subFieldsSummary,
   valueKindFor,
+  withHeldFields,
   withLabel,
 } from "@/lib/field-group-editor";
 
@@ -55,20 +65,26 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
 const small = "min-h-9 rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-40";
 
-const PLACEHOLDER_TYPES: readonly FieldType[] = ["text", "textarea", "email", "url", "phone", "number", "measurement"];
+const PLACEHOLDER_TYPES: readonly FieldType[] = ["text", "textarea", "email", "url", "phone", "number", "measurement", "money"];
 
 const TABS = [
   { id: "general", label: "General" },
   { id: "fields", label: "Fields" },
+  { id: "layouts", label: "Layouts" },
   { id: "presentation", label: "Presentation" },
   { id: "logic", label: "Logic" },
   { id: "storefront", label: "Storefront" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-/** The tabs a field has: "Fields" only for a group or repeater, "Storefront" not for a field inside one (it follows its parent). */
-const tabsFor = (type: FieldType, sub: boolean) =>
-  TABS.filter((tab) => (tab.id !== "fields" || isStructural(type)) && (tab.id !== "storefront" || !sub));
+/** The tabs a field has: "Fields" only for a group or repeater, "Layouts" only for flexible content, "Storefront" not for a field inside one (it follows its parent). */
+const tabsFor = (type: FieldType, sub: boolean, staffOnly = false) =>
+  TABS.filter(
+    (tab) =>
+      (tab.id !== "fields" || (isStructural(type) && type !== "flexible")) &&
+      (tab.id !== "layouts" || type === "flexible") &&
+      (tab.id !== "storefront" || !(sub || staffOnly)),
+  );
 
 /**
  * One field of a group, edited in a dialog with its own copy: nothing changes
@@ -83,6 +99,7 @@ export function FieldEditorDialog({
   freshIds,
   onFresh,
   sub = false,
+  staffOnly = false,
   languages,
   onApply,
   onClose,
@@ -100,6 +117,8 @@ export function FieldEditorDialog({
   onFresh?: (ids: string[]) => void;
   /** A field inside a group or repeater: no access of its own (it follows its parent's). */
   sub?: boolean;
+  /** A group for customers or orders (D120): staff only, so no Storefront tab (nothing is ever public). */
+  staffOnly?: boolean;
   /** The store's languages, the main one first. */
   languages: FieldLanguage[];
   onApply: (field: FieldDef) => void;
@@ -112,15 +131,18 @@ export function FieldEditorDialog({
   const [seen, setSeen] = useState<FieldDef | null>(field);
   // The keys already saved can be told from new ones, as values are kept under them.
   const [savedKeys, setSavedKeys] = useState<string[]>(fresh ? [] : (field?.choices ?? []).map((c) => c.key));
+  // The same for flexible content's layouts: rows are kept under a layout's key.
+  const [savedLayoutKeys, setSavedLayoutKeys] = useState<string[]>(fresh ? [] : (field?.layouts ?? []).map((l) => l.key));
   if (field !== seen) {
     setSeen(field);
     setDraft(field);
     setTab("general");
     setAttempted(false);
     setSavedKeys(fresh ? [] : (field?.choices ?? []).map((c) => c.key));
+    setSavedLayoutKeys(fresh ? [] : (field?.layouts ?? []).map((l) => l.key));
   }
   const tabsId = useId();
-  const tabs = tabsFor(draft?.type ?? "text", sub);
+  const tabs = tabsFor(draft?.type ?? "text", sub, staffOnly);
   const shownTab = tabs.some((item) => item.id === tab) ? tab : "general";
 
   const update = (patch: Partial<FieldDef>) => setDraft((d) => (d ? { ...d, ...patch } : d));
@@ -225,6 +247,16 @@ export function FieldEditorDialog({
                 languages={languages}
                 freshIds={freshIds ?? new Set()}
                 onFresh={onFresh ?? (() => {})}
+              />
+            )}
+            {shownTab === "layouts" && (
+              <LayoutsEditor
+                draft={draft}
+                update={update}
+                languages={languages}
+                freshIds={freshIds ?? new Set()}
+                onFresh={onFresh ?? (() => {})}
+                savedLayoutKeys={savedLayoutKeys}
               />
             )}
             {shownTab === "presentation" && (
@@ -477,7 +509,26 @@ function Presentation({
         </label>
       )}
       {type === "term" && <TermKinds draft={draft} update={update} />}
-      {type === "repeater" && <RepeaterSettings draft={draft} update={update} />}
+      {(type === "repeater" || type === "flexible") && <RepeaterSettings draft={draft} update={update} />}
+      {type === "money" && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <OptionalNumber
+              label="Least (optional)"
+              value={draft.min}
+              min={0}
+              onChange={(min) => update({ min })}
+              hintText="An amount in the currency staff choose, such as 10 for 10.00."
+            />
+            <OptionalNumber label="Most (optional)" value={draft.max} min={0} onChange={(max) => update({ max })} />
+          </div>
+          <p className={hint}>
+            Staff choose the currency among those the store offers, starting with its main one. Shoppers see the amount
+            in their market&apos;s currency at the store&apos;s rates. It is shown as entered, with no VAT label: it is
+            not a price shoppers pay.
+          </p>
+        </>
+      )}
       {!hasTypeSettings(type) && (
         <p className={hint}>
           {type === "group"
@@ -516,9 +567,10 @@ function TermKinds({ draft, update }: PanelProps) {
   );
 }
 
-/** A repeater's fewest and most rows, the words on its add button, and how its rows are laid out in the form. */
+/** A repeater's or flexible content's fewest and most rows, the words on its add button, and (repeater only) how its rows are laid out in the form. */
 function RepeaterSettings({ draft, update }: PanelProps) {
   const layout = draft.rowLayout ?? "block";
+  const flexible = draft.type === "flexible";
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -551,6 +603,7 @@ function RepeaterSettings({ draft, update }: PanelProps) {
           className={input}
         />
       </label>
+      {!flexible && (
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">How rows are laid out in the form</legend>
         {(
@@ -577,6 +630,7 @@ function RepeaterSettings({ draft, update }: PanelProps) {
           </label>
         ))}
       </fieldset>
+      )}
     </>
   );
 }
@@ -593,7 +647,15 @@ function SubFieldsEditor({
   languages,
   freshIds,
   onFresh,
-}: PanelProps & { languages: FieldLanguage[]; freshIds: ReadonlySet<string>; onFresh: (ids: string[]) => void }) {
+  noun,
+}: PanelProps & {
+  languages: FieldLanguage[];
+  freshIds: ReadonlySet<string>;
+  onFresh: (ids: string[]) => void;
+  /** What holds the fields, in words ("layout" for one layout of flexible content); a group's or repeater's by default. */
+  noun?: string;
+}) {
+  const holder = noun ?? (draft.type === "group" ? "group" : "repeater");
   const [editing, setEditing] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [announcement, setAnnouncement] = useState("");
@@ -655,7 +717,7 @@ function SubFieldsEditor({
       </div>
       {subs.length === 0 ? (
         <p role="alert" className="rounded-md border border-dashed border-red-700 p-4 text-center text-sm">
-          A {draft.type === "group" ? "group" : "repeater"} needs at least one field. Add one to start.
+          A {holder} needs at least one field. Add one to start.
         </p>
       ) : (
         <ol aria-label={`Fields inside ${draft.label || "the field"}`} className="flex flex-col gap-2">
@@ -725,7 +787,7 @@ function SubFieldsEditor({
       )}
       <p className={hint}>
         {subFieldsSummary(draft)}. A field can only be shown by the fields above it here. What is entered in them
-        follows the {draft.type === "group" ? "group" : "repeater"}&apos;s own access.
+        follows the {noun ? "flexible content" : holder}&apos;s own access.
       </p>
       <p role="status" aria-live="polite" className="sr-only">
         {announcement}
@@ -750,6 +812,216 @@ function SubFieldsEditor({
         }}
         onClose={() => setEditing(null)}
       />
+    </div>
+  );
+}
+
+/**
+ * The layouts of flexible content: named sets of fields a row can take. One is
+ * open at a time: its label (and its words in other languages), its key (fixed
+ * once saved, as rows are kept under it) and the fields inside it, edited with
+ * the same list and dialog as a group's.
+ */
+function LayoutsEditor({
+  draft,
+  update,
+  languages,
+  freshIds,
+  onFresh,
+  savedLayoutKeys,
+}: PanelProps & {
+  languages: FieldLanguage[];
+  freshIds: ReadonlySet<string>;
+  onFresh: (ids: string[]) => void;
+  savedLayoutKeys: string[];
+}) {
+  const layouts = draft.layouts ?? [];
+  const [open, setOpen] = useState<string | null>(layouts[0]?.key ?? null);
+  const [announcement, setAnnouncement] = useState("");
+  const others = languages.slice(1);
+  const wrapped = [draft];
+  const set = (fields: FieldDef[], message?: string) => {
+    update({ layouts: fields[0]?.layouts ?? [] });
+    if (message) setAnnouncement(message);
+  };
+  const change = (key: string, next: FieldLayout) => set(replaceLayout(wrapped, draft.id, key, next));
+  const add = () => {
+    const result = addLayout(wrapped, draft.id);
+    if (!result.added) return;
+    onFresh(result.added.subFields.map((f) => f.id));
+    set(result.fields, `Layout ${result.added.label} added.`);
+    setOpen(result.added.key);
+  };
+  const copy = (key: string) => {
+    const result = duplicateLayout(wrapped, draft.id, key);
+    if (!result) return;
+    onFresh(result.copy.subFields.map((f) => f.id));
+    set(result.fields, `${result.copy.label} added below.`);
+    setOpen(result.copy.key);
+  };
+  const remove = (layout: FieldLayout) => {
+    if (
+      savedLayoutKeys.includes(layout.key) &&
+      !window.confirm(`Delete the layout ${layout.label}? Rows that use it are dropped from the content when it is next saved.`)
+    )
+      return;
+    set(removeLayout(wrapped, draft.id, layout.key), `Layout ${layout.label} deleted.`);
+    if (open === layout.key) setOpen(null);
+  };
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= layouts.length) return;
+    set(
+      [{ ...draft, layouts: moveItem(layouts, from, to) }],
+      `${layouts[from].label} moved to place ${to + 1} of ${layouts.length}.`,
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">
+          Layouts <span className="font-normal text-muted">({layouts.length})</span>
+        </p>
+        <button type="button" className={small} onClick={add} disabled={layouts.length >= MAX_LAYOUTS}>
+          Add a layout
+        </button>
+      </div>
+      {layouts.length === 0 ? (
+        <p role="alert" className="rounded-md border border-dashed border-red-700 p-4 text-center text-sm">
+          Flexible content needs at least one layout. Add one to start.
+        </p>
+      ) : (
+        <ol aria-label={`Layouts of ${draft.label || "the field"}`} className="flex flex-col gap-2">
+          {layouts.map((layout, index) => {
+            const name = layout.label || layout.key;
+            const locked = savedLayoutKeys.includes(layout.key);
+            const taken = layouts.filter((_, i) => i !== index).map((l) => l.key);
+            const isOpen = open === layout.key;
+            return (
+              <li key={index} className="rounded-md border border-border bg-surface">
+                <div className="flex flex-wrap items-center gap-2 p-2">
+                  <div className="min-w-0 flex-1 basis-40">
+                    <p className="truncate text-sm font-medium">{layout.label || "Untitled layout"}</p>
+                    <p className="truncate text-xs text-muted">{subFieldsSummary({ type: "group", subFields: layout.subFields })}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <button
+                      type="button"
+                      className={small}
+                      disabled={index === 0}
+                      aria-label={`Move layout ${name} up`}
+                      onClick={() => move(index, index - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className={small}
+                      disabled={index === layouts.length - 1}
+                      aria-label={`Move layout ${name} down`}
+                      onClick={() => move(index, index + 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className={small}
+                      aria-expanded={isOpen}
+                      aria-label={`${isOpen ? "Close" : "Edit"} layout ${name}`}
+                      onClick={() => setOpen(isOpen ? null : layout.key)}
+                    >
+                      {isOpen ? "Close" : "Edit"}
+                    </button>
+                    <button type="button" className={small} aria-label={`Duplicate layout ${name}`} onClick={() => copy(layout.key)}>
+                      Duplicate
+                    </button>
+                    <button
+                      type="button"
+                      className={`${small} text-red-700`}
+                      aria-label={`Delete layout ${name}`}
+                      onClick={() => remove(layout)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                {isOpen && (
+                  <div className="flex flex-col gap-3 border-t border-border p-3">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className={`${label} min-w-40 flex-1`}>
+                        Layout label
+                        <input
+                          value={layout.label}
+                          maxLength={80}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            // A new layout's key follows its label until the key is changed by hand; a saved key never changes.
+                            const follows = !locked && layout.key === layoutKey(layout.label, taken);
+                            const key = follows ? layoutKey(next, taken) : layout.key;
+                            change(layout.key, { ...layout, label: next, key });
+                            if (key !== layout.key) setOpen(key);
+                          }}
+                          className={input}
+                        />
+                      </label>
+                      <label className={`${label} w-44`}>
+                        Key
+                        <input
+                          value={layout.key}
+                          maxLength={40}
+                          readOnly={locked}
+                          onChange={(event) => {
+                            change(layout.key, { ...layout, key: event.target.value });
+                            setOpen(event.target.value);
+                          }}
+                          className={`${input} font-mono ${locked ? "bg-surface" : ""}`}
+                        />
+                      </label>
+                    </div>
+                    {locked && <p className={hint}>A saved layout&apos;s key cannot change: the rows use it. Delete the layout and add a new one instead.</p>}
+                    {others.length > 0 && (
+                      <details>
+                        <summary className="cursor-pointer text-sm">Label in other languages</summary>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          {others.map((language) => (
+                            <label key={language.locale} className={label}>
+                              {language.name}
+                              <input
+                                value={layout.labels?.[language.locale] ?? ""}
+                                maxLength={80}
+                                lang={language.locale}
+                                placeholder={layout.label}
+                                onChange={(event) => change(layout.key, withLabel(layout, language.locale, event.target.value))}
+                                className={input}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                    <SubFieldsEditor
+                      noun="layout"
+                      draft={layoutHolder(layout, draft)}
+                      update={(patch) => change(layout.key, withHeldFields(layout, { subFields: patch.subFields }))}
+                      languages={languages}
+                      freshIds={freshIds}
+                      onFresh={onFresh}
+                    />
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      <p className={hint}>
+        {layoutsSummary(draft)}. Each row of the content takes one of these layouts and shows its fields. The layout
+        label is read out to screen readers on the site, never shown as a heading. Rows and their words are kept under a
+        layout&apos;s key.
+      </p>
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
     </div>
   );
 }
@@ -1193,7 +1465,12 @@ function Uses({ draft, update }: PanelProps) {
     {
       key: "filter",
       label: "Offer as a filter in product lists",
-      hint: "Shoppers can narrow product lists by this field's choices. Only for products.",
+      hint:
+        draft.type === "number" || draft.type === "measurement"
+          ? `Shoppers can narrow product lists by this field as a range, from and to.${
+              draft.type === "measurement" ? " It compares the values entered in the first unit." : ""
+            } Only for products.`
+          : "Shoppers can narrow product lists by this field's choices. Only for products.",
       allowed: FILTER_TYPES.includes(draft.type),
     },
     {
@@ -1206,7 +1483,8 @@ function Uses({ draft, update }: PanelProps) {
       key: "chat",
       label: "Let the chat assistant say it",
       hint: "The assistant may tell shoppers what is written here about a product, worded as it is.",
-      allowed: true,
+      // Never an amount: the assistant states no amount from a field.
+      allowed: draft.type !== "money",
     },
   ];
   return (

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { cssProblem } from "./custom-css";
 import { fontFamily } from "./fonts";
+import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { SHOP_PART_KEYS, type ShopPart } from "./store-parts";
@@ -387,8 +388,15 @@ export type BlockFont = { font?: string };
  * what shows where the field has none, when `fallback` is on; else such a
  * block is left out. Kept only on the blocks that can take a field.
  */
-export type FieldBinding = { fieldId: string; fallback?: boolean };
+export type FieldBinding = {
+  fieldId: string;
+  fallback?: boolean;
+  /** Whose field: the thing the page is on (none), or the store itself (D120), which any store page, layout, header or footer can take. */
+  source?: FieldSource;
+};
 export type Bindable = { bind?: FieldBinding };
+/** Whose custom fields a component shows (D120): the thing it is on, or the store itself. */
+export type FieldSource = "store";
 
 export type RichTextBlock = PartBase & BlockFont & Bindable & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
 /** A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. */
@@ -476,6 +484,8 @@ export type GridSort = keyof typeof GRID_SORTS;
 /** Sorts that need prices: products only. */
 export const PRICE_SORTS: readonly GridSort[] = ["priceLow", "priceHigh"];
 export const GRID_LIMIT_MAX = 48;
+/** The most custom fields a content grid's tile shows (D120). */
+export const TILE_FIELDS_MAX = 3;
 export const GRID_GAP_MAX = 96;
 export const GRID_COLUMNS_MAX = { mobile: 2, tablet: 4, desktop: 6 } as const;
 export type GridColumns = { mobile: number; tablet: number; desktop: number };
@@ -527,6 +537,11 @@ export type ContentGridBlock = PartBase & {
   headingSize?: HeadingSize;
   /** Lines of excerpt at most. */
   excerptLines: number;
+  /**
+   * Custom fields (D120) a tile shows under its title, one line each (up to
+   * `TILE_FIELDS_MAX`, by field id): only the plain ones of products, pages and articles.
+   */
+  tileFields?: string[];
   button?: Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor">;
   tile?: GridTile;
   /** Space between tiles, in pixels. */
@@ -557,6 +572,7 @@ export const PRODUCT_PARTS = {
   related: "Related products",
   fields: "Custom fields",
   field: "Custom field",
+  loop: "Field loop",
 } as const;
 export type ProductPart = keyof typeof PRODUCT_PARTS;
 export const RELATED_MAX = 12;
@@ -564,6 +580,34 @@ export const RELATED_MAX = 12;
 /** How custom fields (D118) are drawn: a specification table, `label: value` lines or small cards. */
 export const FIELD_DISPLAYS = { table: "Table", list: "List", cards: "Cards" } as const;
 export type FieldDisplay = keyof typeof FIELD_DISPLAYS;
+
+/**
+ * The field loop (D120): a repeater's rows, each drawn as a small layout made
+ * of slots filled from the row's sub fields (a picture, a title, a text, a
+ * link, a badge), in a product layout (the `loop` part) or on a page.
+ */
+export const LOOP_LAYOUTS = { cards: "Cards", list: "List", grid: "Grid of pictures", columns: "Columns" } as const;
+export type LoopLayout = keyof typeof LOOP_LAYOUTS;
+export const LOOP_SLOTS = { image: "Picture", title: "Title", text: "Text", link: "Link", badge: "Badge" } as const;
+export type LoopSlot = keyof typeof LOOP_SLOTS;
+/** Which sub field (by id) fills each slot of a row; a slot left out draws nothing. */
+export type LoopSlots = Partial<Record<LoopSlot, string>>;
+export const LOOP_COLUMNS = [2, 3, 4] as const;
+export type LoopColumns = (typeof LOOP_COLUMNS)[number];
+/** What a field loop is set to, in a page's block and (its layout, columns, slots and link) in a product layout's part. */
+export type LoopConfig = {
+  /** The repeater (a top-level field, by id) and its group. */
+  fieldId?: string;
+  groupId?: string;
+  layout?: LoopLayout;
+  /** Columns on larger screens, for the grid and columns layouts. */
+  columns?: LoopColumns;
+  slots?: LoopSlots;
+  /** The whole card is the link (else the title is); never a link inside a link. */
+  linkWholeCard?: boolean;
+  showHeading?: boolean;
+  heading?: string;
+};
 
 /**
  * A part of the product's page (D79). Each part takes only the settings
@@ -601,6 +645,10 @@ export type ProductBlock = PartBase & BlockFont & {
   display?: FieldDisplay;
   /** Custom fields: each field's label beside its value; on unless off. */
   showLabel?: boolean;
+  /** Custom fields: the store's own (D120) rather than the product's. */
+  source?: FieldSource;
+  /** The field loop part (D120): a repeater's rows (`fieldId`, `groupId`, `heading` as above) as cards, a list or columns. */
+  loop?: Pick<LoopConfig, "layout" | "columns" | "slots" | "linkWholeCard">;
 };
 
 /**
@@ -705,6 +753,19 @@ export type CustomFieldBlock = PartBase & BlockFont & {
   /** The group's name over the fields, or `heading`'s own words; on unless off. */
   showHeading?: boolean;
   heading?: string;
+  /** Whose fields (D120): the page's own, or the store's, which headers, footers and product layouts hold too. */
+  source?: FieldSource;
+};
+
+/**
+ * A repeater's rows of the page or article it is on (D120), each drawn as a
+ * card, a list line or a column made of the row's sub fields (`slots`): the
+ * builder's answer to ACF's repeater loop. It draws nothing when the field is
+ * missing, private or has no rows. A store's pages and articles only.
+ */
+export type FieldLoopBlock = PartBase & BlockFont & LoopConfig & {
+  id: string;
+  type: "fieldLoop";
 };
 
 /**
@@ -1118,6 +1179,7 @@ export type PageBlock =
   | MenuBlock
   | SearchBlock
   | CustomFieldBlock
+  | FieldLoopBlock
   | StorePartBlock
   | SeparatorBlock
   | DualButtonBlock
@@ -1177,6 +1239,11 @@ export type PageRow = PartBase & {
   background?: RowBackground;
   /** What is behind the row blurred, in pixels (D86): a header over a picture, say. Only with no background or a colour. */
   backdropBlur?: number;
+  /**
+   * The row is a modal (D121): taken out of the page's flow and drawn in a
+   * dialog that a link, a class, a timer or exit intent opens.
+   */
+  modal?: RowModal;
 };
 
 /** Whether a rich-text document holds nothing but empty paragraphs. */
@@ -1235,6 +1302,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "customField":
       // The page's own values decide: with none for these fields it draws nothing (D118).
       return true;
+    case "fieldLoop":
+      // Configured once a repeater is chosen; the page's own rows decide what it draws (D120).
+      return Boolean(block.fieldId);
     case "separator":
       return true;
     case "dualButton":
@@ -1301,6 +1371,7 @@ export function blockText(block: PageBlock): string {
     case "search":
     case "storePart":
     case "customField":
+    case "fieldLoop":
     case "separator":
     case "dualButton":
     case "socialLinks":
@@ -1404,7 +1475,8 @@ export function pageParts(rows: PageRow[]): (PageRow | PageColumn | PageBlock)[]
 
 /** A custom id used by more than one part, if any. */
 export function repeatedHtmlId(rows: PageRow[]): string | null {
-  const seen = new Set<string>();
+  // A modal's dialog has the id `modal-{key}` (D121), which no other part may use.
+  const seen = new Set<string>(rows.flatMap((row) => (row.modal ? [modalDomId(row.modal.key)] : [])));
   for (const part of pageParts(rows)) {
     const id = part.htmlId?.trim();
     if (!id) continue;
@@ -1651,6 +1723,7 @@ const bindRule = z
   .object({
     fieldId: z.string().regex(FIELD_ID, "A block takes its content from an unknown field."),
     fallback: z.boolean().optional(),
+    source: z.literal("store").optional(),
   })
   .optional();
 
@@ -1765,6 +1838,10 @@ const contentGridBlock = z.object({
   headingLevel: z.literal([2, 3, 4, 5, 6], "A tile's heading has an unknown level."),
   headingSize: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
   excerptLines: z.number().int().min(1).max(6),
+  tileFields: z
+    .array(z.string().regex(FIELD_ID, "A grid's tile names an unknown field."))
+    .max(TILE_FIELDS_MAX, `A tile shows at most ${TILE_FIELDS_MAX} fields.`)
+    .optional(),
   button: z
     .object({
       variant: buttonBlock.shape.variant,
@@ -1791,6 +1868,22 @@ const contentGridBlock = z.object({
 
 const fieldDisplay = z.enum(Object.keys(FIELD_DISPLAYS) as [FieldDisplay, ...FieldDisplay[]]);
 
+/** A field loop's layout, columns, slots and link (D120): the slots name sub fields by id. */
+const loopSettings = z.object({
+  layout: z.enum(Object.keys(LOOP_LAYOUTS) as [LoopLayout, ...LoopLayout[]]).optional(),
+  columns: z.literal([...LOOP_COLUMNS]).optional(),
+  slots: z
+    .object({
+      image: z.string().regex(FIELD_ID).optional(),
+      title: z.string().regex(FIELD_ID).optional(),
+      text: z.string().regex(FIELD_ID).optional(),
+      link: z.string().regex(FIELD_ID).optional(),
+      badge: z.string().regex(FIELD_ID).optional(),
+    })
+    .optional(),
+  linkWholeCard: z.boolean().optional(),
+});
+
 const productBlock = z.object({
   id: itemId,
   type: z.literal("product"),
@@ -1808,6 +1901,8 @@ const productBlock = z.object({
   fieldId: fieldIdRule.optional(),
   display: fieldDisplay.optional(),
   showLabel: z.boolean().optional(),
+  source: z.literal("store").optional(),
+  loop: loopSettings.optional(),
   font: blockFont,
   ...partBase,
 });
@@ -1856,6 +1951,19 @@ const customFieldBlock = z.object({
   fieldId: fieldIdRule.optional(),
   display: fieldDisplay.optional(),
   showLabel: z.boolean().optional(),
+  showHeading: z.boolean().optional(),
+  heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
+  source: z.literal("store").optional(),
+  font: blockFont,
+  ...partBase,
+});
+
+const fieldLoopBlock = z.object({
+  id: itemId,
+  type: z.literal("fieldLoop"),
+  groupId: z.uuid().optional(),
+  fieldId: fieldIdRule.optional(),
+  ...loopSettings.shape,
   showHeading: z.boolean().optional(),
   heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
   font: blockFont,
@@ -2171,6 +2279,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   menuBlock,
   searchBlock,
   customFieldBlock,
+  fieldLoopBlock,
   storePartBlock,
   separatorBlock,
   dualButtonBlock,
@@ -2220,6 +2329,7 @@ export const pageRowSchema = z
     align: z.enum(["top", "middle", "bottom"]).optional(),
     background: rowBackground,
     backdropBlur,
+    modal: rowModalSchema.optional(),
     ...partBase,
   })
   .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {
@@ -2309,10 +2419,13 @@ export const pageInput = z.preprocess(
       if (new Set(ids).size !== ids.length) {
         ctx.addIssue({ code: "custom", message: "Two parts of the page have the same id. Reload the page and try again." });
       }
-      const mainHeadings = pageBlocks(page).filter((b) => (b.type === "heading" && b.level === 1) || (b.type === "product" && b.part === "title")).length;
+      // A modal's headings are its own, not the page's main heading (D121).
+      const mainHeadings = pageBlocks({ rows: page.rows.filter((row) => !row.modal) }).filter((b) => (b.type === "heading" && b.level === 1) || (b.type === "product" && b.part === "title")).length;
       if (mainHeadings > 1) {
         ctx.addIssue({ code: "custom", message: "A page has one main heading (H1). Make the others H2 or smaller." });
       }
+      const sameModal = repeatedModalKey(page.rows);
+      if (sameModal) ctx.addIssue({ code: "custom", message: `Two modals on the page have the address name "${sameModal}". Give each its own.` });
       const twice = repeatedHtmlId(page.rows);
       if (twice) ctx.addIssue({ code: "custom", message: `Two parts of the page have the id "${twice}". Give each its own.` });
     }),
@@ -2341,7 +2454,8 @@ export function parsePageContent(value: unknown): PageContent | null {
 
 /** The page's words, for the description when none is written. */
 export function pageExcerpt(content: Pick<PageContent, "rows">, max?: number): string {
-  return summarize(pageBlocks(content).map(blockText).join(" "), max);
+  // What a modal says is not what the page is about (D121).
+  return summarize(pageBlocks({ rows: content.rows.filter((row) => !row.modal) }).map(blockText).join(" "), max);
 }
 
 /** Whether two versions of a page say the same (the draft and what is published). */

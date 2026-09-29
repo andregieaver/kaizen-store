@@ -40,6 +40,13 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
           name. Group the fields, choose where each group shows, and staff fill them in where they edit. New fields are
           private until you make them public.
         </p>
+        <p className="mt-2 max-w-2xl text-sm text-muted">
+          Groups can also be on the store itself (opening hours, a brand story: fill them in under{" "}
+          <Link href={`${base}/store`} className="underline">
+            Store details
+          </Link>
+          ), and on customers and orders, which are for staff only and never shown on the site.
+        </p>
       </div>
       <FieldsToolbar
         base={base}

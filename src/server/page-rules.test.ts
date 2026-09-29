@@ -32,3 +32,19 @@ describe("where a custom fields component may be (D118)", () => {
     expect(pageRulesProblem(null, "page", withBlock({ id: "h", type: "heading", text: "Hi", level: 2 }))).toBeNull();
   });
 });
+
+describe("the store's own custom fields in headers, footers and product layouts (D120)", () => {
+  const ofStore: PageBlock = { id: "cf", type: "customField", source: "store" };
+
+  it("may be shown wherever a store has a layout, but never Kaizen's own pages", () => {
+    expect(pageRulesProblem(store, "header", withBlock(ofStore))).toBeNull();
+    expect(pageRulesProblem(store, "product_layout", withBlock(ofStore))).toBeNull();
+    expect(pageRulesProblem(store, "page", withBlock(ofStore))).toBeNull();
+    expect(pageRulesProblem(null, "page", withBlock(ofStore))).toMatch(/store's pages and articles/);
+  });
+
+  it("is still refused where the page's own fields would be meant", () => {
+    expect(pageRulesProblem(store, "header", withBlock(fields))).toMatch(/the store's own fields/);
+    expect(pageRulesProblem(store, "product_layout", withBlock(fields))).toMatch(/the store's own fields/);
+  });
+});

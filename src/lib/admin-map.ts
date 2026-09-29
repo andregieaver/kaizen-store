@@ -108,11 +108,15 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("product-layout", "/product-layouts/[pageId]", "Product layout", "Main", "Builds a product layout in the page builder."),
   store("product-layout.preview", "/product-layouts/[pageId]/preview", "Product layout preview", "Main", "Previews a product layout with a real product."),
   store("product-layout.assign", "/product-layouts/[pageId]/assign", "Where a layout is used", "Main", "Chooses where a layout applies: the store's default, categories, tags or single products."),
-  store("fields", "/fields", "Custom fields", "Main", "Groups of custom fields for products, pages and articles (a size guide, ingredients, a warranty): where each group applies, its fields, presets, and import and export.", {
+  store("fields", "/fields", "Custom fields", "Main", "Groups of custom fields for products, pages, articles, variants, categories and tags, the store itself, and (staff only) customers and orders (a size guide, ingredients, a warranty): where each group applies, its fields, presets, and import and export.", {
     tasks: ["Add a group of fields", "Start from a preset (specifications, size guide, ingredients)", "Choose which products or pages get a group", "Import or export field groups", "Switch a group off"],
     keywords: ["custom fields", "extra fields", "acf", "attributes", "specifications", "metafields", "product data"],
   }),
   store("fields.new", "/fields/new", "New group of custom fields", "Main", "Starts a group of custom fields: its name, where it applies, its fields and a live preview of the form."),
+  store("fields.store", "/fields/store", "Store details", "Main", "The store's own custom fields (opening hours, a brand story, a contact person, a certificate): one set of values for the whole site, filled in here and placed in pages, product layouts, headers and footers.", {
+    tasks: ["Fill in the store's own custom fields", "Make a group of fields for the store"],
+    keywords: ["store details", "opening hours", "brand story", "site wide fields", "global fields", "options page"],
+  }),
   store("field-group", "/fields/[groupId]", "Group of custom fields", "Main", "One group of custom fields: its fields in order with their types, conditional logic and storefront access, where it applies, a preview, and deleting it."),
   store("pages", "/pages", "Pages", "Main", "The store's own pages (about, contact, landing pages), which can be the front page or the All products page.", {
     tasks: ["Add or edit a page", "Choose the front page", "Create a page with AI"],

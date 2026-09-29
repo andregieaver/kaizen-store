@@ -14,6 +14,7 @@ import {
   SendForm,
 } from "@/components/admin/order-actions";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
+import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { bookingWhen } from "@/lib/booking-text";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
@@ -27,6 +28,8 @@ import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
 import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, type Address, type OrderEvent } from "@/server/orders";
 import { listCartAdds } from "@/server/wishlist-admin";
+
+import { saveOrderFieldsAction } from "../actions";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -360,6 +363,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               ))}
             </ol>
           </section>
+
+          <StaffFieldsSection store={store} entity="order" id={orderId} save={saveOrderFieldsAction.bind(null, store.slug, orderId)} />
         </div>
 
         <div className="flex flex-col gap-6">

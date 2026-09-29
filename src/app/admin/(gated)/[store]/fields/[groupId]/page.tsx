@@ -6,6 +6,7 @@ import { z } from "zod";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { FieldGroupEditor } from "@/components/admin/field-group-editor";
 import { groupToInput } from "@/lib/custom-fields";
+import { moneyCurrencies } from "@/lib/field-money";
 import { requireMember } from "@/server/auth";
 import { getFieldGroup } from "@/server/custom-fields";
 
@@ -35,6 +36,7 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
         terms={terms}
         roles={roleOptions()}
         languages={storeLanguages(store)}
+        currencies={moneyCurrencies(store)}
         save={saveFieldGroupAction.bind(null, store.slug)}
         base={base}
         actions={

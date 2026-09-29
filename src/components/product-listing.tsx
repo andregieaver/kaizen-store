@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { FilterDialog, type FilterFacets } from "@/components/filter-dialog";
 import { ProductCard } from "@/components/product-card";
 import type { CampaignNotices } from "@/lib/campaign-notices";
+import { rangeText } from "@/lib/field-filters";
 import { t, type Messages } from "@/lib/i18n";
 import {
   chosenFilters,
@@ -140,7 +141,7 @@ export function ListingControls({
           path={path}
           keep={keep}
           filters={filters}
-          facets={dialogFacets(facets, m)}
+          facets={dialogFacets(facets, m, market)}
           labels={dialogLabels(facets, m, market)}
           live={live}
           count={count}
@@ -235,13 +236,14 @@ export function ProductGrid({
 
 const withoutAll = (filters: ListingFilters): ListingFilters => chosenFilters(filters).reduce(withoutFilter, filters);
 
-function dialogFacets(facets: ListingFacets, m: Messages): FilterFacets {
+function dialogFacets(facets: ListingFacets, m: Messages, market: Market): FilterFacets {
   return {
     kinds: facets.kinds.map((kind) => ({ ...kind, label: capitalise(m.search.kinds[kind.kind]) })),
     categories: facets.categories,
     tags: facets.tags,
     options: facets.options,
     fields: facets.fields,
+    ranges: facets.ranges.map((range) => ({ ...range, hint: rangeText(range.min, range.max, range.unit, market.locale) })),
     price: facets.price,
   };
 }
@@ -287,6 +289,12 @@ function chosenText(item: ChosenFilter, filters: ListingFilters, facets: Listing
       // A custom field (D118), worded as the store wrote it in the shopper's language.
       const field = facets.fieldLabels.find((f) => f.name === item.name);
       return `${field?.label ?? item.name}: ${field?.values[item.value] ?? item.value}`;
+    }
+    case "range": {
+      // A number or measurement field (D120): "Vekt: 100–500 g", in the unit the filter compares in.
+      const field = facets.rangeLabels.find((f) => f.name === item.name);
+      const range = filters.ranges.find((r) => r.name === item.name);
+      return `${field?.label ?? item.name}: ${rangeText(range?.min ?? null, range?.max ?? null, field?.unit ?? "", market.locale)}`;
     }
     case "price":
       return filters.minPrice !== null && filters.maxPrice !== null

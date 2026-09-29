@@ -76,18 +76,29 @@ const colorStyle = (part: PageRow | PageColumn): CSSProperties => {
   return css;
 };
 
-/** The row itself: its background, height, margin and padding. */
-export function rowBox(row: PageRow, mode: PartsMode): Box {
+/**
+ * The row itself: its background, height, margin and padding. A modal's row
+ * (D121) is drawn `inPanel`: its border, corners, shadow and margin are the
+ * panel's (`modalPanelStyle()`), which it fills.
+ */
+export function rowBox(row: PageRow, mode: PartsMode, inPanel = false): Box {
+  const spacing = spacingStyle(rowSpacing(row.style));
+  if (inPanel) for (const side of ["Top", "Right", "Bottom", "Left"]) delete spacing[`margin${side}`];
   return {
     id: mode === "site" ? row.htmlId : undefined,
     className: cx(
       "relative isolate flex flex-col",
       row.fullHeight && "min-h-svh",
-      clips(row) && "overflow-hidden",
+      clips(row) && !inPanel && "overflow-hidden",
       mode === "site" && row.className,
     ),
-    style: { ...spacingStyle(rowSpacing(row.style)), ...frameStyle(row), ...colorStyle(row) },
+    style: { ...spacing, ...(inPanel ? {} : frameStyle(row)), ...colorStyle(row) },
   };
+}
+
+/** A modal's panel (D121): the row's border, rounded corners and shadow, which it clips its content to. */
+export function modalPanelStyle(row: PageRow): CSSProperties {
+  return frameStyle(row) as CSSProperties;
 }
 
 /** Inside the row: in a full-width row, what it holds keeps to the content's width unless set to spread. */

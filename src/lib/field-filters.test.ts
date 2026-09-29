@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { newFieldId, type FieldDef, type FieldGroup } from "./custom-fields";
-import { YES, fieldFilterValues, filterableFields } from "./field-filters";
+import { YES, choiceFields, fieldFilterValues, filterableFields, isRangeField, rangeFields, rangeText } from "./field-filters";
 
 const field = (over: Partial<FieldDef> & Pick<FieldDef, "type" | "name">): FieldDef => ({
   id: newFieldId(),
@@ -57,5 +57,31 @@ describe("custom fields as listing filters", () => {
     const organic = field({ type: "boolean", name: "organic" });
     expect(fieldFilterValues(organic, [YES, "0"])).toEqual([YES]);
     expect(fieldFilterValues(organic, ["0", "true"])).toEqual([]);
+  });
+
+  it("offers number and measurement fields as ranges, each with the unit it compares in (D120)", () => {
+    const weight = field({ type: "measurement", name: "weight", units: ["g", "kg"] });
+    const height = field({ type: "number", name: "height", unit: "cm" });
+    const plain = field({ type: "number", name: "pieces" });
+    const unflagged = field({ type: "number", name: "unflagged", filter: false });
+    const secret = field({ type: "measurement", name: "secret", units: ["g"], access: "private" });
+    const material = field({ type: "select", name: "material", choices });
+    const defs = filterableFields([group([weight, height, plain, unflagged, secret, material])]);
+    expect(defs.map((def) => def.name)).toEqual(["weight", "height", "pieces", "material"]);
+    expect(defs.map(isRangeField)).toEqual([true, true, true, false]);
+    expect(rangeFields(defs).map(({ def, kind, unit }) => [def.name, kind, unit])).toEqual([
+      ["weight", "measurement", "g"],
+      ["height", "number", "cm"],
+      ["pieces", "number", ""],
+    ]);
+    expect(choiceFields(defs).map((def) => def.name)).toEqual(["material"]);
+  });
+
+  it("words a range for a shopper, in the market's way of writing numbers", () => {
+    expect(rangeText(100, 500, "g", "nb-NO")).toBe("100–500 g");
+    expect(rangeText(100, null, "g", "nb-NO")).toBe("≥ 100 g");
+    expect(rangeText(null, 2.5, "kg", "en-GB")).toBe("≤ 2.5 kg");
+    expect(rangeText(null, 2.5, "kg", "nb-NO")).toBe("≤ 2,5 kg");
+    expect(rangeText(1, 3, "", "en-GB")).toBe("1–3");
   });
 });

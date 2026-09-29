@@ -3,6 +3,7 @@ import type { FieldLanguage } from "@/components/admin/field-editor-dialog";
 import type { FieldEntity } from "@/lib/custom-fields";
 import { PAGE_ROLES, ROLE_COPY } from "@/lib/page-roles";
 import { saveTermFieldsAction, startFieldFileUploadAction, termFieldsAction } from "./actions";
+import type { EntityFieldsSetup } from "@/components/admin/entity-fields-card";
 import type { TermFieldsSetup } from "@/components/admin/term-fields";
 import { activeFieldGroups } from "@/server/custom-fields";
 import { uploadsEnabled } from "@/server/media";
@@ -38,6 +39,17 @@ export async function termFieldsSetup(store: Store): Promise<TermFieldsSetup | u
     uploads: uploadsEnabled(),
     open: termFieldsAction.bind(null, store.slug),
     save: saveTermFieldsAction.bind(null, store.slug),
+    startFile: startFieldFileUploadAction.bind(null, store.slug),
+  };
+}
+
+/** What an editor of the store's, a customer's or an order's custom fields needs (D120): the languages, and uploads for pictures and files. */
+export function entityFieldsSetup(store: Store): EntityFieldsSetup {
+  return {
+    storeSlug: store.slug,
+    locales: store.localization.locales,
+    languageNames: Object.fromEntries(storeLanguages(store).map((l) => [l.locale, l.name])),
+    uploads: uploadsEnabled(),
     startFile: startFieldFileUploadAction.bind(null, store.slug),
   };
 }

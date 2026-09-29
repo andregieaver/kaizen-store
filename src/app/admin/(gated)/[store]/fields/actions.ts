@@ -19,7 +19,9 @@ import {
   termFieldsForEditor,
   type TermFieldsEditor,
 } from "@/server/custom-fields";
+import { saveStoreFields } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
+import { storeTag } from "@/server/stores";
 
 const idSchema = z.uuid();
 const unknownGroup = (): SaveResult => ({ ok: false, problems: ["Unknown group."] });
@@ -116,5 +118,16 @@ export async function saveTermFieldsAction(storeSlug: string, termId: string, ch
   if (!idSchema.safeParse(termId).success) return { ok: false, problems: ["Unknown category or tag."] };
   const result = await saveTermFields(member, termId, changes);
   if (result.ok) updateTag(fieldsTag(member.store.id));
+  return result;
+}
+
+/** Saves what was entered in the store's own fields (D120); the site's pages, layouts, headers and footers read the public ones. */
+export async function saveStoreFieldsAction(storeSlug: string, changes: unknown): Promise<SaveResult> {
+  const member = await requireMember(storeSlug);
+  const result = await saveStoreFields(member, changes);
+  if (result.ok) {
+    updateTag(fieldsTag(member.store.id));
+    updateTag(storeTag(member.store.slug));
+  }
   return result;
 }

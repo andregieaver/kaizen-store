@@ -130,6 +130,8 @@ export type KnownCookie = {
   chat?: boolean;
   /** Set only in stores that let visitors choose light or dark (D99). */
   colorMode?: boolean;
+  /** Set only on sites with a modal that opens by itself and is not shown every time (D121). */
+  modals?: boolean;
 };
 
 /**
@@ -183,6 +185,23 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker samtalen din med chatassistenten mens du går mellom sidene; forsvinner når du lukker fanen.",
       sv: "Kommer ihåg ditt samtal med chattassistenten medan du går mellan sidorna; försvinner när du stänger fliken.",
       da: "Husker din samtale med chatassistenten, mens du går mellem siderne; forsvinder, når du lukker fanen.",
+    },
+  },
+  {
+    // In the tab's session storage or local storage, not a cookie: only once a visitor who allowed preferences closes a
+    // pop-up (a modal in a page, D121) that opens by itself, and only for one shown once per visit or every so many days.
+    name: "kaizen_modal_…",
+    pattern: /^kaizen_modal_[a-z0-9-]+$/,
+    provider: "Kaizen",
+    category: "preferences",
+    days: null,
+    on: "both",
+    modals: true,
+    purpose: {
+      en: "Remembers that you closed a pop-up window, so it does not open again straight away; kept until you close the tab, or for the number of days the site has chosen.",
+      nb: "Husker at du lukket et popup-vindu, slik at det ikke åpnes igjen med en gang; lagres til du lukker fanen, eller i så mange dager nettstedet har valgt.",
+      sv: "Kommer ihåg att du stängde ett popup-fönster, så att det inte öppnas igen direkt; sparas tills du stänger fliken eller så många dagar som webbplatsen har valt.",
+      da: "Husker, at du lukkede et popup-vindue, så det ikke åbner igen med det samme; gemmes, til du lukker fanen, eller i det antal dage, webstedet har valgt.",
     },
   },
   {
@@ -405,7 +424,12 @@ export const cookiePurpose = (cookie: Pick<KnownCookie, "purpose">, lang: string
 export function declaredCookies(
   site: "platform" | "store",
   tracking: TrackingSettings,
-  { buyers = false, chat = false, colorMode = false }: { buyers?: boolean; chat?: boolean; colorMode?: boolean } = {},
+  {
+    buyers = false,
+    chat = false,
+    colorMode = false,
+    modals = false,
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -413,6 +437,7 @@ export function declaredCookies(
       (!cookie.buyers || buyers) &&
       (!cookie.chat || chat) &&
       (!cookie.colorMode || colorMode) &&
+      (!cookie.modals || modals) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );
 }

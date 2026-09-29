@@ -447,6 +447,8 @@ const messages = {
       sorts: { relevance: "", priceLow: "billigst først", priceHigh: "dyrest først", newest: "nyeste først" },
       exact: (q: string): string => `Søk etter nøyaktig «${q}»`,
     },
+    /** A modal in a page (D121): the close button and its name when it has no heading. */
+    modal: { close: "Lukk", dialog: "Dialogvindu" },
     listing: {
       open: "Filtrer og sorter",
       title: "Filtrer og sorter",
@@ -1211,6 +1213,8 @@ const messages = {
       sorts: { relevance: "", priceLow: "billigast först", priceHigh: "dyrast först", newest: "nyast först" },
       exact: (q: string): string => `Sök efter exakt ”${q}”`,
     },
+    /** A modal in a page (D121): the close button and its name when it has no heading. */
+    modal: { close: "Stäng", dialog: "Dialogruta" },
     listing: {
       open: "Filtrera och sortera",
       title: "Filtrera och sortera",
@@ -1973,6 +1977,8 @@ const messages = {
       sorts: { relevance: "", priceLow: "billigste først", priceHigh: "dyreste først", newest: "nyeste først" },
       exact: (q: string): string => `Søg efter præcis »${q}«`,
     },
+    /** A modal in a page (D121): the close button and its name when it has no heading. */
+    modal: { close: "Luk", dialog: "Dialogvindu" },
     listing: {
       open: "Filtrer og sorter",
       title: "Filtrer og sorter",
@@ -2735,6 +2741,8 @@ const messages = {
       sorts: { relevance: "", priceLow: "cheapest first", priceHigh: "most expensive first", newest: "newest first" },
       exact: (q: string): string => `Search for exactly “${q}”`,
     },
+    /** A modal in a page (D121): the close button and its name when it has no heading. */
+    modal: { close: "Close", dialog: "Dialog" },
     listing: {
       open: "Filter and sort",
       title: "Filter and sort",

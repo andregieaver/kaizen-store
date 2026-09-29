@@ -369,3 +369,66 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
     --cols: var(--grid-desktop, 3);
   }
 }
+
+/*
+ * Modals in a page (D121, `PageModal`): a row in a native dialog, closed
+ * until something opens it. The dialog is only the frame the panel sits in
+ * (its width is the modal's size, kept inside the window); the panel holds
+ * the row and scrolls inside when it is taller than the window. It is made
+ * of the site's colours, and fades in unless the visitor prefers less motion.
+ */
+dialog[data-page-modal] {
+  width: min(var(--modal-width, 36rem), calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+}
+dialog[data-page-modal][data-position="bottom"] {
+  margin-block: auto 1rem;
+}
+dialog[data-page-modal]::backdrop {
+  background: rgb(0 0 0 / var(--modal-dim, 0.5));
+}
+dialog[data-page-modal] > .page-modal-panel {
+  max-height: calc(100dvh - 2rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.25);
+  outline: none;
+}
+/* The page behind stops scrolling while a modal is open, and moves again as soon as it is not there (also when the page is left). */
+:root:has(dialog[data-page-modal][open]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+@media (prefers-reduced-motion: no-preference) {
+  dialog[data-page-modal][open] {
+    animation: page-modal-in 160ms ease-out;
+  }
+  dialog[data-page-modal][open]::backdrop {
+    animation: page-modal-fade 160ms ease-out;
+  }
+}
+@keyframes page-modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+@keyframes page-modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* A modal's row in the builder's canvas is drawn in the page, outlined and badged (D44). */
+[data-builder-item][data-builder-modal] {
+  outline-style: dashed;
+  outline-color: rgb(217 119 6 / 0.6);
+}

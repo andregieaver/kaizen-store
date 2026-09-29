@@ -6,7 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { readDb } from "@/db/client";
 import type { Buyer } from "@/lib/b2b";
 import { localized, type FieldDef } from "@/lib/custom-fields";
-import { YES, fieldFilterValues, filterableFields } from "@/lib/field-filters";
+import { YES, choiceFields, fieldFilterValues, filterableFields, rangeFields, type RangeField } from "@/lib/field-filters";
 import { t } from "@/lib/i18n";
 import { toMinorUnits, type ListingFilters } from "@/lib/listing-filters";
 import { shown, type Market } from "@/lib/markets";
@@ -68,8 +68,9 @@ function scopeClause(storeId: string, marketCode: string, scope: ListingScope, v
  */
 function fieldsClause(filters: ListingFilters, defs: FieldDef[]): SQL[] {
   const parts: SQL[] = [];
+  const choices = choiceFields(defs);
   for (const asked of filters.fields) {
-    const def = defs.find((d) => d.name === asked.name);
+    const def = choices.find((d) => d.name === asked.name);
     if (!def) continue;
     const values = fieldFilterValues(def, asked.values);
     if (values.length === 0) continue;
@@ -88,6 +89,43 @@ function fieldsClause(filters: ListingFilters, defs: FieldDef[]): SQL[] {
   return parts;
 }
 
+/**
+ * A number or measurement field's range (D120): the fields it names, resolved
+ * to the store's public filter fields of those types (a name that is not one
+ * is dropped), each a test on what was entered in the language-neutral row.
+ * A number is a JSON number; a measurement `{ value, unit }` is compared only
+ * when entered in the field's first unit. Every cast is guarded by the JSON
+ * type, so a row that holds anything else is left out and never raises. The
+ * field's id, the unit and the bounds are parameters.
+ */
+function rangesClause(filters: ListingFilters, defs: FieldDef[]): SQL[] {
+  const parts: SQL[] = [];
+  const known = rangeFields(defs);
+  for (const asked of filters.ranges) {
+    const range = known.find((r) => r.def.name === asked.name);
+    if (!range || (asked.min === null && asked.max === null)) continue;
+    const held = sql`fv.values -> ${range.def.id}::text`;
+    const amount = rangeAmount(range, held);
+    const bounds: SQL[] = [];
+    if (asked.min !== null) bounds.push(sql`${amount} >= ${String(asked.min)}::numeric`);
+    if (asked.max !== null) bounds.push(sql`${amount} <= ${String(asked.max)}::numeric`);
+    parts.push(sql`exists (
+      select 1 from commerce.field_values fv
+      where fv.store_id = p.store_id and fv.entity = 'product' and fv.entity_id = p.id and fv.locale = ''
+        and ${sql.join(bounds, sql` and `)}
+    )`);
+  }
+  return parts;
+}
+
+/** The number a range field's stored value `held` stands for, or null when it holds none in the field's own unit. */
+function rangeAmount(range: RangeField, held: SQL): SQL {
+  return range.kind === "number"
+    ? sql`(case when jsonb_typeof(${held}) = 'number' then (${held})::numeric end)`
+    : sql`(case when jsonb_typeof(${held}) = 'object' and jsonb_typeof(${held} -> 'value') = 'number'
+        and coalesce(${held} ->> 'unit', '') = ${range.unit} then (${held} -> 'value')::numeric end)`;
+}
+
 /** What the shopper's filters ask of a product `p`, as SQL; every value a parameter. */
 function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, fieldDefs: FieldDef[] = []): SQL {
   const parts: SQL[] = [];
@@ -103,6 +141,7 @@ function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, 
     )`);
   }
   parts.push(...fieldsClause(filters, fieldDefs));
+  parts.push(...rangesClause(filters, fieldDefs));
   if (filters.minPrice !== null || filters.maxPrice !== null) {
     const digits = minorUnitDigits(market.currency);
     parts.push(sql`exists (
@@ -145,7 +184,7 @@ export async function listingProducts(
             : scope.ids
               ? sql`array_position(${uuids(scope.ids)}::uuid[], p.id)`
               : sql`p.created_at, p.handle`;
-  const fieldDefs = filters.fields.length > 0 ? filterableFields(await activeFieldGroups(storeId, "product")) : [];
+  const fieldDefs = filters.fields.length > 0 || filters.ranges.length > 0 ? filterableFields(await activeFieldGroups(storeId, "product")) : [];
   const rows = await readDb().execute<Row>(sql`
     select p.id from commerce.products p
     where ${scopeClause(storeId, market.code, scope, viewer)} and ${filtersClause(filters, market, viewer, fieldDefs)}
@@ -173,6 +212,10 @@ export type ListingFacets = {
   fields: { name: string; label: string; values: FacetValue[] }[];
   /** Every value of those fields with its label, narrowing or not, to word a chosen filter. */
   fieldLabels: { name: string; label: string; values: Record<string, string> }[];
+  /** Number and measurement fields offered as ranges (D120): the least and most the page's products hold, in `unit` (a measurement's first unit); only those that differ. */
+  ranges: { name: string; label: string; unit: string; min: number; max: number }[];
+  /** Every range field with its label and unit, narrowing or not, to word a chosen filter. */
+  rangeLabels: { name: string; label: string; unit: string }[];
   /** Whole units of the currency, as prices are shown to the viewer; null without prices. */
   price: { min: number; max: number } | null;
 };
@@ -217,12 +260,14 @@ export async function listingFacets(
     limit ${FACET_LIMIT}
   `);
   const total = products.length;
-  const empty: ListingFacets = { total, kinds: [], categories: [], tags: [], options: [], fields: [], fieldLabels: [], price: null };
+  const empty: ListingFacets = { total, kinds: [], categories: [], tags: [], options: [], fields: [], fieldLabels: [], ranges: [], rangeLabels: [], price: null };
   if (total === 0) return empty;
   const ids = uuids(products.map((row) => String(row.id)));
 
-  const fieldDefs = filterableFields(await activeFieldGroups(storeId, "product"));
-  const [links, optionRows, terms, fieldRows] = await Promise.all([
+  const allDefs = filterableFields(await activeFieldGroups(storeId, "product"));
+  const fieldDefs = choiceFields(allDefs);
+  const rangeDefs = rangeFields(allDefs);
+  const [links, optionRows, terms, fieldRows, rangeRows] = await Promise.all([
     readDb().execute<Row>(sql`
       select pt.product_id, pt.term_id from commerce.product_terms pt
       where pt.store_id = ${storeId}::uuid and pt.product_id = any(${ids}::uuid[])
@@ -242,6 +287,23 @@ export async function listingFacets(
           cross join unnest(${textList(fieldDefs.map((d) => d.id))}) as f(id)
           where fv.store_id = ${storeId}::uuid and fv.entity = 'product' and fv.locale = ''
             and fv.entity_id = any(${ids}::uuid[]) and jsonb_exists(fv.values, f.id)
+        `),
+    rangeDefs.length === 0
+      ? Promise.resolve([])
+      : readDb().execute<Row>(sql`
+          select f.id as field_id, min(x.n)::float8 as low, max(x.n)::float8 as high
+          from commerce.field_values fv
+          cross join unnest(${textList(rangeDefs.map((r) => r.def.id))}, ${textList(rangeDefs.map((r) => r.kind))}, ${textList(rangeDefs.map((r) => r.unit))})
+            as f(id, kind, unit)
+          cross join lateral (select case
+            when f.kind = 'number' and jsonb_typeof(fv.values -> f.id) = 'number' then (fv.values -> f.id)::numeric
+            when f.kind = 'measurement' and jsonb_typeof(fv.values -> f.id) = 'object'
+              and jsonb_typeof(fv.values -> f.id -> 'value') = 'number'
+              and coalesce(fv.values -> f.id ->> 'unit', '') = f.unit then (fv.values -> f.id -> 'value')::numeric
+            end as n) x
+          where fv.store_id = ${storeId}::uuid and fv.entity = 'product' and fv.locale = ''
+            and fv.entity_id = any(${ids}::uuid[]) and x.n between -1000000000000 and 1000000000000
+          group by f.id
         `),
   ]);
 
@@ -304,6 +366,15 @@ export async function listingFacets(
     return { name: def.name, label: localized(def.label, def.labels, market.locale), all };
   });
 
+  // Number and measurement fields (D120): the range the page's products hold, in the field's own unit.
+  const spans = new Map(rangeRows.map((row) => [String(row.field_id), { min: Number(row.low), max: Number(row.high) }]));
+  const rangeFacets = rangeDefs.map((r) => ({
+    name: r.def.name,
+    label: localized(r.def.label, r.def.labels, market.locale),
+    unit: r.unit,
+    span: spans.get(r.def.id),
+  }));
+
   // Prices are kept in the country's own currency and shown in the one chosen (D109).
   const lows = products.map((row) => shown(market, Number(row.low))).filter(Number.isFinite);
   const highs = products.map((row) => shown(market, Number(row.high))).filter(Number.isFinite);
@@ -329,6 +400,10 @@ export async function listingFacets(
       label: field.label,
       values: Object.fromEntries(field.all.map((value) => [value.value, value.label])),
     })),
+    ranges: rangeFacets.flatMap(({ span, ...facet }) =>
+      span && Number.isFinite(span.min) && Number.isFinite(span.max) && span.max > span.min ? [{ ...facet, min: span.min, max: span.max }] : [],
+    ),
+    rangeLabels: rangeFacets.map(({ name, label, unit }) => ({ name, label, unit })),
     price: price && price.max > price.min ? price : null,
   };
 }

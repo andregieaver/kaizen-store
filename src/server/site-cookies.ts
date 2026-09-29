@@ -19,6 +19,7 @@ import { codeCategories, customCodeInput, type CustomCode } from "@/lib/custom-c
 
 import { audit, type Account } from "./auth";
 import { getChatAgent } from "./chat-agent";
+import { usesRememberedModals } from "./page-modals";
 
 type Row = Record<string, unknown>;
 
@@ -77,7 +78,9 @@ export async function siteCookies(
     listed.has(name) || listed.set(name, { name, provider, category, days, purpose });
   // The chat agent keeps its conversation in the tab while it is on (D81).
   const chat = (await getChatAgent(storeId))?.enabled ?? false;
-  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat }).forEach(list);
+  // Pop-ups that remember being closed keep it in the browser, as a preference (D121).
+  const modals = await usesRememberedModals(storeId);
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals }).forEach(list);
 
   const { items, notes } = await siteFindings(storeId);
   for (const item of reviewFindings(items, notes)) {

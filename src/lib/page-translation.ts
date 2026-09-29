@@ -58,6 +58,7 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       };
     case "product":
     case "customField":
+    case "fieldLoop":
       // Only a heading of the store's own is text to translate; the product's own texts have their languages already,
       // and so have custom fields' (D118).
       return b.heading ? { ...b, heading: str("heading", b.heading, 300, "Heading") } : b;

@@ -100,6 +100,9 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "customField":
       // The page's own values are looked up where it is shown (`CustomFieldSection`, D118); the editor shows a stand-in.
       return null;
+    case "fieldLoop":
+      // The page's own repeater rows are looked up where it is shown (`FieldLoopSection`, D120); the editor shows a stand-in.
+      return null;
     case "storePart":
       // A working page's component draws where it is shown (`StorePartSection`, D113); the editor shows a stand-in.
       return null;

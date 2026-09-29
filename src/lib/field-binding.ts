@@ -67,6 +67,14 @@ export function bindable(blockType: string, fieldType: FieldType): boolean {
 /** Whether the block kind can be bound at all. */
 export const canBind = (blockType: string): boolean => blockType in BINDABLE;
 
+/**
+ * Whether any block takes its content from a field of the store itself
+ * (D120): only then are the store's fields read, and a header or footer has
+ * no others to take.
+ */
+export const hasStoreBindings = (content: Pick<PageContent, "rows">): boolean =>
+  eachBlock(content, (block) => bindingOf(block)?.source === "store");
+
 function eachBlock(content: Pick<PageContent, "rows">, visit: (block: PageBlock) => boolean): boolean {
   return content.rows.some((row) => row.columns.some((column) => column.blocks.some(visit)));
 }
@@ -137,10 +145,10 @@ function docOf(field: ShownField): RichTextDoc | null {
 }
 
 /** The field a block names among the groups' own fields, if it is one of a kind the block can take and has a value. */
-function fieldFor(block: PageBlock, groups: readonly ShownGroup[]): ShownField | null {
+function fieldFor(block: PageBlock, groups: readonly ShownGroup[], storeGroups: readonly ShownGroup[]): ShownField | null {
   const bind = bindingOf(block);
   if (!bind) return null;
-  for (const group of groups) {
+  for (const group of bind.source === "store" ? storeGroups : groups) {
     const field = group.fields.find((f) => f.id === bind.fieldId);
     if (field) return bindable(block.type, field.type) && drawable(field) ? field : null;
   }
@@ -175,11 +183,11 @@ function filled(block: PageBlock, field: ShownField): PageBlock | null {
 }
 
 /** One block: bound ones show their field's value; else, if they keep their own content, that; else they are left out. */
-function bindBlock(block: PageBlock, groups: readonly ShownGroup[]): PageBlock | null {
+function bindBlock(block: PageBlock, groups: readonly ShownGroup[], storeGroups: readonly ShownGroup[]): PageBlock | null {
   const bind = bindingOf(block);
   if (!bind) return block;
   try {
-    const field = fieldFor(block, groups);
+    const field = fieldFor(block, groups, storeGroups);
     const value = field ? filled(block, field) : null;
     if (value) return unbound(value);
   } catch {
@@ -192,9 +200,16 @@ function bindBlock(block: PageBlock, groups: readonly ShownGroup[]): PageBlock |
  * The page with every bound block showing the value of its field among
  * `groups` (the thing's public fields in the shopper's language). Only the
  * groups' own top-level fields are used, so a private field is never
- * available. Immutable; a page with no bound block is returned as it is.
+ * available. A block bound to a field of the store itself (`bind.source`
+ * "store", D120) looks among `storeGroups`, the store's public fields, and a
+ * block bound to the thing's own never does. Immutable; a page with no bound
+ * block is returned as it is.
  */
-export function bindPage<T extends Pick<PageContent, "rows">>(content: T, groups: readonly ShownGroup[]): T {
+export function bindPage<T extends Pick<PageContent, "rows">>(
+  content: T,
+  groups: readonly ShownGroup[],
+  storeGroups: readonly ShownGroup[] = [],
+): T {
   if (!hasBindings(content)) return content;
-  return mapBlocks(content, (block) => bindBlock(block, groups));
+  return mapBlocks(content, (block) => bindBlock(block, groups, storeGroups));
 }

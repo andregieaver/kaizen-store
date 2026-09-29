@@ -5,7 +5,7 @@ Custom Fields (ACF): store owners define their own fields (a size guide, an
 ingredient list, a warranty, a designer's name), fill them in wherever they
 edit a product or a page, and place them in the page builder's templates.
 
-Status: phases 1 and 2 are built (D118, D119); phase 3 is not. What phase 1
+Status: all three phases are built (D118, D119, D120). What phase 1
 did differently from the design below:
 
 - **Required fields** are asked for when a product is saved as published; a

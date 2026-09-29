@@ -92,6 +92,16 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
               </a>
             </Heading>
           )}
+          {item.fields && item.fields.length > 0 && (
+            // Custom fields chosen for the tiles (D120): one line each, plain words.
+            <ul className="flex flex-col gap-0.5 text-sm text-muted">
+              {item.fields.map((field, index) => (
+                <li key={`${field.label}-${index}`}>
+                  <span className="font-medium">{`${field.label}:`}</span> {field.text}
+                </li>
+              ))}
+            </ul>
+          )}
           {item.date && (
             <time dateTime={item.date} className="text-sm text-muted">
               {day.format(new Date(item.date))}

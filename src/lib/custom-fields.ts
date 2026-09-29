@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isMoney, majorOf, minorOf, shownMoney, MAX_MONEY_MINOR, type FieldMoney } from "./field-money";
+import { isCurrency } from "./money";
 import { cleanRichText, richTextPlain, type RichTextDoc } from "./page-content";
 import { isPictureAddress } from "./picture-address";
 import { embedUrl } from "./video-embed";
@@ -38,7 +40,9 @@ const NAME_MAX = 40;
 
 /**
  * The kinds of thing a group can be on: products, their variants, pages,
- * articles, and categories and tags (the store's own, `term`).
+ * articles, categories and tags (the store's own, `term`), the store itself
+ * (`store`, D120: one set of values for the whole site) and, for staff only,
+ * customers and orders.
  */
 export const FIELD_ENTITIES = {
   product: "Products",
@@ -46,11 +50,40 @@ export const FIELD_ENTITIES = {
   page: "Pages",
   article: "Articles",
   term: "Categories and tags",
+  store: "The store",
+  customer: "Customers",
+  order: "Orders",
 } as const;
 export type FieldEntity = keyof typeof FIELD_ENTITIES;
 export const FIELD_ENTITY_KEYS = Object.keys(FIELD_ENTITIES) as [FieldEntity, ...FieldEntity[]];
 export const isFieldEntity = (value: unknown): value is FieldEntity =>
   typeof value === "string" && Object.hasOwn(FIELD_ENTITIES, value);
+
+/**
+ * The things whose fields are for staff alone (D120): a customer's and an
+ * order's. Their groups may hold nothing else and nothing public, and what is
+ * entered in them is never read by the storefront, the chat agent, search,
+ * emails, integrations or the shopper's own pages.
+ */
+export const STAFF_ENTITIES = ["customer", "order"] as const satisfies readonly FieldEntity[];
+export const isStaffEntity = (entity: string): boolean => (STAFF_ENTITIES as readonly string[]).includes(entity);
+
+/** Why a group on customers or orders cannot be saved as it is, or null (also for a group on other things). */
+export function staffGroupProblem(group: { entities: readonly string[]; fields: readonly FieldDef[] }): string | null {
+  if (!group.entities.some(isStaffEntity)) return null;
+  if (!group.entities.every(isStaffEntity)) {
+    return "A group for customers or orders can be on nothing else: their fields are for staff only.";
+  }
+  const isPublic = (def: FieldDef): boolean => def.access === "public" || (def.subFields ?? []).some(isPublic);
+  const shown = group.fields.find(isPublic);
+  if (shown) return `${shown.label} cannot be shown on the site: customer and order fields are for staff only.`;
+  // Pictures and files are kept in public storage, whose addresses anyone who has them can open.
+  const kept = (def: FieldDef): FieldDef | undefined =>
+    ["image", "gallery", "file"].includes(def.type) ? def : (def.subFields ?? []).map(kept).find(Boolean);
+  const stored = group.fields.map(kept).find(Boolean);
+  if (stored) return `${stored.label} cannot hold a picture or file: they are kept where anyone with the address can open them.`;
+  return null;
+}
 
 // ---------------------------------------------------------------------------
 // Field types
@@ -104,34 +137,72 @@ export const FIELD_TYPES = {
     translatable: false,
     hint: "Rows of the same fields, as many as you allow: features, sizes, ingredients with amounts.",
   },
+  flexible: {
+    label: "Flexible content",
+    category: "Layout",
+    translatable: false,
+    hint: "Rows that each take a layout you define, such as text, picture with caption or quote, in any order.",
+  },
+  money: {
+    label: "Money",
+    category: "Commerce",
+    translatable: false,
+    hint: "An amount for information, such as shipping from or a deposit. Shown as entered; not a price shoppers pay.",
+  },
 } as const;
 
 export type FieldType = keyof typeof FIELD_TYPES;
 export const FIELD_TYPE_KEYS = Object.keys(FIELD_TYPES) as [FieldType, ...FieldType[]];
-export const FIELD_CATEGORIES = ["Basic", "Choice", "Content", "Date and colour", "Relational", "Layout"] as const;
+export const FIELD_CATEGORIES = ["Basic", "Choice", "Content", "Date and colour", "Relational", "Commerce", "Layout"] as const;
 
 /** Whether a type's value has one text per language; the rest are the same in every language. */
 export const isTranslatable = (type: FieldType): boolean => FIELD_TYPES[type].translatable;
 
-/** A group or a repeater: it holds fields of its own, whose texts are per language one by one. */
-export const isStructural = (type: FieldType): boolean => type === "group" || type === "repeater";
+/** A group, a repeater or flexible content: it holds fields of its own, whose texts are per language one by one. */
+export const isStructural = (type: FieldType): boolean => type === "group" || type === "repeater" || type === "flexible";
 
-/** The fields a group or repeater holds (none for other types). */
-export const subFieldsOf = (def: Pick<FieldDef, "type" | "subFields">): FieldDef[] => (isStructural(def.type) ? (def.subFields ?? []) : []);
+/** A repeater or flexible content: a list of rows, each kept with an id of its own. */
+export const isRowsType = (type: FieldType): boolean => type === "repeater" || type === "flexible";
 
-/** Whether some part of a field's value is per language: a text-like type, or a group or repeater with such a field in it. */
-export const hasTranslations = (def: Pick<FieldDef, "type" | "subFields">): boolean =>
+/**
+ * The fields a group, repeater or flexible content holds (none for other
+ * types). Flexible content's are those of all its layouts together: field ids
+ * are unique in a group, so a cell is found by its id wherever it is; what a
+ * row holds is its own layout's (`rowFieldsOf()`).
+ */
+export const subFieldsOf = (def: Pick<FieldDef, "type" | "subFields" | "layouts">): FieldDef[] =>
+  def.type === "flexible" ? (def.layouts ?? []).flatMap((layout) => layout.subFields) : isStructural(def.type) ? (def.subFields ?? []) : [];
+
+/** The lists of fields a structural field is made of: its own, or one per layout of flexible content (conditions look only inside one). */
+export const fieldListsOf = (def: Pick<FieldDef, "type" | "subFields" | "layouts">): FieldDef[][] =>
+  def.type === "flexible" ? (def.layouts ?? []).map((layout) => layout.subFields) : isStructural(def.type) ? [def.subFields ?? []] : [];
+
+/** A layout of flexible content by its key. */
+export const layoutOf = (def: Pick<FieldDef, "layouts">, key: unknown): FieldLayout | undefined =>
+  typeof key === "string" ? def.layouts?.find((layout) => layout.key === key) : undefined;
+
+/**
+ * The fields of one row of a repeater or flexible content: a repeater's own,
+ * a flexible row's layout's; null for a row of a layout that no longer exists.
+ */
+export const rowFieldsOf = (def: Pick<FieldDef, "type" | "subFields" | "layouts">, row: { layout?: unknown } | undefined): FieldDef[] | null =>
+  def.type === "flexible" ? (layoutOf(def, row?.layout)?.subFields ?? null) : subFieldsOf(def);
+
+/** Whether some part of a field's value is per language: a text-like type, or a group, repeater or flexible content with such a field in it. */
+export const hasTranslations = (def: Pick<FieldDef, "type" | "subFields" | "layouts">): boolean =>
   isStructural(def.type) ? subFieldsOf(def).some((sub) => isTranslatable(sub.type)) : isTranslatable(def.type);
 
 /** Rows in a repeater, at most; and the most a sub field list may hold. */
 export const MAX_REPEATER_ROWS = 100;
 export const MAX_SUB_FIELDS = 30;
+/** Layouts of flexible content, at most. */
+export const MAX_LAYOUTS = 12;
 /** How many things a relational field may point at. */
 export const MAX_RELATED = 50;
 
 const CHOICE_TYPES: readonly FieldType[] = ["select", "radio", "buttons", "checkbox"];
-/** The types a listing can be filtered by (D78): a choice from a list, or a yes or no. */
-export const FILTER_TYPES: readonly FieldType[] = ["select", "radio", "buttons", "checkbox", "boolean"];
+/** The types a listing can be filtered by (D78): a choice from a list, a yes or no, or a number as a range (D120). */
+export const FILTER_TYPES: readonly FieldType[] = ["select", "radio", "buttons", "checkbox", "boolean", "number", "measurement"];
 /** The types keyword search reads: those that hold words. */
 export const SEARCH_TYPES: readonly FieldType[] = ["text", "textarea", "richText", "select", "radio", "buttons", "checkbox"];
 export const hasChoices = (type: FieldType): boolean => CHOICE_TYPES.includes(type);
@@ -147,6 +218,7 @@ export type FieldWidth = (typeof FIELD_WIDTHS)[number];
 export type FieldImage = { url: string; thumbnailUrl: string | null; alt: string };
 export type FieldVideo = { source: "youtube" | "vimeo"; link: string };
 export type FieldMeasurement = { value: number; unit: string };
+export type { FieldMoney };
 /** A link (D118): what it points at (a page, product, category, tag by id, or a web address), and its words. */
 export const LINK_KINDS = { page: "Page or article", product: "Product", category: "Category", tag: "Tag", url: "Web address" } as const;
 export type LinkKind = keyof typeof LINK_KINDS;
@@ -161,6 +233,7 @@ export type FieldValue =
   | boolean
   | string[]
   | FieldMeasurement
+  | FieldMoney
   | FieldImage
   | FieldImage[]
   | FieldVideo
@@ -170,7 +243,7 @@ export type FieldValue =
   | Values
   | Values[];
 
-/** Values by field id. In a group, the values of its fields; a repeater's rows are these with an `id` of their own. */
+/** Values by field id. In a group, the values of its fields; a repeater's rows are these with an `id` of their own, flexible content's also with the row's `layout`. */
 export interface Values {
   [id: string]: FieldValue;
 }
@@ -218,6 +291,17 @@ export type Choice = { key: string; label: string; labels?: Record<string, strin
 export const FIELD_ACCESS = { private: "Only staff", public: "Shown on the site" } as const;
 export type FieldAccess = keyof typeof FIELD_ACCESS;
 
+/** One layout of flexible content: a named set of fields a row can take. */
+export type FieldLayout = {
+  /** Never changes once saved; rows are kept under it. */
+  key: string;
+  label: string;
+  /** The label in other languages, by locale. */
+  labels?: Record<string, string>;
+  /** The fields of the layout (never a group, repeater or flexible content). */
+  subFields: FieldDef[];
+};
+
 export type FieldDef = {
   /** Never changes; values are kept under it. */
   id: string;
@@ -237,7 +321,7 @@ export type FieldDef = {
   placeholder?: string;
   /** Text: the most characters. */
   maxLength?: number;
-  /** Number and measurement: the least and most, and the step between. */
+  /** Number, measurement and money: the least and most, and the step between (money's are amounts in the currency entered, not minor units). */
   min?: number;
   max?: number;
   step?: number;
@@ -249,9 +333,11 @@ export type FieldDef = {
   choices?: Choice[];
   /** Gallery: the most pictures. */
   maxItems?: number;
-  /** Group and repeater: the fields in it (never a group or repeater themselves). */
+  /** Group and repeater: the fields in it (never a group, repeater or flexible content themselves). */
   subFields?: FieldDef[];
-  /** Repeater: the fewest and most rows, the label of the button that adds one, and how a row is laid out in the form. */
+  /** Flexible content: the layouts a row can take, one to twelve. */
+  layouts?: FieldLayout[];
+  /** Repeater and flexible content: the fewest and most rows, the label of the button that adds one, and how a row is laid out in the form. */
   minRows?: number;
   maxRows?: number;
   buttonLabel?: string;
@@ -318,6 +404,10 @@ export const LOCATION_PARAMS: Record<FieldEntity, readonly { param: string; labe
     { param: "termKind", label: "Category or tag" },
     { param: "content", label: "Used for" },
   ],
+  // One set of values for the store, and a group on customers or orders is on all of them: no rules.
+  store: [],
+  customer: [],
+  order: [],
 };
 
 /** The fixed answers for the params that have some. */
@@ -393,7 +483,8 @@ export function ruleMatches(rule: LocationRule, facts: Facts): boolean {
 /** Whether a group is on a thing: active, for its kind, and matching one of its rule groups (or having none). */
 export function groupApplies(group: FieldGroup, facts: Facts): boolean {
   if (!group.active || !group.entities.includes(facts.entity)) return false;
-  if (group.location.length === 0) return true;
+  // The store, customers and orders have nothing for rules to ask about: a group on them is on all of them.
+  if (group.location.length === 0 || LOCATION_PARAMS[facts.entity].length === 0) return true;
   return group.location.some((all) => all.every((rule) => ruleMatches(rule, facts)));
 }
 
@@ -437,7 +528,7 @@ export function isEmptyValue(value: FieldValue | null | undefined): boolean {
   if (Array.isArray(value)) return value.length === 0;
   if (isDoc(value)) return richTextPlain(value).trim() === "";
   // A group: empty when everything in it is; the other objects (a picture, a link) hold something as soon as they exist.
-  if (isImage(value) || isMeasurement(value) || isVideo(value) || isLink(value) || isFile(value)) return false;
+  if (isImage(value) || isMeasurement(value) || isMoney(value) || isVideo(value) || isLink(value) || isFile(value)) return false;
   return Object.values(value).every((inner) => isEmptyValue(inner as FieldValue));
 }
 
@@ -455,6 +546,7 @@ export function valueText(value: FieldValue | null | undefined): string {
   }
   if (isDoc(value)) return richTextPlain(value);
   if (isMeasurement(value)) return `${value.value} ${value.unit}`;
+  if (isMoney(value)) return `${majorOf(value) ?? value.amountMinor} ${value.currency}`;
   if (isVideo(value)) return value.link;
   if (isImage(value)) return value.url;
   if (isLink(value)) return value.label || value.ref;
@@ -495,7 +587,9 @@ export function conditionHolds(condition: Condition, values: Values): boolean {
       }
     case ">":
     case "<": {
-      const number = typeof value === "number" ? value : isMeasurement(value) ? value.value : Number(valueText(value));
+      // A money field compares as its major amount (12.5 for 12.50), in the currency it was entered in.
+      const number =
+        typeof value === "number" ? value : isMeasurement(value) ? value.value : isMoney(value) ? (majorOf(value) ?? Number.NaN) : Number(valueText(value));
       const limit = Number(wanted);
       if (empty || Number.isNaN(number) || Number.isNaN(limit)) return false;
       return condition.operator === ">" ? number > limit : number < limit;
@@ -515,6 +609,8 @@ export function operatorsFor(type: FieldType): ConditionOperator[] {
     case "number":
     case "measurement":
       return ["has", "empty", "==", "!=", ">", "<"];
+    case "money":
+      return ["has", "empty", ">", "<"];
     case "boolean":
       return ["==", "!="];
     case "select":
@@ -533,6 +629,7 @@ export function operatorsFor(type: FieldType): ConditionOperator[] {
     case "term":
     case "group":
     case "repeater":
+    case "flexible":
       return ["has", "empty"];
     case "date":
     case "datetime":
@@ -656,6 +753,19 @@ export function parseValue(def: FieldDef, raw: unknown): Parsed {
       if (def.max !== undefined && number > def.max) return bad(def, `Use at most ${def.max}.`);
       return ok({ value: number, unit: chosen });
     }
+    case "money": {
+      if (!isRecord(raw)) return bad(def, "Write an amount and choose a currency.");
+      const { amountMinor, currency } = raw;
+      if (amountMinor === null || amountMinor === undefined || (typeof amountMinor === "string" && amountMinor.trim() === "")) return ok(null);
+      const minor = typeof amountMinor === "string" && /^\d{1,15}$/.test(amountMinor.trim()) ? Number(amountMinor.trim()) : amountMinor;
+      if (typeof minor !== "number" || !Number.isSafeInteger(minor) || minor < 0) return bad(def, "Write an amount of zero or more.");
+      if (minor > MAX_MONEY_MINOR) return bad(def, "That amount is too large.");
+      const code = typeof currency === "string" ? currency.trim().toUpperCase() : "";
+      if (!isCurrency(code)) return bad(def, "Choose a currency.");
+      if (def.min !== undefined && minor < minorOf(def.min, code)) return bad(def, `Use at least ${def.min} ${code}.`);
+      if (def.max !== undefined && minor > minorOf(def.max, code)) return bad(def, `Use at most ${def.max} ${code}.`);
+      return ok({ amountMinor: minor, currency: code });
+    }
     case "boolean":
       if (typeof raw !== "boolean") return bad(def, "Choose yes or no.");
       return ok(raw);
@@ -737,6 +847,7 @@ export function parseValue(def: FieldDef, raw: unknown): Parsed {
     }
     case "group":
     case "repeater":
+    case "flexible":
       return parseStructural(def, raw, "all");
   }
 }
@@ -751,19 +862,21 @@ const isFileAddress = (url: string) => url.length <= 1000 && (/^https:\/\//.test
 const isLinkTarget = (url: string) => url.length <= 1000 && (/^https?:\/\/\S+$/.test(url) || /^\/(?![/\\])\S*$/.test(url));
 
 /**
- * A group's or repeater's value: its sub fields checked one by one. `part`
- * says which of them: all (a value as a person edits it), the shared ones or
- * the translated ones (as they are kept in the two kinds of row). A
- * repeater's rows are kept with an id of their own, the translated part by
- * that id, so a row moved keeps its words in every language.
+ * A group's, repeater's or flexible content's value: its sub fields checked one
+ * by one. `part` says which of them: all (a value as a person edits it), the
+ * shared ones or the translated ones (as they are kept in the two kinds of
+ * row). Rows are kept with an id of their own, the translated part by that id,
+ * so a row moved keeps its words in every language. A row of flexible content
+ * also has its `layout` and takes that layout's fields; one of a layout the
+ * field no longer has is dropped, never an error (the layout was taken away).
  */
 function parseStructural(def: FieldDef, raw: unknown, part: "all" | "shared" | "translated"): Parsed {
   if (raw === null || raw === undefined) return ok(null);
-  const subs = subFieldsOf(def).filter((sub) => part === "all" || (part === "translated") === isTranslatable(sub.type));
-  const cells = (source: unknown): { ok: true; values: Values } | { ok: false; problem: string } => {
+  const flexible = def.type === "flexible";
+  const cells = (source: unknown, list: FieldDef[]): { ok: true; values: Values } | { ok: false; problem: string } => {
     if (!isRecord(source)) return { ok: false, problem: "Fill in its fields." };
     const values: Values = {};
-    for (const sub of subs) {
+    for (const sub of list.filter((s) => part === "all" || (part === "translated") === isTranslatable(s.type))) {
       if (!Object.hasOwn(source, sub.id)) continue;
       const parsed = parseValue(sub, source[sub.id]);
       if (!parsed.ok) return { ok: false, problem: parsed.problem };
@@ -772,7 +885,7 @@ function parseStructural(def: FieldDef, raw: unknown, part: "all" | "shared" | "
     return { ok: true, values };
   };
   if (def.type === "group") {
-    const result = cells(raw);
+    const result = cells(raw, subFieldsOf(def));
     if (!result.ok) return bad(def, result.problem);
     return ok(Object.keys(result.values).length > 0 ? result.values : null);
   }
@@ -780,10 +893,12 @@ function parseStructural(def: FieldDef, raw: unknown, part: "all" | "shared" | "
     if (!isRecord(raw)) return bad(def, "Its rows could not be read.");
     const entries = Object.entries(raw);
     if (entries.length > MAX_REPEATER_ROWS) return bad(def, `Use at most ${MAX_REPEATER_ROWS} rows.`);
+    // A flexible row's layout is in the shared rows, not here: ids are unique in a group, so all the layouts' fields are looked through.
+    const subs = subFieldsOf(def);
     const out: Record<string, Values> = {};
     for (const [rowId, source] of entries) {
       if (!ROW_ID.test(rowId)) continue;
-      const result = cells(source);
+      const result = cells(source, subs);
       if (!result.ok) return bad(def, result.problem);
       if (Object.keys(result.values).length > 0) out[rowId] = result.values;
     }
@@ -791,16 +906,19 @@ function parseStructural(def: FieldDef, raw: unknown, part: "all" | "shared" | "
   }
   if (!Array.isArray(raw)) return bad(def, "Its rows could not be read.");
   const most = Math.min(def.maxRows ?? MAX_REPEATER_ROWS, MAX_REPEATER_ROWS);
-  if (raw.length > most) return bad(def, `Use at most ${most} rows.`);
+  if (!flexible && raw.length > most) return bad(def, `Use at most ${most} rows.`);
   const seen = new Set<string>();
   const rows: Values[] = [];
   for (const item of raw) {
     if (!isRecord(item) || typeof item.id !== "string" || !ROW_ID.test(item.id) || seen.has(item.id)) return bad(def, "A row could not be read.");
     seen.add(item.id);
-    const result = cells(item);
+    const layout = flexible ? layoutOf(def, item.layout) : undefined;
+    if (flexible && !layout) continue;
+    const result = cells(item, layout ? layout.subFields : subFieldsOf(def));
     if (!result.ok) return bad(def, result.problem);
-    rows.push({ id: item.id, ...result.values });
+    rows.push({ id: item.id, ...(layout && { layout: layout.key }), ...result.values });
   }
+  if (flexible && rows.length > most) return bad(def, `Use at most ${most} rows.`);
   return ok(rows.length > 0 ? rows : null);
 }
 
@@ -917,8 +1035,9 @@ const asRows = (value: unknown): Values[] => (Array.isArray(value) ? (value as V
 /**
  * A field's value in a language, as an editor shows it and a page draws it:
  * a text is the language's own, else the main language's; a group is its
- * fields (its texts by the same rule); a repeater is its rows, each with its
- * `id`, in the main language's order; the rest are the same everywhere.
+ * fields (its texts by the same rule); a repeater or flexible content is its
+ * rows, each with its `id` (and a flexible row its `layout`), in the main
+ * language's order; the rest are the same everywhere.
  */
 export function readField(def: FieldDef, data: FieldData, locale: string, main: string): FieldValue | undefined {
   if (!isStructural(def.type)) {
@@ -933,10 +1052,18 @@ export function readField(def: FieldDef, data: FieldData, locale: string, main: 
     return Object.keys(merged).length > 0 ? merged : undefined;
   }
   const rowWords = (l: string) => asValues(words(l)) as Record<string, Values> | undefined;
-  const rows = asRows(data.values[def.id]).map((row) => ({
-    id: String(row.id),
-    ...overlayCells(subs, row, rowWords(main)?.[String(row.id)], rowWords(locale)?.[String(row.id)], locale, main),
-  }));
+  const rows = asRows(data.values[def.id]).flatMap((row) => {
+    // A row of flexible content takes its layout's fields; one of a layout that is gone is not read.
+    const own = def.type === "flexible" ? rowFieldsOf(def, row) : subs;
+    if (own === null) return [];
+    return [
+      {
+        id: String(row.id),
+        ...(def.type === "flexible" && { layout: String(row.layout) }),
+        ...overlayCells(own, row, rowWords(main)?.[String(row.id)], rowWords(locale)?.[String(row.id)], locale, main),
+      },
+    ];
+  });
   return rows.length > 0 ? rows : undefined;
 }
 
@@ -975,20 +1102,39 @@ export function writeField(def: FieldDef, data: FieldData, locale: string, main:
     setWords(locale, filled(cellsOf(subs, cells, "translated")));
     return next;
   }
-  const rows = empty ? [] : asRows(value);
+  const flexible = def.type === "flexible";
+  // A flexible row is written with its layout's fields; one of a layout the field does not have is left out. Another language's
+  // rows are those of the main language's list (by id), so they need not say their layout.
+  const rows = (empty ? [] : asRows(value)).filter((row) => !flexible || locale !== main || rowFieldsOf(def, row) !== null);
   if (locale === main) {
     if (rows.length === 0) {
       delete next.values[def.id];
       for (const l of Object.keys(next.translations)) setWords(l, undefined);
       return next;
     }
-    next.values[def.id] = rows.map((row) => ({ id: String(row.id), ...cellsOf(subs, row, "shared") }));
+    next.values[def.id] = rows.map((row) => ({
+      id: String(row.id),
+      ...(flexible && { layout: String(row.layout) }),
+      ...cellsOf(flexible ? (rowFieldsOf(def, row) as FieldDef[]) : subs, row, "shared"),
+    }));
+    // The words other languages wrote for a row that is gone go with it.
+    const kept = new Set(rows.map((row) => String(row.id)));
+    for (const l of Object.keys(next.translations)) {
+      const own = asValues(next.translations[l]?.[def.id]);
+      if (l === main || !own) continue;
+      const left = Object.fromEntries(Object.entries(own).filter(([rowId]) => kept.has(rowId)));
+      setWords(l, Object.keys(left).length > 0 ? (left as unknown as Values) : undefined);
+    }
   }
-  const known = new Set(asRows(next.values[def.id]).map((row) => String(row.id)));
+  // The rows the field keeps (in the main language's list), by id: another language's words are taken only for these, by their layout.
+  const keptRows = new Map(asRows(next.values[def.id]).map((row) => [String(row.id), row]));
   const words: Record<string, Values> = {};
   for (const row of rows) {
-    const cells = filled(cellsOf(subs, row, "translated"));
-    if (cells && known.has(String(row.id))) words[String(row.id)] = cells;
+    const kept = keptRows.get(String(row.id));
+    if (!kept) continue;
+    const own = flexible ? rowFieldsOf(def, kept) : subs;
+    const cells = own && filled(cellsOf(own, row, "translated"));
+    if (cells) words[String(row.id)] = cells;
   }
   setWords(locale, Object.keys(words).length > 0 ? (words as unknown as Values) : undefined);
   return next;
@@ -1023,8 +1169,76 @@ function requiredIn(def: FieldDef, value: FieldValue | undefined, where: string)
     problems.push(`${at}${def.label} needs at least ${def.minRows} ${def.minRows === 1 ? "row" : "rows"}.`);
   }
   rows.forEach((row, index) => {
-    for (const sub of subs) if (fieldShows(sub, row)) problems.push(...requiredIn(sub, row[sub.id], `${at}${def.label}, row ${index + 1}`));
+    for (const sub of (def.type === "flexible" ? rowFieldsOf(def, row) : subs) ?? [])
+      if (fieldShows(sub, row)) problems.push(...requiredIn(sub, row[sub.id], `${at}${def.label}, row ${index + 1}`));
   });
+  return problems;
+}
+
+/**
+ * The data with flexible content tidied: rows of a layout the field no longer
+ * has are dropped (with the words written for them in every language), and a
+ * row keeps only the words of its own layout's fields. What saving does so a
+ * layout taken away never leaves rows behind; reading never trusts it either.
+ */
+export function tidyFlexible(defs: readonly FieldDef[], data: FieldData): FieldData {
+  const values: Values = { ...data.values };
+  const translations: Record<string, Values> = { ...data.translations };
+  for (const def of defs) {
+    if (def.type !== "flexible") continue;
+    const kept = asRows(values[def.id]).filter((row) => rowFieldsOf(def, row) !== null);
+    if (kept.length > 0) values[def.id] = kept;
+    else delete values[def.id];
+    for (const locale of Object.keys(translations)) {
+      const words = asValues(translations[locale]?.[def.id]) as Record<string, Values> | undefined;
+      if (!words) continue;
+      const tidy: Record<string, Values> = {};
+      for (const row of kept) {
+        const own = words[String(row.id)];
+        const cells = own && cellsOf(rowFieldsOf(def, row) ?? [], own, "translated");
+        if (cells && Object.keys(cells).length > 0) tidy[String(row.id)] = cells;
+      }
+      const rest: Values = { ...translations[locale] };
+      if (Object.keys(tidy).length > 0) rest[def.id] = tidy as unknown as Values;
+      else delete rest[def.id];
+      if (Object.keys(rest).length > 0) translations[locale] = rest;
+      else delete translations[locale];
+    }
+  }
+  return { values, translations };
+}
+
+/** The currencies money fields hold in a value (a group's, a repeater's or flexible row's cells too). */
+function moneyIn(def: FieldDef, value: FieldValue | null | undefined, into: Set<string>): void {
+  if (value === null || value === undefined) return;
+  if (def.type === "money") {
+    if (isMoney(value)) into.add(value.currency);
+  } else if (def.type === "group") {
+    for (const sub of subFieldsOf(def)) moneyIn(sub, (value as Values)[sub.id], into);
+  } else if (isRowsType(def.type)) {
+    // Rows as they are kept shared (a list), or a language's words by row id (an object).
+    const rows = Array.isArray(value) ? (value as Values[]) : Object.values(value as unknown as Record<string, Values>);
+    for (const row of rows) if (isRecord(row)) for (const sub of subFieldsOf(def)) moneyIn(sub, row[sub.id], into);
+  }
+}
+
+/** Whether a field, or one inside it, is money. */
+export const holdsMoney = (def: FieldDef): boolean => def.type === "money" || subFieldsOf(def).some(holdsMoney);
+
+/**
+ * Money in a change must be in a currency the store offers (`offered`, its main
+ * one first): the form only offers those, so anything else was made up, or the
+ * store stopped offering it. One problem per field.
+ */
+export function moneyProblems(defs: readonly FieldDef[], changes: FieldChanges, offered: readonly string[]): string[] {
+  const problems: string[] = [];
+  for (const def of defs) {
+    if (!holdsMoney(def)) continue;
+    const used = new Set<string>();
+    for (const values of [changes.values, ...Object.values(changes.translations)]) moneyIn(def, values[def.id], used);
+    const wrong = [...used].filter((currency) => !offered.includes(currency));
+    if (wrong.length > 0) problems.push(`${def.label}: the store does not offer ${wrong.join(", ")}. Choose one of ${offered.join(", ")}.`);
+  }
   return problems;
 }
 
@@ -1056,14 +1270,22 @@ export type ShownField = {
   text: string;
   /** A checkbox's chosen labels. */
   items?: string[];
-  /** A group's fields, or a repeater's rows of fields, that have something to show. */
+  /** A group's fields, or a repeater's rows of fields, that have something to show; flexible content's rows are `blocks`. */
   children?: ShownField[];
   rows?: ShownField[][];
+  /** Flexible content's rows that have something to show, in order, each with the layout it takes. */
+  blocks?: ShownBlock[];
   /** What a file, a link or a relation points at, ready to draw: words and address (the server fills in the ones that need a lookup). */
   links?: ShownLink[];
   /** The field may be said by the chat agent (phase 2). */
   chat?: boolean;
 };
+
+/** One row of flexible content, ready to draw: the layout's key and label (in the shopper's language) and the row's fields that have something to show. */
+export type ShownBlock = { layout: string; label: string; fields: ShownField[] };
+
+/** What a value's words need besides the language: yes and no, and money as a shopper's market shows it (converted at the store's rates). */
+export type FieldWords = { yes: string; no: string; money?: (value: FieldMoney) => string };
 
 /** Something a field points at: a file, a page, a product, a category or a web address. */
 export type ShownLink = {
@@ -1095,7 +1317,7 @@ export function displayText(
   def: FieldDef,
   value: FieldValue,
   locale: string,
-  words: { yes: string; no: string },
+  words: FieldWords,
 ): string {
   switch (def.type) {
     case "number":
@@ -1104,6 +1326,9 @@ export function displayText(
       const { value: number, unit } = value as FieldMeasurement;
       return `${new Intl.NumberFormat(locale).format(number)} ${unit}`.trim();
     }
+    case "money":
+      // As entered, never with a VAT label: the server passes the market's conversion in `words.money`.
+      return isMoney(value) ? (words.money ? words.money(value) : shownMoney(value, locale)) : "";
     case "boolean":
       return value ? words.yes : words.no;
     case "select":
@@ -1129,6 +1354,7 @@ export function displayText(
     case "term":
     case "group":
     case "repeater":
+    case "flexible":
       // Their words come from what they point at or hold: the server looks the first up, the renderer draws the second.
       return "";
     default:
@@ -1141,7 +1367,7 @@ function shownFields(
   defs: FieldDef[],
   values: Values,
   locale: string,
-  words: { yes: string; no: string },
+  words: FieldWords,
   publicOnly: boolean,
 ): ShownField[] {
   const fields: ShownField[] = [];
@@ -1172,6 +1398,16 @@ function shownFields(
       if (rows.length === 0) continue;
       shown.rows = rows;
     }
+    if (def.type === "flexible") {
+      const blocks = asRows(value).flatMap((row): ShownBlock[] => {
+        const layout = layoutOf(def, row.layout);
+        if (!layout) return [];
+        const fields = shownFields(layout.subFields, row, locale, words, false);
+        return fields.length > 0 ? [{ layout: layout.key, label: localized(layout.label, layout.labels, locale), fields }] : [];
+      });
+      if (blocks.length === 0) continue;
+      shown.blocks = blocks;
+    }
     if (def.type === "file") {
       const file = value as FieldFile;
       shown.links = [{ label: file.name, href: file.url, newTab: true, size: file.size, contentType: file.contentType }];
@@ -1195,7 +1431,7 @@ export function shownGroup(
   data: FieldData,
   locale: string,
   main: string,
-  words: { yes: string; no: string },
+  words: FieldWords,
   options: { publicOnly: boolean },
 ): ShownGroup {
   const values = valuesFor(group.fields, data, locale, main);
@@ -1217,16 +1453,18 @@ export type FieldLookups = {
   products: { id: string; title: string }[];
   pages: { id: string; title: string; type: "page" | "article" }[];
   terms: { id: string; name: string; kind: "category" | "tag" }[];
+  /** The currencies the store offers, its main one first, for money fields (D120); left out where nothing needs them. */
+  currencies?: string[];
 };
 export const EMPTY_LOOKUPS: FieldLookups = { products: [], pages: [], terms: [] };
 
 /** The most of each kind an editor lists to choose from. */
 export const MAX_LOOKUPS = 500;
 
-/** Whether some field in these groups points at the store's products, pages or categories (so an editor must list them). */
+/** Whether some field in these groups points at the store's products, pages or categories, or holds money (so an editor must list them, and the store's currencies). */
 export function needsLookups(groups: readonly FieldGroup[]): boolean {
   const points = (def: FieldDef): boolean =>
-    def.type === "product" || def.type === "page" || def.type === "term" || def.type === "link" || subFieldsOf(def).some(points);
+    def.type === "product" || def.type === "page" || def.type === "term" || def.type === "link" || def.type === "money" || subFieldsOf(def).some(points);
   return groups.some((group) => group.fields.some(points));
 }
 
@@ -1251,7 +1489,8 @@ export function chatDetails(groups: readonly ShownGroup[]): { label: string; val
   const out: { label: string; value: string }[] = [];
   const visit = (fields: ShownField[]) => {
     for (const field of fields) {
-      if (field.chat && field.text.trim() !== "") out.push({ label: field.label, value: field.text.slice(0, 300) });
+      // Never an amount of money: the chat agent states no amount from a field.
+      if (field.chat && field.type !== "money" && field.text.trim() !== "") out.push({ label: field.label, value: field.text.slice(0, 300) });
       if (field.children) visit(field.children);
     }
   };
@@ -1320,9 +1559,21 @@ const leafField = z.object({
   rowLayout: z.enum(["table", "block"]).optional(),
 });
 
+const layoutDef = z.object({
+  key: z
+    .string()
+    .regex(/^[a-z0-9][a-z0-9_-]*$/, "A layout's key uses lowercase letters, digits, hyphens and underscores.")
+    .max(NAME_MAX),
+  label: text(LABEL_MAX).min(1, "Give each layout a label."),
+  labels: translations,
+  subFields: z.array(leafField).max(MAX_SUB_FIELDS, `Use at most ${MAX_SUB_FIELDS} fields in a layout.`),
+});
+
 const fieldDef = leafField.extend({
   subFields: z.array(leafField).max(MAX_SUB_FIELDS, `Use at most ${MAX_SUB_FIELDS} fields in a group or repeater.`).optional(),
+  layouts: z.array(layoutDef).max(MAX_LAYOUTS, `Use at most ${MAX_LAYOUTS} layouts.`).optional(),
 });
+type LeafInput = z.infer<typeof leafField>;
 
 const locationRule = z.object({
   param: z.string().min(1).max(20),
@@ -1373,10 +1624,13 @@ export const fieldGroupInput = z
         ctx.addIssue({ code: "custom", path: [...at, "units"], message: `Add units to ${field.label}.` });
       }
       if (field.filter && !FILTER_TYPES.includes(field.type)) {
-        ctx.addIssue({ code: "custom", path: [...at, "filter"], message: `${field.label} cannot be a filter: only choices and yes or no can.` });
+        ctx.addIssue({ code: "custom", path: [...at, "filter"], message: `${field.label} cannot be a filter: only choices, yes or no and numbers can.` });
       }
       if (field.search && !SEARCH_TYPES.includes(field.type)) {
         ctx.addIssue({ code: "custom", path: [...at, "search"], message: `${field.label} cannot be searched: only texts and choices can.` });
+      }
+      if (field.type === "money" && field.chat) {
+        ctx.addIssue({ code: "custom", path: [...at, "chat"], message: `${field.label} cannot be told by the chat: the assistant states no amount from a field.` });
       }
       if ((field.filter || field.search || field.chat) && field.access !== "public") {
         ctx.addIssue({ code: "custom", path: [...at, "access"], message: `${field.label} must be shown on the site to be a filter, be searched or be told by the chat.` });
@@ -1396,31 +1650,64 @@ export const fieldGroupInput = z
         if (field.subFields && field.subFields.length > 0) {
           ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `${field.label} holds no fields of its own.` });
         }
+        if (field.layouts && field.layouts.length > 0) {
+          ctx.addIssue({ code: "custom", path: [...at, "layouts"], message: `${field.label} holds no layouts.` });
+        }
         return;
       }
-      const subs = field.subFields ?? [];
-      if (subs.length === 0) ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `Add fields to ${field.label}.` });
       if (field.minRows !== undefined && field.maxRows !== undefined && field.minRows > field.maxRows) {
         ctx.addIssue({ code: "custom", path: [...at, "minRows"], message: `${field.label}: the fewest rows is more than the most.` });
       }
-      const subNames = new Set<string>();
-      subs.forEach((sub, subIndex) => {
-        const subAt = [...at, "subFields", subIndex];
-        if (isStructural(sub.type)) ctx.addIssue({ code: "custom", path: subAt, message: `${sub.label}: a group or repeater cannot hold another.` });
-        if (ids.has(sub.id)) ctx.addIssue({ code: "custom", path: subAt, message: "Two fields share an id." });
-        ids.add(sub.id);
-        if (subNames.has(sub.name)) ctx.addIssue({ code: "custom", path: [...subAt, "name"], message: `Two fields in ${field.label} are named ${sub.name}.` });
-        subNames.add(sub.name);
-        if (hasChoices(sub.type) && (sub.choices ?? []).length === 0) ctx.addIssue({ code: "custom", path: [...subAt, "choices"], message: `Add choices to ${sub.label}.` });
-        if (sub.type === "measurement" && (sub.units ?? []).length === 0) ctx.addIssue({ code: "custom", path: [...subAt, "units"], message: `Add units to ${sub.label}.` });
-        for (const condition of (sub.when ?? []).flat()) {
-          const trigger = subs.findIndex((other) => other.id === condition.field);
-          if (trigger === -1 || trigger >= subIndex) {
-            ctx.addIssue({ code: "custom", path: [...subAt, "when"], message: `${sub.label} can only depend on fields above it in ${field.label}.` });
+      // The fields of a group or repeater, or of one layout of flexible content: the same checks, conditions looking only inside one list.
+      const checkSubs = (subs: LeafInput[], subsAt: (string | number)[], where: string) => {
+        const subNames = new Set<string>();
+        subs.forEach((sub, subIndex) => {
+          const subAt = [...subsAt, subIndex];
+          if (isStructural(sub.type)) ctx.addIssue({ code: "custom", path: subAt, message: `${sub.label}: a group, repeater or flexible content cannot hold another.` });
+          if (ids.has(sub.id)) ctx.addIssue({ code: "custom", path: subAt, message: "Two fields share an id." });
+          ids.add(sub.id);
+          if (subNames.has(sub.name)) ctx.addIssue({ code: "custom", path: [...subAt, "name"], message: `Two fields in ${where} are named ${sub.name}.` });
+          subNames.add(sub.name);
+          if (hasChoices(sub.type) && (sub.choices ?? []).length === 0) ctx.addIssue({ code: "custom", path: [...subAt, "choices"], message: `Add choices to ${sub.label}.` });
+          if (sub.type === "measurement" && (sub.units ?? []).length === 0) ctx.addIssue({ code: "custom", path: [...subAt, "units"], message: `Add units to ${sub.label}.` });
+          if (sub.type === "money" && sub.chat) ctx.addIssue({ code: "custom", path: [...subAt, "chat"], message: `${sub.label} cannot be told by the chat: the assistant states no amount from a field.` });
+          for (const condition of (sub.when ?? []).flat()) {
+            const trigger = subs.findIndex((other) => other.id === condition.field);
+            if (trigger === -1 || trigger >= subIndex) {
+              ctx.addIssue({ code: "custom", path: [...subAt, "when"], message: `${sub.label} can only depend on fields above it in ${where}.` });
+            }
           }
+        });
+      };
+      if (field.type === "flexible") {
+        if (field.subFields && field.subFields.length > 0) {
+          ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `${field.label} takes its fields in its layouts.` });
         }
-      });
+        const layouts = field.layouts ?? [];
+        if (layouts.length === 0) ctx.addIssue({ code: "custom", path: [...at, "layouts"], message: `Add layouts to ${field.label}.` });
+        const keys = new Set<string>();
+        layouts.forEach((layout, layoutIndex) => {
+          const layoutAt = [...at, "layouts", layoutIndex];
+          if (keys.has(layout.key)) ctx.addIssue({ code: "custom", path: [...layoutAt, "key"], message: `${field.label} has two layouts with the same key.` });
+          keys.add(layout.key);
+          if (layout.subFields.length === 0) ctx.addIssue({ code: "custom", path: [...layoutAt, "subFields"], message: `Add fields to the layout ${layout.label}.` });
+          checkSubs(layout.subFields, [...layoutAt, "subFields"], `${field.label}, ${layout.label}`);
+        });
+        return;
+      }
+      if (field.layouts && field.layouts.length > 0) {
+        ctx.addIssue({ code: "custom", path: [...at, "layouts"], message: `${field.label} holds no layouts.` });
+      }
+      const subs = field.subFields ?? [];
+      if (subs.length === 0) ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `Add fields to ${field.label}.` });
+      checkSubs(subs, [...at, "subFields"], field.label);
     });
+    // Customers' and orders' fields are for staff alone (D120).
+    const staffProblem = staffGroupProblem(group as { entities: FieldEntity[]; fields: FieldDef[] });
+    if (staffProblem) ctx.addIssue({ code: "custom", path: ["entities"], message: staffProblem });
+    if (group.entities.some(isStaffEntity) && group.location.length > 0) {
+      ctx.addIssue({ code: "custom", path: ["location"], message: "A group for customers or orders is on all of them: it takes no rules." });
+    }
     // A field is shown by fields before it in the group, never by itself or one after it.
     group.fields.forEach((field, index) => {
       for (const condition of (field.when ?? []).flat()) {
@@ -1491,6 +1778,15 @@ export function uniqueName(wanted: string, taken: readonly string[], join = "_")
   }
 }
 
+/** A new layout of flexible content, with one text field to start from; its key follows its label and is not among `takenKeys`. */
+export function newLayout(label: string, takenKeys: readonly string[]): FieldLayout {
+  return {
+    key: uniqueName(slugOf(label, "layout"), takenKeys, "-"),
+    label,
+    subFields: [{ id: newFieldId(), name: "text", label: "Text", type: "text", access: "private", width: 100 }],
+  };
+}
+
 export function newField(type: FieldType, taken: readonly string[] = []): FieldDef {
   const label = FIELD_TYPES[type].label;
   const base: FieldDef = {
@@ -1507,7 +1803,11 @@ export function newField(type: FieldType, taken: readonly string[] = []): FieldD
       { key: "option-2", label: "Option 2" },
     ];
   if (type === "measurement") base.units = ["g", "kg"];
-  if (isStructural(type)) {
+  if (type === "flexible") {
+    base.layouts = [newLayout("Text", [])];
+    base.minRows = 0;
+    base.buttonLabel = "Add row";
+  } else if (isStructural(type)) {
     base.subFields = [{ id: newFieldId(), name: "text", label: "Text", type: "text", access: "private", width: 100 }];
     if (type === "repeater") {
       base.minRows = 0;
@@ -1752,7 +2052,12 @@ export function importGroups(
     const fields = Array.isArray(source.fields) ? (source.fields as Record<string, unknown>[]) : [];
     const subsOf = (f: Record<string, unknown> | undefined): Record<string, unknown>[] =>
       Array.isArray(f?.subFields) ? (f.subFields as Record<string, unknown>[]) : [];
-    const ids = new Map<string, string>([...fields, ...fields.flatMap(subsOf)].map((f) => [String(f?.id), newFieldId()]));
+    const layoutsOf = (f: Record<string, unknown> | undefined): Record<string, unknown>[] =>
+      Array.isArray(f?.layouts) ? (f.layouts as Record<string, unknown>[]) : [];
+    const layoutSubs = (f: Record<string, unknown> | undefined): Record<string, unknown>[] => layoutsOf(f).flatMap(subsOf);
+    const ids = new Map<string, string>(
+      [...fields, ...fields.flatMap(subsOf), ...fields.flatMap(layoutSubs)].map((f) => [String(f?.id), newFieldId()]),
+    );
     const remapField = (f: Record<string, unknown>): Record<string, unknown> => ({
       ...f,
       id: ids.get(String(f?.id)),
@@ -1762,6 +2067,7 @@ export function importGroups(
           )
         : undefined,
       ...(Array.isArray(f?.subFields) && { subFields: subsOf(f).map(remapField) }),
+      ...(Array.isArray(f?.layouts) && { layouts: layoutsOf(f).map((layout) => ({ ...layout, subFields: subsOf(layout).map(remapField) })) }),
     });
     const remapped = fields.map(remapField);
     const location = Array.isArray(source.location)

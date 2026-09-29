@@ -102,6 +102,8 @@ export type ProductDetail = {
   fields: ShownGroup[];
   /** The public fields of its variants that have some, by variant id (D118, phase 2). */
   variantFields: Record<string, ShownGroup[]>;
+  /** The store's own public fields (D120), for the components set to show them; read with the product so its page stays prerendered. */
+  storeFields: ShownGroup[];
 };
 
 type Row = Record<string, unknown>;
@@ -225,7 +227,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
   `);
   if (!product) return null;
 
-  const [media, variants, plans, fields, variantFields] = await Promise.all([
+  const [media, variants, plans, fields, variantFields, storeFields] = await Promise.all([
     readDb().execute<Row>(sql`
       select url, thumbnail_url, coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
       from commerce.product_media
@@ -251,6 +253,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     `),
     shownFieldsFor(storeId, "product", str(product.id), locale, market.lang, market.slug),
     shownFieldsForVariants(storeId, str(product.id), locale, market.lang, market.slug),
+    shownFieldsFor(storeId, "store", storeId, locale, market.lang, market.slug),
   ]);
   if (variants.length === 0) return null;
   const vat = priceVat(product.store_audience, product.vat_rate);
@@ -302,6 +305,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     hostName: product.host_name ? String(product.host_name) : null,
     fields,
     variantFields,
+    storeFields,
     audience: productAudience(product),
     kind: product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" ? product.kind : "goods",
   };

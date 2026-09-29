@@ -6,6 +6,8 @@ import type { ButtonLook } from "@/components/page-block";
 import { ListIcon } from "@/components/list-icon";
 import { type FieldDef, type FieldEntity, type FieldGroup } from "@/lib/custom-fields";
 import { bindable, canBind } from "@/lib/field-binding";
+import { LOOP_SLOT_KEYS, isLoopable, slotChoices, suggestSlots, validSlots } from "@/lib/field-loop";
+import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { ICONS, type IconName } from "@/lib/icons";
@@ -64,6 +66,10 @@ import {
   DUAL_GAP_MAX,
   FIELD_DISPLAYS,
   FONT_WEIGHTS,
+  LOOP_COLUMNS,
+  LOOP_LAYOUTS,
+  LOOP_SLOTS,
+  TILE_FIELDS_MAX,
   HEADING_MAX,
   isLinkAddress,
   SEPARATOR_LINES,
@@ -74,6 +80,11 @@ import {
   type CustomFieldBlock,
   type FieldBinding,
   type FieldDisplay,
+  type FieldLoopBlock,
+  type LoopColumns,
+  type LoopConfig,
+  type LoopLayout,
+  type LoopSlot,
   type HeadingSize,
   type FaqBlock,
   type PanelItem,
@@ -184,6 +195,11 @@ export const BLOCK_EDITORS: Editors = {
     title: "Custom fields",
     font: { label: "Font", fallback: "The site's body font" },
     General: CustomFieldFields,
+  },
+  fieldLoop: {
+    title: "Field loop",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: FieldLoopFields,
   },
 };
 
@@ -1571,7 +1587,7 @@ function NewsletterFields({ block, onChange }: BlockEditorProps<NewsletterBlock>
 export const FieldGroupsContext = createContext<FieldGroup[] | null>(null);
 
 /** What the two components that show fields have in common. */
-export type FieldsSettings = Partial<Pick<CustomFieldBlock, "groupId" | "fieldId" | "display" | "showLabel" | "showHeading" | "heading">>;
+export type FieldsSettings = Partial<Pick<CustomFieldBlock, "groupId" | "fieldId" | "display" | "showLabel" | "showHeading" | "heading" | "source">>;
 
 /** The groups that can be on the kinds of thing a component shows fields of. */
 export function useFieldGroups(entities: readonly FieldEntity[]): FieldGroup[] {
@@ -1585,6 +1601,9 @@ const ENTITY_WORDS: Record<FieldEntity, string> = {
   page: "pages",
   article: "articles",
   term: "categories and tags",
+  store: "the store",
+  customer: "customers",
+  order: "orders",
 };
 const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = {
   product: "product",
@@ -1592,6 +1611,9 @@ const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = {
   page: "page",
   article: "article",
   term: "category or tag",
+  store: "store",
+  customer: "customer",
+  order: "order",
 };
 /** What the fields are on, for a sentence: "the product", "the page or article". */
 const thing = (entities: readonly FieldEntity[]) => entities.map((entity) => FIELD_ENTITY_NOUN[entity]).join(" or ");
@@ -1610,16 +1632,22 @@ const fieldOption = (def: FieldDef) =>
  */
 export function FieldsSettingsFields({
   value,
-  entities,
+  entities: own,
   mode,
   onChange,
 }: {
   value: FieldsSettings;
+  /** What the component's own fields are on: the product, the page or article. */
   entities: readonly FieldEntity[];
   mode: "group" | "field" | "either";
   onChange: (patch: FieldsSettings) => void;
 }) {
+  // Fields of the store itself (D120) instead of those of the thing the component is on.
+  const ofStore = value.source === "store";
+  const entities: readonly FieldEntity[] = ofStore ? ["store"] : own;
   const groups = useFieldGroups(entities);
+  const storeHasGroups = useFieldGroups(["store"]).length > 0;
+  const sourceId = useId();
   const id = useId();
   const chosen = value.fieldId ? `f:${value.fieldId}` : value.groupId ? `g:${value.groupId}` : "";
   const known =
@@ -1636,16 +1664,39 @@ export function FieldsSettingsFields({
     onChange({ groupId: group?.id, fieldId: key });
   };
 
+  // Whose fields: the thing's own, or the store's (D120), which a header or footer has nothing else to show.
+  const sourceSelect =
+    storeHasGroups || ofStore ? (
+      <div className="flex flex-col gap-1">
+        <label htmlFor={sourceId} className="text-sm font-medium">
+          Fields of
+        </label>
+        <select
+          id={sourceId}
+          value={ofStore ? "store" : "own"}
+          onChange={(event) => onChange({ source: event.target.value === "store" ? "store" : undefined, groupId: undefined, fieldId: undefined })}
+          className={fieldClass}
+        >
+          <option value="own">{`This ${thing(own)}`}</option>
+          <option value="store">The store (its own custom fields)</option>
+        </select>
+      </div>
+    ) : null;
+
   if (groups.length === 0) {
     return (
-      <p className="rounded-md bg-surface p-3 text-sm text-muted">
-        There are no custom fields for {words} yet. Make a group under Custom fields in the store&apos;s menu, then choose it here.
-      </p>
+      <div className="flex flex-col gap-5">
+        {sourceSelect}
+        <p className="rounded-md bg-surface p-3 text-sm text-muted">
+          There are no custom fields for {words} yet. Make a group under Custom fields in the store&apos;s menu, then choose it here.
+        </p>
+      </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-5">
+      {sourceSelect}
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="text-sm font-medium">
           {mode === "field" ? "Field" : mode === "group" ? "Group" : "Shows"}
@@ -1722,14 +1773,44 @@ export function BindFields({
   onChange: (bind: FieldBinding | undefined) => void;
 }) {
   const entities = useContext(BindEntitiesContext);
-  const groups = useFieldGroups(entities ?? []);
+  // The store's own fields (D120): the only ones a header or footer has, and an option anywhere else.
+  const storeOnly = entities !== null && entities.length === 1 && entities[0] === "store";
+  const [source, setSource] = useState<"store" | undefined>(bind?.source);
+  const ofStore = storeOnly || source === "store";
+  const groups = useFieldGroups(ofStore ? ["store"] : (entities ?? []));
+  const storeHasGroups = useFieldGroups(["store"]).length > 0;
   const id = useId();
-  if (entities === null || !canBind(blockType) || (groups.length === 0 && !bind)) return null;
+  const sourceId = useId();
+  if (entities === null || !canBind(blockType) || (groups.length === 0 && !bind && !storeHasGroups)) return null;
   const options = bindOptions(blockType, groups);
   const known = !bind || options.some((option) => option.fields.some((def) => def.id === bind.fieldId));
-  const noun = thing(entities);
+  const noun = thing(ofStore ? ["store"] : entities);
+  const bound = (fieldId: string, fallback: boolean | undefined): FieldBinding => ({
+    fieldId,
+    ...(ofStore && { source: "store" as const }),
+    ...(fallback && { fallback: true }),
+  });
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+      {!storeOnly && storeHasGroups && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor={sourceId} className="text-sm font-medium">
+            Fields of
+          </label>
+          <select
+            id={sourceId}
+            value={ofStore ? "store" : "own"}
+            onChange={(event) => {
+              setSource(event.target.value === "store" ? "store" : undefined);
+              if (bind) onChange(undefined);
+            }}
+            className={fieldClass}
+          >
+            <option value="own">{`This ${thing(entities)}`}</option>
+            <option value="store">The store (its own custom fields)</option>
+          </select>
+        </div>
+      )}
       <div className="flex flex-col gap-1">
         <label htmlFor={id} className="text-sm font-medium">
           Take from field
@@ -1737,7 +1818,7 @@ export function BindFields({
         <select
           id={id}
           value={bind?.fieldId ?? ""}
-          onChange={(event) => onChange(event.target.value ? { fieldId: event.target.value, ...(bind?.fallback && { fallback: true }) } : undefined)}
+          onChange={(event) => onChange(event.target.value ? bound(event.target.value, bind?.fallback) : undefined)}
           className={fieldClass}
         >
           <option value="">No, use what is written here</option>
@@ -1761,7 +1842,7 @@ export function BindFields({
           label="Keep my own content when the field is empty"
           hint="What is written or chosen below then shows, rather than nothing."
           checked={Boolean(bind.fallback)}
-          onChange={(on) => onChange({ fieldId: bind.fieldId, ...(on && { fallback: true }) })}
+          onChange={(on) => onChange(bound(bind.fieldId, on))}
         />
       )}
     </div>
@@ -1784,10 +1865,255 @@ function CustomFieldFields({ block, onChange }: BlockEditorProps<CustomFieldBloc
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted">
-        Shows the custom fields of the page or article this is on, in the shopper&apos;s language. A page with no value for them shows nothing here.
+        Shows the custom fields of the page or article this is on, or of the store itself, in the shopper&apos;s language. Nothing shows where there is no value.
       </p>
       <FieldsSettingsFields value={block} entities={["page", "article"]} mode="either" onChange={onChange} />
     </div>
+  );
+}
+
+/**
+ * What a field loop is set to (D120): the repeater whose rows it draws (a
+ * top-level repeater of the groups that can be on the thing), the layout, the
+ * columns, and which of the repeater's sub fields fills each slot of a row,
+ * each list holding only the sub fields of a kind the slot can draw. Shared
+ * by the page component and the product layout's part.
+ */
+export function LoopSettingsFields({
+  value,
+  entities,
+  onChange,
+}: {
+  value: LoopConfig;
+  entities: readonly FieldEntity[];
+  onChange: (patch: Partial<LoopConfig>) => void;
+}) {
+  const groups = useFieldGroups(entities);
+  const id = useId();
+  const repeaters = groups.flatMap((group) => group.fields.filter(isLoopable).map((def) => ({ group, def })));
+  const chosen = repeaters.find(({ def }) => def.id === value.fieldId);
+  const words = entities.map((entity) => ENTITY_WORDS[entity]).join(" and ");
+  const layout = value.layout ?? "cards";
+
+  if (repeaters.length === 0) {
+    return (
+      <p className="rounded-md bg-surface p-3 text-sm text-muted">
+        There is no repeater among the custom fields for {words} yet. Add a field of the kind Repeater to a group under Custom fields in the store&apos;s menu, then choose it here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          Repeater
+        </label>
+        <select
+          id={id}
+          value={value.fieldId ?? ""}
+          onChange={(event) => {
+            const next = repeaters.find(({ def }) => def.id === event.target.value);
+            onChange(
+              next
+                ? { fieldId: next.def.id, groupId: next.group.id, slots: suggestSlots(next.def) }
+                : { fieldId: undefined, groupId: undefined, slots: {} },
+            );
+          }}
+          className={fieldClass}
+        >
+          <option value="">Choose a repeater</option>
+          {value.fieldId && !chosen && <option value={value.fieldId}>A repeater that is gone</option>}
+          {repeaters.map(({ group, def }) => (
+            <option key={def.id} value={def.id}>{`${group.name} › ${def.label}${def.access === "public" ? "" : " (not shown on the site)"}`}</option>
+          ))}
+        </select>
+        <p className="text-xs text-muted">Each row of the repeater is drawn as one card, line or column. Only a repeater set to be shown on the site draws, and only rows with something in them.</p>
+      </div>
+      <Choices
+        legend="Layout"
+        options={(Object.keys(LOOP_LAYOUTS) as LoopLayout[]).map((key) => ({ value: key, label: LOOP_LAYOUTS[key] }))}
+        value={layout}
+        onChange={(next) => onChange({ layout: next === "cards" ? undefined : next })}
+      />
+      {layout !== "list" && (
+        <Choices
+          legend="Columns"
+          hint="on larger screens"
+          options={LOOP_COLUMNS.map((n) => ({ value: String(n), label: String(n) }))}
+          value={String(value.columns ?? 3)}
+          onChange={(next) => onChange({ columns: (Number(next) === 3 ? undefined : Number(next)) as LoopColumns | undefined })}
+        />
+      )}
+      {chosen && (
+        <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+          <p className="text-sm font-medium">What each row shows</p>
+          {LOOP_SLOT_KEYS.map((slot) => (
+            <SlotPicker
+              key={slot}
+              slot={slot}
+              choices={slotChoices(chosen.def, slot)}
+              value={validSlots(chosen.def, value.slots)[slot]}
+              onChange={(sub) => onChange({ slots: { ...validSlots(chosen.def, value.slots), [slot]: sub } })}
+            />
+          ))}
+          <Check
+            label="The whole card is the link"
+            hint="Otherwise the title is the link, or the link's own words when there is no title."
+            checked={Boolean(value.linkWholeCard)}
+            onChange={(on) => onChange({ linkWholeCard: on ? true : undefined })}
+          />
+        </div>
+      )}
+      <TextField
+        label="Heading"
+        value={value.heading ?? ""}
+        max={HEADING_MAX}
+        placeholder="No heading"
+        hint="Over the loop; none unless you write one."
+        onChange={(heading) => onChange({ heading: heading || undefined })}
+      />
+    </div>
+  );
+}
+
+const SLOT_HINTS: Record<LoopSlot, string> = {
+  image: "A picture field.",
+  title: "A short text, choice or number.",
+  text: "A text, text area or rich text.",
+  link: "A link or file field.",
+  badge: "A short text, choice or number, as a small label.",
+};
+
+function SlotPicker({
+  slot,
+  choices,
+  value,
+  onChange,
+}: {
+  slot: LoopSlot;
+  choices: FieldDef[];
+  value: string | undefined;
+  onChange: (sub: string | undefined) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm">
+        {LOOP_SLOTS[slot]}
+      </label>
+      <select id={id} value={value ?? ""} onChange={(event) => onChange(event.target.value || undefined)} className={fieldClass} disabled={choices.length === 0}>
+        <option value="">{choices.length === 0 ? `No sub field fits (${SLOT_HINTS[slot]})` : "Nothing"}</option>
+        {choices.map((sub) => (
+          <option key={sub.id} value={sub.id}>
+            {sub.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/**
+ * "Show fields on tiles" (D120): up to three plain custom fields of the kind of
+ * thing a content grid lists (products, pages or articles) that each tile shows
+ * under its title, one line each. Only the groups that can be on that kind of
+ * thing are offered; nothing shows where the owner has no fields (Kaizen's own pages).
+ */
+export function TileFieldsPicker({
+  entity,
+  value,
+  onChange,
+}: {
+  entity: "product" | "page" | "article";
+  value: readonly string[];
+  onChange: (ids: string[] | undefined) => void;
+}) {
+  const options = tileFieldOptions(useFieldGroups([entity]));
+  const offered = new Set(options.flatMap((option) => option.fields.map((def) => def.id)));
+  // What was chosen for another kind of thing is not on these tiles: it goes at the next change.
+  const chosen = value.filter((id) => offered.has(id));
+  if (options.length === 0) return null;
+  const toggle = (id: string, on: boolean) => {
+    const next = on ? [...chosen, id] : chosen.filter((f) => f !== id);
+    onChange(next.length > 0 ? next : undefined);
+  };
+  return (
+    <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
+      <legend className="float-left mb-2 w-full text-sm font-medium">
+        Show fields on tiles <span className="font-normal text-muted">(up to {TILE_FIELDS_MAX})</span>
+      </legend>
+      <p className="text-xs text-muted">
+        Each tile shows the field&apos;s label and value under its title, when the item has one. Only fields set to be shown on the site are drawn.
+      </p>
+      {options.map(({ group, fields }) => (
+        <div key={group.id} className="flex flex-col gap-1">
+          <p className="text-xs font-medium text-muted">{group.name}</p>
+          {fields.map((def) => (
+            <Check
+              key={def.id}
+              label={def.label}
+              hint={def.access === "public" ? undefined : "Not shown on the site yet"}
+              checked={chosen.includes(def.id)}
+              disabled={!chosen.includes(def.id) && chosen.length >= TILE_FIELDS_MAX}
+              onChange={(on) => toggle(def.id, on)}
+            />
+          ))}
+        </div>
+      ))}
+    </fieldset>
+  );
+}
+
+/** The page component that draws a repeater's rows of the page or article it is on. */
+function FieldLoopFields({ block, onChange }: BlockEditorProps<FieldLoopBlock>) {
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted">
+        Draws the rows of a repeater of the page or article this is on, in the shopper&apos;s language, each as a card, line or column. A page with no rows shows nothing here.
+      </p>
+      <LoopSettingsFields value={block} entities={["page", "article"]} onChange={onChange} />
+    </div>
+  );
+}
+
+/** A field loop on the canvas: which repeater and how, as the canvas cannot know a thing's rows. */
+export function LoopStandIn({ value, entities }: { value: LoopConfig; entities: readonly FieldEntity[] }) {
+  const groups = useFieldGroups(entities);
+  const def = groups.flatMap((group) => group.fields).find((f) => f.id === value.fieldId);
+  const layout = value.layout ?? "cards";
+  const columns = layout === "list" ? 1 : (value.columns ?? 3);
+  const slots = def ? validSlots(def, value.slots) : {};
+  const named = LOOP_SLOT_KEYS.flatMap((slot) => {
+    const sub = slots[slot] && def?.subFields?.find((f) => f.id === slots[slot]);
+    return sub ? [`${LOOP_SLOTS[slot].toLowerCase()}: ${sub.label}`] : [];
+  });
+  return (
+    <span className="flex flex-col gap-2 text-sm">
+      <span className="font-medium">{`Field loop: ${def ? def.label : value.fieldId ? "a repeater that is gone" : "choose a repeater"}`}</span>
+      {def ? (
+        <>
+          <span className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(columns, 3)}, minmax(0, 1fr))` }}>
+            {[0, 1, 2].slice(0, layout === "list" ? 2 : Math.min(columns, 3)).map((n) => (
+              <span
+                key={n}
+                className={`flex gap-2 rounded-lg border border-border p-2 ${layout === "list" ? "flex-row items-center" : "flex-col"}`}
+              >
+                {slots.image && <span className={layout === "list" ? "size-10 shrink-0 rounded bg-foreground/10" : "aspect-video rounded bg-foreground/10"} />}
+                <span className="flex flex-1 flex-col gap-1">
+                  <span className="h-2.5 w-2/3 rounded bg-foreground/20" />
+                  {slots.text && <span className="h-2 w-full rounded bg-foreground/10" />}
+                </span>
+              </span>
+            ))}
+          </span>
+          <span className="text-xs text-muted">{named.length > 0 ? `Each row: ${named.join(", ")}.` : "Choose which sub field fills each slot in the settings."}</span>
+        </>
+      ) : (
+        <span className="text-xs text-muted">Choose a repeater in the settings.</span>
+      )}
+      <span className="text-xs text-muted">The rows are read from each {thing(entities)} where it is shown; a thing with none draws nothing.</span>
+    </span>
   );
 }
 
@@ -1804,7 +2130,7 @@ export function FieldsStandIn({
   entities: readonly FieldEntity[];
   mode: "group" | "field" | "either";
 }) {
-  const groups = useFieldGroups(entities);
+  const groups = useFieldGroups(value.source === "store" ? ["store"] : entities);
   const single = mode === "field" || Boolean(value.fieldId);
   const shownGroups = value.groupId ? groups.filter((g) => g.id === value.groupId) : groups;
   const field = value.fieldId ? groups.flatMap((g) => g.fields).find((f) => f.id === value.fieldId) : undefined;
@@ -1812,8 +2138,8 @@ export function FieldsStandIn({
   const display = value.display ?? "table";
 
   const title = single
-    ? `Custom field: ${field?.label ?? "choose one"}`
-    : `Custom fields: ${value.groupId ? (shownGroups[0]?.name ?? "a group that is gone") : "every group that applies"}`;
+    ? `Custom field${value.source === "store" ? " of the store" : ""}: ${field?.label ?? "choose one"}`
+    : `Custom fields${value.source === "store" ? " of the store" : ""}: ${value.groupId ? (shownGroups[0]?.name ?? "a group that is gone") : "every group that applies"}`;
   const names = single ? (field ? [field] : []) : shownGroups.flatMap(publicFields);
   const label = (name: string, n: number) =>
     display === "cards" ? (

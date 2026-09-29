@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { parsePrice } from "@/lib/product-input";
 import { requireMember } from "@/server/auth";
+import { saveStaffFields } from "@/server/field-entities";
+import type { SaveResult } from "@/server/settings";
 import { getOrder } from "@/server/orders";
 import {
   addOrderNote,
@@ -195,3 +197,16 @@ export async function resendConfirmationAction(storeSlug: string, orderId: strin
   return failed("The confirmation could not be sent.");
 }
 
+
+/**
+ * Saves staff's custom fields for an order (D120). They are for staff only and
+ * never shown to the shopper or on the site; the server checks everything
+ * against the store's own groups.
+ */
+export async function saveOrderFieldsAction(storeSlug: string, orderId: string, changes: unknown): Promise<SaveResult> {
+  const member = await requireMember(storeSlug);
+  if (!z.uuid().safeParse(orderId).success) return { ok: false, problems: ["Unknown order."] };
+  const result = await saveStaffFields(member, "order", orderId, changes);
+  if (result.ok) refresh();
+  return result;
+}

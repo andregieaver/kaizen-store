@@ -26,6 +26,8 @@ import { rangeCalendar } from "@/lib/booking-ranges";
 import { slotWeek } from "@/lib/booking-slots";
 import { structuredProperties } from "@/lib/custom-fields";
 import { bindPage } from "@/lib/field-binding";
+import { FieldLoopView } from "@/components/field-loop-view";
+import { loopHeading, loopOf, loopShows, productLoopConfig } from "@/lib/field-loop";
 import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import { inView, type Market } from "@/lib/markets";
@@ -207,6 +209,18 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
     case "related":
       return <Related block={block} ctx={ctx} />;
     case "fields": {
+      // The store's own fields (D120): the same on every product, and no variant has any.
+      if (block.source === "store") {
+        return (
+          <CustomFieldGroups
+            groups={groupsToShow(product.storeFields, block.groupId)}
+            display={block.display}
+            showLabel={block.showLabel !== false}
+            idPrefix={block.id}
+            headingFor={(group) => groupHeading(block, group, Boolean(block.groupId))}
+          />
+        );
+      }
       // The store's public custom fields (D118): the group chosen, else every group that applies, each under its name;
       // then the chosen variant's own (they follow the picker).
       const groups = groupsToShow(product.fields, block.groupId);
@@ -236,6 +250,12 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
       );
     }
     case "field": {
+      if (block.source === "store") {
+        const own = fieldToShow(product.storeFields, block.fieldId);
+        return own ? (
+          <CustomFieldView field={own} display={block.display} showLabel={block.showLabel !== false} heading={fieldHeading(block)} id={headingId} />
+        ) : null;
+      }
       const field = fieldToShow(product.fields, block.fieldId);
       const own = field ? (
         <CustomFieldView field={field} display={block.display} showLabel={block.showLabel !== false} heading={fieldHeading(block)} id={headingId} />
@@ -254,6 +274,20 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
             has={(fields) => fieldToShow(fields, block.fieldId) !== null}
           />
         </>
+      );
+    }
+    case "loop": {
+      // A repeater's rows of the product, each as a card, list line or column (D120).
+      const config = productLoopConfig(block);
+      return (
+        <FieldLoopView
+          rows={loopOf(product.fields, config)}
+          layout={config.layout}
+          columns={config.columns}
+          linkWholeCard={config.linkWholeCard}
+          heading={loopHeading(config)}
+          id={headingId}
+        />
       );
     }
   }
@@ -309,15 +343,19 @@ export function productPartShows(block: ProductBlock, product: ProductDetail, ca
     case "safety":
       return Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson);
     case "fields":
+      if (block.source === "store") return groupsToShow(product.storeFields, block.groupId).length > 0;
       return (
         groupsToShow(product.fields, block.groupId).length > 0 ||
         Object.values(product.variantFields).some((groups) => groupsToShow(groups, block.groupId).length > 0)
       );
     case "field":
+      if (block.source === "store") return fieldToShow(product.storeFields, block.fieldId) !== null;
       return (
         fieldToShow(product.fields, block.fieldId) !== null ||
         Object.values(product.variantFields).some((groups) => fieldToShow(groups, block.fieldId) !== null)
       );
+    case "loop":
+      return loopShows(product.fields, productLoopConfig(block));
     default:
       return true;
   }
@@ -822,7 +860,7 @@ export async function ProductJsonLd({
 export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: PageContent; ctx: ProductPageContext; inAdmin?: boolean }) {
   const { store, market, product } = ctx;
   // Blocks bound to a custom field of the product show its value (D118); the product's fields are read with it, so this costs nothing more.
-  const content = bindPage(localizePage(layout, market.locale), product.fields);
+  const content = bindPage(localizePage(layout, market.locale), product.fields, product.storeFields);
   return (
     <PageArticle
       content={{ ...content, title: product.title }}

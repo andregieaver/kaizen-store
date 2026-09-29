@@ -19,6 +19,7 @@ import {
   type TrackingSettings,
 } from "@/lib/cookie-consent";
 import { addCustomCode, type CustomCode } from "@/lib/custom-code";
+import { MODAL_STORAGE_PREFIX } from "@/lib/page-modal";
 
 /** The widget's words, in the site's language (from `i18n`, picked on the server). */
 export type ConsentTexts = {
@@ -134,8 +135,21 @@ function applyChoices(tracking: TrackingSettings, choices: ConsentChoices) {
 
 const noSubscription = () => () => {};
 
+/** Pop-ups that remember being closed keep it in the browser's storage as a preference (D121). */
+function forgetModals() {
+  for (const kind of ["sessionStorage", "localStorage"] as const) {
+    try {
+      const storage = window[kind];
+      for (const name of Object.keys(storage)) if (name.startsWith(MODAL_STORAGE_PREFIX)) storage.removeItem(name);
+    } catch {
+      // Storage is not available: nothing was kept there.
+    }
+  }
+}
+
 /** Removes a withdrawn category's cookies this site can reach (its own domain and the parent). */
 function forget(categories: OptionalCategory[]) {
+  if (categories.includes("preferences")) forgetModals();
   const names = document.cookie.split("; ").map((pair) => pair.split("=")[0]);
   const host = location.hostname;
   const domains = ["", host, `.${host.split(".").slice(-2).join(".")}`];

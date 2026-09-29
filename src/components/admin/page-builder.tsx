@@ -44,6 +44,8 @@ import { HEADING_SIZES as HEADING_SIZE_CLASS, PageBlockView } from "@/components
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
+import { ModalFields, ModalPicker } from "./modal-fields";
+import { ModalBar } from "./modal-preview";
 import {
   BLOCKS_MAX,
   ROW_LAYOUTS,
@@ -119,6 +121,7 @@ import {
   type MenuBlock,
   type SearchBlock,
   type CustomFieldBlock,
+  type FieldLoopBlock,
   type StorePartBlock,
   type SiteBlock,
   type SitePart,
@@ -164,6 +167,8 @@ import type { GridData } from "@/lib/content-grid";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
 import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
+import { productLoopConfig, productLoopPatch } from "@/lib/field-loop";
+import { tileEntity } from "@/lib/tile-fields";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
@@ -182,6 +187,9 @@ import {
   FieldGroupsContext,
   FieldsSettingsFields,
   FieldsStandIn,
+  LoopSettingsFields,
+  LoopStandIn,
+  TileFieldsPicker,
   OptionalColor,
   TextAlignFields,
 } from "./block-fields";
@@ -288,6 +296,7 @@ const blockLabels: Record<BlockType, string> = {
   menu: "Menu",
   search: "Search",
   customField: "Custom fields",
+  fieldLoop: "Field loop",
   storePart: "Shop page",
   separator: "Separator line",
   dualButton: "Dual button",
@@ -316,6 +325,7 @@ const blockThis: Record<BlockType, string> = {
   menu: "this menu",
   search: "this search",
   customField: "these custom fields",
+  fieldLoop: "this field loop",
   storePart: "this shop component",
   separator: "this separator line",
   dualButton: "these buttons",
@@ -470,7 +480,9 @@ export function PageBuilder({
   };
   const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | ShopPart) => {
     if (blocksFull) return;
-    const block = newBlock(type, newId, part);
+    const made = newBlock(type, newId, part);
+    // A header or footer has no page of its own: its Custom fields component shows the store's (D120).
+    const block: PageBlock = siteParts && made.type === "customField" ? { ...made, source: "store" } : made;
     onRows((current) => {
       if (columnId && current.some((r) => r.columns.some((c) => c.id === columnId))) {
         return insertBlock(current, columnId, block, index);
@@ -644,9 +656,9 @@ export function PageBuilder({
   };
 
   // What a block that takes its content from a custom field (D118) can take: the product's in a layout, the page's or article's
-  // on a store's page; none in a header or footer, or Kaizen's own pages.
+  // on a store's page; a header or footer has only the store's own (D120); none on Kaizen's own pages.
   const bindEntities: readonly FieldEntity[] | null =
-    fieldGroups === null || grid.owner === null || siteParts ? null : productParts ? ["product"] : ["page", "article"];
+    fieldGroups === null || grid.owner === null ? null : siteParts ? ["store"] : productParts ? ["product"] : ["page", "article"];
 
   return (
     <FieldGroupsContext value={fieldGroups}>
@@ -688,7 +700,7 @@ export function PageBuilder({
             // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
             search={grid.owner !== null && !productParts && !siteParts}
             // Custom fields (D118) are the page's or article's own: a store's pages and articles, when it has any groups.
-            customFields={fieldGroups !== null && grid.owner !== null && !productParts && !siteParts}
+            customFields={fieldGroups !== null && grid.owner !== null && !productParts}
             shop={shopParts}
             parts={parts}
             library={library}
@@ -939,7 +951,7 @@ function Sidebar({
                 </>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {[...BLOCK_TYPES, ...(search ? (["search"] as const) : []), ...(customFields ? (["customField"] as const) : [])].map((type) => (
+                {[...BLOCK_TYPES, ...(search ? (["search"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -1231,6 +1243,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SearchIcon />;
     case "customField":
       return <FieldsIcon />;
+    case "fieldLoop":
+      return <LoopIcon />;
     case "storePart":
       return <ShopIcon />;
     case "separator":
@@ -1527,8 +1541,11 @@ function Tools({
   onDelete,
   deleteDisabled = false,
   mark,
+  tag,
 }: {
   label: string;
+  /** A short word after the label: a modal row's "Modal" (D121). */
+  tag?: string;
   /** A global's use, or the page's own part inside one (D98): said after the label, in its colour. */
   mark?: PartMark | null;
   /** The drag handle, made where `useSortable` is (see `handleClass`); none while translating. */
@@ -1579,6 +1596,7 @@ function Tools({
       )}
       <span className="px-1 text-xs whitespace-nowrap">
         {label}
+        {tag && <span className="ml-1 rounded bg-white/25 px-1 text-[10px] font-medium uppercase">{tag}</span>}
         {mark && <span className="font-medium"> · {mark.text}</span>}
       </span>
     </div>
@@ -1628,6 +1646,7 @@ function RowItem({
     <li
       ref={setNodeRef}
       data-builder-item="row"
+      data-builder-modal={row.modal ? "" : undefined}
       {...markAttributes(row)}
       tabIndex={0}
       aria-label={`${name}, ${ROW_LAYOUTS[row.layout].label.toLowerCase()}`}
@@ -1638,6 +1657,7 @@ function RowItem({
       {!actions.translating && (
       <Tools
         label={name}
+        tag={row.modal ? "Modal" : undefined}
         mark={markOf(row, actions)}
         handle={
           <button
@@ -1658,6 +1678,8 @@ function RowItem({
       />
       )}
       <Line at={line} />
+      {/* A modal's row stays in the page here (D121): badged, with a preview of the real modal. */}
+      {row.modal && <ModalBar row={row} lang={actions.lang} />}
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
         <div className={box.className} style={box.style}>
           <PartBackground background={row.background} />
@@ -1894,6 +1916,8 @@ function BlockItem({
           <SearchStandIn block={block} />
         ) : block.type === "customField" ? (
           <CustomFieldStandIn block={block} />
+        ) : block.type === "fieldLoop" ? (
+          <FieldLoopStandIn block={block} />
         ) : block.type === "storePart" ? (
           <StorePartStandIn block={block} />
         ) : block.type === "emailForm" || block.type === "newsletter" ? (
@@ -1933,6 +1957,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   menu: "A menu: double-click or use the wrench to choose which.",
   search: "Search.",
   customField: "Custom fields.",
+  fieldLoop: "A field loop: double-click or use the wrench to choose a repeater.",
   storePart: "A shop page component.",
   separator: "Separator line.",
   dualButton: "Two buttons, each needing its text and an address. Double-click or use the wrench.",
@@ -2219,6 +2244,7 @@ function Dialogs({
                   onChange={(bind) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { bind }))}
                 />
                 <ButtonFields block={block} onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))} />
+                <ModalPicker rows={rows} href={block.href} onPick={(href) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { href }))} />
               </div>
             }
             style={
@@ -2620,6 +2646,7 @@ function Dialogs({
                 </p>
                 {layoutChoice(row)}
                 <RowFields row={row} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
+                <ModalFields row={row} rows={rows} onChange={(patch) => onRows((current) => patchRow(current, row.id, patch))} />
               </>
             }
             style={
@@ -4181,6 +4208,11 @@ function ContentGridFields({
             ))}
         </div>
       </fieldset>
+      <TileFieldsPicker
+        entity={tileEntity(block.source)}
+        value={block.tileFields ?? []}
+        onChange={(tileFields) => onChange({ tileFields })}
+      />
       {block.show.button && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-button`} className="text-sm font-medium">
@@ -4601,15 +4633,30 @@ function SavedPartDialog({
             {column.blocks.map((block, n) => (
               <div key={block.id} className="flex flex-col gap-1">
                 {block.type === "richText" ? (
-                  <RichTextEditor
-                    value={block.doc}
-                    onChange={(doc) =>
-                      change((r) => updateBlock(r, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
-                    }
-                    label={`${part.kind === "row" ? `Column ${index + 1}, text` : "Text"} ${n + 1}`}
-                  />
+                  <div className="flex flex-col gap-3">
+                    <BindFields
+                      blockType="richText"
+                      bind={block.bind}
+                      onChange={(bind) => change((r) => patchBlock<RichTextBlock>(r, block.id, { bind }))}
+                    />
+                    <RichTextEditor
+                      value={block.doc}
+                      onChange={(doc) =>
+                        change((r) => updateBlock(r, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
+                      }
+                      label={`${part.kind === "row" ? `Column ${index + 1}, text` : "Text"} ${n + 1}`}
+                    />
+                  </div>
                 ) : (
-                  <div className="rounded-md border border-border p-3">
+                  <div className="flex flex-col gap-5 rounded-md border border-border p-3">
+                    {(block.type === "image" || block.type === "heading" || block.type === "button") && (
+                      // A part saved to use again keeps a block's field binding (D118) like any copy; it is drawn where the page has the field.
+                      <BindFields
+                        blockType={block.type}
+                        bind={block.bind}
+                        onChange={(bind) => change((r) => patchBlock<ImageBlock | HeadingBlock | ButtonBlock>(r, block.id, { bind }))}
+                      />
+                    )}
                     {block.type === "image" ? (
                       <ImageFields block={block} upload={upload} onChange={(next) => change((r) => updateBlock(r, block.id, () => next))} />
                     ) : block.type === "heading" ? (
@@ -4626,6 +4673,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Search: change its settings where it is used.</p>
                     ) : block.type === "customField" ? (
                       <p className="text-sm text-muted">Custom fields: change its settings where it is used.</p>
+                    ) : block.type === "fieldLoop" ? (
+                      <p className="text-sm text-muted">Field loop: change its settings where it is used.</p>
                     ) : block.type === "storePart" ? (
                       <p className="text-sm text-muted">Shop page: change its settings where it is used.</p>
                     ) : block.type === "button" ? (
@@ -4829,6 +4878,28 @@ function CustomFieldStandIn({ block }: { block: CustomFieldBlock }) {
     <div className="rounded-md border border-dashed border-border bg-surface p-4">
       <FieldsStandIn value={block} entities={["page", "article"]} mode="either" />
     </div>
+  );
+}
+
+/** A page's field loop on the canvas (D120): which repeater and how, as the canvas has no rows. */
+function FieldLoopStandIn({ block }: { block: FieldLoopBlock }) {
+  return (
+    <div className="rounded-md border border-dashed border-border bg-surface p-4">
+      <LoopStandIn value={block} entities={["page", "article"]} />
+    </div>
+  );
+}
+
+function LoopIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="8" height="7" rx="1.5" />
+        <rect x="13" y="4" width="8" height="7" rx="1.5" />
+        <rect x="3" y="14" width="8" height="6" rx="1.5" />
+        <rect x="13" y="14" width="8" height="6" rx="1.5" />
+      </svg>
+    </span>
   );
 }
 
@@ -5051,6 +5122,7 @@ const PART_HELP: Record<ProductPart, string> = {
   related: "Products sharing the most of this one's categories and tags, as the store's product cards.",
   fields: "The product's custom fields, a group or all its groups, as a table, list or cards: only those set to show on the site, and only those it has a value for.",
   field: "One custom field of the product, such as its material or warranty. It draws nothing for a product with no value for it.",
+  loop: "The rows of one of the product's repeater fields (features, ingredients, sizes), each as a card, line or column. It draws nothing for a product with no rows.",
 };
 const PART_HEADINGS: Partial<Record<ProductPart, string>> = { description: "Description", safety: "Safety and manufacturer", related: "You may also like" };
 
@@ -5113,6 +5185,13 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
       )}
       {(block.part === "fields" || block.part === "field") && (
         <FieldsSettingsFields value={block} entities={["product"]} mode={block.part === "field" ? "field" : "group"} onChange={onChange} />
+      )}
+      {block.part === "loop" && (
+        <LoopSettingsFields
+          value={productLoopConfig(block)}
+          entities={["product"]}
+          onChange={(patch) => onChange(productLoopPatch(block, patch))}
+        />
       )}
       {block.part === "related" && (
         <>
@@ -5229,6 +5308,8 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
       case "fields":
       case "field":
         return <FieldsStandIn value={block} entities={["product"]} mode={block.part === "field" ? "field" : "group"} />;
+      case "loop":
+        return <LoopStandIn value={productLoopConfig(block)} entities={["product"]} />;
       case "related": {
         const columns = block.columns?.desktop ?? 4;
         return (

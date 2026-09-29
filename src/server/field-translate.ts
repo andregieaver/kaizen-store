@@ -33,6 +33,7 @@ import {
   pageFacts,
   productFacts,
   saveFieldData,
+  storeRuleFacts,
   termRuleFacts,
   variantFacts,
 } from "./custom-fields";
@@ -40,7 +41,7 @@ import {
 type Row = Record<string, unknown>;
 type Entity = ValueEntity;
 
-const ENTITIES: readonly Entity[] = ["product", "variant", "page", "article", "term"];
+const ENTITIES: readonly Entity[] = ["product", "variant", "page", "article", "term", "store"];
 
 /** What group rules ask about a thing: a page as its draft is (that is what is translated), the rest as they are. */
 const factsOf = (run: Parameters<typeof productFacts>[0], storeId: string, entity: Entity, id: string) =>
@@ -50,12 +51,15 @@ const factsOf = (run: Parameters<typeof productFacts>[0], storeId: string, entit
       ? variantFacts(run, storeId, id)
       : entity === "term"
         ? termRuleFacts(run, storeId, id)
-        : pageFacts(run, storeId, id, "draft");
+        : entity === "store"
+          ? storeRuleFacts(run, storeId, id)
+          : pageFacts(run, storeId, id, "draft");
 
 /**
  * Custom fields in the store's translation worklist (D110, D118): the words of
  * the groups' definitions and the texts entered in fields of products, pages
- * and articles (and of products' variants, and of categories and tags), as
+ * and articles (and of products' variants, of categories and tags and of the
+ * store itself, D120), as
  * `src/lib/field-translate.ts` lists them. Nothing here calls
  * the model or writes before a person has ticked a suggestion:
  * `writeFieldUnit()` is what `applyTranslations()` calls for each one.
@@ -104,7 +108,7 @@ async function things(
   if (holding.length === 0) return [];
   const rows = await db().execute<Row>(sql`
     select entity, entity_id, locale, values from commerce.field_values
-    where store_id = ${storeId}::uuid and entity in ('product', 'variant', 'page', 'article', 'term') and locale in ('', ${main}, ${to})
+    where store_id = ${storeId}::uuid and entity in ('product', 'variant', 'page', 'article', 'term', 'store') and locale in ('', ${main}, ${to})
       ${only ? sql`and entity = ${only.entity} and entity_id = ${only.id}::uuid` : sql``}
     order by entity, entity_id limit ${MAX_THINGS * 3}
   `);
@@ -126,6 +130,7 @@ async function things(
   const variants = candidates.filter((t) => t.entity === "variant").map((t) => t.id);
   const terms = candidates.filter((t) => t.entity === "term").map((t) => t.id);
   const pages = candidates.filter((t) => t.entity === "page" || t.entity === "article").map((t) => t.id);
+  const ofStore = candidates.some((t) => t.entity === "store");
   const names = new Map<string, { title: string; slug: string; termKind?: "category" | "tag" }>();
   if (products.length > 0) {
     const found = await db().execute<Row>(sql`
@@ -161,6 +166,11 @@ async function things(
         slug: String(r.slug),
         termKind: r.kind === "tag" ? "tag" : "category",
       });
+  }
+  if (ofStore) {
+    // The store's own fields (D120): one unit, named by the store.
+    const [row] = await db().execute<Row>(sql`select name, slug from commerce.stores where id = ${storeId}::uuid`);
+    if (row) names.set(`store:${storeId}`, { title: String(row.name), slug: String(row.slug) });
   }
   if (pages.length > 0) {
     const found = await db().execute<Row>(sql`

@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 
 import { EmbeddedVideo } from "@/components/video-view";
 import { RichText } from "@/components/rich-text";
-import type { ShownField, ShownGroup, ShownLink } from "@/lib/custom-fields";
+import type { ShownBlock, ShownField, ShownGroup, ShownLink } from "@/lib/custom-fields";
 import {
   drawable,
+  drawableBlocks,
   drawableChildren,
   drawableRows,
   fileKind,
@@ -18,6 +19,7 @@ import {
   pictureOf,
   picturesOf,
   repeaterColumns,
+  standsAlone,
   videoOf,
 } from "@/lib/field-parts";
 import { fileSize } from "@/lib/file-size";
@@ -149,6 +151,42 @@ function Rows({ rows, display }: { rows: ShownField[][]; display: FieldDisplay }
   );
 }
 
+/**
+ * Flexible content's rows, each a block of its own in order: nothing heads a
+ * row but its content (its layout's label is only an aria label), and the
+ * fields of a row are drawn by `fieldValue()` as a repeater's cells are. A
+ * value that says what it is on its own (a paragraph, a picture, a video) is
+ * drawn bare; a number, a date or an amount keeps its label. `cards` puts each
+ * row in a box.
+ */
+function FlexibleBlocks({ blocks, display }: { blocks: ShownBlock[]; display: FieldDisplay }) {
+  return (
+    <ol className={display === "cards" ? "grid gap-3" : "flex flex-col gap-4"}>
+      {blocks.map((block, index) => (
+        <li
+          key={index}
+          aria-label={block.label}
+          data-layout={block.layout}
+          className={`flex flex-col gap-2 ${display === "cards" ? "rounded-lg border border-border p-4" : ""}`}
+        >
+          {block.fields.map((field) => (
+            <div key={field.id} className="min-w-0">
+              {standsAlone(field) ? (
+                fieldValue(field, "list")
+              ) : (
+                <>
+                  <span className="font-medium">{field.label}: </span>
+                  {fieldValue(field, "list")}
+                </>
+              )}
+            </div>
+          ))}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 /** One field's value as elements; call only for a `drawable()` field. */
 export function fieldValue(field: ShownField, display: FieldDisplay = "table"): ReactNode {
   const { type, value, text } = field;
@@ -189,6 +227,8 @@ export function fieldValue(field: ShownField, display: FieldDisplay = "table"): 
       return <NestedFields fields={drawableChildren(field)} />;
     case "repeater":
       return <Rows rows={drawableRows(field)} display={display} />;
+    case "flexible":
+      return <FlexibleBlocks blocks={drawableBlocks(field)} display={display} />;
     case "textarea":
       return <div className="whitespace-pre-line">{text}</div>;
     case "email": {
@@ -284,14 +324,14 @@ export function fieldValue(field: ShownField, display: FieldDisplay = "table"): 
       ) : null;
     }
     default:
-      // Text, number, measurement, date, time, choices and yes/no: already worded for the language.
+      // Text, number, measurement, money, date, time, choices and yes/no: already worded for the language (money in the market's currency, without VAT).
       return text;
   }
 }
 
 /** Values that flow in a line of text; the others (pictures, videos, lists, rich text) take a block of their own. */
 const isInline = (field: ShownField): boolean =>
-  !["richText", "image", "gallery", "video", "checkbox", "textarea", "product", "page", "group", "repeater"].includes(
+  !["richText", "image", "gallery", "video", "checkbox", "textarea", "product", "page", "group", "repeater", "flexible"].includes(
     field.type,
   );
 
@@ -354,7 +394,7 @@ export function CustomFieldsList({
           key={field.id}
           className={
             // A repeater's table wants the whole width, so its label goes above it.
-            showLabel && field.type !== "repeater"
+            showLabel && field.type !== "repeater" && field.type !== "flexible"
               ? "grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4"
               : "flex flex-col gap-1 px-4 py-3"
           }

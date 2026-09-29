@@ -7,6 +7,7 @@ import {
   listingQuery,
   NO_FILTERS,
   parseListingParams,
+  parseRangeNumber,
   toMinorUnits,
   withoutFilter,
 } from "./listing-filters";
@@ -25,6 +26,7 @@ describe("listing filters (D78)", () => {
         { name: "Størrelse", values: ["M"] },
       ],
       fields: [],
+      ranges: [],
       // A reversed range is put right.
       minPrice: 100,
       maxPrice: 500,
@@ -89,7 +91,7 @@ describe("listing filters (D78)", () => {
 
   it("reads custom fields by name, and writes them back into an address that reads the same (D118)", () => {
     const params = new URLSearchParams(
-      "f.material=wool&f.material=cotton&f.organic=1&f.=x&f.Bad=y&f.with-dash=z&f.material.min=3&kind=goods",
+      "f.material=wool&f.material=cotton&f.organic=1&f.=x&f.Bad=y&f.with-dash=z&f.material.step=3&kind=goods",
     );
     const filters = parseListingParams(params);
     expect(filters.fields).toEqual([
@@ -132,5 +134,70 @@ describe("listing filters (D78)", () => {
     ]);
     expect(withoutFilter(filters, chosen[3]).fields).toEqual([{ name: "material", values: ["wool", "cotton"] }]);
     expect(filterCount(chosen.reduce(withoutFilter, filters))).toBe(0);
+  });
+
+  it("reads number and measurement fields as ranges, and writes them back into an address that reads the same (D120)", () => {
+    const params = new URLSearchParams(
+      "f.weight.min=100&f.weight.max=500&f.length.max=2,5&f.temp.min=-10&f.reversed.min=9&f.reversed.max=3&f.material=wool&kind=goods",
+    );
+    const filters = parseListingParams(params);
+    expect(filters.ranges).toEqual([
+      { name: "weight", min: 100, max: 500 },
+      { name: "length", min: null, max: 2.5 },
+      { name: "temp", min: -10, max: null },
+      // A reversed range is put right.
+      { name: "reversed", min: 3, max: 9 },
+    ]);
+    // A choice named the same is another filter; a range key does not make a choice.
+    expect(filters.fields).toEqual([{ name: "material", values: ["wool"] }]);
+    const query = listingQuery(filters, { q: "kopp" });
+    expect(query).toBe(
+      "?q=kopp&kind=goods&f.material=wool&f.weight.min=100&f.weight.max=500&f.length.max=2.5&f.temp.min=-10&f.reversed.min=3&f.reversed.max=9",
+    );
+    expect(parseListingParams(new URLSearchParams(query))).toEqual(filters);
+    // Next.js hands pages their parameters as an object.
+    expect(parseListingParams({ "f.weight.min": "1.5", "f.weight.max": ["4", "5"] }).ranges).toEqual([{ name: "weight", min: 1.5, max: 4 }]);
+  });
+
+  it("leaves out ranges that are malformed, unbounded or for names a field cannot have", () => {
+    const bad = parseListingParams(
+      new URLSearchParams(
+        "f.a.min=abc&f.b.max=Infinity&f.c.min=1e3&f.d.min=0x10&f.e.max=99999999999999999&f.F.min=1&f.with-dash.min=1&f.g.min=&f.h.step=1&f.i.min.max=1&f.j.min=1+2",
+      ),
+    );
+    expect(bad.ranges).toEqual([]);
+    expect(parseRangeNumber("12.5")).toBe(12.5);
+    expect(parseRangeNumber(" -3,25 ")).toBe(-3.25);
+    expect(parseRangeNumber("0.0000001")).toBe(0);
+    expect(parseRangeNumber("")).toBeNull();
+    expect(parseRangeNumber("-")).toBeNull();
+    expect(parseRangeNumber("1.")).toBeNull();
+    expect(parseRangeNumber("1000000000001")).toBeNull();
+    expect(parseRangeNumber("1000000000000")).toBe(1_000_000_000_000);
+    // One good end is enough, the bad one is dropped.
+    expect(parseListingParams({ "f.w.min": "5", "f.w.max": "lots" }).ranges).toEqual([{ name: "w", min: 5, max: null }]);
+  });
+
+  it("limits how many ranges an address can ask for", () => {
+    const params = new URLSearchParams();
+    for (let i = 0; i < 20; i++) params.append(`f.field_${i}.min`, "1");
+    expect(parseListingParams(params).ranges).toHaveLength(6);
+  });
+
+  it("counts, lists and takes away chosen ranges", () => {
+    const filters = parseListingParams(new URLSearchParams("f.weight.min=100&f.weight.max=500&f.length.max=3&tag=nyhet&max=50"));
+    const chosen = chosenFilters(filters);
+    expect(chosen).toEqual([
+      { type: "tag", value: "nyhet" },
+      { type: "range", name: "weight" },
+      { type: "range", name: "length" },
+      { type: "price" },
+    ]);
+    // A range is one filter, whatever its ends.
+    expect(filterCount(filters)).toBe(4);
+    expect(withoutFilter(filters, { type: "range", name: "weight" }).ranges).toEqual([{ name: "length", min: null, max: 3 }]);
+    expect(withoutFilter(filters, { type: "range", name: "weight" }).tags).toEqual(["nyhet"]);
+    expect(filterCount(chosen.reduce(withoutFilter, filters))).toBe(0);
+    expect(isFiltered(parseListingParams({ "f.weight.min": "1" }))).toBe(true);
   });
 });

@@ -8,6 +8,7 @@ import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { siteBlocks } from "@/lib/site-layout";
 import type { GridPlace } from "@/server/content-grid";
+import { bindStoreFields } from "@/server/field-binding";
 import type { PlatformChrome } from "@/server/platform-navigation";
 import type { SiteLayout } from "@/server/site-layouts";
 import type { Store } from "@/server/stores";
@@ -247,9 +248,10 @@ function Notice({ text }: { text: string | null }) {
  * header does. A store selling to both kinds of buyer keeps the switch over
  * it unless the header has its own.
  */
-export function StoreSiteHeader({ store, market, notice, layout }: { store: Store; market: Market; notice: string | null; layout: SiteLayout }) {
+export async function StoreSiteHeader({ store, market, notice, layout }: { store: Store; market: Market; notice: string | null; layout: SiteLayout }) {
   const m = t(market.lang);
-  const content = localizePage(layout.content, market.locale);
+  // Blocks taking their content from the store's own custom fields (D120) show it; nothing is read when there are none.
+  const content = await bindStoreFields(localizePage(layout.content, market.locale), store, market);
   const background = HEADER_BACKGROUND[store.theme.settings.layout.headerBackground];
   const ownSwitch = siteBlocks(content).some((block) => block.part === "buyerSwitch");
   return (
@@ -274,11 +276,12 @@ export function StoreSiteHeader({ store, market, notice, layout }: { store: Stor
 }
 
 /** A store's own footer (D80), in its country's language. */
-export function StoreSiteFooter({ store, market, layout }: { store: Store; market: Market; layout: SiteLayout }) {
+export async function StoreSiteFooter({ store, market, layout }: { store: Store; market: Market; layout: SiteLayout }) {
+  const content = await bindStoreFields(localizePage(layout.content, market.locale), store, market);
   return (
     <footer className="site-footer mt-auto border-t border-border bg-surface/40 text-sm">
       <SiteRows
-        content={localizePage(layout.content, market.locale)}
+        content={content}
         ctx={{ kind: "store", store, market, place: "footer" }}
         place={{ pageId: layout.id, owner: store.id, market: market.slug }}
       />

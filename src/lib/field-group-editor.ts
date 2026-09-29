@@ -5,13 +5,17 @@ import {
   FIELD_TYPE_KEYS,
   LOCATION_CHOICES,
   LOCATION_PARAMS,
+  MAX_LAYOUTS,
   MAX_SUB_FIELDS,
   VALUELESS_OPERATORS,
+  fieldListsOf,
   hasChoices,
   isStructural,
   newField,
+  newLayout,
   operatorsFor,
   slugOf,
+  staffGroupProblem,
   subFieldsOf,
   uniqueName,
   newFieldId,
@@ -20,6 +24,7 @@ import {
   type FieldDef,
   type FieldEntity,
   type FieldGroupInput,
+  type FieldLayout,
   type FieldType,
   type LocationRule,
   type RuleGroups,
@@ -135,13 +140,15 @@ export function cloneField(source: FieldDef): FieldDef {
   const ids = new Map<string, string>([[source.id, newFieldId()]]);
   for (const sub of subFieldsOf(source)) ids.set(sub.id, newFieldId());
   copy.id = ids.get(source.id) as string;
-  if (copy.subFields) {
-    copy.subFields = copy.subFields.map((sub) => ({
+  const renewed = (subs: FieldDef[]): FieldDef[] =>
+    subs.map((sub) => ({
       ...sub,
       id: ids.get(sub.id) as string,
       when: sub.when?.map((all) => all.map((c) => ({ ...c, field: ids.get(c.field) ?? c.field }))),
     }));
-  }
+  if (copy.subFields) copy.subFields = renewed(copy.subFields);
+  // A flexible field's layouts keep their keys (rows are kept under them, per field), their fields get new ids.
+  if (copy.layouts) copy.layouts = copy.layouts.map((layout) => ({ ...layout, subFields: renewed(layout.subFields) }));
   return copy;
 }
 
@@ -189,6 +196,15 @@ export function pruneConditions(fields: readonly FieldDef[]): { fields: FieldDef
         changed.push(...inside.changed);
         current = { ...current, subFields: inside.fields };
       }
+    }
+    if (current.type === "flexible" && current.layouts) {
+      // Each layout is a list of its own: its fields look only at those above them in it.
+      const layouts = current.layouts.map((layout) => {
+        const inside = pruneConditions(layout.subFields);
+        changed.push(...inside.changed);
+        return inside.changed.length > 0 ? { ...layout, subFields: inside.fields } : layout;
+      });
+      current = { ...current, layouts };
     }
     return current;
   });
@@ -272,8 +288,103 @@ export function duplicateSubField(
   return { fields: fields.map((f) => (f.id === parentId ? { ...f, subFields: result.fields } : f)), copy: result.copy };
 }
 
-/** What a group or repeater holds, in a line for the list: "3 fields: Title, Text, Picture". */
-export function subFieldsSummary(field: Pick<FieldDef, "type" | "subFields">): string {
+// ---------------------------------------------------------------------------
+// The layouts of flexible content
+// ---------------------------------------------------------------------------
+
+/** A layout's key from its label: lowercase words with hyphens, not among `taken`. */
+export const layoutKey = (label: string, taken: readonly string[]): string => uniqueName(slugOf(label, "layout"), taken, "-");
+
+/** A flexible field with its layouts changed by `edit`, the conditions inside each kept whole. */
+function withLayouts(fields: readonly FieldDef[], parentId: string, edit: (layouts: FieldLayout[]) => FieldLayout[]): FieldDef[] {
+  return fields.map((field) =>
+    field.id === parentId && field.type === "flexible"
+      ? pruneConditions([{ ...field, layouts: edit(field.layouts ?? []) }]).fields[0]
+      : field,
+  );
+}
+
+/** A new layout at the end of a flexible field's layouts (with a text field to start from), keyed and labelled apart from the others. */
+export function addLayout(
+  fields: readonly FieldDef[],
+  parentId: string,
+  label = "New layout",
+): { fields: FieldDef[]; added: FieldLayout | null } {
+  const parent = fields.find((f) => f.id === parentId);
+  if (!parent || parent.type !== "flexible" || (parent.layouts ?? []).length >= MAX_LAYOUTS) return { fields: [...fields], added: null };
+  const layouts = parent.layouts ?? [];
+  const added = newLayout(uniqueName(label, layouts.map((l) => l.label), " "), layouts.map((l) => l.key));
+  return { fields: withLayouts(fields, parentId, (all) => [...all, added]), added };
+}
+
+/** A layout replaced by its edited copy, found by its key as it was (a layout not yet saved may change its key). */
+export const replaceLayout = (fields: readonly FieldDef[], parentId: string, key: string, next: FieldLayout): FieldDef[] =>
+  withLayouts(fields, parentId, (all) => all.map((l) => (l.key === key ? next : l)));
+
+/** A layout's label in the main language changed (its key stays: rows are kept under it). */
+export const renameLayout = (fields: readonly FieldDef[], parentId: string, key: string, label: string): FieldDef[] =>
+  withLayouts(fields, parentId, (all) => all.map((l) => (l.key === key ? { ...l, label } : l)));
+
+/** A layout moved to another place in the list. */
+export const moveLayout = (fields: readonly FieldDef[], parentId: string, from: number, to: number): FieldDef[] =>
+  withLayouts(fields, parentId, (all) => moveItem(all, from, to));
+
+/** A layout taken out; rows that used it are dropped when the group is next saved with values, never on read. */
+export const removeLayout = (fields: readonly FieldDef[], parentId: string, key: string): FieldDef[] =>
+  withLayouts(fields, parentId, (all) => all.filter((l) => l.key !== key));
+
+/** A copy of a layout next to it: a key and label of its own, new ids for its fields, the conditions among them following. */
+export function duplicateLayout(
+  fields: readonly FieldDef[],
+  parentId: string,
+  key: string,
+): { fields: FieldDef[]; copy: FieldLayout } | null {
+  const parent = fields.find((f) => f.id === parentId);
+  const source = parent?.layouts?.find((l) => l.key === key);
+  if (!parent || parent.type !== "flexible" || !source || (parent.layouts ?? []).length >= MAX_LAYOUTS) return null;
+  const layouts = parent.layouts ?? [];
+  const holder = cloneField({ id: "holder", name: "holder", label: "", type: "flexible", access: "private", layouts: [source] });
+  const copy: FieldLayout = {
+    ...(holder.layouts?.[0] as FieldLayout),
+    key: layoutKey(`${source.key}-copy`, layouts.map((l) => l.key)),
+    label: uniqueName(`${source.label} (copy)`.slice(0, 80), layouts.map((l) => l.label), " "),
+    labels: undefined,
+  };
+  const index = layouts.findIndex((l) => l.key === key);
+  return { fields: withLayouts(fields, parentId, (all) => [...all.slice(0, index + 1), copy, ...all.slice(index + 1)]), copy };
+}
+
+/**
+ * A layout as a stand-in group, so the fields inside it are edited with the
+ * same functions (`addSubField()` and the rest) and dialog as a group's; put
+ * the edited fields back with `withHeldFields()`.
+ */
+export const layoutHolder = (layout: FieldLayout, parent: Pick<FieldDef, "access">): FieldDef => ({
+  id: `layout:${layout.key}`,
+  name: layout.key.replace(/-/g, "_"),
+  label: layout.label,
+  type: "group",
+  access: parent.access,
+  subFields: layout.subFields,
+});
+
+/** A layout with the fields a holder ended up with. */
+export const withHeldFields = (layout: FieldLayout, holder: Pick<FieldDef, "subFields">): FieldLayout => ({
+  ...layout,
+  subFields: holder.subFields ?? [],
+});
+
+/** What a flexible field's layouts are, in a line for the list: "3 layouts: Text, Picture, Quote". */
+export function layoutsSummary(field: Pick<FieldDef, "layouts">): string {
+  const layouts = field.layouts ?? [];
+  if (layouts.length === 0) return "No layouts yet";
+  const names = layouts.slice(0, 3).map((l) => l.label || l.key);
+  return `${layouts.length} ${layouts.length === 1 ? "layout" : "layouts"}: ${names.join(", ")}${layouts.length > 3 ? " …" : ""}`;
+}
+
+/** What a group, repeater or flexible content holds, in a line for the list: "3 fields: Title, Text, Picture". */
+export function subFieldsSummary(field: Pick<FieldDef, "type" | "subFields" | "layouts">): string {
+  if (field.type === "flexible") return layoutsSummary(field);
   const subs = subFieldsOf(field);
   if (subs.length === 0) return "No fields yet";
   const names = subs.slice(0, 3).map((s) => s.label || s.name);
@@ -287,7 +398,7 @@ export function valueKindFor(type: FieldType | undefined, operator: ConditionOpe
   if (VALUELESS_OPERATORS.includes(operator) || !type) return "none";
   if (hasChoices(type) && operator !== "matches") return "choice";
   if (type === "boolean") return "boolean";
-  if (type === "number" || type === "measurement") return "number";
+  if (type === "number" || type === "measurement" || type === "money") return "number";
   if (type === "date" || type === "time" || type === "datetime") return type;
   return "text";
 }
@@ -325,10 +436,13 @@ export function fieldsWithBrokenLogic(fields: readonly FieldDef[]): Set<string> 
   fields.forEach((field, index) => {
     const above = new Set(fields.slice(0, index).map((f) => f.id));
     if ((field.when ?? []).flat().some((c) => !above.has(c.field))) broken.add(field.id);
-    const inside = fieldsWithBrokenLogic(subFieldsOf(field));
-    if (inside.size > 0) {
-      broken.add(field.id);
-      for (const id of inside) broken.add(id);
+    // Flexible content's layouts are lists of their own: a field looks only at those above it in its layout.
+    for (const list of fieldListsOf(field)) {
+      const inside = fieldsWithBrokenLogic(list);
+      if (inside.size > 0) {
+        broken.add(field.id);
+        for (const id of inside) broken.add(id);
+      }
     }
   });
   return broken;
@@ -345,6 +459,8 @@ export function draftProblems(draft: FieldGroupInput): string[] {
   }
   if (draft.location.flat().some((rule) => rule.value.trim() === ""))
     problems.push("Choose what each location rule compares with.");
+  const staffProblem = staffGroupProblem(draft as { entities: FieldEntity[]; fields: FieldDef[] });
+  if (staffProblem) problems.push(staffProblem);
   draft.fields.forEach((field, index) => {
     const above = new Set(draft.fields.slice(0, index).map((f) => f.id));
     if ((field.when ?? []).flat().some((c) => !above.has(c.field))) {
@@ -352,7 +468,16 @@ export function draftProblems(draft: FieldGroupInput): string[] {
         `${field.label || "A field"} is shown by a field that is no longer above it. Change its logic or move the fields.`,
       );
     }
-    if (isStructural(field.type as FieldType)) {
+    if (field.type === "flexible") {
+      const layouts = (field.layouts ?? []) as FieldLayout[];
+      if (layouts.length === 0) problems.push(`Add layouts to ${field.label || "the flexible content"}.`);
+      if (layouts.some((layout) => layout.subFields.length === 0)) problems.push(`Add fields to every layout of ${field.label || "the flexible content"}.`);
+      if (layouts.some((layout) => fieldsWithBrokenLogic(layout.subFields).size > 0)) {
+        problems.push(
+          `Some fields in ${field.label || "a field"} are shown by a field that is no longer above them. Change their logic or move the fields.`,
+        );
+      }
+    } else if (isStructural(field.type as FieldType)) {
       const subs = (field.subFields ?? []) as FieldDef[];
       if (subs.length === 0)
         problems.push(`Add fields to ${field.label || "the " + FIELD_TYPES[field.type].label.toLowerCase()}.`);
@@ -397,7 +522,27 @@ export function fieldProblems(field: FieldDef, otherNames: readonly string[], ab
   if (field.type === "measurement" && (field.units ?? []).length === 0) problems.push("Add at least one unit.");
   if (field.min !== undefined && field.max !== undefined && field.min > field.max)
     problems.push("The least is more than the most.");
-  if (isStructural(field.type)) {
+  if (field.type === "flexible") {
+    const layouts = field.layouts ?? [];
+    if (layouts.length === 0) problems.push("Add at least one layout.");
+    if (layouts.some((l) => l.label.trim() === "")) problems.push("Give each layout a label.");
+    if (layouts.some((l) => !KEY_PATTERN.test(l.key) || l.key.length > 40)) {
+      problems.push("A layout's key uses lowercase letters, digits, hyphens and underscores.");
+    }
+    if (new Set(layouts.map((l) => l.key)).size !== layouts.length) problems.push("Two layouts have the same key.");
+    if (field.minRows !== undefined && field.maxRows !== undefined && field.minRows > field.maxRows) {
+      problems.push("The fewest rows is more than the most.");
+    }
+    for (const layout of layouts) {
+      const where = layout.label.trim() || layout.key;
+      if (layout.subFields.length === 0) problems.push(`Add at least one field to the layout ${where}.`);
+      layout.subFields.forEach((sub, index) => {
+        const others = layout.subFields.filter((_, i) => i !== index).map((s) => s.name);
+        for (const problem of fieldProblems(sub, others, layout.subFields.slice(0, index)))
+          problems.push(`${where}, ${sub.label.trim() || "a field inside"}: ${problem}`);
+      });
+    }
+  } else if (isStructural(field.type)) {
     const subs = field.subFields ?? [];
     if (subs.length === 0)
       problems.push(`Add at least one field to the ${FIELD_TYPES[field.type].label.toLowerCase()}.`);
@@ -437,6 +582,8 @@ export function hasTypeSettings(type: FieldType): boolean {
       "page",
       "term",
       "repeater",
+      "flexible",
+      "money",
     ].includes(type) || hasChoices(type)
   );
 }

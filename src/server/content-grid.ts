@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
+import { tileFieldIds } from "@/lib/tile-fields";
 import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType, termContentOf } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
@@ -14,6 +15,8 @@ import { summarize } from "@/lib/seo";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
 
 import { listGridProducts, type GridProduct } from "./catalog";
+import { fieldsTag } from "./custom-fields";
+import { shownFieldsForItems } from "./field-tiles";
 import { pagesTag } from "./pages";
 import { getOpenStore } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
@@ -54,7 +57,7 @@ export type ListingPlace = { query: Promise<Record<string, string | string[] | u
 
 /** A grid's items where it is shown. */
 export async function gridData(block: ContentGridBlock, place: GridPlace): Promise<GridData> {
-  const filter = { categories: block.categories, tags: block.tags, sort: block.sort, limit: block.limit };
+  const filter = { categories: block.categories, tags: block.tags, sort: block.sort, limit: block.limit, tileFields: tileFieldIds(block) };
   if (block.source.type === "pages") return gridPages(place.owner, place.market ?? null, filter, place.pageId);
   // The owner's blog articles (D57), newest first unless chosen.
   if (block.source.type === "articles") return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article");
@@ -73,7 +76,31 @@ export async function storeAndMarket(storeId: string, marketCode: string | null)
   return store && market ? { store, market } : null;
 }
 
-type Filter = { categories: string[]; tags: string[]; sort: string; limit: number };
+type Filter = { categories: string[]; tags: string[]; sort: string; limit: number; tileFields: string[] };
+
+/**
+ * The items with the custom fields the grid's tiles show (D120): one batch read
+ * for all of them, cached under the store's fields tag (`shownFieldsForItems()`).
+ */
+export async function withTileFields(
+  storeId: string,
+  entity: "product" | "page" | "article",
+  market: { locale: string; lang: string; slug: string },
+  fieldIds: string[],
+  items: GridItem[],
+): Promise<GridItem[]> {
+  if (fieldIds.length === 0 || items.length === 0) return items;
+  const byItem = await shownFieldsForItems(
+    storeId,
+    entity,
+    items.map((item) => item.id),
+    fieldIds,
+    market.locale,
+    market.lang,
+    market.slug,
+  );
+  return items.map((item) => (byItem[item.id] ? { ...item, fields: byItem[item.id] } : item));
+}
 
 /** The owner's published pages (or articles) in the grid's categories and tags; a store's link within the market. */
 async function gridPages(
@@ -86,6 +113,8 @@ async function gridPages(
   "use cache";
   cacheLife("hours");
   cacheTag(pagesTag(owner), termsTag({ storeId: owner, contentType: "page" }));
+  // A tile's fields (D120) change with the store's fields, so the grid is refreshed with them.
+  if (owner && filter.tileFields.length > 0) cacheTag(fieldsTag(owner));
 
   const shop = owner ? await storeAndMarket(owner, marketCode) : null;
   if (owner && !shop) return { ...EMPTY_GRID };
@@ -141,6 +170,9 @@ async function gridPages(
       },
     ];
   });
+  if (owner && shop && filter.tileFields.length > 0) {
+    return { items: await withTileFields(owner, type === "article" ? "article" : "page", shop.market, filter.tileFields, items), ...language };
+  }
   return { items, ...language };
 }
 
@@ -149,6 +181,7 @@ async function gridProducts(storeId: string, marketCode: string | null, filter: 
   "use cache";
   cacheLife("hours");
   cacheTag(termsTag({ storeId, contentType: "product" }));
+  if (filter.tileFields.length > 0) cacheTag(fieldsTag(storeId));
 
   const shop = await storeAndMarket(storeId, marketCode);
   if (!shop) return { ...EMPTY_GRID };
@@ -157,7 +190,8 @@ async function gridProducts(storeId: string, marketCode: string | null, filter: 
   const scope = await gridScope(storeId, filter);
   if (!scope) return { items: [], lang: market.lang, locale: market.locale };
   const products = await listGridProducts(storeId, market, { ...scope, sort: filter.sort, limit: filter.limit });
-  return { lang: market.lang, locale: market.locale, items: products.map((product) => productItem(store.slug, market.slug, product)) };
+  const items = products.map((product) => productItem(store.slug, market.slug, product));
+  return { lang: market.lang, locale: market.locale, items: await withTileFields(storeId, "product", market, filter.tileFields, items) };
 }
 
 /**

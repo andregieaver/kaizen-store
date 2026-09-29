@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."field_values" DROP CONSTRAINT "field_values_entity";--> statement-breakpoint
+ALTER TABLE "commerce"."field_values" ADD CONSTRAINT "field_values_entity" CHECK ("commerce"."field_values"."entity" in ('product', 'page', 'article', 'variant', 'term', 'store', 'customer', 'order'));
