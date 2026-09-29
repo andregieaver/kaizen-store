@@ -382,15 +382,30 @@ of running `playwright install`.
   never the visitor; sign-ups are confirmed by email first unless switched
   off (`/api/forms/confirm`). Anything else that copies a page for another
   owner drops recipients (`withoutRecipients()`, `clone_page_content()`).
-- The owner assistant (D94, `src/lib/owner-tools.ts`, `src/server/owner-tools.ts`,
-  `src/server/owner-assistant.ts`, `OwnerAssistant`, `/admin/{store}/assistant`,
-  owners only): a tool loop with the store's AI over `OWNER_TOOLS`. A new
-  tool goes in `OWNER_TOOLS` (zod arguments, description) and `HANDLERS`,
-  answers from the store's own data with amounts written by `formatMoney`
-  and sums done in code, and takes a `gate` (`send`, `public`, `spend`) if
-  it emails customers, changes the site or costs money: gated calls are only
-  kept (`assistant_approvals`, `approvalSummary()`) and run on the owner's
-  yes. It never depends on Kaizen Life.
+- The AI manager (D94, D103; `src/server/owner-assistant.ts`, `AiManagerChat`,
+  `AiManagerLauncher`): the admin's assistant for a store's owners
+  (`/admin/{store}/assistant`) and platform admins (`/admin/platform/assistant`,
+  conversations with a null `store_id`), opened from the headers' button or
+  ⌘K as a panel beside the page. `runTurn()` takes a `Principal`
+  (`{ account, store | null }`) and the page's `path`; turns go through
+  `assistantTurn()` (`src/server/assistant-route.ts`). Tools: the store's
+  `OWNER_TOOLS` (`src/lib/owner-tools.ts`, `HANDLERS` in
+  `src/server/owner-tools.ts`) or `PLATFORM_TOOLS`, plus `MANAGER_TOOLS`
+  (`src/lib/manager-tools.ts`, `src/server/manager-tools.ts`: find and open
+  admin pages, skills, memory). A new tool has zod arguments and a
+  description, answers from the site's own data with amounts written by
+  `formatMoney` and sums done in code, a line in `TOOL_WORDS`, and a `gate`
+  (`send`, `public`, `spend`) if it emails, changes a site or costs money:
+  gated calls are only kept (`assistant_approvals`, `approvalSummary()`) and
+  run on the person's yes. A new admin page goes in `ADMIN_PAGES`
+  (`src/lib/admin-map.ts`; its test fails otherwise); a playbook in
+  `ASSISTANT_SKILLS` (`src/lib/assistant-skills.ts`). Memory
+  (`commerce.assistant_memories`, SQL only, `src/server/assistant-memory.ts`)
+  is per account: `remember`/`forget`, `learnFromTurn()` after each turn and
+  thumb (`readLearned()` refuses personal details and secrets),
+  `memoriesFor()` each turn, `fadeMemories()` daily; people see and change
+  it on the Memory tab and can turn learning off. It never depends on Kaizen
+  Life.
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
   `KAIZEN_LIFE_SSO=on`) goes through `/auth/callback?via=kaizen-life` and
@@ -403,7 +418,7 @@ of running `playwright install`.
   `store` argument, gated tools only kept (`keepForApproval()`) in the
   owner's Kaizen Life conversation (`kaizenLifeConversation()`), and
   `ask_store_assistant` runs a turn there with `fromKaizenLife`. A new owner
-  tool is served there too. The other way, an owner connects Kaizen Life
+  tool is served there too (manager and platform tools are not). The other way, an owner connects Kaizen Life
   for the assistant under Your account (`src/server/kaizen-life-link.ts`,
   tokens encrypted in `kaizen_life_links`); the assistant then has
   `ask_kaizen_life` (`ASK_KAIZEN_LIFE`, not an owner tool), never in turns

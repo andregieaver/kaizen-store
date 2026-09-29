@@ -1191,6 +1191,20 @@
       "when": 1790644326812,
       "tag": "20260929011206_reserve_deliveries_slug",
       "breakpoints": true
+    },
+    {
+      "idx": 170,
+      "version": "7",
+      "when": 1790663417124,
+      "tag": "20260929063017_ai_manager",
+      "breakpoints": true
+    },
+    {
+      "idx": 171,
+      "version": "7",
+      "when": 1790663420040,
+      "tag": "20260929063020_ai_manager_memory",
+      "breakpoints": true
     }
   ]
 }

@@ -2,17 +2,39 @@
 
 import { notFound } from "next/navigation";
 import { updateTag } from "next/cache";
+import { after } from "next/server";
 
 import { requireMember, type Membership } from "@/server/auth";
-import { decideApproval, deleteConversation, type Approval } from "@/server/owner-assistant";
+import {
+  assistantAbilities,
+  decideApproval,
+  deleteConversation,
+  getConversation,
+  listConversations,
+  rateAnswer,
+  type Approval,
+  type Conversation,
+} from "@/server/owner-assistant";
 import { hearOwner, speakToOwner } from "@/server/page-ai";
 import { readRecording, unreadable } from "@/server/page-studio-input";
 
-/** The owner assistant's actions (D94): for the store's owners only. */
+/** The store's AI manager's actions (D94, D103): for the store's owners only. */
 async function requireOwner(storeSlug: string): Promise<Membership> {
   const member = await requireMember(storeSlug);
   if (member.role !== "owner") notFound();
   return member;
+}
+
+/** What the panel needs when it first opens. */
+export async function startAssistantAction(storeSlug: string) {
+  const member = await requireOwner(storeSlug);
+  const [abilities, conversations] = await Promise.all([assistantAbilities(member.store.id), listConversations(member)]);
+  return { abilities, conversations };
+}
+
+export async function loadConversationAction(storeSlug: string, conversationId: string): Promise<Conversation | null> {
+  const member = await requireOwner(storeSlug);
+  return getConversation(member, String(conversationId));
 }
 
 export async function decideApprovalAction(storeSlug: string, approvalId: string, approve: boolean): Promise<Approval | null> {
@@ -23,6 +45,12 @@ export async function decideApprovalAction(storeSlug: string, approvalId: string
 export async function deleteConversationAction(storeSlug: string, conversationId: string): Promise<boolean> {
   const member = await requireOwner(storeSlug);
   return deleteConversation(member, String(conversationId));
+}
+
+export async function rateAnswerAction(storeSlug: string, messageId: string, value: 1 | -1 | null): Promise<boolean> {
+  const member = await requireOwner(storeSlug);
+  const thumb = value === 1 || value === -1 ? value : null;
+  return rateAnswer(member, String(messageId), thumb, null, (task) => after(task));
 }
 
 export async function assistantHearAction(storeSlug: string, form: FormData) {

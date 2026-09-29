@@ -3,6 +3,7 @@ import { after } from "next/server";
 
 import { AdminColorSwitch } from "@/components/admin/admin-colors";
 import { AdminTrail, SignOutForm } from "@/components/admin/admin-trail";
+import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { StoreSidebar, StoreTabs, type NavGroup, type NavItem } from "@/components/admin/store-admin-nav";
 import { StoreMain } from "@/components/admin/store-main";
 import { Avatar } from "@/components/avatar";
@@ -14,6 +15,15 @@ import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/serve
 import { countPendingRequests } from "@/server/platform";
 
 import { colorModeAction } from "../account/actions";
+import {
+  assistantHearAction,
+  assistantSpeakAction,
+  decideApprovalAction,
+  deleteConversationAction,
+  loadConversationAction,
+  rateAnswerAction,
+  startAssistantAction,
+} from "./assistant/actions";
 import { signOut } from "../actions";
 
 /**
@@ -38,8 +48,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const avatar = avatarFor(account);
   const tabs: NavItem[] = [
     { href: base, label: "Overview", exact: true },
-    // The owner assistant (D94), for owners.
-    ...(role === "owner" ? [{ href: `${base}/assistant`, label: "Assistant" }] : []),
+    // The AI manager (D94, D103), for owners.
+    ...(role === "owner" ? [{ href: `${base}/assistant`, label: "AI manager" }] : []),
     { href: `${base}/orders`, label: "Orders" },
     { href: `${base}/subscriptions`, label: "Subscriptions" },
     { href: `${base}/products`, label: "Products" },
@@ -138,6 +148,24 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
               {store.name}
             </Link>
             <div className="ml-auto flex shrink-0 items-center gap-3 text-sm">
+              {/* The AI manager (D103), from every page of the store's admin, for owners. */}
+              {role === "owner" && (
+                <AiManagerLauncher
+                  area="store"
+                  base={`${base}/assistant`}
+                  siteName={store.name}
+                  settingsHref={`${base}/settings/ai`}
+                  start={startAssistantAction.bind(null, store.slug)}
+                  actions={{
+                    decide: decideApprovalAction.bind(null, store.slug),
+                    remove: deleteConversationAction.bind(null, store.slug),
+                    load: loadConversationAction.bind(null, store.slug),
+                    rate: rateAnswerAction.bind(null, store.slug),
+                    hear: assistantHearAction.bind(null, store.slug),
+                    speak: assistantSpeakAction.bind(null, store.slug),
+                  }}
+                />
+              )}
               <Link
                 href={storeHref(store.slug, storeBase(store.slug))}
                 className="flex min-h-10 items-center gap-1.5 rounded-md border border-border px-3 hover:bg-surface"

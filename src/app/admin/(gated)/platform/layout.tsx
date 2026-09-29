@@ -1,13 +1,25 @@
 import Link from "next/link";
 
+import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import { PlatformMain } from "@/components/admin/platform-main";
 import { requirePlatformAdmin } from "@/server/auth";
+
+import {
+  decidePlatformApprovalAction,
+  deletePlatformConversationAction,
+  loadPlatformConversationAction,
+  platformHearAction,
+  platformSpeakAction,
+  ratePlatformAnswerAction,
+  startPlatformAssistantAction,
+} from "./assistant/actions";
 
 /** Kaizen's own admin: access requests, stores' plans and fees, plans, Stripe. */
 export default async function PlatformLayout({ children }: LayoutProps<"/admin/platform">) {
   await requirePlatformAdmin();
   const nav = [
     { href: "/admin/platform", label: "Access requests" },
+    { href: "/admin/platform/assistant", label: "AI manager" },
     { href: "/admin/platform/customers", label: "Customers" },
     { href: "/admin/platform/stores", label: "Stores" },
     { href: "/admin/platform/plans", label: "Plans" },
@@ -44,6 +56,24 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
               </li>
             ))}
           </ul>
+          {/* Kaizen's AI manager (D103), from every platform page. */}
+          <div className="ml-auto">
+            <AiManagerLauncher
+              area="platform"
+              base="/admin/platform/assistant"
+              siteName="Kaizen"
+              settingsHref="/admin/platform/ai"
+              start={startPlatformAssistantAction}
+              actions={{
+                decide: decidePlatformApprovalAction,
+                remove: deletePlatformConversationAction,
+                load: loadPlatformConversationAction,
+                rate: ratePlatformAnswerAction,
+                hear: platformHearAction,
+                speak: platformSpeakAction,
+              }}
+            />
+          </div>
         </nav>
       </div>
       <PlatformMain>{children}</PlatformMain>

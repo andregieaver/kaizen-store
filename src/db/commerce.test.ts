@@ -1565,6 +1565,39 @@ describe("owners' own CSS (D100)", () => {
   });
 });
 
+describe("the AI manager (D103)", () => {
+  it("keeps platform conversations without a store, thumbs on answers, and memories per account", async () => {
+    const accountId = await createAccount("manager@example.com");
+    const { id: conversation } = await one<{ id: string }>(
+      "insert into commerce.assistant_conversations (account_id, title) values ($1, 'Platform') returning id",
+      [accountId],
+    );
+    await db.query("insert into commerce.assistant_messages (conversation_id, role, content, feedback) values ($1, 'assistant', 'Hi', 1)", [conversation]);
+    await expect(
+      db.query("insert into commerce.assistant_messages (conversation_id, role, content, feedback) values ($1, 'assistant', 'Hi', 2)", [conversation]),
+    ).rejects.toThrow(/assistant_messages_feedback/);
+    expect((await one<{ assistant_learns: boolean }>("select assistant_learns from commerce.accounts where id = $1", [accountId])).assistant_learns).toBe(true);
+
+    const memory = (kind: string, content: string, space: string | null = null, vector: string | null = null) =>
+      db.query(
+        "insert into commerce.assistant_memories (account_id, kind, content, source, space, embedding) values ($1, $2, $3, 'told', $4, $5::extensions.vector)",
+        [accountId, kind, content, space, vector],
+      );
+    await memory("preference", "Prefers short answers in Norwegian");
+    await memory("fact", "Ships from Bergen", "api.example.com|embed", "[1,0,0]");
+    await expect(memory("mood", "x")).rejects.toThrow(/kind/);
+    await expect(memory("fact", "")).rejects.toThrow(/content/);
+    await expect(memory("fact", "x", "space-only")).rejects.toThrow(/assistant_memories_vector/);
+    const found = await one<{ n: number }>(
+      "select count(*)::int as n from commerce.assistant_memories where account_id = $1 and search @@ to_tsquery('simple', 'norwegian')",
+      [accountId],
+    );
+    expect(found.n).toBe(1);
+    await db.query("delete from commerce.accounts where id = $1", [accountId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.assistant_memories where account_id = $1", [accountId])).n).toBe(0);
+  });
+});
+
 describe("weekly deliveries (D102)", () => {
   it("keep schedules, one open list per customer, a card before a list is on, and each delivery day once", async () => {
     const shop = await createStore("weekly-test", ["NO"]);

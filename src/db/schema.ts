@@ -235,6 +235,8 @@ export const accounts = commerce.table(
     colorMode: text("color_mode").notNull().default("system"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
+    /** The AI manager learns their preferences from conversations (D103); off, it only keeps what they tell it to. */
+    assistantLearns: boolean("assistant_learns").notNull().default(true),
     /** The owner asked Kaizen for no reminders about plans left unpaid (D33). */
     planRemindersOptedOutAt: timestamp("plan_reminders_opted_out_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -3864,9 +3866,8 @@ export const assistantConversations = commerce.table(
   "assistant_conversations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id, { onDelete: "cascade" }),
+    /** The store it is about; null for the platform's AI manager (D103), with a platform admin. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
     accountId: uuid("account_id")
       .notNull()
       .references(() => accounts.id, { onDelete: "cascade" }),
@@ -3910,15 +3911,16 @@ export const assistantMessages = commerce.table(
   "assistant_messages",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id, { onDelete: "cascade" }),
+    /** Null in the platform's conversations (D103). */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
     conversationId: uuid("conversation_id").notNull(),
     /** `user` or `assistant`. */
     role: text("role").notNull(),
     content: text("content").notNull(),
     /** The assistant's tool calls that turn: name and whether it worked, never their data. */
     tools: jsonb("tools").notNull().default([]),
+    /** The person's thumbs on an answer (D103): 1 up, -1 down; it learns from them. */
+    feedback: integer("feedback"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -3927,6 +3929,7 @@ export const assistantMessages = commerce.table(
     index("assistant_messages_store_idx").on(t.storeId, t.createdAt),
     check("assistant_messages_role", sql`${t.role} in ('user', 'assistant')`),
     check("assistant_messages_content", sql`length(${t.content}) <= 20000`),
+    check("assistant_messages_feedback", sql`${t.feedback} is null or ${t.feedback} in (-1, 1)`),
   ],
 );
 
@@ -3939,9 +3942,8 @@ export const assistantApprovals = commerce.table(
   "assistant_approvals",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id")
-      .notNull()
-      .references(() => stores.id, { onDelete: "cascade" }),
+    /** Null for the platform's AI manager (D103). */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
     conversationId: uuid("conversation_id").notNull(),
     accountId: uuid("account_id")
       .notNull()

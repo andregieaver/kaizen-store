@@ -100,10 +100,15 @@ describe("the owner assistant (D94)", () => {
 
   it("runs every tool that reads against the store's own data", async () => {
     const ctx = { account: member.account, store: member.store, invalidate: () => {} };
-    const args: Record<string, unknown> = { get_product: { product: productHandle }, get_order: { order: "1" } };
+    const args: Record<string, unknown> = {
+      get_product: { product: productHandle },
+      get_order: { order: "1" },
+      get_customer: { customer: "nobody@example.com" },
+    };
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && t.name !== "add_order_note")) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order") await expect(result).rejects.toThrow("No order 1 in this store.");
+      else if (tool.name === "get_customer") await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
       else await expect(result, tool.name).resolves.toBeTruthy();
     }
     expect(await ownerTools.runOwnerTool(ctx, "get_product", { product: productHandle })).toMatchObject({

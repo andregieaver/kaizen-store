@@ -6,16 +6,25 @@ import { db } from "@/db/client";
 import { formatMoney } from "@/lib/money";
 import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerToolName } from "@/lib/owner-tools";
 import { marketPath, storeHref } from "@/lib/paths";
+import { parsePrice } from "@/lib/product-input";
 
 import { audit, type Account } from "./auth";
 import { cancelBooking, listBookings } from "./bookings";
+import { cartReminderStats } from "./cart-reminders";
+import { findCustomer, getCustomerDetail, listCustomers } from "./customer-admin";
+import { listEmails } from "./email";
+import { listIntegrations } from "./integrations";
+import { getSetupProgress } from "./setup";
+import { deliveryRounds } from "./standing-orders";
+import { listSubscriptions } from "./subscriptions";
+import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
 import { catalogTag } from "./catalog";
-import { listDiscounts } from "./discounts";
-import { addOrderNote, CARRIERS, getOrderAdmin, markSent } from "./order-admin";
+import { listDiscounts, saveDiscount } from "./discounts";
+import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
 import { listOrders } from "./orders";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
-import { sendBookingCancelled, sendShipped } from "./shopper-emails";
+import { sendBookingCancelled, sendRefunded, sendShipped } from "./shopper-emails";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -397,6 +406,217 @@ async function unpublishPageTool(ctx: OwnerToolContext, input: OwnerToolInput<"u
 
 type Handler = (ctx: OwnerToolContext, input: never) => Promise<unknown>;
 
+// The AI manager's store tools (D103) -----------------------------------------------
+
+const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
+
+async function setupProgressTool({ store }: OwnerToolContext) {
+  const p = await getSetupProgress(store);
+  const step = (done: boolean, what: string, page: string) => ({ what, done, page: adminLink(store, page) });
+  return {
+    ready_to_open: p.readyToOpen,
+    status: store.status,
+    steps: [
+      step(p.details, "Business details", "/settings/company"),
+      step(p.countries, "Countries to sell to", "/setup/countries"),
+      step(p.shipping, "Shipping price for every country", "/settings/shipping"),
+      step(p.payments, "Stripe account set up", "/settings/payments"),
+      step(p.paymentsOn, "Payments switched on", "/settings/payments"),
+      step(p.products, "Own products (not only the demo ones)", "/products"),
+      step(p.plan, "A Kaizen plan", "/billing"),
+    ],
+    products: { own: p.counts.ownProducts, demo: p.counts.demoProducts },
+  };
+}
+
+async function storeCheckup(ctx: OwnerToolContext) {
+  const { store } = ctx;
+  const [[counts], [low], progress, integrations] = await Promise.all([
+    db().execute<Row>(sql`
+      select
+        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid'
+           and o.placed_at < now() - interval '2 days'
+           and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as late_orders,
+        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid'
+           and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as to_send,
+        (select count(distinct lower(q.query))::int from commerce.search_queries q
+           where q.store_id = ${store.id}::uuid and q.results = 0 and q.created_at > now() - interval '7 days') as searches_missed,
+        (select count(*)::int from commerce.assistant_approvals a
+           where a.store_id = ${store.id}::uuid and a.account_id = ${ctx.account.id}::uuid and a.status = 'pending') as approvals,
+        (select count(*)::int from commerce.products p where p.store_id = ${store.id}::uuid and p.status = 'draft') as drafts
+    `),
+    db().execute<Row>(sql`
+      select count(*)::int as n from commerce.product_variants v
+      join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+      where v.store_id = ${store.id}::uuid and p.status = 'active' and v.active and v.delivery = 'physical' and p.kind = 'goods'
+        and coalesce((select sum(l.on_hand) from commerce.inventory_levels l where l.variant_id = v.id), 0) <= 3
+    `),
+    getSetupProgress(store),
+    listIntegrations(store.id),
+  ]);
+  const findings: { what: string; page: string }[] = [];
+  const add = (when: boolean, what: string, page: string) => when && findings.push({ what, page: adminLink(store, page) });
+  add(!progress.readyToOpen, "The store is not ready to open yet: setup_progress says what is left.", "");
+  add(Number(counts.late_orders) > 0, `${counts.late_orders} paid order(s) have waited more than two days to be sent.`, "/orders?show=to-send");
+  add(Number(counts.to_send) > 0 && Number(counts.late_orders) === 0, `${counts.to_send} paid order(s) are waiting to be sent.`, "/orders?show=to-send");
+  add(Number(low.n) > 0, `${low.n} variant(s) have 3 or fewer left in stock.`, "/products");
+  add(Number(counts.searches_missed) > 0, `${counts.searches_missed} different search(es) found nothing this week.`, "/search");
+  add(Number(counts.approvals) > 0, `${counts.approvals} change(s) you asked me for are waiting for your approval.`, "/assistant");
+  add(Number(counts.drafts) > 0, `${counts.drafts} product(s) are drafts, not on the site.`, "/products");
+  add(store.paymentsTest && store.paymentsOn, "Payments are in test mode: shoppers cannot really pay yet.", "/settings/payments");
+  for (const i of integrations) add(i.enabled && i.recentFailures > 0, `${i.provider} failed ${i.recentFailures} send(s) this week.`, `/integrations/${i.provider}`);
+  return { findings, all_good: findings.length === 0 };
+}
+
+async function listCustomersTool({ store }: OwnerToolContext, { search, limit }: OwnerToolInput<"list_customers">) {
+  const rows = await listCustomers(store.id, { q: search ?? "", limit });
+  return rows.map((c) => ({
+    key: c.key,
+    name: c.name,
+    email: c.email,
+    account: c.account ?? "none",
+    orders: c.orders,
+    live_subscriptions: c.liveSubscriptions,
+    spent: Object.entries(c.spentMinor).map(([currency, minor]) => money(store, minor, currency)),
+    last_order: c.lastOrderAt,
+    admin: adminLink(store, `/customers/${encodeURIComponent(c.key)}`),
+  }));
+}
+
+async function getCustomerTool({ store }: OwnerToolContext, { customer }: OwnerToolInput<"get_customer">) {
+  const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customer);
+  let ref = isId ? await findCustomer(store.id, customer) : null;
+  if (!ref && !isId) {
+    const [match] = await listCustomers(store.id, { q: customer, limit: 1 });
+    ref = match ? await findCustomer(store.id, match.key) : null;
+  }
+  const detail = ref ? await getCustomerDetail(store.id, ref) : null;
+  if (!ref || !detail) return fail(`No customer "${customer}" in this store. Use list_customers to find them.`);
+  return {
+    name: detail.name,
+    email: ref.email,
+    phone: detail.phone,
+    account_since: detail.accountCreatedAt,
+    first_order: detail.firstOrderAt,
+    orders: detail.orderList.slice(0, 20).map((o) => ({ number: o.number, status: o.status, placed: o.placedAt, total: money(store, o.totalMinor, o.currency) })),
+    subscriptions: detail.subscriptionList.map((s) => ({ number: s.number, status: s.status, each_renewal: money(store, s.totalMinor, s.currency) })),
+    wishlist_items: detail.wishlistItems,
+    cart_reminders_off: detail.cartRemindersOptedOut,
+    admin: adminLink(store, `/customers/${encodeURIComponent(ref.key)}`),
+  };
+}
+
+async function listSubscriptionsTool({ store }: OwnerToolContext, { limit }: OwnerToolInput<"list_subscriptions">) {
+  const rows = await listSubscriptions(store.id);
+  return rows.slice(0, limit).map((s) => ({
+    number: s.number,
+    status: s.status,
+    customer: s.name || s.email,
+    each_renewal: money(store, s.totalMinor, s.currency),
+    every: `${s.intervalCount} ${s.interval}`,
+    renews: s.currentPeriodEnd,
+    ending: s.cancelAtPeriodEnd || Boolean(s.cancelAt),
+    admin: adminLink(store, `/subscriptions/${s.id}`),
+  }));
+}
+
+async function cartReminderStatsTool({ store }: OwnerToolContext) {
+  const stats = await cartReminderStats(store.id);
+  return {
+    period: "the last 30 days",
+    checkouts_left_with_email: stats.captured,
+    reminded: stats.reminded,
+    bought_after_reminder: stats.recovered,
+    won_back: Object.entries(stats.recoveredMinor).map(([currency, minor]) => money(store, minor, currency)),
+    page: adminLink(store, "/cart-reminders"),
+  };
+}
+
+async function wishlistInsights({ store }: OwnerToolContext) {
+  const [figures, wished] = await Promise.all([wishlistFigures(store.id), mostWishedProducts(store.id, mainLocale(store), 5)]);
+  return {
+    lists: figures.lists,
+    items_saved: figures.savedItems,
+    shoppers: figures.shoppers,
+    put_in_cart: figures.toCart,
+    bought: figures.bought,
+    bought_for: Object.entries(figures.boughtMinor).map(([currency, minor]) => money(store, minor, currency)),
+    most_wished: wished.map((w) => ({ product: w.title, lists: w.lists })),
+    page: adminLink(store, "/wishlists"),
+  };
+}
+
+async function listEmailsTool({ store }: OwnerToolContext, { limit }: OwnerToolInput<"list_emails">) {
+  const rows = await listEmails({ storeId: store.id, limit });
+  return rows.map((e) => ({ what: e.kind, to: e.to, subject: e.subject, status: e.status, error: e.error, sent: e.createdAt, admin: adminLink(store, `/emails/${e.id}`) }));
+}
+
+async function subscriptionBoxes({ store }: OwnerToolContext) {
+  if (!store.deliveriesOn) return { on: false, note: "Subscription boxes are off: they are switched on under Features.", page: adminLink(store, "/settings/features") };
+  const rounds = await deliveryRounds(store.id);
+  return {
+    on: true,
+    delivery_days: rounds.map((r) => ({
+      name: r.schedule.name,
+      country: r.schedule.marketCode,
+      active: r.schedule.active,
+      lists: r.schedule.lists,
+      next_delivery: r.next.date,
+      next_cutoff: new Date(r.next.cutoffAt).toISOString(),
+      being_packed: r.current
+        ? {
+            delivery: r.current.date,
+            orders: r.current.orders.map((o) => ({ number: o.number, customer: o.name, total: money(store, o.totalMinor, r.schedule.currency), status: o.status })),
+            without_delivery: r.current.skipped,
+          }
+        : null,
+    })),
+    page: adminLink(store, "/deliveries"),
+  };
+}
+
+async function refundOrderTool(ctx: OwnerToolContext, { order, amount, reason, restock, notify }: OwnerToolInput<"refund_order">) {
+  const { store } = ctx;
+  const orderId = await findOrderId(store, order);
+  const admin = await getOrderAdmin(store.id, orderId);
+  if (!admin) return fail(`No order ${order} in this store.`);
+  if (!admin.canRefund || admin.refundableMinor <= 0) return fail(`Order ${admin.number} has nothing left to refund through Stripe.`);
+  const amountMinor = amount ? parsePrice(amount, admin.currency) : admin.refundableMinor;
+  if (amountMinor === null || amountMinor <= 0) return fail(`"${amount}" is not an amount.`);
+  if (amountMinor > admin.refundableMinor) return fail(`At most ${money(store, admin.refundableMinor, admin.currency)} can be refunded on order ${admin.number}.`);
+  const back = restock
+    ? admin.lines.filter((l) => l.variantId && l.delivery === "physical" && l.quantity > l.restocked).map((l) => ({ lineId: l.id, quantity: l.quantity - l.restocked }))
+    : [];
+  const outcome = await refundOrder(store.id, orderId, { amountMinor, reason, restock: back }, ctx.account.id);
+  if (!outcome.ok) return fail(outcome.problem);
+  if (notify && outcome.amountMinor > 0) await sendRefunded(store.id, orderId, outcome.refundId, outcome.amountMinor);
+  ctx.invalidate(catalogTag(store.id));
+  return { done: `Refunded ${money(store, outcome.amountMinor, admin.currency)} on order ${admin.number}${back.length ? ", and put its items back in stock" : ""}.` };
+}
+
+async function createDiscountTool(ctx: OwnerToolContext, input: OwnerToolInput<"create_discount">) {
+  const result = await saveDiscount({ account: ctx.account, store: ctx.store, role: "owner" }, null, {
+    code: input.code,
+    kind: input.kind,
+    percent: input.percent,
+    endsAt: input.ends_at ? `${input.ends_at}T23:59` : null,
+    usageLimit: input.usage_limit ?? null,
+    oncePerCustomer: input.once_per_customer,
+    active: true,
+  });
+  if (!result.ok) return fail(result.problems.join(" "));
+  return { done: `The code ${input.code.toUpperCase()} works now.`, admin: result.id ? adminLink(ctx.store, `/discounts/${result.id}`) : adminLink(ctx.store, "/discounts") };
+}
+
+async function setDiscountActiveTool(ctx: OwnerToolContext, { code, active }: OwnerToolInput<"set_discount_active">) {
+  const rows = await db().execute<Row>(sql`
+    update commerce.discount_codes set active = ${active}, updated_at = now()
+    where store_id = ${ctx.store.id}::uuid and upper(code) = upper(${code}) returning code
+  `);
+  if (rows.length === 0) return fail(`No code ${code} in this store. Use list_discounts to find it.`);
+  return { done: `The code ${String(rows[0].code)} is ${active ? "on" : "off"}.` };
+}
+
 const HANDLERS: Record<OwnerToolName, Handler> = {
   store_overview: storeOverview,
   sales_summary: salesSummary,
@@ -414,6 +634,18 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   cancel_booking: cancelBookingTool,
   archive_product: archiveProductTool,
   unpublish_page: unpublishPageTool,
+  setup_progress: setupProgressTool,
+  store_checkup: storeCheckup,
+  list_customers: listCustomersTool,
+  get_customer: getCustomerTool,
+  list_subscriptions: listSubscriptionsTool,
+  cart_reminder_stats: cartReminderStatsTool,
+  wishlist_insights: wishlistInsights,
+  list_emails: listEmailsTool,
+  subscription_boxes: subscriptionBoxes,
+  refund_order: refundOrderTool,
+  create_discount: createDiscountTool,
+  set_discount_active: setDiscountActiveTool,
 };
 
 /**

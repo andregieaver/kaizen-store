@@ -1,19 +1,26 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { OwnerAssistant } from "@/components/admin/owner-assistant";
+import { AiManagerPage } from "@/components/admin/ai-manager-page";
 import { requireMember } from "@/server/auth";
 import { assistantAbilities, getConversation, listConversations } from "@/server/owner-assistant";
 
-import { assistantHearAction, assistantSpeakAction, decideApprovalAction, deleteConversationAction } from "./actions";
+import {
+  assistantHearAction,
+  assistantSpeakAction,
+  decideApprovalAction,
+  deleteConversationAction,
+  loadConversationAction,
+  rateAnswerAction,
+} from "./actions";
 
-export const metadata: Metadata = { title: "Assistant" };
+export const metadata: Metadata = { title: "AI manager" };
 
-/** The store's owner assistant (D94): for owners only. */
+/** The store's AI manager (D94, D103): for owners only. */
 export default async function StoreAssistantPage({ params, searchParams }: PageProps<"/admin/[store]/assistant">) {
   const member = await requireMember((await params).store);
   if (member.role !== "owner") notFound();
-  const { c } = await searchParams;
+  const { c, tab } = await searchParams;
   const [abilities, conversations, conversation] = await Promise.all([
     assistantAbilities(member.store.id),
     listConversations(member),
@@ -21,22 +28,24 @@ export default async function StoreAssistantPage({ params, searchParams }: PageP
   ]);
   const slug = member.store.slug;
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Assistant</h1>
-      <OwnerAssistant
-        key={conversation?.id ?? "new"}
-        storeSlug={slug}
-        storeName={member.store.name}
-        abilities={abilities}
-        conversations={conversations}
-        conversation={conversation}
-        actions={{
-          decide: decideApprovalAction.bind(null, slug),
-          remove: deleteConversationAction.bind(null, slug),
-          hear: abilities.hear ? assistantHearAction.bind(null, slug) : null,
-          speak: abilities.speak ? assistantSpeakAction.bind(null, slug) : null,
-        }}
-      />
-    </div>
+    <AiManagerPage
+      area="store"
+      base={`/admin/${slug}/assistant`}
+      siteName={member.store.name}
+      settingsHref={`/admin/${slug}/settings/ai`}
+      accountId={member.account.id}
+      tab={typeof tab === "string" ? tab : undefined}
+      abilities={abilities}
+      conversations={conversations}
+      conversation={conversation}
+      actions={{
+        decide: decideApprovalAction.bind(null, slug),
+        remove: deleteConversationAction.bind(null, slug),
+        load: loadConversationAction.bind(null, slug),
+        rate: rateAnswerAction.bind(null, slug),
+        hear: abilities.hear ? assistantHearAction.bind(null, slug) : null,
+        speak: abilities.speak ? assistantSpeakAction.bind(null, slug) : null,
+      }}
+    />
   );
 }
