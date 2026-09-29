@@ -1352,6 +1352,13 @@
       "when": 1790716760495,
       "tag": "20260929211920_work_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1790721697271,
+      "tag": "20260929224137_work_recurring_skip",
+      "breakpoints": true
     }
   ]
 }

@@ -3466,6 +3466,40 @@ describe("work: clients, time and invoices (D122)", () => {
     await expect(db.query("insert into commerce.work_invoices (store_id, client_id, currency, recurring_period) values ($1, $2, 'NOK', '2026-10-01')", [w.storeId, w.clientId])).rejects.toThrow(/work_invoices_recurring/);
   });
 
+  it("skips a repeating invoice's period for good when its draft is deleted, and never for an issued one", async () => {
+    const w = await workStore();
+    const { id: template } = await one<{ id: string }>(
+      `insert into commerce.work_recurring_invoices (store_id, client_id, name, description, unit_price_minor, currency, start_date)
+       values ($1, $2, 'Retainer', 'Monthly retainer', 500000, 'NOK', '2026-08-01') returning id`,
+      [w.storeId, w.clientId],
+    );
+    const skipped = async () =>
+      (await one<{ skipped: string[] }>("select skipped_periods::text[] as skipped from commerce.work_recurring_invoices where id = $1", [template])).skipped;
+    const make = async (period: string) => {
+      const id = await workDraft(w.storeId, w.clientId);
+      await db.query("update commerce.work_invoices set recurring_invoice_id = $2, recurring_period = $3 where id = $1", [id, template, period]);
+      await workLine(w.storeId, id);
+      return id;
+    };
+    // Periods come out sorted, once each, whatever order they were deleted in.
+    const october = await make("2026-10-01");
+    const september = await make("2026-09-01");
+    expect(await skipped()).toEqual([]);
+    await db.query("delete from commerce.work_invoices where id = $1", [october]);
+    await db.query("delete from commerce.work_invoices where id = $1", [september]);
+    expect(await skipped()).toEqual(["2026-09-01", "2026-10-01"]);
+    // A period already skipped is not added twice.
+    const again = await make("2026-09-01");
+    await db.query("delete from commerce.work_invoices where id = $1", [again]);
+    expect(await skipped()).toEqual(["2026-09-01", "2026-10-01"]);
+    // A draft without a template changes nothing, and an issued invoice cannot be deleted at all.
+    await db.query("delete from commerce.work_invoices where id = $1", [await workDraft(w.storeId, w.clientId)]);
+    const november = await make("2026-11-01");
+    await issue(w.storeId, november);
+    await expect(db.query("delete from commerce.work_invoices where id = $1", [november])).rejects.toThrow(/work_invoice.immutable/);
+    expect(await skipped()).toEqual(["2026-09-01", "2026-10-01"]);
+  });
+
   it("queues an integration event, like orders do, when a client is added and an invoice is sent, paid or credited", async () => {
     const w = await workStore();
     await db.query(

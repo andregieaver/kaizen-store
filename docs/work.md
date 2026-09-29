@@ -8,9 +8,12 @@ porting document for the people who build it. It contains no application code.
 Status: the core (W1: schema, libraries, servers, screens for clients,
 assignments, tasks, time, timers, invoices, print pages, settings and overview)
 is built and recorded as D122 in `decisions.md`, with the defaults of section 8.
-Still to build: email and hosted page, credit-note email, recurring invoices,
-reports and CSV, the customer/company link, hour products and ledger, online
-payment, owner tools and events (WP7b, WP8, WP9, WP10, WP1b/WP11, WP12, WP13).
+W2 is built too: email and hosted page for invoices and credit notes, CSV
+exports (WP7b), recurring invoices and their step in the five-minute job (WP8),
+reports and the control center's Work attention items (WP9); see the "As built"
+sections at the end. Still to build: moving Work up to the owner's control
+center, the customer/company link, hour products and ledger, online payment,
+owner tools and events (WP10, WP1b/WP11, WP12, WP13).
 
 Reading guide. "Life" is `/home/user/lifesaver-app`; every Life path below is
 relative to it. "Store" is this repository. A **source file** is where an
@@ -1975,3 +1978,139 @@ Only true product decisions. Each has a recommended default.
     at a time) so an ongoing hourly engagement can be billed monthly.
     *Default:* many, as designed in 4.6; say so if the owner prefers Life's
     exact rule.
+
+---
+
+## As built in WP7b (email, hosted page, CSV)
+
+* **Emails** (`src/server/work-emails.ts`, pure text in `src/lib/work-email.ts`, words in `email-text.ts` under `work`, four
+  hand-written languages, English for any other): `sendInvoiceEmail(storeId, invoiceId, opts?)`,
+  `sendCreditNoteEmail(storeId, creditNoteId, opts?)`, `sendPaymentReminderEmail(storeId, invoiceId, opts?)`, all
+  `Promise<{ sent, reason?, outcome?, to? }>`; `opts` is `{ by?, to?, message?, resend? }`. They go through `sendEmail()`
+  (kept in `email_messages` first, `logged` while Resend is not set up, which counts as `sent: true` with
+  `outcome: "logged"`). Only an issued invoice is sent (`not_issued` for a draft, `not_found` for another store's).
+  Reasons: `not_found`, `not_issued`, `not_open`, `no_email`, `invalid_email`, `already_sent`, `failed`. Language is the
+  invoice's frozen `locale`; the address is `opts.to`, else the frozen buyer's, else the client's billing email.
+* **Idempotency:** the first invoice email is `work-invoice:{id}` and a credit note's `work-credit-note:{id}`, so an
+  automatic send or a retry never sends twice (`already_sent`); a first send whose email `failed` is made again (the failed
+  row gives up the key). Pressing Send again passes `resend: true`, which makes a new email without a key. A reminder is
+  `work-reminder:{id}:{day}`, once a day, only while the invoice is `sent` with something outstanding. No PDF is attached
+  (`sendEmail` attachments are text only): the email links to the hosted page.
+* **Recorded** the way the schema allows: `work_invoices.sent_to` (`sent_at` is the issue moment and cannot change) and one
+  `invoice.emailed` event (`data.kind` `invoice` or `credit_note`, never the address); reminders write `invoice.reminded`.
+  The database's own events are not repeated.
+* **Hosted page** `/s/{store}/{market}/account/invoice/{token}` (`?credit={id}` shows one of its credit notes): the token is
+  `work_invoices.public_token` (24 random bytes, base64url, stored as is: the link is the key). `issueInvoice()` makes it;
+  `sendInvoiceEmail()` makes one if a row has none. `findInvoiceByToken()` finds issued invoices only; the page checks the
+  token belongs to the store it is opened in, is `noindex` and `no-referrer`, and draws the frozen document with
+  `InvoiceDocumentView` in the invoice's language (`HostedInvoice`, chrome text in `i18n.ts` under `workInvoice`). The store
+  must be open (`status = 'active'`) like any storefront page.
+* **Admin:** `SendInvoiceSlot` (Send by email / Send again, note, reminder choice, show and copy the hosted link) and
+  `SendCreditNoteButton` in `invoice-send-slot.tsx`, server actions in `work/send-actions.ts`
+  (`sendInvoiceAction`, `sendReminderAction`, `sendCreditNoteAction`, `hostedLinkAction`).
+* **CSV:** `/admin/{store}/work/invoices/export` (the list's own filters in the address; issued invoices only, oldest first,
+  frozen subtotal and VAT) and `/admin/{store}/work/payments/export?from&to` (received days; reversals and refunds negative),
+  both for members of a store with Work on, logged in the audit log, formula-safe through `toCsv()`. Queries in
+  `src/server/work-exports.ts` (the register pages through `listWorkInvoices()`, at most 5 000 rows).
+
+## As built in WP9 (reports and the control center)
+
+* **What a report is** (`src/lib/work-reports.ts` pure, tested; `src/server/work-reports.ts` reads the rows, per store,
+  `getPeriodReport(store, { from, to, by, clientId? })`): for a period of whole days in the store's time zone, per client
+  or per assignment, **hours** (entries whose `work_date` is in the period, billable ones apart), **unbilled time** (billable
+  minutes in the period that no invoice line has taken, less prepaid, at the effective rate, rounded once per assignment
+  like a line), **not yet invoiced** (drafts made in the period, by the day they were created *in the store's time zone*,
+  without VAT), **invoiced** (lines of *issued* invoices, by `issued_on`, without VAT), **credited** (credit notes on those
+  invoices, whenever they were dated), **net invoiced** (without and with VAT), **paid** and **outstanding** (with VAT).
+  Paid and outstanding are "of what was invoiced in the period, as of today", not cash received in the period, so the
+  columns always add up (invoiced less credited, less paid, is outstanding) and an invoice is in exactly one period.
+* **The fixed-fee fix:** the fee is a line on an invoice, so it is counted in the period of that invoice and in no other
+  (Life added the whole fee to every period it showed). A fixed fee has no unbilled value; its logged hours are shown
+  but never priced. The same in Life's client time report (`buildWorkReport()`, `clientTimeReport()`): the fee in the
+  period is what issued invoices took for the assignment less credit notes (`fixedFeeInPeriodMinor`).
+* **Money:** integer minor units, totals and shares in BigInt (`allocateMinor()` shares an invoice's payment over its
+  assignments by their net amount with the largest remainder, so the parts add up exactly; a line with no assignment is
+  its own row). Rows are per currency (a client's time in its own currency, an invoice in its own), totals per currency,
+  never added across; an empty report shows zero totals in `mainCurrency(store)`. Nothing is summed in the browser.
+* **Pages:** `/admin/{store}/work/reports` (`ReportView`, `report-*.tsx`): presets this month / last month / this quarter /
+  this year (whole months, quarters and years for the store's today, `presetPeriod()`) and custom days (at most five
+  years), grouped by client or assignment, one client or all, all in the address (`parseReportParams()` /
+  `reportQuery()`; a bad custom period says why and falls back to this month). Print view
+  `/admin/{store}/work/reports/print` in the `(print)` group (landscape A4, the invoice document's `.wd` styles,
+  `?auto=1`); CSV `/admin/{store}/work/reports/csv` (route handler, `requireMember`, `toCsv()`, byte order mark, plain
+  decimals, `private, no-store`; `&format=time&client=…` is one client's time entries). Any member may read reports, as
+  they may the invoices; a `client` id of another store finds nothing.
+* **Control center:** `StoreFigures.work` (optional, `AttentionItem[]`) holds the Work overview's own attention items
+  (`workOverview().attention`, worded with the store's name and pointing at its Work pages: overdue invoices, recurring
+  invoices ready, time unbilled for over 30 days, drafts waiting, timers left running), read for all the stores with the
+  module on in one set of queries (`workAttention()` in `src/server/work-attention.ts`, called by `controlCenter()`), and
+  `attentionFor()` appends them; staff see them too. A store with the module off has no `work`. `attentionHref()` turns
+  "invoice time" into the invoices list. The estimate alerts are on the person's own timer bar, not here.
+* **Tests:** `work-reports.test.ts` (periods incl. daylight saving days, parameters, sharing, the report, the CSV),
+  `report-components.test.ts` (server renders), `work-reports.int.test.ts` (fixed fee once, credits, period ends,
+  currencies, isolation, empty, drafts across the clock changes of 2026-03-29 and 2026-10-25, the CSV route),
+  `work-attention.int.test.ts`, and a case in `control-center.test.ts`. Fixtures shared by the two integration tests are
+  in `work-reports-test-support.ts`. No migration.
+
+## As built in WP8 (recurring invoices and the job)
+
+Templates are `work_recurring_invoices` (4.2, made in WP1a); the schedule and the plan are the pure
+`src/lib/work-recurrence.ts`; `src/server/work-recurring.ts` carries them out. What differs from the design above or was
+decided while building:
+
+* **The job.** `prepareDueRecurringWork({ now?, storeId? })` is step 15 of the five-minute job
+  (`/api/cron/cart-reminders`, result under `recurring`). For each store with Work on and not `closed` that has an active
+  template it takes today in the store's time zone, reads its active templates (clients archived are left out) and their
+  instances from 24 months back, and carries out `planRecurring()`: a draft for each due period no more than 40 days old
+  (`GENERATE_LOOKBACK_DAYS`), never a skipped period, none past the template's `end_date`. It never throws: a failing
+  store or template is counted in `failed`, logged, and tried again next run. Stores and templates are handled one at a
+  time; a store's job is capped at 500 templates.
+* **Idempotent and safe to overlap.** A period is made in one transaction that first locks the template row, checks the
+  period again under the lock (still active for the job, still due, not skipped, no invoice) and then inserts with
+  `on conflict (store_id, recurring_invoice_id, recurring_period) do nothing`, so overlapping runs make one draft between
+  them; only the run that created a draft issues it, and issuing is `issueInvoice()` itself, which locks the draft, so
+  only the run that issued it emails it. Tested with six runs at once.
+* **The draft** has `recurring_invoice_id` and `recurring_period`, `currency` and `payment_days` from the template, one
+  line from it (text, unit, quantity, net price, discount, VAT category), `service_from` = the period and `service_to`
+  = the day before the next period (`servicePeriod()`), no `issued_on` (an invoice is issued on the store's today, never
+  the period's day, 4.4), and is priced in the same transaction by the invoice module (`refreshDraftInvoices()` for the
+  client; VAT is aligned with the client's treatment). Events: the invoice's `invoice.created` (with the template and
+  period) and, on the template (`entity_type` `recurring_invoice`), `recurring.created`, `.updated`, `.paused`,
+  `.resumed`, `.deleted`, `.generated`, `.skipped`, `.restored`, `.issued`, `.email_failed`, `.issue_failed`.
+* **Auto-issue** is per template, off by default, and only an owner may switch it on or off (an admin's save that
+  changes it is refused; the switch is audited as `work.recurring.auto_issue_on` / `work.recurring.saved`). The job then
+  issues the new draft and any older draft of a due period whatever its age, and emails what it issued with
+  `sendInvoiceEmail(storeId, invoiceId, { by: null })`. Email is apart from issuing: a mail that fails or throws leaves
+  the invoice issued, is recorded as `recurring.email_failed`, and is **not** tried again by the job (the invoice's page
+  offers "Send again"). A draft that cannot be issued (the client's address or VAT number missing, a foreign currency
+  without a rate, an earlier date than the last invoice's) stays a draft, counts as `failed` and is tried again on every
+  run; the reason is written as `recurring.issue_failed` at most once a day per draft.
+* **Skipping.** `skipRecurringPeriod()` puts the period in `skipped_periods` and deletes its draft if there is one (an
+  issued invoice is refused: credit it). Migration `20260929224137_work_recurring_skip.sql` adds the trigger
+  `work_invoices_skip_deleted_period`: deleting *any* draft that a template made (from the invoice page, too) adds its
+  period to the template's `skipped_periods`, sorted and once, so the job never makes it again (Life's quirk fixed).
+  `restoreRecurringPeriod()` takes a period off the list.
+* **By hand** (`recurring-actions.ts`, owners and admins): `generateRecurringNow()` (the given period, else the oldest due
+  period without an invoice; the whole 24-month window, because a person asked; works on a paused template),
+  `issueRecurringNow()` (makes the draft when missing, issues, emails unless told not to, and says whether the mail went
+  out; a checklist failure keeps the draft), `skipRecurringPeriod()`, `restoreRecurringPeriod()`,
+  `setRecurringActive()` (pause and resume; a resumed template makes what is due within 40 days, and the panel lists older
+  ones as "not made by itself") and `deleteRecurring()`. A template that has made an invoice cannot be deleted (the
+  invoices point at it): "archive" is pausing it. Nothing is made while a page renders.
+* **Not built:** a template per assignment (the table has no assignment column, and 4.2 has none: a template belongs to a
+  client and its invoices have no assignment), and the optional `/admin/{store}/work/recurring` list of all templates
+  (`listRecurring()` reads one client's).
+* **Screens.** `RecurringPanel` (`recurring-panel.tsx`, server, read per request behind a `<Suspense>`) on the client's
+  page after its invoices: each template with what one invoice bills before VAT (`computeLine()`), its schedule, the next
+  two periods, its latest invoice and status badges (Paused, Issued by itself); `recurring-controls.tsx` (edit, pause,
+  start again, Generate now, and for each open period Generate draft, Open the draft, Issue now (asks first, with the
+  email choice), Skip; skipped periods with Restore; delete while it has made nothing); `recurring-form.tsx` (checked with
+  `recurringInvoiceInput` through `recurringPayload()` in `src/lib/work-recurring-ui.ts`, which also words schedules).
+  Editing a schedule leaves invoices already made alone.
+* **Tests:** `work-recurring.int.test.ts` (one draft per period and again nothing, six overlapping runs, the 40-day
+  window and "Generate now" reaching further back, 31 Jan / 28 Feb / 31 Mar and their service periods, weeks and years,
+  paused / ended / future / archived, skip before and after the draft and a draft deleted elsewhere, auto-issue off by
+  default and on, overlapping issuing emails once, an older draft issued when switched on, a failing or throwing mail,
+  a draft that is not ready and its once-a-day note, "Issue now", store isolation, Work off and closed stores, owner-only
+  auto-issue, deleting), `work-recurring-ui.test.ts`, `recurring-panel.test.ts` (server renders of the panel and form)
+  and a case in `commerce.test.ts` for the trigger.

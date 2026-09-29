@@ -30,6 +30,11 @@ export type StoreFigures = {
   oldestToSend: string | null;
   lowStock: number;
   outOfStock: number;
+  /**
+   * What needs attention in the Work area (D122, docs/work.md 6.5), only for a store with the module on: the Work
+   * overview's own items (`workOverview().attention`, worded with the store's name and pointing at its Work pages).
+   */
+  work?: AttentionItem[];
 };
 
 export type AttentionItem = { text: string; href: string; action: string; urgent?: boolean };
@@ -65,6 +70,8 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
     }
     if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });
     else if (s.lowStock > 0) items.push({ text: `${s.name}: ${plural(s.lowStock, "product is", "products are")} running low.`, href: `${base}/products`, action: "Open products" });
+    // Every member can open Work's pages, so staff are shown these too.
+    items.push(...(s.work ?? []));
   }
   return items.sort((a, b) => Number(Boolean(b.urgent)) - Number(Boolean(a.urgent)));
 }

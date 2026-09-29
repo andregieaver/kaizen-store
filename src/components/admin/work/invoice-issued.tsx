@@ -11,7 +11,7 @@ import type { InvoiceDetail, InvoiceLine } from "@/server/work-invoices";
 
 import { CreditInvoiceButton } from "./invoice-credit-dialog";
 import { RecordPaymentButton, ReversePaymentButton } from "./invoice-payments";
-import { SendInvoiceSlot } from "./invoice-send-slot";
+import { SendCreditNoteButton, SendInvoiceSlot } from "./invoice-send-slot";
 import { InvoiceStatusChip } from "./invoice-status";
 import { InvoiceTotalsView } from "./invoice-totals";
 import { Badge, card, hintText, secondaryButton } from "./work-parts";
@@ -61,6 +61,8 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
             storeSlug={storeSlug}
             invoiceId={invoice.id}
             clientEmail={buyer?.email ?? detail.client.billingEmail}
+            sentTo={invoice.sentTo}
+            canRemind={open && amounts.outstandingMinor > 0}
           />
           {open && amounts.outstandingMinor > 0 && (
             <RecordPaymentButton
@@ -336,6 +338,12 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
                 <Link href={`/admin/${storeSlug}/work/credit-notes/${note.id}/print`} className="self-start underline">
                   Preview or print {note.documentNumber}
                 </Link>
+                <SendCreditNoteButton
+                  storeSlug={storeSlug}
+                  creditNoteId={note.id}
+                  documentNumber={note.documentNumber}
+                  clientEmail={buyer?.email ?? detail.client.billingEmail}
+                />
                 <span className="text-xs text-muted">
                   {note.lines
                     .map((line) => `${line.description} (${quantityField(line.quantityHundredths)})`)

@@ -8,6 +8,7 @@ import { totalOf } from "@/lib/ai-usage";
 
 import { usageRows } from "./ai-usage";
 import type { Account } from "./auth";
+import { workAttention } from "./work-attention";
 
 type Row = Record<string, unknown>;
 
@@ -27,13 +28,13 @@ const idList = (ids: string[]) => sql.join(ids.map((id) => sql`${id}::uuid`), sq
 /**
  * The bird's-eye view of every store an account works in (D107): status,
  * plan, payments, the last 7 days' sales against the 7 before, orders waiting
- * to be sent, stock running out, and the latest orders (`onlyStore`: one
+ * to be sent, stock running out, Work's attention items for the stores that use it, and the latest orders (`onlyStore`: one
  * store's, for its own overview). A handful of queries
  * for all stores together, counted here in code (D94), never per store.
  */
 export async function controlCenter(account: Account, onlyStore?: string): Promise<ControlCenter> {
   const storeRows = await db().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.status, s.setup_completed_at, m.role,
+    select s.id, s.slug, s.name, s.status, s.setup_completed_at, s.modules, s.time_zone, m.role,
            p.name as plan_name, b.status as billing_status, b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancelling,
            pr.enabled as payments_on, pr.active_mode,
            exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready
@@ -49,7 +50,12 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const ids = storeRows.map((r) => String(r.id));
   const onlyId = onlyStore ? ids[0] : null;
 
-  const [salesRows, sendRows, stockRows, latestRows, usage] = await Promise.all([
+  // Work's own attention items, for the stores that have it switched on (D122): one set of queries for them all.
+  const workStores = storeRows
+    .filter((r) => ((r.modules ?? []) as string[]).includes("work"))
+    .map((r) => ({ id: String(r.id), slug: String(r.slug), name: String(r.name), timeZone: String(r.time_zone ?? "Europe/Oslo") }));
+
+  const [salesRows, sendRows, stockRows, latestRows, usage, workItems] = await Promise.all([
     db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -90,6 +96,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       limit 8
     `),
     usageRows({ days: 7, ownedBy: account.id, storeId: onlyId }),
+    workAttention(workStores),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -127,6 +134,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       oldestToSend: send?.oldest ? new Date(String(send.oldest)).toISOString() : null,
       lowStock: Number(stock?.low ?? 0),
       outOfStock: Number(stock?.out ?? 0),
+      ...(workItems.has(id) ? { work: workItems.get(id) } : {}),
     };
   });
 

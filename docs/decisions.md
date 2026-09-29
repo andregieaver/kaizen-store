@@ -376,6 +376,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20260929202311_field_entities_more_rules.sql` | `20260929210606` |
 | `20260929211910_work_module.sql` | `20260929223522` |
 | `20260929211920_work_rules.sql` | `20260929223714` |
+| `20260929224137_work_recurring_skip.sql` | `20260929231341` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.

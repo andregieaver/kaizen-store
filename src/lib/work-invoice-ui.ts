@@ -744,7 +744,10 @@ export function eventText(event: InvoiceEvent, money: (minor: number, currency: 
       return `Credit note ${String(d.document_number ?? "")} issued${total ? ` for ${total}` : ""}`.replace("  ", " ");
     }
     case "invoice.emailed":
+      if (d.kind === "credit_note") return typeof d.documentNumber === "string" ? `Credit note ${d.documentNumber} emailed` : "Credit note emailed";
       return typeof d.to === "string" ? `Emailed to ${d.to}` : "Emailed";
+    case "invoice.reminded":
+      return "Payment reminder emailed";
     case "payment.recorded":
       return `Payment of ${amount()} received${typeof d.method === "string" ? ` by ${methodLabel(d.method)}` : ""}`;
     case "payment.reversed":

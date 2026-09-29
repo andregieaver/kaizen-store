@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/work/client-actions";
 import { ClientAssignments, ClientDetails, ClientFigures } from "@/components/admin/work/client-detail";
 import { BillUnbilledTimeSlot, ClientInvoicesSlot } from "@/components/admin/work/invoice-slots";
+import { RecurringPanel } from "@/components/admin/work/recurring-panel";
 import { Badge } from "@/components/admin/work/work-parts";
 import { WorkOff } from "@/components/admin/work/work-off";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
@@ -112,6 +113,14 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/[stor
         locale={locale}
         archived={archived}
         unbilledMinutes={client.unbilledMinutes}
+      />
+      <RecurringPanel
+        storeSlug={store.slug}
+        clientId={client.id}
+        currency={client.currency}
+        currencies={currencies}
+        locale={locale}
+        archived={archived}
       />
 
       {role === "owner" && (

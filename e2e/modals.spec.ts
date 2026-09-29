@@ -291,6 +291,7 @@ test("a modal shown every so many days is remembered in local storage", async ({
   const dialog = opened(page, "Hver uke");
   await expect(dialog).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: "Lukk" }).click();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("kaizen_modal_dager"))).not.toBeNull();
   const closedAt = Number(await page.evaluate(() => localStorage.getItem("kaizen_modal_dager")));
   expect(Date.now() - closedAt).toBeLessThan(60_000);
   await page.reload();

@@ -90,6 +90,19 @@ const messages = {
     applyCode: "Bruk",
     removeCode: "Fjern",
     discount: "Rabatt",
+    /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
+    workInvoice: {
+      pageTitle: (number: string) => `Faktura ${number}`,
+      creditPageTitle: (number: string) => `Kreditnota ${number}`,
+      print: "Skriv ut eller lagre som PDF",
+      openNote: (amount: string, due: string) => `Beløp å betale: ${amount}, forfall ${due}.`,
+      paidNote: "Fakturaen er betalt. Takk.",
+      creditedNote: "Fakturaen er kreditert i sin helhet.",
+      creditNotes: "Kreditnotaer",
+      creditNoteLine: (number: string, amount: string) => `Kreditnota ${number}: ${amount}`,
+      seeInvoice: "Tilbake til fakturaen",
+      questions: (email: string) => `Spørsmål om fakturaen? Skriv til ${email}.`,
+    },
     companyAccount: {
       subscriptionCurrency: (currency: string) => `Dette er et abonnement, og abonnement er i ${currency}.`,
       showPricesIn: (currency: string) => `Vis priser i ${currency}`,
@@ -857,6 +870,19 @@ const messages = {
     applyCode: "Använd",
     removeCode: "Ta bort",
     discount: "Rabatt",
+    /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
+    workInvoice: {
+      pageTitle: (number: string) => `Faktura ${number}`,
+      creditPageTitle: (number: string) => `Kreditfaktura ${number}`,
+      print: "Skriv ut eller spara som PDF",
+      openNote: (amount: string, due: string) => `Belopp att betala: ${amount}, förfaller ${due}.`,
+      paidNote: "Fakturan är betald. Tack.",
+      creditedNote: "Fakturan är krediterad i sin helhet.",
+      creditNotes: "Kreditfakturor",
+      creditNoteLine: (number: string, amount: string) => `Kreditfaktura ${number}: ${amount}`,
+      seeInvoice: "Tillbaka till fakturan",
+      questions: (email: string) => `Frågor om fakturan? Skriv till ${email}.`,
+    },
     companyAccount: {
       subscriptionCurrency: (currency: string) => `Det här är en prenumeration, och prenumerationer är i ${currency}.`,
       showPricesIn: (currency: string) => `Visa priser i ${currency}`,
@@ -1623,6 +1649,19 @@ const messages = {
     applyCode: "Brug",
     removeCode: "Fjern",
     discount: "Rabat",
+    /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
+    workInvoice: {
+      pageTitle: (number: string) => `Faktura ${number}`,
+      creditPageTitle: (number: string) => `Kreditnota ${number}`,
+      print: "Udskriv eller gem som PDF",
+      openNote: (amount: string, due: string) => `Beløb til betaling: ${amount}, forfald ${due}.`,
+      paidNote: "Fakturaen er betalt. Tak.",
+      creditedNote: "Fakturaen er krediteret i sin helhed.",
+      creditNotes: "Kreditnotaer",
+      creditNoteLine: (number: string, amount: string) => `Kreditnota ${number}: ${amount}`,
+      seeInvoice: "Tilbage til fakturaen",
+      questions: (email: string) => `Spørgsmål om fakturaen? Skriv til ${email}.`,
+    },
     companyAccount: {
       subscriptionCurrency: (currency: string) => `Dette er et abonnement, og abonnementer er i ${currency}.`,
       showPricesIn: (currency: string) => `Vis priser i ${currency}`,
@@ -2387,6 +2426,19 @@ const messages = {
     applyCode: "Apply",
     removeCode: "Remove",
     discount: "Discount",
+    /** The hosted invoice page (docs/work.md 4.7), in the invoice's own language. */
+    workInvoice: {
+      pageTitle: (number: string) => `Invoice ${number}`,
+      creditPageTitle: (number: string) => `Credit note ${number}`,
+      print: "Print or save as PDF",
+      openNote: (amount: string, due: string) => `Amount due: ${amount}, due ${due}.`,
+      paidNote: "This invoice has been paid. Thank you.",
+      creditedNote: "This invoice has been credited in full.",
+      creditNotes: "Credit notes",
+      creditNoteLine: (number: string, amount: string) => `Credit note ${number}: ${amount}`,
+      seeInvoice: "Back to the invoice",
+      questions: (email: string) => `Questions about the invoice? Write to ${email}.`,
+    },
     companyAccount: {
       subscriptionCurrency: (currency: string) => `This is a subscription, and subscriptions are in ${currency}.`,
       showPricesIn: (currency: string) => `Show prices in ${currency}`,

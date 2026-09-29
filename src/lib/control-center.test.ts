@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { attentionFor, changeText, totalSales, type StoreFigures } from "./control-center";
+import { workOverview } from "./work-overview";
 
 const store = (over: Partial<StoreFigures> = {}): StoreFigures => ({
   slug: "kaffe",
@@ -41,6 +42,53 @@ describe("the control center (D107)", () => {
   it("asks staff only for what they can do", () => {
     const items = attentionFor([store({ role: "admin", open: false, plan: null, payments: "off", toSend: 1 })]);
     expect(items.map((i) => i.action)).toEqual(["Send"]);
+  });
+
+  it("adds Work's own attention items for a store that uses it, urgent first, and nothing for one that does not", () => {
+    const now = Date.parse("2026-09-29T12:00:00Z");
+    const workOf = (slug: string, name: string) => workOverview({
+      today: "2026-09-29",
+      now,
+      invoices: [
+        {
+          id: "i1",
+          clientId: "c1",
+          status: "sent",
+          currency: "NOK",
+          totalMinor: 250_000,
+          paidMinor: 0,
+          creditedMinor: 0,
+          dueOn: "2026-09-01",
+          paidOn: null,
+          updatedOn: "2026-09-01",
+          recurringPeriod: null,
+        },
+      ],
+      entries: [],
+      timers: [],
+      base: `/admin/${slug}/work`,
+      label: name,
+    }).attention;
+    const work = workOf("b", "B");
+    expect(work.map((i) => i.text)).toEqual(["B: 1 invoice is overdue, the oldest by 28 days."]);
+    const items = attentionFor(
+      [
+        store({ slug: "a", name: "A", lowStock: 2 }),
+        store({ slug: "b", name: "B", work }),
+        store({ slug: "c", name: "C", work: [] }),
+        store({ slug: "d", name: "D", role: "admin", open: false, plan: null, payments: "off", work: workOf("d", "D") }),
+      ],
+      now,
+    );
+    // The overdue invoice is 28 days late, so it is urgent and comes before the stock; staff see it too.
+    expect(items.map((i) => i.href)).toEqual([
+      "/admin/b/work/invoices?show=overdue",
+      "/admin/d/work/invoices?show=overdue",
+      "/admin/a/products",
+    ]);
+    expect(items[0]).toMatchObject({ urgent: true, action: "Open invoices" });
+    // A store that has not switched Work on brings none, whether the figure is missing or empty.
+    expect(attentionFor([store(), store({ work: [] })])).toEqual([]);
   });
 
   it("adds sales per currency, never across them, and words the change", () => {
