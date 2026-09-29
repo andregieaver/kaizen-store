@@ -2,9 +2,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { t, type Messages } from "@/lib/i18n";
+import { currencyChoices, currencyName, languageName } from "@/lib/localization";
+import { marketSlug } from "@/lib/market-slug";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, menuTree, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
-import { marketPath } from "@/lib/paths";
+import { marketPath, storeBase } from "@/lib/paths";
 import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
 import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
@@ -16,6 +18,7 @@ import { WishlistCount } from "./wishlist-heart";
 import { Icon } from "./icons";
 import { LogoPicture } from "./logo-picture";
 import { StoreColorSwitch } from "./store-color-switch";
+import { ViewMenu, type ViewItem } from "./view-menu";
 import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
@@ -111,6 +114,45 @@ export function Brand({
   );
 }
 
+/** The languages and currencies a shopper in this country can choose, as links that keep the other choice (D109). */
+function viewChoices(store: Store, market: Market): { languages: ViewItem[]; currencies: ViewItem[] } {
+  const own = { lang: market.ownLocale.split("-")[0], currency: market.nativeCurrency };
+  const languages = store.localization.locales.map((locale) => {
+    const lang = locale.split("-")[0];
+    return {
+      key: locale,
+      label: languageName(locale),
+      lang,
+      slug: marketSlug(market.code, { lang, currency: market.currency }, own),
+      current: lang === market.lang,
+    };
+  });
+  const currencies = currencyChoices(store.localization, market.nativeCurrency).map((currency) => ({
+    key: currency,
+    label: currencyName(currency, market.locale),
+    slug: marketSlug(market.code, { lang: market.lang, currency }, own),
+    current: currency === market.currency,
+  }));
+  return { languages: languages.length > 1 ? languages : [], currencies: currencies.length > 1 ? currencies : [] };
+}
+
+/** The language and currency choices (D109): each a menu, or with `list` a row of links. */
+export function LocaleChoice({ store, market, m, className = "", list = false }: Props & { m: Messages; className?: string; list?: boolean }) {
+  const { languages, currencies } = viewChoices(store, market);
+  if (languages.length === 0 && currencies.length === 0) return null;
+  const prefix = storeBase(store.slug);
+  return (
+    <div className={`flex ${list ? "flex-col gap-3" : "items-center"} ${className}`}>
+      {languages.length > 0 && (
+        <ViewMenu icon={null} summary={market.lang.toUpperCase()} srLabel={m.chooseLanguage} items={languages} prefix={prefix} currentSlug={market.slug} list={list} />
+      )}
+      {currencies.length > 0 && (
+        <ViewMenu icon={null} summary={market.currency} srLabel={m.chooseCurrency} items={currencies} prefix={prefix} currentSlug={market.slug} list={list} />
+      )}
+    </div>
+  );
+}
+
 export function MarketChoice({ store, market, m, className = "hidden md:block" }: Props & { m: Messages; className?: string }) {
   if (store.markets.length < 2) return null;
   return (
@@ -128,7 +170,7 @@ export function MarketChoice({ store, market, m, className = "hidden md:block" }
               href={marketPath(store.slug, other.slug)}
               hrefLang={other.lang}
               lang={other.lang}
-              aria-current={other.slug === market.slug ? "page" : undefined}
+              aria-current={other.code === market.code ? "page" : undefined}
               className="block rounded-md px-3 py-2 text-sm hover:bg-surface aria-[current=page]:font-semibold"
             >
               {other.name}
@@ -185,6 +227,7 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
   const tools = (
     <div className={`flex items-center gap-1 ${centred ? "justify-end" : "ml-auto"}`}>
       <MarketChoice store={store} market={market} m={m} />
+      <LocaleChoice store={store} market={market} m={m} className="hidden md:flex" />
       {store.theme.settings.visitorSwitch && <StoreColorSwitch store={store} labels={m.colorMode} />}
       <Link href={`${base}/search`} className="flex size-11 items-center justify-center rounded-full hover:bg-current/5">
         <Icon name="search" />
@@ -274,6 +317,7 @@ export function StoreMenu({ store, market }: Props) {
           </Link>
         </li>
       </ul>
+      <LocaleChoice store={store} market={market} m={m} list className="mt-auto" />
       {store.markets.length > 1 && (
         <nav aria-label={m.chooseMarket} className="mt-auto">
           <p className="mb-2 text-sm text-muted">{m.chooseMarket}</p>
@@ -284,7 +328,7 @@ export function StoreMenu({ store, market }: Props) {
                   href={marketPath(store.slug, other.slug)}
                   hrefLang={other.lang}
                   lang={other.lang}
-                  aria-current={other.slug === market.slug ? "page" : undefined}
+                  aria-current={other.code === market.code ? "page" : undefined}
                   className="flex min-h-11 items-center rounded-button border border-border px-4 text-sm aria-[current=page]:border-foreground aria-[current=page]:font-semibold"
                 >
                   {other.name}
@@ -339,6 +383,7 @@ export function StoreFooter({ store, market }: Props) {
             />
           </nav>
         )}
+        <LocaleChoice store={store} market={market} m={m} list />
         {store.markets.length > 1 && (
           <nav aria-label={m.chooseMarket}>
             <ul className="flex flex-col gap-1">
@@ -348,7 +393,7 @@ export function StoreFooter({ store, market }: Props) {
                     href={marketPath(store.slug, other.slug)}
                     hrefLang={other.lang}
                     lang={other.lang}
-                    aria-current={other.slug === market.slug ? "page" : undefined}
+                    aria-current={other.code === market.code ? "page" : undefined}
                     className="inline-flex min-h-10 items-center hover:underline aria-[current=page]:font-semibold"
                   >
                     {other.name}

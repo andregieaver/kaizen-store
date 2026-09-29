@@ -85,6 +85,21 @@ of running `playwright install`.
 - Interface text lives in `src/lib/i18n.ts`, by language, with English as the
   fallback. Legal texts do not: they need
   human review.
+- Language and currency are apart from the country (D109): a market address is
+  `{country}[-{lang}][-{currency}]` (`no`, `no-en`, `no-eur`, `no-en-eur`,
+  `src/lib/market-slug.ts`), and `Market` is the country as shown: `currency`
+  and `locale` are what the shopper sees, `nativeCurrency` and `ownLocale` what
+  the country keeps. A store's languages and currencies are
+  `store.localization` (`stores.locales`, `store_currencies`, edited at
+  `/admin/{store}/settings/localization`), never `store.markets.map(m =>
+  m.locale)`. Amounts are stored in the country's own currency and converted
+  when read: use `shown(market, minor)` (and `convertedSql()` in queries),
+  never a stored amount as it is, and write anything to the database (a
+  subscription, a delivery) in `nativeCurrency`. Build links with
+  `marketPath()`, which keeps the view. A new money read needs a euro scenario
+  in `checkout-kinds.int.test.ts`. Page translations can be written by AI from
+  the builder's sidebar (`src/lib/page-translate-ai.ts`); it only suggests, and
+  every answer is checked (shape, length, `findClaims()`).
 - Catalogue reads in `src/server/catalog.ts` are cached (`'use cache'`, tag
   `catalog` and `catalog:{storeId}`); stock is read per request inside
   `<Suspense>`.

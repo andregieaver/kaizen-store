@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 
+import { shown, type Market } from "@/lib/markets";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
@@ -310,8 +311,11 @@ export async function getShopperOrder(
   return order;
 }
 
-/** Whether checkout can start in a market, its shipping rate and VAT rate. */
-export async function getCheckoutInfo(storeId: string, marketCode: string) {
+/**
+ * Whether checkout can start in a market, its shipping rate (in the currency
+ * shown when `view` is given, D109) and VAT rate.
+ */
+export async function getCheckoutInfo(storeId: string, marketCode: string, view?: Pick<Market, "conversion">) {
   const [row] = await db().execute<Row>(sql`
     select
       exists (
@@ -339,8 +343,8 @@ export async function getCheckoutInfo(storeId: string, marketCode: string) {
       row?.amount_minor == null
         ? null
         : {
-            amountMinor: Number(row.amount_minor),
-            freeOverMinor: row.free_over_minor == null ? null : Number(row.free_over_minor),
+            amountMinor: view ? shown(view, Number(row.amount_minor)) : Number(row.amount_minor),
+            freeOverMinor: row.free_over_minor == null ? null : view ? shown(view, Number(row.free_over_minor)) : Number(row.free_over_minor),
           },
   };
 }

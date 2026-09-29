@@ -89,6 +89,8 @@ const messages = {
     removeCode: "Fjern",
     discount: "Rabatt",
     companyAccount: {
+      subscriptionCurrency: (currency: string) => `Dette er et abonnement, og abonnement er i ${currency}.`,
+      showPricesIn: (currency: string) => `Vis priser i ${currency}`,
       title: "Mitt firma",
       cardIntroOwner: "Inviter ansatte og se hvem som får firmarabatten.",
       cardIntroEmployee: "Firmakontoen og rabatten din.",
@@ -248,6 +250,8 @@ const messages = {
     galleryShow: (n: number) => `Vis bilde ${n}`,
     gallerySlide: (n: number, total: number) => `${n} av ${total}`,
     chooseMarket: "Velg land",
+    chooseLanguage: "Velg språk",
+    chooseCurrency: "Velg valuta",
     noProducts: "Ingen produkter ennå.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Les mer",
@@ -836,6 +840,8 @@ const messages = {
     removeCode: "Ta bort",
     discount: "Rabatt",
     companyAccount: {
+      subscriptionCurrency: (currency: string) => `Det här är en prenumeration, och prenumerationer är i ${currency}.`,
+      showPricesIn: (currency: string) => `Visa priser i ${currency}`,
       title: "Mitt företag",
       cardIntroOwner: "Bjud in anställda och se vem som får företagsrabatten.",
       cardIntroEmployee: "Ditt företagskonto och din rabatt.",
@@ -995,6 +1001,8 @@ const messages = {
     galleryShow: (n: number) => `Visa bild ${n}`,
     gallerySlide: (n: number, total: number) => `${n} av ${total}`,
     chooseMarket: "Välj land",
+    chooseLanguage: "Välj språk",
+    chooseCurrency: "Välj valuta",
     noProducts: "Inga produkter ännu.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Läs mer",
@@ -1584,6 +1592,8 @@ const messages = {
     removeCode: "Fjern",
     discount: "Rabat",
     companyAccount: {
+      subscriptionCurrency: (currency: string) => `Dette er et abonnement, og abonnementer er i ${currency}.`,
+      showPricesIn: (currency: string) => `Vis priser i ${currency}`,
       title: "Min virksomhed",
       cardIntroOwner: "Inviter medarbejdere og se, hvem der får virksomhedsrabatten.",
       cardIntroEmployee: "Virksomhedens konto og din rabat.",
@@ -1743,6 +1753,8 @@ const messages = {
     galleryShow: (n: number) => `Vis billede ${n}`,
     gallerySlide: (n: number, total: number) => `${n} af ${total}`,
     chooseMarket: "Vælg land",
+    chooseLanguage: "Vælg sprog",
+    chooseCurrency: "Vælg valuta",
     noProducts: "Ingen produkter endnu.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Læs mere",
@@ -2330,6 +2342,8 @@ const messages = {
     removeCode: "Remove",
     discount: "Discount",
     companyAccount: {
+      subscriptionCurrency: (currency: string) => `This is a subscription, and subscriptions are in ${currency}.`,
+      showPricesIn: (currency: string) => `Show prices in ${currency}`,
       title: "My company",
       cardIntroOwner: "Invite employees and see who gets the company discount.",
       cardIntroEmployee: "Your company account and discount.",
@@ -2489,6 +2503,8 @@ const messages = {
     galleryShow: (n: number) => `Show picture ${n}`,
     gallerySlide: (n: number, total: number) => `${n} of ${total}`,
     chooseMarket: "Choose country",
+    chooseLanguage: "Choose language",
+    chooseCurrency: "Choose currency",
     noProducts: "No products yet.",
     /** Content grids (D51): a tile's button, and a grid with nothing to show. */
     readMore: "Read more",

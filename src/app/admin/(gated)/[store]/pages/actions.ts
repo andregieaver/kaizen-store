@@ -10,8 +10,11 @@ import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import type { GridData } from "@/lib/content-grid";
 import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
+import { translateRequest, type TranslateResult } from "@/lib/page-translate-ai";
+import { AiError, aiFor } from "@/server/ai";
 import { requireMember, type Membership } from "@/server/auth";
 import { gridData } from "@/server/content-grid";
+import { translatePageTexts } from "@/server/page-translate";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setProductsPage, unpublishPage } from "@/server/pages";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
@@ -210,4 +213,25 @@ export async function storeGridTermsAction(storeSlug: string, _storeId: string):
   void _storeId;
   const member = await requireMember(storeSlug);
   return listTerms({ storeId: member.store.id, contentType: "product" });
+}
+
+/**
+ * A page's texts translated with the store's AI (D109): from the page as it
+ * is in the editor, even unsaved. Only suggestions come back; the editor
+ * puts them in the language's translation and staff save.
+ */
+export async function translateStorePageAction(storeSlug: string, request: unknown): Promise<TranslateResult> {
+  const member = await requireMember(storeSlug);
+  const parsed = translateRequest.safeParse(request);
+  if (!parsed.success) return { ok: false, problem: "The texts could not be read. Reload the page and try again." };
+  const languages = member.store.localization.locales;
+  const connection = await aiFor(member.store.id, { feature: "page_translation", accountId: member.account.id });
+  if (!connection?.textModel) return { ok: false, problem: "The store has no AI text model. Choose one under Settings → AI." };
+  if (languages.length < 2) return { ok: false, problem: "The store has only one language." };
+  try {
+    const { done, skipped } = await translatePageTexts(connection, { accountId: member.account.id, storeId: member.store.id }, parsed.data);
+    return { ok: true, done, skipped };
+  } catch (error) {
+    return { ok: false, problem: error instanceof AiError ? `The AI could not translate: ${error.message}` : "The AI could not translate. Try again." };
+  }
 }

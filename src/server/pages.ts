@@ -17,6 +17,7 @@ import {
 } from "@/lib/page-content";
 
 import { currentGlobal, refreshUses, sameGlobal, type GlobalPart, type PartKind } from "@/lib/global-parts";
+import { mergeLocales } from "@/lib/localization";
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
 
 import { audit, type Account } from "./auth";
@@ -343,17 +344,21 @@ export async function deletePage(account: Account, owner: PageOwner, id: string,
 }
 
 /**
- * The languages an owner's pages are written in (D55): a store's markets'
- * languages, its own country's first (the main one); Kaizen's, English.
+ * The languages an owner's pages are written in (D55, D109): a store's own
+ * choice, main first, else its markets' languages; Kaizen's, English.
  */
 export async function ownerLanguages(owner: PageOwner): Promise<PageLanguage[]> {
   if (owner === null) return pageLanguages(["en"]);
-  const rows = await db().execute<Row>(sql`
-    select m.default_locale from commerce.markets m join commerce.stores s on s.id = m.store_id
-    where m.store_id = ${owner}::uuid and m.active
-    order by (m.code = s.country) desc nulls last, m.created_at, m.code
-  `);
-  return pageLanguages(rows.map((row) => String(row.default_locale)));
+  const [rows, [chosen]] = await Promise.all([
+    db().execute<Row>(sql`
+      select m.default_locale from commerce.markets m join commerce.stores s on s.id = m.store_id
+      where m.store_id = ${owner}::uuid and m.active
+      order by (m.code = s.country) desc nulls last, m.created_at, m.code
+    `),
+    db().execute<Row>(sql`select locales from commerce.stores where id = ${owner}::uuid`),
+  ]);
+  // The store's languages (D109): the owner's own choice, then its countries' own that it lacks.
+  return pageLanguages(mergeLocales(((chosen?.locales ?? []) as string[]).map(String), rows.map((row) => String(row.default_locale))));
 }
 
 /** Audit actions keep their names for Kaizen's pages (`platform.page_…`); a store's are `store.page_…`. */

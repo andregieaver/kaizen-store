@@ -8,6 +8,7 @@ import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
 import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType, termContentOf } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
+import { marketIn } from "./shop";
 import { summarize } from "@/lib/seo";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
 
@@ -34,6 +35,7 @@ const EXCERPT_MAX = 300;
 export type GridPlace = {
   pageId: string | null;
   owner: string | null;
+  /** The market: a country's code (its own view) or a market address such as `no-en-eur`; the store's first if none. */
   market?: string;
   /**
    * On a store's page, the address's query and the page's path, for
@@ -58,11 +60,11 @@ export async function gridData(block: ContentGridBlock, place: GridPlace): Promi
   return gridProducts(storeId, market ?? null, filter);
 }
 
-/** An open store by id, and one of its markets (by code, else its first). */
+/** An open store by id, and one of its markets (by code or by the address of a view, else its first). */
 export async function storeAndMarket(storeId: string, marketCode: string | null) {
   const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
   const store = row ? await getOpenStore(String(row.slug)) : null;
-  const market = store && (marketCode ? store.markets.find((m) => m.code === marketCode) : store.markets[0]);
+  const market = store && marketIn(store, marketCode);
   return store && market ? { store, market } : null;
 }
 
@@ -149,7 +151,7 @@ async function gridProducts(storeId: string, marketCode: string | null, filter: 
 
   const scope = await gridScope(storeId, filter);
   if (!scope) return { items: [], lang: market.lang, locale: market.locale };
-  const products = await listGridProducts(storeId, market.code, market.locale, { ...scope, sort: filter.sort, limit: filter.limit });
+  const products = await listGridProducts(storeId, market, { ...scope, sort: filter.sort, limit: filter.limit });
   return { lang: market.lang, locale: market.locale, items: products.map((product) => productItem(store.slug, market.slug, product)) };
 }
 

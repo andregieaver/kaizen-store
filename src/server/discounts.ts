@@ -13,7 +13,7 @@ import {
   type DiscountProblem,
   type StoreDiscount,
 } from "@/lib/discounts";
-import type { Market } from "@/lib/markets";
+import { shown, type Market } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";
 import { planPrice } from "@/lib/subscriptions";
 
@@ -59,6 +59,16 @@ const used = (customerId: string | null) => sql`
     where o.store_id = d.store_id and o.discount_code_id = d.id and o.status <> 'cancelled'
       and ${customerId}::uuid is not null and o.customer_id = ${customerId}::uuid) as used_by_customer
 `;
+
+/**
+ * A code's amounts for the market, in the currency shown (D109): what it
+ * takes off and its minimum are typed in each country's own currency.
+ */
+function inShownCurrency(discount: StoreDiscount, market: Market): StoreDiscount {
+  const code = market.code;
+  const convert = (amounts: Record<string, number>) => (amounts[code] === undefined ? amounts : { ...amounts, [code]: shown(market, amounts[code]) });
+  return { ...discount, amounts: convert(discount.amounts), minSubtotals: convert(discount.minSubtotals) };
+}
 
 export type DiscountListRow = StoreDiscount & {
   used: number;
@@ -228,7 +238,7 @@ export async function findUsableDiscount(
   `);
   if (!row) return { ok: false, problem: "unknown" };
   const [counts] = await runner.execute<Row>(sql`select ${used(customerId)} from commerce.discount_codes d where d.id = ${row.id}`);
-  const discount = toDiscount(row);
+  const discount = inShownCurrency(toDiscount(row), market);
   const problem = availability(discount, {
     now: new Date(),
     used: Number(counts.used),

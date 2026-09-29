@@ -26,7 +26,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   const seo = store.seo;
   const gaps = await altTextGaps(store.id);
   const names = new Intl.DisplayNames(["en"], { type: "language" });
-  const locales = [...new Set(store.markets.map((m) => m.locale))];
+  const locales = store.localization.locales;
   const languageNames = Object.fromEntries(locales.map((l) => [l, names.of(l) ?? l]));
   // The store's full address: its own host once it has one (P7).
   const origin = storeSiteUrl(store.slug);

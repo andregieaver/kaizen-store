@@ -60,7 +60,7 @@ export async function TermProducts({ kind, params, searchParams }: { kind: TermK
     categoryIds: kind === "category" ? withDescendants(terms, [term.id]) : [],
     tagIds: kind === "tag" ? [term.id] : [],
   };
-  const products = await listGridProducts(store.id, market.code, market.locale, { ...scope, sort: "oldest", limit: 48 });
+  const products = await listGridProducts(store.id, market, { ...scope, sort: "oldest", limit: 48 });
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
   const base = marketPath(store.slug, market.slug);
 

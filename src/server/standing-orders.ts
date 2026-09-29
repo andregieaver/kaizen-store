@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { addDays, zonedTime } from "@/lib/booking-slots";
 import { stripeLocale } from "@/lib/checkout";
-import type { Market } from "@/lib/markets";
+import { toMarket, type Market } from "@/lib/markets";
 import { marketPath, storeOrigin } from "@/lib/paths";
 import { priceVat, type PriceVat } from "@/lib/pricing";
 import { variantLabel } from "@/lib/product-input";
@@ -718,7 +718,8 @@ export async function prepareDelivery(storeId: string, listId: string, round: De
   `);
   if (!market) return (await record("unavailable", null)) ? "unavailable" : null;
   const locale = String(market.default_locale);
-  const shopMarket = { code: String(market.code), currency: String(market.currency), locale, lang: locale.split("-")[0] } as Market;
+  // Deliveries are always in the country's own currency and language (D109).
+  const shopMarket = toMarket({ code: String(market.code), currency: String(market.currency), defaultLocale: locale });
 
   // Twice at most: stock can go between counting it and placing the order.
   for (let attempt = 0; attempt < 2; attempt++) {

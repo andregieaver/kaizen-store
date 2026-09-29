@@ -1226,6 +1226,13 @@
       "when": 1790681471623,
       "tag": "20260929113111_customer_tiers_companies",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1790683512523,
+      "tag": "20260929120512_store_languages_currencies",
+      "breakpoints": true
     }
   ]
 }

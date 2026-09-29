@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { localizationOf } from "@/lib/localization";
 import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
 import { parseStoreSeo } from "@/lib/seo";
@@ -49,6 +50,7 @@ beforeAll(async () => {
       paymentsTest: true,
       details: { legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: "NO" },
       markets: [no, se],
+      localization: localizationOf([], [], [no, se]),
       seo: parseStoreSeo({}),
       navigation: EMPTY_NAVIGATION,
     },

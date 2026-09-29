@@ -11,7 +11,7 @@ import { formatClock, formatRangeDates, parseRentalPeriod, rangeEndsAt } from "@
 import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
-import type { Market } from "@/lib/markets";
+import { isNative, shown, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeOrigin } from "@/lib/paths";
 import { shownOptions, t } from "@/lib/i18n";
@@ -168,6 +168,8 @@ export async function placeOrder(
       order by p.handle, v.sku, cl.selling_plan_id nulls first, cl.starts_at
     `);
     if (lines.length === 0) return { ok: false, problem: "empty" };
+    // A subscription is bought in the country's own currency only (D109).
+    if (!isNative(market) && lines.some((l) => l.selling_plan_id !== null)) return { ok: false, problem: "unavailable" };
     if (lines.some((l) => !l.sellable || !l.plan_ok || l.amount_minor === null)) {
       return { ok: false, problem: "unavailable" };
     }
@@ -262,7 +264,7 @@ export async function placeOrder(
 
     // Stays and rentals are priced by their nights' seasons, with a fee (D70).
     const ranged = lines.filter((l) => l.starts_at && (l.kind === "stay" || l.kind === "rental"));
-    const pricing = await rangePricing(tx, storeId, ranged.map((l) => String(l.product_id)), market.code);
+    const pricing = await rangePricing(tx, storeId, ranged.map((l) => String(l.product_id)), market.code, market);
     const priced = lines.map((line) => {
       // A stay or rental is one line at its whole price; `count` is its nights, days or hours.
       const count = Number(line.quantity);
@@ -270,7 +272,8 @@ export async function placeOrder(
       const quantity = isRange ? 1 : count;
       const recurring = line.selling_plan_id !== null;
       // The subscriber's price on each renewal, and what is charged now.
-      const renewUnit = planPrice(Number(line.amount_minor), recurring ? Number(line.discount_percent) : 0);
+      // Kept in the country's own currency; the order is in the one shown (D109).
+      const renewUnit = planPrice(shown(market, Number(line.amount_minor)), recurring ? Number(line.discount_percent) : 0);
       const options = (line.options ?? {}) as Record<string, string>;
       const title =
         Object.keys(options).length > 0 ? `${line.title} (${variantLabel(shownOptions(t(market.lang), options))})` : String(line.title);
@@ -328,7 +331,7 @@ export async function placeOrder(
           .filter((l) => Number(l.signup_fee) > 0)
           .map((l) => [
             String(l.selling_plan_id),
-            { planId: String(l.selling_plan_id), amount: Number(l.signup_fee), title: String(l.title), rate: Number(l.vat_rate ?? vatRate) },
+            { planId: String(l.selling_plan_id), amount: shown(market, Number(l.signup_fee)), title: String(l.title), rate: Number(l.vat_rate ?? vatRate) },
           ]),
       ).values(),
     ];
@@ -337,8 +340,8 @@ export async function placeOrder(
     const subtotal = priced.reduce((sum, p) => sum + p.unit * p.quantity, 0) + feeTotal;
     const shippingRate = rate
       ? {
-          amountMinor: Number(rate.amount_minor),
-          freeOverMinor: rate.free_over_minor === null ? null : Number(rate.free_over_minor),
+          amountMinor: shown(market, Number(rate.amount_minor)),
+          freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)),
         }
       : null;
     // Free shipping counts the whole basket, downloads included; a

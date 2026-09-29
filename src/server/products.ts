@@ -112,7 +112,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       Object.fromEntries(Object.entries(row.rates as Record<string, unknown>).map(([k, v]) => [k, Number(v ?? 0)])) as Record<VatCategory, number>,
     ]),
   );
-  const locales = [...new Set(store.markets.map((m) => m.locale))];
+  const locales = store.localization.locales;
   return {
     locales,
     primaryLocale: locales[0] ?? "en",

@@ -5,6 +5,7 @@ import { storeSlugOf } from "@/server/menus";
 import { getOpenStore } from "@/server/stores";
 
 import { SiteForm } from "./site-form";
+import { marketIn } from "@/server/shop";
 
 /**
  * A page's form on the site (D93): drawn in the page's language, sending
@@ -16,7 +17,7 @@ export async function FormSection({ block, place }: { block: EmailFormBlock | Ne
   if (place.owner) {
     const slug = await storeSlugOf(place.owner);
     const store = slug ? await getOpenStore(slug) : null;
-    const market = place.market ? store?.markets.find((m) => m.code === place.market) : store?.markets[0];
+    const market = store ? marketIn(store, place.market) : undefined;
     if (market) lang = market.lang;
   }
   return <SiteForm form={publicForm(block)} store={place.owner} lang={lang} />;

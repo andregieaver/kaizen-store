@@ -16,7 +16,7 @@ export default async function StoreChatPage({ params }: PageProps<"/admin/[store
     <ChatAgentView
       storeId={store.id}
       siteName={store.name}
-      locales={store.markets.map((market) => market.locale)}
+      locales={store.localization.locales}
       aiPage={`/admin/${store.slug}/settings/ai`}
       save={saveChatAgentAction.bind(null, store.slug)}
       upload={uploadsEnabled() ? uploadChatAvatarAction.bind(null, store.slug) : null}

@@ -74,7 +74,7 @@ export async function StoreBlog({ params }: { params: ShopParams }) {
   const m = t(market.lang);
   const grid = listing("index");
   const [data, terms] = await Promise.all([
-    gridData(grid, { pageId: null, owner: store.id, market: market.code }),
+    gridData(grid, { pageId: null, owner: store.id, market: market.slug }),
     siteTerms(store.id, "article"),
   ]);
   const top = terms.filter((t) => t.kind === "category" && t.parentId === null).sort(byName);
@@ -117,7 +117,7 @@ export async function StoreBlogTerm({ kind, params }: { kind: TermKind; params: 
   const { store, market, terms, term } = loaded;
   const m = t(market.lang);
   const grid = listing(term.id, kind === "category" ? { categories: [term.id] } : { tags: [term.id] });
-  const data = await gridData(grid, { pageId: null, owner: store.id, market: market.code });
+  const data = await gridData(grid, { pageId: null, owner: store.id, market: market.slug });
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
   return (
     <div className="flex flex-col gap-6">

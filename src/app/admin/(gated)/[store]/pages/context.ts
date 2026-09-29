@@ -21,6 +21,7 @@ import {
   deleteStorePageAction,
   deleteStorePartAction,
   saveStoreCssAction,
+  translateStorePageAction,
   saveStorePageAction,
   storeGridPreviewAction,
   storeGridTermsAction,
@@ -53,7 +54,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     siteBase: storeHref(store.slug, market ? marketPath(store.slug, market.slug) : storeBase(store.slug)) + PAGE_TYPE_COPY[type].sitePrefix,
     origin: storeOrigin(store.slug) ? "" : siteUrl(),
     // One page in every language the store sells in, its own country's first (D55).
-    languages: pageLanguages(store.markets.map((m) => m.locale)),
+    languages: pageLanguages(store.localization.locales),
     reserved: reservedPageSlugs(store.id, type),
     defaultDescription:
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),
@@ -79,6 +80,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       gridTerms: bind(storeGridTermsAction),
       installFont: bind(installStoreFontAction),
       saveSiteCss: bind(saveStoreCssAction),
+      translate: bind(translateStorePageAction),
     },
   };
 }

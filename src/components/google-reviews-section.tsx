@@ -10,6 +10,7 @@ import { getOpenStore } from "@/server/stores";
 
 import { StarRating } from "./star-rating";
 import { TestimonialCards } from "./testimonials-view";
+import { marketIn } from "@/server/shop";
 
 /**
  * Testimonials from Google (D91): the owner's business's rating and
@@ -25,7 +26,7 @@ export async function GoogleReviewsSection({ block, place }: { block: Testimonia
   if (place.owner) {
     const slug = await storeSlugOf(place.owner);
     const store = slug ? await getOpenStore(slug) : null;
-    const market = place.market ? store?.markets.find((m) => m.code === place.market) : store?.markets[0];
+    const market = store ? marketIn(store, place.market) : undefined;
     if (market) locale = market.locale;
   }
   const found = await placeReviews(place.owner, locale);

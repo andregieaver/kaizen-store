@@ -172,7 +172,7 @@ export async function saveStoreSeoAction(
   formData: FormData,
 ): Promise<FormState> {
   const member = await requireMember(storeSlug);
-  const locales = [...new Set(member.store.markets.map((market) => market.locale))];
+  const locales = member.store.localization.locales;
   const result = await saveStoreSeo(member, seoFromForm(formData, locales));
   if (result.ok) {
     updateTag(storeTag(member.store.slug));

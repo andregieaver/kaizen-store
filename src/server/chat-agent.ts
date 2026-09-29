@@ -228,7 +228,7 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
       };
     }
     case "get_product": {
-      const product = await getProduct(store.id, market.code, market.locale, text("handle"));
+      const product = await getProduct(store.id, market, text("handle"));
       if (!product) return { result: json({ error: "No such product in this store." }) };
       const stock = await getAvailability(store.id, product.variants.map((v) => v.id));
       const cheapest = product.variants.reduce((low, v) => (v.price.amountMinor < low.price.amountMinor ? v : low), product.variants[0]);
@@ -260,7 +260,7 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
       };
     }
     case "store_info": {
-      const [shipping, pages] = await Promise.all([getShippingFacts(store.id, market.code), publishedPageNames(store.id, market.locale)]);
+      const [shipping, pages] = await Promise.all([getShippingFacts(store.id, market), publishedPageNames(store.id, market.locale)]);
       const details = store.details;
       return {
         result: json({
@@ -314,7 +314,7 @@ async function navigateStore(site: Extract<ChatSite, { kind: "store" }>, raw: Re
     case "search":
       return query.trim() ? go(`/search?q=${encodeURIComponent(query.trim())}`, m.search.title) : { result: json({ error: "Say what to search for." }) };
     case "product": {
-      const product = await getProduct(store.id, market.code, market.locale, handle);
+      const product = await getProduct(store.id, market, handle);
       return product ? go(`/p/${product.handle}`, product.title) : missing("product");
     }
     case "page":

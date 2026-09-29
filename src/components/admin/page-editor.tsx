@@ -26,6 +26,7 @@ import {
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { defaultFooter, defaultHeader, type StandardMenus } from "@/lib/site-layout";
+import { applyTranslated, translationItems, type TranslateMode } from "@/lib/page-translate-ai";
 import {
   localizePage,
   translationOf,
@@ -298,6 +299,20 @@ export function PageEditor({
                 value={locale}
                 onChange={setLocale}
                 progress={(l) => translationProgress(content, l)}
+              />
+            )}
+            {others.length > 0 && actions.translate && (
+              <TranslateWithAi
+                languages={context.languages}
+                current={locale}
+                content={content}
+                translate={actions.translate}
+                onTranslated={(target, done) => {
+                  setContent((current) => withTranslation(current, target, applyTranslated(current, current.translations?.[target] ?? {}, done)));
+                  setDirty(true);
+                  setMessage(null);
+                }}
+                onShow={setLocale}
               />
             )}
             <section aria-label={layout ? "Name" : "Title and address"} className={card}>
@@ -815,6 +830,108 @@ function LanguageField({
       <p className={hint}>
         The page is built in {main.name}. In {others.map((l) => l.name).join(", ")}, you translate its texts; a text not
         translated shows in {main.name}.
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Translate with AI (D109): the page's texts go to the store's AI, which
+ * writes each language's translation, or brings it up to date. What comes
+ * back is put in the page as a draft translation, to read and change like
+ * any text, and saved with the page; a text the AI could not translate
+ * (too long, or with a claim the text did not have) stays in the main language.
+ */
+function TranslateWithAi({
+  languages,
+  current,
+  content,
+  translate,
+  onTranslated,
+  onShow,
+}: {
+  languages: PageLanguage[];
+  current: string;
+  content: PageContent;
+  translate: NonNullable<PageOwnerContext["actions"]["translate"]>;
+  onTranslated: (locale: string, done: Record<string, string | string[]>) => void;
+  onShow: (locale: string) => void;
+}) {
+  const [main, ...others] = languages;
+  // Translating into the language being written, or into every other language.
+  const [target, setTarget] = useState<string>(others.some((l) => l.locale === current) ? current : "all");
+  const [mode, setMode] = useState<TranslateMode>("missing");
+  const [busy, start] = useTransition();
+  const [result, setResult] = useState<{ ok: boolean; lines: string[] } | null>(null);
+  const targets = target === "all" ? others : others.filter((l) => l.locale === target);
+  const first = targets[0];
+  // What there is to do, so the button says so and is off when there is nothing.
+  const counts = targets.map((language) => ({ language, texts: translationItems(content, language.locale, mode).length }));
+  const total = counts.reduce((sum, c) => sum + c.texts, 0);
+
+  const run = () =>
+    start(async () => {
+      setResult(null);
+      const lines: string[] = [];
+      let ok = true;
+      for (const { language } of counts) {
+        const items = translationItems(content, language.locale, mode);
+        if (items.length === 0) continue;
+        const outcome = await translate({ from: main.name, to: language.name, items });
+        if (!outcome.ok) {
+          ok = false;
+          lines.push(`${language.name}: ${outcome.problem}`);
+          break;
+        }
+        onTranslated(language.locale, outcome.done);
+        const done = Object.keys(outcome.done).length;
+        lines.push(`${language.name}: ${done} of ${items.length} texts translated.`);
+        for (const skipped of outcome.skipped.slice(0, 5)) lines.push(`Left in ${main.name}: ${skipped.label}. ${skipped.reason}`);
+        if (outcome.skipped.length > 5) lines.push(`…and ${outcome.skipped.length - 5} more left in ${main.name}.`);
+      }
+      setResult({ ok, lines });
+      if (ok && targets.length === 1 && first) onShow(first.locale);
+    });
+
+  return (
+    <section aria-labelledby="translate-ai-heading" className={card}>
+      <h2 id="translate-ai-heading" className="font-medium">
+        Translate with AI
+      </h2>
+      <label className={label}>
+        Into
+        <select value={target} onChange={(event) => setTarget(event.target.value)} disabled={busy} className={input}>
+          {others.length > 1 && <option value="all">All other languages</option>}
+          {others.map((language) => (
+            <option key={language.locale} value={language.locale}>
+              {language.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div role="radiogroup" aria-label="Which texts" className="flex flex-col gap-2 text-sm">
+        <label className="flex items-start gap-2">
+          <input type="radio" name="translate-mode" checked={mode === "missing"} onChange={() => setMode("missing")} disabled={busy} className="mt-1" />
+          <span>Only texts not translated yet</span>
+        </label>
+        <label className="flex items-start gap-2">
+          <input type="radio" name="translate-mode" checked={mode === "all"} onChange={() => setMode("all")} disabled={busy} className="mt-1" />
+          <span>Translate everything again, replacing the translations there are</span>
+        </label>
+      </div>
+      <button type="button" onClick={run} disabled={busy || total === 0} className={small}>
+        {busy ? "Translating…" : total === 0 ? "Nothing to translate" : `Translate ${total} ${total === 1 ? "text" : "texts"}`}
+      </button>
+      <div role="status" aria-live="polite" className="flex flex-col gap-1 text-xs">
+        {result?.lines.map((line, index) => (
+          <p key={index} className={result.ok ? "text-muted" : "text-red-700 dark:text-red-400"}>
+            {line}
+          </p>
+        ))}
+        {result?.ok && <p className="text-muted">Read them over, then save the page.</p>}
+      </div>
+      <p className={hint}>
+        Only the page&apos;s words go to the AI, translated from {main.name}. Nothing is saved until you save the page.
       </p>
     </section>
   );

@@ -40,7 +40,7 @@ export async function altSite(owner: MediaOwner): Promise<AltSite | null> {
   if (!owner.storeId) return { name: "Kaizen", languages: [language("en")] };
   const store = owner.storeSlug ? await getStore(owner.storeSlug) : null;
   if (!store || store.markets.length === 0) return null;
-  const locales = [...new Set(store.markets.map((market) => market.locale))];
+  const locales = store.localization.locales;
   // English too, last, where the store sells in none: what people search the library in, and AI assistants read.
   const english = locales.some((locale) => locale.split("-")[0] === "en") ? [] : [{ ...language("en"), extra: true as const }];
   return { name: store.name, languages: [...locales.map(language), ...english] };

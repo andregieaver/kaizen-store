@@ -4,6 +4,7 @@ import { sql, type SQL } from "drizzle-orm";
 
 import { db, readDb } from "@/db/client";
 import { cutPassages, documentInput, documentType, DOCUMENT_FILE_MAX, pageKnowledgeText } from "@/lib/knowledge";
+import { mergeLocales } from "@/lib/localization";
 import { parsePageContent } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { vectorLiteral } from "@/lib/vectors";
@@ -144,13 +145,14 @@ export async function deleteDocument(account: Account, storeId: string | null, i
 
 // Pages and articles -----------------------------------------------------------
 
-/** The languages a site's pages are read in: a store's countries' own, Kaizen's English. */
+/** The languages a site's pages are read in: a store's own (D109), else its countries' own; Kaizen's English. */
 async function siteLocales(storeId: string | null): Promise<string[]> {
   if (!storeId) return ["en-GB"];
-  const rows = await db().execute<Row>(sql`
-    select distinct default_locale from commerce.markets where store_id = ${storeId}::uuid and active order by 1
-  `);
-  return rows.map((row) => String(row.default_locale));
+  const [rows, [store]] = await Promise.all([
+    db().execute<Row>(sql`select distinct default_locale from commerce.markets where store_id = ${storeId}::uuid and active order by 1`),
+    db().execute<Row>(sql`select locales from commerce.stores where id = ${storeId}::uuid`),
+  ]);
+  return mergeLocales(((store?.locales ?? []) as string[]).map(String), rows.map((row) => String(row.default_locale)));
 }
 
 /**

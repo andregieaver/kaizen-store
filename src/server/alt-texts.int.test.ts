@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { aiFormValues } from "@/lib/ai-provider";
+import { toMarket } from "@/lib/markets";
 import { localizePage } from "@/lib/page-translation";
 
 type Row = Record<string, unknown>;
@@ -256,9 +257,9 @@ describe("alt texts written by the store's AI (D89)", () => {
       values (${storeId}::uuid, ${String(product.id)}::uuid, ${kopp.url}, ${`${base}/kopp-480.webp`}, 0, '{}'),
              (${storeId}::uuid, ${String(product.id)}::uuid, ${lampe.url}, null, 1, '{"sv-SE": "Vår lampa"}')
     `);
-    const swedish = await catalog.getProduct(storeId, "SE", "sv-SE", "demo-keramikkopp");
+    const swedish = await catalog.getProduct(storeId, toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }), "demo-keramikkopp");
     expect(swedish?.images.map((image) => image.alt)).toEqual(["En vit kopp på ett träbord", "Vår lampa"]);
-    const norwegian = await catalog.getProduct(storeId, "NO", "nb-NO", "demo-keramikkopp");
+    const norwegian = await catalog.getProduct(storeId, toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }), "demo-keramikkopp");
     expect(norwegian?.images.map((image) => image.alt)).toEqual(["En hvit kopp på et trebord", "En grønn bordlampe"]);
   });
 });

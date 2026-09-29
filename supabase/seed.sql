@@ -275,6 +275,12 @@ BEGIN
      SET header_menu_id = (SELECT id FROM commerce.menus WHERE store_id = v_store AND name = 'Main menu'),
          footer_menu_id = (SELECT id FROM commerce.menus WHERE store_id = v_store AND name = 'Footer menu')
    WHERE s.id = v_store;
+
+  -- Languages and currencies apart from its countries (D109): English, and
+  -- euro at rates as of the seed, rounded to whole cents.
+  UPDATE commerce.stores SET locales = ARRAY['nb-NO', 'sv-SE', 'da-DK', 'en-GB'] WHERE id = v_store;
+  INSERT INTO commerce.store_currencies (store_id, currency, rate, round_to, position) VALUES
+    (v_store, 'NOK', 11.6, 1, 0), (v_store, 'SEK', 11.0, 1, 1), (v_store, 'DKK', 7.46, 1, 2), (v_store, 'EUR', 1, 1, 3);
 END;
 $$;
 

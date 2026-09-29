@@ -10,6 +10,7 @@ import type { Market } from "@/lib/markets";
 
 import { changeLine } from "./cart";
 import { getCustomer } from "./customers";
+import { convertedSql } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 
@@ -396,7 +397,7 @@ async function recordCartAdd(
     insert into commerce.wishlist_cart_adds (store_id, wishlist_id, wishlist_name, customer_id, cart_id,
       product_id, variant_id, title, sku, quantity, currency, unit_price_minor)
     select w.store_id, w.id, w.name, w.customer_id, ${add.cartId}::uuid,
-      p.id, v.id, coalesce(tl.title, tf.title, p.handle), v.sku, ${add.quantity}, ${add.market.currency}, cp.amount_minor
+      p.id, v.id, coalesce(tl.title, tf.title, p.handle), v.sku, ${add.quantity}, ${add.market.currency}, ${convertedSql(sql`cp.amount_minor`, add.market)}
     from commerce.wishlists w
     join commerce.product_variants v on v.store_id = w.store_id and v.id = ${add.variantId}::uuid
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -405,7 +406,7 @@ async function recordCartAdd(
       select title from commerce.product_translations where product_id = p.id order by locale limit 1
     ) tf on true
     left join commerce.current_prices cp
-      on cp.variant_id = v.id and cp.market_code = ${add.market.code} and cp.currency = ${add.market.currency}
+      on cp.variant_id = v.id and cp.market_code = ${add.market.code} and cp.currency = ${add.market.nativeCurrency}
     where w.store_id = ${add.storeId}::uuid and w.id = ${add.wishlistId}::uuid
   `);
 }

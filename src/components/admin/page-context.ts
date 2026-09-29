@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { GridData } from "@/lib/content-grid";
 import type { SiteFonts } from "@/lib/fonts";
 import type { PageType } from "@/lib/page-content";
+import type { TranslateResult } from "@/lib/page-translate-ai";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { StandardMenus } from "@/lib/site-layout";
@@ -77,5 +78,7 @@ export type PageOwnerContext = {
     saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
     /** Copies a Google Fonts family to Kaizen before a block uses it (D59). */
     installFont: (family: string) => Promise<{ ok: true } | { ok: false; problem: string }>;
+    /** Translates texts with the owner's AI (D109); null where the owner has one language only (Kaizen's pages). */
+    translate: ((request: unknown) => Promise<TranslateResult>) | null;
   };
 };

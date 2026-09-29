@@ -15,7 +15,7 @@ import { resolveShop } from "./shop";
  * come only from the site's own pages.
  */
 
-const siteInput = z.object({ store: z.string().regex(/^[a-z0-9-]{1,63}$/).optional(), market: z.string().regex(/^[a-z]{2}$/).optional() });
+const siteInput = z.object({ store: z.string().regex(/^[a-z0-9-]{1,63}$/).optional(), market: z.string().regex(/^[a-z]{2}(?:-[a-z]{2})?(?:-[a-z]{3})?$/).optional() });
 
 export type ChatContext = { site: ChatSite; storeId: string | null; agent: ChatAgent; connection: AiConnection; lang: string; request: ChatRequest };
 

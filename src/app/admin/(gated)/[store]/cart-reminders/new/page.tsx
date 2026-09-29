@@ -12,7 +12,7 @@ export default async function NewReminderPage({ params }: PageProps<"/admin/[sto
   const { store } = await requireMember((await params).store);
   const { steps } = await getCartReminderSettings(store.id);
   const last = steps.at(-1)?.delayMinutes ?? 0;
-  const locales = [...new Set(store.markets.map((m) => m.locale))];
+  const locales = store.localization.locales;
   return (
     <div className="flex flex-col gap-6">
       <div>

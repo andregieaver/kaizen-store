@@ -170,6 +170,21 @@ export function mapTexts(content: PageContent, visit: Visit): PageContent {
   };
 }
 
+/** What each text of the page is, by its place, as the translator names it ("Title", "Heading", "Tab 2: text"). */
+export function pageTextLabels(content: PageContent): Map<string, string> {
+  const labels = new Map<string, string>([
+    ["title", "Title"],
+    ["seo.title", "Search title"],
+    ["seo.description", "Search description"],
+    ["thumbnail.alt", "Description of the picture"],
+  ]);
+  mapTexts(content, (key, value, _max, label) => {
+    if (label) labels.set(key, label);
+    return value;
+  });
+  return labels;
+}
+
 /** A block's texts for the translator: each text's place, what it is, its longest length and value. */
 export function blockTextFields(block: PageBlock): { key: string; label: string; max: number; value: PageText }[] {
   const fields: { key: string; label: string; max: number; value: PageText }[] = [];

@@ -18,6 +18,7 @@ import {
 } from "@/lib/booking-ranges";
 import { bookingPrice, feeFor, parseSeason, type BookingPrice, type Season } from "@/lib/booking-prices";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
+import { shown, type Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 
@@ -271,12 +272,16 @@ export async function holdRange(
 
 export type RangePricing = { seasons: Season[]; feeMinor: number };
 
-/** The seasons and the market's fee (D70) of these stays and rentals, by product. */
+/**
+ * The seasons and the market's fee (D70) of these stays and rentals, by
+ * product; the fee in the currency shown when `view` is given (D109).
+ */
 export async function rangePricing(
   q: Queryable,
   storeId: string,
   productIds: string[],
   marketCode: string,
+  view?: Pick<Market, "conversion">,
 ): Promise<Map<string, RangePricing>> {
   const pricing = new Map<string, RangePricing>();
   if (productIds.length === 0) return pricing;
@@ -292,7 +297,7 @@ export async function rangePricing(
       order by position, created_at
     `),
   ]);
-  for (const row of fees) pricing.set(String(row.product_id), { seasons: [], feeMinor: feeFor(row.booking_fee, marketCode) });
+  for (const row of fees) pricing.set(String(row.product_id), { seasons: [], feeMinor: view ? shown(view, feeFor(row.booking_fee, marketCode)) : feeFor(row.booking_fee, marketCode) });
   for (const row of seasons) pricing.get(String(row.product_id))?.seasons.push(parseSeason(row));
   return pricing;
 }
@@ -321,6 +326,6 @@ export function linePrice(
 
 
 /** A stay's or rental's seasons and fee in a market (D70), for its page. */
-export async function getRangePricing(storeId: string, productId: string, marketCode: string): Promise<RangePricing> {
-  return (await rangePricing(db(), storeId, [productId], marketCode)).get(productId) ?? { seasons: [], feeMinor: 0 };
+export async function getRangePricing(storeId: string, productId: string, marketCode: string, view?: Pick<Market, "conversion">): Promise<RangePricing> {
+  return (await rangePricing(db(), storeId, [productId], marketCode, view)).get(productId) ?? { seasons: [], feeMinor: 0 };
 }

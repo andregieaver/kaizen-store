@@ -45,7 +45,7 @@ async function Wishlist({ params, searchParams }: Pick<Props, "params" | "search
   const current = lists.find((l) => l.id === wanted) ?? lists[0] ?? null;
 
   const rows = current ? await getWishlistItems(store.id, current.id) : [];
-  const products = await Promise.all(rows.map((row) => getProduct(store.id, market.code, market.locale, row.handle)));
+  const products = await Promise.all(rows.map((row) => getProduct(store.id, market, row.handle)));
   const variantIds = products.flatMap((p) => p?.variants.map((v) => v.id) ?? []);
   const stock = await getAvailability(store.id, variantIds);
   const items: WishlistItemView[] = rows.flatMap((row, i) => {

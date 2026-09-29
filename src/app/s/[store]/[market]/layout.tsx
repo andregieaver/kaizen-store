@@ -14,6 +14,7 @@ import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
+import { inView } from "@/lib/markets";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { themeAttributes } from "@/lib/theme";
@@ -39,6 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description =
     store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
   const home = marketPath(store.slug, market.slug);
+  // The same page in another currency is the same page: its address is the one in the country's own (D109).
+  const canonical = marketPath(store.slug, inView(market, { currency: market.nativeCurrency }).slug);
   return {
     metadataBase: new URL(storeSiteUrl(store.slug)),
     title: { default: title, template: `%s · ${store.name}` },
@@ -46,9 +49,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // A store is not for search engines until its owner opens it, or while they hide it.
     ...(!(store.setupCompletedAt || store.isTemplate) || store.seo.hidden ? { robots: { index: false } } : {}),
     alternates: {
-      canonical: home,
+      canonical,
       languages: {
-        ...Object.fromEntries(store.markets.map((m) => [m.locale, marketPath(store.slug, m.slug)])),
+        // Every country in every language the store is in (D109).
+        ...Object.fromEntries(
+          store.markets.flatMap((m) =>
+            store.localization.locales.map((locale) => [
+              `${locale.split("-")[0]}-${m.code}`,
+              marketPath(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
+            ]),
+          ),
+        ),
         // With several markets the store's front door lets visitors choose.
         "x-default": store.markets.length > 1 ? storeHome(store.slug) : home,
       },

@@ -19,7 +19,7 @@ import { Icon } from "./icons";
 import { PageRowView, rowShows } from "./page-article";
 import { BUILT_IN, Brand as KaizenBrand } from "./platform-layout";
 import { HidingHeader } from "./store-chrome";
-import { HEADER_BACKGROUND, Brand as StoreBrand, MarketChoice } from "./store-layout";
+import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice } from "./store-layout";
 import { WishlistCount } from "./wishlist-heart";
 
 /**
@@ -142,7 +142,10 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
           </ul>
         </nav>
       ) : (
-        <MarketChoice store={store} market={market} m={m} className="" />
+        <div className="flex flex-wrap items-center">
+          <MarketChoice store={store} market={market} m={m} className="" />
+          <LocaleChoice store={store} market={market} m={m} />
+        </div>
       );
     case "buyerSwitch":
       return <BuyerSwitch storeId={store.id} labels={m.buyer} />;
@@ -263,7 +266,7 @@ export function StoreSiteHeader({ store, market, notice, layout }: { store: Stor
         <SiteRows
           content={content}
           ctx={{ kind: "store", store, market, place: "header" }}
-          place={{ pageId: layout.id, owner: store.id, market: market.code }}
+          place={{ pageId: layout.id, owner: store.id, market: market.slug }}
         />
       </header>
     </HidingHeader>
@@ -277,7 +280,7 @@ export function StoreSiteFooter({ store, market, layout }: { store: Store; marke
       <SiteRows
         content={localizePage(layout.content, market.locale)}
         ctx={{ kind: "store", store, market, place: "footer" }}
-        place={{ pageId: layout.id, owner: store.id, market: market.code }}
+        place={{ pageId: layout.id, owner: store.id, market: market.slug }}
       />
     </footer>
   );

@@ -21,7 +21,7 @@ import { seasonName, seasonPrice } from "@/lib/booking-prices";
 import { rangeCalendar } from "@/lib/booking-ranges";
 import { slotWeek } from "@/lib/booking-slots";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
-import type { Market } from "@/lib/markets";
+import { inView, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import type { PageContent, ProductBlock } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
@@ -379,7 +379,7 @@ async function RangeBooking({
   const [offer, month, pricing] = await Promise.all([
     getRangeOffer(store.id, product.id),
     rangeDates(store.id, product.id, null, undefined, firstPeriod),
-    getRangePricing(store.id, product.id, market.code),
+    getRangePricing(store.id, product.id, market.code, market),
   ]);
   if (!store.bookingsOn || !offer || !month) return <p>{m.booking.notBookable}</p>;
   const stay = offer.kind === "stay";
@@ -514,6 +514,18 @@ async function VariantsWithStock({
   market: Market;
   m: Messages;
 }) {
+  // Only sold as a subscription, and subscriptions are in the country's own currency (D109).
+  if (product.needsNativeCurrency) {
+    const own = inView(market, { currency: market.nativeCurrency });
+    return (
+      <p className="text-sm">
+        {m.companyAccount.subscriptionCurrency(market.nativeCurrency)}{" "}
+        <Link href={`${marketPath(store.slug, own.slug)}/p/${product.handle}`} className="underline">
+          {m.companyAccount.showPricesIn(market.nativeCurrency)}
+        </Link>
+      </p>
+    );
+  }
   const availability = await getAvailability(
     store.id,
     product.variants.map((v) => v.id),
@@ -670,7 +682,7 @@ export async function ProductJsonLd({
   const origin = storeSiteUrl(store.slug);
   const m = t(market.lang);
   const labels = m.options as Record<string, string>;
-  const shipping = await getShippingFacts(store.id, market.code);
+  const shipping = await getShippingFacts(store.id, market);
   return (
     <JsonLdScript
       data={productJsonLd({
@@ -713,7 +725,7 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
   return (
     <PageArticle
       content={{ ...content, title: product.title }}
-      place={{ pageId: null, owner: store.id, market: market.code }}
+      place={{ pageId: null, owner: store.id, market: market.slug }}
       inAdmin={inAdmin}
       renderBlock={(block) =>
         block.type === "product" && productPartShows(block, product) ? <ProductPartView block={block} ctx={ctx} /> : null

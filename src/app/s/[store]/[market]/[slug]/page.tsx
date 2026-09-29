@@ -99,7 +99,7 @@ export default async function StorePage({ params, searchParams }: Props) {
       />
       <StorePageArticle
         content={c}
-        place={{ pageId: page.id, owner: store.id, market: market.code, listing: { query: searchParams, path: `${home}/${page.slug}` } }}
+        place={{ pageId: page.id, owner: store.id, market: market.slug, listing: { query: searchParams, path: `${home}/${page.slug}` } }}
       />
       <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
     </>

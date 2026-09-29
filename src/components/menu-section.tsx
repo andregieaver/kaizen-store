@@ -6,6 +6,7 @@ import { getOpenStore } from "@/server/stores";
 
 import { MenuLinks as KaizenMenuLinks, platformMenu } from "./platform-layout";
 import { MenuLinks as StoreMenuLinks, storeMenu } from "./store-layout";
+import { marketIn } from "@/server/shop";
 
 // Written out whole so Tailwind finds every class.
 const JUSTIFY = {
@@ -38,7 +39,7 @@ export async function MenuSection({ block, place }: { block: MenuBlock; place: G
     // Cached reads only: a store's pages are prerendered with their menus.
     const slug = await storeSlugOf(place.owner);
     const store = slug ? await getOpenStore(slug) : null;
-    const market = place.market ? store?.markets.find((m) => m.code === place.market) : store?.markets[0];
+    const market = store ? marketIn(store, place.market) : undefined;
     const menu = store?.menus.find((m) => m.id === block.menuId);
     if (!store || !market || !menu || menu.items.length === 0) return null;
     return (

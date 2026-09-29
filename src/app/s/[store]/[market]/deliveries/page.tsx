@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { VatAmount } from "@/components/price";
 import { t } from "@/lib/i18n";
+import { inView, isNative } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { WITH_VAT } from "@/lib/pricing";
@@ -53,6 +54,8 @@ async function Deliveries({ params, searchParams }: { params: Props["params"]; s
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop?.store.deliveriesOn) notFound();
   const { store, market } = shop;
+  // Weekly deliveries are in the country's own currency (D109): shown in another, the page moves to its own.
+  if (!isNative(market)) redirect(marketPath(store.slug, inView(market, { currency: market.nativeCurrency }).slug, "/deliveries"));
   const m = t(market.lang);
   const d = m.deliveries;
   const base = marketPath(store.slug, market.slug);

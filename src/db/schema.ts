@@ -283,6 +283,15 @@ export const stores = commerce.table(
     name: text("name").notNull(),
     status: storeStatus("status").notNull().default("active"),
     /** The store new stores are copied from (docs/platform.md, P4). */
+    /**
+     * The languages the store is in (D109), as locales such as `nb-NO`, the
+     * main one first; empty until an owner chooses, when they are the
+     * markets' own. Independent of the currencies offered.
+     */
+    locales: text("locales").array().notNull().default(sql`'{}'::text[]`),
+    /** Rates for the currencies offered are kept up to date from the ECB's daily reference rates (D109). */
+    ratesAuto: boolean("rates_auto").notNull().default(false),
+    ratesUpdatedAt: timestamp("rates_updated_at", { withTimezone: true }),
     isTemplate: boolean("is_template").notNull().default(false),
     /** When the owner finished the setup wizard. */
     setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
@@ -694,6 +703,30 @@ export const markets = commerce.table(
     unique("markets_store_code_currency_key").on(t.storeId, t.code, t.currency),
     index("markets_code_idx").on(t.code),
     check("markets_default_locale_listed", sql`${t.defaultLocale} = any(${t.locales})`),
+  ],
+);
+
+/**
+ * The currencies a store offers besides its countries' own (D109), with the
+ * rate an amount is converted at (units per 1 EUR, as the ECB publishes them)
+ * and the step converted amounts are rounded to. Independent of languages:
+ * any currency can be shown in any language, and prices stay in each
+ * country's own currency.
+ */
+export const storeCurrencies = commerce.table(
+  "store_currencies",
+  {
+    storeId: storeId().references(() => stores.id),
+    currency: char("currency", { length: 3 }).notNull(),
+    rate: numeric("rate", { precision: 20, scale: 8 }),
+    roundTo: integer("round_to").notNull().default(1),
+    position: integer("position").notNull().default(0),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.currency] }),
+    check("store_currencies_rate", sql`${t.rate} is null or ${t.rate} > 0`),
+    check("store_currencies_round_to", sql`${t.roundTo} between 1 and 100000`),
   ],
 );
 
@@ -1178,6 +1211,17 @@ const marketRef = (
   });
 
 /**
+ * A cart or order is for a country, in the currency shown (D109): any of the
+ * store's currencies, not only the country's own.
+ */
+const marketCountryRef = (name: string, cols: { storeId: AnyPgColumn; marketCode: AnyPgColumn }) =>
+  foreignKey({
+    name,
+    columns: [cols.storeId, cols.marketCode],
+    foreignColumns: [markets.storeId, markets.code],
+  });
+
+/**
  * Price history per variant and market. Append-only: a price change closes the
  * current row and opens a new one (see `commerce.set_price`), so the lowest
  * price of the previous 30 days can always be computed, as the Omnibus rule
@@ -1569,7 +1613,7 @@ export const carts = commerce.table(
   },
   (t) => [
     unique("carts_store_id_key").on(t.storeId, t.id),
-    marketRef("carts_market_fk", t),
+    marketCountryRef("carts_market_fk", t),
     customerRef("carts_customer_fk", t),
     index("carts_market_idx").on(t.storeId, t.marketCode, t.currency),
     index("carts_customer_idx").on(t.storeId, t.customerId),
@@ -1689,7 +1733,7 @@ export const orders = commerce.table(
     }),
     index("orders_subscription_idx").on(t.storeId, t.subscriptionId),
     unique("orders_store_number_key").on(t.storeId, t.number),
-    marketRef("orders_market_fk", t),
+    marketCountryRef("orders_market_fk", t),
     customerRef("orders_customer_fk", t),
     cartRef("orders_cart_fk", t),
     index("orders_market_idx").on(t.storeId, t.marketCode, t.currency),

@@ -27,7 +27,7 @@ export async function cartSummary(shop: Shop, cart: Cart) {
       line.status !== "unavailable" && line.unitPriceMinor !== null,
   );
   const blocked = cart.lines.some((line) => line.status !== "ok");
-  const checkout = await getCheckoutInfo(storeId, market.code);
+  const checkout = await getCheckoutInfo(storeId, market.code, market);
   const plan = payable.find((line) => line.plan)?.plan ?? null;
   // In a free trial, what renews costs nothing today (D29).
   const trial = (plan?.trialDays ?? 0) > 0;

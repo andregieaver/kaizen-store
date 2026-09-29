@@ -10,7 +10,7 @@ import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor } from "./ai";
 import { listGridProducts, type GridProduct } from "./catalog";
-import { inCategories, inStockNow, withTags } from "./product-conditions";
+import { convertedSql, inCategories, inStockNow, withTags } from "./product-conditions";
 
 /**
  * Keyword search (Phase 2, S1): in Postgres, with no AI. A product matches
@@ -46,8 +46,8 @@ function filterClause(filters: SearchFilters | null, market: Market): SQL {
     parts.push(sql`exists (
       select 1 from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${market.code}
-        and cp.amount_minor >= ${filters.minPriceMinor ?? 0}
-        and cp.amount_minor <= ${filters.maxPriceMinor ?? Number.MAX_SAFE_INTEGER}
+        and ${convertedSql(sql`cp.amount_minor`, market)} >= ${filters.minPriceMinor ?? 0}
+        and ${convertedSql(sql`cp.amount_minor`, market)} <= ${filters.maxPriceMinor ?? Number.MAX_SAFE_INTEGER}
     )`);
   }
   if (filters.inStock) parts.push(inStockNow());
@@ -290,7 +290,7 @@ export async function searchProducts(
   const filters = understood && hasFilters(understood) ? understood : null;
   const ranked = await rankedSearch(shop, text, limit, meaning, filters);
   if (ranked.ids.length === 0) return { products: [], semanticBest: ranked.semanticBest, meaningOnly: 0, filters };
-  const products = await listGridProducts(shop.storeId, shop.market.code, shop.market.locale, {
+  const products = await listGridProducts(shop.storeId, shop.market, {
     categoryIds: [],
     tagIds: [],
     // The order asked for, or the search's own.
@@ -312,7 +312,7 @@ export async function suggestProducts(shop: Shop, query: string, limit = 6): Pro
   if (normalizeQuery(query).length < 2) return [];
   const ids = await matchingIds(shop, query, limit, true);
   if (ids.length === 0) return [];
-  const cards = await listGridProducts(shop.storeId, shop.market.code, shop.market.locale, {
+  const cards = await listGridProducts(shop.storeId, shop.market, {
     categoryIds: [],
     tagIds: [],
     sort: "given",

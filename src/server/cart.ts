@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { db } from "@/db/client";
 import { buyerCookie, parseBuyer, parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { CART_TTL_DAYS, MAX_LINE_QUANTITY, settleQuantity, type LineOutcome } from "@/lib/cart";
-import type { Market } from "@/lib/markets";
+import { isNative, shown, type Market } from "@/lib/markets";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 import { parseRentalPeriod, rangeEndsAt, type RentalPeriod } from "@/lib/booking-ranges";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
@@ -24,7 +24,8 @@ export type Shop = { storeId: string; market: Market };
  * id lives in an httpOnly cookie: strictly necessary for the shop to work, so
  * it needs no consent (decision D14).
  */
-const cookieName = ({ storeId, market }: Shop) => `cart_${storeId}_${market.slug}`;
+// By country, not by the language and currency shown (D109): switching them keeps the cart.
+const cookieName = ({ storeId, market }: Shop) => `cart_${storeId}_${market.code.toLowerCase()}`;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Row = Record<string, unknown>;
@@ -164,7 +165,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
 
   // Stays and rentals are priced by their nights' seasons, with a fee (D70).
   const ranged = rows.filter((row) => row.starts_at && (row.kind === "stay" || row.kind === "rental"));
-  const pricing = await rangePricing(db(), storeId, ranged.map((row) => String(row.product_id)), market.code);
+  const pricing = await rangePricing(db(), storeId, ranged.map((row) => String(row.product_id)), market.code, market);
 
   const first = rows[0];
   return {
@@ -187,10 +188,11 @@ export async function getCart(shop: Shop): Promise<Cart> {
             discountPercent: Number(row.discount_percent),
             trialDays: Number(row.trial_days),
             minCycles: Number(row.min_cycles),
-            signupFeeMinor: Number(row.signup_fee),
+            signupFeeMinor: shown(market, Number(row.signup_fee)),
           }
         : null;
-      const baseMinor = row.amount_minor === null ? null : planPrice(Number(row.amount_minor), plan?.discountPercent ?? 0);
+      // Kept in the country's own currency; the cart is in the one shown (D109).
+      const baseMinor = row.amount_minor === null ? null : planPrice(shown(market, Number(row.amount_minor)), plan?.discountPercent ?? 0);
       const price =
         range && baseMinor !== null
           ? linePrice(
@@ -208,7 +210,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
           : null;
       const unitPriceMinor = price ? price.totalMinor : baseMinor;
       const status: CartLineStatus =
-        !row.sellable || !row.plan_ok || unitPriceMinor === null || available <= 0
+        !row.sellable || !row.plan_ok || (plan !== null && !isNative(market)) || unitPriceMinor === null || available <= 0
           ? "unavailable"
           : available < quantity
             ? "insufficient"
@@ -304,6 +306,8 @@ async function sellableQuantity(
   /** A stay's nights or a rental's days (D67). */
   count: number,
 ): Promise<{ available: number; kind: BookedKind | "goods" } | null> {
+  // A subscription renews at a price kept in the country's own currency, so it is bought in it only (D109).
+  if (sellingPlanId && !isNative(market)) return null;
   const [row] = await tx.execute<Row>(sql`
     select v.product_id, p.kind, v.rental_period, case when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce((
       select sum(s.available)

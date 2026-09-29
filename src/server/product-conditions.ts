@@ -54,3 +54,14 @@ export function shownPrice(marketCode: string, business: boolean): SQL {
   return sql`(cp.amount_minor - round(cp.amount_minor * commerce.vat_rate(${marketCode}, p.vat_category)
     / (1 + commerce.vat_rate(${marketCode}, p.vat_category))))`;
 }
+
+/**
+ * An amount in a market's own currency, as a SQL expression, in the currency
+ * shown (D109): the same factor and rounding step as `shown()`, so a price
+ * range asked for in the currency shown finds the products priced in it.
+ */
+export function convertedSql(amount: SQL, market: { conversion: { factor: number; step: number } }): SQL {
+  const { factor, step } = market.conversion;
+  if (factor === 1 && step === 1) return amount;
+  return sql`(round((${amount})::numeric * ${factor}::numeric / ${step}::numeric) * ${step})::bigint`;
+}

@@ -5,6 +5,8 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
+import type { StoreCurrency } from "@/lib/currency";
+import { localizationOf, type Localization } from "@/lib/localization";
 import { toMarket, type Market } from "@/lib/markets";
 import { isStoreSlug } from "@/lib/paths";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
@@ -43,8 +45,20 @@ export type Store = {
   timeZone: string;
   /** Hours before an appointment its reminder goes (D65); 0 sends none. */
   bookingReminderHours: number;
-  /** Active markets, the store's own country first. */
+  /** Active markets, the store's own country first, each as its country is shown by default. */
   markets: Market[];
+  /**
+   * The languages and currencies it offers, whatever its countries (D109):
+   * the languages (main first) products, pages and emails are written in, and
+   * the currencies shoppers can choose with the rates they are converted at.
+   */
+  localization: Localization;
+  /** The rates are kept up to date from the ECB's, and when they last were. */
+  ratesAuto: boolean;
+  ratesUpdatedAt: string | null;
+  /** What the owner chose (the store's own, before the countries' are added): the settings page edits these. */
+  chosenLocales: string[];
+  chosenCurrencies: StoreCurrency[];
   /** Search and sharing settings. */
   seo: StoreSeo;
   /** Logo and menus for the storefront's header and footer (D30). */
@@ -105,6 +119,11 @@ async function loadStore(slug: string): Promise<Store | null> {
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.audience, s.business_popup, s.open_cart_on_add, s.modules, s.time_zone, s.booking_reminder_hours,
+      s.locales, s.rates_auto, s.rates_updated_at,
+      (
+        select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
+        from commerce.store_currencies c where c.store_id = s.id
+      ) as currencies,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -161,9 +180,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     deliveriesOn: ((row.modules ?? []) as string[]).includes("deliveries"),
     timeZone: String(row.time_zone ?? "Europe/Oslo"),
     bookingReminderHours: Number(row.booking_reminder_hours ?? 24),
-    markets: (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(
-      toMarket,
-    ),
+    ...localized(row),
     seo: parseStoreSeo(row.seo),
     navigation: parseNavigation(row.navigation),
     menus: (row.menus as { id: string; name: string; items: unknown }[]).map((m) => ({ id: m.id, name: m.name, items: parseMenuItems(m.items) })),
@@ -175,6 +192,25 @@ async function loadStore(slug: string): Promise<Store | null> {
     customCode: parseCustomCode(row.custom_code),
     customCss: String(row.custom_css ?? ""),
     ...themed(row.theme),
+  };
+}
+
+/** The markets and what the store offers in languages and currencies, as read from its row. */
+function localized(row: Row): Pick<Store, "markets" | "localization" | "ratesAuto" | "ratesUpdatedAt" | "chosenLocales" | "chosenCurrencies"> {
+  const markets = (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(toMarket);
+  const chosenLocales = ((row.locales ?? []) as string[]).map(String);
+  const chosenCurrencies = ((row.currencies ?? []) as { currency: string; rate: string | number | null; roundTo: number }[]).map((c) => ({
+    currency: String(c.currency).trim(),
+    rate: c.rate === null ? null : Number(c.rate),
+    roundTo: Number(c.roundTo),
+  }));
+  return {
+    markets,
+    localization: localizationOf(chosenLocales, chosenCurrencies, markets),
+    ratesAuto: Boolean(row.rates_auto),
+    ratesUpdatedAt: row.rates_updated_at ? new Date(String(row.rates_updated_at)).toISOString() : null,
+    chosenLocales,
+    chosenCurrencies,
   };
 }
 

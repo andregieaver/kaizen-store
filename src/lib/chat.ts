@@ -19,7 +19,7 @@ export const INSTRUCTIONS_MAX = 2000;
 
 /** A visitor's request: the conversation so far (kept in their browser), their country, and the page they are on. */
 export const chatRequest = z.object({
-  market: z.string().regex(/^[a-z]{2}$/).optional(),
+  market: z.string().regex(/^[a-z]{2}(?:-[a-z]{2})?(?:-[a-z]{3})?$/).optional(),
   path: z.string().max(300).regex(/^\//).optional(),
   messages: z
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().min(1).max(MESSAGE_MAX) }))

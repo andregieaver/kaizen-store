@@ -57,7 +57,7 @@ export default async function MarketHome({ params, searchParams }: Props) {
   if (!loaded) notFound();
   const { store, market, frontPage } = loaded;
   const m = t(market.lang);
-  const products = await listProducts(store.id, market.code, market.locale);
+  const products = await listProducts(store.id, market);
   const origin = storeSiteUrl(store.slug);
   const productUrl = (handle: string) => marketPath(store.slug, market.slug, `/p/${handle}`);
   const jsonLd = (
@@ -83,7 +83,7 @@ export default async function MarketHome({ params, searchParams }: Props) {
           place={{
             pageId: frontPage.id,
             owner: store.id,
-            market: market.code,
+            market: market.slug,
             listing: { query: searchParams, path: marketPath(store.slug, market.slug) },
           }}
         />

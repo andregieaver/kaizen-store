@@ -34,7 +34,7 @@ export async function generateStaticParams({
 }) {
   const shop = await resolveShop(params.store, params.market);
   const products = shop
-    ? await listProducts(shop.store.id, shop.market.code, shop.market.locale)
+    ? await listProducts(shop.store.id, shop.market)
     : [];
   // Cache Components needs at least one entry; "_" simply renders a 404.
   return products.length > 0
@@ -47,7 +47,7 @@ async function load(params: Props["params"]) {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return null;
   const { store, market } = shop;
-  const product = await getProduct(store.id, market.code, market.locale, handle);
+  const product = await getProduct(store.id, market, handle);
   return product ? { store, market, product } : null;
 }
 

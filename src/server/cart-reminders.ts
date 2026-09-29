@@ -101,7 +101,7 @@ export async function setCartRemindersEnabled({ account, store }: Membership, en
       select count(*)::int as n from commerce.cart_reminder_steps where store_id = ${store.id}::uuid
     `);
     if (Number(existing.n) > 0) return;
-    const locales = [...new Set(store.markets.map((m) => m.locale))];
+    const locales = store.localization.locales;
     for (const step of defaultSteps(locales)) {
       await tx.execute(sql`
         insert into commerce.cart_reminder_steps (store_id, delay_minutes, active, content)
@@ -121,7 +121,7 @@ export async function saveCartReminderStep(
   const parsed = reminderStepInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const step = parsed.data;
-  const locales = [...new Set(store.markets.map((m) => m.locale))];
+  const locales = store.localization.locales;
   const missing = locales.filter((locale) => !step.content[locale]);
   if (missing.length > 0) return { ok: false, problems: ["Write the reminder in every language the store sells in."] };
   const content = Object.fromEntries(locales.map((locale) => [locale, step.content[locale]]));

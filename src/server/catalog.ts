@@ -7,6 +7,7 @@ import { connection } from "next/server";
 import { db, readDb } from "@/db/client";
 import { parseProductAudience, type ProductAudience } from "@/lib/b2b";
 import { parseRentalPeriod, type RentalPeriod } from "@/lib/booking-ranges";
+import { isNative, shown, type Market } from "@/lib/markets";
 import { priceVat, priceView, type PriceView } from "@/lib/pricing";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
@@ -86,6 +87,8 @@ export type ProductDetail = {
   plans: SellingPlan[];
   /** Sold only through its purchase options. */
   subscriptionOnly: boolean;
+  /** Only sold as a subscription, and the currency shown is not the country's own, the only one subscriptions are in (D109). */
+  needsNativeCurrency: boolean;
   /** Who it is for (B2B); always `all` unless the store sells to both. */
   audience: ProductAudience;
   /** Goods, or an appointment booked for a time (D65). */
@@ -101,20 +104,18 @@ const num = (value: unknown): number => Number(value);
 const numOrNull = (value: unknown): number | null =>
   value === null || value === undefined ? null : Number(value);
 const str = (value: unknown): string => (value === null ? "" : String(value));
+const orNull = (value: number | null, map: (n: number) => number): number | null => (value === null ? null : map(value));
 
 /** Who a product is for (B2B): only in stores selling to both does it matter. */
 const productAudience = (row: Row): ProductAudience =>
   row.store_audience === "both" ? parseProductAudience(row.audience) : "all";
 
 /** Active products with a price in the market, cheapest variant first. */
-export async function listProducts(
-  storeId: string,
-  marketCode: string,
-  locale: string,
-): Promise<ProductSummary[]> {
+export async function listProducts(storeId: string, market: Market): Promise<ProductSummary[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
+  const { code: marketCode, locale } = market;
 
   const rows = await readDb().execute<Row>(sql`
     select
@@ -168,10 +169,11 @@ export async function listProducts(
       handle: str(row.handle),
       title: str(row.title),
       image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
+      // Kept in the country's own currency; shown in the one chosen (D109).
       price:
         discount === null
-          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d), vat)
-          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null, vat),
+          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat)
+          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
     };
@@ -179,15 +181,11 @@ export async function listProducts(
 }
 
 /** One active product with its variants priced in the market, or null. */
-export async function getProduct(
-  storeId: string,
-  marketCode: string,
-  locale: string,
-  handle: string,
-): Promise<ProductDetail | null> {
+export async function getProduct(storeId: string, market: Market, handle: string): Promise<ProductDetail | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
+  const { code: marketCode, locale } = market;
 
   const [product] = await readDb().execute<Row>(sql`
     select
@@ -273,22 +271,24 @@ export async function getProduct(
       sku: str(v.sku),
       gtin: v.gtin ? str(v.gtin) : null,
       options: (v.options ?? {}) as Record<string, string>,
-      price: priceView(num(v.amount_minor), str(v.currency), numOrNull(v.prior_30d_minor), vat),
+      price: priceView(shown(market, num(v.amount_minor)), market.currency, orNull(numOrNull(v.prior_30d_minor), (n) => shown(market, n)), vat),
       delivery: parseDelivery(v.delivery),
       rentalPeriod: parseRentalPeriod(v.rental_period),
       image: v.image_url ? { url: str(v.image_url), thumbnailUrl: str(v.image_thumbnail_url ?? v.image_url), alt: str(v.image_alt) } : null,
     })),
-    plans: plans.map((plan) => ({
+    // Subscriptions are in the country's own currency only (D109): they renew at a price kept in it.
+    plans: (isNative(market) ? plans : []).map((plan) => ({
       id: str(plan.id),
       interval: plan.interval as PlanInterval,
       intervalCount: num(plan.interval_count),
       discountPercent: num(plan.discount_percent),
       trialDays: num(plan.trial_days),
-      signupFeeMinor: num(plan.signup_fee),
+      signupFeeMinor: shown(market, num(plan.signup_fee)),
       minCycles: num(plan.min_cycles),
     })),
     // Without an option to subscribe to, it can only be bought once.
     subscriptionOnly: Boolean(product.subscription_only) && plans.length > 0,
+    needsNativeCurrency: !isNative(market) && Boolean(product.subscription_only) && plans.length > 0,
     hostName: product.host_name ? String(product.host_name) : null,
     audience: productAudience(product),
     kind: product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" ? product.kind : "goods",
@@ -329,13 +329,13 @@ export type GridProduct = ProductSummary & { description: string };
  */
 export async function listGridProducts(
   storeId: string,
-  marketCode: string,
-  locale: string,
+  market: Market,
   filter: { categoryIds: string[]; tagIds: string[]; sort: string; limit: number; ids?: string[] },
 ): Promise<GridProduct[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
+  const { code: marketCode, locale } = market;
 
   const ids = (list: string[]) => `{${list.filter((id) => /^[0-9a-f-]{36}$/i.test(id)).join(",")}}`;
   const inTerms = (list: string[]) =>
@@ -415,10 +415,11 @@ export async function listGridProducts(
       title: str(row.title),
       description: str(row.description),
       image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
+      // Kept in the country's own currency; shown in the one chosen (D109).
       price:
         discount === null
-          ? priceView(num(row.min_amount), str(row.currency), numOrNull(row.prior_30d), vat)
-          : priceView(planPrice(num(row.min_amount), discount), str(row.currency), null, vat),
+          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat)
+          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
     };

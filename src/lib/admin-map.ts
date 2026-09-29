@@ -192,6 +192,9 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   }),
 
   // Store: store settings --------------------------------------------------------------------
+  store("localization", "/settings/localization", "Languages and currencies", "Store", "The languages and currencies the store offers, each country's language, and the rates amounts are converted at.", {
+    keywords: ["translate", "euro", "exchange rate", "multilingual", "language", "currency", "ECB"],
+  }),
   store("search", "/search", "Search", "Store", "What shoppers searched for in the last 30 days, and searches that found nothing.", {
     keywords: ["site search", "queries"],
   }),

@@ -62,6 +62,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       gridTerms: gridTermsAction,
       installFont: installPlatformFontAction,
       saveSiteCss: savePlatformCssAction,
+      translate: null,
     },
   };
 }

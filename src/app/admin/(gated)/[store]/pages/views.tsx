@@ -476,9 +476,9 @@ const LAYOUT_STATES: Record<PageSummary["state"], string> = {
  */
 async function LayoutPreview({ store, layout, asked }: { store: Store; layout: PageContent; asked: string | string[] | undefined }) {
   const market = store.markets[0];
-  const products = market ? await listProducts(store.id, market.code, market.locale) : [];
+  const products = market ? await listProducts(store.id, market) : [];
   const chosen = products.find((p) => p.handle === asked) ?? products[0];
-  const product = chosen && market ? await getProduct(store.id, market.code, market.locale, chosen.handle) : null;
+  const product = chosen && market ? await getProduct(store.id, market, chosen.handle) : null;
   if (!market || !product) return <p className="text-sm text-muted">Add a product with a price to see the layout with it.</p>;
   return (
     <>

@@ -5,7 +5,7 @@
  */
 
 /**
- * ISO 4217 minor-unit digits for the currencies of our markets (EU and Norway). This is the
+ * ISO 4217 minor-unit digits for the currencies of our markets (EU and Norway) and those stores may offer besides. This is the
  * storage unit, matching Stripe's amounts. It deliberately does not come from
  * Intl: display data shows HUF with no decimals, but HUF amounts are still
  * counted in hundredths.
@@ -19,6 +19,10 @@ const MINOR_UNIT_DIGITS: Record<string, number> = {
   CZK: 2,
   HUF: 2,
   RON: 2,
+  // Offered to shoppers next to a market's own currency (D109).
+  CHF: 2,
+  GBP: 2,
+  USD: 2,
 };
 
 /** Number of decimal places in a currency's minor unit, e.g. 2 for EUR. */
@@ -47,4 +51,11 @@ export function formatMoney(
   return new Intl.NumberFormat(locale, { style: "currency", currency }).format(
     amountMinor / 10 ** minorUnitDigits(currency),
   );
+}
+
+/** The currencies a store can offer (D109). */
+export const OFFERABLE_CURRENCIES: readonly string[] = Object.keys(MINOR_UNIT_DIGITS);
+
+export function isCurrency(value: string): boolean {
+  return value in MINOR_UNIT_DIGITS;
 }

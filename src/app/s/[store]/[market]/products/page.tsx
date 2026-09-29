@@ -70,7 +70,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
       <>
         <StorePageArticle
           content={localizePage(page.content, market.locale)}
-          place={{ pageId: page.id, owner: store.id, market: market.code, listing: { query: searchParams, path } }}
+          place={{ pageId: page.id, owner: store.id, market: market.slug, listing: { query: searchParams, path } }}
         />
         <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
       </>
@@ -78,7 +78,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   }
 
   const m = t(market.lang);
-  const products = await listGridProducts(store.id, market.code, market.locale, { categoryIds: [], tagIds: [], sort: "oldest", limit: 48 });
+  const products = await listGridProducts(store.id, market, { categoryIds: [], tagIds: [], sort: "oldest", limit: 48 });
   return (
     <>
       <h1 className="mb-4 text-3xl font-heading tracking-tight">{m.allProducts}</h1>

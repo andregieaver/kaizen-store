@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
-import { toMarket } from "@/lib/markets";
+import { localizationOf, conversionFor } from "@/lib/localization";
+import { showMarket, toMarket } from "@/lib/markets";
 
 import type { Membership } from "./auth";
 import type { Store } from "./stores";
@@ -144,7 +145,17 @@ afterAll(async () => {
   await closeDb();
 });
 
-const shop = () => ({ storeId, market: no });
+/** Norway shown in euro (D109): 1 EUR = 11.5 NOK. */
+const noInEuro = showMarket(
+  { code: "NO", currency: "NOK", defaultLocale: "nb-NO" },
+  {
+    currency: "EUR",
+    conversion: conversionFor(localizationOf([], [{ currency: "NOK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], [no]), "NOK", "EUR")!,
+  },
+);
+/** The country as the scenario shows it. */
+let view = no;
+const shop = () => ({ storeId, market: view });
 const cartId = () => jar.get(`cart_${storeId}_${no.slug}`)!;
 /** A day some weeks ahead, a different week for each scenario, so no two want the same room or bike. */
 let weeks = 3;
@@ -191,6 +202,8 @@ type Scenario = {
   /** How each appointment is paid (D66), set before the cart is filled. */
   massage?: "now" | "deposit" | "venue";
   code?: string;
+  /** Shown in euro instead of the country's own currency (D109). */
+  euro?: boolean;
   /** Who buys (D108): in a discount group, or an employee of a company that gives half of one. */
   buyer?: "group" | "company";
   /** Lines with a time, confirmed once paid. */
@@ -263,6 +276,24 @@ const scenarios: Scenario[] = [
 let tierId: string;
 let companyId: string;
 
+const euroScenarios: Scenario[] = [
+  { name: "goods, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), euro: true, bookings: 0 },
+  {
+    name: "a stay, a massage and a mug with a code, for a company's employee, shown in euro",
+    fill: async () => {
+      await addStay(2);
+      await addAppointment();
+      await add("DEMO-MUG-WHITE", 1);
+    },
+    massage: "deposit",
+    code: `TI${run}`.toUpperCase(),
+    buyer: "company",
+    euro: true,
+    bookings: 2,
+  },
+  { name: "a bike for three hours, shown in euro", fill: () => addRental("DEMO-SYKKEL-TIME", "hour", 3), euro: true, bookings: 1 },
+];
+
 /** A signed-in customer, in a 10 % group or an employee of a company whose employees get half of it. */
 async function signInBuyer(kind: "group" | "company"): Promise<string> {
   const customerId = await preRegisterCustomer(storeId, `${kind}-${Date.now()}-${run}@example.com`);
@@ -290,8 +321,9 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each(scenarios)("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
+    view = scenario.euro ? noInEuro : no;
     if (scenario.massage) {
       await db().execute(sql`
         update commerce.appointment_settings set payment = ${scenario.massage}, deposit_percent = 30
@@ -308,12 +340,13 @@ describe("checkout for every kind of product", () => {
     const summary = await cartSummary(shop(), cart);
     expect(summary.blocked).toBe(false);
     if (scenario.code) expect(summary.discountMinor).toBeGreaterThan(0);
+    expect(cart.currency).toBe(scenario.euro ? "EUR" : "NOK");
     if (scenario.buyer) expect(summary.member).toMatchObject({ percent: scenario.buyer === "group" ? 10 : 5 });
     else expect(summary.member).toBeNull();
 
     // "Til kassen": Kaizen's checkout page, with Stripe's form.
     const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", scenario.consent ?? {}, { customerId: buyerId });
-    expect(started).toEqual({ ok: true, url: `${origin}/s/${slug}/no/checkout` });
+    expect(started).toEqual({ ok: true, url: `${origin}/s/${slug}/${view.slug}/checkout` });
     const open = await getOpenCheckout(storeId, cartId());
     // The page shows the form, not "the cart has changed" with a button to start again.
     expect(open).toMatchObject({ changed: false, expired: false, clientSecret: expect.stringMatching(/_secret_test$/) });
@@ -330,6 +363,9 @@ describe("checkout for every kind of product", () => {
     // Stripe is asked for what is due now, no more and no less.
     const { params } = fake.created.at(-1)!;
     expect(chargedNow(params)).toBe(summary.dueNowMinor);
+    // Stripe is asked in the currency shown, and the order is recorded in it.
+    expect(order?.currency).toBe(scenario.euro ? "EUR" : "NOK");
+    if (scenario.euro) expect(JSON.stringify(params)).toContain('"currency":"eur"');
     const [payment] = await db().execute<Row>(sql`
       select amount_minor from commerce.payments where order_id = ${open!.orderId}::uuid and provider = 'stripe'
     `);

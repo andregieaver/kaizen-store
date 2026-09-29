@@ -64,9 +64,11 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
 async function context(storeId: string, marketCode: string, locale: string) {
   const store = await storeById(storeId);
   if (!store) return null;
-  const market: Market | undefined = store.markets.find((m) => m.code === marketCode) ?? store.markets[0];
-  if (!market) return null;
-  const lang = locale.split("-")[0] || market.lang;
+  const native: Market | undefined = store.markets.find((m) => m.code === marketCode) ?? store.markets[0];
+  if (!native) return null;
+  const lang = locale.split("-")[0] || native.lang;
+  // The shopper's language (D109): numbers and dates read as they chose; links lead to the country's own address, which always exists.
+  const market: Market = locale ? { ...native, locale, lang } : native;
   return { store, market, lang, text: emailText(lang), m: t(lang) };
 }
 

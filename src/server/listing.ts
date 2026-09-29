@@ -6,13 +6,13 @@ import { cacheLife, cacheTag } from "next/cache";
 import { readDb } from "@/db/client";
 import type { Buyer } from "@/lib/b2b";
 import { toMinorUnits, type ListingFilters } from "@/lib/listing-filters";
-import type { Market } from "@/lib/markets";
+import { shown, type Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
 import { PRODUCT_KINDS, type ProductKind } from "@/lib/query-understanding";
 import { categoryTree, withDescendants, type Term } from "@/lib/taxonomy";
 
 import { CATALOG_TAG, catalogTag, listGridProducts, type GridProduct } from "./catalog";
-import { inCategories, inStockNow, shownPrice, textList, withTags } from "./product-conditions";
+import { convertedSql, inCategories, inStockNow, shownPrice, textList, withTags } from "./product-conditions";
 import { siteTerms, termsTag } from "./taxonomy";
 
 /**
@@ -73,7 +73,7 @@ function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer):
     parts.push(sql`exists (
       select 1 from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${market.code}
-        and ${shownPrice(market.code, viewer.buyer === "business")} between ${toMinorUnits(filters.minPrice, digits) ?? 0}
+        and ${convertedSql(shownPrice(market.code, viewer.buyer === "business"), market)} between ${toMinorUnits(filters.minPrice, digits) ?? 0}
           and ${toMinorUnits(filters.maxPrice, digits) ?? Number.MAX_SAFE_INTEGER}
     )`);
   }
@@ -118,7 +118,7 @@ export async function listingProducts(
   `);
   const ids = rows.map((row) => String(row.id));
   if (ids.length === 0) return [];
-  return listGridProducts(storeId, market.code, market.locale, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
+  return listGridProducts(storeId, market, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
 }
 
 export type FacetValue = { value: string; label: string; count: number };
@@ -233,8 +233,9 @@ export async function listingFacets(
     .map(([name, values]) => ({ name, label: label(name), values: values.sort((a, b) => byValue(a.value, b.value)) }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  const lows = products.map((row) => Number(row.low)).filter(Number.isFinite);
-  const highs = products.map((row) => Number(row.high)).filter(Number.isFinite);
+  // Prices are kept in the country's own currency and shown in the one chosen (D109).
+  const lows = products.map((row) => shown(market, Number(row.low))).filter(Number.isFinite);
+  const highs = products.map((row) => shown(market, Number(row.high))).filter(Number.isFinite);
   const unit = 10 ** minorUnitDigits(market.currency);
   const price =
     lows.length > 0 && highs.length > 0
@@ -278,5 +279,5 @@ export async function relatedProducts(storeId: string, market: Market, productId
   `);
   const ids = rows.map((row) => String(row.id));
   if (ids.length === 0) return [];
-  return listGridProducts(storeId, market.code, market.locale, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
+  return listGridProducts(storeId, market, { categoryIds: [], tagIds: [], ids, sort: "given", limit: LISTING_LIMIT });
 }

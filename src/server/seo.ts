@@ -7,7 +7,8 @@ import type { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import { t } from "@/lib/i18n";
-import { toMarket, type Market } from "@/lib/markets";
+import { effectiveLocales } from "@/lib/localization";
+import { inView, shown, toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
 import { pageExcerpt } from "@/lib/page-content";
@@ -119,6 +120,8 @@ export type PublicStore = {
   name: string;
   seo: StoreSeo;
   markets: Market[];
+  /** The store's languages (D109), main first. */
+  locales: string[];
   /** Open, set up and not hidden: listed in sitemaps and llms.txt. */
   indexable: boolean;
   updatedAt: string;
@@ -134,7 +137,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheLife("hours");
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.seo, s.is_template, s.setup_completed_at, s.front_page_id, s.products_page_id,
+    select s.id, s.slug, s.name, s.seo, s.locales, s.is_template, s.setup_completed_at, s.front_page_id, s.products_page_id,
       greatest(s.created_at, s.setup_completed_at,
         (select max(p.updated_at) from commerce.products p where p.store_id = s.id)) as updated_at,
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
@@ -155,6 +158,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       name: String(row.name),
       seo,
       markets,
+      locales: effectiveLocales(((row.locales ?? []) as string[]).map(String), markets),
       indexable: Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       frontPageId: row.front_page_id ? String(row.front_page_id) : null,
@@ -239,20 +243,20 @@ export function storeFacts(store: Store): StoreFacts {
   };
 }
 
-/** The market's shipping price, for product offers. Revalidated with the catalogue. */
-export async function getShippingFacts(storeId: string, marketCode: string): Promise<ShippingFacts> {
+/** The market's shipping price in the currency shown (D109), for product offers. Revalidated with the catalogue. */
+export async function getShippingFacts(storeId: string, market: Pick<Market, "code" | "currency" | "conversion">): Promise<ShippingFacts> {
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
   const [row] = await readDb().execute<Row>(sql`
     select amount_minor, free_over_minor, currency from commerce.shipping_rates
-    where store_id = ${storeId}::uuid and market_code = ${marketCode}
+    where store_id = ${storeId}::uuid and market_code = ${market.code}
   `);
   return row
     ? {
-        amountMinor: Number(row.amount_minor),
-        freeOverMinor: row.free_over_minor == null ? null : Number(row.free_over_minor),
-        currency: String(row.currency).trim(),
+        amountMinor: shown(market, Number(row.amount_minor)),
+        freeOverMinor: row.free_over_minor == null ? null : shown(market, Number(row.free_over_minor)),
+        currency: market.currency,
       }
     : null;
 }
@@ -277,7 +281,7 @@ export function storeShareTags(
       type: "website",
       siteName: store.name,
       locale: ogLocale(market.locale),
-      alternateLocale: store.markets.filter((m) => m.locale !== market.locale).map((m) => ogLocale(m.locale)),
+      alternateLocale: store.localization.locales.filter((locale) => locale.split("-")[0] !== market.lang).map((locale) => ogLocale(`${locale.split("-")[0]}-${market.code}`)),
       url: page.url,
       title: page.title,
       description: page.description,
@@ -431,17 +435,23 @@ export async function storeSitemap(slug: string): Promise<string | null> {
       .filter(Boolean)
       .join("");
 
-  const homes = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}` }));
+  // Every country in every language the store is in (D109); a currency is not another page.
+  const views = (markets: readonly Market[]) =>
+    markets.flatMap((m) =>
+      store.locales.map((locale) => ({ locale: `${locale.split("-")[0]}-${m.code}`, slug: inView(m, { locale, currency: m.nativeCurrency }).slug })),
+    );
+  const versionsOf = (markets: readonly Market[], path: string) => views(markets).map((v) => ({ locale: v.locale, href: `${base}/${v.slug}${path}` }));
+  const homes = versionsOf(store.markets, "");
   const urls = [
-    ...store.markets.map((m) =>
-      entry(`${base}/${m.slug}`, homes, {
+    ...homes.map((home) =>
+      entry(home.href, homes, {
         lastmod: store.updatedAt,
         xDefault: store.markets.length > 1 ? base : undefined,
       }),
     ),
     ...products.flatMap((product) => {
       const markets = store.markets.filter((m) => product.markets.includes(m.code));
-      const versions = markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/p/${product.handle}` }));
+      const versions = versionsOf(markets, `/p/${product.handle}`);
       return versions.map((version) =>
         entry(version.href, versions, { lastmod: product.updatedAt, images: product.images.slice(0, 5) }),
       );
@@ -450,22 +460,22 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     ...pages
       .filter((page) => page.content.searchEngines && page.id !== store.frontPageId && page.id !== store.productsPageId)
       .flatMap((page) => {
-        const versions = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/${page.slug}` }));
+        const versions = versionsOf(store.markets, `/${page.slug}`);
         // Every picture on the page (D89), its own first, so search engines tie each to the page it is on.
         const image = pageImageUrls(page.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: page.publishedAt, images: image }));
       }),
     // Its blog (D57): the list in every market, and each article open to search engines.
     ...(articles.length > 0
-      ? store.markets.map((m) => {
-          const versions = store.markets.map((v) => ({ locale: v.locale, href: `${base}/${v.slug}/blog` }));
-          return entry(`${base}/${m.slug}/blog`, versions);
-        })
+      ? (() => {
+          const versions = versionsOf(store.markets, "/blog");
+          return versions.map((version) => entry(version.href, versions));
+        })()
       : []),
     ...articles
       .filter((article) => article.content.searchEngines)
       .flatMap((article) => {
-        const versions = store.markets.map((m) => ({ locale: m.locale, href: `${base}/${m.slug}/blog/${article.slug}` }));
+        const versions = versionsOf(store.markets, `/blog/${article.slug}`);
         const image = pageImageUrls(article.content).slice(0, 10);
         return versions.map((version) => entry(version.href, versions, { lastmod: article.publishedAt, images: image }));
       }),
@@ -543,9 +553,9 @@ export async function storeLlms(slug: string): Promise<string | null> {
   const m = t(market.lang);
   const home = (code: string) => `${origin}${marketPath(store.slug, code.toLowerCase())}`;
   const [products, indexed, shipping, pages, articles] = await Promise.all([
-    listProducts(store.id, market.code, market.locale),
+    listProducts(store.id, market),
     listIndexedProducts(store.id),
-    Promise.all(store.markets.map((mk) => getShippingFacts(store.id, mk.code))),
+    Promise.all(store.markets.map((mk) => getShippingFacts(store.id, mk))),
     listPublishedPages(store.id),
     listPublishedPages(store.id, "article"),
   ]);

@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { localizationOf } from "@/lib/localization";
 import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
 import { DEFAULT_STAY, productInput, seasonInput, type ProductInput } from "@/lib/product-input";
@@ -55,6 +56,14 @@ async function createStore(slug: string): Promise<Store> {
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
     ],
+    localization: localizationOf([], [], [
+      toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
+      toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
+    ]),
+    ratesAuto: false,
+    ratesUpdatedAt: null,
+    chosenLocales: [],
+    chosenCurrencies: [],
     seo: parseStoreSeo({}),
     navigation: EMPTY_NAVIGATION,
     menus: [],
