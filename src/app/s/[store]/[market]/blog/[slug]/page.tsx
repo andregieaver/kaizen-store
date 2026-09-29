@@ -10,6 +10,7 @@ import { pageExcerpt, pageSlugProblem, reservedPageSlugs } from "@/lib/page-cont
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { articleJsonLd } from "@/lib/structured-data";
+import { bindForPlace } from "@/server/field-binding";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
@@ -82,7 +83,9 @@ export default async function StoreArticlePage({ params }: Props) {
   // An article that moved: its old address leads to the new one for good.
   if ("redirect" in found) permanentRedirect(`${blog}/${found.redirect}`);
   const { page } = found;
-  const c = localizePage(page.content, market.locale);
+  const place = { pageId: page.id, owner: store.id, market: market.slug, pageType: "article" as const };
+  // Blocks bound to the article's custom fields (D118) show their values.
+  const c = await bindForPlace(localizePage(page.content, market.locale), place);
   const origin = storeSiteUrl(store.slug);
 
   return (
@@ -108,7 +111,7 @@ export default async function StoreArticlePage({ params }: Props) {
         byline={c.author || store.name}
         lang={market.lang}
         locale={market.locale}
-        place={{ pageId: page.id, owner: store.id, market: market.slug, pageType: "article" }}
+        place={place}
       />
       <PageEditLink pageId={page.id} store={store.slug} article adminOrigin={adminOrigin(store.slug)} />
     </div>

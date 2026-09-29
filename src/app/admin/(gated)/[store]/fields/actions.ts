@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { groupFromPreset, type FieldGroupInput } from "@/lib/custom-fields";
+import { startFieldFileUpload, type FieldFileUpload } from "@/server/media";
 import { requireMember } from "@/server/auth";
 import {
   deleteFieldGroup,
@@ -13,7 +14,10 @@ import {
   listFieldGroups,
   orderFieldGroups,
   saveFieldGroup,
+  saveTermFields,
   setFieldGroupActive,
+  termFieldsForEditor,
+  type TermFieldsEditor,
 } from "@/server/custom-fields";
 import type { SaveResult } from "@/server/settings";
 
@@ -85,5 +89,32 @@ export async function importFieldGroupsAction(
   // Groups may have been saved before one in the file failed.
   updateTag(fieldsTag(member.store.id));
   if (result.ok) refresh();
+  return result;
+}
+
+/** The file the browser means to upload for a custom field: its name, type and size, checked again by the bucket. */
+const fieldFile = z.object({ name: z.string().max(255), type: z.string().max(150), size: z.number().int().nonnegative() });
+
+/** Starts an upload of a file for a custom field (D118) straight from the browser to the store's folder in the public bucket. */
+export async function startFieldFileUploadAction(storeSlug: string, file: unknown): Promise<FieldFileUpload> {
+  const { store } = await requireMember(storeSlug);
+  const parsed = fieldFile.safeParse(file);
+  if (!parsed.success) return { ok: false, problem: "Choose a file to upload." };
+  return startFieldFileUpload(store.id, parsed.data);
+}
+
+/** The fields of a category or tag (D118, phase 2), read when its editor opens. */
+export async function termFieldsAction(storeSlug: string, termId: string): Promise<TermFieldsEditor | null> {
+  const member = await requireMember(storeSlug);
+  if (!idSchema.safeParse(termId).success) return null;
+  return termFieldsForEditor(member.store.id, termId);
+}
+
+/** Saves what was entered in a category's or tag's fields; the server checks it against the store's groups. */
+export async function saveTermFieldsAction(storeSlug: string, termId: string, changes: unknown): Promise<SaveResult> {
+  const member = await requireMember(storeSlug);
+  if (!idSchema.safeParse(termId).success) return { ok: false, problems: ["Unknown category or tag."] };
+  const result = await saveTermFields(member, termId, changes);
+  if (result.ok) updateTag(fieldsTag(member.store.id));
   return result;
 }

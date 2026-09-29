@@ -146,6 +146,67 @@ export async function startVideoUpload(folder: string, file: { type: string; siz
 }
 
 // ---------------------------------------------------------------------------
+// Files for custom fields (D118)
+// ---------------------------------------------------------------------------
+
+const FIELD_FILES_BUCKET = "field-files";
+/** What a custom field may offer for download, by type: documents and archives, never a page a browser would run. */
+const FIELD_FILE_TYPES: Record<string, string> = {
+  "application/pdf": "pdf",
+  "application/zip": "zip",
+  "text/plain": "txt",
+  "text/csv": "csv",
+  "application/msword": "doc",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.ms-powerpoint": "ppt",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+};
+export const FIELD_FILE_ACCEPT = Object.values(FIELD_FILE_TYPES).map((ext) => `.${ext}`).join(",");
+
+export type FieldFileUpload =
+  | { ok: true; path: string; token: string; bucket: string; url: string; name: string }
+  | { ok: false; problem: string };
+
+/**
+ * Lets the owner's browser upload a file for a custom field straight to the
+ * public bucket, in the store's own folder: a signed upload for one new path,
+ * and the address the file will have. The bucket refuses other types and files
+ * over 50 MB as well.
+ */
+export async function startFieldFileUpload(storeId: string, file: { name: string; type: string; size: number }): Promise<FieldFileUpload> {
+  const extension = FIELD_FILE_TYPES[file.type];
+  if (!extension) return { ok: false, problem: "Use a PDF, Word, Excel or PowerPoint file, a text or CSV file, or a zip." };
+  if (!(file.size > 0) || file.size > VIDEO_MAX_BYTES) return { ok: false, problem: "That file is too large. Use one under 50 MB." };
+  const secret = secretKey();
+  if ("problem" in secret) return { ok: false, problem: secret.problem };
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(FIELD_FILES_BUCKET);
+  const base = safeFileName(file.name).replace(/\.[A-Za-z0-9]+$/, "") || "file";
+  const path = `${storeId}/${randomUUID()}-${base}.${extension}`;
+  const { data, error } = await storage.createSignedUploadUrl(path);
+  if (error || !data) {
+    console.error("[media] file upload could not start:", error?.message);
+    return { ok: false, problem: "The upload could not be started. Try again." };
+  }
+  return { ok: true, path, token: data.token, bucket: FIELD_FILES_BUCKET, url: storage.getPublicUrl(path).data.publicUrl, name: safeFileName(file.name) };
+}
+
+/** Whether an address is a file kept for this store's custom fields (a value must not point into another store's folder). */
+export function isOwnFieldFile(storeId: string, url: string): boolean {
+  try {
+    const base = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, "public", { auth: { persistSession: false } }).storage
+      .from(FIELD_FILES_BUCKET)
+      .getPublicUrl(`${storeId}/`).data.publicUrl;
+    return url.startsWith(base) && !url.slice(base.length).includes("/") && !url.includes("..");
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Digital files (D24)
 // ---------------------------------------------------------------------------
 

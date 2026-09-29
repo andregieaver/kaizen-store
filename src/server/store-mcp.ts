@@ -11,7 +11,7 @@ import { siteUrl } from "@/lib/site";
 
 import type { Account, Membership } from "./auth";
 import { keepForApproval, kaizenLifeConversation, runTurn, type AssistantEvent } from "./owner-assistant";
-import { OwnerToolError, runOwnerTool } from "./owner-tools";
+import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { getStore } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -143,6 +143,13 @@ export async function callMcpTool(
   if (tool.gate) {
     const input = readToolInput(tool, rest);
     if (!input.ok) return text(`The arguments could not be read: ${input.problem}`, true);
+    try {
+      await preflightOwnerTool({ account: member.account, store: member.store, invalidate }, name, rest);
+    } catch (error) {
+      if (error instanceof OwnerToolError) return text(error.message, true);
+      console.error(`[store-mcp] ${name}`, error);
+      return text("The tool failed.", true);
+    }
     const conversation = await kaizenLifeConversation(member);
     const approval = await keepForApproval(
       { account: member.account, store: member.store, invalidate },

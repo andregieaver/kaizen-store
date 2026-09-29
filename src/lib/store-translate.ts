@@ -4,7 +4,8 @@ import { LABEL_MAX } from "./navigation";
 
 /**
  * Translating a whole store with AI (D110): its products' texts, its menus'
- * link texts and its pages and articles, into one language in one go. What
+ * link texts, its pages and articles and its custom fields' labels and
+ * texts (`src/lib/field-translate.ts`), into one language in one go. What
  * the model answers is only ever a suggestion: staff read each one and choose
  * what to keep before anything is written, and pages are written to their
  * drafts, not published. Legal texts (a product's safety information, and
@@ -13,18 +14,19 @@ import { LABEL_MAX } from "./navigation";
  * needs human review. Pure and shared with the browser.
  */
 
-export const TRANSLATE_SCOPES = ["products", "menus", "pages"] as const;
+export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields"] as const;
 export type TranslateScope = (typeof TRANSLATE_SCOPES)[number];
 
 export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> = {
   products: { name: "Products", one: "Product" },
   menus: { name: "Menus", one: "Menu link" },
   pages: { name: "Pages and articles", one: "Page" },
+  fields: { name: "Custom fields", one: "Custom field" },
 };
 
-/** One thing to translate: a product, a menu link or a page, with its texts. */
+/** One thing to translate: a product, a menu link, a page or custom fields' words, with its texts. */
 export type Unit = {
-  /** `product:{id}`, `menu:{id}:{index}` or `page:{id}`. */
+  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}` or `fieldval:{entity}:{id}` (D118). */
   id: string;
   scope: TranslateScope;
   /** What it is called in the main language, and what kind of page it is. */

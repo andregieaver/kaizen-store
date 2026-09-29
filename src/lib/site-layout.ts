@@ -1,5 +1,5 @@
 import {
-  blockHasContent,
+  blockShowsUnbound,
   newPageContent,
   sitePartsFor,
   type PageBlock,
@@ -131,7 +131,7 @@ export type OverlayPage = { front: boolean; categories: string[]; tags: string[]
 export function headerOverlays(overlay: HeaderOverlay | undefined, page: OverlayPage): boolean {
   if (!overlay) return false;
   // The first row the page shows (as `rowShows` finds it on the site).
-  const first = page.rows.find((row) => Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockHasContent)));
+  const first = page.rows.find((row) => Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockShowsUnbound)));
   if (!first?.background) return false;
   if (overlay.where === "everywhere") return true;
   if (overlay.where === "front") return page.front;

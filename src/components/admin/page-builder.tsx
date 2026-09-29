@@ -71,7 +71,9 @@ import {
   SHADOWS,
   SPACING_MAX,
   blockFonts,
+  bindingOf,
   blockHasContent,
+  blockOwnContent,
   blockText,
   classNameProblem,
   htmlIdProblem,
@@ -159,7 +161,7 @@ import {
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
 
 import type { GridData } from "@/lib/content-grid";
-import type { FieldGroup } from "@/lib/custom-fields";
+import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
 import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
@@ -169,6 +171,9 @@ import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
 
 import {
+  BindBadge,
+  BindEntitiesContext,
+  BindFields,
   ButtonLookFields,
   Check,
   Choices,
@@ -638,8 +643,14 @@ export function PageBuilder({
     globalName: (id) => parts.find((p) => p.id === id)?.name ?? "Global",
   };
 
+  // What a block that takes its content from a custom field (D118) can take: the product's in a layout, the page's or article's
+  // on a store's page; none in a header or footer, or Kaizen's own pages.
+  const bindEntities: readonly FieldEntity[] | null =
+    fieldGroups === null || grid.owner === null || siteParts ? null : productParts ? ["product"] : ["page", "article"];
+
   return (
     <FieldGroupsContext value={fieldGroups}>
+    <BindEntitiesContext value={bindEntities}>
       <DndContext
         id="page-builder"
         sensors={sensors}
@@ -750,6 +761,7 @@ export function PageBuilder({
           translate={translate}
         />
       </DndContext>
+    </BindEntitiesContext>
     </FieldGroupsContext>
   );
 }
@@ -1868,6 +1880,8 @@ function BlockItem({
       <Line at={line} />
       <div className={blockBox(block, "canvas").className || undefined} style={blockBox(block, "canvas").style}>
         <FontLinks families={blockFonts(block)} />
+        {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
+        {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
         {block.type === "contentGrid" ? (
           <GridPreview block={block} grid={actions.grid} />
         ) : block.type === "product" ? (
@@ -1895,8 +1909,10 @@ function BlockItem({
           <p className="rounded-md bg-surface p-3 text-sm text-muted">
             Google reviews of your business show here on the site, as Google has them when the page is shown.
           </p>
-        ) : blockHasContent(block) ? (
+        ) : blockHasContent(block) && (!bindingOf(block) || blockOwnContent(block)) ? (
           <PageBlockView block={block} />
+        ) : bindingOf(block) ? (
+          <p className="rounded-md bg-surface p-3 text-sm text-muted">Takes its content from a field where it is shown.</p>
         ) : (
           <p className="rounded-md bg-surface p-3 text-sm text-muted">{EMPTY_BLOCK[block.type]}</p>
         )}
@@ -2045,15 +2061,22 @@ function Dialogs({
           <SettingsTabs
             key={block.id}
             general={
-              <RichTextEditor
-                // A new block opens with nothing written; the editor starts from what is stored.
-                key={block.id}
-                value={block.doc}
-                onChange={(doc) =>
-                  onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
-                }
-                label="Text"
-              />
+              <div className="flex flex-col gap-5">
+                <BindFields
+                  blockType="richText"
+                  bind={block.bind}
+                  onChange={(bind) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, { bind }))}
+                />
+                <RichTextEditor
+                  // A new block opens with nothing written; the editor starts from what is stored.
+                  key={block.id}
+                  value={block.doc}
+                  onChange={(doc) =>
+                    onRows((current) => updateBlock(current, block.id, (b) => (b.type === "richText" ? { ...b, doc } : b)))
+                  }
+                  label="Text"
+                />
+              </div>
             }
             style={
               <>
@@ -2091,11 +2114,18 @@ function Dialogs({
           <SettingsTabs
             key={block.id}
             general={
-              <ImageFields
-                block={block}
-                upload={upload}
-                onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
-              />
+              <div className="flex flex-col gap-5">
+                <BindFields
+                  blockType="image"
+                  bind={block.bind}
+                  onChange={(bind) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { bind }))}
+                />
+                <ImageFields
+                  block={block}
+                  upload={upload}
+                  onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
+                />
+              </div>
             }
             style={
               <>
@@ -2133,11 +2163,18 @@ function Dialogs({
           <SettingsTabs
             key={block.id}
             general={
-              <HeadingFields
-                block={block}
-                otherMainHeading={pageBlocks({ rows }).some((b) => b.id !== block.id && b.type === "heading" && b.level === 1)}
-                onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
-              />
+              <div className="flex flex-col gap-5">
+                <BindFields
+                  blockType="heading"
+                  bind={block.bind}
+                  onChange={(bind) => onRows((current) => patchBlock<HeadingBlock>(current, block.id, { bind }))}
+                />
+                <HeadingFields
+                  block={block}
+                  otherMainHeading={pageBlocks({ rows }).some((b) => b.id !== block.id && b.type === "heading" && b.level === 1)}
+                  onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))}
+                />
+              </div>
             }
             style={
               <>
@@ -2175,7 +2212,14 @@ function Dialogs({
           <SettingsTabs
             key={block.id}
             general={
-              <ButtonFields block={block} onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))} />
+              <div className="flex flex-col gap-5">
+                <BindFields
+                  blockType="button"
+                  bind={block.bind}
+                  onChange={(bind) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, { bind }))}
+                />
+                <ButtonFields block={block} onChange={(next) => onRows((current) => updateBlock(current, block.id, () => next))} />
+              </div>
             }
             style={
               <>

@@ -19,13 +19,15 @@ import {
   type SaveState,
   suggestTextAction,
 } from "@/app/admin/(gated)/[store]/products/actions";
+import { startFieldFileUploadAction } from "@/app/admin/(gated)/[store]/fields/actions";
 import { AiWriter } from "@/components/admin/ai-writer";
 import { applicableGroups, EntityFields } from "@/components/admin/entity-fields";
-import { shrinkAndUpload } from "@/components/admin/fields-form";
+import { fieldFileUploader } from "@/components/admin/field-file-upload";
+import { uploadFieldPicture } from "@/components/admin/field-picture-upload";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
 import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
-import { changesFrom, withParents, type FieldData, type FieldGroup } from "@/lib/custom-fields";
+import { EMPTY_DATA, changesFrom, withParents, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
 import { ratePercent, VAT_CATEGORIES, VAT_CATEGORY_LABELS } from "@/lib/vat";
 import { shrinkImage } from "@/lib/image-resize";
@@ -101,8 +103,18 @@ type Props = {
   /** The site's address, for the search result preview. */
   siteOrigin: string;
   /** The store's custom field groups for products (D118), and what is entered in them for this product. */
-  fields: { groups: FieldGroup[]; data: FieldData };
+  fields: {
+    groups: FieldGroup[];
+    data: FieldData;
+    lookups: FieldLookups;
+    /** The groups for its variants and what is entered for each, by variant id; none where the store has no such group. */
+    variants: { groups: FieldGroup[]; data: Record<string, FieldData> } | null;
+  };
 };
+
+/** Which variant a client holds fields for: a saved one by id, a new one by its options (as its row is keyed). */
+const variantKey = (variant: { id: string | null; options: Record<string, string> }) =>
+  variant.id ?? `new-${JSON.stringify(variant.options)}`;
 
 /**
  * The whole product on one page, saved in one go. State lives here until
@@ -115,6 +127,7 @@ export function ProductEditor(props: Props) {
   const [context, setContext] = useState(props.context);
   const [dirty, setDirty] = useState(false);
   const [fieldData, setFieldData] = useState(props.fields.data);
+  const [variantData, setVariantData] = useState(props.fields.variants?.data ?? {});
   const [result, setResult] = useState<SaveState>({ status: "idle" });
   const [saving, startSaving] = useTransition();
   const [handleTouched, setHandleTouched] = useState(props.productId !== null);
@@ -152,13 +165,34 @@ export function ProductEditor(props: Props) {
     tags: product.tags,
     roles: [],
   });
+  // And the groups for its variants, by the same rules (a variant follows its product).
+  const variantGroups = applicableGroups(props.fields.variants?.groups ?? [], {
+    entity: "variant",
+    kind: product.kind,
+    audience: product.audience,
+    categories: withParents(product.categories, context.terms),
+    tags: product.tags,
+    roles: [],
+  });
   const pictureUpload = uploads ? (file: File) => uploadFieldPicture(storeSlug, file) : null;
+  // Files for file fields go from the browser to the store's folder in storage (a server action only starts the upload).
+  const fileUpload = uploads ? fieldFileUploader((file) => startFieldFileUploadAction(storeSlug, file)) : null;
 
   const save = () => {
     const payload = {
       ...product,
       handle: product.handle || slugify(title) || "product",
       fields: changesFrom(fieldGroups.flatMap((group) => group.fields), fieldData, context.locales),
+      // Each variant's, by its SKU as it is now.
+      variantFields:
+        variantGroups.length > 0
+          ? Object.fromEntries(
+              product.variants.map((variant) => [
+                variant.sku,
+                changesFrom(variantGroups.flatMap((group) => group.fields), variantData[variantKey(variant)] ?? EMPTY_DATA, context.locales),
+              ]),
+            )
+          : undefined,
     };
     startSaving(async () => {
       const outcome = await saveProductAction(storeSlug, productId, JSON.stringify(payload));
@@ -167,6 +201,7 @@ export function ProductEditor(props: Props) {
         setProduct(outcome.product);
         setContext(outcome.context);
         setFieldData(outcome.fieldData);
+        setVariantData(outcome.variantFieldData);
         setDirty(false);
         setHandleTouched(true);
         if (!productId) {
@@ -313,7 +348,47 @@ export function ProductEditor(props: Props) {
         main={context.primaryLocale}
         languageNames={languageNames}
         upload={pictureUpload}
+        fileUpload={fileUpload}
+        lookups={props.fields.lookups}
       />
+      {variantGroups.length > 0 && product.variants.length > 0 && (
+        <section aria-labelledby="variant-fields-heading" className="flex flex-col gap-3">
+          <h2 id="variant-fields-heading" className="font-medium">
+            Custom fields for each variant
+          </h2>
+          {product.variants.map((variant) => {
+            const key = variantKey(variant);
+            return (
+              <details key={key} className="rounded-lg border border-border bg-background" open={product.variants.length === 1}>
+                <summary className="cursor-pointer px-5 py-3 text-sm font-medium">
+                  {variant.sku} <span className="font-normal text-muted">{variantLabel(variant.options)}</span>
+                </summary>
+                <div className="px-3 pb-3">
+                  <EntityFields
+                    groups={variantGroups.map((group) => ({ ...group, position: "main" as const }))}
+                    data={variantData[key] ?? EMPTY_DATA}
+                    onChange={(next) => {
+                      setVariantData((all) => ({ ...all, [key]: next }));
+                      setDirty(true);
+                      if (result.status === "saved") setResult({ status: "idle" });
+                      forgetCreated();
+                    }}
+                    locales={context.locales}
+                    main={context.primaryLocale}
+                    languageNames={languageNames}
+                    upload={pictureUpload}
+                    fileUpload={fileUpload}
+                    lookups={props.fields.lookups}
+                    title={`Fields of ${variant.sku}`}
+                    intro="Only for this variant, shown when a shopper chooses it."
+                    idPrefix={`variant-fields-${key}`}
+                  />
+                </div>
+              </details>
+            );
+          })}
+        </section>
+      )}
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
       {(context.bookingsOn || isBooked(product.kind)) && <KindSection product={product} update={update} />}
       {product.kind === "appointment" && product.appointment && (
@@ -558,18 +633,6 @@ async function uploadPicture(storeSlug: string, file: File): Promise<{ url: stri
   } catch {
     return { problem: `${file.name} could not be read as a picture.` };
   }
-}
-
-/** A picture for a custom field (D118): shrunk in the browser, kept in the store's media library. */
-function uploadFieldPicture(storeSlug: string, file: File) {
-  return shrinkAndUpload(file, async (image, thumbnail) => {
-    const data = new FormData();
-    data.set("image", image);
-    data.set("name", file.name);
-    data.set("thumbnail", thumbnail);
-    const outcome = await uploadImageAction(storeSlug, data);
-    return outcome.ok ? { ok: true, url: outcome.url, thumbnailUrl: outcome.thumbnailUrl } : { ok: false, problem: outcome.problem };
-  });
 }
 
 function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { storeSlug: string; uploads: boolean }) {

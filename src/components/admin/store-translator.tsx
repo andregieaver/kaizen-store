@@ -295,7 +295,7 @@ export function StoreTranslator({
             <button type="button" onClick={reset} disabled={busy} className={button}>
               Start over
             </button>
-            <span className="text-xs text-muted">Pages are saved as drafts; products and menus are live once saved.</span>
+            <span className="text-xs text-muted">Pages are saved as drafts; products, menus and custom fields are live once saved.</span>
           </div>
         </section>
       )}

@@ -18,6 +18,7 @@ import {
   type ChatReply,
   type ChatRequest,
 } from "@/lib/chat";
+import { chatDetails } from "@/lib/custom-fields";
 import { cardNotices, noticesFor, noticeText, type CampaignNotice, type CampaignNotices } from "@/lib/campaign-notices";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -261,6 +262,8 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
             available: v.delivery === "physical" ? (stock.get(v.id) ?? 0) > 0 : true,
           })),
           subscriptions: product.plans.length > 0,
+          // What the owner has let the chat say of the product\'s custom fields (D118), in the shopper\'s words.
+          ...(chatDetails(product.fields).length > 0 ? { details: chatDetails(product.fields) } : {}),
           ...(offers.told.length > 0 ? { offers: offers.told, offersNote: "Offers are taken off in the cart." } : {}),
           ...(product.hostName ? { host: product.hostName } : {}),
         }),

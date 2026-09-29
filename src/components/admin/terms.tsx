@@ -15,6 +15,8 @@ import {
 } from "@/lib/taxonomy";
 import type { TermsResult } from "@/server/taxonomy";
 
+import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
+
 /**
  * Categories and tags in the admin (D50): `TermPicker` chooses an item's
  * (a page's or a product's), with a quick way to add one; `TermsManager`
@@ -169,7 +171,18 @@ function QuickAdd({
 }
 
 /** Every category (as a tree) and tag of one owner and kind of content, to add, change and delete. */
-export function TermsManager({ initial, actions, usedBy }: { initial: Term[]; actions: TermActions; usedBy: string }) {
+export function TermsManager({
+  initial,
+  actions,
+  usedBy,
+  fields,
+}: {
+  initial: Term[];
+  actions: TermActions;
+  usedBy: string;
+  /** Custom fields on the categories and tags (D118), when the store has groups for them. */
+  fields?: TermFieldsSetup;
+}) {
   const [terms, setTerms] = useState(initial);
   const tree = categoryTree(terms);
   const tags = terms.filter((t) => t.kind === "tag").sort(byName);
@@ -195,7 +208,7 @@ export function TermsManager({ initial, actions, usedBy }: { initial: Term[]; ac
             ) : (
               <ul className="flex flex-col divide-y divide-border border-y border-border">
                 {list.map((term) => (
-                  <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} />
+                  <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} fields={fields} />
                 ))}
               </ul>
             )}
@@ -301,11 +314,13 @@ function TermRow({
   terms,
   actions,
   onTerms,
+  fields,
 }: {
   term: Term & { depth: number };
   terms: Term[];
   actions: TermActions;
   onTerms: (terms: Term[]) => void;
+  fields?: TermFieldsSetup;
 }) {
   const id = useId();
   const [editing, setEditing] = useState(false);
@@ -416,6 +431,7 @@ function TermRow({
             </span>
           ) : (
             <span className="flex gap-2">
+              {fields && <TermFieldsButton term={term} setup={fields} />}
               <button type="button" onClick={() => setEditing(true)} className={button} aria-label={`Change ${one} ${term.name}`}>
                 Change
               </button>

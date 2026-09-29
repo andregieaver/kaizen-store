@@ -27,7 +27,7 @@ import type { PlanInterval } from "@/lib/subscriptions";
 import type { Term } from "@/lib/taxonomy";
 
 import { aiFor } from "./ai";
-import { productFacts, saveFieldData } from "./custom-fields";
+import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
 import { listLayoutChoices } from "./product-layouts";
 import type { Store } from "./stores";
@@ -594,6 +594,8 @@ export async function saveProduct(
   given: ProductInput,
   /** What was entered in the product's custom fields (D118), as the editor sends it; saved with the rest. */
   fields?: unknown,
+  /** What was entered in its variants' custom fields, by the variant's SKU, in the same shape. */
+  variantFields?: unknown,
 ): Promise<SaveProductResult> {
   const input = asKind(given);
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
@@ -671,6 +673,25 @@ export async function saveProduct(
           requireAll: input.status === "active",
         });
         if (fieldProblems.length > 0) throw new FieldProblems(fieldProblems);
+      }
+      // And each variant's own (by SKU; one that is gone or not sold has nothing to keep).
+      if (typeof variantFields === "object" && variantFields !== null && !Array.isArray(variantFields)) {
+        const rows = await tx.execute<Row>(sql`
+          select id, sku from commerce.product_variants where product_id = ${saved}::uuid and active
+        `);
+        const bySku = new Map(rows.map((row) => [String(row.sku), String(row.id)]));
+        for (const [sku, raw] of Object.entries(variantFields as Record<string, unknown>)) {
+          const variantId = bySku.get(sku);
+          const variantRuleFacts = variantId ? await variantFacts(tx, store.id, variantId) : null;
+          if (!variantId || !variantRuleFacts) continue;
+          const variantProblems = await saveFieldData(tx, store.id, "variant", variantId, raw, {
+            facts: variantRuleFacts,
+            locales: context.locales,
+            main: context.primaryLocale,
+            requireAll: input.status === "active",
+          });
+          if (variantProblems.length > 0) throw new FieldProblems(variantProblems.map((problem) => `${sku}: ${problem}`));
+        }
       }
       // Last, so the publishing check sees the finished listing.
       await tx.execute(sql`

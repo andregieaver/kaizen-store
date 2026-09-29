@@ -6,6 +6,7 @@ import { AddToCart, type AddToCartLabels } from "./add-to-cart";
 import { AddToDelivery, type AddToDeliveryLabels } from "./add-to-delivery";
 import { Dropdown } from "./dropdown";
 import { showVariantPicture, type VariantPicture } from "./variant-picture";
+import { announceVariant } from "./variant-selected";
 
 type Choice = [string, (id: string) => void];
 
@@ -30,6 +31,7 @@ export function VariantChoice({
   const choice = useState(initial);
   const chosen = choice[0];
   useEffect(() => showVariantPicture(productId, pictures[chosen] ?? null), [productId, pictures, chosen]);
+  useEffect(() => announceVariant(productId, chosen), [productId, chosen]);
   return <ChosenVariant.Provider value={choice}>{children}</ChosenVariant.Provider>;
 }
 

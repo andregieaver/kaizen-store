@@ -545,6 +545,41 @@ of running `playwright install`.
   layouts' `fields`/`field` parts and the page builder's `customField` block;
   any change to a group or to values calls `updateTag(fieldsTag())`. Never
   render a field's value as HTML.
+  Phase 2 (D119): a **group** and a **repeater** hold `subFields`; their
+  structure and non-text cells are in the shared row and only translatable sub
+  fields' texts in the locale rows, each repeater row with a stable id
+  (`newRowId()`) so a translation follows its row. Read and write a field only
+  through `readField()`/`writeField()`/`parseStructural()`, never the storage
+  shape (the form shows another language its own view, `ownView()`). **Link**
+  (a page, product, category, tag or web address), **product/page/term**
+  relations and **file** hold ids and addresses, never names: the server drops
+  ids that are not the store's (`keepOwnRelations()`) and files outside
+  `field-files/{storeId}/` (`isOwnFieldFile()`, uploaded straight from the
+  browser to the public bucket by `startFieldFileUploadAction`), and
+  `shownFieldsFor()` turns them into links in the shopper's market
+  (`resolveRelations()`), leaving out what no longer exists; links are drawn
+  only if `isSafeAddress()`. Things with fields (`FIELD_ENTITIES`): products,
+  **variants** (`shownFieldsForVariants()`, `ProductDetail.variantFields`, drawn
+  per variant by the `fields`/`field` parts through `VariantFields`, which
+  follows the picker via `announceVariant()`; entered in the product editor by
+  SKU as `variantFields`) and **categories and tags** (`term`,
+  `saveTermFields()`, the Fields button in `TermsManager`, drawn on the term's
+  page); their rules are `termKind`/`content`. A field with `filter`, `search`
+  or `chat` (public fields only; the generator's Storefront tab) is a listing
+  filter (`f.<name>` in the address, `listingFacets().fields`,
+  `field-filters.ts`), part of keyword search (`commerce.field_search`, rebuilt
+  by `refreshFieldSearch()` on every save and `refreshStoreFieldSearch()` when
+  groups change; `matchingIds()` reads it), and a fact the chat agent may say
+  (`chatDetails()`); public simple fields are also `additionalProperty` in the
+  product's JSON-LD (`structuredProperties()`). A heading, rich text, image or
+  button block can be **bound** to a field (`bind`, `src/lib/field-binding.ts`:
+  `bindPage()` on product layouts, `bindForPlace()` on pages, only when the
+  content has a binding). Field texts are in the store translation worklist
+  (scope `fields`, `src/lib/field-translate.ts`) and the AI manager reads and
+  fills them (`list_field_groups`, `get_fields`, `set_fields` and
+  `create_field_group`, the last two gated). A new kind of thing with fields is
+  an entry in `FIELD_ENTITIES`, `LOCATION_PARAMS`, `Facts` and `factsFor()`, a
+  cleanup trigger, `clone_store()` and its own editor.
 - Headers and footers (D80, `src/lib/site-layout.ts`, `src/components/site-parts.tsx`,
   `src/server/site-layouts.ts`): pages of type `header` and `footer` built
   with `site` blocks (`SITE_PARTS`, drawn by `SitePartView` with a

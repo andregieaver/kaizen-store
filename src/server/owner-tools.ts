@@ -15,7 +15,21 @@ import { cartReminderStats } from "./cart-reminders";
 import { findCustomer, getCustomerDetail, listCustomers } from "./customer-admin";
 import { listEmails } from "./email";
 import { findClaims } from "@/lib/claims";
+import { fieldShows, groupApplies, isEmptyValue, isTranslatable, readField, valuesFor, type Facts } from "@/lib/custom-fields";
+import {
+  buildFieldGroup,
+  describeLocation,
+  entityWords,
+  fieldValueText,
+  groupTexts,
+  prepareValues,
+  termIdsInRules,
+  wordsIn,
+  type ToolFieldEntity,
+} from "@/lib/field-tools";
+import { t } from "@/lib/i18n";
 
+import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts, productFacts, saveFieldData, saveFieldGroup } from "./custom-fields";
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
@@ -861,6 +875,191 @@ async function aiUsageTool({ account, store }: OwnerToolContext, { days, scope }
   return { period: `the last ${days} days, today included`, covers: all ? "every store the owner owns" : store.name, ...summarizeUsage(rows), admin: "/admin/account/usage" };
 }
 
+// Custom fields (D118) -------------------------------------------------------------------------
+
+const mainOf = (store: Store) => store.localization.locales[0] ?? "en";
+
+type FieldTarget = { id: string; title: string; facts: Facts; editor: string; tags: string[] };
+
+/** The product, page or article a tool means, the store's only, with what group rules ask about it. */
+async function findFieldTarget(store: Store, entity: ToolFieldEntity, ref: string): Promise<FieldTarget> {
+  if (entity === "product") {
+    const id = await findProductId(store, ref);
+    const [[head], facts] = await Promise.all([
+      db().execute<Row>(sql`
+        select coalesce((select title from commerce.product_translations where product_id = p.id and locale = ${mainOf(store)}),
+          (select title from commerce.product_translations where product_id = p.id order by locale limit 1), p.handle) as title
+        from commerce.products p where p.store_id = ${store.id}::uuid and p.id = ${id}::uuid
+      `),
+      productFacts(db(), store.id, id),
+    ]);
+    if (!facts) return fail(`No product "${ref}" in this store. Use list_products to find it.`);
+    return { id, title: String(head.title), facts, editor: adminLink(store, `/products/${id}`), tags: [catalogTag(store.id)] };
+  }
+  const rows = await db().execute<Row>(sql`
+    select id, coalesce(nullif(draft ->> 'title', ''), nullif(published ->> 'title', ''), slug) as title from commerce.pages
+    where store_id = ${store.id}::uuid and type = ${entity} and (id::text = ${ref} or slug = ${ref}) limit 2
+  `);
+  if (rows.length === 0) return fail(`No ${entity} "${ref}" in this store. Use list_pages${entity === "article" ? " with type article" : ""} to find it.`);
+  const id = String(rows[0].id);
+  const facts = await pageFacts(db(), store.id, id, "draft");
+  if (!facts) return fail(`No ${entity} "${ref}" in this store.`);
+  return { id, title: String(rows[0].title), facts, editor: adminLink(store, entity === "article" ? `/articles/${id}` : `/pages/${id}`), tags: [pagesTag(store.id)] };
+}
+
+async function listFieldGroupsTool({ store }: OwnerToolContext) {
+  const groups = await listFieldGroups(store.id);
+  const termIds = [...new Set(groups.flatMap(termIdsInRules))];
+  const terms = termIds.length
+    ? await db().execute<Row>(sql`select id, name from commerce.terms where store_id = ${store.id}::uuid and id in (${sql.join(termIds.map((id) => sql`${id}::uuid`), sql`, `)})`)
+    : [];
+  const names = new Map(terms.map((r) => [String(r.id), String(r.name)]));
+  return {
+    groups: groups.map((g) => ({
+      name: g.name,
+      slug: g.slug,
+      on: entityWords(g.entities),
+      applies_to: describeLocation(g, names),
+      active: g.active,
+      column: g.position,
+      fields: g.fields.map((f) => ({
+        label: f.label,
+        name: f.name,
+        type: f.type,
+        required: f.required === true,
+        access: f.access === "public" ? "public (shown on the site)" : "private (staff only)",
+        options: f.choices?.map((c) => c.label),
+        units: f.units,
+        unit: f.unit,
+        filter: f.filter || undefined,
+        search: f.search || undefined,
+        chat: f.chat || undefined,
+        hidden_unless: f.when && f.when.length > 0 ? true : undefined,
+      })),
+    })),
+    note: groups.length === 0 ? "The store has no custom fields yet: create_field_group makes a group." : "A field is private until it is made public. The site shows public fields through the product layout's Custom fields component (the standard product page shows them after the description).",
+    page: adminLink(store, "/fields"),
+  };
+}
+
+async function getFieldsTool({ store }: OwnerToolContext, { entity, item }: OwnerToolInput<"get_fields">) {
+  const target = await findFieldTarget(store, entity, item);
+  const main = mainOf(store);
+  const yesNo = t(main.split("-")[0]).customFields;
+  const [groups, data] = await Promise.all([activeFieldGroups(store.id, entity), getFieldData(store.id, entity, target.id)]);
+  const applying = groups.filter((g) => groupApplies(g, target.facts));
+  return {
+    [entity]: target.title,
+    language: main,
+    groups: applying.map((g) => {
+      const values = valuesFor(g.fields, data, main, main);
+      return {
+        group: g.name,
+        fields: g.fields.map((f) => {
+          const value = readField(f, data, main, main);
+          return {
+            name: f.name,
+            label: f.label,
+            type: f.type,
+            required: f.required === true,
+            access: f.access,
+            value: value === undefined || isEmptyValue(value) ? null : fieldValueText(f, value, main, yesNo),
+            options: f.choices?.map((c) => c.label),
+            hidden_by_its_logic: fieldShows(f, values) ? undefined : true,
+          };
+        }),
+      };
+    }),
+    note: applying.length === 0 ? `No custom fields apply to this ${entity}: list_field_groups shows the groups and where each applies.` : "A null value is empty. Public fields show on the site; private ones are for staff.",
+    admin: target.editor,
+  };
+}
+
+/** Words the store cannot back in what would be written: the claims filter (D76) reads it before a change is even kept. */
+function claimsFail(claims: string[]): void {
+  if (claims.length > 0) fail(`Rewrite without claims the store cannot back: ${claims.join(", ")}.`);
+}
+
+/** Works out a `set_fields` call against the store's own groups: which fields, what they take, every problem in words. */
+async function prepareSetFields({ store }: OwnerToolContext, input: OwnerToolInput<"set_fields">) {
+  if (Object.keys(input.values).length === 0) return fail("Name at least one field to set.");
+  if (Object.keys(input.values).length > 30) return fail("Set at most 30 fields at a time.");
+  const target = await findFieldTarget(store, input.entity, input.item);
+  const groups = (await activeFieldGroups(store.id, input.entity)).filter((g) => groupApplies(g, target.facts));
+  if (groups.length === 0) {
+    return fail(`No custom fields apply to this ${input.entity}. list_field_groups shows the groups and where each applies; create_field_group makes one.`);
+  }
+  const prepared = prepareValues(
+    input.values,
+    groups.flatMap((group) => group.fields.map((def) => ({ group, def }))),
+    `the ${input.entity}'s editor (${target.editor})`,
+  );
+  if (!prepared.ok) return fail(prepared.problems.join(" "));
+  claimsFail(claimsIn(...wordsIn(prepared.prepared)));
+  return { target, prepared: prepared.prepared };
+}
+
+async function setFieldsTool(ctx: OwnerToolContext, input: OwnerToolInput<"set_fields">) {
+  const { store } = ctx;
+  const { target, prepared } = await prepareSetFields(ctx, input);
+  const main = mainOf(store);
+  // Text is per language: it is written in the main one; the rest are the same in every language.
+  const raw = { values: {} as Record<string, unknown>, translations: { [main]: {} as Record<string, unknown> } };
+  for (const { candidate, value } of prepared) {
+    (isTranslatable(candidate.def.type) ? raw.translations[main] : raw.values)[candidate.def.id] = value;
+  }
+  const problems = await db().transaction((tx) =>
+    saveFieldData(tx, store.id, input.entity, target.id, raw, { facts: target.facts, locales: store.localization.locales, main, requireAll: false }),
+  );
+  if (problems.length > 0) return fail(problems.join(" "));
+  for (const tag of [fieldsTag(store.id), ...target.tags]) ctx.invalidate(tag);
+  const set = prepared.filter((p) => !p.clears).map((p) => p.candidate.def.label);
+  const cleared = prepared.filter((p) => p.clears).map((p) => p.candidate.def.label);
+  const shown = prepared.filter((p) => p.candidate.def.access === "public").map((p) => p.candidate.def.label);
+  const kept = prepared.filter((p) => p.candidate.def.access !== "public").map((p) => p.candidate.def.label);
+  return {
+    done: `${[set.length > 0 && `Set ${set.join(", ")}`, cleared.length > 0 && `cleared ${cleared.join(", ")}`].filter(Boolean).join(" and ")} on ${target.title}.`.replace(/^c/, "C"),
+    on_the_site: shown.length > 0 ? shown : undefined,
+    private_so_not_shown: kept.length > 0 ? kept : undefined,
+    admin: target.editor,
+  };
+}
+
+async function createFieldGroupTool(ctx: OwnerToolContext, input: OwnerToolInput<"create_field_group">) {
+  const { store } = ctx;
+  claimsFail(claimsIn(...groupTexts(input)));
+  const existing = await listFieldGroups(store.id);
+  const built = buildFieldGroup(input, existing.map((g) => g.slug));
+  if (!built.ok) return fail(built.problem);
+  const result = await saveFieldGroup({ account: ctx.account, store, role: "owner" }, built.group);
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(fieldsTag(store.id));
+  const anyPublic = built.group.fields.some((f) => f.access === "public");
+  return {
+    done: `The field group "${input.name}" is made for ${entityWords([input.entity])[0]}, with ${built.group.fields.map((f) => f.label).join(", ")}.`,
+    fields: built.group.fields.map((f) => ({ name: f.name, label: f.label, type: f.type, access: f.access })),
+    note: anyPublic
+      ? "Public fields show on the site once filled in: the standard product page shows them after the description, and a product layout shows them through its Custom fields component. Fill them in with set_fields."
+      : "The fields are private, so only staff see them. To show them on the site, make them public in the admin editor; a product layout shows them through its Custom fields component. Fill them in with set_fields.",
+    admin: result.id ? adminLink(store, `/fields/${result.id}`) : adminLink(store, "/fields"),
+  };
+}
+
+/**
+ * Checks a gated call before it is even kept for approval: what would be
+ * written must pass the claims filter (D76) and name fields that exist, so
+ * the owner is never asked to approve what could not be done. Throws
+ * `OwnerToolError` with the reason for the model.
+ */
+export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<void> {
+  if (name !== "set_fields" && name !== "create_field_group") return;
+  const tool = OWNER_TOOLS_BY_NAME[name];
+  const input = tool ? readToolInput(tool, raw) : null;
+  if (!input?.ok) return fail(`The arguments could not be read: ${input?.problem ?? "unknown tool"}`);
+  if (name === "set_fields") await prepareSetFields(ctx, input.input as OwnerToolInput<"set_fields">);
+  else claimsFail(claimsIn(...groupTexts(input.input as OwnerToolInput<"create_field_group">)));
+}
+
 const HANDLERS: Record<OwnerToolName, Handler> = {
   store_overview: storeOverview,
   sales_summary: salesSummary,
@@ -872,6 +1071,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   list_bookings: listBookingsTool,
   list_discounts: listDiscountsTool,
   list_campaigns: listCampaignsTool,
+  list_field_groups: listFieldGroupsTool,
+  get_fields: getFieldsTool,
+  create_field_group: createFieldGroupTool,
+  set_fields: setFieldsTool,
   list_pages: listPagesTool,
   search_insights: searchInsights,
   add_order_note: addOrderNoteTool,

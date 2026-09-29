@@ -36,8 +36,17 @@ const NAME_MAX = 40;
 // Things that have fields
 // ---------------------------------------------------------------------------
 
-/** The kinds of thing a group can be on, so far: products, pages and articles. */
-export const FIELD_ENTITIES = { product: "Products", page: "Pages", article: "Articles" } as const;
+/**
+ * The kinds of thing a group can be on: products, their variants, pages,
+ * articles, and categories and tags (the store's own, `term`).
+ */
+export const FIELD_ENTITIES = {
+  product: "Products",
+  variant: "Variants",
+  page: "Pages",
+  article: "Articles",
+  term: "Categories and tags",
+} as const;
 export type FieldEntity = keyof typeof FIELD_ENTITIES;
 export const FIELD_ENTITY_KEYS = Object.keys(FIELD_ENTITIES) as [FieldEntity, ...FieldEntity[]];
 export const isFieldEntity = (value: unknown): value is FieldEntity =>
@@ -78,16 +87,53 @@ export const FIELD_TYPES = {
   datetime: { label: "Date and time", category: "Date and colour", translatable: false, hint: "A day and a time." },
   time: { label: "Time", category: "Date and colour", translatable: false, hint: "A time of day." },
   color: { label: "Colour", category: "Date and colour", translatable: false, hint: "A colour." },
+  file: { label: "File", category: "Content", translatable: false, hint: "A file to download, such as a data sheet." },
+  link: {
+    label: "Link",
+    category: "Relational",
+    translatable: true,
+    hint: "A link to a page, product, category, tag or web address, with its own words and one per language.",
+  },
+  product: { label: "Product", category: "Relational", translatable: false, hint: "One or more of the store's products." },
+  page: { label: "Page or article", category: "Relational", translatable: false, hint: "One or more of the store's published pages or articles." },
+  term: { label: "Category or tag", category: "Relational", translatable: false, hint: "One or more of the store's categories or tags." },
+  group: { label: "Group", category: "Layout", translatable: false, hint: "Several fields that belong together, shown as one." },
+  repeater: {
+    label: "Repeater",
+    category: "Layout",
+    translatable: false,
+    hint: "Rows of the same fields, as many as you allow: features, sizes, ingredients with amounts.",
+  },
 } as const;
 
 export type FieldType = keyof typeof FIELD_TYPES;
 export const FIELD_TYPE_KEYS = Object.keys(FIELD_TYPES) as [FieldType, ...FieldType[]];
-export const FIELD_CATEGORIES = ["Basic", "Choice", "Content", "Date and colour"] as const;
+export const FIELD_CATEGORIES = ["Basic", "Choice", "Content", "Date and colour", "Relational", "Layout"] as const;
 
 /** Whether a type's value has one text per language; the rest are the same in every language. */
 export const isTranslatable = (type: FieldType): boolean => FIELD_TYPES[type].translatable;
 
+/** A group or a repeater: it holds fields of its own, whose texts are per language one by one. */
+export const isStructural = (type: FieldType): boolean => type === "group" || type === "repeater";
+
+/** The fields a group or repeater holds (none for other types). */
+export const subFieldsOf = (def: Pick<FieldDef, "type" | "subFields">): FieldDef[] => (isStructural(def.type) ? (def.subFields ?? []) : []);
+
+/** Whether some part of a field's value is per language: a text-like type, or a group or repeater with such a field in it. */
+export const hasTranslations = (def: Pick<FieldDef, "type" | "subFields">): boolean =>
+  isStructural(def.type) ? subFieldsOf(def).some((sub) => isTranslatable(sub.type)) : isTranslatable(def.type);
+
+/** Rows in a repeater, at most; and the most a sub field list may hold. */
+export const MAX_REPEATER_ROWS = 100;
+export const MAX_SUB_FIELDS = 30;
+/** How many things a relational field may point at. */
+export const MAX_RELATED = 50;
+
 const CHOICE_TYPES: readonly FieldType[] = ["select", "radio", "buttons", "checkbox"];
+/** The types a listing can be filtered by (D78): a choice from a list, or a yes or no. */
+export const FILTER_TYPES: readonly FieldType[] = ["select", "radio", "buttons", "checkbox", "boolean"];
+/** The types keyword search reads: those that hold words. */
+export const SEARCH_TYPES: readonly FieldType[] = ["text", "textarea", "richText", "select", "radio", "buttons", "checkbox"];
 export const hasChoices = (type: FieldType): boolean => CHOICE_TYPES.includes(type);
 
 /** How wide a field is in its group's form, in percent (ACF's wrapper width). */
@@ -101,6 +147,12 @@ export type FieldWidth = (typeof FIELD_WIDTHS)[number];
 export type FieldImage = { url: string; thumbnailUrl: string | null; alt: string };
 export type FieldVideo = { source: "youtube" | "vimeo"; link: string };
 export type FieldMeasurement = { value: number; unit: string };
+/** A link (D118): what it points at (a page, product, category, tag by id, or a web address), and its words. */
+export const LINK_KINDS = { page: "Page or article", product: "Product", category: "Category", tag: "Tag", url: "Web address" } as const;
+export type LinkKind = keyof typeof LINK_KINDS;
+export type FieldLink = { kind: LinkKind; ref: string; label: string; newTab?: boolean };
+/** A file to download, kept in the store's own storage. */
+export type FieldFile = { url: string; name: string; size: number; contentType: string };
 
 /** What a field holds, by type. Empty values are never stored. */
 export type FieldValue =
@@ -112,10 +164,16 @@ export type FieldValue =
   | FieldImage
   | FieldImage[]
   | FieldVideo
-  | RichTextDoc;
+  | FieldLink
+  | FieldFile
+  | RichTextDoc
+  | Values
+  | Values[];
 
-/** Values by field id. */
-export type Values = Record<string, FieldValue>;
+/** Values by field id. In a group, the values of its fields; a repeater's rows are these with an `id` of their own. */
+export interface Values {
+  [id: string]: FieldValue;
+}
 
 /**
  * A thing's values as they are kept: those that are the same in every
@@ -191,6 +249,21 @@ export type FieldDef = {
   choices?: Choice[];
   /** Gallery: the most pictures. */
   maxItems?: number;
+  /** Group and repeater: the fields in it (never a group or repeater themselves). */
+  subFields?: FieldDef[];
+  /** Repeater: the fewest and most rows, the label of the button that adds one, and how a row is laid out in the form. */
+  minRows?: number;
+  maxRows?: number;
+  buttonLabel?: string;
+  rowLayout?: "table" | "block";
+  /** Where else a public field is used (D118): offered as a filter in the listing, found by keyword search, told by the chat agent. */
+  filter?: boolean;
+  search?: boolean;
+  chat?: boolean;
+  /** Product, page and category or tag fields: whether one thing or several may be chosen. */
+  multiple?: boolean;
+  /** Category or tag fields: which of them to choose from. */
+  termKinds?: ("category" | "tag")[];
 };
 
 export const FIELD_POSITIONS = { main: "Main column", side: "Side column" } as const;
@@ -234,6 +307,17 @@ export const LOCATION_PARAMS: Record<FieldEntity, readonly { param: string; labe
     { param: "category", label: "Category" },
     { param: "tag", label: "Tag" },
   ],
+  // A variant follows its product: what the product is and where it is listed.
+  variant: [
+    { param: "kind", label: "Kind of product" },
+    { param: "category", label: "Product's category" },
+    { param: "tag", label: "Product's tag" },
+    { param: "audience", label: "Sold to" },
+  ],
+  term: [
+    { param: "termKind", label: "Category or tag" },
+    { param: "content", label: "Used for" },
+  ],
 };
 
 /** The fixed answers for the params that have some. */
@@ -243,6 +327,15 @@ export const LOCATION_CHOICES: Record<string, readonly { value: string; label: s
     { value: "appointment", label: "Appointment" },
     { value: "stay", label: "Stay" },
     { value: "rental", label: "Rental" },
+  ],
+  termKind: [
+    { value: "category", label: "Category" },
+    { value: "tag", label: "Tag" },
+  ],
+  content: [
+    { value: "product", label: "Products" },
+    { value: "page", label: "Pages" },
+    { value: "article", label: "Articles" },
   ],
   audience: [
     { value: "all", label: "Everyone" },
@@ -262,6 +355,9 @@ export type Facts = {
   tags: string[];
   /** The special pages (roles) a page is chosen for. */
   roles: string[];
+  /** A category or tag: which it is, and what it sorts (products, pages or articles). */
+  termKind?: string;
+  content?: string;
 };
 
 export function ruleMatches(rule: LocationRule, facts: Facts): boolean {
@@ -281,6 +377,12 @@ export function ruleMatches(rule: LocationRule, facts: Facts): boolean {
       break;
     case "role":
       holds = facts.roles.includes(rule.value);
+      break;
+    case "termKind":
+      holds = facts.termKind === rule.value;
+      break;
+    case "content":
+      holds = facts.content === rule.value;
       break;
     default:
       holds = false;
@@ -319,7 +421,13 @@ export const locationFor = (group: FieldGroup, entity: FieldEntity): RuleGroups<
 // Values as text, and when they are empty
 // ---------------------------------------------------------------------------
 
-const isImage = (v: unknown): v is FieldImage => typeof v === "object" && v !== null && "url" in v && "alt" in v;
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const isDoc = (v: unknown): v is RichTextDoc => isRecord(v) && v.type === "doc" && Array.isArray(v.content);
+const isImage = (v: unknown): v is FieldImage => isRecord(v) && typeof v.url === "string" && "alt" in v;
+const isMeasurement = (v: unknown): v is FieldMeasurement => isRecord(v) && typeof v.value === "number" && typeof v.unit === "string";
+const isVideo = (v: unknown): v is FieldVideo => isRecord(v) && typeof v.source === "string" && typeof v.link === "string";
+const isLink = (v: unknown): v is FieldLink => isRecord(v) && typeof v.kind === "string" && typeof v.ref === "string" && typeof v.label === "string";
+const isFile = (v: unknown): v is FieldFile => isRecord(v) && typeof v.url === "string" && typeof v.name === "string" && typeof v.size === "number";
 
 export function isEmptyValue(value: FieldValue | null | undefined): boolean {
   if (value === null || value === undefined) return true;
@@ -327,8 +435,10 @@ export function isEmptyValue(value: FieldValue | null | undefined): boolean {
   if (typeof value === "number") return Number.isNaN(value);
   if (typeof value === "boolean") return false;
   if (Array.isArray(value)) return value.length === 0;
-  if ("type" in value && value.type === "doc") return richTextPlain(value).trim() === "";
-  return false;
+  if (isDoc(value)) return richTextPlain(value).trim() === "";
+  // A group: empty when everything in it is; the other objects (a picture, a link) hold something as soon as they exist.
+  if (isImage(value) || isMeasurement(value) || isVideo(value) || isLink(value) || isFile(value)) return false;
+  return Object.values(value).every((inner) => isEmptyValue(inner as FieldValue));
 }
 
 /** A value as text, for comparing in conditions and for a plain rendering. */
@@ -337,11 +447,18 @@ export function valueText(value: FieldValue | null | undefined): string {
   if (typeof value === "string") return value;
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return value ? "1" : "0";
-  if (Array.isArray(value)) return value.map((item) => (typeof item === "string" ? item : item.url)).join(", ");
-  if ("type" in value && value.type === "doc") return richTextPlain(value);
-  if ("unit" in value) return `${value.value} ${value.unit}`;
-  if ("source" in value) return value.link;
+  if (Array.isArray(value)) {
+    // Choices and ids are texts; pictures have addresses; a repeater's rows count.
+    if (value.every((item) => typeof item === "string")) return (value as string[]).join(", ");
+    if (value.every(isImage)) return (value as FieldImage[]).map((item) => item.url).join(", ");
+    return String(value.length);
+  }
+  if (isDoc(value)) return richTextPlain(value);
+  if (isMeasurement(value)) return `${value.value} ${value.unit}`;
+  if (isVideo(value)) return value.link;
   if (isImage(value)) return value.url;
+  if (isLink(value)) return value.label || value.ref;
+  if (isFile(value)) return value.name;
   return "";
 }
 
@@ -363,12 +480,12 @@ export function conditionHolds(condition: Condition, values: Values): boolean {
       return empty;
     case "==":
       if (typeof value === "boolean") return value === asBool(wanted);
-      if (Array.isArray(value)) return value.some((item) => item === wanted);
+      if (Array.isArray(value)) return (value as unknown[]).some((item) => item === wanted);
       return valueText(value) === wanted;
     case "!=":
       return !conditionHolds({ ...condition, operator: "==" }, values);
     case "contains":
-      if (Array.isArray(value)) return value.some((item) => item === wanted);
+      if (Array.isArray(value)) return (value as unknown[]).some((item) => item === wanted);
       return valueText(value).toLowerCase().includes(wanted.toLowerCase());
     case "matches":
       try {
@@ -378,12 +495,7 @@ export function conditionHolds(condition: Condition, values: Values): boolean {
       }
     case ">":
     case "<": {
-      const number =
-        typeof value === "number"
-          ? value
-          : typeof value === "object" && value !== null && "unit" in value
-            ? value.value
-            : Number(valueText(value));
+      const number = typeof value === "number" ? value : isMeasurement(value) ? value.value : Number(valueText(value));
       const limit = Number(wanted);
       if (empty || Number.isNaN(number) || Number.isNaN(limit)) return false;
       return condition.operator === ">" ? number > limit : number < limit;
@@ -414,6 +526,13 @@ export function operatorsFor(type: FieldType): ConditionOperator[] {
     case "image":
     case "gallery":
     case "video":
+    case "file":
+    case "link":
+    case "product":
+    case "page":
+    case "term":
+    case "group":
+    case "repeater":
       return ["has", "empty"];
     case "date":
     case "datetime":
@@ -585,15 +704,117 @@ export function parseValue(def: FieldDef, raw: unknown): Parsed {
       if (embedUrl(source, link.trim()) === null) return bad(def, "That is not a YouTube or Vimeo address.");
       return ok({ source, link: link.trim() });
     }
+    case "file": {
+      if (!isRecord(raw)) return bad(def, "Choose a file.");
+      const { url, name, size, contentType } = raw;
+      if (typeof url !== "string" || url.trim() === "") return ok(null);
+      if (!isFileAddress(url.trim())) return bad(def, "A file has an invalid address.");
+      if (typeof name !== "string" || name.trim() === "" || name.length > 200) return bad(def, "A file needs a name of at most 200 characters.");
+      if (typeof size !== "number" || !Number.isFinite(size) || size < 0 || size > MAX_FILE_BYTES) return bad(def, "A file can be at most 50 MB.");
+      if (typeof contentType !== "string" || contentType.length > 100) return bad(def, "A file has an invalid type.");
+      return ok({ url: url.trim(), name: name.trim(), size, contentType });
+    }
+    case "link": {
+      if (!isRecord(raw)) return bad(def, "Choose what to link to.");
+      const { kind, ref, label, newTab } = raw;
+      if (typeof ref !== "string" || ref.trim() === "") return ok(null);
+      if (typeof kind !== "string" || !Object.hasOwn(LINK_KINDS, kind)) return bad(def, "Choose what to link to.");
+      const target = ref.trim();
+      if (kind === "url" ? !isLinkTarget(target) : !UUID.test(target)) return bad(def, kind === "url" ? "A web address starts with https:// or a slash." : "That is not something to link to.");
+      if (label !== undefined && (typeof label !== "string" || label.length > 100)) return bad(def, "Keep the link's words under 100 characters.");
+      return ok({ kind: kind as LinkKind, ref: target, label: typeof label === "string" ? label.trim() : "", ...(newTab === true && { newTab: true }) });
+    }
+    case "product":
+    case "page":
+    case "term": {
+      const one = !def.multiple;
+      const list = Array.isArray(raw) ? raw : raw === "" ? [] : [raw];
+      const ids = [...new Set(list)];
+      if (ids.some((id) => typeof id !== "string" || !UUID.test(id))) return bad(def, "That is not something to choose.");
+      if (ids.length > (one ? 1 : MAX_RELATED)) return bad(def, one ? "Choose one." : `Choose at most ${MAX_RELATED}.`);
+      if (ids.length === 0) return ok(null);
+      return ok(one ? (ids[0] as string) : (ids as string[]));
+    }
+    case "group":
+    case "repeater":
+      return parseStructural(def, raw, "all");
   }
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const ROW_ID = /^r_[a-z0-9]{6,24}$/;
+export const MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+/** A file's address: on the web (https) or in the store's own storage path. */
+const isFileAddress = (url: string) => url.length <= 1000 && (/^https:\/\//.test(url) || /^\/(?![/\\])\S*$/.test(url));
+/** A link's web address: https or http, or a path on the store's own site. */
+const isLinkTarget = (url: string) => url.length <= 1000 && (/^https?:\/\/\S+$/.test(url) || /^\/(?![/\\])\S*$/.test(url));
+
+/**
+ * A group's or repeater's value: its sub fields checked one by one. `part`
+ * says which of them: all (a value as a person edits it), the shared ones or
+ * the translated ones (as they are kept in the two kinds of row). A
+ * repeater's rows are kept with an id of their own, the translated part by
+ * that id, so a row moved keeps its words in every language.
+ */
+function parseStructural(def: FieldDef, raw: unknown, part: "all" | "shared" | "translated"): Parsed {
+  if (raw === null || raw === undefined) return ok(null);
+  const subs = subFieldsOf(def).filter((sub) => part === "all" || (part === "translated") === isTranslatable(sub.type));
+  const cells = (source: unknown): { ok: true; values: Values } | { ok: false; problem: string } => {
+    if (!isRecord(source)) return { ok: false, problem: "Fill in its fields." };
+    const values: Values = {};
+    for (const sub of subs) {
+      if (!Object.hasOwn(source, sub.id)) continue;
+      const parsed = parseValue(sub, source[sub.id]);
+      if (!parsed.ok) return { ok: false, problem: parsed.problem };
+      if (parsed.value !== null) values[sub.id] = parsed.value;
+    }
+    return { ok: true, values };
+  };
+  if (def.type === "group") {
+    const result = cells(raw);
+    if (!result.ok) return bad(def, result.problem);
+    return ok(Object.keys(result.values).length > 0 ? result.values : null);
+  }
+  if (part === "translated") {
+    if (!isRecord(raw)) return bad(def, "Its rows could not be read.");
+    const entries = Object.entries(raw);
+    if (entries.length > MAX_REPEATER_ROWS) return bad(def, `Use at most ${MAX_REPEATER_ROWS} rows.`);
+    const out: Record<string, Values> = {};
+    for (const [rowId, source] of entries) {
+      if (!ROW_ID.test(rowId)) continue;
+      const result = cells(source);
+      if (!result.ok) return bad(def, result.problem);
+      if (Object.keys(result.values).length > 0) out[rowId] = result.values;
+    }
+    return ok(Object.keys(out).length > 0 ? (out as unknown as Values) : null);
+  }
+  if (!Array.isArray(raw)) return bad(def, "Its rows could not be read.");
+  const most = Math.min(def.maxRows ?? MAX_REPEATER_ROWS, MAX_REPEATER_ROWS);
+  if (raw.length > most) return bad(def, `Use at most ${most} rows.`);
+  const seen = new Set<string>();
+  const rows: Values[] = [];
+  for (const item of raw) {
+    if (!isRecord(item) || typeof item.id !== "string" || !ROW_ID.test(item.id) || seen.has(item.id)) return bad(def, "A row could not be read.");
+    seen.add(item.id);
+    const result = cells(item);
+    if (!result.ok) return bad(def, result.problem);
+    rows.push({ id: item.id, ...result.values });
+  }
+  return ok(rows.length > 0 ? rows : null);
+}
+
+/** A new row's id: rows keep it wherever they are moved, and their words in other languages follow it. */
+export const newRowId = () => `r_${randomHex(12)}`;
 
 /**
  * What an editor sent, checked against the definitions of the groups on the
  * thing: only their fields count, everything else is dropped. A field
  * hidden by its logic is kept (so flipping the switch back restores it) but
  * never required. `locales` are the languages a store has; `main` is the one
- * a required text must be written in.
+ * a required text must be written in. A group's or repeater's sub fields
+ * follow their own kind: the shared ones in the shared value, the texts in the
+ * value of each language.
  */
 export function parseFieldChanges(
   defs: FieldDef[],
@@ -601,28 +822,25 @@ export function parseFieldChanges(
   locales: readonly string[],
   main: string,
 ): { changes: FieldChanges; problems: string[] } {
-  const input = (typeof raw === "object" && raw !== null ? raw : {}) as { values?: unknown; translations?: unknown };
-  const sent = (typeof input.values === "object" && input.values !== null ? input.values : {}) as Record<
-    string,
-    unknown
-  >;
-  const sentTranslations = (
-    typeof input.translations === "object" && input.translations !== null ? input.translations : {}
-  ) as Record<string, unknown>;
+  const input = (isRecord(raw) ? raw : {}) as { values?: unknown; translations?: unknown };
+  const sent = (isRecord(input.values) ? input.values : {}) as Record<string, unknown>;
+  const sentTranslations = (isRecord(input.translations) ? input.translations : {}) as Record<string, unknown>;
   const changes: FieldChanges = { values: {}, translations: {} };
   const problems: string[] = [];
 
   for (const def of defs) {
-    if (isTranslatable(def.type)) {
+    if (hasTranslations(def)) {
       for (const locale of locales) {
         const own = sentTranslations[locale];
-        if (typeof own !== "object" || own === null || !Object.hasOwn(own, def.id)) continue;
-        const parsed = parseValue(def, (own as Record<string, unknown>)[def.id]);
+        if (!isRecord(own) || !Object.hasOwn(own, def.id)) continue;
+        const parsed = isStructural(def.type) ? parseStructural(def, own[def.id], "translated") : parseValue(def, own[def.id]);
         if (!parsed.ok) problems.push(locale === main ? parsed.problem : `${parsed.problem} (${locale})`);
         else (changes.translations[locale] ??= {})[def.id] = parsed.value;
       }
-    } else if (Object.hasOwn(sent, def.id)) {
-      const parsed = parseValue(def, sent[def.id]);
+    }
+    // What is the same in every language: everything but a text, and a group's or repeater's other fields.
+    if (!isTranslatable(def.type) && Object.hasOwn(sent, def.id)) {
+      const parsed = isStructural(def.type) ? parseStructural(def, sent[def.id], "shared") : parseValue(def, sent[def.id]);
       if (!parsed.ok) problems.push(parsed.problem);
       else changes.values[def.id] = parsed.value;
     }
@@ -637,12 +855,10 @@ export function parseFieldChanges(
 export function changesFrom(defs: FieldDef[], data: FieldData, locales: readonly string[]): FieldChanges {
   const changes: FieldChanges = { values: {}, translations: {} };
   for (const def of defs) {
-    if (isTranslatable(def.type)) {
-      for (const locale of locales)
-        (changes.translations[locale] ??= {})[def.id] = data.translations[locale]?.[def.id] ?? null;
-    } else {
-      changes.values[def.id] = data.values[def.id] ?? null;
+    if (hasTranslations(def)) {
+      for (const locale of locales) (changes.translations[locale] ??= {})[def.id] = data.translations[locale]?.[def.id] ?? null;
     }
+    if (!isTranslatable(def.type)) changes.values[def.id] = data.values[def.id] ?? null;
   }
   return changes;
 }
@@ -665,12 +881,151 @@ export function applyChanges(existing: FieldData, changes: FieldChanges): FieldD
   return { values: merge(existing.values, changes.values), translations };
 }
 
-/** Required fields left empty, among those that show (in the main language for text). */
+// A group's or repeater's parts, as they are kept and as a person edits them ---
+
+/** The fields of `values` that are shared, or those that are texts, as a group's or a row's cells. */
+function cellsOf(subs: FieldDef[], values: Values | undefined, pick: "shared" | "translated"): Values {
+  const out: Values = {};
+  for (const sub of subs) {
+    if ((pick === "translated") !== isTranslatable(sub.type)) continue;
+    const value = values?.[sub.id];
+    if (value !== undefined && !isEmptyValue(value)) out[sub.id] = value;
+  }
+  return out;
+}
+
+/** A group's or row's fields in a language: the shared ones as they are, the texts in the language's own words, else the main language's. */
+function overlayCells(
+  subs: FieldDef[],
+  shared: Values | undefined,
+  mainWords: Values | undefined,
+  ownWords: Values | undefined,
+  locale: string,
+  main: string,
+): Values {
+  const out: Values = {};
+  for (const sub of subs) {
+    const value = isTranslatable(sub.type) ? (ownWords?.[sub.id] ?? (locale === main ? undefined : mainWords?.[sub.id])) : shared?.[sub.id];
+    if (value !== undefined && !isEmptyValue(value)) out[sub.id] = value;
+  }
+  return out;
+}
+
+const asValues = (value: unknown): Values | undefined => (isRecord(value) ? (value as Values) : undefined);
+const asRows = (value: unknown): Values[] => (Array.isArray(value) ? (value as Values[]).filter((row) => isRecord(row)) : []);
+
+/**
+ * A field's value in a language, as an editor shows it and a page draws it:
+ * a text is the language's own, else the main language's; a group is its
+ * fields (its texts by the same rule); a repeater is its rows, each with its
+ * `id`, in the main language's order; the rest are the same everywhere.
+ */
+export function readField(def: FieldDef, data: FieldData, locale: string, main: string): FieldValue | undefined {
+  if (!isStructural(def.type)) {
+    return isTranslatable(def.type)
+      ? (data.translations[locale]?.[def.id] ?? (locale === main ? undefined : data.translations[main]?.[def.id]))
+      : data.values[def.id];
+  }
+  const subs = subFieldsOf(def);
+  const words = (l: string) => data.translations[l]?.[def.id];
+  if (def.type === "group") {
+    const merged = overlayCells(subs, asValues(data.values[def.id]), asValues(words(main)), asValues(words(locale)), locale, main);
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
+  const rowWords = (l: string) => asValues(words(l)) as Record<string, Values> | undefined;
+  const rows = asRows(data.values[def.id]).map((row) => ({
+    id: String(row.id),
+    ...overlayCells(subs, row, rowWords(main)?.[String(row.id)], rowWords(locale)?.[String(row.id)], locale, main),
+  }));
+  return rows.length > 0 ? rows : undefined;
+}
+
+/**
+ * The data after a value for a field is written in a language: the counterpart
+ * of `readField`. A text is the language's own; a group's shared fields and a
+ * repeater's rows (their number, order and shared fields) are written in the
+ * main language only, and another language writes only the texts in them, by
+ * row.
+ */
+export function writeField(def: FieldDef, data: FieldData, locale: string, main: string, value: FieldValue | undefined): FieldData {
+  const empty = value === undefined || isEmptyValue(value);
+  const next: FieldData = { values: { ...data.values }, translations: { ...data.translations } };
+  const setWords = (l: string, words: FieldValue | undefined) => {
+    const own = { ...(next.translations[l] ?? {}) };
+    if (words === undefined) delete own[def.id];
+    else own[def.id] = words;
+    if (Object.keys(own).length > 0) next.translations[l] = own;
+    else delete next.translations[l];
+  };
+  if (!isStructural(def.type)) {
+    if (isTranslatable(def.type)) setWords(locale, empty ? undefined : value);
+    else if (empty) delete next.values[def.id];
+    else next.values[def.id] = value;
+    return next;
+  }
+  const subs = subFieldsOf(def);
+  const filled = (values: Values) => (Object.keys(values).length > 0 ? values : undefined);
+  if (def.type === "group") {
+    const cells = asValues(value) ?? {};
+    if (locale === main) {
+      const shared = filled(cellsOf(subs, cells, "shared"));
+      if (shared) next.values[def.id] = shared;
+      else delete next.values[def.id];
+    }
+    setWords(locale, filled(cellsOf(subs, cells, "translated")));
+    return next;
+  }
+  const rows = empty ? [] : asRows(value);
+  if (locale === main) {
+    if (rows.length === 0) {
+      delete next.values[def.id];
+      for (const l of Object.keys(next.translations)) setWords(l, undefined);
+      return next;
+    }
+    next.values[def.id] = rows.map((row) => ({ id: String(row.id), ...cellsOf(subs, row, "shared") }));
+  }
+  const known = new Set(asRows(next.values[def.id]).map((row) => String(row.id)));
+  const words: Record<string, Values> = {};
+  for (const row of rows) {
+    const cells = filled(cellsOf(subs, row, "translated"));
+    if (cells && known.has(String(row.id))) words[String(row.id)] = cells;
+  }
+  setWords(locale, Object.keys(words).length > 0 ? (words as unknown as Values) : undefined);
+  return next;
+}
+
+/** Required fields left empty, among those that show (in the main language for text), and the rows a repeater needs. */
 export function requiredProblems(defs: FieldDef[], data: FieldData, main: string): string[] {
   const values = valuesFor(defs, data, main, main);
-  return defs
-    .filter((def) => def.required && fieldShows(def, values) && isEmptyValue(values[def.id]))
-    .map((def) => `${def.label} is required.`);
+  const problems: string[] = [];
+  for (const def of defs) {
+    if (fieldShows(def, values)) problems.push(...requiredIn(def, values[def.id], ""));
+  }
+  return problems;
+}
+
+function requiredIn(def: FieldDef, value: FieldValue | undefined, where: string): string[] {
+  const at = where ? `${where}: ` : "";
+  const problems: string[] = [];
+  if (def.required && isEmptyValue(value)) problems.push(`${at}${def.label} is required.`);
+  if (!isStructural(def.type)) return problems;
+  const subs = subFieldsOf(def);
+  // What is inside is asked for once the group or repeater is used or asked for.
+  if (def.type === "group") {
+    const cells = asValues(value) ?? {};
+    if (def.required || !isEmptyValue(value)) {
+      for (const sub of subs) if (fieldShows(sub, cells)) problems.push(...requiredIn(sub, cells[sub.id], `${at}${def.label}`));
+    }
+    return problems;
+  }
+  const rows = asRows(value);
+  if ((def.minRows ?? 0) > rows.length && (def.required || rows.length > 0 || (def.minRows ?? 0) > 0)) {
+    problems.push(`${at}${def.label} needs at least ${def.minRows} ${def.minRows === 1 ? "row" : "rows"}.`);
+  }
+  rows.forEach((row, index) => {
+    for (const sub of subs) if (fieldShows(sub, row)) problems.push(...requiredIn(sub, row[sub.id], `${at}${def.label}, row ${index + 1}`));
+  });
+  return problems;
 }
 
 /**
@@ -680,9 +1035,7 @@ export function requiredProblems(defs: FieldDef[], data: FieldData, main: string
 export function valuesFor(defs: FieldDef[], data: FieldData, locale: string, main: string): Values {
   const out: Values = {};
   for (const def of defs) {
-    const value = isTranslatable(def.type)
-      ? (data.translations[locale]?.[def.id] ?? (locale === main ? undefined : data.translations[main]?.[def.id]))
-      : data.values[def.id];
+    const value = readField(def, data, locale, main);
     if (value !== undefined && !isEmptyValue(value)) out[def.id] = value;
   }
   return out;
@@ -703,6 +1056,26 @@ export type ShownField = {
   text: string;
   /** A checkbox's chosen labels. */
   items?: string[];
+  /** A group's fields, or a repeater's rows of fields, that have something to show. */
+  children?: ShownField[];
+  rows?: ShownField[][];
+  /** What a file, a link or a relation points at, ready to draw: words and address (the server fills in the ones that need a lookup). */
+  links?: ShownLink[];
+  /** The field may be said by the chat agent (phase 2). */
+  chat?: boolean;
+};
+
+/** Something a field points at: a file, a page, a product, a category or a web address. */
+export type ShownLink = {
+  label: string;
+  href: string;
+  /** Opens in a new tab: an address outside the site, or a file. */
+  newTab?: boolean;
+  /** A product's or page's picture, when it has one. */
+  image?: string | null;
+  /** A file's size in bytes and type. */
+  size?: number;
+  contentType?: string;
 };
 
 export type ShownGroup = { id: string; name: string; slug: string; position: FieldPosition; fields: ShownField[] };
@@ -747,13 +1120,69 @@ export function displayText(
       const [day, time] = (value as string).split("T");
       return `${new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`))}, ${time.slice(0, 5)}`;
     }
-    case "image":
-    case "gallery":
-    case "video":
-      return valueText(value);
+    case "file":
+      return (value as FieldFile).name;
+    case "link":
+      return (value as FieldLink).label;
+    case "product":
+    case "page":
+    case "term":
+    case "group":
+    case "repeater":
+      // Their words come from what they point at or hold: the server looks the first up, the renderer draws the second.
+      return "";
     default:
       return valueText(value);
   }
+}
+
+/** The fields that have something to show, in order, from sibling `values`: empty and logic-hidden ones left out. */
+function shownFields(
+  defs: FieldDef[],
+  values: Values,
+  locale: string,
+  words: { yes: string; no: string },
+  publicOnly: boolean,
+): ShownField[] {
+  const fields: ShownField[] = [];
+  for (const def of defs) {
+    if (publicOnly && def.access !== "public") continue;
+    const value = values[def.id];
+    if (value === undefined || isEmptyValue(value) || !fieldShows(def, values)) continue;
+    const shown: ShownField = {
+      id: def.id,
+      name: def.name,
+      label: localized(def.label, def.labels, locale),
+      type: def.type,
+      value,
+      text: displayText(def, value, locale, words),
+    };
+    if (def.type === "checkbox") shown.items = (value as string[]).map((key) => choiceLabel(def, key, locale));
+    if (def.chat) shown.chat = true;
+    if (def.type === "group") {
+      // What is inside a group follows the group's own access.
+      const children = shownFields(subFieldsOf(def), value as Values, locale, words, false);
+      if (children.length === 0) continue;
+      shown.children = children;
+    }
+    if (def.type === "repeater") {
+      const rows = asRows(value)
+        .map((row) => shownFields(subFieldsOf(def), row, locale, words, false))
+        .filter((row) => row.length > 0);
+      if (rows.length === 0) continue;
+      shown.rows = rows;
+    }
+    if (def.type === "file") {
+      const file = value as FieldFile;
+      shown.links = [{ label: file.name, href: file.url, newTab: true, size: file.size, contentType: file.contentType }];
+    }
+    if (def.type === "link" && (value as FieldLink).kind === "url") {
+      const link = value as FieldLink;
+      shown.links = [{ label: link.label || link.ref, href: link.ref, ...(link.newTab && { newTab: true }) }];
+    }
+    fields.push(shown);
+  }
+  return fields;
 }
 
 /**
@@ -770,22 +1199,64 @@ export function shownGroup(
   options: { publicOnly: boolean },
 ): ShownGroup {
   const values = valuesFor(group.fields, data, locale, main);
-  const fields: ShownField[] = [];
-  for (const def of group.fields) {
-    if (options.publicOnly && def.access !== "public") continue;
-    const value = values[def.id];
-    if (value === undefined || !fieldShows(def, values)) continue;
-    fields.push({
-      id: def.id,
-      name: def.name,
-      label: localized(def.label, def.labels, locale),
-      type: def.type,
-      value,
-      text: displayText(def, value, locale, words),
-      ...(def.type === "checkbox" && { items: (value as string[]).map((key) => choiceLabel(def, key, locale)) }),
-    });
-  }
-  return { id: group.id, name: group.name, slug: group.slug, position: group.position, fields };
+  return {
+    id: group.id,
+    name: group.name,
+    slug: group.slug,
+    position: group.position,
+    fields: shownFields(group.fields, values, locale, words, options.publicOnly),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// What an editor can point at
+// ---------------------------------------------------------------------------
+
+/** The store's things a relational field can choose from, for the editor (a store's own, never another's). */
+export type FieldLookups = {
+  products: { id: string; title: string }[];
+  pages: { id: string; title: string; type: "page" | "article" }[];
+  terms: { id: string; name: string; kind: "category" | "tag" }[];
+};
+export const EMPTY_LOOKUPS: FieldLookups = { products: [], pages: [], terms: [] };
+
+/** The most of each kind an editor lists to choose from. */
+export const MAX_LOOKUPS = 500;
+
+/** Whether some field in these groups points at the store's products, pages or categories (so an editor must list them). */
+export function needsLookups(groups: readonly FieldGroup[]): boolean {
+  const points = (def: FieldDef): boolean =>
+    def.type === "product" || def.type === "page" || def.type === "term" || def.type === "link" || subFieldsOf(def).some(points);
+  return groups.some((group) => group.fields.some(points));
+}
+
+/** The types whose value is a plain fact a search engine can read as a product property. */
+const PROPERTY_TYPES: readonly FieldType[] = ["text", "number", "measurement", "boolean", "select", "radio", "buttons", "checkbox", "date", "textarea"];
+
+/**
+ * The public fields of a product that make a `PropertyValue` in its structured
+ * data (D118): what the page already says in plain words, at most 30. Rich text,
+ * pictures, files, links and groups are left to the page.
+ */
+export function structuredProperties(groups: readonly ShownGroup[]): { name: string; value: string }[] {
+  return groups
+    .flatMap((group) => group.fields)
+    .filter((field) => PROPERTY_TYPES.includes(field.type) && field.text.trim() !== "" && field.text.length <= 300)
+    .slice(0, 30)
+    .map((field) => ({ name: field.label, value: field.text }));
+}
+
+/** The chat agent's facts (D81): the fields the owner has let it say, as label and words. */
+export function chatDetails(groups: readonly ShownGroup[]): { label: string; value: string }[] {
+  const out: { label: string; value: string }[] = [];
+  const visit = (fields: ShownField[]) => {
+    for (const field of fields) {
+      if (field.chat && field.text.trim() !== "") out.push({ label: field.label, value: field.text.slice(0, 300) });
+      if (field.children) visit(field.children);
+    }
+  };
+  for (const group of groups) visit(group.fields);
+  return out.slice(0, 30);
 }
 
 // ---------------------------------------------------------------------------
@@ -818,7 +1289,7 @@ const choice = z.object({
   labels: translations,
 });
 
-const fieldDef = z.object({
+const leafField = z.object({
   id: fieldId,
   name: nameRule,
   label: text(LABEL_MAX).min(1, "Give each field a label."),
@@ -838,6 +1309,19 @@ const fieldDef = z.object({
   units: z.array(text(12).min(1)).max(20).optional(),
   choices: z.array(choice).max(MAX_CHOICES, `Use at most ${MAX_CHOICES} choices.`).optional(),
   maxItems: z.number().int().min(1).max(MAX_GALLERY).optional(),
+  filter: z.boolean().optional(),
+  search: z.boolean().optional(),
+  chat: z.boolean().optional(),
+  multiple: z.boolean().optional(),
+  termKinds: z.array(z.enum(["category", "tag"])).min(1).max(2).optional(),
+  minRows: z.number().int().min(0).max(MAX_REPEATER_ROWS).optional(),
+  maxRows: z.number().int().min(1).max(MAX_REPEATER_ROWS).optional(),
+  buttonLabel: text(40).optional(),
+  rowLayout: z.enum(["table", "block"]).optional(),
+});
+
+const fieldDef = leafField.extend({
+  subFields: z.array(leafField).max(MAX_SUB_FIELDS, `Use at most ${MAX_SUB_FIELDS} fields in a group or repeater.`).optional(),
 });
 
 const locationRule = z.object({
@@ -888,6 +1372,15 @@ export const fieldGroupInput = z
       if (field.type === "measurement" && (field.units ?? []).length === 0) {
         ctx.addIssue({ code: "custom", path: [...at, "units"], message: `Add units to ${field.label}.` });
       }
+      if (field.filter && !FILTER_TYPES.includes(field.type)) {
+        ctx.addIssue({ code: "custom", path: [...at, "filter"], message: `${field.label} cannot be a filter: only choices and yes or no can.` });
+      }
+      if (field.search && !SEARCH_TYPES.includes(field.type)) {
+        ctx.addIssue({ code: "custom", path: [...at, "search"], message: `${field.label} cannot be searched: only texts and choices can.` });
+      }
+      if ((field.filter || field.search || field.chat) && field.access !== "public") {
+        ctx.addIssue({ code: "custom", path: [...at, "access"], message: `${field.label} must be shown on the site to be a filter, be searched or be told by the chat.` });
+      }
       if (field.min !== undefined && field.max !== undefined && field.min > field.max) {
         ctx.addIssue({
           code: "custom",
@@ -895,6 +1388,38 @@ export const fieldGroupInput = z
           message: `${field.label}: the least is more than the most.`,
         });
       }
+    });
+    // Groups and repeaters: what they hold is checked as a group's own fields are.
+    group.fields.forEach((field, index) => {
+      const at = ["fields", index];
+      if (!isStructural(field.type as FieldType)) {
+        if (field.subFields && field.subFields.length > 0) {
+          ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `${field.label} holds no fields of its own.` });
+        }
+        return;
+      }
+      const subs = field.subFields ?? [];
+      if (subs.length === 0) ctx.addIssue({ code: "custom", path: [...at, "subFields"], message: `Add fields to ${field.label}.` });
+      if (field.minRows !== undefined && field.maxRows !== undefined && field.minRows > field.maxRows) {
+        ctx.addIssue({ code: "custom", path: [...at, "minRows"], message: `${field.label}: the fewest rows is more than the most.` });
+      }
+      const subNames = new Set<string>();
+      subs.forEach((sub, subIndex) => {
+        const subAt = [...at, "subFields", subIndex];
+        if (isStructural(sub.type)) ctx.addIssue({ code: "custom", path: subAt, message: `${sub.label}: a group or repeater cannot hold another.` });
+        if (ids.has(sub.id)) ctx.addIssue({ code: "custom", path: subAt, message: "Two fields share an id." });
+        ids.add(sub.id);
+        if (subNames.has(sub.name)) ctx.addIssue({ code: "custom", path: [...subAt, "name"], message: `Two fields in ${field.label} are named ${sub.name}.` });
+        subNames.add(sub.name);
+        if (hasChoices(sub.type) && (sub.choices ?? []).length === 0) ctx.addIssue({ code: "custom", path: [...subAt, "choices"], message: `Add choices to ${sub.label}.` });
+        if (sub.type === "measurement" && (sub.units ?? []).length === 0) ctx.addIssue({ code: "custom", path: [...subAt, "units"], message: `Add units to ${sub.label}.` });
+        for (const condition of (sub.when ?? []).flat()) {
+          const trigger = subs.findIndex((other) => other.id === condition.field);
+          if (trigger === -1 || trigger >= subIndex) {
+            ctx.addIssue({ code: "custom", path: [...subAt, "when"], message: `${sub.label} can only depend on fields above it in ${field.label}.` });
+          }
+        }
+      });
     });
     // A field is shown by fields before it in the group, never by itself or one after it.
     group.fields.forEach((field, index) => {
@@ -982,6 +1507,16 @@ export function newField(type: FieldType, taken: readonly string[] = []): FieldD
       { key: "option-2", label: "Option 2" },
     ];
   if (type === "measurement") base.units = ["g", "kg"];
+  if (isStructural(type)) {
+    base.subFields = [{ id: newFieldId(), name: "text", label: "Text", type: "text", access: "private", width: 100 }];
+    if (type === "repeater") {
+      base.minRows = 0;
+      base.buttonLabel = "Add row";
+      base.rowLayout = "block";
+    }
+  }
+  if (type === "product" || type === "page" || type === "term") base.multiple = false;
+  if (type === "term") base.termKinds = ["category", "tag"];
   return base;
 }
 
@@ -993,7 +1528,11 @@ export function emptyGroup(entity: FieldEntity = "product"): FieldGroupInput {
 // Starting points
 // ---------------------------------------------------------------------------
 
-type PresetField = Omit<FieldDef, "id" | "name" | "access" | "when"> & { name?: string; access?: FieldAccess };
+type PresetField = Omit<FieldDef, "id" | "name" | "access" | "when" | "subFields"> & {
+  name?: string;
+  access?: FieldAccess;
+  subFields?: PresetField[];
+};
 
 /** A set of fields to start a group from (owners then change them as they like). */
 export const FIELD_PRESETS: readonly {
@@ -1093,6 +1632,46 @@ export const FIELD_PRESETS: readonly {
     ],
   },
   {
+    key: "key-features",
+    name: "Key features",
+    description: "A list of features, each with a title and a few words.",
+    entity: "product",
+    fields: [
+      {
+        label: "Features",
+        type: "repeater",
+        minRows: 0,
+        maxRows: 12,
+        buttonLabel: "Add feature",
+        rowLayout: "block",
+        subFields: [
+          { label: "Title", type: "text", width: 50 },
+          { label: "Description", type: "textarea", width: 100 },
+        ],
+      },
+    ],
+  },
+  {
+    key: "downloads",
+    name: "Downloads",
+    description: "Data sheets, manuals and other files to download.",
+    entity: "product",
+    fields: [
+      {
+        label: "Downloads",
+        type: "repeater",
+        minRows: 0,
+        maxRows: 10,
+        buttonLabel: "Add file",
+        rowLayout: "table",
+        subFields: [
+          { label: "Name", type: "text", width: 50 },
+          { label: "File", type: "file", width: 50 },
+        ],
+      },
+    ],
+  },
+  {
     key: "page-details",
     name: "Page details",
     description: "A subtitle and a highlighted picture for a page or an article.",
@@ -1108,12 +1687,16 @@ export const FIELD_PRESETS: readonly {
 export function groupFromPreset(key: string, taken: readonly string[] = []): FieldGroupInput | null {
   const preset = FIELD_PRESETS.find((p) => p.key === key);
   if (!preset) return null;
-  const names: string[] = [];
-  const fields = preset.fields.map((field): FieldDef => {
-    const name = uniqueName(field.name ?? nameOf(field.label), names);
-    names.push(name);
-    return { width: 100, ...field, id: newFieldId(), name, access: field.access ?? "private" };
-  });
+  const made = (list: PresetField[]): FieldDef[] => {
+    const names: string[] = [];
+    return list.map((field): FieldDef => {
+      const name = uniqueName(field.name ?? nameOf(field.label), names);
+      names.push(name);
+      const { subFields, ...rest } = field;
+      return { width: 100, ...rest, id: newFieldId(), name, access: field.access ?? "private", ...(subFields && { subFields: made(subFields) }) };
+    });
+  };
+  const fields = made(preset.fields);
   return {
     ...emptyGroup(preset.entity),
     name: preset.name,
@@ -1167,8 +1750,10 @@ export function importGroups(
     const source = typeof item === "object" && item !== null ? (item as Record<string, unknown>) : {};
     // Fresh ids, and the conditions that name them follow.
     const fields = Array.isArray(source.fields) ? (source.fields as Record<string, unknown>[]) : [];
-    const ids = new Map<string, string>(fields.map((f) => [String(f?.id), newFieldId()]));
-    const remapped = fields.map((f) => ({
+    const subsOf = (f: Record<string, unknown> | undefined): Record<string, unknown>[] =>
+      Array.isArray(f?.subFields) ? (f.subFields as Record<string, unknown>[]) : [];
+    const ids = new Map<string, string>([...fields, ...fields.flatMap(subsOf)].map((f) => [String(f?.id), newFieldId()]));
+    const remapField = (f: Record<string, unknown>): Record<string, unknown> => ({
       ...f,
       id: ids.get(String(f?.id)),
       when: Array.isArray(f?.when)
@@ -1176,7 +1761,9 @@ export function importGroups(
             all.map((c) => ({ ...c, field: ids.get(String(c?.field)) ?? c?.field })),
           )
         : undefined,
-    }));
+      ...(Array.isArray(f?.subFields) && { subFields: subsOf(f).map(remapField) }),
+    });
+    const remapped = fields.map(remapField);
     const location = Array.isArray(source.location)
       ? (source.location as LocationRule[][])
           .map((all) => all.filter((rule) => rule?.param !== "category" && rule?.param !== "tag"))

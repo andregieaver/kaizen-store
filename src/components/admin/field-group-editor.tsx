@@ -21,15 +21,15 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 
 import {
   EMPTY_DATA,
-  FIELD_CATEGORIES,
+  EMPTY_LOOKUPS,
   FIELD_ENTITIES,
   FIELD_ENTITY_KEYS,
   FIELD_POSITIONS,
   FIELD_TYPES,
-  FIELD_TYPE_KEYS,
   LOCATION_CHOICES,
   MAX_GROUP_FIELDS,
   MAX_RULES,
+  isStructural,
   newField,
   slugOf,
   type FieldData,
@@ -51,11 +51,12 @@ import {
   pruneConditions,
   ruleFits,
   startValue,
+  subFieldsSummary,
 } from "@/lib/field-group-editor";
 
 import { FieldEditorDialog, type FieldLanguage } from "./field-editor-dialog";
+import { FieldTypePicker } from "./field-type-picker";
 import { FieldsForm } from "./fields-form";
-import { Modal } from "./modal";
 
 type Save = (input: FieldGroupInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 
@@ -131,6 +132,7 @@ export function FieldGroupEditor({
     setDirty(true);
     setSaved(false);
   };
+  const markFresh = (ids: string[]) => setFresh((current) => new Set([...current, ...ids]));
   const setFields = (fields: FieldDef[], message?: string) => {
     change((g) => ({ ...g, fields }));
     if (message) setAnnouncement(message);
@@ -170,7 +172,7 @@ export function FieldGroupEditor({
 
   const addField = (type: FieldType) => {
     const created = newField(type, names);
-    setFresh((current) => new Set(current).add(created.id));
+    markFresh([created.id, ...(created.subFields ?? []).map((sub) => sub.id)]);
     setFields([...fields, created], `${FIELD_TYPES[type].label} field added.`);
     setPicking(false);
     setEditing(created.id);
@@ -192,7 +194,7 @@ export function FieldGroupEditor({
   const copyField = (id: string) => {
     const result = duplicateField(fields, id);
     if (!result) return;
-    setFresh((current) => new Set(current).add(result.copy.id));
+    markFresh([result.copy.id, ...(result.copy.subFields ?? []).map((sub) => sub.id)]);
     setFields(result.fields, `${result.copy.label} added below.`);
     setEditing(result.copy.id);
   };
@@ -416,17 +418,21 @@ export function FieldGroupEditor({
             locale={main}
             main={main}
             upload={null}
+            fileUpload={null}
+            lookups={EMPTY_LOOKUPS}
             languageName={languageName}
           />
         </div>
       </aside>
 
-      <FieldPicker open={picking} onClose={() => setPicking(false)} onPick={addField} />
+      <FieldTypePicker open={picking} onClose={() => setPicking(false)} onPick={addField} />
       <FieldEditorDialog
         field={editingField}
         above={editingIndex > 0 ? fields.slice(0, editingIndex) : []}
         otherNames={names.filter((_, i) => i !== editingIndex)}
         fresh={editingField ? fresh.has(editingField.id) : false}
+        freshIds={fresh}
+        onFresh={markFresh}
         languages={languages}
         onApply={(next) => {
           setFields(
@@ -438,46 +444,6 @@ export function FieldGroupEditor({
         onClose={() => setEditing(null)}
       />
     </div>
-  );
-}
-
-/** Choosing the type of a new field: labelled and explained, grouped as the library groups them. */
-function FieldPicker({
-  open,
-  onClose,
-  onPick,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onPick: (type: FieldType) => void;
-}) {
-  return (
-    <Modal open={open} onClose={onClose} title="Add a field" wide>
-      <div className="flex flex-col gap-5">
-        {FIELD_CATEGORIES.map((category) => (
-          <section key={category} aria-label={category}>
-            <h3 className="mb-2 text-sm font-medium">{category}</h3>
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {FIELD_TYPE_KEYS.filter((type) => FIELD_TYPES[type].category === category).map((type) => (
-                <li key={type}>
-                  <button
-                    type="button"
-                    onClick={() => onPick(type)}
-                    className="flex h-full w-full flex-col items-start gap-0.5 rounded-md border border-border p-3 text-left hover:border-foreground hover:bg-surface"
-                  >
-                    <span className="text-sm font-medium">{FIELD_TYPES[type].label}</span>
-                    <span className={hint}>{FIELD_TYPES[type].hint}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-        <p className={hint}>
-          Not here: raw HTML, scripts and CSS. Pages and the site&apos;s own code have their places for those.
-        </p>
-      </div>
-    </Modal>
   );
 }
 
@@ -578,6 +544,7 @@ function FieldRow({
         <div className="min-w-0 flex-1 basis-40">
           <p className="truncate text-sm font-medium">{field.label || "Untitled field"}</p>
           <p className="truncate font-mono text-xs text-muted">{field.name}</p>
+          {isStructural(field.type) && <p className="truncate text-xs text-muted">{subFieldsSummary(field)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-1 text-xs">
           <span className="rounded-full border border-border px-2 py-0.5">{FIELD_TYPES[field.type].label}</span>

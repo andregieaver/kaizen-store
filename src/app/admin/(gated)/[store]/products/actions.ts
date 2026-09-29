@@ -11,7 +11,7 @@ import { canWrite, writeRequest, type WrittenText } from "@/lib/product-writing"
 import { AiError, aiFor } from "@/server/ai";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
-import { fieldsTag, getFieldData } from "@/server/custom-fields";
+import { fieldsTag, getFieldData, getVariantFieldData } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { suggestProductText } from "@/server/product-writer";
 import {
@@ -42,6 +42,8 @@ export type SaveState =
       context: EditorContext;
       /** What is entered in its custom fields (D118), as stored. */
       fieldData: FieldData;
+      /** And in its variants' fields, by variant id. */
+      variantFieldData: Record<string, FieldData>;
     }
   | { status: "error"; problems: string[] };
 
@@ -76,8 +78,8 @@ export async function saveProductAction(
   }
   const context = await getEditorContext(member.store);
   // Custom fields (D118) come along in the same JSON; the server checks them against the store's own groups.
-  const fields = typeof json === "object" && json !== null ? (json as { fields?: unknown }).fields : undefined;
-  const result = await saveProduct(member.store, context, productId, parsed.data, fields);
+  const sent = typeof json === "object" && json !== null ? (json as { fields?: unknown; variantFields?: unknown }) : {};
+  const result = await saveProduct(member.store, context, productId, parsed.data, sent.fields, sent.variantFields);
   if (!result.ok) return { status: "error", problems: result.problems };
   refreshCatalogue(member);
   // Search by meaning finds the product as saved, without waiting for the cron (D74).
@@ -94,6 +96,7 @@ export async function saveProductAction(
     product: input,
     context: fresh,
     fieldData: await getFieldData(member.store.id, "product", result.productId),
+    variantFieldData: await getVariantFieldData(member.store.id, result.productId),
   };
 }
 

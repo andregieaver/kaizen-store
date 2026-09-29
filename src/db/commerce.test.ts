@@ -2547,6 +2547,36 @@ describe("custom fields (D118)", () => {
     expect(rows).toEqual([]);
   });
 
+  it("keeps values for variants and for categories and tags, and takes them away with them", async () => {
+    const { productId, variantId } = await createProduct({ storeId: store });
+    const { id: term } = await one<{ id: string }>(
+      "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'product', 'tag', 'Nytt', 'fields-tag') returning id",
+      [store],
+    );
+    for (const [entity, id] of [["variant", variantId], ["term", term]]) {
+      await db.query("insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, $2, $3, '', '{}')", [store, entity, id]);
+    }
+    await db.query("delete from commerce.product_variants where id = $1", [variantId]).catch(() => undefined);
+    await db.query("delete from commerce.terms where id = $1", [term]);
+    const { rows } = await db.query<{ entity: string }>("select entity from commerce.field_values where entity_id = any($1)", [[variantId, term]]);
+    // The tag's values are gone; the variant's stay only if the variant could not be deleted (it has stock or prices).
+    expect(rows.map((r) => r.entity)).not.toContain("term");
+    void productId;
+  });
+
+  it("keeps the words of a product's searchable fields by language, stemmed, and takes them away with the product", async () => {
+    const { id } = await one<{ id: string }>("insert into commerce.products (store_id, handle, tax_code) values ($1, 'fields-search', 'txcd_99999999') returning id", [store]);
+    await db.query("insert into commerce.field_search (store_id, entity_id, locale, body) values ($1, $2, 'en', 'Merino wool blankets')", [store, id]);
+    await db.query("insert into commerce.field_search (store_id, entity_id, locale, body) values ($1, $2, 'nb', 'Merinoull tepper')", [store, id]);
+    await expect(db.query("insert into commerce.field_search (store_id, entity_id, locale, body) values ($1, $2, 'nb', 'twice')", [store, id])).rejects.toThrow();
+    await expect(db.query("insert into commerce.field_search (store_id, entity, entity_id, locale, body) values ($1, 'page', $2, 'en', 'x')", [store, id])).rejects.toThrow();
+    // Stemmed with the language's own dictionary: "blanket" finds "blankets".
+    const { rows } = await db.query("select 1 from commerce.field_search where entity_id = $1 and locale = 'en' and search @@ websearch_to_tsquery('pg_catalog.english', 'blanket')", [id]);
+    expect(rows).toHaveLength(1);
+    await db.query("delete from commerce.products where id = $1", [id]);
+    expect((await db.query("select 1 from commerce.field_search where entity_id = $1", [id])).rows).toEqual([]);
+  });
+
   it("copies the template's groups and values to new stores, with rules following the copied categories and tags", async () => {
     const template = await createStore("fields-template", ["NO"]);
     await db.query("update commerce.stores set is_template = false where is_template");

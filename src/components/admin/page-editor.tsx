@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useRef, useState, useTransition } from "react";
 
 import { applicableGroups, EntityFields } from "@/components/admin/entity-fields";
+import { fieldFileUploader } from "@/components/admin/field-file-upload";
 import { shrinkAndUpload } from "@/components/admin/fields-form";
 import { SearchSnippetFields } from "@/components/admin/seo-fields";
 import { TermPicker } from "@/components/admin/terms";
-import { changesFrom, EMPTY_DATA, withParents, type FieldData } from "@/lib/custom-fields";
+import { changesFrom, EMPTY_DATA, EMPTY_LOOKUPS, withParents, type FieldData } from "@/lib/custom-fields";
 import { shrinkImage } from "@/lib/image-resize";
 import {
   ALT_MAX,
@@ -470,6 +471,8 @@ export function PageEditor({
               main={main.locale}
               languageNames={Object.fromEntries(context.languages.map((l) => [l.locale, l.name]))}
               upload={pictureUpload}
+              fileUpload={context.fields?.startFile ? fieldFileUploader(context.fields.startFile) : null}
+              lookups={context.fields?.lookups ?? EMPTY_LOOKUPS}
               locale={locale}
             />
             <ThumbnailField

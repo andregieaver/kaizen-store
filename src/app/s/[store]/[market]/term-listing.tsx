@@ -3,12 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { CustomFieldGroups } from "@/components/custom-fields-view";
 import { ProductGrid, ProductListingFor } from "@/components/product-listing";
+import { groupsToShow } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
+import { shownFieldsFor } from "@/server/custom-fields";
 import { resolveShop } from "@/server/shop";
 import { siteTerms } from "@/server/taxonomy";
 
@@ -61,16 +64,24 @@ export async function TermProducts({ kind, params, searchParams }: { kind: TermK
     categoryIds: kind === "category" ? withDescendants(terms, [term.id]) : [],
     tagIds: kind === "tag" ? [term.id] : [],
   };
-  const [products, notices] = await Promise.all([
+  const [products, notices, fields] = await Promise.all([
     listGridProducts(store.id, market, { ...scope, sort: "oldest", limit: 48 }),
     campaignNotices(store.id, market),
+    // The category's or tag's own public custom fields (D118), under its name.
+    shownFieldsFor(store.id, "term", term.id, market.locale, market.lang, market.slug),
   ]);
+  const termFields = groupsToShow(fields);
   const subcategories = kind === "category" ? terms.filter((t) => t.parentId === term.id).sort(byName) : [];
   const base = marketPath(store.slug, market.slug);
 
   return (
     <>
       <h1 className="mb-4 text-3xl font-heading tracking-tight">{term.name}</h1>
+      {termFields.length > 0 && (
+        <div className="mb-6">
+          <CustomFieldGroups groups={termFields} showLabel idPrefix={`term-${term.id}`} headingFor={() => null} />
+        </div>
+      )}
       {subcategories.length > 0 && (
         <nav aria-label={term.name} className="mb-6">
           <ul className="flex flex-wrap gap-2">

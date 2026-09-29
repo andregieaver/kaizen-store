@@ -18,10 +18,13 @@ import {
   newFieldId,
   parseFieldChanges,
   parseValue,
+  readField,
   requiredProblems,
   shownGroup,
+  writeField,
   valuesFor,
   type Facts,
+  type FieldData,
   type FieldDef,
   type FieldGroup,
 } from "./custom-fields";
@@ -544,5 +547,217 @@ describe("starting points, export and import", () => {
       importGroups({ kaizenFieldGroups: 1, groups: [{ name: "", slug: "x", entities: ["product"], fields: [] }] }, [])
         .ok,
     ).toBe(false);
+  });
+});
+
+describe("groups and repeaters", () => {
+  const title = { ...newField("text"), id: "f_subtitle0001", name: "title", label: "Title" };
+  const amount = { ...newField("number"), id: "f_subamount001", name: "amount", label: "Amount" };
+  const note = { ...newField("textarea"), id: "f_subnote00001", name: "note", label: "Note", required: true };
+  const repeater: FieldDef = {
+    ...newField("repeater"),
+    id: "f_replist00001",
+    name: "list",
+    label: "List",
+    subFields: [title, amount, note],
+    maxRows: 3,
+    minRows: 1,
+  };
+  const group: FieldDef = { ...newField("group"), id: "f_grpdims00001", name: "dims", label: "Dimensions", subFields: [title, amount] };
+  const row = (id: string, cells: Record<string, unknown>) => ({ id, ...cells }) as never;
+
+  it("keep a repeater's rows and numbers shared, and each language's words by row", () => {
+    // Written in the main language, then translated: the words follow the row, not its place.
+    let data: FieldData = { values: {}, translations: {} };
+    data = writeField(repeater, data, "nb", "nb", [
+      row("r_aaaaaaaa", { [title.id]: "Lett", [amount.id]: 2, [note.id]: "Hei" }),
+      row("r_bbbbbbbb", { [title.id]: "Sterk", [amount.id]: 5 }),
+    ]);
+    expect(data.values[repeater.id]).toEqual([
+      { id: "r_aaaaaaaa", [amount.id]: 2 },
+      { id: "r_bbbbbbbb", [amount.id]: 5 },
+    ]);
+    expect(data.translations.nb[repeater.id]).toEqual({ r_aaaaaaaa: { [title.id]: "Lett", [note.id]: "Hei" }, r_bbbbbbbb: { [title.id]: "Sterk" } });
+
+    // Swedish sees the rows, writes only words, and a row it invents is not kept.
+    const inSwedish = readField(repeater, data, "sv", "nb") as never as Record<string, unknown>[];
+    expect(inSwedish.map((r) => r[title.id])).toEqual(["Lett", "Sterk"]);
+    data = writeField(repeater, data, "sv", "nb", [
+      row("r_aaaaaaaa", { [title.id]: "Lätt", [amount.id]: 99 }),
+      row("r_cccccccc", { [title.id]: "Ny" }),
+    ]);
+    expect(data.values[repeater.id]).toEqual([
+      { id: "r_aaaaaaaa", [amount.id]: 2 },
+      { id: "r_bbbbbbbb", [amount.id]: 5 },
+    ]);
+    expect(data.translations.sv[repeater.id]).toEqual({ r_aaaaaaaa: { [title.id]: "Lätt" } });
+    const merged = readField(repeater, data, "sv", "nb") as never as Record<string, unknown>[];
+    expect(merged[0]).toEqual({ id: "r_aaaaaaaa", [title.id]: "Lätt", [amount.id]: 2, [note.id]: "Hei" });
+    // No Swedish for the second row: the Norwegian shows.
+    expect(merged[1][title.id]).toBe("Sterk");
+
+    // Moving a row keeps its words in every language.
+    const moved = writeField(repeater, data, "nb", "nb", [row("r_bbbbbbbb", { [title.id]: "Sterk", [amount.id]: 5 }), row("r_aaaaaaaa", { [title.id]: "Lett", [amount.id]: 2, [note.id]: "Hei" })]);
+    const movedSv = readField(repeater, moved, "sv", "nb") as never as Record<string, unknown>[];
+    expect(movedSv.map((r) => r[title.id])).toEqual(["Sterk", "Lätt"]);
+
+    // No rows: nothing is kept, in any language.
+    expect(writeField(repeater, moved, "nb", "nb", undefined)).toEqual({ values: {}, translations: {} });
+  });
+
+  it("keep a group's fields the same way", () => {
+    let data: FieldData = { values: {}, translations: {} };
+    data = writeField(group, data, "nb", "nb", { [title.id]: "Mål", [amount.id]: 12 });
+    expect(data.values[group.id]).toEqual({ [amount.id]: 12 });
+    expect(data.translations.nb[group.id]).toEqual({ [title.id]: "Mål" });
+    // Swedish changes the words only, whatever number it sends.
+    data = writeField(group, data, "sv", "nb", { [title.id]: "Mått", [amount.id]: 1 });
+    expect(data.values[group.id]).toEqual({ [amount.id]: 12 });
+    expect(readField(group, data, "sv", "nb")).toEqual({ [title.id]: "Mått", [amount.id]: 12 });
+    expect(readField(group, data, "en", "nb")).toEqual({ [title.id]: "Mål", [amount.id]: 12 });
+  });
+
+  it("are checked in the two parts they are kept in, and refuse what a row may not hold", () => {
+    const shared = parseFieldChanges(
+      [repeater],
+      { values: { [repeater.id]: [row("r_aaaaaaaa", { [title.id]: "ignored here", [amount.id]: "3,5" })] }, translations: { nb: { [repeater.id]: { r_aaaaaaaa: { [title.id]: "Lett", [amount.id]: 9, bad_row: { x: 1 } } } } } },
+      ["nb"],
+      "nb",
+    );
+    expect(shared.problems).toEqual([]);
+    expect(shared.changes.values[repeater.id]).toEqual([{ id: "r_aaaaaaaa", [amount.id]: 3.5 }]);
+    expect(shared.changes.translations.nb[repeater.id]).toEqual({ r_aaaaaaaa: { [title.id]: "Lett" } });
+
+    const wrongRows = (rows: unknown) => parseFieldChanges([repeater], { values: { [repeater.id]: rows } }, ["nb"], "nb").problems;
+    expect(wrongRows([row("bad", {})])).toHaveLength(1);
+    expect(wrongRows([row("r_aaaaaaaa", {}), row("r_aaaaaaaa", {})])).toHaveLength(1);
+    expect(wrongRows([1, 2, 3, 4].map((n) => row(`r_aaaaaa0${n}`, {})))[0]).toContain("at most 3");
+    expect(wrongRows([row("r_aaaaaaaa", { [amount.id]: "many" })])[0]).toContain("List");
+    expect(wrongRows("rows")).toHaveLength(1);
+    expect(parseValue(repeater, [])).toEqual({ ok: true, value: null });
+    expect(parseValue(group, { [title.id]: "  ", [amount.id]: "" })).toEqual({ ok: true, value: null });
+  });
+
+  it("ask for a repeater's rows and the required fields in them, only when it is used", () => {
+    const data = (rows: unknown[]): FieldData => ({ values: { [repeater.id]: rows as never }, translations: {} });
+    expect(requiredProblems([repeater], data([]), "nb")).toEqual(["List needs at least 1 row."]);
+    expect(requiredProblems([repeater], data([row("r_aaaaaaaa", { [amount.id]: 1 })]), "nb")).toEqual(["List, row 1: Note is required."]);
+    const full: FieldData = { values: { [repeater.id]: [row("r_aaaaaaaa", { [amount.id]: 1 })] as never }, translations: { nb: { [repeater.id]: { r_aaaaaaaa: { [note.id]: "x" } } as never } } };
+    expect(requiredProblems([repeater], full, "nb")).toEqual([]);
+    // An optional group nobody uses asks for nothing; one that is used asks for its required fields.
+    const strict = { ...group, subFields: [amount, note] };
+    expect(requiredProblems([strict], { values: {}, translations: {} }, "nb")).toEqual([]);
+    expect(requiredProblems([strict], { values: { [strict.id]: { [amount.id]: 1 } as never }, translations: {} }, "nb")).toEqual(["Dimensions: Note is required."]);
+  });
+
+  it("are shown row by row, with what is empty or hidden left out", () => {
+    const g = { id: "g", name: "G", slug: "g", entities: ["product" as const], location: [], fields: [{ ...repeater, access: "public" as const }, { ...group, access: "public" as const }], position: "main" as const, active: true, sort: 0 };
+    const data: FieldData = {
+      values: { [repeater.id]: [row("r_aaaaaaaa", { [amount.id]: 2 }), row("r_bbbbbbbb", {})] as never, [group.id]: { [amount.id]: 12 } as never },
+      translations: { nb: { [repeater.id]: { r_aaaaaaaa: { [title.id]: "Lett" } } as never, [group.id]: { [title.id]: "Mål" } as never } },
+    };
+    const shown = shownGroup(g, data, "nb", "nb", words, { publicOnly: true });
+    expect(shown.fields.map((f) => f.name)).toEqual(["list", "dims"]);
+    // The empty row is not drawn.
+    expect(shown.fields[0].rows).toHaveLength(1);
+    expect(shown.fields[0].rows![0].map((f) => [f.label, f.text])).toEqual([["Title", "Lett"], ["Amount", "2"]]);
+    expect(shown.fields[1].children!.map((f) => [f.label, f.text])).toEqual([["Title", "Mål"], ["Amount", "12"]]);
+  });
+
+  it("are refused when nested, empty, or with conditions that look forward, and get new ids on import", () => {
+    const ok = { ...emptyGroup(), name: "S", slug: "s", fields: [repeater] };
+    expect(fieldGroupInput.safeParse(ok).success).toBe(true);
+    const nested = { ...repeater, subFields: [{ ...newField("group") }] };
+    expect(fieldGroupInput.safeParse({ ...ok, fields: [nested] }).success).toBe(false);
+    expect(fieldGroupInput.safeParse({ ...ok, fields: [{ ...repeater, subFields: [] }] }).success).toBe(false);
+    expect(fieldGroupInput.safeParse({ ...ok, fields: [{ ...repeater, minRows: 5, maxRows: 2 }] }).success).toBe(false);
+    const forward = { ...repeater, subFields: [{ ...title, when: [[{ field: amount.id, operator: "has" as const }]] }, amount] };
+    expect(fieldGroupInput.safeParse({ ...ok, fields: [forward] }).success).toBe(false);
+    const sameId = { ...repeater, subFields: [title, { ...amount, id: title.id }] };
+    expect(fieldGroupInput.safeParse({ ...ok, fields: [sameId] }).success).toBe(false);
+
+    const conditional = { ...repeater, subFields: [amount, { ...title, when: [[{ field: amount.id, operator: "has" as const }]] }] };
+    const source: FieldGroup = { id: "g", name: "S", slug: "s", entities: ["product"], location: [], fields: [conditional], position: "main", active: true, sort: 0 };
+    const imported = importGroups(JSON.parse(JSON.stringify(exportGroups([source]))), []);
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) return;
+    const [copy] = imported.groups;
+    const [first, second] = copy.fields[0].subFields!;
+    expect(first.id).not.toBe(amount.id);
+    expect(second.when![0][0].field).toBe(first.id);
+  });
+
+  it("start from presets with their own fields inside", () => {
+    for (const key of ["key-features", "downloads"]) {
+      const made = groupFromPreset(key)!;
+      expect(fieldGroupInput.safeParse(made).success, key).toBe(true);
+      expect(made.fields[0].type).toBe("repeater");
+      expect(made.fields[0].subFields!.length).toBeGreaterThan(1);
+    }
+  });
+});
+
+describe("links, files and things to choose", () => {
+  const id = "0f8e2c1a-1b2c-4d3e-8f4a-5b6c7d8e9f01";
+  const other = "1a2b3c4d-1b2c-4d3e-8f4a-5b6c7d8e9f02";
+
+  it("are checked: a link points at something with words, a file has an address and a size", () => {
+    const link = def({ type: "link" });
+    expect(parseValue(link, { kind: "product", ref: id, label: " Buy " })).toEqual({ ok: true, value: { kind: "product", ref: id, label: "Buy" } });
+    expect(parseValue(link, { kind: "url", ref: "https://example.com/a", label: "", newTab: true })).toEqual({ ok: true, value: { kind: "url", ref: "https://example.com/a", label: "", newTab: true } });
+    expect(parseValue(link, { kind: "url", ref: "/om-oss", label: "About" }).ok).toBe(true);
+    expect(parseValue(link, { kind: "url", ref: "javascript:alert(1)", label: "" }).ok).toBe(false);
+    expect(parseValue(link, { kind: "product", ref: "not-an-id", label: "" }).ok).toBe(false);
+    expect(parseValue(link, { kind: "moon", ref: id, label: "" }).ok).toBe(false);
+    expect(parseValue(link, { kind: "page", ref: "", label: "x" })).toEqual({ ok: true, value: null });
+
+    const file = def({ type: "file" });
+    const value = { url: "https://example.supabase.co/storage/v1/object/public/field-files/s/a.pdf", name: "Data sheet.pdf", size: 1234, contentType: "application/pdf" };
+    expect(parseValue(file, value)).toEqual({ ok: true, value });
+    expect(parseValue(file, { ...value, url: "javascript:1" }).ok).toBe(false);
+    expect(parseValue(file, { ...value, size: 60 * 1024 * 1024 }).ok).toBe(false);
+    expect(parseValue(file, { ...value, name: "" }).ok).toBe(false);
+    expect(parseValue(file, { url: "" })).toEqual({ ok: true, value: null });
+  });
+
+  it("choose one or several things by id", () => {
+    const one = def({ type: "product" });
+    expect(parseValue(one, id)).toEqual({ ok: true, value: id });
+    expect(parseValue(one, [id])).toEqual({ ok: true, value: id });
+    expect(parseValue(one, [id, other]).ok).toBe(false);
+    expect(parseValue(one, "nope").ok).toBe(false);
+    expect(parseValue(one, "")).toEqual({ ok: true, value: null });
+    const many = def({ type: "term", multiple: true });
+    expect(parseValue(many, [id, other, id])).toEqual({ ok: true, value: [id, other] });
+    expect(parseValue(many, id)).toEqual({ ok: true, value: [id] });
+    expect(parseValue(many, [])).toEqual({ ok: true, value: null });
+    expect(parseValue(def({ type: "page", multiple: true }), Array.from({ length: 51 }, (_, i) => `1a2b3c4d-1b2c-4d3e-8f4a-5b6c7d8e${String(i).padStart(4, "0")}`)).ok).toBe(false);
+  });
+
+  it("show a file or a web link by itself, and leave the lookups to the server", () => {
+    const g = group({
+      fields: [
+        def({ type: "file", id: "f_file0000001", name: "sheet", label: "Sheet", access: "public" }),
+        def({ type: "link", id: "f_link0000001", name: "more", label: "More", access: "public" }),
+        def({ type: "product", id: "f_prod0000001", name: "related", label: "Related", access: "public", multiple: true }),
+      ],
+    });
+    const data: FieldData = {
+      values: { f_file0000001: { url: "https://x.example/a.pdf", name: "A.pdf", size: 10, contentType: "application/pdf" }, f_prod0000001: [id, other] },
+      translations: { nb: { f_link0000001: { kind: "url", ref: "https://example.com", label: "Les mer" } } },
+    };
+    const shown = shownGroup(g, data, "nb", "nb", words, { publicOnly: true });
+    expect(shown.fields.map((f) => f.name)).toEqual(["sheet", "more", "related"]);
+    expect(shown.fields[0].links).toEqual([{ label: "A.pdf", href: "https://x.example/a.pdf", newTab: true, size: 10, contentType: "application/pdf" }]);
+    expect(shown.fields[1].links).toEqual([{ label: "Les mer", href: "https://example.com" }]);
+    expect(shown.fields[2].links).toBeUndefined();
+    expect(shown.fields[1].text).toBe("Les mer");
+  });
+
+  it("keep a link per language, falling back to the main one", () => {
+    const link = def({ type: "link", id: "f_link0000002" });
+    const data: FieldData = { values: {}, translations: { nb: { [link.id]: { kind: "url", ref: "https://a.example", label: "A" } } } };
+    expect(readField(link, data, "sv", "nb")).toEqual({ kind: "url", ref: "https://a.example", label: "A" });
+    expect(writeField(link, data, "sv", "nb", { kind: "url", ref: "https://b.example", label: "B" }).translations.sv[link.id]).toMatchObject({ label: "B" });
   });
 });

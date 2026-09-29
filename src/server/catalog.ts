@@ -13,7 +13,7 @@ import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { ShownGroup } from "@/lib/custom-fields";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
 
-import { fieldsTag, shownFieldsFor } from "./custom-fields";
+import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -100,6 +100,8 @@ export type ProductDetail = {
   hostName: string | null;
   /** The store's public custom fields with a value for it, by group, in the shopper's language (D118). */
   fields: ShownGroup[];
+  /** The public fields of its variants that have some, by variant id (D118, phase 2). */
+  variantFields: Record<string, ShownGroup[]>;
 };
 
 type Row = Record<string, unknown>;
@@ -223,7 +225,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
   `);
   if (!product) return null;
 
-  const [media, variants, plans, fields] = await Promise.all([
+  const [media, variants, plans, fields, variantFields] = await Promise.all([
     readDb().execute<Row>(sql`
       select url, thumbnail_url, coalesce(nullif(alt ->> ${locale}, ''), commerce.media_alt(url, ${locale}), '') as alt
       from commerce.product_media
@@ -247,7 +249,8 @@ export async function getProduct(storeId: string, market: Market, handle: string
       where product_id = ${product.id} and active
       order by position, created_at
     `),
-    shownFieldsFor(storeId, "product", str(product.id), locale, market.lang),
+    shownFieldsFor(storeId, "product", str(product.id), locale, market.lang, market.slug),
+    shownFieldsForVariants(storeId, str(product.id), locale, market.lang, market.slug),
   ]);
   if (variants.length === 0) return null;
   const vat = priceVat(product.store_audience, product.vat_rate);
@@ -298,6 +301,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     needsNativeCurrency: !isNative(market) && Boolean(product.subscription_only) && plans.length > 0,
     hostName: product.host_name ? String(product.host_name) : null,
     fields,
+    variantFields,
     audience: productAudience(product),
     kind: product.kind === "appointment" || product.kind === "stay" || product.kind === "rental" ? product.kind : "goods",
   };

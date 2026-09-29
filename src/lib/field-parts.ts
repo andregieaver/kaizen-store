@@ -1,4 +1,4 @@
-import type { FieldImage, FieldVideo, ShownField, ShownGroup } from "./custom-fields";
+import type { FieldImage, FieldVideo, ShownField, ShownGroup, ShownLink } from "./custom-fields";
 import { isPictureAddress } from "./picture-address";
 import { embedUrl } from "./video-embed";
 
@@ -58,9 +58,72 @@ export function videoOf(value: unknown): { video: FieldVideo; player: string } |
   return player ? { video: { source, link }, player } : null;
 }
 
+/** An address a link may point at: a web address, or a path on the site (one slash, never `//` or `/\\`). */
+export const isSafeAddress = (value: string): boolean => {
+  const address = value.trim();
+  return isWebAddress(address) || (/^\/(?![/\\])/.test(address) && !/\s/.test(address));
+};
+
+/** Whether a link goes to a page of the site itself (a path), so it can use the router. */
+export const isInternalAddress = (value: string): boolean => value.trim().startsWith("/");
+
+/** The links of a file, link or relational field that are safe to draw, with their address trimmed and a picture kept only if it is one. */
+export const linksOf = (field: ShownField): ShownLink[] =>
+  (field.links ?? []).flatMap((link) => {
+    const href = link.href.trim();
+    if (!isSafeAddress(href)) return [];
+    const image = link.image && isPictureAddress(link.image) ? link.image : null;
+    // A link without words is still worth following: it is drawn as its address.
+    return [{ ...link, href, label: link.label.trim() || href, image }];
+  });
+
+/** A file's kind for a reader ("PDF", "DOCX"), from its type, else the ending of its name; null when neither says. */
+export function fileKind(contentType: string | undefined, name: string): string | null {
+  const known: Record<string, string> = {
+    "application/pdf": "PDF",
+    "application/zip": "ZIP",
+    "text/csv": "CSV",
+    "text/plain": "TXT",
+    "application/msword": "DOC",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "application/vnd.ms-excel": "XLS",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+    "application/vnd.ms-powerpoint": "PPT",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "PPTX",
+  };
+  const type = (contentType ?? "").split(";")[0].trim().toLowerCase();
+  if (known[type]) return known[type];
+  const ending = /\.([a-z0-9]{1,5})$/i.exec(name.trim())?.[1];
+  return ending ? ending.toUpperCase() : null;
+}
+
+/** A group's children that can be drawn. */
+export const drawableChildren = (field: ShownField): ShownField[] => (field.children ?? []).filter(drawable);
+
+/** A repeater's rows with only what can be drawn; a row with nothing left is dropped. */
+export const drawableRows = (field: ShownField): ShownField[][] =>
+  (field.rows ?? []).map((row) => row.filter(drawable)).filter((row) => row.length > 0);
+
+/** A repeater's table columns: each field (by id) in order of first appearance, so a row that lacks one gets an empty cell. */
+export function repeaterColumns(rows: ShownField[][]): { id: string; label: string }[] {
+  const columns = new Map<string, string>();
+  for (const row of rows) for (const cell of row) if (!columns.has(cell.id)) columns.set(cell.id, cell.label);
+  return [...columns].map(([id, label]) => ({ id, label }));
+}
+
 /** Whether a field has anything fit to draw; one that has not is left out with its label. */
 export function drawable(field: ShownField): boolean {
   switch (field.type) {
+    case "file":
+    case "link":
+    case "product":
+    case "page":
+    case "term":
+      return linksOf(field).length > 0;
+    case "group":
+      return drawableChildren(field).length > 0;
+    case "repeater":
+      return drawableRows(field).length > 0;
     case "checkbox":
       return (field.items ?? []).some((item) => item.trim() !== "");
     case "richText":

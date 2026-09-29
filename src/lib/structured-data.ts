@@ -151,6 +151,8 @@ export type ProductFacts = {
   images: { url: string; alt: string }[];
   withdrawalExclusion: string;
   manufacturer: { name: string } | null;
+  /** The owner\'s custom fields the page says in plain words (D118), as properties of the product. */
+  properties?: { name: string; value: string }[];
   variants: {
     id: string;
     sku: string;
@@ -226,6 +228,10 @@ export function productJsonLd({
     image: product.images.map((image) => absoluteUrl(image.url, origin)),
     brand: { "@type": "Brand", name: product.manufacturer?.name ?? store.name },
     ...(product.manufacturer && { manufacturer: { "@type": "Organization", name: product.manufacturer.name } }),
+    ...(product.properties &&
+      product.properties.length > 0 && {
+        additionalProperty: product.properties.map((property) => ({ "@type": "PropertyValue", name: property.name, value: property.value })),
+      }),
   };
 
   const optionNames = [...new Set(product.variants.flatMap((v) => Object.keys(v.options)))];

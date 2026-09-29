@@ -5,17 +5,25 @@ Custom Fields (ACF): store owners define their own fields (a size guide, an
 ingredient list, a warranty, a designer's name), fill them in wherever they
 edit a product or a page, and place them in the page builder's templates.
 
-Status: phase 1 is built (D118); phases 2 and 3 are not. What phase 1 does
-differently from the design below, and what it leaves for later:
+Status: phases 1 and 2 are built (D118, D119); phase 3 is not. What phase 1
+did differently from the design below:
 
-- The **file** field type moves to phase 2: it needs an upload path for
-  non-pictures and a place in the media library.
 - **Required fields** are asked for when a product is saved as published; a
   draft may lack them. Pages and articles do not enforce them yet.
 - A picture's description is kept in the field's value, in the main language;
-  showing the library's translated descriptions is phase 2.
+  showing the library's translated descriptions is later.
 - Deleting a group, or a field from a group, deletes what was entered in it.
 - `products.attributes` was dropped, as recommended.
+
+Phase 2 (D119) added group and repeater, link, relational and file fields;
+variants and categories and tags as things with fields (the store and
+customers wait for phase 3); binding a heading, rich text, image or button to
+a field; the filter, search, structured data and chat flags; the store
+translation worklist (variant and category texts included) and the AI manager
+tools (`list_field_groups`, `get_fields`, `set_fields`, `create_field_group`).
+What it leaves: number ranges as listing filters, variants and categories in
+search, the alt text of a picture field translated, and the inline editor of
+saved parts having no binding picker.
 
 ## 1. What ACF does (research)
 

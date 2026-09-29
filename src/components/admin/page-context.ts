@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { GridData } from "@/lib/content-grid";
-import type { FieldGroup } from "@/lib/custom-fields";
+import type { FieldGroup, FieldLookups } from "@/lib/custom-fields";
 import type { SiteFonts } from "@/lib/fonts";
 import type { PageType } from "@/lib/page-content";
 import type { TranslateResult } from "@/lib/page-translate-ai";
@@ -14,6 +14,7 @@ import type { EditablePage } from "@/server/pages";
 import type { SavedResult } from "@/server/saved-parts";
 import type { TermsResult } from "@/server/taxonomy";
 
+import type { StartFieldFile } from "./field-file-upload";
 import type { Upload } from "./image-upload";
 import type { StartVideo } from "./video-upload";
 
@@ -63,7 +64,13 @@ export type PageOwnerContext = {
   /** The owner's own CSS for every page of its site (D100), edited in the builder's CSS panel. */
   siteCss: string;
   /** The store's custom field groups (D118), for the builder's field components and the page's own fields; null for Kaizen, which has none yet. */
-  fields: { groups: FieldGroup[] } | null;
+  fields: {
+    groups: FieldGroup[];
+    /** What the fields that point at products, pages, categories or tags choose from; empty when no field does. */
+    lookups: FieldLookups;
+    /** Starts a file's upload for a file field from the browser; null where uploads are not set up. */
+    startFile: StartFieldFile | null;
+  } | null;
   /** A store's theme for the canvas (D60): CSS for `[data-theme-canvas]` and its attributes; null for Kaizen. */
   theme: { css: string; attributes: Record<string, string> } | null;
   actions: {

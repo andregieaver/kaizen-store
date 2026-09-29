@@ -38,6 +38,7 @@ import {
   setProductsPageAction,
   updateStorePageTermAction,
 } from "./actions";
+import { termFieldsSetup } from "../fields/data";
 import { storePageContext, storePagesBase } from "./context";
 
 /**
@@ -182,7 +183,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
 export async function StorePageTermsView({ type, params }: { type: PageType; params: StoreParams }) {
   const { store } = await requireMember((await params).store);
   const copy = PAGE_TYPE_COPY[type];
-  const terms = await listTerms({ storeId: store.id, contentType: termContentOf(type) });
+  const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -198,6 +199,7 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
       <TermsManager
         initial={terms}
         usedBy={copy.many}
+        fields={fields}
         actions={{
           create: createStorePageTermAction.bind(null, store.slug, type),
           update: updateStorePageTermAction.bind(null, store.slug, type),

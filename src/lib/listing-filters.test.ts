@@ -24,6 +24,7 @@ describe("listing filters (D78)", () => {
         { name: "Farge", values: ["Blå", "Hvit"] },
         { name: "Størrelse", values: ["M"] },
       ],
+      fields: [],
       // A reversed range is put right.
       minPrice: 100,
       maxPrice: 500,
@@ -84,5 +85,52 @@ describe("listing filters (D78)", () => {
     expect(toMinorUnits(12.5, 2)).toBe(1250);
     expect(toMinorUnits(500, 0)).toBe(500);
     expect(toMinorUnits(null, 2)).toBeNull();
+  });
+
+  it("reads custom fields by name, and writes them back into an address that reads the same (D118)", () => {
+    const params = new URLSearchParams(
+      "f.material=wool&f.material=cotton&f.organic=1&f.=x&f.Bad=y&f.with-dash=z&f.material.min=3&kind=goods",
+    );
+    const filters = parseListingParams(params);
+    expect(filters.fields).toEqual([
+      { name: "material", values: ["wool", "cotton"] },
+      { name: "organic", values: ["1"] },
+    ]);
+    expect(filters.options).toEqual([]);
+    const query = listingQuery(filters, { q: "kopp" });
+    expect(query).toBe("?q=kopp&kind=goods&f.material=wool&f.material=cotton&f.organic=1");
+    expect(parseListingParams(new URLSearchParams(query))).toEqual(filters);
+    expect(parseListingParams({ "f.material": ["wool", "wool", " "], "f.organic": "" }).fields).toEqual([
+      { name: "material", values: ["wool"] },
+    ]);
+  });
+
+  it("limits the custom fields an address can ask for, as it limits options", () => {
+    const params = new URLSearchParams();
+    for (let i = 0; i < 10; i++) params.append(`f.field_${i}`, "v");
+    for (let i = 0; i < 100; i++) params.append("f.many", `v${i}`);
+    params.append(`f.${"a".repeat(41)}`, "v");
+    const filters = parseListingParams(params);
+    expect(filters.fields.length).toBeLessThanOrEqual(6);
+    expect(filters.fields.find((field) => field.name === "many")?.values.length ?? 30).toBeLessThanOrEqual(30);
+    expect(filters.fields.some((field) => field.name.length > 40)).toBe(false);
+  });
+
+  it("counts, lists and takes away chosen custom fields", () => {
+    const filters = parseListingParams(new URLSearchParams("f.material=wool&f.material=cotton&f.organic=1&tag=nyhet"));
+    const chosen = chosenFilters(filters);
+    expect(chosen).toEqual([
+      { type: "tag", value: "nyhet" },
+      { type: "field", name: "material", value: "wool" },
+      { type: "field", name: "material", value: "cotton" },
+      { type: "field", name: "organic", value: "1" },
+    ]);
+    expect(filterCount(filters)).toBe(4);
+    expect(withoutFilter(filters, chosen[1]).fields).toEqual([
+      { name: "material", values: ["cotton"] },
+      { name: "organic", values: ["1"] },
+    ]);
+    expect(withoutFilter(filters, chosen[3]).fields).toEqual([{ name: "material", values: ["wool", "cotton"] }]);
+    expect(filterCount(chosen.reduce(withoutFilter, filters))).toBe(0);
   });
 });

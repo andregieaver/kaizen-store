@@ -13,7 +13,7 @@ import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
-import { OwnerToolError, runOwnerTool } from "./owner-tools";
+import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -512,6 +512,16 @@ async function callTool(
   if (tool.gate) {
     const input = readToolInput(tool, args);
     if (!input.ok) return { error: `The arguments could not be read: ${input.problem}` };
+    // What could not be done, or must be reworded (claims), is refused now, never kept for a yes.
+    if (ctx.store) {
+      try {
+        await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate }, name, args);
+      } catch (error) {
+        if (error instanceof OwnerToolError) return { error: error.message };
+        console.error(`[ai-manager] ${name}`, error);
+        return { error: "The tool failed." };
+      }
+    }
     const approval = await keepForApproval(ctx, conversationId, name, tool.gate, input.input as Record<string, unknown>);
     emit({ type: "approval", approval });
     return {

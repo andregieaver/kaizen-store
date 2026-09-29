@@ -102,6 +102,7 @@ describe("the owner assistant (D94)", () => {
     const ctx = { account: member.account, store: member.store, invalidate: () => {} };
     const args: Record<string, unknown> = {
       get_product: { product: productHandle },
+      get_fields: { entity: "product", item: productHandle },
       get_order: { order: "1" },
       get_customer: { customer: "nobody@example.com" },
     };

@@ -241,6 +241,7 @@ function dialogFacets(facets: ListingFacets, m: Messages): FilterFacets {
     categories: facets.categories,
     tags: facets.tags,
     options: facets.options,
+    fields: facets.fields,
     price: facets.price,
   };
 }
@@ -281,6 +282,11 @@ function chosenText(item: ChosenFilter, filters: ListingFilters, facets: Listing
     case "option": {
       const option = facets.options.find((o) => o.name === item.name);
       return `${option?.label ?? labels[item.name] ?? item.name}: ${labels[item.value] ?? item.value}`;
+    }
+    case "field": {
+      // A custom field (D118), worded as the store wrote it in the shopper's language.
+      const field = facets.fieldLabels.find((f) => f.name === item.name);
+      return `${field?.label ?? item.name}: ${field?.values[item.value] ?? item.value}`;
     }
     case "price":
       return filters.minPrice !== null && filters.maxPrice !== null

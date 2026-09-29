@@ -17,8 +17,9 @@ import { convertedSql, inCategories, inStockNow, withTags } from "./product-cond
  * when its title or description does, stemmed in its own language
  * (`product_translations.search`), when its title is close to what was typed
  * (trigrams, for typos and parts of compound words: "kopp" finds
- * "keramikkopp"), when a SKU is typed, or when it is in a category or tag of
- * that name. Titles weigh most, then descriptions; an exact SKU goes first.
+ * "keramikkopp"), when a SKU is typed, when it is in a category or tag of
+ * that name, or when a public custom field flagged for search says it
+ * (`field_search`, D118). Titles weigh most, then descriptions; an exact SKU goes first.
  * Only active products with a price in the market are found, and each in
  * the market's language where it has one.
  */
@@ -93,13 +94,23 @@ export async function matchingIds(
       select p.id, p.created_at,
         coalesce(max(ts_rank_cd(d.search, q.tsq)) filter (where d.search @@ q.tsq), 0) * 4
           + max(extensions.word_similarity(q.text, d.title))
+          + coalesce(max(ts_rank_cd(fd.search, q.tsq)) filter (where fd.search @@ q.tsq), 0)
           + case when bool_or(sku.exact) then 10 when bool_or(sku.near) then 1 else 0 end
           + case when bool_or(term.hit) then 0.5 else 0 end as score,
-        bool_or(d.search @@ q.tsq) or max(extensions.word_similarity(q.text, d.title)) >= ${CLOSE}
+        bool_or(d.search @@ q.tsq) or coalesce(bool_or(fd.search @@ q.tsq), false)
+          or max(extensions.word_similarity(q.text, d.title)) >= ${CLOSE}
           or bool_or(sku.exact or sku.near) or bool_or(term.hit) as found
       from commerce.products p
       cross join q
       join docs d on d.product_id = p.id
+      -- The words of the product's public custom fields flagged for search (D118): the market's language, else the store's main.
+      left join lateral (
+        select f.search from commerce.field_search f
+        where f.store_id = p.store_id and f.entity = 'product' and f.entity_id = p.id
+        order by f.locale = ${market.locale} desc,
+          coalesce(f.locale = (select s.locales[1] from commerce.stores s where s.id = p.store_id), false) desc, f.locale
+        limit 1
+      ) fd on true
       left join lateral (
         select bool_or(lower(v.sku) = q.text) as exact, bool_or(length(q.text) >= 3 and lower(v.sku) like q.text || '%') as near
         from commerce.product_variants v where v.product_id = p.id and v.active

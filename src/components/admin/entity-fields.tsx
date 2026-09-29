@@ -2,8 +2,15 @@
 
 import { useState } from "react";
 
-import { FieldsForm, type PictureUpload } from "@/components/admin/fields-form";
-import { groupApplies, isTranslatable, type Facts, type FieldData, type FieldGroup } from "@/lib/custom-fields";
+import { FieldsForm, type FieldFileUploader, type PictureUpload } from "@/components/admin/fields-form";
+import {
+  groupApplies,
+  hasTranslations,
+  type Facts,
+  type FieldData,
+  type FieldGroup,
+  type FieldLookups,
+} from "@/lib/custom-fields";
 
 const card = "rounded-lg border border-border bg-background p-5";
 
@@ -26,8 +33,13 @@ export function EntityFields({
   main,
   languageNames,
   upload,
+  fileUpload,
+  lookups,
   side = false,
   locale: chosen,
+  title = "Custom fields",
+  intro = "Extra information about it, from the field groups you made under Custom fields.",
+  idPrefix = "fields-heading",
 }: {
   /** The groups that apply (see `applicableGroups`). */
   groups: FieldGroup[];
@@ -38,26 +50,32 @@ export function EntityFields({
   main: string;
   languageNames: Record<string, string>;
   upload: PictureUpload | null;
+  /** Uploads a file for a file field; null where uploads are not set up. */
+  fileUpload: FieldFileUploader | null;
+  /** The store's products, pages, categories and tags, for the fields that point at them. */
+  lookups: FieldLookups;
   /** Only the groups meant for the side column, or those meant for the main one. */
   side?: boolean;
   /** The language being written when the editor has its own switch (a page's); else this panel has one. */
   locale?: string;
+  /** The panel's heading and words, and a prefix for its ids when several are on one page (a variant's). */
+  title?: string;
+  intro?: string;
+  idPrefix?: string;
 }) {
   const [own, setLocale] = useState(main);
   const locale = chosen ?? own;
   const shown = groups.filter((group) => (group.position === "side") === side);
   if (shown.length === 0) return null;
-  const texts = shown.some((group) => group.fields.some((field) => isTranslatable(field.type)));
+  const texts = shown.some((group) => group.fields.some(hasTranslations));
   const name = (l: string) => languageNames[l] ?? l;
 
   return (
-    <section aria-labelledby={`fields-heading-${side ? "side" : "main"}`} className={card}>
-      <h2 id={`fields-heading-${side ? "side" : "main"}`} className="mb-1 font-medium">
-        Custom fields
+    <section aria-labelledby={`${idPrefix}-${side ? "side" : "main"}`} className={card}>
+      <h2 id={`${idPrefix}-${side ? "side" : "main"}`} className="mb-1 font-medium">
+        {title}
       </h2>
-      <p className="mb-4 text-sm text-muted">
-        Extra information about it, from the field groups you made under Custom fields.
-      </p>
+      <p className="mb-4 text-sm text-muted">{intro}</p>
       {texts && locales.length > 1 && chosen === undefined && (
         <div role="tablist" aria-label="Language of the texts" className="mb-4 flex flex-wrap gap-2">
           {locales.map((l) => (
@@ -81,6 +99,8 @@ export function EntityFields({
         locale={locale}
         main={main}
         upload={upload}
+        fileUpload={fileUpload}
+        lookups={lookups}
         languageName={name}
       />
     </section>

@@ -5,6 +5,8 @@ import { TermsManager } from "@/components/admin/terms";
 import { requireMember } from "@/server/auth";
 import { listTerms } from "@/server/taxonomy";
 
+import { termFieldsSetup } from "../../fields/data";
+
 import { createProductTermAction, deleteProductTermAction, updateProductTermAction } from "../actions";
 
 export const metadata: Metadata = { title: "Product categories and tags" };
@@ -12,7 +14,7 @@ export const metadata: Metadata = { title: "Product categories and tags" };
 /** The store's product categories and tags (D50): chosen on each product, used in menus and content grids. */
 export default async function ProductTermsPage({ params }: PageProps<"/admin/[store]/products/categories">) {
   const { store } = await requireMember((await params).store);
-  const terms = await listTerms({ storeId: store.id, contentType: "product" });
+  const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: "product" }), termFieldsSetup(store)]);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -28,6 +30,7 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
       <TermsManager
         initial={terms}
         usedBy="products"
+        fields={fields}
         actions={{
           create: createProductTermAction.bind(null, store.slug),
           update: updateProductTermAction.bind(null, store.slug),

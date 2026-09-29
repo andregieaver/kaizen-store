@@ -1,12 +1,18 @@
 import {
   CONDITION_OPERATORS,
   FIELD_ENTITIES,
+  FIELD_TYPES,
+  FIELD_TYPE_KEYS,
   LOCATION_CHOICES,
   LOCATION_PARAMS,
+  MAX_SUB_FIELDS,
   VALUELESS_OPERATORS,
   hasChoices,
+  isStructural,
+  newField,
   operatorsFor,
   slugOf,
+  subFieldsOf,
   uniqueName,
   newFieldId,
   type Condition,
@@ -119,14 +125,33 @@ export function withLabel<T extends { labels?: Record<string, string> }>(item: T
   return { ...item, labels: Object.keys(labels).length > 0 ? labels : undefined };
 }
 
+/**
+ * A copy of a field with new ids all through (a group's or repeater's fields
+ * too: values are kept under them, so a copy must not share them), the
+ * conditions between its fields following.
+ */
+export function cloneField(source: FieldDef): FieldDef {
+  const copy: FieldDef = structuredClone(source);
+  const ids = new Map<string, string>([[source.id, newFieldId()]]);
+  for (const sub of subFieldsOf(source)) ids.set(sub.id, newFieldId());
+  copy.id = ids.get(source.id) as string;
+  if (copy.subFields) {
+    copy.subFields = copy.subFields.map((sub) => ({
+      ...sub,
+      id: ids.get(sub.id) as string,
+      when: sub.when?.map((all) => all.map((c) => ({ ...c, field: ids.get(c.field) ?? c.field }))),
+    }));
+  }
+  return copy;
+}
+
 /** A copy of a field to put next to it: a new id and a name of its own; what it shows by carries over. */
 export function duplicateField(fields: readonly FieldDef[], id: string): { fields: FieldDef[]; copy: FieldDef } | null {
   const index = fields.findIndex((f) => f.id === id);
   if (index === -1) return null;
   const source = fields[index];
   const copy: FieldDef = {
-    ...structuredClone(source),
-    id: newFieldId(),
+    ...cloneField(source),
     name: uniqueName(
       source.name.slice(0, 34),
       fields.map((f) => f.name),
@@ -141,20 +166,118 @@ export function duplicateField(fields: readonly FieldDef[], id: string): { field
 
 /**
  * Takes away the conditions that name a field that is not above the field
- * they are on (removed, or moved below it), and rule groups left empty.
- * `changed` names the fields whose logic was touched.
+ * they are on (removed, or moved below it), and rule groups left empty; in
+ * a group's or repeater's fields too, where only the fields above one in the
+ * same group or repeater count. `changed` names the fields whose logic was
+ * touched.
  */
 export function pruneConditions(fields: readonly FieldDef[]): { fields: FieldDef[]; changed: string[] } {
   const changed: string[] = [];
   const next = fields.map((field, index) => {
-    if (!field.when || field.when.length === 0) return field;
-    const above = new Set(fields.slice(0, index).map((f) => f.id));
-    const when = field.when.map((all) => all.filter((c) => above.has(c.field))).filter((all) => all.length > 0);
-    if (when.flat().length === field.when.flat().length) return field;
-    changed.push(field.label);
-    return { ...field, when: when.length > 0 ? when : undefined };
+    let current = field;
+    if (field.when && field.when.length > 0) {
+      const above = new Set(fields.slice(0, index).map((f) => f.id));
+      const when = field.when.map((all) => all.filter((c) => above.has(c.field))).filter((all) => all.length > 0);
+      if (when.flat().length !== field.when.flat().length) {
+        changed.push(field.label);
+        current = { ...field, when: when.length > 0 ? when : undefined };
+      }
+    }
+    if (isStructural(current.type) && current.subFields) {
+      const inside = pruneConditions(current.subFields);
+      if (inside.changed.length > 0) {
+        changed.push(...inside.changed);
+        current = { ...current, subFields: inside.fields };
+      }
+    }
+    return current;
   });
   return { fields: next, changed };
+}
+
+// ---------------------------------------------------------------------------
+// The fields inside a group or repeater
+// ---------------------------------------------------------------------------
+
+/** The types a group's or repeater's fields can be: all but a group or repeater (nesting is one deep). */
+export const SUB_FIELD_TYPES: readonly FieldType[] = FIELD_TYPE_KEYS.filter((type) => !isStructural(type));
+
+/** A field with its group's or repeater's fields changed by `edit`, the conditions among them kept whole. */
+function withSubs(fields: readonly FieldDef[], parentId: string, edit: (subs: FieldDef[]) => FieldDef[]) {
+  return fields.map((field) =>
+    field.id === parentId ? { ...field, subFields: pruneConditions(edit(field.subFields ?? [])).fields } : field,
+  );
+}
+
+/** A new field of a type at the end of a group's or repeater's fields, named apart from the others there. */
+export function addSubField(
+  fields: readonly FieldDef[],
+  parentId: string,
+  type: FieldType,
+): { fields: FieldDef[]; added: FieldDef | null } {
+  const parent = fields.find((f) => f.id === parentId);
+  if (
+    !parent ||
+    !isStructural(parent.type) ||
+    isStructural(type) ||
+    (parent.subFields ?? []).length >= MAX_SUB_FIELDS
+  ) {
+    return { fields: [...fields], added: null };
+  }
+  const added = newField(
+    type,
+    (parent.subFields ?? []).map((s) => s.name),
+  );
+  return { fields: withSubs(fields, parentId, (subs) => [...subs, added]), added };
+}
+
+/** A field inside a group or repeater, replaced by its edited copy. */
+export const replaceSubField = (fields: readonly FieldDef[], parentId: string, next: FieldDef): FieldDef[] =>
+  withSubs(fields, parentId, (subs) => subs.map((s) => (s.id === next.id ? next : s)));
+
+/** A field inside a group or repeater, moved; conditions that looked at a field now below theirs are taken away. */
+export const moveSubField = (fields: readonly FieldDef[], parentId: string, from: number, to: number): FieldDef[] =>
+  withSubs(fields, parentId, (subs) => moveItem(subs, from, to));
+
+/**
+ * A field inside a group or repeater, taken out, and the conditions of the
+ * others that looked at it with it. `changed` names the fields whose logic was
+ * touched.
+ */
+export function removeSubField(
+  fields: readonly FieldDef[],
+  parentId: string,
+  subId: string,
+): { fields: FieldDef[]; changed: string[] } {
+  let changed: string[] = [];
+  const next = fields.map((field) => {
+    if (field.id !== parentId) return field;
+    const pruned = pruneConditions((field.subFields ?? []).filter((s) => s.id !== subId));
+    changed = pruned.changed;
+    return { ...field, subFields: pruned.fields };
+  });
+  return { fields: next, changed };
+}
+
+/** A copy of a field inside a group or repeater, next to it. */
+export function duplicateSubField(
+  fields: readonly FieldDef[],
+  parentId: string,
+  subId: string,
+): { fields: FieldDef[]; copy: FieldDef } | null {
+  const parent = fields.find((f) => f.id === parentId);
+  if (!parent || (parent.subFields ?? []).length >= MAX_SUB_FIELDS) return null;
+  const result = duplicateField(parent.subFields ?? [], subId);
+  if (!result) return null;
+  return { fields: fields.map((f) => (f.id === parentId ? { ...f, subFields: result.fields } : f)), copy: result.copy };
+}
+
+/** What a group or repeater holds, in a line for the list: "3 fields: Title, Text, Picture". */
+export function subFieldsSummary(field: Pick<FieldDef, "type" | "subFields">): string {
+  const subs = subFieldsOf(field);
+  if (subs.length === 0) return "No fields yet";
+  const names = subs.slice(0, 3).map((s) => s.label || s.name);
+  return `${subs.length} ${subs.length === 1 ? "field" : "fields"}: ${names.join(", ")}${subs.length > 3 ? " …" : ""}`;
 }
 
 /** How a condition's value is asked for, by the type of the field it looks at. */
@@ -196,6 +319,21 @@ export const operatorLabel = (operator: ConditionOperator): string => CONDITION_
 // A group before Save
 // ---------------------------------------------------------------------------
 
+/** The ids of fields whose logic looks at a field that is gone or no longer above them, in a group's or repeater's fields too (their group or repeater counts as broken as well). */
+export function fieldsWithBrokenLogic(fields: readonly FieldDef[]): Set<string> {
+  const broken = new Set<string>();
+  fields.forEach((field, index) => {
+    const above = new Set(fields.slice(0, index).map((f) => f.id));
+    if ((field.when ?? []).flat().some((c) => !above.has(c.field))) broken.add(field.id);
+    const inside = fieldsWithBrokenLogic(subFieldsOf(field));
+    if (inside.size > 0) {
+      broken.add(field.id);
+      for (const id of inside) broken.add(id);
+    }
+  });
+  return broken;
+}
+
 /** What is wrong with a group that the editor can tell without the server: the server checks the rest. */
 export function draftProblems(draft: FieldGroupInput): string[] {
   const problems: string[] = [];
@@ -214,16 +352,91 @@ export function draftProblems(draft: FieldGroupInput): string[] {
         `${field.label || "A field"} is shown by a field that is no longer above it. Change its logic or move the fields.`,
       );
     }
+    if (isStructural(field.type as FieldType)) {
+      const subs = (field.subFields ?? []) as FieldDef[];
+      if (subs.length === 0)
+        problems.push(`Add fields to ${field.label || "the " + FIELD_TYPES[field.type].label.toLowerCase()}.`);
+      if (fieldsWithBrokenLogic(subs).size > 0) {
+        problems.push(
+          `Some fields in ${field.label || "a field"} are shown by a field that is no longer above them. Change their logic or move the fields.`,
+        );
+      }
+    }
   });
   return [...new Set(problems)];
 }
 
-/** The ids of fields whose logic looks at a field that is gone or no longer above them. */
-export function fieldsWithBrokenLogic(fields: readonly FieldDef[]): Set<string> {
-  const broken = new Set<string>();
-  fields.forEach((field, index) => {
-    const above = new Set(fields.slice(0, index).map((f) => f.id));
-    if ((field.when ?? []).flat().some((c) => !above.has(c.field))) broken.add(field.id);
-  });
-  return broken;
+// ---------------------------------------------------------------------------
+// One field before Apply
+// ---------------------------------------------------------------------------
+
+export const NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
+export const KEY_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
+/**
+ * What is wrong with a field, in words, for the dialog to say before it lets
+ * the field go back into its group (or a group's or repeater's field into its
+ * container). `otherNames` are the names of the fields next to it, `above` the
+ * fields its logic may look at.
+ */
+export function fieldProblems(field: FieldDef, otherNames: readonly string[], above: readonly FieldDef[]): string[] {
+  const problems: string[] = [];
+  if (field.label.trim() === "") problems.push("Give the field a label.");
+  if (!NAME_PATTERN.test(field.name) || field.name.length > 40) {
+    problems.push("The name starts with a lowercase letter and uses lowercase letters, digits and underscores.");
+  } else if (otherNames.includes(field.name)) problems.push(`Another field is already named ${field.name}.`);
+  if (hasChoices(field.type)) {
+    const choices = field.choices ?? [];
+    if (choices.length === 0) problems.push("Add at least one choice.");
+    if (choices.some((c) => c.label.trim() === "")) problems.push("Give each choice a label.");
+    if (choices.some((c) => !KEY_PATTERN.test(c.key) || c.key.length > 40)) {
+      problems.push("A choice's key uses lowercase letters, digits, hyphens and underscores.");
+    }
+    if (new Set(choices.map((c) => c.key)).size !== choices.length) problems.push("Two choices have the same key.");
+  }
+  if (field.type === "measurement" && (field.units ?? []).length === 0) problems.push("Add at least one unit.");
+  if (field.min !== undefined && field.max !== undefined && field.min > field.max)
+    problems.push("The least is more than the most.");
+  if (isStructural(field.type)) {
+    const subs = field.subFields ?? [];
+    if (subs.length === 0)
+      problems.push(`Add at least one field to the ${FIELD_TYPES[field.type].label.toLowerCase()}.`);
+    if (
+      field.type === "repeater" &&
+      field.minRows !== undefined &&
+      field.maxRows !== undefined &&
+      field.minRows > field.maxRows
+    ) {
+      problems.push("The fewest rows is more than the most.");
+    }
+    subs.forEach((sub, index) => {
+      const others = subs.filter((_, i) => i !== index).map((s) => s.name);
+      const inner = fieldProblems(sub, others, subs.slice(0, index));
+      for (const problem of inner) problems.push(`${sub.label.trim() || "A field inside"}: ${problem}`);
+    });
+  }
+  const known = new Set(above.map((f) => f.id));
+  if ((field.when ?? []).flat().some((c) => !known.has(c.field)))
+    problems.push("The logic looks at a field that is no longer above this one.");
+  return problems;
+}
+
+/** Settings a type has of its own beyond those every field has (so the dialog can say when there are none). */
+export function hasTypeSettings(type: FieldType): boolean {
+  return (
+    [
+      "text",
+      "textarea",
+      "email",
+      "url",
+      "phone",
+      "number",
+      "measurement",
+      "gallery",
+      "product",
+      "page",
+      "term",
+      "repeater",
+    ].includes(type) || hasChoices(type)
+  );
 }

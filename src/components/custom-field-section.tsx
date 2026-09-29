@@ -21,7 +21,7 @@ export async function CustomFieldSection({ block, place }: { block: CustomFieldB
   const store = slug ? await getOpenStore(slug) : null;
   const market = store ? marketIn(store, place.market) : undefined;
   if (!store || !market) return null;
-  const groups = await shownFieldsFor(store.id, place.pageType ?? "page", place.pageId, market.locale, market.lang);
+  const groups = await shownFieldsFor(store.id, place.pageType ?? "page", place.pageId, market.locale, market.lang, market.slug);
   const showLabel = block.showLabel !== false;
   const headingId = `${block.id}-heading`;
 

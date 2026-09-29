@@ -5,6 +5,7 @@ import { createContext, useContext, useId, useState, type ReactNode } from "reac
 import type { ButtonLook } from "@/components/page-block";
 import { ListIcon } from "@/components/list-icon";
 import { type FieldDef, type FieldEntity, type FieldGroup } from "@/lib/custom-fields";
+import { bindable, canBind } from "@/lib/field-binding";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { ICONS, type IconName } from "@/lib/icons";
@@ -71,6 +72,7 @@ import {
   type AccordionBlock,
   type BlockType,
   type CustomFieldBlock,
+  type FieldBinding,
   type FieldDisplay,
   type HeadingSize,
   type FaqBlock,
@@ -1577,12 +1579,28 @@ export function useFieldGroups(entities: readonly FieldEntity[]): FieldGroup[] {
   return (groups ?? []).filter((group) => group.entities.some((entity) => entities.includes(entity)));
 }
 
-const ENTITY_WORDS: Record<FieldEntity, string> = { product: "products", page: "pages", article: "articles" };
-const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = { product: "product", page: "page", article: "article" };
+const ENTITY_WORDS: Record<FieldEntity, string> = {
+  product: "products",
+  variant: "variants",
+  page: "pages",
+  article: "articles",
+  term: "categories and tags",
+};
+const FIELD_ENTITY_NOUN: Record<FieldEntity, string> = {
+  product: "product",
+  variant: "variant",
+  page: "page",
+  article: "article",
+  term: "category or tag",
+};
 /** What the fields are on, for a sentence: "the product", "the page or article". */
 const thing = (entities: readonly FieldEntity[]) => entities.map((entity) => FIELD_ENTITY_NOUN[entity]).join(" or ");
 
-const fieldOption = (def: FieldDef) => `${def.label}${def.access === "public" ? "" : " (not shown on the site)"}`;
+/** A group or a repeater is picked as one field, so its option says what it holds. */
+const structureNote = (def: FieldDef) =>
+  def.type === "group" || def.type === "repeater" ? ` (${def.type}, ${def.subFields?.length ?? 0} fields)` : "";
+const fieldOption = (def: FieldDef) =>
+  `${def.label}${structureNote(def)}${def.access === "public" ? "" : " (not shown on the site)"}`;
 
 /**
  * What a component shows of the custom fields: `group` a whole group (none
@@ -1670,6 +1688,94 @@ export function FieldsSettingsFields({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * What the custom fields a block can take its content from are on (D118,
+ * phase 2), set by the builder: the page's or article's own, or the product's
+ * in a product layout. Null where a block has no fields to take: a header, a
+ * footer, Kaizen's own pages.
+ */
+export const BindEntitiesContext = createContext<readonly FieldEntity[] | null>(null);
+
+/** The top-level fields a kind of block can take, by group, from the groups that can be on the thing. */
+function bindOptions(blockType: string, groups: readonly FieldGroup[]): { group: FieldGroup; fields: FieldDef[] }[] {
+  return groups
+    .map((group) => ({ group, fields: group.fields.filter((def) => bindable(blockType, def.type)) }))
+    .filter((option) => option.fields.length > 0);
+}
+
+/**
+ * "Take from field" (D118): the block shows the value of a custom field of the
+ * thing the page is on instead of its own content, which stays as what shows
+ * when the field is empty, if the owner keeps it. Sits at the top of a
+ * heading's, rich text's, image's and button's General tab.
+ */
+export function BindFields({
+  blockType,
+  bind,
+  onChange,
+}: {
+  blockType: string;
+  bind: FieldBinding | undefined;
+  onChange: (bind: FieldBinding | undefined) => void;
+}) {
+  const entities = useContext(BindEntitiesContext);
+  const groups = useFieldGroups(entities ?? []);
+  const id = useId();
+  if (entities === null || !canBind(blockType) || (groups.length === 0 && !bind)) return null;
+  const options = bindOptions(blockType, groups);
+  const known = !bind || options.some((option) => option.fields.some((def) => def.id === bind.fieldId));
+  const noun = thing(entities);
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+      <div className="flex flex-col gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          Take from field
+        </label>
+        <select
+          id={id}
+          value={bind?.fieldId ?? ""}
+          onChange={(event) => onChange(event.target.value ? { fieldId: event.target.value, ...(bind?.fallback && { fallback: true }) } : undefined)}
+          className={fieldClass}
+        >
+          <option value="">No, use what is written here</option>
+          {bind && !known && <option value={bind.fieldId}>A field that is gone or cannot be used here</option>}
+          {options.map(({ group, fields }) => (
+            <optgroup key={group.id} label={group.name}>
+              {fields.map((def) => (
+                <option key={def.id} value={def.id}>{`${group.name} › ${def.label}${def.access === "public" ? "" : " (not shown on the site)"}`}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+        <p className="text-xs text-muted">
+          {options.length === 0
+            ? `None of the ${noun}'s fields is of a kind this can take yet.`
+            : `Shows the value of the ${noun}'s field, in the shopper's language. Only fields set to be shown on the site can be used, and a ${noun} with no value for it shows nothing here.`}
+        </p>
+      </div>
+      {bind && (
+        <Check
+          label="Keep my own content when the field is empty"
+          hint="What is written or chosen below then shows, rather than nothing."
+          checked={Boolean(bind.fallback)}
+          onChange={(on) => onChange({ fieldId: bind.fieldId, ...(on && { fallback: true }) })}
+        />
+      )}
+    </div>
+  );
+}
+
+/** On the canvas: a small note that a block takes its content from a field, and which. */
+export function BindBadge({ bind }: { bind: FieldBinding }) {
+  const groups = useContext(FieldGroupsContext);
+  const def = (groups ?? []).flatMap((group) => group.fields).find((f) => f.id === bind.fieldId);
+  return (
+    <p className="mb-1 w-fit rounded border border-dashed border-border px-1.5 py-0.5 text-[11px] text-muted">
+      {`From field: ${def?.label ?? "one that is gone"}${bind.fallback ? " (own content if empty)" : ""}`}
+    </p>
   );
 }
 

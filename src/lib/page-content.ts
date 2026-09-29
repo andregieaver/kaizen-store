@@ -380,9 +380,19 @@ export type ImageShape = keyof typeof IMAGE_SHAPES;
  */
 export type BlockFont = { font?: string };
 
-export type RichTextBlock = PartBase & BlockFont & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
+/**
+ * A block taking what it shows from a custom field of the thing the page
+ * belongs to (D118, `src/lib/field-binding.ts`): a heading's text, a rich
+ * text's words, a picture, a button's address. The block's own content is
+ * what shows where the field has none, when `fallback` is on; else such a
+ * block is left out. Kept only on the blocks that can take a field.
+ */
+export type FieldBinding = { fieldId: string; fallback?: boolean };
+export type Bindable = { bind?: FieldBinding };
+
+export type RichTextBlock = PartBase & BlockFont & Bindable & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
 /** A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. */
-export type ImageBlock = PartBase & {
+export type ImageBlock = PartBase & Bindable & {
   id: string;
   type: "image";
   /** The caption's font. */
@@ -403,7 +413,7 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
 export const HEADING_MAX = 300;
 
 /** A heading (D49): one line of text at a level, with its look. */
-export type HeadingBlock = PartBase & BlockFont & {
+export type HeadingBlock = PartBase & BlockFont & Bindable & {
   id: string;
   type: "heading";
   text: string;
@@ -427,7 +437,7 @@ export const BUTTON_LABEL_MAX = 100;
  * A button (D49): a link that looks like a button. Shown once it has both
  * its text and its address; the defaults are filled, medium and rounded.
  */
-export type ButtonBlock = PartBase & BlockFont & {
+export type ButtonBlock = PartBase & BlockFont & Bindable & {
   id: string;
   type: "button";
   label: string;
@@ -1174,8 +1184,30 @@ export function richTextIsEmpty(doc: RichTextDoc): boolean {
   return doc.content.every((node) => node.type === "paragraph" && !node.content?.length);
 }
 
-/** Whether a block shows anything; empty ones are left out of the page. */
+/** The field a block takes its content from, if it has one (D118). */
+export const bindingOf = (block: PageBlock): FieldBinding | undefined =>
+  block.type === "heading" || block.type === "richText" || block.type === "image" || block.type === "button" ? block.bind : undefined;
+
+/**
+ * Whether a block shows anything; empty ones are left out of the page. A block
+ * bound to a field counts as having content: the field decides (D118).
+ */
 export function blockHasContent(block: PageBlock): boolean {
+  return bindingOf(block) !== undefined || blockOwnContent(block);
+}
+
+/**
+ * Whether a block shows where no field is read (a header or footer, Kaizen's
+ * own pages, a preview): its own content, and for a bound block only when it
+ * keeps that content when its field is empty.
+ */
+export function blockShowsUnbound(block: PageBlock): boolean {
+  const bind = bindingOf(block);
+  return bind ? Boolean(bind.fallback) && blockOwnContent(block) : blockOwnContent(block);
+}
+
+/** Whether a block has content of its own, whatever it is bound to. */
+export function blockOwnContent(block: PageBlock): boolean {
   switch (block.type) {
     case "richText":
       return !richTextIsEmpty(block.doc);
@@ -1610,6 +1642,18 @@ const blockFont = optionalText(fontFamily);
 const textAlign = z.enum(["left", "center", "right"]).optional();
 const textAlignments = z.object({ mobile: textAlign, tablet: textAlign, desktop: textAlign }).optional();
 
+/** A custom field's id, as the store's field groups make them (`newFieldId()`). */
+const FIELD_ID = /^f_[a-z0-9]{6,24}$/;
+const fieldIdRule = z.string().regex(FIELD_ID, "A custom field component names an unknown field.");
+
+/** A block taking its content from a custom field (D118); only the blocks that can take one have it. */
+const bindRule = z
+  .object({
+    fieldId: z.string().regex(FIELD_ID, "A block takes its content from an unknown field."),
+    fallback: z.boolean().optional(),
+  })
+  .optional();
+
 const richTextBlock = z.object({
   id: itemId,
   type: z.literal("richText"),
@@ -1621,6 +1665,7 @@ const richTextBlock = z.object({
   }),
   align: textAlignments,
   font: blockFont,
+  bind: bindRule,
   ...partBase,
 });
 
@@ -1638,6 +1683,7 @@ const imageBlock = z.object({
   caption: z.string().trim().max(ALT_MAX, `Keep a caption under ${ALT_MAX} characters.`).default(""),
   shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
   font: blockFont,
+  bind: bindRule,
   ...partBase,
 });
 
@@ -1651,6 +1697,7 @@ const headingBlock = z.object({
   align: textAlignments,
   textColor: color.optional(),
   font: blockFont,
+  bind: bindRule,
   ...partBase,
 });
 
@@ -1672,6 +1719,7 @@ const buttonBlock = z.object({
   textColor: color.optional(),
   weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
   font: blockFont,
+  bind: bindRule,
   ...partBase,
 });
 
@@ -1741,7 +1789,6 @@ const contentGridBlock = z.object({
   ...partBase,
 });
 
-const fieldIdRule = z.string().regex(/^f_[a-z0-9]{6,24}$/, "A custom field component names an unknown field.");
 const fieldDisplay = z.enum(Object.keys(FIELD_DISPLAYS) as [FieldDisplay, ...FieldDisplay[]]);
 
 const productBlock = z.object({

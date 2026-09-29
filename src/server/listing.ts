@@ -5,6 +5,9 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import type { Buyer } from "@/lib/b2b";
+import { localized, type FieldDef } from "@/lib/custom-fields";
+import { YES, fieldFilterValues, filterableFields } from "@/lib/field-filters";
+import { t } from "@/lib/i18n";
 import { toMinorUnits, type ListingFilters } from "@/lib/listing-filters";
 import { shown, type Market } from "@/lib/markets";
 import { minorUnitDigits } from "@/lib/money";
@@ -12,6 +15,7 @@ import { PRODUCT_KINDS, type ProductKind } from "@/lib/query-understanding";
 import { categoryTree, withDescendants, type Term } from "@/lib/taxonomy";
 
 import { CATALOG_TAG, catalogTag, listGridProducts, type GridProduct } from "./catalog";
+import { activeFieldGroups, fieldsTag } from "./custom-fields";
 import { convertedSql, inCategories, inStockNow, shownPrice, textList, withTags } from "./product-conditions";
 import { siteTerms, termsTag } from "./taxonomy";
 
@@ -54,8 +58,38 @@ function scopeClause(storeId: string, marketCode: string, scope: ListingScope, v
     and ${viewer.audienceBoth ? sql`p.audience in ('all', ${viewer.buyer === "business" ? "businesses" : "consumers"})` : sql`true`}`;
 }
 
+/**
+ * What an address asked of custom fields (D118), as SQL over a product `p`:
+ * the fields it names, resolved to the store's public filter fields (a name
+ * that is not one is dropped, and so is a value the field cannot hold), each
+ * a test on what was entered in the language-neutral row; a choice is any of
+ * the values (a checkbox field holds a list), a yes or no is yes. The field's
+ * id and every value are parameters.
+ */
+function fieldsClause(filters: ListingFilters, defs: FieldDef[]): SQL[] {
+  const parts: SQL[] = [];
+  for (const asked of filters.fields) {
+    const def = defs.find((d) => d.name === asked.name);
+    if (!def) continue;
+    const values = fieldFilterValues(def, asked.values);
+    if (values.length === 0) continue;
+    const held = sql`fv.values -> ${def.id}::text`;
+    const test =
+      def.type === "boolean"
+        ? sql`${held} = 'true'::jsonb`
+        : def.type === "checkbox"
+          ? sql`jsonb_exists_any(${held}, ${textList(values)})`
+          : sql`(fv.values ->> ${def.id}::text) = any(${textList(values)})`;
+    parts.push(sql`exists (
+      select 1 from commerce.field_values fv
+      where fv.store_id = p.store_id and fv.entity = 'product' and fv.entity_id = p.id and fv.locale = '' and ${test}
+    )`);
+  }
+  return parts;
+}
+
 /** What the shopper's filters ask of a product `p`, as SQL; every value a parameter. */
-function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer): SQL {
+function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer, fieldDefs: FieldDef[] = []): SQL {
   const parts: SQL[] = [];
   if (filters.kinds.length > 0) parts.push(sql`p.kind = any(${textList(filters.kinds)})`);
   if (filters.categories.length > 0) parts.push(inCategories(filters.categories));
@@ -68,6 +102,7 @@ function filtersClause(filters: ListingFilters, market: Market, viewer: Viewer):
       where v.product_id = p.id and v.active and ${sql.join(each, sql` and `)}
     )`);
   }
+  parts.push(...fieldsClause(filters, fieldDefs));
   if (filters.minPrice !== null || filters.maxPrice !== null) {
     const digits = minorUnitDigits(market.currency);
     parts.push(sql`exists (
@@ -110,9 +145,10 @@ export async function listingProducts(
             : scope.ids
               ? sql`array_position(${uuids(scope.ids)}::uuid[], p.id)`
               : sql`p.created_at, p.handle`;
+  const fieldDefs = filters.fields.length > 0 ? filterableFields(await activeFieldGroups(storeId, "product")) : [];
   const rows = await readDb().execute<Row>(sql`
     select p.id from commerce.products p
-    where ${scopeClause(storeId, market.code, scope, viewer)} and ${filtersClause(filters, market, viewer)}
+    where ${scopeClause(storeId, market.code, scope, viewer)} and ${filtersClause(filters, market, viewer, fieldDefs)}
     order by ${order}
     limit ${LISTING_LIMIT}
   `);
@@ -133,6 +169,10 @@ export type ListingFacets = {
   tags: FacetValue[];
   /** Variant options by name (size, colour, rental period …), with their values. */
   options: { name: string; label: string; values: FacetValue[] }[];
+  /** The store's custom fields offered as filters (D118) by the field's name, in the shopper's language; only values that narrow the page. */
+  fields: { name: string; label: string; values: FacetValue[] }[];
+  /** Every value of those fields with its label, narrowing or not, to word a chosen filter. */
+  fieldLabels: { name: string; label: string; values: Record<string, string> }[];
   /** Whole units of the currency, as prices are shown to the viewer; null without prices. */
   price: { min: number; max: number } | null;
 };
@@ -163,7 +203,7 @@ export async function listingFacets(
 ): Promise<ListingFacets> {
   "use cache";
   cacheLife("hours");
-  cacheTag(CATALOG_TAG, catalogTag(storeId), termsTag({ storeId, contentType: "product" }));
+  cacheTag(CATALOG_TAG, catalogTag(storeId), termsTag({ storeId, contentType: "product" }), fieldsTag(storeId));
 
   const business = viewer.buyer === "business";
   const products = await readDb().execute<Row>(sql`
@@ -177,11 +217,12 @@ export async function listingFacets(
     limit ${FACET_LIMIT}
   `);
   const total = products.length;
-  const empty: ListingFacets = { total, kinds: [], categories: [], tags: [], options: [], price: null };
+  const empty: ListingFacets = { total, kinds: [], categories: [], tags: [], options: [], fields: [], fieldLabels: [], price: null };
   if (total === 0) return empty;
   const ids = uuids(products.map((row) => String(row.id)));
 
-  const [links, optionRows, terms] = await Promise.all([
+  const fieldDefs = filterableFields(await activeFieldGroups(storeId, "product"));
+  const [links, optionRows, terms, fieldRows] = await Promise.all([
     readDb().execute<Row>(sql`
       select pt.product_id, pt.term_id from commerce.product_terms pt
       where pt.store_id = ${storeId}::uuid and pt.product_id = any(${ids}::uuid[])
@@ -193,6 +234,15 @@ export async function listingFacets(
       group by o.key, o.value
     `),
     siteTerms(storeId, "product"),
+    fieldDefs.length === 0
+      ? Promise.resolve([])
+      : readDb().execute<Row>(sql`
+          select f.id as field_id, fv.values -> f.id as value
+          from commerce.field_values fv
+          cross join unnest(${textList(fieldDefs.map((d) => d.id))}) as f(id)
+          where fv.store_id = ${storeId}::uuid and fv.entity = 'product' and fv.locale = ''
+            and fv.entity_id = any(${ids}::uuid[]) and jsonb_exists(fv.values, f.id)
+        `),
   ]);
 
   const narrows = (count: number) => count > 0 && count < total;
@@ -233,6 +283,27 @@ export async function listingFacets(
     .map(([name, values]) => ({ name, label: label(name), values: values.sort((a, b) => byValue(a.value, b.value)) }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
+  // Custom fields (D118): the products having each choice, or a yes, counted from what was entered.
+  const yes = t(market.lang).customFields.yes;
+  const held = new Map<string, Map<string, number>>();
+  for (const row of fieldRows) {
+    const def = fieldDefs.find((d) => d.id === String(row.field_id));
+    if (!def) continue;
+    const value = row.value as unknown;
+    const keys = def.type === "boolean" ? (value === true ? [YES] : []) : (Array.isArray(value) ? value : [value]).filter((k): k is string => typeof k === "string");
+    const counts = held.get(def.id) ?? new Map<string, number>();
+    for (const key of new Set(keys)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    held.set(def.id, counts);
+  }
+  const fieldFacets = fieldDefs.map((def) => {
+    const counts = held.get(def.id) ?? new Map<string, number>();
+    const all: FacetValue[] =
+      def.type === "boolean"
+        ? [{ value: YES, label: yes, count: counts.get(YES) ?? 0 }]
+        : (def.choices ?? []).map((choice) => ({ value: choice.key, label: localized(choice.label, choice.labels, market.locale), count: counts.get(choice.key) ?? 0 }));
+    return { name: def.name, label: localized(def.label, def.labels, market.locale), all };
+  });
+
   // Prices are kept in the country's own currency and shown in the one chosen (D109).
   const lows = products.map((row) => shown(market, Number(row.low))).filter(Number.isFinite);
   const highs = products.map((row) => shown(market, Number(row.high))).filter(Number.isFinite);
@@ -250,6 +321,14 @@ export async function listingFacets(
     options: options
       .map((option) => ({ name: option.name, label: option.label, values: option.values.filter((value) => narrows(value.count)) }))
       .filter((option) => option.values.length > 0),
+    fields: fieldFacets
+      .map((field) => ({ name: field.name, label: field.label, values: field.all.filter((value) => narrows(value.count)) }))
+      .filter((field) => field.values.length > 0),
+    fieldLabels: fieldFacets.map((field) => ({
+      name: field.name,
+      label: field.label,
+      values: Object.fromEntries(field.all.map((value) => [value.value, value.label])),
+    })),
     price: price && price.max > price.min ? price : null,
   };
 }

@@ -254,7 +254,7 @@ describe("a product's fields", () => {
   });
 
   it("are what a shopper sees in their own language: the public fields with a value, and not those their logic hides", async () => {
-    const nb = await fields.shownFieldsFor(store.id, "product", productId, "nb-NO", "nb");
+    const nb = await fields.shownFieldsFor(store.id, "product", productId, "nb-NO", "nb", "no");
     expect(nb).toHaveLength(1);
     expect(nb[0]).toMatchObject({ name: "Details", slug: "details" });
     expect(nb[0].fields.map((f) => [f.name, f.label, f.text])).toEqual([
@@ -263,7 +263,7 @@ describe("a product's fields", () => {
       ["why", "Why", "Lang garanti"],
       ["finish", "Finish", "Gloss"],
     ]);
-    const sv = await fields.shownFieldsFor(store.id, "product", productId, "sv-SE", "sv");
+    const sv = await fields.shownFieldsFor(store.id, "product", productId, "sv-SE", "sv", "se");
     expect(sv[0].fields.map((f) => [f.label, f.text])).toEqual([
       ["Undertitel", "Handgjord"],
       ["Months", "24 months"],
@@ -279,7 +279,7 @@ describe("a product's fields", () => {
       translations: { "nb-NO": { [title.id]: "Håndlaget", [hidden.id]: "Lang garanti" } },
     });
     expect(await saveProduct(store, contextOf, productId, await again(), changes)).toMatchObject({ ok: true });
-    const nb = await fields.shownFieldsFor(store.id, "product", productId, "nb-NO", "nb");
+    const nb = await fields.shownFieldsFor(store.id, "product", productId, "nb-NO", "nb", "no");
     // Six months: the field that shows over twelve is hidden, though its value is kept.
     expect(nb[0].fields.map((f) => f.name)).toEqual(["subtitle", "months", "finish"]);
     expect((await fields.getFieldData(store.id, "product", productId)).translations["nb-NO"]?.[hidden.id]).toBe(
@@ -376,7 +376,7 @@ describe("a product's fields", () => {
     expect((await fields.getFieldData(store.id, "product", productId)).values[colour.id]).toBe("gloss");
     await fields.deleteFieldGroup(member, details.id);
     expect((await fields.getFieldData(store.id, "product", productId)).values).toEqual({});
-    expect(await fields.shownFieldsFor(store.id, "product", productId, "nb-NO", "nb")).toEqual([]);
+    expect(await fields.shownFieldsFor(store.id, "product", productId, "nb-NO", "nb", "no")).toEqual([]);
   });
 });
 
@@ -413,7 +413,7 @@ describe("a page's fields", () => {
       ),
     );
     expect(problems).toEqual([]);
-    const shown = await fields.shownFieldsFor(store.id, "page", pageId, "nb-NO", "nb");
+    const shown = await fields.shownFieldsFor(store.id, "page", pageId, "nb-NO", "nb", "no");
     expect(shown.map((g) => g.slug)).toEqual(["page-details"]);
     expect(shown[0].fields[0]).toMatchObject({ label: "Subtitle", text: "Om oss" });
 

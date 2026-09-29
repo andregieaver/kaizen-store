@@ -4,13 +4,18 @@ import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import {
   FIELD_ACCESS,
+  FILTER_TYPES,
+  SEARCH_TYPES,
   FIELD_TYPES,
   FIELD_WIDTHS,
   MAX_CHOICES,
   MAX_GALLERY,
+  MAX_REPEATER_ROWS,
+  MAX_SUB_FIELDS,
   TEXTAREA_MAX,
   TEXT_MAX,
   hasChoices,
+  isStructural,
   nameOf,
   operatorsFor,
   uniqueName,
@@ -21,15 +26,26 @@ import {
   type FieldType,
 } from "@/lib/custom-fields";
 import {
+  NAME_PATTERN,
+  SUB_FIELD_TYPES,
+  addSubField,
   choiceKey,
+  duplicateSubField,
+  fieldProblems,
+  hasTypeSettings,
   moveItem,
+  moveSubField,
   newCondition,
   parseUnits,
+  removeSubField,
+  replaceSubField,
   settleCondition,
+  subFieldsSummary,
   valueKindFor,
   withLabel,
 } from "@/lib/field-group-editor";
 
+import { FieldTypePicker } from "./field-type-picker";
 import { Modal } from "./modal";
 
 export type FieldLanguage = { locale: string; name: string };
@@ -39,42 +55,20 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
 const small = "min-h-9 rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-40";
 
-const NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
-const KEY_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 const PLACEHOLDER_TYPES: readonly FieldType[] = ["text", "textarea", "email", "url", "phone", "number", "measurement"];
 
 const TABS = [
   { id: "general", label: "General" },
+  { id: "fields", label: "Fields" },
   { id: "presentation", label: "Presentation" },
   { id: "logic", label: "Logic" },
   { id: "storefront", label: "Storefront" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-/** What is wrong with a field, in words, for the dialog to say before it lets the field go back into the group. */
-function fieldProblems(field: FieldDef, otherNames: readonly string[], above: readonly FieldDef[]): string[] {
-  const problems: string[] = [];
-  if (field.label.trim() === "") problems.push("Give the field a label.");
-  if (!NAME_PATTERN.test(field.name) || field.name.length > 40) {
-    problems.push("The name starts with a lowercase letter and uses lowercase letters, digits and underscores.");
-  } else if (otherNames.includes(field.name)) problems.push(`Another field is already named ${field.name}.`);
-  if (hasChoices(field.type)) {
-    const choices = field.choices ?? [];
-    if (choices.length === 0) problems.push("Add at least one choice.");
-    if (choices.some((c) => c.label.trim() === "")) problems.push("Give each choice a label.");
-    if (choices.some((c) => !KEY_PATTERN.test(c.key) || c.key.length > 40)) {
-      problems.push("A choice's key uses lowercase letters, digits, hyphens and underscores.");
-    }
-    if (new Set(choices.map((c) => c.key)).size !== choices.length) problems.push("Two choices have the same key.");
-  }
-  if (field.type === "measurement" && (field.units ?? []).length === 0) problems.push("Add at least one unit.");
-  if (field.min !== undefined && field.max !== undefined && field.min > field.max)
-    problems.push("The least is more than the most.");
-  const known = new Set(above.map((f) => f.id));
-  if ((field.when ?? []).flat().some((c) => !known.has(c.field)))
-    problems.push("The logic looks at a field that is no longer above this one.");
-  return problems;
-}
+/** The tabs a field has: "Fields" only for a group or repeater, "Storefront" not for a field inside one (it follows its parent). */
+const tabsFor = (type: FieldType, sub: boolean) =>
+  TABS.filter((tab) => (tab.id !== "fields" || isStructural(type)) && (tab.id !== "storefront" || !sub));
 
 /**
  * One field of a group, edited in a dialog with its own copy: nothing changes
@@ -86,6 +80,9 @@ export function FieldEditorDialog({
   above,
   otherNames,
   fresh,
+  freshIds,
+  onFresh,
+  sub = false,
   languages,
   onApply,
   onClose,
@@ -98,6 +95,11 @@ export function FieldEditorDialog({
   otherNames: string[];
   /** Not saved yet: its name follows its label, and its choices' keys are free to change. */
   fresh: boolean;
+  /** The fields made since the group was last saved (a group's or repeater's own too), and a way to add to them. */
+  freshIds?: ReadonlySet<string>;
+  onFresh?: (ids: string[]) => void;
+  /** A field inside a group or repeater: no access of its own (it follows its parent's). */
+  sub?: boolean;
   /** The store's languages, the main one first. */
   languages: FieldLanguage[];
   onApply: (field: FieldDef) => void;
@@ -118,6 +120,8 @@ export function FieldEditorDialog({
     setSavedKeys(fresh ? [] : (field?.choices ?? []).map((c) => c.key));
   }
   const tabsId = useId();
+  const tabs = tabsFor(draft?.type ?? "text", sub);
+  const shownTab = tabs.some((item) => item.id === tab) ? tab : "general";
 
   const update = (patch: Partial<FieldDef>) => setDraft((d) => (d ? { ...d, ...patch } : d));
   const problems = draft ? fieldProblems(draft, otherNames, above) : [];
@@ -134,7 +138,7 @@ export function FieldEditorDialog({
     const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
     if (step === 0) return;
     event.preventDefault();
-    const next = TABS[(index + step + TABS.length) % TABS.length];
+    const next = tabs[(index + step + tabs.length) % tabs.length];
     setTab(next.id);
     document.getElementById(`${tabsId}-tab-${next.id}`)?.focus();
   };
@@ -144,7 +148,11 @@ export function FieldEditorDialog({
       open={field !== null}
       onClose={onClose}
       wide
-      title={draft ? `${fresh ? "New" : "Edit"} field: ${draft.label || FIELD_TYPES[draft.type].label}` : "Field"}
+      title={
+        draft
+          ? `${fresh ? "New" : "Edit"} ${sub ? "field inside" : "field"}: ${draft.label || FIELD_TYPES[draft.type].label}`
+          : "Field"
+      }
       footer={
         <>
           <button
@@ -170,22 +178,22 @@ export function FieldEditorDialog({
             <div role="alert" className="rounded-md border border-red-700 p-3 text-sm">
               <p className="font-medium">The field cannot be used yet. Please fix:</p>
               <ul className="mt-1 list-disc pl-5">
-                {problems.map((problem) => (
-                  <li key={problem}>{problem}</li>
+                {problems.map((problem, index) => (
+                  <li key={`${index}:${problem}`}>{problem}</li>
                 ))}
               </ul>
             </div>
           )}
           <div role="tablist" aria-label="Field settings" className="flex flex-wrap gap-1 border-b border-border">
-            {TABS.map((item, index) => (
+            {tabs.map((item, index) => (
               <button
                 key={item.id}
                 type="button"
                 role="tab"
                 id={`${tabsId}-tab-${item.id}`}
-                aria-selected={tab === item.id}
+                aria-selected={shownTab === item.id}
                 aria-controls={`${tabsId}-panel-${item.id}`}
-                tabIndex={tab === item.id ? 0 : -1}
+                tabIndex={shownTab === item.id ? 0 : -1}
                 onClick={() => setTab(item.id)}
                 onKeyDown={(event) => onTabKey(event, index)}
                 className="-mb-px min-h-10 border-b-2 border-transparent px-3 text-sm aria-selected:border-foreground aria-selected:font-medium"
@@ -196,11 +204,11 @@ export function FieldEditorDialog({
           </div>
           <div
             role="tabpanel"
-            id={`${tabsId}-panel-${tab}`}
-            aria-labelledby={`${tabsId}-tab-${tab}`}
+            id={`${tabsId}-panel-${shownTab}`}
+            aria-labelledby={`${tabsId}-tab-${shownTab}`}
             className="flex flex-col gap-4"
           >
-            {tab === "general" && (
+            {shownTab === "general" && (
               <General
                 draft={draft}
                 update={update}
@@ -210,11 +218,20 @@ export function FieldEditorDialog({
                 attempted={attempted}
               />
             )}
-            {tab === "presentation" && (
+            {shownTab === "fields" && (
+              <SubFieldsEditor
+                draft={draft}
+                update={update}
+                languages={languages}
+                freshIds={freshIds ?? new Set()}
+                onFresh={onFresh ?? (() => {})}
+              />
+            )}
+            {shownTab === "presentation" && (
               <Presentation draft={draft} update={update} languages={languages} savedKeys={savedKeys} fresh={fresh} />
             )}
-            {tab === "logic" && <Logic draft={draft} update={update} above={above} />}
-            {tab === "storefront" && <Storefront draft={draft} update={update} />}
+            {shownTab === "logic" && <Logic draft={draft} update={update} above={above} sub={sub} />}
+            {shownTab === "storefront" && <Storefront draft={draft} update={update} />}
           </div>
         </div>
       )}
@@ -307,7 +324,7 @@ function General({
           </span>
         )}
         {nameProblem === "taken" && (
-          <span className="text-xs font-normal text-red-700">Another field in this group has that name.</span>
+          <span className="text-xs font-normal text-red-700">Another field next to this one has that name.</span>
         )}
       </label>
       <label className={label}>
@@ -441,10 +458,299 @@ function Presentation({
           hintText={`At most ${MAX_GALLERY}.`}
         />
       )}
-      {!PLACEHOLDER_TYPES.includes(type) && !hasChoices(type) && type !== "gallery" && (
-        <p className={hint}>This type has no other settings.</p>
+      {(type === "product" || type === "page" || type === "term") && (
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={draft.multiple === true}
+            onChange={(event) => update({ multiple: event.target.checked || undefined })}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            <span className="font-medium">Allow several</span>
+            <span className={`block ${hint}`}>
+              {draft.multiple
+                ? "Staff choose any number, in the order they like, up to 50."
+                : "Staff choose one. Turn this on to choose several."}
+            </span>
+          </span>
+        </label>
+      )}
+      {type === "term" && <TermKinds draft={draft} update={update} />}
+      {type === "repeater" && <RepeaterSettings draft={draft} update={update} />}
+      {!hasTypeSettings(type) && (
+        <p className={hint}>
+          {type === "group"
+            ? "A group has no settings of its own besides its fields, which are on the Fields tab."
+            : "This type has no other settings."}
+        </p>
       )}
     </>
+  );
+}
+
+/** Which of the categories and tags a category-or-tag field offers: at least one of the two. */
+function TermKinds({ draft, update }: PanelProps) {
+  const kinds = draft.termKinds && draft.termKinds.length > 0 ? draft.termKinds : (["category", "tag"] as const);
+  const set = (kind: "category" | "tag", on: boolean) => {
+    const next = (["category", "tag"] as const).filter((k) => (k === kind ? on : kinds.includes(k)));
+    if (next.length > 0) update({ termKinds: [...next] });
+  };
+  return (
+    <fieldset className="flex flex-col gap-1">
+      <legend className="mb-1 text-sm font-medium">Which to choose from</legend>
+      {(["category", "tag"] as const).map((kind) => (
+        <label key={kind} className="flex min-h-10 items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={kinds.includes(kind)}
+            disabled={kinds.length === 1 && kinds.includes(kind)}
+            onChange={(event) => set(kind, event.target.checked)}
+            className="size-4"
+          />
+          {kind === "category" ? "Categories" : "Tags"}
+        </label>
+      ))}
+      <p className={hint}>At least one. Staff choose among the ones the store has made, of any kind of content.</p>
+    </fieldset>
+  );
+}
+
+/** A repeater's fewest and most rows, the words on its add button, and how its rows are laid out in the form. */
+function RepeaterSettings({ draft, update }: PanelProps) {
+  const layout = draft.rowLayout ?? "block";
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <OptionalNumber
+          label="Fewest rows (optional)"
+          value={draft.minRows}
+          min={0}
+          max={MAX_REPEATER_ROWS}
+          integer
+          onChange={(minRows) => update({ minRows })}
+          hintText="Staff must add at least this many before saving."
+        />
+        <OptionalNumber
+          label="Most rows (optional)"
+          value={draft.maxRows}
+          min={1}
+          max={MAX_REPEATER_ROWS}
+          integer
+          onChange={(maxRows) => update({ maxRows })}
+          hintText={`At most ${MAX_REPEATER_ROWS}.`}
+        />
+      </div>
+      <label className={`${label} max-w-72`}>
+        Words on the add button
+        <input
+          value={draft.buttonLabel ?? ""}
+          maxLength={40}
+          placeholder="Add row"
+          onChange={(event) => update({ buttonLabel: event.target.value || undefined })}
+          className={input}
+        />
+      </label>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">How rows are laid out in the form</legend>
+        {(
+          [
+            ["block", "Blocks", "Each row is a box with its fields, laid out by their widths."],
+            ["table", "Table", "Each row is a line with a column for each field. Best for short fields."],
+          ] as const
+        ).map(([value, name, text]) => (
+          <label
+            key={value}
+            className="flex items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground"
+          >
+            <input
+              type="radio"
+              name="row-layout"
+              checked={layout === value}
+              onChange={() => update({ rowLayout: value })}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              <span className="font-medium">{name}</span>
+              <span className={`block ${hint}`}>{text}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+    </>
+  );
+}
+
+/**
+ * The fields inside a group or repeater: added, edited (in a dialog of their
+ * own, with the same settings as any field but access, which follows the
+ * group's), duplicated, reordered with buttons and deleted. A field can only be
+ * shown by the ones above it here.
+ */
+function SubFieldsEditor({
+  draft,
+  update,
+  languages,
+  freshIds,
+  onFresh,
+}: PanelProps & { languages: FieldLanguage[]; freshIds: ReadonlySet<string>; onFresh: (ids: string[]) => void }) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const subs = draft.subFields ?? [];
+  const set = (fields: FieldDef[], message?: string) => {
+    update({ subFields: fields[0]?.subFields ?? [] });
+    if (message) setAnnouncement(message);
+  };
+  const wrapped = [draft];
+  const editingIndex = editing ? subs.findIndex((f) => f.id === editing) : -1;
+  const editingField = editingIndex >= 0 ? subs[editingIndex] : null;
+
+  const add = (type: FieldType) => {
+    const result = addSubField(wrapped, draft.id, type);
+    setPicking(false);
+    if (!result.added) return;
+    onFresh([result.added.id]);
+    set(result.fields, `${FIELD_TYPES[type].label} field added.`);
+    setEditing(result.added.id);
+  };
+  const copy = (id: string) => {
+    const result = duplicateSubField(wrapped, draft.id, id);
+    if (!result) return;
+    onFresh([result.copy.id]);
+    set(result.fields, `${result.copy.label} added below.`);
+    setEditing(result.copy.id);
+  };
+  const remove = (sub: FieldDef) => {
+    if (
+      !freshIds.has(sub.id) &&
+      !window.confirm(`Delete the field ${sub.label}? What was entered in it is deleted when you save the group.`)
+    )
+      return;
+    const result = removeSubField(wrapped, draft.id, sub.id);
+    set(
+      result.fields,
+      `${sub.label} deleted.${result.changed.length > 0 ? ` The logic of ${result.changed.join(", ")} that looked at it was taken away.` : ""}`,
+    );
+  };
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= subs.length) return;
+    set(moveSubField(wrapped, draft.id, from, to), `${subs[from].label} moved to place ${to + 1} of ${subs.length}.`);
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium">
+          Fields inside <span className="font-normal text-muted">({subs.length})</span>
+        </p>
+        <button
+          type="button"
+          className={small}
+          onClick={() => setPicking(true)}
+          disabled={subs.length >= MAX_SUB_FIELDS}
+        >
+          Add a field inside
+        </button>
+      </div>
+      {subs.length === 0 ? (
+        <p role="alert" className="rounded-md border border-dashed border-red-700 p-4 text-center text-sm">
+          A {draft.type === "group" ? "group" : "repeater"} needs at least one field. Add one to start.
+        </p>
+      ) : (
+        <ol aria-label={`Fields inside ${draft.label || "the field"}`} className="flex flex-col gap-2">
+          {subs.map((sub, index) => {
+            const name = sub.label || sub.name;
+            return (
+              <li
+                key={sub.id}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-2"
+              >
+                <div className="min-w-0 flex-1 basis-40">
+                  <p className="truncate text-sm font-medium">{sub.label || "Untitled field"}</p>
+                  <p className="truncate font-mono text-xs text-muted">{sub.name}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1 text-xs">
+                  <span className="rounded-full border border-border px-2 py-0.5">{FIELD_TYPES[sub.type].label}</span>
+                  {sub.required && (
+                    <span className="rounded-full bg-foreground px-2 py-0.5 text-background">Required</span>
+                  )}
+                  {sub.when && sub.when.length > 0 && (
+                    <span className="rounded-full border border-border px-2 py-0.5">Has logic</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <button
+                    type="button"
+                    className={small}
+                    disabled={index === 0}
+                    aria-label={`Move ${name} up`}
+                    onClick={() => move(index, index - 1)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className={small}
+                    disabled={index === subs.length - 1}
+                    aria-label={`Move ${name} down`}
+                    onClick={() => move(index, index + 1)}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className={small}
+                    aria-label={`Edit ${name}`}
+                    onClick={() => setEditing(sub.id)}
+                  >
+                    Edit
+                  </button>
+                  <button type="button" className={small} aria-label={`Duplicate ${name}`} onClick={() => copy(sub.id)}>
+                    Duplicate
+                  </button>
+                  <button
+                    type="button"
+                    className={`${small} text-red-700`}
+                    aria-label={`Delete ${name}`}
+                    onClick={() => remove(sub)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      <p className={hint}>
+        {subFieldsSummary(draft)}. A field can only be shown by the fields above it here. What is entered in them
+        follows the {draft.type === "group" ? "group" : "repeater"}&apos;s own access.
+      </p>
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
+      <FieldTypePicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={add}
+        types={SUB_FIELD_TYPES}
+        title="Add a field inside"
+      />
+      <FieldEditorDialog
+        sub
+        field={editingField}
+        above={editingIndex > 0 ? subs.slice(0, editingIndex) : []}
+        otherNames={subs.filter((_, i) => i !== editingIndex).map((f) => f.name)}
+        fresh={editingField ? freshIds.has(editingField.id) : false}
+        languages={languages}
+        onApply={(next) => {
+          set(replaceSubField(wrapped, draft.id, next), `${next.label} updated.`);
+          setEditing(null);
+        }}
+        onClose={() => setEditing(null)}
+      />
+    </div>
   );
 }
 
@@ -649,7 +955,7 @@ function ChoicesEditor({
   );
 }
 
-function Logic({ draft, update, above }: PanelProps & { above: FieldDef[] }) {
+function Logic({ draft, update, above, sub }: PanelProps & { above: FieldDef[]; sub: boolean }) {
   const groups: Condition[][] = draft.when ?? [];
   const set = (next: Condition[][]) => update({ when: next.length > 0 ? next : undefined });
   const start = () => {
@@ -664,8 +970,8 @@ function Logic({ draft, update, above }: PanelProps & { above: FieldDef[] }) {
   if (above.length === 0) {
     return (
       <p className="text-sm text-muted">
-        A field can be shown by the value of a field above it in the group. There are none above this one yet: move it
-        down, or add a field above it first.
+        A field can be shown by the value of a field above it in the {sub ? "group or repeater" : "group"}. There are
+        none above this one yet: move it down, or add a field above it first.
       </p>
     );
   }
@@ -851,6 +1157,7 @@ function Storefront({ draft, update }: PanelProps) {
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-sm font-medium">Who can see what is entered</legend>
+      {isStructural(draft.type) && <p className={hint}>What is entered in the fields inside follows this choice.</p>}
       {(Object.keys(FIELD_ACCESS) as (keyof typeof FIELD_ACCESS)[]).map((access) => (
         <label
           key={access}
@@ -875,6 +1182,52 @@ function Storefront({ draft, update }: PanelProps) {
           </span>
         </label>
       ))}
+      {draft.access === "public" && !isStructural(draft.type) && <Uses draft={draft} update={update} />}
     </fieldset>
+  );
+}
+
+/** Where else a public field is used besides templates (D118, phase 2): the listing's filters, keyword search and the chat assistant. */
+function Uses({ draft, update }: PanelProps) {
+  const uses: { key: "filter" | "search" | "chat"; label: string; hint: string; allowed: boolean }[] = [
+    {
+      key: "filter",
+      label: "Offer as a filter in product lists",
+      hint: "Shoppers can narrow product lists by this field's choices. Only for products.",
+      allowed: FILTER_TYPES.includes(draft.type),
+    },
+    {
+      key: "search",
+      label: "Include in the store's search",
+      hint: "Products are found by the words written in this field. Only for products.",
+      allowed: SEARCH_TYPES.includes(draft.type),
+    },
+    {
+      key: "chat",
+      label: "Let the chat assistant say it",
+      hint: "The assistant may tell shoppers what is written here about a product, worded as it is.",
+      allowed: true,
+    },
+  ];
+  return (
+    <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
+      <p className="text-sm font-medium">Also use it for</p>
+      {uses
+        .filter((use) => use.allowed)
+        .map((use) => (
+          <label key={use.key} className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={Boolean(draft[use.key])}
+              onChange={(event) => update({ [use.key]: event.target.checked })}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              <span className="font-medium">{use.label}</span>
+              <span className={`block ${hint}`}>{use.hint}</span>
+            </span>
+          </label>
+        ))}
+    </div>
   );
 }

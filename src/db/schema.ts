@@ -1317,8 +1317,35 @@ export const fieldValues = commerce.table(
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.entity, t.entityId, t.locale] }),
-    check("field_values_entity", sql`${t.entity} in ('product', 'page', 'article')`),
+    check("field_values_entity", sql`${t.entity} in ('product', 'page', 'article', 'variant', 'term')`),
     check("field_values_values", sql`jsonb_typeof(${t.values}) = 'object'`),
+  ],
+);
+
+/**
+ * The words of a product's searchable fields (D118, D72), one row per product
+ * and language: the language-neutral texts and that language's own, stemmed
+ * like the product's title. Rebuilt by `refreshFieldSearch()` whenever a
+ * product's fields or the store's field groups change; keyword search reads it.
+ */
+export const fieldSearch = commerce.table(
+  "field_search",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    entity: text("entity").notNull().default("product"),
+    entityId: uuid("entity_id").notNull(),
+    locale: text("locale").notNull(),
+    body: text("body").notNull(),
+    search: tsvector("search").generatedAlwaysAs(
+      (): ReturnType<typeof sql> => sql`commerce.product_search_doc(locale, '', body)`,
+    ),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.entity, t.entityId, t.locale] }),
+    index("field_search_search_idx").using("gin", t.search),
+    check("field_search_entity", sql`${t.entity} in ('product')`),
   ],
 );
 

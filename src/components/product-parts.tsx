@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import { AppointmentPicker } from "@/components/appointment-picker";
 import { SwitchToBusiness } from "@/components/buyer";
@@ -16,6 +16,7 @@ import { ProductGrid } from "@/components/product-listing";
 import { PlanAmount, PlanPrice, PurchaseOptions } from "@/components/purchase-options";
 import { RangePicker } from "@/components/range-picker";
 import { VariantChoice, VariantPurchase } from "@/components/variant-choice";
+import { VariantFields } from "@/components/variant-fields";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { noticesFor, type CampaignNotices as Notices } from "@/lib/campaign-notices";
 import { percentText } from "@/lib/customer-tiers";
@@ -23,6 +24,8 @@ import { pickerLabels, rangePickerLabels } from "@/lib/booking-labels";
 import { seasonName, seasonPrice } from "@/lib/booking-prices";
 import { rangeCalendar } from "@/lib/booking-ranges";
 import { slotWeek } from "@/lib/booking-slots";
+import { structuredProperties } from "@/lib/custom-fields";
+import { bindPage } from "@/lib/field-binding";
 import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
 import { inView, type Market } from "@/lib/markets";
@@ -204,25 +207,81 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
     case "related":
       return <Related block={block} ctx={ctx} />;
     case "fields": {
-      // The store's public custom fields (D118): the group chosen, else every group that applies, each under its name.
+      // The store's public custom fields (D118): the group chosen, else every group that applies, each under its name;
+      // then the chosen variant's own (they follow the picker).
       const groups = groupsToShow(product.fields, block.groupId);
       return (
-        <CustomFieldGroups
-          groups={groups}
-          display={block.display}
-          showLabel={block.showLabel !== false}
-          idPrefix={block.id}
-          headingFor={(group) => groupHeading(block, group, Boolean(block.groupId))}
-        />
+        <>
+          <CustomFieldGroups
+            groups={groups}
+            display={block.display}
+            showLabel={block.showLabel !== false}
+            idPrefix={block.id}
+            headingFor={(group) => groupHeading(block, group, Boolean(block.groupId))}
+          />
+          <VariantFieldsPart
+            product={product}
+            panel={(fields, id) => (
+              <CustomFieldGroups
+                groups={groupsToShow(fields, block.groupId)}
+                display={block.display}
+                showLabel={block.showLabel !== false}
+                idPrefix={`${block.id}-${id}`}
+                headingFor={(group) => groupHeading(block, group, Boolean(block.groupId))}
+              />
+            )}
+            has={(fields) => groupsToShow(fields, block.groupId).length > 0}
+          />
+        </>
       );
     }
     case "field": {
       const field = fieldToShow(product.fields, block.fieldId);
-      return field ? (
+      const own = field ? (
         <CustomFieldView field={field} display={block.display} showLabel={block.showLabel !== false} heading={fieldHeading(block)} id={headingId} />
       ) : null;
+      return (
+        <>
+          {own}
+          <VariantFieldsPart
+            product={product}
+            panel={(fields, id) => {
+              const chosen = fieldToShow(fields, block.fieldId);
+              return chosen ? (
+                <CustomFieldView field={chosen} display={block.display} showLabel={block.showLabel !== false} heading={fieldHeading(block)} id={`${headingId}-${id}`} />
+              ) : null;
+            }}
+            has={(fields) => fieldToShow(fields, block.fieldId) !== null}
+          />
+        </>
+      );
     }
   }
+}
+
+/**
+ * The variants' own fields (D118, phase 2) for a component that shows fields:
+ * each variant's drawn by the server, the chosen one shown in the browser.
+ * Draws nothing when no variant has anything for the component.
+ */
+function VariantFieldsPart({
+  product,
+  panel,
+  has,
+}: {
+  product: ProductDetail;
+  panel: (fields: ProductDetail["fields"], variantId: string) => ReactNode;
+  has: (fields: ProductDetail["fields"]) => boolean;
+}) {
+  const withFields = product.variants.filter((variant) => has(product.variantFields[variant.id] ?? []));
+  if (withFields.length === 0) return null;
+  return (
+    <VariantFields
+      productId={product.id}
+      initial={(withFields.find((variant) => variant.id === product.variants[0].id) ?? product.variants[0]).id}
+      panels={Object.fromEntries(withFields.map((variant) => [variant.id, panel(product.variantFields[variant.id], variant.id)]))}
+    />
+  );
 }
 
 /** The product's pictures, or its variants' own (D82) when it has none. */
@@ -250,9 +309,15 @@ export function productPartShows(block: ProductBlock, product: ProductDetail, ca
     case "safety":
       return Boolean(product.safetyInformation || product.manufacturer || product.responsiblePerson);
     case "fields":
-      return groupsToShow(product.fields, block.groupId).length > 0;
+      return (
+        groupsToShow(product.fields, block.groupId).length > 0 ||
+        Object.values(product.variantFields).some((groups) => groupsToShow(groups, block.groupId).length > 0)
+      );
     case "field":
-      return fieldToShow(product.fields, block.fieldId) !== null;
+      return (
+        fieldToShow(product.fields, block.fieldId) !== null ||
+        Object.values(product.variantFields).some((groups) => fieldToShow(groups, block.fieldId) !== null)
+      );
     default:
       return true;
   }
@@ -723,6 +788,7 @@ export async function ProductJsonLd({
         product: {
           ...product,
           description: product.seoDescription || product.description,
+          properties: structuredProperties(product.fields),
           // Option names and values as shoppers read them ("Farge: Hvit").
           variants: product.variants.map((variant) => ({
             ...variant,
@@ -755,7 +821,8 @@ export async function ProductJsonLd({
  */
 export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: PageContent; ctx: ProductPageContext; inAdmin?: boolean }) {
   const { store, market, product } = ctx;
-  const content = localizePage(layout, market.locale);
+  // Blocks bound to a custom field of the product show its value (D118); the product's fields are read with it, so this costs nothing more.
+  const content = bindPage(localizePage(layout, market.locale), product.fields);
   return (
     <PageArticle
       content={{ ...content, title: product.title }}

@@ -1,18 +1,26 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { EmbeddedVideo } from "@/components/video-view";
 import { RichText } from "@/components/rich-text";
-import type { ShownField, ShownGroup } from "@/lib/custom-fields";
+import type { ShownField, ShownGroup, ShownLink } from "@/lib/custom-fields";
 import {
   drawable,
+  drawableChildren,
+  drawableRows,
+  fileKind,
   isHexColor,
+  isInternalAddress,
   isWebAddress,
+  linksOf,
   mailAddress,
   phoneNumber,
   pictureOf,
   picturesOf,
+  repeaterColumns,
   videoOf,
 } from "@/lib/field-parts";
+import { fileSize } from "@/lib/file-size";
 import type { FieldDisplay, RichTextDoc } from "@/lib/page-content";
 
 /**
@@ -27,10 +35,160 @@ import type { FieldDisplay, RichTextDoc } from "@/lib/page-content";
 
 const LINK = "underline underline-offset-2 hover:no-underline";
 
+/** A link to a safe address: a page of the site goes through the router, anything else is a plain link. */
+function Anchor({ link, className = LINK, children }: { link: ShownLink; className?: string; children?: ReactNode }) {
+  const content = children ?? link.label;
+  const target = link.newTab ? ({ target: "_blank" } as const) : {};
+  return isInternalAddress(link.href) ? (
+    <Link href={link.href} className={className} {...target} rel={link.newTab ? "noopener noreferrer" : undefined}>
+      {content}
+    </Link>
+  ) : (
+    <a href={link.href} className={`${className} break-words`} {...target} rel="noopener noreferrer">
+      {content}
+    </a>
+  );
+}
+
+/** Things a field points at (products, pages), as a small grid of pictures when any has one, else a list of links. */
+function RelatedLinks({ links }: { links: ShownLink[] }) {
+  if (links.some((link) => link.image)) {
+    return (
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {links.map((link, index) => (
+          <li key={`${link.href}-${index}`}>
+            <Anchor link={link} className="group flex flex-col gap-2 no-underline">
+              {link.image ? (
+                // eslint-disable-next-line @next/next/no-img-element -- a library picture whose size is not known here; the link's words name it
+                <img
+                  src={link.image}
+                  alt=""
+                  loading="lazy"
+                  className="aspect-square w-full rounded-lg bg-surface object-cover"
+                />
+              ) : (
+                <span aria-hidden className="aspect-square w-full rounded-lg bg-surface" />
+              )}
+              <span className="text-sm underline-offset-2 group-hover:underline">{link.label}</span>
+            </Anchor>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return (
+    <ul className="flex flex-col gap-1">
+      {links.map((link, index) => (
+        <li key={`${link.href}-${index}`}>
+          <Anchor link={link} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A group's fields as a nested list (a repeater inside one is drawn as a list, to stay compact); labels always show, as without them its values would not say what they are. */
+function NestedFields({ fields }: { fields: ShownField[] }) {
+  return (
+    <dl className="flex flex-col gap-2">
+      {fields.map((field) => (
+        <div key={field.id} className="grid gap-0.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-3">
+          <dt className="text-muted">{field.label}</dt>
+          <dd className="min-w-0">{fieldValue(field, "list")}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** A repeater's rows: a table with a column per field (wide ones scroll on their own), a list of blocks or cards. */
+function Rows({ rows, display }: { rows: ShownField[][]; display: FieldDisplay }) {
+  if (display === "table") {
+    const columns = repeaterColumns(rows);
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-max border-collapse text-left">
+          <thead>
+            <tr className="border-b border-border">
+              {columns.map((column) => (
+                <th key={column.id} scope="col" className="px-3 py-2 align-bottom font-medium text-muted">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((row, index) => (
+              <tr key={index}>
+                {columns.map((column) => {
+                  const cell = row.find((field) => field.id === column.id);
+                  return (
+                    <td key={column.id} className="px-3 py-2 align-top">
+                      {cell ? fieldValue(cell, "list") : null}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  return (
+    <ul className={display === "cards" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-3"}>
+      {rows.map((row, index) => (
+        <li
+          key={index}
+          className={display === "cards" ? "rounded-lg border border-border p-4" : "border-l-2 border-border pl-3"}
+        >
+          <NestedFields fields={row} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** One field's value as elements; call only for a `drawable()` field. */
-export function fieldValue(field: ShownField): ReactNode {
+export function fieldValue(field: ShownField, display: FieldDisplay = "table"): ReactNode {
   const { type, value, text } = field;
   switch (type) {
+    case "file": {
+      const [file] = linksOf(field);
+      if (!file) return null;
+      const kind = fileKind(file.contentType, file.label);
+      const details = [kind, file.size ? fileSize(file.size) : null].filter(Boolean).join(" · ");
+      return (
+        <span>
+          <a href={file.href} download rel="noopener noreferrer" className={`${LINK} break-words`}>
+            {file.label}
+          </a>
+          {details && <span className="ml-2 text-muted">{details}</span>}
+        </span>
+      );
+    }
+    case "link": {
+      const [link] = linksOf(field);
+      return link ? <Anchor link={link} /> : null;
+    }
+    case "product":
+    case "page":
+      return <RelatedLinks links={linksOf(field)} />;
+    case "term":
+      return (
+        <span>
+          {linksOf(field).map((link, index) => (
+            <span key={`${link.href}-${index}`}>
+              {index > 0 && ", "}
+              <Anchor link={link} />
+            </span>
+          ))}
+        </span>
+      );
+    case "group":
+      return <NestedFields fields={drawableChildren(field)} />;
+    case "repeater":
+      return <Rows rows={drawableRows(field)} display={display} />;
     case "textarea":
       return <div className="whitespace-pre-line">{text}</div>;
     case "email": {
@@ -133,7 +291,9 @@ export function fieldValue(field: ShownField): ReactNode {
 
 /** Values that flow in a line of text; the others (pictures, videos, lists, rich text) take a block of their own. */
 const isInline = (field: ShownField): boolean =>
-  !["richText", "image", "gallery", "video", "checkbox", "textarea"].includes(field.type);
+  !["richText", "image", "gallery", "video", "checkbox", "textarea", "product", "page", "group", "repeater"].includes(
+    field.type,
+  );
 
 /**
  * Fields in one display: `table` (label left, value right, the default),
@@ -160,12 +320,12 @@ export function CustomFieldsList({
             {isInline(field) ? (
               <div>
                 {showLabel && <span className="font-medium">{field.label}: </span>}
-                {fieldValue(field)}
+                {fieldValue(field, display)}
               </div>
             ) : (
               <>
                 {showLabel && <div className="font-medium">{field.label}</div>}
-                {fieldValue(field)}
+                {fieldValue(field, display)}
               </>
             )}
           </li>
@@ -180,7 +340,7 @@ export function CustomFieldsList({
         {shown.map((field) => (
           <div key={field.id} className="flex flex-col gap-1 rounded-lg border border-border p-4">
             {showLabel && <dt className="text-xs font-medium tracking-wide text-muted uppercase">{field.label}</dt>}
-            <dd className="min-w-0">{fieldValue(field)}</dd>
+            <dd className="min-w-0">{fieldValue(field, display)}</dd>
           </div>
         ))}
       </dl>
@@ -193,11 +353,14 @@ export function CustomFieldsList({
         <div
           key={field.id}
           className={
-            showLabel ? "grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4" : "px-4 py-3"
+            // A repeater's table wants the whole width, so its label goes above it.
+            showLabel && field.type !== "repeater"
+              ? "grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4"
+              : "flex flex-col gap-1 px-4 py-3"
           }
         >
           {showLabel && <dt className="text-muted">{field.label}</dt>}
-          <dd className="min-w-0">{fieldValue(field)}</dd>
+          <dd className="min-w-0">{fieldValue(field, display)}</dd>
         </div>
       ))}
     </dl>

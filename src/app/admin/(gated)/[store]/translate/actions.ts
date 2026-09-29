@@ -8,6 +8,7 @@ import type { TranslateMode } from "@/lib/page-translate-ai";
 import { TRANSLATE_SCOPES, type Unit } from "@/lib/store-translate";
 import { requireMember } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
+import { fieldsTag } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { pagesTag } from "@/server/pages";
 import { STORES_TAG } from "@/server/seo";
@@ -44,7 +45,7 @@ const acceptedInput = z.array(
   }),
 );
 
-/** Writes what staff accepted: products' and menus' texts, and pages' drafts. */
+/** Writes what staff accepted: products' and menus' texts, custom fields' labels and values, and pages' drafts. */
 export async function applyAction(storeSlug: string, locale: string, accepted: unknown): Promise<ApplyResult> {
   const member = await requireMember(storeSlug);
   const parsed = acceptedInput.safeParse(accepted);
@@ -53,6 +54,7 @@ export async function applyAction(storeSlug: string, locale: string, accepted: u
   if (result.ok && result.saved > 0) {
     updateTag(catalogTag(member.store.id));
     updateTag(pagesTag(member.store.id));
+    updateTag(fieldsTag(member.store.id));
     updateTag(storeTag(member.store.slug));
     updateTag(STORES_TAG);
     // Search by meaning follows the new texts.

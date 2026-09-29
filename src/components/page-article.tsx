@@ -1,7 +1,8 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockHasContent, type PageBlock, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockShowsUnbound, type PageBlock, type PageContent, type PageRow } from "@/lib/page-content";
 
+import { withoutBindings } from "@/lib/field-binding";
 import type { GridPlace } from "@/server/content-grid";
 
 import { ContentGridSection } from "./content-grid-section";
@@ -25,7 +26,7 @@ import { SearchSection } from "./search-section";
  * A row keeps to the content's width unless it is set to the full width.
  */
 export function PageArticle({
-  content,
+  content: given,
   place = { pageId: null, owner: null },
   titled = false,
   renderBlock,
@@ -41,11 +42,13 @@ export function PageArticle({
   /** Shown in the admin (a preview), which draws the page's own CSS (D100) itself, kept inside the preview. */
   inAdmin?: boolean;
 }) {
+  // A preview draws what the blocks hold; a block still bound to a field is drawn only if it keeps its own content (D118).
+  const content = inAdmin ? withoutBindings(given) : given;
   const rows = content.rows.filter(rowShows);
   // A heading component at level 1, or a product's title (D79), is the page's main heading (D49); else the title is, for screen readers.
   const hasMainHeading = rows.some((row) =>
     row.columns.some((c) =>
-      c.blocks.some((b) => (b.type === "heading" && b.level === 1 && blockHasContent(b)) || (b.type === "product" && b.part === "title")),
+      c.blocks.some((b) => (b.type === "heading" && b.level === 1 && blockShowsUnbound(b)) || (b.type === "product" && b.part === "title")),
     ),
   );
   return (
@@ -73,7 +76,7 @@ export const pageRoomClass = (content: Pick<PageContent, "rows">, top: string, b
 
 /** A row shows when something in it does, or it has a background of its own. */
 export const rowShows = (row: PageRow) =>
-  Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockHasContent));
+  Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockShowsUnbound));
 
 /**
  * One row on the site, with its columns and blocks; also a header's or
@@ -102,7 +105,7 @@ export function PageRowView({
                 <div key={column.id} id={col.id} className={col.className} style={col.style}>
                   <PartBackground background={column.background} />
                   <ColumnLinkCover column={column} />
-                  {column.blocks.filter(blockHasContent).map((block) => {
+                  {column.blocks.filter(blockShowsUnbound).map((block) => {
                     const b = blockBox(block, "site");
                     // A product or site component with nothing to show leaves no space behind (D79, D80).
                     const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;

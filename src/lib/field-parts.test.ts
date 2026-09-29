@@ -4,7 +4,12 @@ import type { ShownField, ShownGroup } from "./custom-fields";
 import {
   customFieldsShow,
   drawable,
+  drawableRows,
   fieldHeading,
+  fileKind,
+  isSafeAddress,
+  linksOf,
+  repeaterColumns,
   fieldToShow,
   groupHeading,
   groupsToShow,
@@ -132,5 +137,87 @@ describe("custom fields in templates (D118)", () => {
     expect(fieldHeading({})).toBeNull();
     expect(fieldHeading({ heading: "Made of" })).toBe("Made of");
     expect(fieldHeading({ showHeading: false, heading: "Made of" })).toBeNull();
+  });
+
+  describe("files, links, relations, groups and repeaters", () => {
+    const link = (href: string, label = "Words") => ({ label, href });
+    const withLinks = (type: ShownField["type"], links: ShownField["links"]) =>
+      field({ id: `f_${type}`, type, value: "", text: "", links });
+
+    it("accepts web addresses and site paths, never script or protocol-relative ones", () => {
+      for (const good of ["https://example.com/a", "http://example.com", "/s/shop/no/products", " /about "]) {
+        expect(isSafeAddress(good)).toBe(true);
+      }
+      for (const bad of ["javascript:alert(1)", "data:text/html,x", "//evil.example", "/\\evil.example", "about", "", "/a b", "mailto:a@b.no"]) {
+        expect(isSafeAddress(bad)).toBe(false);
+      }
+    });
+
+    it("draws a file, link or relation only with a safe address", () => {
+      for (const type of ["file", "link", "product", "page", "term"] as const) {
+        expect(drawable(withLinks(type, [link("/a")]))).toBe(true);
+        expect(drawable(withLinks(type, [link("javascript:alert(1)")]))).toBe(false);
+        expect(drawable(withLinks(type, [link("javascript:alert(1)"), link("https://example.com")]))).toBe(true);
+        expect(drawable(withLinks(type, []))).toBe(false);
+        expect(drawable(withLinks(type, undefined))).toBe(false);
+      }
+      expect(linksOf(withLinks("link", [link("javascript:x"), link(" /a ", "  ")]))).toEqual([
+        { label: "/a", href: "/a", image: null },
+      ]);
+    });
+
+    it("keeps a relation's picture only when it is a picture address", () => {
+      const [good, bad] = linksOf(
+        withLinks("product", [
+          { label: "A", href: "/a", image: "https://cdn.example.com/a.webp" },
+          { label: "B", href: "/b", image: "javascript:alert(1)" },
+        ]),
+      );
+      expect(good.image).toBe("https://cdn.example.com/a.webp");
+      expect(bad.image).toBeNull();
+    });
+
+    it("draws a group when one child is, and a repeater when one row has a drawable field", () => {
+      const group = (children: ShownField[]) => field({ id: "f_g", type: "group", value: {}, text: "", children });
+      expect(drawable(group([empty, material]))).toBe(true);
+      expect(drawable(group([empty, badPicture]))).toBe(false);
+      expect(drawable(group([]))).toBe(false);
+      expect(drawable(field({ id: "f_g", type: "group", value: {}, text: "" }))).toBe(false);
+      // A group of a group counts by what is inside.
+      expect(drawable(group([group([empty])]))).toBe(false);
+      expect(drawable(group([group([material])]))).toBe(true);
+
+      const repeater = (rows: ShownField[][]) => field({ id: "f_r", type: "repeater", value: [], text: "", rows });
+      expect(drawable(repeater([[empty], [badPicture, material]]))).toBe(true);
+      expect(drawable(repeater([[empty], [badPicture]]))).toBe(false);
+      expect(drawable(repeater([]))).toBe(false);
+      expect(drawableRows(repeater([[empty], [badPicture, material]]))).toEqual([[material]]);
+    });
+
+    it("decides a component's contents with the same rule", () => {
+      const dead = field({ id: "f_dead", type: "group", value: {}, text: "", children: [empty] });
+      const live = field({ id: "f_live", type: "file", value: {}, text: "", links: [link("https://example.com/a.pdf")] });
+      const g: ShownGroup = { id: "g", name: "G", slug: "g", position: "main", fields: [dead, live] };
+      expect(groupsToShow([g])[0].fields.map((f) => f.id)).toEqual(["f_live"]);
+      expect(customFieldsShow({ fieldId: "f_dead" }, [g])).toBe(false);
+      expect(customFieldsShow({ fieldId: "f_live" }, [g])).toBe(true);
+    });
+
+    it("makes repeater columns from every field the rows have, in order", () => {
+      const a = field({ id: "f_a", label: "A", type: "text", value: "1" });
+      const b = field({ id: "f_b", label: "B", type: "text", value: "2" });
+      const c = field({ id: "f_c", label: "C", type: "text", value: "3" });
+      expect(repeaterColumns([[a], [b, c], [a, c]])).toEqual([
+        { id: "f_a", label: "A" },
+        { id: "f_b", label: "B" },
+        { id: "f_c", label: "C" },
+      ]);
+    });
+
+    it("names a file's kind from its type, else its ending", () => {
+      expect(fileKind("application/pdf", "sheet")).toBe("PDF");
+      expect(fileKind("application/octet-stream", "sheet.docx")).toBe("DOCX");
+      expect(fileKind(undefined, "readme")).toBeNull();
+    });
   });
 });

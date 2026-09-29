@@ -20,6 +20,7 @@ import {
 } from "@/lib/store-translate";
 
 import { audit, type Membership } from "./auth";
+import { fieldWork, writeFieldUnit } from "./field-translate";
 import { savePage } from "./pages";
 
 type Row = Record<string, unknown>;
@@ -30,7 +31,8 @@ type Row = Record<string, unknown>;
  * here calls the model; the page's own translate action does (batch by
  * batch, from the browser, so a large catalogue never waits on one request).
  * Writes go where the store's own editors write: product translations, the
- * menus' link texts and the pages' drafts, which are not published.
+ * menus' link texts, the pages' drafts, which are not published, and custom
+ * fields' labels and values (`field-translate.ts`).
  */
 
 /** The most things one run brings, so the review stays readable; run again for the rest. */
@@ -112,6 +114,7 @@ export async function translationWorklist(
     scopes.includes("products") ? productWork(store.id, from, to, mode) : [],
     scopes.includes("menus") ? menuWork(store.id, from, to, mode) : [],
     scopes.includes("pages") ? pageWork(store.id, to, mode) : [],
+    scopes.includes("fields") ? fieldWork(store.id, from, to, mode) : [],
   ]);
   const units = parts.flat();
   return { units: limit === null ? units : units.slice(0, limit), total: units.length };
@@ -122,8 +125,8 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
   const others = store.localization.locales.slice(1);
   const rows = await Promise.all(
     others.map(async (locale) => {
-      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages"], "missing", null);
-      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0 };
+      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields"], "missing", null);
+      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0 };
       for (const unit of units) count[unit.scope] += 1;
       return [locale, count] as const;
     }),
@@ -134,7 +137,7 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
 export type ApplyResult = { ok: true; saved: number; skipped: string[] } | { ok: false; problem: string };
 
 const APPLY_LIMIT = 300;
-const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages" };
+const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields" };
 
 /**
  * Writes what staff accepted, in the language `to`. Each accepted text is
@@ -178,6 +181,10 @@ export async function applyTranslations(member: Membership, to: string, accepted
     } else if (unit.scope === "menus") {
       const [, menuId, index] = unitId.split(":");
       menus.set(menuId, [...(menus.get(menuId) ?? []), { index: Number(index), text: String(ok.label).trim() }]);
+    } else if (unit.scope === "fields") {
+      const result = await writeFieldUnit(member, unitId, to, ok);
+      if (result === true) saved += 1;
+      else skipped.push(`${unit.title}: ${result}`);
     } else {
       const id = unitId.split(":")[1];
       const result = await writePage(member, id, to, ok);

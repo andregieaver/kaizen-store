@@ -6,24 +6,38 @@ import {
   FIELD_POSITIONS,
   fieldShows,
   isEmptyValue,
-  isTranslatable,
   localized,
+  newRowId,
+  readField,
+  subFieldsOf,
   valuesFor,
+  writeField,
   type FieldData,
   type FieldDef,
+  type FieldFile,
   type FieldGroup,
   type FieldImage,
+  type FieldLink,
+  type FieldLookups,
   type FieldMeasurement,
   type FieldValue,
+  type FieldVideo,
+  type Values,
 } from "@/lib/custom-fields";
+import { moveItem } from "@/lib/field-group-editor";
 import { EMPTY_DOC, type RichTextDoc } from "@/lib/page-content";
 import { shrinkImage } from "@/lib/image-resize";
 
+import { FileField, LinkField, RelationField } from "./field-pickers";
+import { editableSubs, ownView, rowLimits, rowsNeeded, withCell, type FieldFileUploader } from "./fields-form-helpers";
 import { RichTextEditor } from "./rich-text-editor";
+
+export type { FieldFileUploader };
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
 const hint = "font-normal text-muted";
 const button = "min-h-10 rounded-md border border-border px-3 text-sm";
+const small = "min-h-9 min-w-9 rounded border border-border px-2 text-sm disabled:opacity-40";
 
 /** Uploads a picture chosen on the owner's computer (shrunk here first); the host says where it goes. */
 export type PictureUpload = (file: File) => Promise<{ url: string; thumbnailUrl: string | null } | { problem: string }>;
@@ -49,12 +63,38 @@ export async function shrinkAndUpload(
   }
 }
 
+/** What every input in the form needs to know: the language, the uploads, and what the store has to choose from. */
+type Ctx = {
+  locale: string;
+  main: string;
+  /** The main language's name while another is written (for hints); undefined in the main language. */
+  from: string | undefined;
+  upload: PictureUpload | null;
+  fileUpload: FieldFileUploader | null;
+  lookups: FieldLookups;
+};
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const asCells = (v: FieldValue | undefined): Values | undefined => (isRecord(v) ? (v as Values) : undefined);
+const asRows = (v: FieldValue | undefined): Values[] => (Array.isArray(v) ? (v as Values[]).filter(isRecord) : []);
+const asLink = (v: FieldValue | undefined): FieldLink | undefined => {
+  const r: Record<string, unknown> | undefined = isRecord(v) ? v : undefined;
+  return r && typeof r.kind === "string" && typeof r.ref === "string" ? (v as FieldLink) : undefined;
+};
+const asFile = (v: FieldValue | undefined): FieldFile | undefined => {
+  const r: Record<string, unknown> | undefined = isRecord(v) ? v : undefined;
+  return r && typeof r.url === "string" && typeof r.name === "string" ? (v as FieldFile) : undefined;
+};
+
 /**
  * The fields of the groups that apply to a thing (D118), one form for every
  * type of field: used in the product editor, the page editor and the
  * generator's preview. It holds nothing: `data` comes in and every change goes
- * out through `onChange`. A text is edited in one language at a time
- * (`locale`), the rest are the same in all; a field its logic hides is not
+ * out through `onChange`. Every value is read and written through
+ * `readField()`/`writeField()`, which hide how it is kept by language: a text
+ * is edited in one language at a time (`locale`), the rest are the same in all;
+ * a group's or repeater's own texts are per language, but its rows and other
+ * fields are changed in the main language only. A field its logic hides is not
  * drawn (its value is kept).
  */
 export function FieldsForm({
@@ -64,6 +104,8 @@ export function FieldsForm({
   locale,
   main,
   upload,
+  fileUpload,
+  lookups,
   languageName,
 }: {
   /** The groups that apply, in order. */
@@ -74,24 +116,39 @@ export function FieldsForm({
   locale: string;
   main: string;
   upload: PictureUpload | null;
+  /** Uploads a file for a file field; null where uploads are not set up. */
+  fileUpload: FieldFileUploader | null;
+  /** The store's products, pages, categories and tags, for the fields that point at them. */
+  lookups: FieldLookups;
   /** A language's name, for the hint on a text left empty. */
   languageName?: (locale: string) => string;
 }) {
   if (groups.length === 0) return null;
+  const ctx: Ctx = {
+    locale,
+    main,
+    from: locale !== main ? (languageName?.(main) ?? main) : undefined,
+    upload,
+    fileUpload,
+    lookups,
+  };
   return (
     <div className="flex flex-col gap-6">
       {groups.map((group) => (
-        <GroupForm
-          key={group.id}
-          group={group}
-          data={data}
-          onChange={onChange}
-          locale={locale}
-          main={main}
-          upload={upload}
-          languageName={languageName}
-        />
+        <GroupForm key={group.id} group={group} data={data} onChange={onChange} ctx={ctx} />
       ))}
+    </div>
+  );
+}
+
+/** A field's place in its line: as wide as its width says, and the whole line on phones. */
+function FieldBox({ width, children }: { width: number | undefined; children: ReactNode }) {
+  return (
+    <div
+      className="w-full min-w-0 md:w-(--field-width)"
+      style={{ "--field-width": `calc(${width ?? 100}% - ${width && width < 100 ? "1rem" : "0px"})` } as CSSProperties}
+    >
+      {children}
     </div>
   );
 }
@@ -100,36 +157,18 @@ function GroupForm({
   group,
   data,
   onChange,
-  locale,
-  main,
-  upload,
-  languageName,
+  ctx,
 }: {
   group: FieldGroup;
   data: FieldData;
   onChange: (next: FieldData) => void;
-  locale: string;
-  main: string;
-  upload: PictureUpload | null;
-  languageName?: (locale: string) => string;
+  ctx: Ctx;
 }) {
+  const { locale, main } = ctx;
   const values = valuesFor(group.fields, data, locale, main);
   const shown = group.fields.filter((def) => fieldShows(def, values));
-
-  const set = (def: FieldDef, value: FieldValue | undefined) => {
-    const empty = value === undefined || isEmptyValue(value);
-    if (isTranslatable(def.type)) {
-      const own = { ...(data.translations[locale] ?? {}) };
-      if (empty) delete own[def.id];
-      else own[def.id] = value;
-      onChange({ ...data, translations: { ...data.translations, [locale]: own } });
-    } else {
-      const next = { ...data.values };
-      if (empty) delete next[def.id];
-      else next[def.id] = value;
-      onChange({ ...data, values: next });
-    }
-  };
+  // What the language being written holds itself: a text left empty shows empty, with the main language's words as the hint.
+  const own = ownView(data, locale, main);
 
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
@@ -138,32 +177,17 @@ function GroupForm({
         <p className="text-sm text-muted">This group has no fields yet.</p>
       ) : (
         <div className="flex flex-wrap gap-x-4 gap-y-4">
-          {shown.map((def) => {
-            const own = isTranslatable(def.type) ? data.translations[locale]?.[def.id] : data.values[def.id];
-            const inherited =
-              isTranslatable(def.type) && locale !== main ? data.translations[main]?.[def.id] : undefined;
-            return (
-              <div
-                key={def.id}
-                className="w-full min-w-0 md:w-(--field-width)"
-                style={
-                  {
-                    "--field-width": `calc(${def.width ?? 100}% - ${def.width && def.width < 100 ? "1rem" : "0px"})`,
-                  } as CSSProperties
-                }
-              >
-                <FieldInput
-                  def={def}
-                  value={own}
-                  inherited={inherited}
-                  inheritedFrom={locale !== main ? (languageName?.(main) ?? main) : undefined}
-                  locale={locale}
-                  onChange={(value) => set(def, value)}
-                  upload={upload}
-                />
-              </div>
-            );
-          })}
+          {shown.map((def) => (
+            <FieldBox key={def.id} width={def.width}>
+              <FieldInput
+                def={def}
+                value={readField(def, own, locale, main)}
+                inherited={locale !== main ? readField(def, data, main, main) : undefined}
+                ctx={ctx}
+                onChange={(value) => onChange(writeField(def, data, locale, main, value))}
+              />
+            </FieldBox>
+          ))}
         </div>
       )}
       {group.position === "side" && (
@@ -173,34 +197,45 @@ function GroupForm({
   );
 }
 
-/** One field: its label, help and input. */
+/**
+ * One field: its label, help and input. `sub` marks a field inside a group or
+ * repeater (whose access is its parent's); `row` a cell of a repeater's table,
+ * whose label is only for screen readers (the column has it).
+ */
 function FieldInput({
   def,
   value,
   inherited,
-  inheritedFrom,
-  locale,
+  ctx,
   onChange,
-  upload,
+  sub = false,
+  row,
 }: {
   def: FieldDef;
   value: FieldValue | undefined;
-  /** A text's value in the main language, shown as the hint while the language's own is empty. */
+  /** The main language's value while another language is written: a text's is shown as the hint while the language's own is empty. */
   inherited: FieldValue | undefined;
-  inheritedFrom: string | undefined;
-  locale: string;
+  ctx: Ctx;
   onChange: (value: FieldValue | undefined) => void;
-  upload: PictureUpload | null;
+  sub?: boolean;
+  row?: number;
 }) {
   const id = useId();
-  const label = (
+  const { locale, upload, fileUpload, lookups } = ctx;
+  const inheritedFrom = ctx.from;
+  const compact = row !== undefined;
+  const label = compact ? (
+    <span className="sr-only">
+      {def.label}, row {row}
+    </span>
+  ) : (
     <>
       {def.label}
       {def.required && <span aria-hidden="true"> *</span>}
-      {def.access === "public" ? null : <span className={`${hint} ml-1 text-xs`}>(only staff)</span>}
+      {sub || def.access === "public" ? null : <span className={`${hint} ml-1 text-xs`}>(only staff)</span>}
     </>
   );
-  const help = def.instructions ? <span className={`${hint} text-xs`}>{def.instructions}</span> : null;
+  const help = def.instructions && !compact ? <span className={`${hint} text-xs`}>{def.instructions}</span> : null;
   const kept =
     inheritedFrom && inherited !== undefined && typeof inherited === "string"
       ? `${inheritedFrom}: ${inherited}`
@@ -221,7 +256,7 @@ function FieldInput({
   );
   const groupOf = (control: ReactNode) => (
     <fieldset className="flex flex-col gap-1 text-sm">
-      <legend className="mb-1 font-medium">{label}</legend>
+      <legend className={compact ? "sr-only" : "mb-1 font-medium"}>{label}</legend>
       {help}
       {control}
     </fieldset>
@@ -412,7 +447,7 @@ function FieldInput({
         />,
       );
     case "video": {
-      const video = value && typeof value === "object" && "source" in value ? value : undefined;
+      const video = value && typeof value === "object" && "source" in value ? (value as FieldVideo) : undefined;
       return wrap(
         <div className="flex flex-wrap gap-2">
           <select
@@ -489,7 +524,372 @@ function FieldInput({
           )}
         </div>,
       );
+    case "link":
+      return groupOf(
+        <LinkField
+          def={def}
+          value={asLink(value)}
+          inherited={asLink(inherited)}
+          inheritedFrom={inheritedFrom}
+          lookups={lookups}
+          onChange={onChange}
+        />,
+      );
+    case "product":
+    case "page":
+    case "term":
+      return groupOf(<RelationField def={def} value={value} lookups={lookups} onChange={onChange} />);
+    case "file":
+      return groupOf(<FileField def={def} value={asFile(value)} upload={fileUpload} onChange={onChange} />);
+    case "group":
+      return (
+        <GroupField
+          def={def}
+          value={asCells(value)}
+          inherited={asCells(inherited)}
+          ctx={ctx}
+          onChange={onChange}
+          legend={label}
+          help={help}
+        />
+      );
+    case "repeater":
+      return (
+        <RepeaterField
+          def={def}
+          rows={asRows(value)}
+          inheritedRows={asRows(inherited)}
+          ctx={ctx}
+          onChange={onChange}
+          legend={label}
+          help={help}
+        />
+      );
   }
+}
+
+/**
+ * The sub fields of a group or one row of a repeater, laid out by their widths.
+ * `own` holds what is entered in the language being written, `eff` what a
+ * condition sees (the language's own words over the main language's).
+ */
+function CellFields({
+  subs,
+  own,
+  eff,
+  inherited,
+  onChange,
+  ctx,
+}: {
+  subs: FieldDef[];
+  own: Values;
+  eff: Values;
+  inherited: Values | undefined;
+  onChange: (cells: Values) => void;
+  ctx: Ctx;
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-4">
+      {subs
+        .filter((sub) => fieldShows(sub, eff))
+        .map((sub) => (
+          <FieldBox key={sub.id} width={sub.width}>
+            <FieldInput
+              def={sub}
+              sub
+              value={own[sub.id]}
+              inherited={inherited?.[sub.id]}
+              ctx={ctx}
+              onChange={(value) => onChange(withCell(own, sub.id, value, value === undefined || isEmptyValue(value)))}
+            />
+          </FieldBox>
+        ))}
+    </div>
+  );
+}
+
+/** A group: its sub fields together under its name. Another language writes its texts only. */
+function GroupField({
+  def,
+  value,
+  inherited,
+  ctx,
+  onChange,
+  legend,
+  help,
+}: {
+  def: FieldDef;
+  value: Values | undefined;
+  inherited: Values | undefined;
+  ctx: Ctx;
+  onChange: (value: FieldValue | undefined) => void;
+  legend: ReactNode;
+  help: ReactNode;
+}) {
+  const subs = editableSubs(subFieldsOf(def), ctx.locale, ctx.main);
+  const own = value ?? {};
+  const eff = ctx.from ? { ...inherited, ...own } : own;
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+      <legend className="px-1 font-medium">{legend}</legend>
+      {help}
+      {ctx.from && (
+        <p className={`${hint} text-xs`}>
+          {subs.length === 0
+            ? `Nothing in it is translated. Change it in ${ctx.from}.`
+            : `Only its texts are written per language. The rest is changed in ${ctx.from}.`}
+        </p>
+      )}
+      {subs.length > 0 && (
+        <CellFields subs={subs} own={own} eff={eff} inherited={inherited} ctx={ctx} onChange={onChange} />
+      )}
+    </fieldset>
+  );
+}
+
+/** The buttons that move and remove a row, each named for the row (reordering is never drag only). */
+function RowButtons({
+  name,
+  index,
+  count,
+  canRemove,
+  onMove,
+  onRemove,
+}: {
+  name: string;
+  index: number;
+  count: number;
+  canRemove: boolean;
+  onMove: (to: number) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        aria-label={`Move ${name} up`}
+        disabled={index === 0}
+        onClick={() => onMove(index - 1)}
+        className={small}
+      >
+        ↑
+      </button>
+      <button
+        type="button"
+        aria-label={`Move ${name} down`}
+        disabled={index === count - 1}
+        onClick={() => onMove(index + 1)}
+        className={small}
+      >
+        ↓
+      </button>
+      <button
+        type="button"
+        aria-label={`Remove ${name}`}
+        disabled={!canRemove}
+        onClick={onRemove}
+        className={`${small} px-3 text-xs`}
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A repeater: rows of the same fields, as a table or as blocks. Rows are added,
+ * removed and moved in the main language; another language writes the texts in
+ * each row, which follow the row wherever it is moved.
+ */
+function RepeaterField({
+  def,
+  rows,
+  inheritedRows,
+  ctx,
+  onChange,
+  legend,
+  help,
+}: {
+  def: FieldDef;
+  rows: Values[];
+  inheritedRows: Values[];
+  ctx: Ctx;
+  onChange: (value: FieldValue | undefined) => void;
+  legend: ReactNode;
+  help: ReactNode;
+}) {
+  const [status, setStatus] = useState("");
+  const structure = ctx.from === undefined;
+  const subs = editableSubs(subFieldsOf(def), ctx.locale, ctx.main);
+  const { canAdd, canRemove } = rowLimits(def, rows.length);
+  const needed = rowsNeeded(def, rows.length);
+  const mainRows = new Map(inheritedRows.map((row) => [String(row.id), row]));
+  const table = def.rowLayout === "table";
+  const most = Math.min(def.maxRows ?? 100, 100);
+
+  const rowId = (row: Values) => String(row.id);
+  const setRow = (id: string, cells: Values) =>
+    onChange(rows.map((row) => (rowId(row) === id ? { ...cells, id } : row)));
+  const add = () => {
+    onChange([...rows, { id: newRowId() }]);
+    setStatus(`Row ${rows.length + 1} added.`);
+  };
+  const remove = (index: number) => {
+    onChange(rows.filter((_, i) => i !== index));
+    setStatus(`Row ${index + 1} removed.`);
+  };
+  const move = (from: number, to: number) => {
+    onChange(moveItem(rows, from, to));
+    setStatus(`Row ${from + 1} moved to place ${to + 1} of ${rows.length}.`);
+  };
+  const cellsOf = (row: Values) => {
+    const inherited = mainRows.get(rowId(row));
+    return { own: row, inherited, eff: ctx.from ? { ...inherited, ...row } : row };
+  };
+
+  return (
+    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+      <legend className="px-1 font-medium">{legend}</legend>
+      {help}
+      {!structure && (
+        <p className={`${hint} text-xs`}>
+          {subs.length === 0
+            ? `Nothing in its rows is translated. Change them in ${ctx.from}.`
+            : `Rows are added, removed and moved in ${ctx.from}. Here you write the texts in them.`}
+        </p>
+      )}
+      {rows.length === 0 ? (
+        <p className={`${hint} text-xs`}>{structure ? "No rows yet." : `No rows yet. Add them in ${ctx.from}.`}</p>
+      ) : subs.length === 0 ? null : table ? (
+        <table className="block w-full border-collapse md:table">
+          <thead className="hidden md:table-header-group">
+            <tr>
+              <th scope="col" className="w-8 p-1 text-left text-xs font-medium text-muted">
+                <span className="sr-only">Row</span>
+              </th>
+              {subs.map((sub) => (
+                <th key={sub.id} scope="col" className="p-1 text-left text-xs font-medium">
+                  {sub.label}
+                  {sub.required && <span aria-hidden="true"> *</span>}
+                </th>
+              ))}
+              {structure && (
+                <th scope="col" className="p-1 text-left text-xs font-medium">
+                  <span className="sr-only">Row actions</span>
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody className="block md:table-row-group">
+            {rows.map((row, index) => {
+              const { own, inherited, eff } = cellsOf(row);
+              return (
+                <tr
+                  key={rowId(row)}
+                  className="mb-3 block rounded-md border border-border p-2 md:mb-0 md:table-row md:rounded-none md:border-0 md:p-0"
+                >
+                  <td className="block p-1 text-xs text-muted md:table-cell md:align-top md:pt-3">
+                    <span className="md:hidden">Row </span>
+                    {index + 1}
+                  </td>
+                  {subs.map((sub) => {
+                    const shown = fieldShows(sub, eff);
+                    return (
+                      <td
+                        key={sub.id}
+                        className={`p-1 align-top ${shown ? "block md:table-cell" : "hidden md:table-cell"}`}
+                      >
+                        {shown && (
+                          <>
+                            <span aria-hidden="true" className="mb-1 block text-xs font-medium md:hidden">
+                              {sub.label}
+                            </span>
+                            <FieldInput
+                              def={sub}
+                              sub
+                              row={index + 1}
+                              value={own[sub.id]}
+                              inherited={inherited?.[sub.id]}
+                              ctx={ctx}
+                              onChange={(value) =>
+                                setRow(
+                                  rowId(row),
+                                  withCell(own, sub.id, value, value === undefined || isEmptyValue(value)),
+                                )
+                              }
+                            />
+                          </>
+                        )}
+                      </td>
+                    );
+                  })}
+                  {structure && (
+                    <td className="block p-1 md:table-cell md:align-top">
+                      <RowButtons
+                        name={`row ${index + 1} of ${def.label}`}
+                        index={index}
+                        count={rows.length}
+                        canRemove={canRemove}
+                        onMove={(to) => move(index, to)}
+                        onRemove={() => remove(index)}
+                      />
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      ) : (
+        <ol className="flex flex-col gap-3">
+          {rows.map((row, index) => {
+            const { own, inherited, eff } = cellsOf(row);
+            return (
+              <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-border p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-muted">Row {index + 1}</span>
+                  {structure && (
+                    <RowButtons
+                      name={`row ${index + 1} of ${def.label}`}
+                      index={index}
+                      count={rows.length}
+                      canRemove={canRemove}
+                      onMove={(to) => move(index, to)}
+                      onRemove={() => remove(index)}
+                    />
+                  )}
+                </div>
+                <CellFields
+                  subs={subs}
+                  own={own}
+                  eff={eff}
+                  inherited={inherited}
+                  ctx={ctx}
+                  onChange={(cells) => setRow(rowId(row), cells)}
+                />
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {structure && (
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="button" onClick={add} disabled={!canAdd} className={button}>
+            {def.buttonLabel || "Add row"}
+          </button>
+          {!canAdd && (
+            <span className={`${hint} text-xs`}>
+              The most is {most} {most === 1 ? "row" : "rows"}.
+            </span>
+          )}
+        </div>
+      )}
+      {needed && <p className="text-xs text-red-700 dark:text-red-400">{needed}</p>}
+      <p role="status" aria-live="polite" className="sr-only">
+        {status}
+      </p>
+    </fieldset>
+  );
 }
 
 /** A number typed as the person likes (a comma too); it is passed on once it is a number, and kept as typed until then. */

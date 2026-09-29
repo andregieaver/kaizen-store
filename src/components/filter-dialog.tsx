@@ -21,6 +21,8 @@ export type FilterFacets = {
   categories: (Choice & { depth: number })[];
   tags: Choice[];
   options: { name: string; label: string; values: Choice[] }[];
+  /** The store's custom fields offered as filters (D118), titled in the shopper's language. */
+  fields: { name: string; label: string; values: Choice[] }[];
   price: { min: number; max: number } | null;
 };
 
@@ -112,6 +114,14 @@ export function FilterDialog({
       const others = current.options.filter((option) => option.name !== name);
       const options: OptionFilter[] = values.length > 0 ? [...others, { name, values }] : others;
       return { ...current, options };
+    });
+  const toggleField = (name: string, value: string) =>
+    setDraft((current) => {
+      const existing = current.fields.find((field) => field.name === name);
+      const values = toggle(existing?.values ?? [], value);
+      const others = current.fields.filter((field) => field.name !== name);
+      const fields: OptionFilter[] = values.length > 0 ? [...others, { name, values }] : others;
+      return { ...current, fields };
     });
   const amount = (text: string): number | null => {
     const number = Number(text.replace(",", ".").trim());
@@ -301,6 +311,27 @@ export function FilterDialog({
                         type="button"
                         aria-pressed={picked.includes(value.value)}
                         onClick={() => toggleOption(option.name, value.value)}
+                        className={chip(picked.includes(value.value))}
+                      >
+                        {value.label} {count(value.count)}
+                      </button>
+                    ))}
+                  </div>
+                </Section>
+              );
+            })}
+
+            {facets.fields.map((field) => {
+              const picked = draft.fields.find((f) => f.name === field.name)?.values ?? [];
+              return (
+                <Section key={`field-${field.name}`} legend={field.label}>
+                  <div className="flex flex-wrap gap-2">
+                    {field.values.map((value) => (
+                      <button
+                        key={value.value}
+                        type="button"
+                        aria-pressed={picked.includes(value.value)}
+                        onClick={() => toggleField(field.name, value.value)}
                         className={chip(picked.includes(value.value))}
                       >
                         {value.label} {count(value.count)}
