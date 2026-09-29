@@ -118,6 +118,8 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                     </td>
                     <td className="px-4 py-2">
                       {c.usageLimit !== null && c.orders >= c.usageLimit && status === "active" ? "Used up" : STATUS[status]}
+                      {c.markets.length > 0 && <span className="block text-xs text-muted">Only in {c.markets.map((code) => store.markets.find((m) => m.code === code)?.name ?? code).join(", ")}</span>}
+                      {c.perCustomerLimit !== null && <span className="block text-xs text-muted">{c.perCustomerLimit === 1 ? "Once" : `${c.perCustomerLimit} orders`} per customer</span>}
                       {c.tierIds.length > 0 && <span className="block text-xs text-muted">For {c.tierIds.length === 1 ? "a customer group" : `${c.tierIds.length} customer groups`}</span>}
                       {c.stacks && <span className="block text-xs text-muted">Adds on top</span>}
                     </td>

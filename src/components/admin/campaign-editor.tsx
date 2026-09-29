@@ -23,6 +23,9 @@ export type CampaignDraft = {
   /** Customer groups it is for; none for everyone. */
   tierIds: string[];
   usageLimit: string;
+  perCustomerLimit: string;
+  /** Countries (market codes) it runs in; none for all. */
+  markets: string[];
   stacks: boolean;
   startsAt: string;
   endsAt: string;
@@ -73,7 +76,7 @@ export function CampaignEditor({
   const [problems, setProblems] = useState<string[]>([]);
   const [saving, startSaving] = useTransition();
   const set = <K extends keyof CampaignDraft>(key: K, value: CampaignDraft[K]) => setD((current) => ({ ...current, [key]: value }));
-  const toggle = (key: "productIds" | "termIds" | "tierIds", id: string, on: boolean) => set(key, on ? [...d[key], id] : d[key].filter((x) => x !== id));
+  const toggle = (key: "productIds" | "termIds" | "tierIds" | "markets", id: string, on: boolean) => set(key, on ? [...d[key], id] : d[key].filter((x) => x !== id));
 
   const submit = () =>
     startSaving(async () => {
@@ -91,7 +94,9 @@ export function CampaignEditor({
         termIds: d.termIds,
         tierIds: d.tierIds,
         usageLimit: d.usageLimit || null,
-        stacks: d.kind === "percent" && d.stacks,
+        perCustomerLimit: d.perCustomerLimit || null,
+        markets: d.markets,
+        stacks: d.kind !== "gift" && d.stacks,
         startsAt: d.startsAt || null,
         endsAt: d.endsAt || null,
         active: d.active,
@@ -171,13 +176,13 @@ export function CampaignEditor({
             <input type="number" min={1} max={100} value={d.percent} onChange={(event) => set("percent", event.target.value)} required inputMode="numeric" className={input} />
           </label>
         )}
-        {d.kind === "percent" && (
+        {d.kind !== "gift" && (
           <label className="flex items-start gap-3 text-sm">
             <input type="checkbox" checked={d.stacks} onChange={(event) => set("stacks", event.target.checked)} className="mt-0.5 size-4" />
             <span>
               Also apply on top of other campaigns
               <span className={`block ${hint}`}>
-                Normally a product gets one campaign, the one that gives the shopper most. With this on, the percentage also comes off what the other campaign left, one after the other.
+                Normally a product gets one campaign, the one that gives the shopper most. With this on, {d.kind === "multi_buy" ? "it also works on the items still to be paid for after the other campaigns, so two 3 for 2 free more items" : "the percentage also comes off what the other campaign left"}, one campaign after the other in the order they were made.
               </span>
             </span>
           </label>
@@ -318,11 +323,48 @@ export function CampaignEditor({
           <input type="number" min={1} value={d.usageLimit} onChange={(event) => set("usageLimit", event.target.value)} placeholder="No limit" inputMode="numeric" className={input} />
           <span className={hint}>An order counts once, however many products it took effect on. It stops by itself when they are used up.</span>
         </label>
+        <label className={`${label} max-w-56`}>
+          Orders for each customer (optional)
+          <input type="number" min={1} value={d.perCustomerLimit} onChange={(event) => set("perCustomerLimit", event.target.value)} placeholder="No limit" inputMode="numeric" className={input} />
+          <span className={hint}>Once per customer is 1. Shoppers must be signed in to My account to get it, so the store knows who they are; the product pages say so.</span>
+        </label>
         <label className="flex items-center gap-3 text-sm font-medium">
           <input type="checkbox" checked={d.active} onChange={(event) => set("active", event.target.checked)} className="size-4" />
           Switched on
         </label>
       </section>
+
+      {markets.length > 1 && (
+        <section aria-labelledby="where-heading" className={card}>
+          <h2 id="where-heading" className="font-medium">
+            Where
+          </h2>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="sr-only">Countries</legend>
+            <label className="flex min-h-10 items-center gap-3 text-sm">
+              <input type="radio" name="where" checked={d.markets.length === 0} onChange={() => set("markets", [])} className="size-4" />
+              Every country the store sells to
+            </label>
+            <label className="flex min-h-10 items-center gap-3 text-sm">
+              <input type="radio" name="where" checked={d.markets.length > 0} onChange={() => d.markets.length === 0 && set("markets", [markets[0].code])} className="size-4" />
+              Only some countries
+            </label>
+          </fieldset>
+          {d.markets.length > 0 && (
+            <ul className="grid gap-1 rounded-md border border-border p-2 sm:grid-cols-3">
+              {markets.map((market) => (
+                <li key={market.code}>
+                  <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-surface">
+                    <input type="checkbox" checked={d.markets.includes(market.code)} onChange={(event) => toggle("markets", market.code, event.target.checked)} className="size-4" />
+                    {market.name}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className={hint}>A free product over an amount also needs the amount for each country it runs in.</p>
+        </section>
+      )}
 
       <section aria-labelledby="who-heading" className={card}>
         <h2 id="who-heading" className="font-medium">

@@ -132,6 +132,7 @@ describe("the owner assistant (D94)", () => {
     const made = await ownerTools.runOwnerTool(ctx, "create_campaign", { name: `Høstsalg ${run}`, kind: "percent", percent: 15, categories: [String(category.name)], products: [productHandle], ends_on: "2099-01-31", stacks: true });
     expect(made).toMatchObject({ done: expect.stringContaining("is set up and runs now") });
     expect(tags).toEqual([`campaigns:${member.store.id}`]);
+    await expect(ownerTools.runOwnerTool(ctx, "create_campaign", { name: "x", kind: "percent", percent: 5, countries: ["Frankrike"] })).rejects.toThrow("does not sell to");
     const gift = await ownerTools.runOwnerTool(ctx, "create_campaign", { name: `Gratis ${run}`, kind: "gift", gift_sku: "DEMO-NOTEBOOK-LINED", amount: "500", starts_on: "2098-01-01" });
     expect(gift).toMatchObject({ done: expect.stringContaining("starts 2098-01-01") });
 

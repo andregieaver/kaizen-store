@@ -24,6 +24,7 @@ export function CampaignNotices({ notices, market, m }: { notices: CampaignNotic
             <p className="opacity-90">
               {m.campaigns.inCart}
               {notice.endsAt && ` ${m.campaigns.ends(date(notice.endsAt))}.`}
+              {notice.signIn && ` ${m.campaigns.signIn}`}
             </p>
           </li>
         </CampaignEnds>

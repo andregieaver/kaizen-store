@@ -30,7 +30,7 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
 
   const rows = await readDb().execute<Row>(sql`
     select c.id, c.name, c.kind, c.percent, c.buy_quantity, c.pay_quantity, c.thresholds, c.product_ids, c.term_ids,
-      c.gift_variant_id, c.usage_limit, c.starts_at, c.ends_at,
+      c.gift_variant_id, c.usage_limit, c.per_customer_limit, c.markets, c.starts_at, c.ends_at,
       (select coalesce(tl.title, tf.title, p.handle)
          from commerce.product_variants v
          join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -67,6 +67,9 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
       limited = true;
       if (Number(row.used) >= usageLimit) continue;
     }
+    // Only in the countries it names.
+    const countries = (row.markets as unknown[]).map(String);
+    if (countries.length > 0 && !countries.includes(market.code)) continue;
     const kind = row.kind as CampaignNotice["kind"];
     const threshold = (row.thresholds as Record<string, number>)[market.code];
     // A free product is announced only where the campaign has an amount, and has its product.
@@ -88,6 +91,7 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
       thresholdMinor: kind === "gift" ? shown(market, threshold) : null,
       endsAt: ends === null ? null : new Date(ends).toISOString(),
       productIds: reach,
+      signIn: row.per_customer_limit !== null,
     });
   }
 

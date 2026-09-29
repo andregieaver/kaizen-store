@@ -99,12 +99,22 @@ describe("saving a campaign", () => {
     if (!made.ok || !made.id) throw new Error("not saved");
     expect(await campaigns.getCampaign(storeId, made.id)).toMatchObject({ usageLimit: 25, tierIds: [tierId], stacks: true });
     expect(await save({ name: "Ghost group", kind: "percent", percent: 5, tierIds: [crypto.randomUUID()] })).toMatchObject({ ok: false, problems: [expect.stringContaining("customer group")] });
-    expect(await save({ name: "Stacked deal", kind: "multi_buy", buyQuantity: 3, payQuantity: 2, stacks: true })).toMatchObject({ ok: false });
+    // A "buy N pay for M" can stack too; a free product cannot.
+    expect(await save({ name: "Stacked deal", kind: "multi_buy", buyQuantity: 3, payQuantity: 2, stacks: true })).toMatchObject({ ok: true });
     expect(await save({ name: "None", kind: "percent", percent: 5, usageLimit: 0 })).toMatchObject({ ok: false });
+    // Once per customer, in the countries named; a country the store does not sell to is refused.
+    const each = await save({ name: "Each", kind: "multi_buy", buyQuantity: 3, payQuantity: 2, perCustomerLimit: "1", markets: ["NO"], stacks: true });
+    if (!each.ok || !each.id) throw new Error("not saved");
+    // Every country the store sells to is the same as none.
+    expect(await campaigns.getCampaign(storeId, each.id)).toMatchObject({ perCustomerLimit: 1, markets: [], stacks: true, kind: "multi_buy" });
+    expect(await save({ name: "Abroad", kind: "percent", percent: 5, markets: ["FR"] })).toMatchObject({ ok: false, problems: [expect.stringContaining("does not sell to FR")] });
+    expect(await save({ name: "Gift stacks", kind: "gift", giftVariantId: notebook.variant, thresholds: { NO: "10" }, stacks: true })).toMatchObject({ ok: false });
     // Changed back to no limit, everyone, and no stacking.
     expect(await save({ name: "Open", kind: "percent", percent: 5, usageLimit: "", tierIds: [] }, made.id)).toMatchObject({ ok: true });
     expect(await campaigns.getCampaign(storeId, made.id)).toMatchObject({ usageLimit: null, tierIds: [], stacks: false });
-    await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind, buy_quantity, pay_quantity, stacks) values (${storeId}::uuid, 'y', 'multi_buy', 3, 2, true)`)).rejects.toThrow();
+    // The database keeps a gift from stacking too, and a limit above nothing.
+    await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind, gift_variant_id, stacks) values (${storeId}::uuid, 'y', 'gift', ${notebook.variant}::uuid, true)`)).rejects.toThrow();
+    await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind, percent, per_customer_limit) values (${storeId}::uuid, 'w', 'percent', 5, 0)`)).rejects.toThrow();
     await expect(db().execute(sql`insert into commerce.campaigns (store_id, name, kind, percent, usage_limit) values (${storeId}::uuid, 'z', 'percent', 5, 0)`)).rejects.toThrow();
   });
 

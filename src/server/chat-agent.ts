@@ -18,6 +18,7 @@ import {
   type ChatReply,
   type ChatRequest,
 } from "@/lib/chat";
+import { cardNotices, noticesFor, noticeText, type CampaignNotice, type CampaignNotices } from "@/lib/campaign-notices";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
@@ -26,6 +27,7 @@ import type { PriceView } from "@/lib/pricing";
 
 import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, type AiConnection, type ToolChatMessage } from "./ai";
 import { audit, type Account } from "./auth";
+import { campaignNotices } from "./campaign-notices";
 import { getAvailability, getProduct, type GridProduct } from "./catalog";
 import { searchKnowledge } from "./knowledge";
 import { publishedPageNames } from "./pages";
@@ -195,7 +197,17 @@ function priceText(price: PriceView, locale: string, lang: string, from: boolean
   return `${from ? `${m.fromPrice} ` : ""}${shown}`;
 }
 
-function card(site: Extract<ChatSite, { kind: "store" }>, product: Pick<GridProduct, "handle" | "title" | "image" | "price">, from: boolean): ChatProduct {
+/** What the store's campaigns offer on a product, as the site words it (D115): the model repeats these and states no offer of its own. */
+function offersOn(site: Extract<ChatSite, { kind: "store" }>, notices: CampaignNotices, productId: string, { gifts }: { gifts: boolean }): { card: string[]; told: string[] } {
+  const { market } = site;
+  const m = t(market.lang);
+  const money = (minor: number) => formatMoney(minor, market.currency, market.locale);
+  const mine = noticesFor(notices, productId);
+  const say = (n: CampaignNotice) => `${n.name}: ${noticeText(n, m, money)}${n.signIn ? ` (${m.campaigns.signIn})` : ""}`;
+  return { card: cardNotices(mine).map((n) => noticeText(n, m, money)), told: mine.filter((n) => gifts || n.kind !== "gift").map(say) };
+}
+
+function card(site: Extract<ChatSite, { kind: "store" }>, product: Pick<GridProduct, "handle" | "title" | "image" | "price">, from: boolean, offers: string[] = []): ChatProduct {
   return {
     handle: product.handle,
     title: product.title,
@@ -203,6 +215,7 @@ function card(site: Extract<ChatSite, { kind: "store" }>, product: Pick<GridProd
     image: product.image,
     price: { amountMinor: product.price.amountMinor, currency: product.price.currency, referenceMinor: product.price.referenceMinor, vat: product.price.vat },
     from,
+    ...(offers.length > 0 && { offers }),
   };
 }
 
@@ -217,11 +230,15 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
     case "search_products": {
       const query = text("query");
       if (!query) return { result: json({ error: "Say what to look for." }) };
-      const found = await searchProducts({ storeId: store.id, market }, query, queryVector, null, 6);
-      const products = found.products.map((p) => card(site, p, p.priceVaries));
+      const [found, notices] = await Promise.all([searchProducts({ storeId: store.id, market }, query, queryVector, null, 6), campaignNotices(store.id, market)]);
+      const offers = new Map(found.products.map((p) => [p.id, offersOn(site, notices, p.id, { gifts: false })] as const));
+      const products = found.products.map((p) => card(site, p, p.priceVaries, offers.get(p.id)?.card));
       return {
         result: json({
-          products: found.products.map((p) => ({ handle: p.handle, title: p.title, price: priceText(p.price, market.locale, market.lang, p.priceVaries) })),
+          products: found.products.map((p) => {
+            const told = offers.get(p.id)?.told ?? [];
+            return { handle: p.handle, title: p.title, price: priceText(p.price, market.locale, market.lang, p.priceVaries), ...(told.length > 0 && { offers: told }) };
+          }),
           ...(found.products.length === 0 ? { note: "Nothing found. Try other words, or say so." } : {}),
         }),
         products,
@@ -230,7 +247,8 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
     case "get_product": {
       const product = await getProduct(store.id, market, text("handle"));
       if (!product) return { result: json({ error: "No such product in this store." }) };
-      const stock = await getAvailability(store.id, product.variants.map((v) => v.id));
+      const [stock, notices] = await Promise.all([getAvailability(store.id, product.variants.map((v) => v.id)), campaignNotices(store.id, market)]);
+      const offers = offersOn(site, notices, product.id, { gifts: true });
       const cheapest = product.variants.reduce((low, v) => (v.price.amountMinor < low.price.amountMinor ? v : low), product.variants[0]);
       return {
         result: json({
@@ -243,10 +261,11 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
             available: v.delivery === "physical" ? (stock.get(v.id) ?? 0) > 0 : true,
           })),
           subscriptions: product.plans.length > 0,
+          ...(offers.told.length > 0 ? { offers: offers.told, offersNote: "Offers are taken off in the cart." } : {}),
           ...(product.hostName ? { host: product.hostName } : {}),
         }),
         products: cheapest
-          ? [card(site, { handle: product.handle, title: product.title, image: product.images[0] ?? null, price: cheapest.price }, product.variants.length > 1)]
+          ? [card(site, { handle: product.handle, title: product.title, image: product.images[0] ?? null, price: cheapest.price }, product.variants.length > 1, offers.card)]
           : [],
       };
     }

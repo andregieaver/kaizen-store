@@ -14,6 +14,7 @@ const notice = (over: Partial<CampaignNotice>): CampaignNotice => ({
   thresholdMinor: null,
   endsAt: null,
   productIds: null,
+  signIn: false,
   ...over,
 });
 const money = (minor: number) => `kr ${minor / 100}`;

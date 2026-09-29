@@ -1282,6 +1282,13 @@
       "when": 1790700285401,
       "tag": "20260929164445_campaign_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1790702957993,
+      "tag": "20260929172917_campaign_countries_per_customer",
+      "breakpoints": true
     }
   ]
 }

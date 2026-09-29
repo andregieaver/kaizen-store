@@ -1282,7 +1282,11 @@ export const campaigns = commerce.table(
     tierIds: jsonb("tier_ids").notNull().default([]),
     /** Orders that may get it in all; null for no limit. */
     usageLimit: integer("usage_limit"),
-    /** A percentage that also applies on top of other campaigns instead of competing with them. */
+    /** Orders one signed-in customer may get it on; null for no limit. */
+    perCustomerLimit: integer("per_customer_limit"),
+    /** The countries (market codes) it runs in; none for all of the store's. */
+    markets: jsonb("markets").notNull().default([]),
+    /** A percentage or a "buy N pay for M" that also applies on top of other campaigns instead of competing with them. */
     stacks: boolean("stacks").notNull().default(false),
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
@@ -1303,7 +1307,8 @@ export const campaigns = commerce.table(
     ),
     check("campaigns_gift", sql`(${t.kind} = 'gift' and ${t.giftVariantId} is not null and ${t.giftQuantity} between 1 and 5) or (${t.kind} <> 'gift' and ${t.giftVariantId} is null)`),
     check("campaigns_usage_limit", sql`${t.usageLimit} is null or ${t.usageLimit} > 0`),
-    check("campaigns_stacks", sql`not ${t.stacks} or ${t.kind} = 'percent'`),
+    check("campaigns_per_customer_limit", sql`${t.perCustomerLimit} is null or ${t.perCustomerLimit} > 0`),
+    check("campaigns_stacks", sql`not ${t.stacks} or ${t.kind} in ('percent', 'multi_buy')`),
     check("campaigns_dates", sql`${t.startsAt} is null or ${t.endsAt} is null or ${t.startsAt} < ${t.endsAt}`),
   ],
 );

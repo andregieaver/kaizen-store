@@ -578,6 +578,10 @@ of running `playwright install`.
   cached read like the catalogue's: never read them per request there, keep the
   cache's expiry past five minutes, and refresh `campaignsTag` when a campaign
   changes (`updateTag` in an action, `ctx.invalidate` in an AI tool).
+  A campaign may also be per customer (signed in, D116), for some countries
+  only, and a stacking "buy N pay for M" works on the units still to be paid
+  for; the chat agent's cards carry the offers (`offersOn()`), worded by the
+  site, never by the model.
 - Customer groups and company accounts (D108, `src/lib/customer-tiers.ts`,
   `src/server/customer-tiers.ts`, `src/server/companies.ts`): a group is a
   fixed percentage (`customer_tiers`, `customers.tier_id`); a company

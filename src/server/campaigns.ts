@@ -7,6 +7,7 @@ import {
   applyCampaigns,
   campaignInput,
   campaignRunning,
+  runsIn,
   type Campaign,
   type CampaignLine,
   type CampaignResult,
@@ -50,6 +51,8 @@ function toCampaign(row: Row): Campaign {
     termIds: ids(row.term_ids),
     tierIds: ids(row.tier_ids),
     usageLimit: row.usage_limit === null || row.usage_limit === undefined ? null : Number(row.usage_limit),
+    perCustomerLimit: row.per_customer_limit === null || row.per_customer_limit === undefined ? null : Number(row.per_customer_limit),
+    markets: ids(row.markets),
     stacks: Boolean(row.stacks),
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
@@ -128,6 +131,9 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
 
   const productIds = c.scope === "all" ? [] : [...new Set(c.productIds)];
   const termIds = c.scope === "all" ? [] : [...new Set(c.termIds)];
+  const markets = [...new Set(c.markets)];
+  const unknown = markets.filter((code) => !store.markets.some((m) => m.code === code));
+  if (unknown.length > 0) problems.push(`The store does not sell to ${unknown.join(", ")}.`);
   const tierIds = [...new Set(c.tierIds)];
   if (tierIds.length > 0) {
     const [row] = await db().execute<Row>(sql`
@@ -174,7 +180,8 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     productIds: JSON.stringify(productIds),
     termIds: JSON.stringify(termIds),
     tierIds: JSON.stringify(tierIds),
-    stacks: c.kind === "percent" && c.stacks,
+    markets: JSON.stringify(markets.length === store.markets.length ? [] : markets),
+    stacks: c.kind !== "gift" && c.stacks,
   };
   const [row] = id
     ? await db().execute<Row>(sql`
@@ -182,7 +189,8 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
           name = ${c.name}, kind = ${c.kind}, percent = ${values.percent}, buy_quantity = ${values.buy}, pay_quantity = ${values.pay},
           gift_variant_id = ${values.gift}::uuid, gift_quantity = ${values.giftQuantity}, thresholds = ${values.thresholds}::jsonb,
           product_ids = ${values.productIds}::jsonb, term_ids = ${values.termIds}::jsonb,
-          tier_ids = ${values.tierIds}::jsonb, usage_limit = ${c.usageLimit}, stacks = ${values.stacks},
+          tier_ids = ${values.tierIds}::jsonb, usage_limit = ${c.usageLimit}, per_customer_limit = ${c.perCustomerLimit},
+          markets = ${values.markets}::jsonb, stacks = ${values.stacks},
           starts_at = ${startsAt}::timestamptz, ends_at = ${endsAt}::timestamptz, active = ${c.active}, updated_at = now()
         where store_id = ${store.id}::uuid and id = ${id}::uuid
         returning id
@@ -190,11 +198,11 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     : await db().execute<Row>(sql`
         insert into commerce.campaigns (
           store_id, name, kind, percent, buy_quantity, pay_quantity, gift_variant_id, gift_quantity, thresholds,
-          product_ids, term_ids, tier_ids, usage_limit, stacks, starts_at, ends_at, active
+          product_ids, term_ids, tier_ids, usage_limit, per_customer_limit, markets, stacks, starts_at, ends_at, active
         ) values (
           ${store.id}::uuid, ${c.name}, ${c.kind}, ${values.percent}, ${values.buy}, ${values.pay}, ${values.gift}::uuid,
           ${values.giftQuantity}, ${values.thresholds}::jsonb, ${values.productIds}::jsonb, ${values.termIds}::jsonb,
-          ${values.tierIds}::jsonb, ${c.usageLimit}, ${values.stacks}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
+          ${values.tierIds}::jsonb, ${c.usageLimit}, ${c.perCustomerLimit}, ${values.markets}::jsonb, ${values.stacks}, ${startsAt}::timestamptz, ${endsAt}::timestamptz, ${c.active}
         )
         returning id
       `);
@@ -243,7 +251,7 @@ export async function runningCampaigns(
   // Only a campaign with a limit is locked, so checkouts that use none do not wait for each other.
   if (lock) {
     await runner.execute(sql`
-      select 1 from commerce.campaigns where store_id = ${storeId}::uuid and active and usage_limit is not null
+      select 1 from commerce.campaigns where store_id = ${storeId}::uuid and active and (usage_limit is not null or per_customer_limit is not null)
       order by id for update
     `);
   }
@@ -252,7 +260,12 @@ export async function runningCampaigns(
       select count(distinct ol.order_id)::int from commerce.order_lines ol
       join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
       where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled'
-    ) end as used
+    ) end as used,
+    case when c.per_customer_limit is null or ${customerId}::uuid is null then 0 else (
+      select count(distinct ol.order_id)::int from commerce.order_lines ol
+      join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
+      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.customer_id = ${customerId}::uuid
+    ) end as used_by_customer
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid and c.active
   `);
@@ -260,7 +273,9 @@ export async function runningCampaigns(
   return rows
     .filter((row) => {
       const campaign = toCampaign(row);
-      if (!campaignRunning(campaign, now)) return false;
+      if (!campaignRunning(campaign, now) || !runsIn(campaign, market.code)) return false;
+      // One for each customer needs to know who the customer is: signed in, and not yet at the limit.
+      if (campaign.perCustomerLimit !== null && (customerId === null || Number(row.used_by_customer) >= campaign.perCustomerLimit)) return false;
       if (campaign.tierIds.length > 0 && !campaign.tierIds.some((id) => tiers.includes(id))) return false;
       return campaign.usageLimit === null || Number(row.used) < campaign.usageLimit;
     })

@@ -278,7 +278,9 @@ export const OWNER_TOOLS = [
       starts_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-01.").optional().describe("The first day, as 2026-10-01; from now unless given."),
       ends_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-01.").optional().describe("The last day, as 2026-10-31."),
       usage_limit: z.number().int().min(1).max(1_000_000).optional().describe("How many orders it can go to in all."),
-      stacks: z.boolean().default(false).describe("For a percentage: also apply on top of other campaigns."),
+      per_customer_limit: z.number().int().min(1).max(1000).optional().describe("How many orders one customer can get it on; 1 for once per customer. Customers must be signed in."),
+      countries: z.array(z.string().trim().min(1).max(60)).max(30).optional().describe("Only in these countries, by name or country code such as NO; leave out for all the store's countries."),
+      stacks: z.boolean().default(false).describe("For a percentage or 3 for 2: also apply on top of other campaigns, on what they left."),
     }),
     "public",
   ),
@@ -382,7 +384,7 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
             : `${text("percent")} % off`;
       const list = (key: string) => (Array.isArray(input[key]) ? (input[key] as unknown[]).map(String).join(", ") : "");
       const reach = [list("products") && `products ${list("products")}`, list("categories") && `categories ${list("categories")}`, list("tags") && `tags ${list("tags")}`].filter(Boolean).join("; ");
-      return `Create the campaign "${text("name")}": ${gives}, ${reach || "for the whole store"}${input.starts_on ? `, from ${text("starts_on")}` : ""}${input.ends_on ? `, until ${text("ends_on")}` : ""}${list("customer_groups") ? `, only for the customer groups ${list("customer_groups")}` : ""}${input.usage_limit ? `, at most ${text("usage_limit")} orders` : ""}${input.stacks ? ", on top of other campaigns" : ""}.`;
+      return `Create the campaign "${text("name")}": ${gives}, ${reach || "for the whole store"}${input.starts_on ? `, from ${text("starts_on")}` : ""}${input.ends_on ? `, until ${text("ends_on")}` : ""}${list("customer_groups") ? `, only for the customer groups ${list("customer_groups")}` : ""}${input.usage_limit ? `, at most ${text("usage_limit")} orders` : ""}${input.per_customer_limit ? `, ${text("per_customer_limit")} per customer` : ""}${list("countries") ? `, only in ${list("countries")}` : ""}${input.stacks ? ", on top of other campaigns" : ""}.`;
     }
     case "set_campaign_active":
       return `${input.active ? "Switch on" : "Switch off"} the campaign "${text("campaign")}".`;

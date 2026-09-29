@@ -62,8 +62,12 @@ test("a store with a Meta Pixel asks first, loads it only when allowed, and reco
   await expect.poll(() => pixelLoads).toBe(1);
   expect((await context.cookies()).find((c) => c.name === `consent_${storeId}`)?.value).toMatch(/\.marketing\.001$/);
 
+  // Each choice is logged by a request of its own, after the cookie is set: wait for the second.
   const check = testDb();
   try {
+    await expect
+      .poll(async () => (await check`select count(*)::int as n from commerce.consents where store_id = ${storeId}`)[0].n)
+      .toBe(2);
     const records = await check`select version, choices from commerce.consents where store_id = ${storeId} order by created_at`;
     expect(records).toEqual([
       { version: "marketing", choices: { preferences: false, statistics: false, marketing: false } },

@@ -50,7 +50,11 @@ export type Campaign = {
   tierIds: string[];
   /** Orders that may get it in all; null for no limit. */
   usageLimit: number | null;
-  /** A percentage that also applies on top of other campaigns, instead of competing with them. */
+  /** Orders one signed-in customer may get it on; null for no limit. */
+  perCustomerLimit: number | null;
+  /** The countries (market codes) it runs in; none for all of the store's. */
+  markets: string[];
+  /** A percentage or a "buy N pay for M" that also applies on top of other campaigns, instead of competing with them. */
   stacks: boolean;
   createdAt: string;
 };
@@ -93,6 +97,9 @@ export function campaignRunning(campaign: Pick<Campaign, "active" | "startsAt" |
   return true;
 }
 
+/** Whether a campaign runs in a country: the ones it names, or every one when it names none. */
+export const runsIn = (campaign: Pick<Campaign, "markets">, marketCode: string) => campaign.markets.length === 0 || campaign.markets.includes(marketCode);
+
 /** Where a campaign stands today, for the admin's list. */
 export function campaignStatus(campaign: Pick<Campaign, "active" | "startsAt" | "endsAt">, now = new Date()): "active" | "off" | "scheduled" | "ended" {
   if (!campaign.active) return "off";
@@ -112,22 +119,33 @@ export function percentOff(unitMinor: number, quantity: number, percent: number)
   return (unitMinor - planPrice(unitMinor, percent)) * quantity;
 }
 
-/** What "buy N pay for M" makes free: in every full group of N units, the cheapest N − M, over all the lines it reaches together. */
-export function multiBuyOff(lines: Pick<CampaignLine, "key" | "unitMinor" | "quantity">[], buy: number, pay: number): Record<string, number> {
+/**
+ * What "buy N pay for M" makes free: in every full group of N units, the
+ * cheapest N − M, over all the lines it reaches together; and how many units
+ * of each line that is.
+ */
+export function multiBuyFree(lines: Pick<CampaignLine, "key" | "unitMinor" | "quantity">[], buy: number, pay: number): { off: Record<string, number>; freed: Record<string, number> } {
   const units = lines
     .flatMap((line) => Array.from({ length: line.quantity }, () => ({ key: line.key, price: line.unitMinor })))
     .sort((a, b) => b.price - a.price);
   const off: Record<string, number> = {};
+  const freed: Record<string, number> = {};
   const free = buy - pay;
-  if (free <= 0 || buy < 2) return off;
+  if (free <= 0 || buy < 2) return { off, freed };
   for (let start = 0; start + buy <= units.length; start += buy) {
     // Cheapest last: the group's last `free` units are the free ones.
     for (const unit of units.slice(start + buy - free, start + buy)) {
-      if (unit.price > 0) off[unit.key] = (off[unit.key] ?? 0) + unit.price;
+      if (unit.price > 0) {
+        off[unit.key] = (off[unit.key] ?? 0) + unit.price;
+        freed[unit.key] = (freed[unit.key] ?? 0) + 1;
+      }
     }
   }
-  return off;
+  return { off, freed };
 }
+
+/** What "buy N pay for M" makes free, per line. */
+export const multiBuyOff = (lines: Pick<CampaignLine, "key" | "unitMinor" | "quantity">[], buy: number, pay: number): Record<string, number> => multiBuyFree(lines, buy, pay).off;
 
 function priceOff(campaign: Campaign, lines: CampaignLine[]): Record<string, number> {
   const reached = lines.filter((line) => line.discountable && line.unitMinor > 0 && reaches(campaign, line));
@@ -153,6 +171,8 @@ export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], mar
   const ordered = [...campaigns].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
   let pending = ordered.filter((c) => c.kind !== "gift" && !c.stacks);
   let free = lines;
+  // Units a "buy N pay for M" has made free, per line: a stacking one takes only what is left to pay for.
+  const freed: Record<string, number> = {};
   while (pending.length > 0) {
     let best: { campaign: Campaign; off: Record<string, number>; total: number } | null = null;
     for (const campaign of pending) {
@@ -167,6 +187,10 @@ export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], mar
         ? Object.keys(best.off)
         : free.filter((line) => line.discountable && line.unitMinor > 0 && reaches(best!.campaign, line)).map((line) => line.key),
     );
+    if (best.campaign.kind === "multi_buy") {
+      const reached = free.filter((line) => line.discountable && line.unitMinor > 0 && reaches(best!.campaign, line));
+      Object.assign(freed, multiBuyFree(reached, best.campaign.buyQuantity, best.campaign.payQuantity).freed);
+    }
     for (const [key, amount] of Object.entries(best.off)) {
       result.lineOff[key] = amount;
       result.lineBy[key] = best.campaign.id;
@@ -177,17 +201,46 @@ export function applyCampaigns(campaigns: Campaign[], lines: CampaignLine[], mar
     pending = pending.filter((campaign) => campaign !== best!.campaign);
   }
 
-  // A percentage that stacks comes off what is left of each line it reaches, one campaign after another.
-  for (const campaign of ordered.filter((c) => c.kind === "percent" && c.stacks)) {
+  // What stacks comes off what is left, one campaign after another in the order they were made: a percentage
+  // off the rest of each line it reaches, a "buy N pay for M" over the units still to be paid for.
+  const take = (campaign: Campaign, line: CampaignLine, off: number) => {
+    result.lineOff[line.key] = (result.lineOff[line.key] ?? 0) + off;
+    result.lineBy[line.key] ??= campaign.id;
+    (result.lineParts[line.key] ??= []).push({ campaignId: campaign.id, name: campaign.name, minor: off });
+  };
+  for (const campaign of ordered.filter((c) => c.stacks && (c.kind === "percent" || c.kind === "multi_buy"))) {
     let total = 0;
-    for (const line of lines.filter((l) => l.discountable && l.unitMinor > 0 && reaches(campaign, l))) {
-      const left = line.unitMinor * line.quantity - (result.lineOff[line.key] ?? 0);
-      const off = left > 0 ? left - planPrice(left, campaign.percent) : 0;
-      if (off <= 0) continue;
-      result.lineOff[line.key] = (result.lineOff[line.key] ?? 0) + off;
-      result.lineBy[line.key] ??= campaign.id;
-      (result.lineParts[line.key] ??= []).push({ campaignId: campaign.id, name: campaign.name, minor: off });
-      total += off;
+    const reached = lines.filter((l) => l.discountable && l.unitMinor > 0 && reaches(campaign, l));
+    if (campaign.kind === "percent") {
+      for (const line of reached) {
+        const left = line.unitMinor * line.quantity - (result.lineOff[line.key] ?? 0);
+        const off = left > 0 ? left - planPrice(left, campaign.percent) : 0;
+        if (off <= 0) continue;
+        take(campaign, line, off);
+        total += off;
+      }
+    } else {
+      // Each unit still to be paid for costs what is left of its line, evenly.
+      const pool = reached
+        .map((line) => {
+          const paying = line.quantity - (freed[line.key] ?? 0);
+          const left = line.unitMinor * line.quantity - (result.lineOff[line.key] ?? 0);
+          return { line, paying, left, price: paying > 0 ? left / paying : 0 };
+        })
+        .filter((entry) => entry.paying > 0 && entry.left > 0);
+      const { freed: more } = multiBuyFree(
+        pool.map((entry) => ({ key: entry.line.key, unitMinor: entry.price, quantity: entry.paying })),
+        campaign.buyQuantity,
+        campaign.payQuantity,
+      );
+      for (const entry of pool) {
+        const n = more[entry.line.key] ?? 0;
+        const off = n > 0 ? Math.round((entry.left * n) / entry.paying) : 0;
+        if (off <= 0) continue;
+        freed[entry.line.key] = (freed[entry.line.key] ?? 0) + n;
+        take(campaign, entry.line, off);
+        total += off;
+      }
     }
     if (total > 0) result.applied.push({ campaignId: campaign.id, name: campaign.name, kind: campaign.kind, offMinor: total });
   }
@@ -255,7 +308,11 @@ export const campaignInput = z
     tierIds: z.array(z.uuid()).default([]),
     /** Orders that may get it in all; empty for no limit. */
     usageLimit: z.preprocess((v) => (v === "" || v === undefined ? null : typeof v === "string" ? Number(v) : v), z.number().int("Whole orders, please.").min(1, "Allow at least one order, or no limit.").max(1_000_000).nullable()).default(null),
-    /** A percentage also applied on top of other campaigns. */
+    /** Orders one signed-in customer may get it on; empty for no limit. */
+    perCustomerLimit: z.preprocess((v) => (v === "" || v === undefined ? null : typeof v === "string" ? Number(v) : v), z.number().int("Whole orders, please.").min(1, "Allow at least one order each, or no limit.").max(1000).nullable()).default(null),
+    /** The countries (market codes) it runs in; none for all. */
+    markets: z.array(z.string().regex(/^[A-Z]{2}$/)).default([]),
+    /** A percentage or "buy N pay for M" also applied on top of other campaigns. */
     stacks: z.boolean().default(false),
     startsAt: z.string().trim().nullable().default(null),
     endsAt: z.string().trim().nullable().default(null),
@@ -264,7 +321,7 @@ export const campaignInput = z
   .refine((input) => input.kind !== "multi_buy" || input.payQuantity < input.buyQuantity, {
     message: "Shoppers must pay for fewer items than they buy: 3 for 2, not 2 for 3.",
   })
-  .refine((input) => !input.stacks || input.kind === "percent", { message: "Only a percentage off can be added on top of other campaigns." })
+  .refine((input) => !input.stacks || input.kind !== "gift", { message: "A free product cannot be added on top of other campaigns: it is given whatever else applies." })
   .refine((input) => input.kind !== "gift" || input.giftVariantId !== null, { message: "Choose the product to give." })
   .refine((input) => input.scope === "all" || input.productIds.length + input.termIds.length > 0, {
     message: "Choose at least one product, category or tag, or let the campaign apply to everything.",

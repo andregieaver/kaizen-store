@@ -31,6 +31,8 @@ const campaign = (over: Partial<Campaign>): Campaign => ({
   termIds: [],
   tierIds: [],
   usageLimit: null,
+  perCustomerLimit: null,
+  markets: [],
   stacks: false,
   createdAt: `2026-01-01T00:00:${String(n).padStart(2, "0")}Z`,
   ...over,
@@ -161,6 +163,37 @@ describe("a percentage that stacks", () => {
   });
 });
 
+describe("a stacking buy N pay for M", () => {
+  it("takes the units still to be paid for, so two 3 for 2 free two of six, then one more of the four", () => {
+    const mugs = campaign({ kind: "multi_buy", productIds: ["p-a"] });
+    const home = campaign({ kind: "multi_buy", stacks: true });
+    // Six at 100,00 under the mugs' 3 for 2: two free (200,00). The store-wide one takes the 4 left: one more free.
+    const result = applyCampaigns([mugs, home], [line("a", 10000, 6)], "NO");
+    expect(result.lineOff).toEqual({ a: 30000 });
+    expect(result.lineParts.a.map((p) => [p.campaignId, p.minor])).toEqual([[mugs.id, 20000], [home.id, 10000]]);
+    expect(result.applied.map((a) => a.offMinor)).toEqual([20000, 10000]);
+  });
+
+  it("works over the lines the first left, cheapest free, and never frees a unit twice", () => {
+    const first = campaign({ kind: "multi_buy" });
+    const second = campaign({ kind: "multi_buy", stacks: true });
+    // Three at 300 and three at 100: the first frees one at 100 and one at 100 (the cheapest of each group of three).
+    const result = applyCampaigns([first, second], [line("a", 30000, 3), line("b", 10000, 3)], "NO");
+    // First: sorted 300,300,300 | 100,100,100 → free 300 and 100. Left to pay: a 2 (600), b 2 (200): four units, one group of three → the cheapest of them, 100.
+    expect(result.lineOff.a).toBe(30000);
+    expect(result.lineOff.b).toBe(20000);
+    expect(result.lineOff.a + result.lineOff.b).toBeLessThanOrEqual(30000 * 3 + 10000 * 3);
+  });
+
+  it("stacks in order with a percentage, and takes nothing when little is left to pay for", () => {
+    const first = campaign({ percent: 50 });
+    const second = campaign({ kind: "multi_buy", stacks: true });
+    // 50 % off three at 100 leaves 150 for three units, 50 each on average: one free of three → 50 more.
+    expect(applyCampaigns([first, second], [line("a", 10000, 3)], "NO").lineOff).toEqual({ a: 15000 + 5000 });
+    expect(applyCampaigns([second], [line("a", 10000, 2)], "NO").lineOff).toEqual({});
+  });
+});
+
 describe("a free product over an amount", () => {
   const gift = (over: Partial<Campaign> = {}) => campaign({ kind: "gift", giftVariantId: "v-gift", thresholds: { NO: 50000 }, ...over });
 
@@ -229,7 +262,12 @@ describe("the admin's form", () => {
     expect(campaignInput.safeParse({ ...base, usageLimit: "50", tierIds: [crypto.randomUUID()], stacks: true }).data).toMatchObject({ usageLimit: 50, stacks: true });
     expect(campaignInput.safeParse({ ...base, usageLimit: "" }).data?.usageLimit).toBeNull();
     expect(campaignInput.safeParse({ ...base, usageLimit: 0 }).success).toBe(false);
-    expect(campaignInput.safeParse({ ...base, kind: "multi_buy", stacks: true }).success).toBe(false);
+    expect(campaignInput.safeParse({ ...base, kind: "multi_buy", stacks: true }).success).toBe(true);
+    expect(campaignInput.safeParse({ ...base, kind: "gift", giftVariantId: crypto.randomUUID(), stacks: true }).success).toBe(false);
+    // Once per customer, and only in some countries.
+    expect(campaignInput.safeParse({ ...base, perCustomerLimit: "1", markets: ["NO", "SE"] }).data).toMatchObject({ perCustomerLimit: 1, markets: ["NO", "SE"] });
+    expect(campaignInput.safeParse({ ...base, perCustomerLimit: 0 }).success).toBe(false);
+    expect(campaignInput.safeParse({ ...base, markets: ["norway"] }).success).toBe(false);
   });
   it("is described for the list", () => {
     const money = (minor: number, code: string) => `${code} ${minor / 100}`;

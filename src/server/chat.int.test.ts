@@ -7,6 +7,8 @@ type Row = Record<string, unknown>;
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {} }));
+// Stock is read per request; a test has no request to wait for.
+vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 
 const { getStore } = await import("./stores");
 const knowledge = await import("./knowledge");
@@ -150,6 +152,39 @@ describe("the agent", () => {
     const results = (sent[1].messages as Row[]).filter((message) => message.role === "tool");
     expect(results).toHaveLength(2);
     expect(String(results[0].content)).toMatch(/demo-bordlampe.*kr/);
+  });
+
+  it("shows the store's campaigns on the cards it draws, and gives the model only the offers the site words (D115)", async () => {
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const [lamp] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid and handle = 'demo-bordlampe'`);
+    const [gift] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-NOTEBOOK-LINED'`);
+    await db().execute(sql`insert into commerce.campaigns (store_id, name, kind, percent) values (${storeId}::uuid, 'Høstsalg', 'percent', 20)`);
+    await db().execute(sql`insert into commerce.campaigns (store_id, name, kind, buy_quantity, pay_quantity, product_ids) values (${storeId}::uuid, 'Lamper tre for to', 'multi_buy', 3, 2, ${JSON.stringify([String(lamp.id)])}::jsonb)`);
+    await db().execute(sql`insert into commerce.campaigns (store_id, name, kind, gift_variant_id, thresholds, per_customer_limit) values (${storeId}::uuid, 'Gratis notatbok', 'gift', ${String(gift.id)}::uuid, '{"NO": 50000}'::jsonb, 1)`);
+    // One for chosen customer groups is not told to anyone: the cards are the same for every visitor.
+    const [tier] = await db().execute<Row>(sql`insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Grossist', 10) returning id`);
+    await db().execute(sql`insert into commerce.campaigns (store_id, name, kind, percent, tier_ids) values (${storeId}::uuid, 'Kun grossist', 'percent', 60, ${JSON.stringify([String(tier.id)])}::jsonb)`);
+    const sent = fakeModel([
+      { content: null, tool_calls: [call("1", "search_products", { query: "bordlampe" }), call("2", "get_product", { handle: "demo-bordlampe" })] },
+      { content: "Bordlampen er på tilbud." },
+    ]);
+    const reply = await chat.runChat(
+      { kind: "store", store, market },
+      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
+      { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Er det noe tilbud på lamper?" }] },
+      connection,
+    );
+    // Two offers at most on a card, never a gift, never the group's.
+    const card = reply.products.find((p) => p.handle === "demo-bordlampe")!;
+    expect(card.offers).toEqual(["20 % rabatt", "3 for 2"]);
+    const results = (sent[1].messages as Row[]).filter((message) => message.role === "tool").map((message) => String(message.content));
+    expect(results[0]).toContain("Høstsalg: 20 % rabatt");
+    // The page of one product tells the gift too, and that it needs a sign-in; and no one hears of the group's.
+    expect(results[1]).toContain("Lamper tre for to: 3 for 2");
+    expect(results[1]).toMatch(/Gratis notatbok: Gratis .* når du handler for 500,00\skr\s\(Logg inn på Min konto for å få det\.\)/);
+    expect(results[1]).toContain("taken off in the cart");
+    expect(results.join(" ")).not.toContain("Kun grossist");
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
   });
 
   it("opens only the store's own pages", async () => {

@@ -336,6 +336,20 @@ const campaignScenarios: Scenario[] = [
     bookings: 0,
   },
   {
+    name: "two 3 for 2 offers, the second on what the first left to pay for",
+    fill: () => add("DEMO-MUG-WHITE", 6),
+    campaigns: () => [threeForTwo(), threeForTwo({ name: "3 for 2, again", stacks: true })],
+    bookings: 0,
+  },
+  {
+    name: "a stacking 3 for 2 with a stacking percentage, for a group member, shown in euro",
+    fill: () => add("DEMO-MUG-WHITE", 4),
+    campaigns: () => [threeForTwo({ stacks: true }), percentCampaign(10, { stacks: true })],
+    buyer: "group",
+    euro: true,
+    bookings: 0,
+  },
+  {
     name: "a 3 for 2 and a free product, for a company's employee, shown in euro",
     fill: () => add("DEMO-MUG-WHITE", 3),
     campaigns: () => [threeForTwo(), freeNotebook()],
@@ -380,6 +394,8 @@ describe("checkout for every kind of product", () => {
   beforeAll(async () => {
     const [home] = await db().execute<Row>(sql`select id from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' and slug = 'hjem'`);
     homeCategory = String(home.id);
+    // Every scenario buys and pays: plenty on the shelf for all of them.
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
     const made = await saveDiscount(member, null, { code: `TI${run}`.toUpperCase(), kind: "percent", percent: 10 });
     if (!made.ok) throw new Error(made.problems.join(" "));
     const [tier] = await db().execute<Row>(sql`
@@ -503,6 +519,50 @@ describe("campaigns with limits (D115)", () => {
     await startSession(storeId, stranger);
     await add("DEMO-MUG-WHITE", 1);
     expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBe(0);
+  });
+
+  it("go to a customer a number of orders, only when they are signed in", async () => {
+    jar.clear();
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await saveCampaign(member, null, percentCampaign(40, { perCustomerLimit: 1 }));
+    // Not signed in: it cannot be told who has had it.
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBe(0);
+
+    jar.clear();
+    const customerId = await signInBuyer("group");
+    await add("DEMO-MUG-WHITE", 1);
+    const first = await cartSummary(shop(), await getCart(shop()));
+    expect(first.campaignDiscountMinor).toBeGreaterThan(0);
+    expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId })).toMatchObject({ ok: true });
+    const open = await getOpenCheckout(storeId, cartId());
+    // The same customer's next order is over the limit, while another customer still gets it.
+    jar.clear();
+    await startSession(storeId, customerId);
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBe(0);
+    jar.clear();
+    await signInBuyer("company");
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
+    // A cancelled checkout gives the use back.
+    await (await import("./checkout")).cancelUnpaidOrder(open!.orderId, "test");
+    jar.clear();
+    await startSession(storeId, customerId);
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
+  });
+
+  it("run only in the countries they name", async () => {
+    jar.clear();
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await db().execute(sql`insert into commerce.campaigns (store_id, name, kind, percent, markets) values (${storeId}::uuid, 'Kun Sverige', 'percent', 30, '["SE"]'::jsonb)`);
+    await add("DEMO-MUG-WHITE", 1);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBe(0);
+    await db().execute(sql`update commerce.campaigns set markets = '["NO", "SE"]'::jsonb where store_id = ${storeId}::uuid`);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
+    await db().execute(sql`update commerce.campaigns set markets = '[]'::jsonb where store_id = ${storeId}::uuid`);
+    expect((await cartSummary(shop(), await getCart(shop()))).campaignDiscountMinor).toBeGreaterThan(0);
   });
 
   it("stop when their orders are used up, and give a use back when a checkout is cancelled", async () => {

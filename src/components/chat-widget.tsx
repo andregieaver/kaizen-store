@@ -408,6 +408,15 @@ function ProductCard({ product, locale, labels, onOpen }: { product: ChatProduct
       )}
       <span className="flex flex-1 flex-col gap-1 p-2">
         <span className="line-clamp-2 font-medium">{product.title}</span>
+        {product.offers && product.offers.length > 0 && (
+          <span className="flex flex-wrap gap-1">
+            {product.offers.map((offer) => (
+              <span key={offer} className="rounded-button bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                {offer}
+              </span>
+            ))}
+          </span>
+        )}
         <span className="font-semibold">
           {product.from && <span className="font-normal">{labels.fromPrice} </span>}
           <VatAmount amountMinor={price.amountMinor} currency={price.currency} locale={locale} vat={price.vat} labels={labels} />

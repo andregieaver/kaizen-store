@@ -23,6 +23,8 @@ export type CampaignNotice = {
   endsAt: string | null;
   /** The products it reaches; null for every product. */
   productIds: string[] | null;
+  /** Given to signed-in customers, a number of orders each: the page says to sign in. */
+  signIn: boolean;
 };
 
 export type CampaignNotices = { items: CampaignNotice[] };

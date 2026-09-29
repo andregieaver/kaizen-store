@@ -78,6 +78,8 @@ test("product pages and cards announce running campaigns, and only what is the s
     // Not announced: over, not started, for a customer group, and used up.
     await sql`insert into commerce.campaigns (store_id, name, kind, percent, ends_at) values (${id}, 'Ferdig', 'percent', 50, now() - interval '1 day')`;
     await sql`insert into commerce.campaigns (store_id, name, kind, percent, starts_at) values (${id}, 'Senere', 'percent', 50, now() + interval '2 days')`;
+    await sql`insert into commerce.campaigns (store_id, name, kind, percent, markets) values (${id}, 'Kun Sverige', 'percent', 35, '["SE"]'::jsonb)`;
+    await sql`insert into commerce.campaigns (store_id, name, kind, percent, per_customer_limit) values (${id}, 'En hver', 'percent', 5, 1)`;
     const [tier] = await sql`insert into commerce.customer_tiers (store_id, name, percent) values (${id}, 'Grossist', 10) returning id`;
     await sql`insert into commerce.campaigns (store_id, name, kind, percent, tier_ids) values (${id}, 'Kun grossist', 'percent', 60, ${sql.json([tier.id])})`;
     await sql`insert into commerce.campaigns (store_id, name, kind, percent, usage_limit) values (${id}, 'Oppbrukt', 'percent', 70, 1)`;
@@ -96,7 +98,14 @@ test("product pages and cards announce running campaigns, and only what is the s
   await expect(page.getByText("Gratis notatbok: Gratis Demo: Notatbok A5 når du handler for 500,00 kr")).toBeVisible();
   await expect(page.getByText("Tilbudet trekkes fra i handlekurven.").first()).toBeVisible();
   await expect(page.getByText(/Til og med/)).toBeVisible();
-  for (const name of ["Ferdig", "Senere", "Kun grossist", "Oppbrukt"]) await expect(page.getByText(name)).toHaveCount(0);
+  for (const name of ["Ferdig", "Senere", "Kun grossist", "Oppbrukt", "Kun Sverige"]) await expect(page.getByText(name)).toHaveCount(0);
+  // Once per customer needs a sign-in, and the page says so.
+  await expect(page.getByText("En hver: 5 % rabatt")).toBeVisible();
+  await expect(page.getByText("Logg inn på Min konto for å få det.")).toBeVisible();
+  // It runs in Sweden, though.
+  await page.goto(`/s/${slug}/se/p/demo-handlenett`);
+  await expect(page.getByText("Kun Sverige: 35 % rabatt")).toBeVisible();
+  await page.goto(`/s/${slug}/no/p/demo-handlenett`);
 
   // The bag is in the 3 for 2 too; the others only in the store-wide one.
   await page.goto(`/s/${slug}/no/products`);

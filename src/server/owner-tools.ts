@@ -370,6 +370,8 @@ async function listCampaignsTool({ store }: OwnerToolContext) {
       runs: { from: c.startsAt, until: c.endsAt },
       orders: c.orders,
       orders_limit: c.usageLimit,
+      orders_per_customer_limit: c.perCustomerLimit ?? undefined,
+      only_in: c.markets.length > 0 ? c.markets.map((code) => store.markets.find((m) => m.code === code)?.name ?? code) : undefined,
       given: Object.entries(c.given).map(([currency, minor]) => money(store, minor, currency)),
     })),
     page: adminLink(store, "/campaigns"),
@@ -691,6 +693,12 @@ async function createCampaignTool(ctx: OwnerToolContext, input: OwnerToolInput<"
     if (!tier) return fail(`No customer group "${wanted}" in this store.`);
     tierIds.push(String(tier.id));
   }
+  const markets: string[] = [];
+  for (const wanted of input.countries ?? []) {
+    const found = store.markets.find((m) => m.code.toLowerCase() === wanted.toLowerCase() || m.name.toLowerCase() === wanted.toLowerCase());
+    if (!found) return fail(`The store does not sell to "${wanted}". Its countries: ${store.markets.map((m) => `${m.name} (${m.code})`).join(", ")}.`);
+    markets.push(found.code);
+  }
   const result = await saveCampaign({ account: ctx.account, store, role: "owner" }, null, {
     name: input.name,
     kind: input.kind,
@@ -705,7 +713,9 @@ async function createCampaignTool(ctx: OwnerToolContext, input: OwnerToolInput<"
     termIds,
     tierIds,
     usageLimit: input.usage_limit ?? null,
-    stacks: input.kind === "percent" && input.stacks,
+    perCustomerLimit: input.per_customer_limit ?? null,
+    markets,
+    stacks: input.kind !== "gift" && input.stacks,
     startsAt: input.starts_on ? `${input.starts_on}T00:00` : null,
     endsAt: input.ends_on ? `${input.ends_on}T23:59` : null,
     active: true,

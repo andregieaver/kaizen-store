@@ -40,6 +40,8 @@ export type ChatProduct = {
   image: { url: string; alt: string } | null;
   price: { amountMinor: number; currency: string; referenceMinor: number | null; vat: { rate: number; shown: "incl" | "excl" | "choice" } };
   from: boolean;
+  /** The store's campaigns on the product (D115), in the shopper's words, for a badge on the card. */
+  offers?: string[];
 };
 
 export type ChatReply = { reply: string; actions: ChatAction[]; products: ChatProduct[] };
