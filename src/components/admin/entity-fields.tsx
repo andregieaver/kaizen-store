@@ -35,7 +35,7 @@ export function EntityFields({
   upload,
   fileUpload,
   lookups,
-  side = false,
+  side,
   locale: chosen,
   title = "Custom fields",
   intro = "Extra information about it, from the field groups you made under Custom fields.",
@@ -54,7 +54,7 @@ export function EntityFields({
   fileUpload: FieldFileUploader | null;
   /** The store's products, pages, categories and tags, for the fields that point at them. */
   lookups: FieldLookups;
-  /** Only the groups meant for the side column, or those meant for the main one. */
+  /** Only the groups meant for the side column, or those meant for the main one; every group when left out (the editors are one column of sections, so a group is never left unseen). */
   side?: boolean;
   /** The language being written when the editor has its own switch (a page's); else this panel has one. */
   locale?: string;
@@ -65,7 +65,7 @@ export function EntityFields({
 }) {
   const [own, setLocale] = useState(main);
   const locale = chosen ?? own;
-  const shown = groups.filter((group) => (group.position === "side") === side);
+  const shown = side === undefined ? groups : groups.filter((group) => (group.position === "side") === side);
   if (shown.length === 0) return null;
   const texts = shown.some((group) => group.fields.some(hasTranslations));
   const name = (l: string) => languageNames[l] ?? l;
