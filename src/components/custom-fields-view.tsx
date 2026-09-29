@@ -253,6 +253,13 @@ export function fieldValue(field: ShownField, display: FieldDisplay = "table"): 
     }
     case "url": {
       const address = text.trim();
+      // An anchor on the page opens in the same tab.
+      if (/^#\S*$/.test(address))
+        return (
+          <a href={address} className={`${LINK} break-words`}>
+            {address}
+          </a>
+        );
       return isWebAddress(address) ? (
         <a href={address} target="_blank" rel="noopener noreferrer" className={`${LINK} break-words`}>
           {address}

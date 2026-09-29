@@ -284,7 +284,7 @@ export function LinkField({
                 inputMode="url"
                 value={value.ref}
                 maxLength={1000}
-                placeholder="https://… or /path"
+                placeholder="https://…, /path or #anchor"
                 onChange={(event) => set({ ref: event.target.value })}
                 className={input}
               />

@@ -49,7 +49,7 @@ describe("dual buttons", () => {
       ["block.d.second.label", "Second button's text"],
     ]);
     expect(problems({ ...ready, second: { label: "Les mer", href: "javascript:alert(1)" } })).toEqual([
-      "A button's address must be https://…, a page like /about, mailto: or tel:.",
+      "A button's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.",
     ]);
     expect(problems({ ...ready, gap: 100 })).toEqual(["Keep the space between the buttons at 64 pixels or less."]);
   });
@@ -308,7 +308,7 @@ describe("icon lists", () => {
   it("refuses an unknown icon and an address that is not one", () => {
     expect(problems({ ...list, items: [{ id: "a", icon: "unicorn", text: "x", href: "" }] })).toEqual(["Choose an icon for each line."]);
     expect(problems({ ...list, items: [{ id: "a", icon: "check", text: "x", href: "javascript:alert(1)" }] })).toEqual([
-      "A line's address must be https://…, a page like /about, mailto: or tel:.",
+      "A line's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.",
     ]);
   });
 });

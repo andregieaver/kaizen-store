@@ -90,8 +90,8 @@ async function Menus({ searchParams }: { searchParams: PageProps<"/admin/platfor
           article: "Blog articles",
           blogCategory: "Blog categories",
         },
-        urlHint: "A full address opens that site; one starting with / is a page on Kaizen's site.",
-        urlPlaceholder: "https://… or /sign-up",
+        urlHint: "A full address opens that site; one starting with / is a page on Kaizen's site; # or #name is an anchor on the page shown.",
+        urlPlaceholder: "https://…, /sign-up or #anchor",
       }}
       save={savePlatformMenuAction}
       upload={uploadsEnabled() ? uploadPlatformImageAction : null}

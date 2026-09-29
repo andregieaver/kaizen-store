@@ -145,10 +145,10 @@ describe("custom fields in templates (D118)", () => {
       field({ id: `f_${type}`, type, value: "", text: "", links });
 
     it("accepts web addresses and site paths, never script or protocol-relative ones", () => {
-      for (const good of ["https://example.com/a", "http://example.com", "/s/shop/no/products", " /about "]) {
+      for (const good of ["https://example.com/a", "http://example.com", "/s/shop/no/products", " /about ", "#", "#kontakt"]) {
         expect(isSafeAddress(good)).toBe(true);
       }
-      for (const bad of ["javascript:alert(1)", "data:text/html,x", "//evil.example", "/\\evil.example", "about", "", "/a b", "mailto:a@b.no"]) {
+      for (const bad of ["javascript:alert(1)", "data:text/html,x", "//evil.example", "/\\evil.example", "about", "", "/a b", "mailto:a@b.no", "# a", "javascript:void(0)"]) {
         expect(isSafeAddress(bad)).toBe(false);
       }
     });

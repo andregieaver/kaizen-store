@@ -713,7 +713,7 @@ export function parseValue(def: FieldDef, raw: unknown): Parsed {
       if (def.type === "email" && (!EMAIL.test(text) || text.length > 200))
         return bad(def, "That is not an email address.");
       if (def.type === "phone" && !PHONE.test(text)) return bad(def, "That is not a telephone number.");
-      if (def.type === "url") {
+      if (def.type === "url" && !/^#\S*$/.test(text)) {
         try {
           const url = new URL(text);
           if ((url.protocol !== "https:" && url.protocol !== "http:") || text.length > 1000) throw new Error("scheme");
@@ -830,7 +830,7 @@ export function parseValue(def: FieldDef, raw: unknown): Parsed {
       if (typeof ref !== "string" || ref.trim() === "") return ok(null);
       if (typeof kind !== "string" || !Object.hasOwn(LINK_KINDS, kind)) return bad(def, "Choose what to link to.");
       const target = ref.trim();
-      if (kind === "url" ? !isLinkTarget(target) : !UUID.test(target)) return bad(def, kind === "url" ? "A web address starts with https:// or a slash." : "That is not something to link to.");
+      if (kind === "url" ? !isLinkTarget(target) : !UUID.test(target)) return bad(def, kind === "url" ? "A link starts with https://, a slash (a page of the site) or # (an anchor on the page)." : "That is not something to link to.");
       if (label !== undefined && (typeof label !== "string" || label.length > 100)) return bad(def, "Keep the link's words under 100 characters.");
       return ok({ kind: kind as LinkKind, ref: target, label: typeof label === "string" ? label.trim() : "", ...(newTab === true && { newTab: true }) });
     }
@@ -859,7 +859,8 @@ export const MAX_FILE_BYTES = 50 * 1024 * 1024;
 /** A file's address: on the web (https) or in the store's own storage path. */
 const isFileAddress = (url: string) => url.length <= 1000 && (/^https:\/\//.test(url) || /^\/(?![/\\])\S*$/.test(url));
 /** A link's web address: https or http, or a path on the store's own site. */
-const isLinkTarget = (url: string) => url.length <= 1000 && (/^https?:\/\/\S+$/.test(url) || /^\/(?![/\\])\S*$/.test(url));
+const isLinkTarget = (url: string) =>
+  url.length <= 1000 && (/^https?:\/\/\S+$/.test(url) || /^\/(?![/\\])\S*$/.test(url) || /^#\S*$/.test(url));
 
 /**
  * A group's, repeater's or flexible content's value: its sub fields checked one

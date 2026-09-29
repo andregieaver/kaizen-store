@@ -116,8 +116,8 @@ async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchPar
           article: "Blog articles",
           blogCategory: "Blog categories",
         },
-        urlHint: "A full address opens that site; one starting with / is a page in your store.",
-        urlPlaceholder: "https://… or /p/product-name",
+        urlHint: "A full address opens that site; one starting with / is a page in your store; # or #name is an anchor on the page shown (or opens a modal made with #modal-name).",
+        urlPlaceholder: "https://…, /p/product-name or #anchor",
       }}
       save={saveMenuAction.bind(null, store.slug)}
       upload={uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null}

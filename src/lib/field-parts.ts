@@ -61,7 +61,8 @@ export function videoOf(value: unknown): { video: FieldVideo; player: string } |
 /** An address a link may point at: a web address, or a path on the site (one slash, never `//` or `/\\`). */
 export const isSafeAddress = (value: string): boolean => {
   const address = value.trim();
-  return isWebAddress(address) || (/^\/(?![/\\])/.test(address) && !/\s/.test(address));
+  // A web address, a path on the site, or an anchor on the page (`#kontakt`, or `#` alone).
+  return isWebAddress(address) || (/^\/(?![/\\])/.test(address) && !/\s/.test(address)) || /^#\S*$/.test(address);
 };
 
 /** Whether a link goes to a page of the site itself (a path), so it can use the router. */

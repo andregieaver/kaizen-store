@@ -27,13 +27,13 @@ const p = (text: string, marks?: unknown[]) => ({ type: "paragraph", content: [{
 
 describe("link addresses", () => {
   it("takes web, mail and phone addresses, site paths and anchors", () => {
-    for (const href of ["https://kaizen.no", "http://example.com/a?b=c", "mailto:hei@kaizen.no", "tel:+4712345678", "/sign-up", "#pricing"]) {
+    for (const href of ["https://kaizen.no", "http://example.com/a?b=c", "mailto:hei@kaizen.no", "tel:+4712345678", "/sign-up", "#pricing", "#", "#section.2", "#modal-promo"]) {
       expect(isLinkAddress(href), href).toBe(true);
     }
   });
 
   it("refuses scripts, other protocols and addresses to another site without a scheme", () => {
-    for (const href of ["javascript:alert(1)", "JavaScript:alert(1)", "data:text/html,x", "//evil.example", "/\\evil.example", "ftp://x", "", "https://a b"]) {
+    for (const href of ["javascript:alert(1)", "JavaScript:alert(1)", "data:text/html,x", "//evil.example", "/\\evil.example", "ftp://x", "", "https://a b", "# a"]) {
       expect(isLinkAddress(href), href).toBe(false);
     }
   });
@@ -289,7 +289,7 @@ describe("row, column and component settings (D48)", () => {
     expect(pageInput.parse(page({}, { link: { href: " /sign-up " } })).rows[0].columns[0].link).toEqual({ href: "/sign-up", label: "" });
     for (const href of ["", "javascript:alert(1)", "//evil.example"]) {
       expect(problems(page({}, { link: { href, label: "" } })), href).toEqual([
-        "A column's link needs an address: https://…, a page like /about, mailto: or tel:.",
+        "A column's link needs an address: https://…, a page like /about, an anchor like #contact, mailto: or tel:.",
       ]);
     }
   });
@@ -385,7 +385,7 @@ describe("borders, corners and shadows; headings and buttons (D49)", () => {
     expect(pageExcerpt(parsed)).toBe("");
     for (const href of ["javascript:alert(1)", "//evil.example"]) {
       expect(problems(page([button({ href })])), href).toEqual([
-        "A button's address must be https://…, a page like /about, mailto: or tel:.",
+        "A button's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.",
       ]);
     }
     expect(problems(page([button({ variant: "ghost" })]))).not.toEqual([]);

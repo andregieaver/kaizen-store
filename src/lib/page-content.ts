@@ -91,7 +91,7 @@ export const EMPTY_DOC: RichTextDoc = { type: "doc", content: [{ type: "paragrap
  */
 export function isLinkAddress(value: string): boolean {
   if (value.length === 0 || value.length > 2000 || /\s/.test(value)) return false;
-  if (/^\/(?![/\\])/.test(value) || /^#[\w-]+$/.test(value)) return true;
+  if (/^\/(?![/\\])/.test(value) || /^#\S*$/.test(value)) return true;
   if (/^mailto:[^@\s]+@[^@\s]+$/i.test(value)) return true;
   if (/^tel:\+?[\d-]{3,20}$/i.test(value)) return true;
   try {
@@ -1781,7 +1781,7 @@ const buttonBlock = z.object({
   href: z
     .string()
     .trim()
-    .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /about, mailto: or tel:."),
+    .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:."),
   newTab: z.boolean().optional(),
   variant: z.enum(Object.keys(BUTTON_VARIANTS) as [ButtonVariant, ...ButtonVariant[]]).optional(),
   size: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
@@ -2180,7 +2180,7 @@ const iconListBlock = z.object({
         href: z
           .string()
           .trim()
-          .refine((href) => href === "" || isLinkAddress(href), "A line's address must be https://…, a page like /about, mailto: or tel:.")
+          .refine((href) => href === "" || isLinkAddress(href), "A line's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
           .default(""),
       }),
     )
@@ -2305,7 +2305,7 @@ export const pageColumnSchema = z.object({
       href: z
         .string()
         .trim()
-        .refine(isLinkAddress, "A column's link needs an address: https://…, a page like /about, mailto: or tel:."),
+        .refine(isLinkAddress, "A column's link needs an address: https://…, a page like /about, an anchor like #contact, mailto: or tel:."),
       label: z.string().trim().max(200, "Keep a column link's description under 200 characters.").default(""),
     })
     .optional(),

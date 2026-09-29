@@ -61,10 +61,13 @@ export type StoreNavigation = {
 export const EMPTY_NAVIGATION: StoreNavigation = { logo: null, logoDark: null, favicon: null };
 
 /**
- * A menu's web address: http(s), or a path in the store (`/p/notatbok`,
- * relative to the shopper's country). Nothing else, so no `javascript:`.
+ * A menu's web address: http(s), a path in the store (`/p/notatbok`, relative
+ * to the shopper's country), or an anchor on the page (`#kontakt`, or `#` alone
+ * for a button that only opens a modal or a script-free placeholder). Nothing
+ * else, so no `javascript:`.
  */
 export function isMenuAddress(value: string): boolean {
+  if (/^#\S*$/.test(value)) return true;
   if (/^\/(?![/\\])/.test(value)) return !/\s/.test(value);
   try {
     const url = new URL(value);
@@ -227,6 +230,8 @@ export function menuHref(link: MenuLink, base: string, names?: MenuNames): { hre
     case "blogCategory":
       return { href: `${base}/blog/category/${link.slug}`, external: false };
     case "url":
+      // An anchor stays where it is: it is on the page the shopper is on.
+      if (link.url.startsWith("#")) return { href: link.url, external: false };
       return link.url.startsWith("/")
         ? { href: `${base}${link.url}`, external: false }
         : { href: link.url, external: true };
@@ -473,7 +478,7 @@ export function platformMenuLink(
       return name ? { href: `/blog/category/${item.link.slug}`, text: own || name, external: false } : null;
     }
     case "url":
-      return own ? { href: item.link.url, text: own, external: !item.link.url.startsWith("/") } : null;
+      return own ? { href: item.link.url, text: own, external: !item.link.url.startsWith("/") && !item.link.url.startsWith("#") } : null;
   }
 }
 

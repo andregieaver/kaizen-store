@@ -35,6 +35,11 @@ describe("menuHref", () => {
     expect(menuHref({ kind: "url", url: "/p/demo-kopp" }, base)).toEqual({ href: `${base}/p/demo-kopp`, external: false });
     expect(menuHref({ kind: "url", url: "https://example.no" }, base)).toEqual({ href: "https://example.no", external: true });
   });
+
+  it("keeps an anchor as it is, on the page the shopper is on", () => {
+    expect(menuHref({ kind: "url", url: "#kontakt" }, base)).toEqual({ href: "#kontakt", external: false });
+    expect(menuHref({ kind: "url", url: "#" }, base)).toEqual({ href: "#", external: false });
+  });
 });
 
 describe("menuLabel", () => {
@@ -49,6 +54,9 @@ describe("addresses and stored values", () => {
   it("takes web addresses and store paths, and nothing that runs code", () => {
     expect(isMenuAddress("https://example.no/om")).toBe(true);
     expect(isMenuAddress("/p/notatbok")).toBe(true);
+    // Anchors on the page shown, and a bare # for a link that only opens a modal.
+    for (const anchor of ["#", "#kontakt", "#modal-promo"]) expect(isMenuAddress(anchor), anchor).toBe(true);
+    expect(isMenuAddress("# kontakt")).toBe(false);
     expect(isMenuAddress("javascript:alert(1)")).toBe(false);
     expect(isMenuAddress("//evil.example")).toBe(false);
     expect(isMenuAddress("")).toBe(false);
