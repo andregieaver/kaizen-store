@@ -1233,6 +1233,13 @@
       "when": 1790683512523,
       "tag": "20260929120512_store_languages_currencies",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1790688285643,
+      "tag": "20260929132445_platform_languages",
+      "breakpoints": true
     }
   ]
 }

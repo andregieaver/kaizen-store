@@ -4,6 +4,8 @@
  * withdrawal information) are not here: they need human review and will live
  * in their own files.
  */
+import { registeredUi } from "./ui-registry";
+
 const messages = {
   nb: {
     deliveries: {
@@ -3014,9 +3016,14 @@ export type Messages = (typeof messages)["en"];
 
 type Language = keyof typeof messages;
 
-/** Text for a language subtag such as `nb`, falling back to English. */
+/**
+ * Text for a language subtag such as `nb`: the hand-written languages, else
+ * one translated by AI and kept as data (D111, `src/lib/ui-registry.ts`),
+ * key by key with English for what it lacks, else English.
+ */
 export function t(lang: string): Messages {
-  return lang in messages ? messages[lang as Language] : messages.en;
+  if (lang in messages) return messages[lang as Language];
+  return (registeredUi(lang) as Messages | undefined) ?? messages.en;
 }
 
 /** Human label for a variant option such as `{ colour: "white" }`. */

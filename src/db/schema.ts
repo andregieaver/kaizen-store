@@ -731,6 +731,60 @@ export const storeCurrencies = commerce.table(
 );
 
 /**
+ * The languages the platform offers stores (D111), chosen by Kaizen's admins
+ * from the world's languages. A store picks its languages among the enabled
+ * ones; each has a default locale and any other variants (`de-DE`, `de-AT`).
+ * `direction` is for right-to-left scripts, kept for when the storefront
+ * draws them.
+ */
+export const platformLanguages = commerce.table(
+  "platform_languages",
+  {
+    /** The language subtag: `de`. */
+    lang: text("lang").primaryKey(),
+    /** Its locales, the default (its main region) first: `{de-DE,de-AT}`. */
+    locales: text("locales").array().notNull(),
+    /** Its name in English, for the admin. */
+    name: text("name").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    direction: text("direction").notNull().default("ltr"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("platform_languages_lang", sql`${t.lang} ~ '^[a-z]{2,3}$'`),
+    check("platform_languages_direction", sql`${t.direction} in ('ltr', 'rtl')`),
+    check("platform_languages_locales", sql`cardinality(${t.locales}) >= 1`),
+  ],
+);
+
+/**
+ * The interface text of a language that has no hand-written text (D111), by
+ * the catalogue's key (`ui:cart.title`, `email:orderSubject`): a text, or a
+ * template with placeholders. `source_hash` fingerprints the English it was
+ * translated from, so a changed original is found; `origin` says whether the
+ * AI or a person wrote it; `reviewed_at` when a person read it.
+ */
+export const uiTranslations = commerce.table(
+  "ui_translations",
+  {
+    lang: text("lang")
+      .notNull()
+      .references(() => platformLanguages.lang, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    text: text("text").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    origin: text("origin").notNull().default("ai"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.lang, t.key] }),
+    check("ui_translations_origin", sql`${t.origin} in ('ai', 'staff')`),
+  ],
+);
+
+/**
  * A flat shipping rate per market, optionally free above an order value
  * (both VAT-inclusive, in the market's currency).
  */

@@ -20,6 +20,7 @@ import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-o
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
+import { ensureUi } from "./ui-text";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
 import type { Store } from "./stores";
 import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
@@ -81,6 +82,7 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
  * country's own address, which always exists.
  */
 async function context(storeId: string, marketCode: string, locale: string, currency?: string) {
+  await ensureUi();
   const store = await storeById(storeId);
   if (!store) return null;
   const native: Market | undefined = store.markets.find((m) => m.code === marketCode) ?? store.markets[0];

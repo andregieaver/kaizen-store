@@ -53,6 +53,8 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/demo/settings/seo",
     "/admin/demo/settings/localization",
     "/admin/demo/translate",
+    "/admin/platform/languages",
+    "/admin/platform/languages/de",
     "/admin/demo/staff",
     "/admin/account",
     "/admin/platform/seo",

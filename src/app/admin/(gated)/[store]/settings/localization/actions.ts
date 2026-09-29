@@ -4,10 +4,11 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { parseRate, stepMinor } from "@/lib/currency";
-import { OFFERABLE_LOCALES, languageOptions } from "@/lib/localization";
+import { isOfferable, languageOptions } from "@/lib/localization";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { requireMember, type Membership } from "@/server/auth";
 import { catalogTag } from "@/server/catalog";
+import { enabledLanguages } from "@/server/languages";
 import { fetchRatesNow, saveCurrencies, saveLanguages, type CurrencyInput } from "@/server/localization";
 import type { SaveResult } from "@/server/settings";
 import { STORES_TAG } from "@/server/seo";
@@ -35,7 +36,8 @@ export async function saveLanguagesAction(storeSlug: string, _state: FormState, 
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
   const locales: string[] = [];
-  for (const { lang, locales: variants } of languageOptions()) {
+  const offered = await enabledLanguages();
+  for (const { lang, locales: variants } of languageOptions(offered)) {
     if (formData.get(`language:${lang}`) !== "on") continue;
     const variant = String(formData.get(`variant:${lang}`) ?? variants[0]);
     locales.push(variants.includes(variant) ? variant : variants[0]);
@@ -48,7 +50,7 @@ export async function saveLanguagesAction(storeSlug: string, _state: FormState, 
   for (const market of owner.store.markets) {
     const chosen = String(formData.get(`market:${market.code}`) ?? "");
     const locale = ordered.find((l) => l.split("-")[0] === chosen);
-    if (locale && OFFERABLE_LOCALES.includes(locale)) marketLocales[market.code] = locale;
+    if (locale && isOfferable(offered, locale)) marketLocales[market.code] = locale;
   }
   return done(owner, await saveLanguages(owner, ordered, marketLocales), "Languages saved.");
 }

@@ -10,6 +10,7 @@ import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
 import { CustomCss } from "@/components/custom-css";
 import { StoreColorScript } from "@/components/store-color-switch";
+import { UiTexts } from "@/components/ui-texts";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
 import { liveCustomCode } from "@/lib/custom-code";
@@ -22,6 +23,7 @@ import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
 import { siteLayoutFor } from "@/server/site-layouts";
+import { uiTextsFor } from "@/server/ui-text";
 
 import "../../../globals.css";
 
@@ -84,6 +86,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
   const m = t(market.lang);
   // The store's own header and footer built in the page builder (D80), else the standard ones.
   const [headerLayout, footerLayout] = await Promise.all([siteLayoutFor(store.id, "header"), siteLayoutFor(store.id, "footer")]);
+  const uiTexts = uiTextsFor(market.lang);
   const notice =
     [
       !(store.setupCompletedAt || store.isTemplate) && m.previewNotice,
@@ -108,6 +111,8 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
         style={siteFontStyle(store.fonts)}
       >
+        {/* The interface text of a language translated by AI (D111), for client components. */}
+        <UiTexts lang={market.lang} texts={uiTexts} />
         {store.audience === "both" && <script dangerouslySetInnerHTML={{ __html: buyerScript(store.id) }} />}
         <StoreColorScript store={store} />
         {/* The store's own fonts (D59) and theme (D60). */}

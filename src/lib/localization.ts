@@ -83,26 +83,12 @@ export function currencyName(currency: string, locale: string): string {
   return `${currency} · ${name}`;
 }
 
-/**
- * The languages a store can offer, as the locales its shoppers read numbers
- * and dates in: every country's own, and English for anyone. A store has one
- * variant of each language.
- */
-export const OFFERABLE_LOCALES: readonly string[] = [
-  "en-GB", "en-IE", "en-MT",
-  "nb-NO", "sv-SE", "sv-FI", "da-DK", "fi-FI",
-  "de-DE", "de-AT", "de-BE", "de-LU",
-  "nl-NL", "nl-BE", "fr-FR", "fr-BE", "fr-LU", "es-ES", "it-IT", "pt-PT", "pl-PL",
-  "cs-CZ", "sk-SK", "hu-HU", "ro-RO", "bg-BG", "el-GR", "el-CY", "hr-HR", "sl-SI",
-  "et-EE", "lv-LV", "lt-LT", "mt-MT", "ga-IE", "lb-LU",
-];
+/** The languages a store can choose between, from the platform's (D111): each with the variants it can pick (`de-DE`, `de-AT`). */
+export function languageOptions(languages: readonly { lang: string; locales: readonly string[] }[]): { lang: string; locales: string[] }[] {
+  return languages.map(({ lang, locales }) => ({ lang, locales: [...locales] }));
+}
 
-/** The languages there are to choose from, each with the variants a store can pick between. */
-export function languageOptions(): { lang: string; locales: string[] }[] {
-  const byLanguage = new Map<string, string[]>();
-  for (const locale of OFFERABLE_LOCALES) {
-    const lang = languageOf(locale);
-    byLanguage.set(lang, [...(byLanguage.get(lang) ?? []), locale]);
-  }
-  return [...byLanguage].map(([lang, locales]) => ({ lang, locales }));
+/** Whether a locale is one the platform offers, or a country's own. */
+export function isOfferable(languages: readonly { locales: readonly string[] }[], locale: string): boolean {
+  return languages.some((language) => language.locales.includes(locale));
 }

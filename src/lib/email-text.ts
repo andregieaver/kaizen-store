@@ -2,6 +2,8 @@
  * The words in Kaizen's emails to shoppers (D26), by language. English is
  * the fallback, as for the storefront.
  */
+import { registeredEmail } from "./ui-registry";
+
 const text = {
   nb: {
     deliveries: {
@@ -516,5 +518,7 @@ const text = {
 export type EmailText = (typeof text)["en"];
 
 export function emailText(lang: string): EmailText {
-  return lang in text ? text[lang as keyof typeof text] : text.en;
+  if (lang in text) return text[lang as keyof typeof text];
+  // A language translated by AI and kept as data (D111), English for what it lacks.
+  return (registeredEmail(lang) as EmailText | undefined) ?? text.en;
 }

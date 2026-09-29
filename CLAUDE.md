@@ -82,9 +82,18 @@ of running `playwright install`.
 - Stores and their markets come from the database (`getStore()`, cached per
   store; `resolveShop()` for URL params). Every catalogue, cart and settings
   query takes a store id; never query a store-owned table without it.
-- Interface text lives in `src/lib/i18n.ts`, by language, with English as the
-  fallback. Legal texts do not: they need
-  human review.
+- Interface text lives in `src/lib/i18n.ts` and `src/lib/email-text.ts`, by
+  language, with English as the fallback. Legal texts do not: they need
+  human review. Norwegian, Swedish, Danish and English are written by hand;
+  other languages are translated by AI into `commerce.ui_translations` from the
+  catalogue of the English messages (D111: `src/lib/ui-catalog.ts`, templates in
+  `src/lib/icu-lite.ts`) and read into `t()`/`emailText()` key by key. A new
+  English message needs nothing more, except one that chooses by a number or a
+  yes/no, which goes in `CHOOSING` with a case in `ui-catalog.test.ts`; a
+  placeholder in a plain text is `{name}` only. The languages stores can offer
+  are `commerce.platform_languages` (`/admin/platform/languages`), never a
+  list in code; never read the texts from the database while rendering (they
+  are in memory, `src/server/ui-text.ts`).
 - Language and currency are apart from the country (D109): a market address is
   `{country}[-{lang}][-{currency}]` (`no`, `no-en`, `no-eur`, `no-en-eur`,
   `src/lib/market-slug.ts`), and `Market` is the country as shown: `currency`

@@ -5,10 +5,11 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { ECB_RATES_URL, parseEcbRates, type EcbRates } from "@/lib/ecb";
 import { defaultRoundTo, type StoreCurrency } from "@/lib/currency";
-import { OFFERABLE_LOCALES } from "@/lib/localization";
+import { isOfferable } from "@/lib/localization";
 import { isCurrency } from "@/lib/money";
 
 import { audit, type Membership } from "./auth";
+import { listLanguages } from "./languages";
 import type { SaveResult } from "./settings";
 
 /**
@@ -45,7 +46,9 @@ export async function saveLanguages(
   const problems: string[] = [];
   const unique = [...new Set(locales)];
   if (unique.length === 0) problems.push("Choose at least one language.");
-  const unknown = unique.filter((locale) => !OFFERABLE_LOCALES.includes(locale));
+  // The platform's languages that are on (D111).
+  const offered = (await listLanguages()).filter((language) => language.enabled);
+  const unknown = unique.filter((locale) => !isOfferable(offered, locale));
   if (unknown.length > 0) problems.push(`Not a language the store can offer: ${unknown.join(", ")}.`);
   const languages = unique.map(languageOf);
   if (new Set(languages).size !== languages.length) problems.push("Choose one variant of each language.");

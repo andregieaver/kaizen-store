@@ -3,8 +3,11 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ROUND_STEPS } from "@/lib/currency";
 import { currencyName, languageName, languageOptions } from "@/lib/localization";
+import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { OFFERABLE_CURRENCIES, minorUnitDigits } from "@/lib/money";
 import { requireMember } from "@/server/auth";
+import { enabledLanguages } from "@/server/languages";
+import { uiCounts } from "@/server/ui-text";
 
 import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction } from "./actions";
 
@@ -16,6 +19,16 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
   const { store, role } = await requireMember((await params).store);
   const owner = role === "owner";
   const { localization, markets } = store;
+  const [languages, counts] = await Promise.all([enabledLanguages(), uiCounts()]);
+  const catalogSize = fullCatalog().length;
+  /** Where a language's interface text (buttons, cart, checkout, emails) stands. */
+  const interfaceOf = (lang: string) => {
+    if (isBuiltIn(lang)) return "Interface written by hand";
+    const c = counts[lang];
+    if (!c || c.translated === 0) return "Interface in English until the platform translates it";
+    const share = Math.min(100, Math.round((c.translated / catalogSize) * 100));
+    return `Interface ${share} % translated${c.reviewed >= c.translated ? ", reviewed" : ", not yet reviewed"}`;
+  };
   const main = localization.locales[0];
   const ownLanguages = new Set(markets.map((market) => market.ownLocale.split("-")[0]));
   const natives = new Set(markets.map((market) => market.nativeCurrency));
@@ -55,7 +68,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
               </tr>
             </thead>
             <tbody>
-              {languageOptions().map(({ lang, locales }) => {
+              {languageOptions(languages).map(({ lang, locales }) => {
                 const current = localization.locales.find((locale) => locale.split("-")[0] === lang);
                 const required = ownLanguages.has(lang);
                 return (
@@ -75,6 +88,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
                           ))}
                         </select>
                       )}
+                      <span className="block text-xs text-muted">{interfaceOf(lang)}</span>
                     </th>
                     <td className="px-4 py-2">
                       <input

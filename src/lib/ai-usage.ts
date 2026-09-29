@@ -27,6 +27,7 @@ export const AI_FEATURES = {
   media: "Media library",
   page_studio: "Page studio",
   page_translation: "Page translation",
+  ui_translation: "Interface translation",
   product_writer: "Product writer",
   ai_test: "Settings tests",
   other: "Other",

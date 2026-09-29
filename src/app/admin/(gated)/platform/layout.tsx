@@ -55,7 +55,13 @@ const groups: NavGroup[] = [
       { href: `${base}/search-test`, label: "Search test" },
     ],
   },
-  { heading: "Communication", items: [{ href: `${base}/emails`, label: "Emails" }] },
+  {
+    heading: "Communication",
+    items: [
+      { href: `${base}/emails`, label: "Emails" },
+      { href: `${base}/languages`, label: "Languages" },
+    ],
+  },
 ];
 
 /**

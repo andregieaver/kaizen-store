@@ -317,6 +317,13 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "provider", "model"],
     tasks: ["See total usage per provider and model", "See usage per store owner account and per store", "Choose the period"],
   }),
+  platform("languages", "/languages", "Languages", "Platform", "The languages stores can offer, chosen from the world's, and where each one's interface text stands.", {
+    keywords: ["translate", "locale", "multilingual", "add a language", "world languages"],
+    tasks: ["Add a language", "Switch a language off"],
+  }),
+  platform("language", "/languages/[lang]", "Translate a language", "Platform", "One language's interface text: translate it with AI, read it, edit it and mark it reviewed.", {
+    keywords: ["interface text", "review", "translation"],
+  }),
   platform("chat", "/chat", "Chat agent", "Kaizen site", "Kaizen's public site chat agent and its knowledge base."),
   platform("google-reviews", "/google-reviews", "Google reviews", "Kaizen site", "Kaizen's own Google reviews for testimonials."),
   platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),
