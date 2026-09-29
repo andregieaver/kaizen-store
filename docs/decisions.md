@@ -350,6 +350,8 @@ history therefore still lists the nine single-store migrations, then:
 | `20260929113111_customer_tiers_companies.sql` | `20260929114206` |
 | `20260929120512_store_languages_currencies.sql` | `20260929124349` |
 | `20260929132445_platform_languages.sql` | `20260929134335` |
+| `20260929140158_page_roles.sql` | `20260929144434` |
+| `20260929140208_page_roles_rules.sql` | `20260929144507` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.
