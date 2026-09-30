@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { z } from "zod";
 
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/admin/order-actions";
 import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
+import { BringBooking } from "@/components/admin/bring-booking";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { bookingWhen } from "@/lib/booking-text";
@@ -25,9 +26,11 @@ import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { formatDeliveryDate } from "@/lib/standing-orders";
 import { orderAttribution } from "@/server/affiliates";
 import { requireMember } from "@/server/auth";
+import { bringTracking, estimateWeightGrams } from "@/server/bring-shipping";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
+import { getCarrier } from "@/server/shipping-carriers";
 import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, type Address, type OrderEvent } from "@/server/orders";
 import { listCartAdds } from "@/server/wishlist-admin";
@@ -78,6 +81,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     orderAttribution(store.id, orderId),
   ]);
   if (!order) notFound();
+  // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
+  const [bring, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), estimateWeightGrams(store.id, order.id)]);
   const locale = store.markets[0]?.locale ?? order.locale;
   const money = (minor: number) => formatMoney(minor, order.currency, locale);
   // Bonus credits on an order (D130) are in the order's own currency; null for an order with none and for copied history.
@@ -300,9 +305,36 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                           Track
                         </a>
                       )}
+                      {s.hasLabel && (
+                        <>
+                          {" · "}
+                          <a href={`/admin/${store.slug}/orders/${order.id}/label/${s.id}`} target="_blank" rel="noreferrer" className="underline">
+                            Print label
+                          </a>
+                        </>
+                      )}
+                      {s.carrierId === "bring" && s.trackingNumber && (
+                        <Suspense fallback={null}>
+                          <BringStatus storeId={store.id} trackingNumber={s.trackingNumber} />
+                        </Suspense>
+                      )}
                     </li>
                   ))}
                 </ul>
+              )}
+              {bring?.complete && order.status !== "pending_payment" && !order.copied && (
+                <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
+                  <summary className="cursor-pointer text-sm font-medium">Book with Posten / Bring</summary>
+                  <div className="mt-3">
+                    <BringBooking
+                      storeSlug={store.slug}
+                      orderId={order.id}
+                      estimatedGrams={estimatedGrams}
+                      test={bring.environment === "test"}
+                      hasEmail={Boolean(order.email)}
+                    />
+                  </div>
+                </details>
               )}
               {order.shipments.length > 0 ? (
                 <details>
@@ -506,4 +538,15 @@ function AddressBlock({ address }: { address: Address }) {
       ))}
     </address>
   );
+}
+
+/** Where a parcel booked with Bring is now, from Bring's tracking; nothing when Bring does not answer. */
+async function BringStatus({ storeId, trackingNumber }: { storeId: string; trackingNumber: string }) {
+  const [latest] = await bringTracking(storeId, trackingNumber);
+  return latest ? (
+    <span className="block text-muted">
+      {latest.description || latest.status}
+      {latest.location ? `, ${latest.location}` : ""}
+    </span>
+  ) : null;
 }

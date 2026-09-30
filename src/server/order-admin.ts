@@ -32,6 +32,9 @@ export type Shipment = {
   trackingNumber: string;
   trackingUrl: string | null;
   createdAt: string;
+  /** Booked through a carrier's connection (D134): which, and whether its label can be fetched again. */
+  carrierId: string | null;
+  hasLabel: boolean;
 };
 
 export type RefundRow = {
@@ -74,7 +77,7 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       group by 1
     `),
     db().execute<Row>(sql`
-      select id, carrier, tracking_number, tracking_url, created_at from commerce.shipments
+      select id, carrier, tracking_number, tracking_url, created_at, carrier_id, label_url is not null as has_label from commerce.shipments
       where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by created_at
     `),
     db().execute<Row>(sql`
@@ -115,6 +118,8 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       trackingNumber: String(s.tracking_number),
       trackingUrl: s.tracking_url ? String(s.tracking_url) : null,
       createdAt: new Date(String(s.created_at)).toISOString(),
+      carrierId: s.carrier_id ? String(s.carrier_id) : null,
+      hasLabel: Boolean(s.has_label),
     })),
     refunds: refundRows,
     paidMinor,
@@ -160,6 +165,8 @@ export async function markSent(
   orderId: string,
   input: SendInput,
   accountId: string | null,
+  /** A shipment booked through a carrier's connection (D134): kept to fetch its label and follow it. */
+  booking?: { carrierId: string; consignmentNumber: string | null; labelUrl: string | null },
 ): Promise<Shipment | null> {
   return db().transaction(async (tx) => {
     const [order] = await tx.execute<Row>(sql`
@@ -169,10 +176,13 @@ export async function markSent(
     if (!order || Boolean(order.copied) || !["paid", "fulfilled"].includes(String(order.status))) return null;
     const carrierName = CARRIERS.find((c) => c.id === input.carrier)?.name ?? input.carrier;
     const [row] = await tx.execute<Row>(sql`
-      insert into commerce.shipments (store_id, order_id, carrier, tracking_number, tracking_url, created_by)
+      insert into commerce.shipments (
+        store_id, order_id, carrier, tracking_number, tracking_url, created_by, carrier_id, consignment_number, label_url
+      )
       values (${storeId}::uuid, ${orderId}::uuid, ${input.carrier === "other" ? "" : carrierName},
-              ${input.trackingNumber}, ${trackingUrl(input)}, ${accountId}::uuid)
-      returning id, carrier, tracking_number, tracking_url, created_at
+              ${input.trackingNumber}, ${trackingUrl(input)}, ${accountId}::uuid,
+              ${booking?.carrierId ?? null}, ${booking?.consignmentNumber ?? null}, ${booking?.labelUrl ?? null})
+      returning id, carrier, tracking_number, tracking_url, created_at, carrier_id, label_url is not null as has_label
     `);
     await tx.execute(sql`
       update commerce.orders set status = 'fulfilled' where store_id = ${storeId}::uuid and id = ${orderId}::uuid
@@ -188,6 +198,8 @@ export async function markSent(
       trackingNumber: String(row.tracking_number),
       trackingUrl: row.tracking_url ? String(row.tracking_url) : null,
       createdAt: new Date(String(row.created_at)).toISOString(),
+      carrierId: row.carrier_id ? String(row.carrier_id) : null,
+      hasLabel: Boolean(row.has_label),
     };
   });
 }

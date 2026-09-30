@@ -70,17 +70,21 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
             Shipping carriers
           </h2>
           <p className="text-sm text-muted">
-            Delivery options, pickup points, labels and tracking from the carriers you have an agreement with. The connections
-            are being built: save your details now and they are ready when each one arrives.
+            Labels, tracking, pickup points and delivery options from the carriers you have an agreement with. Posten / Bring is
+            ready to connect; the others are being built: save your details now and they are ready when each arrives.
           </p>
         </div>
         <ul className="grid gap-4 sm:grid-cols-2">
           {CARRIERS.map((info) => {
             const saved = carriers.find((c) => c.carrier === info.id);
             const badge = !saved
-              ? { text: "Preparing", tone: "bg-surface text-muted" }
+              ? { text: info.available.length > 0 ? "Available" : "Preparing", tone: "bg-surface text-muted" }
               : saved.complete
-                ? { text: "Details saved", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
+                ? info.available.length > 0
+                  ? saved.check?.ok
+                    ? { text: "Connected", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
+                    : { text: saved.check ? "Not accepted" : "Check connection", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" }
+                  : { text: "Details saved", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
                 : { text: "Needs details", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" };
             return (
               <li key={info.id} className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
@@ -101,7 +105,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                       saved ? "border border-border hover:bg-surface" : "bg-foreground text-background"
                     }`}
                   >
-                    {saved ? "Manage" : "Get ready"} <span className="sr-only">&nbsp;{info.name}</span>
+                    {saved ? "Manage" : info.available.length > 0 ? "Connect" : "Get ready"} <span className="sr-only">&nbsp;{info.name}</span>
                   </Link>
                 </div>
               </li>

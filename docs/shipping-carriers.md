@@ -45,3 +45,35 @@ unchanged. `shipments.carrier` is still free text.
 5. Booking: a "Book shipment" action on the order that stores the tracking number in `shipments` and emails it; store the
    label in private storage.
 6. Keep the agreement out of store copies (`shipping_carriers` is `never` in `COPY_RULES`, and in `SECRET_TABLES`).
+
+## Posten / Bring (D134): the first connection
+
+Built against Bring's developer documentation (Shipping Guide v2, Pickup Point, Booking v2, Tracking v2); every call
+carries the store's own Mybring user (`X-Mybring-API-Uid`), key (`X-Mybring-API-Key`) and Kaizen's address
+(`X-Bring-Client-URL`). Pure request and response code is `src/lib/bring.ts` (tested with documented examples); the calls
+are `src/server/carriers/bring.ts` (`createBringAdapter()`, `fetchBringLabel()`, registered in `carriers/index.ts`);
+the order-side logic is `src/server/bring-shipping.ts`.
+
+**Works now**
+- **Check connection** (carrier page, owners): looks up a pickup point (the user and key) and asks Shipping Guide for the
+  customer number's services (the agreement); the answer is kept (`shipping_carriers.checked_at/check_ok/check_message`) and
+  shown on the page and as a badge ("Connected", "Not accepted"). Saving the details again clears it.
+- **Book from an order** (order page → Send the order → *Book with Posten / Bring*): the parcel's weight (guessed from the
+  products' weights, else typed; optional size), Bring's services and what they cost the store excluding VAT (5800 pickup
+  point, 5600 home delivery, 3584 mailbox), a pickup point near the recipient for 5800, then Book. A real booking marks the
+  order as sent through `markSent()` with the tracking number and link, and keeps the shipment number and label address
+  (`shipments.carrier_id/consignment_number/label_url`); the customer is emailed when asked. The label is **never stored**: *Print label*
+  (`/admin/{store}/orders/{order}/label/{shipment}`) fetches it from Bring with the store's keys, for staff only.
+- **Test environment**: Bring is told it is a test (`X-Bring-Test-Indicator: true`): it books a test shipment, nothing is
+  shipped, the label is not valid, and the order is **not** marked as sent. Switch the carrier to live to ship for real.
+- **Tracking**: the latest event of a parcel booked with Bring shows under the shipment on the order page, from Tracking v2
+  (nothing when Bring does not answer).
+- Only parcels to Norway, from the sender address saved on the carrier page (name, street, postal code, city, optional phone).
+
+**Not yet**: delivery options and prices at checkout, and pickup-point choice by the shopper. That changes what
+shoppers pay, so it needs `cartSummary()`, `placeOrder()`, the order and Stripe to agree (a scenario in
+`checkout-kinds.int.test.ts`) and is the next step, with the flat rate (`commerce.shipping_rates`) as the fallback.
+
+**To verify with real credentials** (nothing here has met Bring's servers yet): the `X-Bring-Test-Indicator` behaviour, the
+booking request's `parties.pickupPoint` shape for service 5800, the label link being fetchable with the same headers, and
+that the customer number is accepted for the three services.

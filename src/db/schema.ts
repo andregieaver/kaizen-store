@@ -2449,6 +2449,10 @@ export const shipments = commerce.table(
     carrier: text("carrier").notNull().default(""),
     trackingNumber: text("tracking_number").notNull().default(""),
     trackingUrl: text("tracking_url"),
+    /** A shipment booked through a carrier's connection (D134): which carrier, its shipment number and where the label is. */
+    carrierId: text("carrier_id"),
+    consignmentNumber: text("consignment_number"),
+    labelUrl: text("label_url"),
     createdBy: uuid("created_by").references(() => accounts.id),
     createdAt: createdAt(),
   },
@@ -2457,6 +2461,7 @@ export const shipments = commerce.table(
     index("shipments_order_idx").on(t.storeId, t.orderId),
     index("shipments_created_by_idx").on(t.createdBy),
     check("shipments_tracking_url", sql`${t.trackingUrl} ~ '^https://'`),
+    check("shipments_label_url", sql`${t.labelUrl} is null or ${t.labelUrl} ~ '^https://'`),
   ],
 );
 
@@ -5889,6 +5894,10 @@ export const shippingCarriers = commerce.table(
     countries: text("countries").array().notNull().default(sql`'{}'::text[]`),
     /** Every detail the carrier needs is saved. */
     complete: boolean("complete").notNull().default(false),
+    /** The last "Check connection" (D134): when, whether the carrier accepted the agreement, and what it said. */
+    checkedAt: timestamp("checked_at", { withTimezone: true }),
+    checkOk: boolean("check_ok"),
+    checkMessage: text("check_message"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),

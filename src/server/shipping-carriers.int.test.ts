@@ -16,6 +16,7 @@ let storeId: string;
 let other: string;
 let accountId: string;
 
+const sender = { senderName: "Shop AS", senderStreet: "Lagerveien 2", senderPostalCode: "0150", senderCity: "Oslo" };
 const form = (fields: Record<string, string>, countries = ["NO"], environment = "test") => ({ environment, countries, fields });
 
 beforeAll(async () => {
@@ -36,24 +37,24 @@ afterAll(async () => {
 
 describe("shipping carriers", () => {
   it("saves a store's details, keeping the secret encrypted and showing only its hint", async () => {
-    const result = await saveCarrier(accountId, storeId, "bring", form({ customerNumber: "123", apiUid: "me@shop.no", apiKey: "key-abcdef-1234" }));
+    const result = await saveCarrier(accountId, storeId, "bring", form({ customerNumber: "123", apiUid: "me@shop.no", apiKey: "key-abcdef-1234", ...sender }));
     expect(result).toEqual({ ok: true });
     const saved = await getCarrier(storeId, "bring");
-    expect(saved).toMatchObject({ carrier: "bring", environment: "test", complete: true, countries: ["NO"], details: { customerNumber: "123", apiUid: "me@shop.no" }, secrets: { apiKey: "…1234" } });
+    expect(saved).toMatchObject({ carrier: "bring", environment: "test", complete: true, countries: ["NO"], details: { customerNumber: "123", apiUid: "me@shop.no", ...sender }, secrets: { apiKey: "…1234" } });
     expect(JSON.stringify(saved)).not.toContain("key-abcdef");
     const [row] = await db().execute<Row>(sql`select secrets_encrypted from commerce.shipping_carriers where store_id = ${storeId}::uuid and carrier = 'bring'`);
     expect(String(row.secrets_encrypted)).not.toContain("key-abcdef");
   });
 
   it("keeps the saved secret when it is left empty, and replaces it when a new one is given", async () => {
-    await saveCarrier(accountId, storeId, "bring", form({ customerNumber: "456", apiUid: "me@shop.no", apiKey: "" }, ["NO", "SE"], "live"));
+    await saveCarrier(accountId, storeId, "bring", form({ customerNumber: "456", apiUid: "me@shop.no", apiKey: "", ...sender }, ["NO", "SE"], "live"));
     expect(await carrierContext(storeId, "bring")).toEqual({
       storeId,
       environment: "live",
-      details: { customerNumber: "456", apiUid: "me@shop.no" },
+      details: { customerNumber: "456", apiUid: "me@shop.no", ...sender },
       secrets: { apiKey: "key-abcdef-1234" },
     });
-    await saveCarrier(accountId, storeId, "bring", form({ customerNumber: "456", apiUid: "me@shop.no", apiKey: "newer-key-9999" }));
+    await saveCarrier(accountId, storeId, "bring", form({ customerNumber: "456", apiUid: "me@shop.no", apiKey: "newer-key-9999", ...sender }));
     expect((await carrierContext(storeId, "bring"))!.secrets.apiKey).toBe("newer-key-9999");
     expect((await getCarrier(storeId, "bring"))!.secrets.apiKey).toBe("…9999");
   });

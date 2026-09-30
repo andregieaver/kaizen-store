@@ -8,7 +8,7 @@ import { CARRIER_FEATURE_LABELS, carrierInfo } from "@/lib/shipping-carriers";
 import { requireMember } from "@/server/auth";
 import { getCarrier } from "@/server/shipping-carriers";
 
-import { removeCarrierAction, saveCarrierAction } from "../actions";
+import { checkCarrierAction, removeCarrierAction, saveCarrierAction } from "../actions";
 
 export const metadata: Metadata = { title: "Shipping carrier" };
 
@@ -26,6 +26,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   if (!info) notFound();
   const saved = await getCarrier(store.id, info.id);
   const owner = role === "owner";
+  const live = info.available.length > 0;
   const marketCountries = [...new Set(store.markets.map((m) => m.code.toUpperCase()))];
   // Markets the store sells to, the carrier's first: the carrier can only deliver where it delivers.
   const offered = marketCountries.filter((code) => info.countries.includes(code));
@@ -45,7 +46,9 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             <p className="text-sm text-muted">
               {saved
                 ? saved.complete
-                  ? `Details saved ${when(saved.updatedAt)} · ${saved.environment === "live" ? "live" : "test"} · waiting for the connection`
+                  ? `Details saved ${when(saved.updatedAt)} · ${saved.environment === "live" ? "live" : "test"}${
+                      live ? (saved.check?.ok ? " · connected" : saved.check ? " · not accepted by the carrier" : " · not checked yet") : " · waiting for the connection"
+                    }`
                   : "Some details are still missing"
                 : "Not set up"}
             </p>
@@ -53,10 +56,18 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
         </div>
       </div>
 
-      <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
-        The connection to {info.name} is being built. You can save your agreement details now, so it switches on for your
-        store the day it arrives. Until then nothing is sent to {info.name} and your checkout and orders work as before.
-      </p>
+      {live ? (
+        <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
+          The connection to {info.name} is ready. You can book shipments with labels and follow their tracking from each order
+          {info.features.includes("rates") && !info.available.includes("rates") ? "; delivery options at checkout come next" : ""}. In the test
+          environment {info.name} books test shipments: nothing is shipped and orders are not marked as sent.
+        </p>
+      ) : (
+        <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
+          The connection to {info.name} is being built. You can save your agreement details now, so it switches on for your
+          store the day it arrives. Until then nothing is sent to {info.name} and your checkout and orders work as before.
+        </p>
+      )}
 
       <section aria-labelledby="will-do" className={card}>
         <h2 id="will-do" className="mb-2 font-medium">
@@ -64,7 +75,10 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
           {info.features.map((feature) => (
-            <li key={feature}>{CARRIER_FEATURE_LABELS[feature]}</li>
+            <li key={feature}>
+              {CARRIER_FEATURE_LABELS[feature]}
+              {live && <span className="text-muted"> · {info.available.includes(feature) ? "works now" : "coming next"}</span>}
+            </li>
           ))}
         </ul>
         <p className="mt-3 text-sm text-muted">
@@ -149,6 +163,26 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
           </fieldset>
         </ActionForm>
       </section>
+
+      {live && owner && saved?.complete && (
+        <section aria-labelledby="check" className={card}>
+          <h2 id="check" className="mb-1 font-medium">
+            Check connection
+          </h2>
+          <p className="mb-3 text-sm text-muted">
+            Asks {info.name} whether it accepts your user, key and customer number. Nothing is booked.
+            {saved.check && (
+              <>
+                {" "}
+                Last checked {when(saved.check.at)}: {saved.check.ok ? "accepted." : (saved.check.message ?? "not accepted.")}
+              </>
+            )}
+          </p>
+          <ActionForm action={checkCarrierAction.bind(null, store.slug, info.id)}>
+            <SubmitButton variant="secondary">Check connection</SubmitButton>
+          </ActionForm>
+        </section>
+      )}
 
       {owner && saved && (
         <form action={removeCarrierAction.bind(null, store.slug, info.id)}>

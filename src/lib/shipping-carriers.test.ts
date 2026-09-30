@@ -24,7 +24,8 @@ describe("the carriers", () => {
 });
 
 describe("parseCarrierForm", () => {
-  const good = { environment: "test", countries: ["no", "SE", "no", "x1"], fields: { customerNumber: " 123 ", apiUid: "me@shop.no", apiKey: "secret-key-1234" } };
+  const sender = { senderName: "Shop AS", senderStreet: "Lagerveien 2", senderPostalCode: "0150", senderCity: "Oslo" };
+  const good = { environment: "test", countries: ["no", "SE", "no", "x1"], fields: { customerNumber: " 123 ", apiUid: "me@shop.no", apiKey: "secret-key-1234", ...sender } };
 
   it("splits details from secrets, tidies the countries and keeps the environment", () => {
     const parsed = parseCarrierForm(bring, good, none);
@@ -32,7 +33,7 @@ describe("parseCarrierForm", () => {
       ok: true,
       environment: "test",
       countries: ["NO", "SE"],
-      details: { customerNumber: "123", apiUid: "me@shop.no" },
+      details: { customerNumber: "123", apiUid: "me@shop.no", ...sender },
       secrets: { apiKey: "secret-key-1234" },
     });
   });
@@ -56,13 +57,13 @@ describe("parseCarrierForm", () => {
     const parsed = parseCarrierForm(bring, { ...good, fields: { ...good.fields, other: "x", apiUid: "u".repeat(201) } }, none);
     expect(parsed.ok).toBe(false);
     const fine = parseCarrierForm(bring, { ...good, fields: { ...good.fields, other: "x" } }, none);
-    expect(fine.ok && Object.keys(fine.details)).toEqual(["customerNumber", "apiUid"]);
+    expect(fine.ok && Object.keys(fine.details)).toEqual(["customerNumber", "apiUid", "senderName", "senderStreet", "senderPostalCode", "senderCity"]);
   });
 });
 
 describe("carrierComplete and secretHint", () => {
   it("is complete when every required detail and secret is saved", () => {
-    expect(carrierComplete(bring, { customerNumber: "1", apiUid: "u" }, ["apiKey"])).toBe(true);
+    expect(carrierComplete(bring, { customerNumber: "1", apiUid: "u", senderName: "S", senderStreet: "x", senderPostalCode: "0150", senderCity: "Oslo" }, ["apiKey"])).toBe(true);
     expect(carrierComplete(bring, { customerNumber: "1" }, ["apiKey"])).toBe(false);
     expect(carrierComplete(bring, { customerNumber: "1", apiUid: "u" }, [])).toBe(false);
     // Porterbuddy's secret is optional.

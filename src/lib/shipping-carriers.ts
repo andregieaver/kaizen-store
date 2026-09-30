@@ -46,7 +46,10 @@ export type CarrierInfo = {
   summary: string;
   /** Countries the carrier delivers in, as the store's markets are named (ISO 3166-1 alpha-2). */
   countries: string[];
+  /** Everything the connection will do. */
   features: CarrierFeature[];
+  /** What works now: a carrier without any is still being prepared. */
+  available: CarrierFeature[];
   fields: CarrierField[];
   /** Where the store gets an agreement and API access. */
   docs: string;
@@ -61,10 +64,16 @@ export const CARRIERS: CarrierInfo[] = [
     summary: "Norway's postal service and Bring's parcels across the Nordics: home delivery, pickup points and the mailbox.",
     countries: ["NO", "SE", "DK", "FI"],
     features: ["rates", "pickup_points", "labels", "tracking"],
+    available: ["pickup_points", "labels", "tracking"],
     fields: [
       { key: "customerNumber", label: "Customer number", secret: false, required: true, help: "Your number in your agreement with Posten / Bring." },
       { key: "apiUid", label: "Mybring API user", secret: false, required: true, help: "The user (email) of your Mybring API access." },
       { key: "apiKey", label: "Mybring API key", secret: true, required: true },
+      { key: "senderName", label: "Sender name", secret: false, required: true, help: "Shown on the label: your business or shop." },
+      { key: "senderStreet", label: "Sender street address", secret: false, required: true, help: "Where parcels are sent from." },
+      { key: "senderPostalCode", label: "Sender postal code", secret: false, required: true },
+      { key: "senderCity", label: "Sender city", secret: false, required: true },
+      { key: "senderPhone", label: "Sender phone", secret: false, required: false, help: "Bring may use it if there is a problem with a pickup." },
     ],
     docs: "https://developer.bring.com",
     steps: [
@@ -79,6 +88,7 @@ export const CARRIERS: CarrierInfo[] = [
     summary: "Parcels and letters in Sweden, Denmark, Norway and Finland, with pickup points and tracking.",
     countries: ["SE", "DK", "NO", "FI"],
     features: ["rates", "pickup_points", "labels", "tracking"],
+    available: [],
     fields: [
       { key: "customerNumber", label: "Customer number", secret: false, required: true, help: "Your number in your agreement with PostNord." },
       { key: "apiKey", label: "API key", secret: true, required: true },
@@ -96,6 +106,7 @@ export const CARRIERS: CarrierInfo[] = [
     summary: "Fast home delivery in a time window your shopper chooses, including the same day.",
     countries: ["NO"],
     features: ["rates", "labels", "tracking", "time_windows", "same_day"],
+    available: [],
     fields: [
       { key: "apiKey", label: "API key", secret: true, required: true },
       { key: "apiSecret", label: "API secret", secret: true, required: false, help: "If your agreement has one." },
@@ -113,6 +124,7 @@ export const CARRIERS: CarrierInfo[] = [
     summary: "Home delivery in the evening and on days the post does not come.",
     countries: ["NO"],
     features: ["rates", "labels", "tracking", "time_windows"],
+    available: [],
     fields: [
       { key: "shopId", label: "Shop ID", secret: false, required: true, help: "Your shop's number in your agreement with Helthjem." },
       { key: "apiKey", label: "API key", secret: true, required: true },
@@ -143,6 +155,8 @@ export type CarrierSettings = {
   secrets: Record<string, string>;
   /** All the details the carrier needs are saved. */
   complete: boolean;
+  /** The last "Check connection": when, whether the carrier accepted the agreement, and what it said. */
+  check: { at: string; ok: boolean; message: string | null } | null;
   updatedAt: string;
 };
 
@@ -229,7 +243,16 @@ export type ShippingOption = {
 export type PickupPoint = { id: string; name: string; address: ShippingAddress; openingHours?: string; distanceMeters?: number };
 
 export type BookingRequest = { orderReference: string; serviceId: string; from: ShippingAddress; to: ShippingAddress; parcels: ParcelSpec[]; pickupPointId?: string };
-export type BookingResult = { trackingNumber: string; trackingUrl: string | null; labelPdf: Uint8Array | null };
+export type BookingResult = {
+  trackingNumber: string;
+  trackingUrl: string | null;
+  /** The carrier's own number for the whole shipment, when it has one. */
+  consignmentNumber: string | null;
+  /** Where the label can be fetched again with the agreement's keys. */
+  labelUrl: string | null;
+  /** Made in the carrier's test mode: nothing was shipped. */
+  test: boolean;
+};
 
 export type TrackingEvent = { at: string; status: string; description: string; location?: string };
 

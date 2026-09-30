@@ -35,6 +35,7 @@ function toSettings(row: Row): CarrierSettings {
     countries: (row.countries ?? []) as string[],
     secrets: (row.secret_hints ?? {}) as Record<string, string>,
     complete: Boolean(row.complete),
+    check: row.checked_at ? { at: new Date(String(row.checked_at)).toISOString(), ok: Boolean(row.check_ok), message: row.check_message ? String(row.check_message) : null } : null,
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
 }
@@ -42,7 +43,7 @@ function toSettings(row: Row): CarrierSettings {
 /** What the store has saved for each carrier (only the ones it has started). */
 export async function listCarriers(storeId: string): Promise<CarrierSettings[]> {
   const rows = await db().execute<Row>(sql`
-    select carrier, environment, details, countries, secret_hints, complete, updated_at
+    select carrier, environment, details, countries, secret_hints, complete, updated_at, checked_at, check_ok, check_message
     from commerce.shipping_carriers where store_id = ${storeId}::uuid order by carrier
   `);
   return rows.map(toSettings);
@@ -98,6 +99,7 @@ export async function saveCarrier(
     on conflict (store_id, carrier) do update set
       environment = excluded.environment, details = excluded.details, secrets_encrypted = excluded.secrets_encrypted,
       secret_hints = excluded.secret_hints, countries = excluded.countries, complete = excluded.complete,
+      checked_at = null, check_ok = null, check_message = null,
       updated_at = now(), updated_by = excluded.updated_by
   `);
   await audit(accountId, storeId, "shipping.carrier_saved", { carrier: info.id, environment: parsed.environment, complete });
