@@ -7,21 +7,13 @@ import { PageEditor } from "@/components/admin/page-editor";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
-import { ArticleView } from "@/components/article-view";
-import { PageArticle } from "@/components/page-article";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
-import { ProductLayoutView } from "@/components/product-parts";
-import { ScopedCss } from "@/components/custom-css";
-import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
-import { t } from "@/lib/i18n";
-import { LAYOUT_TYPES, termContentOf, type PageContent, type PageType } from "@/lib/page-content";
+import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, type PageRole } from "@/lib/page-roles";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember } from "@/server/auth";
-import { getProduct, listProducts } from "@/server/catalog";
 import { getPageForEdit, listPages, type PageSummary } from "@/server/pages";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
-import type { Store } from "@/server/stores";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
@@ -39,6 +31,7 @@ import {
 } from "./actions";
 import { termFieldsSetup } from "../fields/data";
 import { storePageContext, storePagesBase } from "./context";
+import { PageDrawing } from "./drawing";
 
 /**
  * A store's pages (D53) and blog articles (D57): the same list, editor,
@@ -305,36 +298,14 @@ export async function StorePreviewPageView({
           Back to editing
         </Link>
       </p>
-      {/* The store's own CSS and the page's (D100), kept inside the preview. */}
-      {/* Whatever it draws stays inside the preview, even `position: fixed`. */}
-      <div data-site-css="" className="flex flex-col gap-6 [contain:paint]">
-      <ScopedCss css={[store.customCss, page.draft.css]} root="[data-site-css]" />
-      {type === "product_layout" ? (
-        <LayoutPreview store={store} layout={page.draft} asked={(await searchParams)?.product} />
-      ) : (type === "header" || type === "footer") && store.markets[0] ? (
-        // As the store draws it (D80), in its first country, with its own logo, menus and details.
-        <div className="overflow-hidden rounded-lg border border-border">
-          {type === "header" ? (
-            <StoreSiteHeader store={store} market={store.markets[0]} notice={null} layout={{ id: page.id, content: page.draft }} />
-          ) : (
-            <StoreSiteFooter store={store} market={store.markets[0]} layout={{ id: page.id, content: page.draft }} />
-          )}
-        </div>
-      ) : type === "article" ? (
-        // As the blog will show it (D57), in the store's main language.
-        <ArticleView
-          content={page.draft}
-          date={page.publishedAt}
-          byline={page.draft.author || store.name}
-          lang={store.markets[0]?.lang ?? "en"}
-          locale={store.markets[0]?.locale ?? "en-GB"}
-          place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }}
-          inAdmin
-        />
-      ) : (
-        <PageArticle content={page.draft} place={{ pageId: page.id, owner: store.id, market: store.markets[0]?.code }} inAdmin />
-      )}
-      </div>
+      <PageDrawing
+        store={store}
+        type={type}
+        id={page.id}
+        content={page.draft}
+        publishedAt={page.publishedAt}
+        asked={(await searchParams)?.product}
+      />
     </div>
   );
 }
@@ -551,37 +522,3 @@ const LAYOUT_STATES: Record<PageSummary["state"], string> = {
   published: "Published",
   changed: "Published, with unpublished changes",
 };
-
-/**
- * A product layout's saved draft with one of the store's products (D79), in
- * its main market: the first product unless one is chosen.
- */
-async function LayoutPreview({ store, layout, asked }: { store: Store; layout: PageContent; asked: string | string[] | undefined }) {
-  const market = store.markets[0];
-  const products = market ? await listProducts(store.id, market) : [];
-  const chosen = products.find((p) => p.handle === asked) ?? products[0];
-  const product = chosen && market ? await getProduct(store.id, market, chosen.handle) : null;
-  if (!market || !product) return <p className="text-sm text-muted">Add a product with a price to see the layout with it.</p>;
-  return (
-    <>
-      <form className="flex flex-wrap items-end gap-2 text-sm">
-        <label className="flex flex-col gap-1 font-medium">
-          Shown with
-          <select name="product" defaultValue={product.handle} className="min-h-10 rounded-md border border-border bg-background px-3">
-            {products.map((p) => (
-              <option key={p.handle} value={p.handle}>
-                {p.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" className="min-h-10 rounded-md border border-border px-4 font-medium">
-          Show
-        </button>
-      </form>
-      <div className="rounded-lg border border-border py-8">
-        <ProductLayoutView layout={layout} ctx={{ store, market, product, m: t(market.lang) }} inAdmin />
-      </div>
-    </>
-  );
-}

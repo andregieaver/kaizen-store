@@ -1713,11 +1713,22 @@ describe("saved parts", () => {
   const save = (kind: string, name: string) =>
     db.query("insert into commerce.saved_parts (kind, name, content, sharing) values ($1, $2, '{}', 'marketplace')", [kind, name]);
 
-  it("keeps rows, columns and components with a name", async () => {
+  it("keeps rows, columns, components and whole page layouts (D127) with a name", async () => {
     await expect(save("row", "Hero")).resolves.toBeDefined();
-    await expect(save("page", "Whole page")).rejects.toThrow(/saved_parts_kind/);
+    await expect(save("page", "Whole page")).resolves.toBeDefined();
+    await expect(save("layout", "Not a kind")).rejects.toThrow(/saved_parts_kind/);
     await expect(save("block", "  ")).rejects.toThrow(/saved_parts_name/);
     await expect(save("block", "x".repeat(81))).rejects.toThrow(/saved_parts_name/);
+  });
+
+  it("never makes a whole page layout global", async () => {
+    const global = (kind: string) =>
+      db.query(
+        "insert into commerce.saved_parts (kind, name, content, sharing, global) values ($1, 'G', '{}', 'marketplace', true)",
+        [kind],
+      );
+    await expect(global("row")).resolves.toBeDefined();
+    await expect(global("page")).rejects.toThrow(/saved_parts_page_not_global/);
   });
 
   it("are not global until said, and keep a global's translations as an object (D98)", async () => {

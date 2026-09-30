@@ -1,11 +1,14 @@
+import { cssProblem } from "./custom-css";
 import { withoutRecipients } from "./forms";
 import { withoutUses } from "./global-parts";
 import type { BlockType, PageBlock, PageColumn, PageRow, RichTextDoc } from "./page-content";
+import { layoutBlocks, type PageLayout } from "./page-layout";
 import type { SavedPartKind } from "./saved-parts";
 import { summaryText } from "./templates";
 
 /**
- * Using a template (D125) puts a copy of another owner's saved row, column or component on a store's page. What
+ * Using a template (D125) puts a copy of another owner's saved row, column or component on a store's page, or (D127,
+ * a whole page layout) on a page of the same kind. What
  * belongs to the other owner must not come along: this is the pure half of that, shared by the server and its
  * tests. The server copies the pictures and videos into the store's own media library (`mapTemplateMedia` names
  * every one, and takes the addresses it got back), and nothing here reads a database.
@@ -16,7 +19,7 @@ import { summaryText } from "./templates";
  * template is Kaizen's), and every address in Storage until it has been copied.
  */
 
-export type PartContent = PageRow | PageColumn | PageBlock;
+export type PartContent = PageRow | PageColumn | PageBlock | PageLayout;
 
 /** The most pictures and videos one use copies into the store's library, and the most bytes they may add up to. */
 export const TEMPLATE_MEDIA_MAX = 30;
@@ -52,6 +55,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
 
 /** The blocks a saved part holds, in reading order. */
 export function partBlocks(kind: SavedPartKind, content: PartContent): PageBlock[] {
+  if (kind === "page") return layoutBlocks(content as PageLayout);
   if (kind === "row") return (content as PageRow).columns.flatMap((column) => column.blocks);
   if (kind === "column") return (content as PageColumn).blocks;
   return [content as PageBlock];
@@ -59,7 +63,14 @@ export function partBlocks(kind: SavedPartKind, content: PartContent): PageBlock
 
 /** What is in a saved part, in a few words: "2 columns: heading, text, button". */
 export function templateSummary(kind: SavedPartKind, content: PartContent): string {
-  const columns = kind === "row" ? (content as PageRow).columns.length : kind === "column" ? 1 : 0;
+  const columns =
+    kind === "page"
+      ? (content as PageLayout).rows.length
+      : kind === "row"
+        ? (content as PageRow).columns.length
+        : kind === "column"
+          ? 1
+          : 0;
   return summaryText(
     kind,
     columns,
@@ -127,10 +138,14 @@ function editPart(kind: SavedPartKind, content: PartContent, edits: Edits): Part
     const next = { ...c, blocks: c.blocks.map(block) };
     return edits.column ? edits.column(next) : next;
   };
+  const editRow = (r: PageRow) => {
+    const next = { ...r, columns: r.columns.map(column) };
+    return edits.row ? edits.row(next) : next;
+  };
   if (kind === "block") return block(content as PageBlock);
   if (kind === "column") return column(content as PageColumn);
-  const row = { ...(content as PageRow), columns: (content as PageRow).columns.map(column) };
-  return edits.row ? edits.row(row) : row;
+  if (kind === "page") return { ...(content as PageLayout), rows: (content as PageLayout).rows.map(editRow) };
+  return editRow(content as PageRow);
 }
 
 /** Links in a rich-text document through `fn`; a link that goes leaves its words. */
@@ -228,7 +243,10 @@ export function sanitizeTemplate(
   from: ForeignStore,
   trusted = false,
 ): PartContent {
-  const plain = withoutUses(kind, content);
+  const plain =
+    kind === "page"
+      ? { ...(content as PageLayout), rows: (content as PageLayout).rows.map((row) => withoutUses("row", row)) }
+      : withoutUses(kind, content as PageRow | PageColumn | PageBlock);
   const cleaned = editPart(kind, plain, {
     block: (block) => sanitizeBlock(block, from, trusted),
     column: (column) => {
@@ -237,7 +255,12 @@ export function sanitizeTemplate(
       return href === "" ? (without(column, ["link"]) as PageColumn) : { ...column, link: { ...column.link, href } };
     },
   });
-  return withoutRecipients(cleaned);
+  const safe = withoutRecipients(cleaned);
+  if (kind !== "page") return safe;
+  // A layout's own CSS stays when it is clean and does not reach into the other store's files; else it goes.
+  const layout = safe as PageLayout;
+  const css = layout.css ?? "";
+  return { ...layout, css: css === "" || cssProblem(css) !== null || css.includes(STORAGE_PATH) ? "" : css };
 }
 
 // ---------------------------------------------------------------------------

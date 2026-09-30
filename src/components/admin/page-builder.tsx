@@ -50,6 +50,12 @@ import { TemplatesModal } from "./templates-modal";
 import { SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
 import { useTemplateLists, type TemplateController } from "./templates-lists";
+import { ApplyLayoutDialog, type PendingLayout } from "./templates-apply";
+import { fitsPage, blockedReason, type KindFilter } from "./templates-helpers";
+import { PageTypeBadge } from "./templates-parts";
+import { TemplatePreviewDialog } from "./templates-preview";
+import { useTemplateUse, type TemplateUse } from "./templates-use";
+import { SavedLayoutDialog } from "./saved-layout-dialog";
 import { ModalBar } from "./modal-preview";
 import {
   BLOCKS_MAX,
@@ -131,7 +137,9 @@ import {
   type SiteBlock,
   type SitePart,
   type ColumnJustify,
+  type PageType,
 } from "@/lib/page-content";
+import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
 import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, type ShopPart } from "@/lib/store-parts";
 import {
   copyBlock,
@@ -176,7 +184,7 @@ import { productLoopConfig, productLoopPatch } from "@/lib/field-loop";
 import { tileEntity } from "@/lib/tile-fields";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
-import type { PartSharing, TemplateActions, TemplateSource } from "@/lib/templates";
+import type { PartSharing, TemplateActions, TemplateItem, TemplateSource } from "@/lib/templates";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
@@ -352,6 +360,9 @@ const columnHasText = (column: PageColumn) => column.blocks.some(blockHasText);
 /** Worth asking before it is deleted: text written, or a picture chosen. */
 const blockHasText = (block: PageBlock) => blockHasContent(block);
 
+/** A saved part that is a row, column or component: the page builder edits those; a page layout (D127) is only used whole. */
+type PlainPart = Exclude<SavedPart, { kind: "page" }>;
+
 /** What a dialog is open for. */
 type Dialog =
   | { kind: "edit-block"; blockId: string }
@@ -361,7 +372,7 @@ type Dialog =
   | { kind: "edit-saved"; partId: string };
 
 /** A row, column or component about to be saved, or being changed. */
-type SavedPartDraft = Pick<SavedPart, "kind" | "content">;
+type SavedPartDraft = Pick<PlainPart, "kind" | "content">;
 
 /**
  * What the builder needs from its page and owner (D53): the page it is
@@ -428,6 +439,9 @@ export function PageBuilder({
   fonts,
   translate = null,
   templates = null,
+  pageType,
+  pageCss = "",
+  onPageCss = () => {},
   productParts = false,
   siteParts = null,
   shopParts = false,
@@ -450,6 +464,11 @@ export function PageBuilder({
   fonts: BuilderFonts;
   /** Templates shared between stores and the marketplace (D125), for the Templates tab and the sharing of saved parts; null on Kaizen's own pages. */
   templates?: TemplateActions | null;
+  /** The kind of page being edited: a page layout (D127) can only be used on its own kind. */
+  pageType: PageType;
+  /** The page's own CSS, which a page layout may bring along (D127), and how to change it. */
+  pageCss?: string;
+  onPageCss?: (css: string | undefined) => void;
   /** No longer used: Kaizen's saved parts reach a store through the Templates tab (D125). */
   library?: SavedPart[];
   /** Set while the page's texts are translated (D55). */
@@ -482,7 +501,12 @@ export function PageBuilder({
   // Templates (D125): the lists the tab and its modal share, where the tab looks, and whether the modal is open.
   const controller = useTemplateLists(templates);
   const [source, setSource] = useState<TemplateSource>("marketplace");
-  const [browsing, setBrowsing] = useState(false);
+  // The Browse modal, open on a kind (D127), the template being previewed and the button that opened it (which gets the focus back).
+  const [browsing, setBrowsing] = useState<{ kind: KindFilter } | null>(null);
+  const [preview, setPreview] = useState<{ id: string; source: TemplateSource } | null>(null);
+  const [previewOpener, setPreviewOpener] = useState<HTMLElement | null>(null);
+  // A page layout (D127) waiting for the person to say whether it replaces the page's rows or is added to them.
+  const [layoutUse, setLayoutUse] = useState<PendingLayout | null>(null);
   // The sidebars can be folded away; each is kept per browser.
   const [leftFolded, setLeftFolded] = useFolded("left");
   const [rightFolded, setRightFolded] = useFolded("right");
@@ -524,6 +548,11 @@ export function PageBuilder({
     place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number } = {},
     foreign = false,
   ) => {
+    // A page layout (D127) is placed as a whole, by asking how (`applyLayout`), never as a row, column or component.
+    if (saved.kind === "page") {
+      setLayoutUse({ name: saved.name, layout: saved.content, foreign });
+      return;
+    }
     const part = foreign ? forStore(saved) : saved;
     const global = foreign ? null : globalOf(part);
     // A saved part's custom ids come along unless the page already uses them (D48).
@@ -551,6 +580,31 @@ export function PageBuilder({
       });
     }
   };
+
+  /** Puts a page layout on the page (D127) as the person chose; returns why it could not be. */
+  const applyLayout = (pending: PendingLayout, mode: ApplyMode): string | null => {
+    const result = applyPageLayout({ rows, css: pageCss }, pending.layout, mode, newId, pending.foreign);
+    if (!result.ok) return result.problem;
+    onRows(() => result.rows);
+    if (result.css !== undefined) onPageCss(result.css);
+    setLastColumn(null);
+    setLayoutUse(null);
+    setBrowsing(null);
+    setPreview(null);
+    return null;
+  };
+  // A template's copy from the server: a page layout asks how first, the rest goes on the page like a saved part (D125).
+  const templateUse = useTemplateUse(templates, (part) => {
+    setPreview(null);
+    if (part.kind === "page") setLayoutUse({ name: part.name, layout: part.content, foreign: true });
+    else placeSaved(part, {}, true);
+  });
+  const previewed = preview ? (controller.lists[preview.source].items.find((i) => i.id === preview.id) ?? null) : null;
+  const openPreview = (item: { id: string }, from: TemplateSource, opener: HTMLElement) => {
+    setPreviewOpener(opener);
+    setPreview({ id: item.id, source: from });
+  };
+  const blankPage = isBlankPage(rows);
 
   const onDragMove = (move: DragMoveEvent) => {
     const { active, over } = move;
@@ -580,7 +634,7 @@ export function PageBuilder({
 
     if (from.kind === "saved") {
       const part = findPart(from.partId);
-      if (!part) return;
+      if (!part || part.kind === "page") return;
       if (part.kind === "row") {
         const index =
           to.kind === "canvas-end" ? rows.length : to.kind === "row" ? rows.findIndex((r) => r.id === to.rowId) : -1;
@@ -729,8 +783,10 @@ export function PageBuilder({
             customFields={fieldGroups !== null && grid.owner !== null && !productParts}
             shop={shopParts}
             parts={parts}
+            pageType={pageType}
             onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
-            templates={templates && { actions: templates, controller, source, onSource: setSource, onBrowse: () => setBrowsing(true), onUse: (part) => placeSaved(part, {}, true) }}
+            onUseLayout={(part) => placeSaved(part)}
+            templates={templates && { actions: templates, controller, use: templateUse, source, onSource: setSource, onBrowse: () => setBrowsing({ kind: "all" }), onPreview: openPreview }}
             onShared={(id, sharing) => setParts(parts.map((p) => (p.id === id ? { ...p, sharing } : p)))}
             rowsFull={rowsFull}
             blocksFull={blocksFull}
@@ -749,7 +805,17 @@ export function PageBuilder({
             {fonts.theme && <style>{fonts.theme.css}</style>}
             {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin. */}
             <ScopedCss css={css} root="[data-custom-css]" />
-            <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
+            <Canvas
+              rows={rows}
+              dragging={dragging}
+              target={target}
+              actions={actions}
+              // Where a store can browse templates, an empty page starts from a page layout (D127).
+              onStartFromLayout={
+                templates && !translate ? () => setBrowsing({ kind: "page" }) : null
+              }
+              blank={blankPage}
+            />
           </div>
 
           {rightFolded && (
@@ -804,8 +870,47 @@ export function PageBuilder({
           fonts={fonts}
           translate={translate}
           sharing={templates !== null}
+          pageType={pageType}
         />
-        {templates && <TemplatesModal controller={controller} source={source} onSource={setSource} open={browsing} onClose={() => setBrowsing(false)} />}
+        {templates && (
+          <>
+            <TemplatesModal
+              controller={controller}
+              use={templateUse}
+              source={source}
+              onSource={setSource}
+              open={browsing !== null}
+              kind={browsing?.kind}
+              onClose={() => setBrowsing(null)}
+              onPreview={openPreview}
+              pageType={pageType}
+              rowsFull={rowsFull}
+              blocksFull={blocksFull}
+            />
+            <TemplatePreviewDialog
+              item={previewed}
+              href={previewed ? templates.previewHref(previewed.id) : null}
+              returnFocus={previewOpener}
+              reason={previewed ? blockedReason(previewed, { pageType, rowsFull, blocksFull }) : null}
+              switching={previewed ? controller.busy.has(previewed.id) : false}
+              using={previewed ? templateUse.using === previewed.id : false}
+              usingAny={templateUse.using !== null}
+              problems={previewed ? [...(controller.problems[previewed.id] ?? []), ...(templateUse.issues[previewed.id] ?? [])] : []}
+              onToggleActive={() => preview && previewed && controller.setActive(preview.source, previewed.id, !previewed.active)}
+              onUse={() => previewed && templateUse.run(previewed)}
+              onClose={() => setPreview(null)}
+            />
+          </>
+        )}
+        <ApplyLayoutDialog
+          pending={layoutUse}
+          rows={rows}
+          pageCss={pageCss}
+          pageType={pageType}
+          pageSaved={grid.pageId !== null}
+          onApply={applyLayout}
+          onClose={() => setLayoutUse(null)}
+        />
       </DndContext>
     </BindEntitiesContext>
     </FieldGroupsContext>
@@ -829,11 +934,13 @@ type Tab = (typeof TABS)[number]["key"] | typeof TEMPLATES_TAB.key;
 type TemplatesInSidebar = {
   actions: TemplateActions;
   controller: TemplateController;
+  /** Using a template: fetching its copy and what it said (D127). */
+  use: TemplateUse;
   source: TemplateSource;
   onSource: (source: TemplateSource) => void;
   onBrowse: () => void;
-  /** Puts a template's copy on the page. */
-  onUse: (part: SavedPart) => void;
+  /** Opens a template's preview; `opener` gets the focus back when it closes. */
+  onPreview: (item: TemplateItem, source: TemplateSource, opener: HTMLElement) => void;
 };
 
 function Sidebar({
@@ -850,7 +957,9 @@ function Sidebar({
   customFields,
   shop,
   parts,
+  pageType,
   onOpenSaved,
+  onUseLayout,
   templates,
   onShared,
   rowsFull,
@@ -874,7 +983,11 @@ function Sidebar({
   /** The store's working pages' components can be added (D113). */
   shop: boolean;
   parts: SavedPart[];
+  /** The kind of page being edited (D127). */
+  pageType: PageType;
   onOpenSaved: (partId: string) => void;
+  /** Uses a saved page layout on the page. */
+  onUseLayout: (part: Extract<SavedPart, { kind: "page" }>) => void;
   /** Where a store's parts can be shared and its templates used (D125); null on Kaizen's own pages. */
   templates: TemplatesInSidebar | null;
   /** One of the saved parts was shared differently. */
@@ -1050,19 +1163,22 @@ function Sidebar({
           {t.key === "saved" && (
             <SavedList
               parts={parts}
+              pageType={pageType}
               onOpen={onOpenSaved}
+              onUseLayout={onUseLayout}
               sharing={templates && { setSharing: templates.actions.setSharing, onChanged: onShared }}
             />
           )}
           {t.key === "templates" && templates && (
             <TemplatesTab
               controller={templates.controller}
-              actions={templates.actions}
+              use={templates.use}
               source={templates.source}
               onSource={templates.onSource}
               shown={tab === "templates" && !hidden}
               onBrowse={templates.onBrowse}
-              onUse={templates.onUse}
+              onPreview={templates.onPreview}
+              pageType={pageType}
               rowsFull={rowsFull}
               blocksFull={blocksFull}
             />
@@ -1132,23 +1248,28 @@ function LayoutPreview({ layout }: { layout: RowLayout }) {
 }
 
 /**
- * Saved rows, columns and components (D46), by kind. Drag one onto the page
- * to use a copy; press one to change it (or add it from there).
+ * Saved page layouts (D127), rows, columns and components (D46), by kind. Drag a row, column or component onto the page
+ * to use a copy; press one to change it (or add it from there). A page layout is used whole, by asking how.
  */
 function SavedList({
   parts,
+  pageType,
   onOpen,
+  onUseLayout,
   sharing,
 }: {
   parts: SavedPart[];
+  pageType: PageType;
   onOpen: (partId: string) => void;
+  onUseLayout: (part: Extract<SavedPart, { kind: "page" }>) => void;
   /** Where parts can be shared (D125): each shows who can use it and lets the store change that. */
   sharing: { setSharing: TemplateActions["setSharing"]; onChanged: (id: string, sharing: PartSharing) => void } | null;
 }) {
   if (parts.length === 0) {
     return (
       <p className="text-xs text-muted">
-        Nothing saved yet. Open a row&apos;s, column&apos;s or component&apos;s settings (the wrench) and choose Save as.
+        Nothing saved yet. Open a row&apos;s, column&apos;s or component&apos;s settings (the wrench) and choose Save as, or
+        save a whole page&apos;s layout with Save as template under the page.
       </p>
     );
   }
@@ -1156,9 +1277,9 @@ function SavedList({
     <>
       <p className="text-xs text-muted">
         Drag one onto the page to use it, or press it to change it. A global one stays the same on every page that uses it; any
-        other is a copy each page keeps.
+        other is a copy each page keeps. A page layout is used whole, on its own kind of page.
       </p>
-      {(["row", "column", "block"] as const).map((kind) => {
+      {(["page", "row", "column", "block"] as const).map((kind) => {
         const own = parts.filter((p) => p.kind === kind);
         if (own.length === 0) return null;
         return (
@@ -1167,7 +1288,17 @@ function SavedList({
             <ul className="flex flex-col gap-1">
               {own.map((part) => (
                 <li key={part.id} className="flex flex-col gap-1">
-                  <SavedItem part={part} onOpen={() => onOpen(part.id)} showSharing={sharing !== null} />
+                  {part.kind === "page" ? (
+                    <SavedLayoutItem
+                      part={part}
+                      reason={blockedReason({ kind: "page", pageType: part.content.pageType }, { pageType, rowsFull: false, blocksFull: false })}
+                      onManage={() => onOpen(part.id)}
+                      onUse={() => onUseLayout(part)}
+                      showSharing={sharing !== null}
+                    />
+                  ) : (
+                    <SavedItem part={part} onOpen={() => onOpen(part.id)} showSharing={sharing !== null} />
+                  )}
                   {sharing && <SharingSelect part={part} setSharing={sharing.setSharing} onChanged={sharing.onChanged} />}
                 </li>
               ))}
@@ -1179,12 +1310,75 @@ function SavedList({
   );
 }
 
+/** A saved page layout (D127): not dragged, but used whole with a button; pressing its name manages it. */
+function SavedLayoutItem({
+  part,
+  reason,
+  onManage,
+  onUse,
+  showSharing,
+}: {
+  part: Extract<SavedPart, { kind: "page" }>;
+  reason: string | null;
+  onManage: () => void;
+  onUse: () => void;
+  showSharing: boolean;
+}) {
+  const reasonId = useId();
+  const rows = part.content.rows.length;
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border p-2">
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="flex h-9 w-12 shrink-0 flex-col gap-0.5">
+          <span className="h-2 rounded-sm bg-foreground/75" />
+          <span className="flex-1 rounded-sm bg-foreground/40" />
+          <span className="h-2 rounded-sm bg-foreground/75" />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-sm">{part.name}</span>
+          <span className="flex flex-wrap items-center gap-1 text-xs text-muted">
+            {rows} {rows === 1 ? "row" : "rows"}
+            <PageTypeBadge item={{ kind: "page", pageType: part.content.pageType }} warn={reason !== null} />
+            {showSharing && part.sharing !== "private" && <SharingBadge sharing={part.sharing} />}
+          </span>
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        <button
+          type="button"
+          onClick={onUse}
+          disabled={reason !== null}
+          aria-label={`Use page layout ${part.name}`}
+          aria-describedby={reason ? reasonId : undefined}
+          title={reason ?? undefined}
+          className="min-h-9 rounded-md border border-border px-3 text-xs font-medium hover:bg-surface disabled:opacity-50"
+        >
+          Use
+        </button>
+        <button
+          type="button"
+          onClick={onManage}
+          aria-label={`${part.name}, saved page layout: open to rename, share or delete`}
+          className="min-h-9 rounded-md border border-border px-3 text-xs hover:bg-surface"
+        >
+          Manage
+        </button>
+      </div>
+      {reason && (
+        <p id={reasonId} className="text-xs text-muted">
+          {reason}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * A template's copy made fit for a store's page (D56, D125): its content
  * grids show the store's own products and drop the categories and tags of
  * whoever it came from, which are not the store's.
  */
-function forStore(part: SavedPart): SavedPart {
+function forStore(part: PlainPart): PlainPart {
   const block = (b: PageBlock): PageBlock =>
     b.type === "contentGrid"
       ? { ...b, source: b.source.type === "products" ? { type: "products" } : b.source, categories: [], tags: [] }
@@ -1195,8 +1389,8 @@ function forStore(part: SavedPart): SavedPart {
   return { ...part, content: { ...part.content, columns: part.content.columns.map(column) } };
 }
 
-/** A saved part: the pointer drags it onto the page; pressing it (mouse or keyboard) opens it. */
-function SavedItem({ part, onOpen, showSharing = false }: { part: SavedPart; onOpen: () => void; showSharing?: boolean }) {
+/** A saved row, column or component: the pointer drags it onto the page; pressing it (mouse or keyboard) opens it. */
+function SavedItem({ part, onOpen, showSharing = false }: { part: PlainPart; onOpen: () => void; showSharing?: boolean }) {
   const { setNodeRef, listeners, isDragging } = useDraggable({
     id: `saved:${part.id}`,
     data: { kind: "saved", partId: part.id, part: part.kind } satisfies DragData,
@@ -1216,7 +1410,7 @@ function SavedItem({ part, onOpen, showSharing = false }: { part: SavedPart; onO
 }
 
 function SavedTile({ part, lifted = false, showSharing = false }: { part: SavedPart | null; lifted?: boolean; showSharing?: boolean }) {
-  if (!part) return null;
+  if (!part || part.kind === "page") return null;
   return (
     <span
       className={`flex cursor-grab items-center gap-3 rounded-md border border-border p-2 hover:bg-surface ${
@@ -1510,11 +1704,17 @@ function Canvas({
   dragging,
   target,
   actions,
+  onStartFromLayout,
+  blank,
 }: {
   rows: PageRow[];
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
   actions: Actions;
+  /** Opens the page layouts to start from (D127), where a store has templates; null elsewhere. */
+  onStartFromLayout: (() => void) | null;
+  /** Nothing is written on the page yet. */
+  blank: boolean;
 }) {
   return (
     <section
@@ -1545,14 +1745,23 @@ function Canvas({
             ))}
           </ol>
         </SortableContext>
-        <CanvasEnd empty={rows.length === 0} active={movesRows(dragging)} />
+        <CanvasEnd empty={rows.length === 0} active={movesRows(dragging)} onStartFromLayout={onStartFromLayout} />
+        {blank && rows.length > 0 && onStartFromLayout && <StartFromLayout onStart={onStartFromLayout} />}
       </div>
     </section>
   );
 }
 
 /** Below the last row: where a row dropped goes last, and what an empty page says. */
-function CanvasEnd({ empty, active }: { empty: boolean; active: boolean }) {
+function CanvasEnd({
+  empty,
+  active,
+  onStartFromLayout,
+}: {
+  empty: boolean;
+  active: boolean;
+  onStartFromLayout: (() => void) | null;
+}) {
   const { setNodeRef, isOver } = useDroppable({ id: "canvas-end", data: { kind: "canvas-end" } satisfies DragData });
   if (!empty && !active) return <div ref={setNodeRef} className="-mt-8" />;
   return (
@@ -1562,8 +1771,28 @@ function CanvasEnd({ empty, active }: { empty: boolean; active: boolean }) {
         isOver ? "border-blue-600 bg-surface" : "border-border"
       }`}
     >
-      {empty ? "The page is empty. Drag a row here from Rows, or press one to add it." : "Drop the row here to put it last."}
+      {empty ? (
+        <div className="flex flex-col items-center gap-3">
+          <p>The page is empty. Drag a row here from Rows, or press one to add it.</p>
+          {onStartFromLayout && <StartFromLayout onStart={onStartFromLayout} />}
+        </div>
+      ) : (
+        "Drop the row here to put it last."
+      )}
     </div>
+  );
+}
+
+/** For a page with nothing on it (D127): begin with a whole page layout from the templates instead. */
+function StartFromLayout({ onStart }: { onStart: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onStart}
+      className="min-h-10 rounded-md border border-border px-4 text-sm font-medium text-foreground hover:bg-surface"
+    >
+      Start from a page layout
+    </button>
   );
 }
 
@@ -2049,10 +2278,13 @@ function Dialogs({
   fonts,
   translate,
   sharing,
+  pageType,
 }: {
   grid: GridContext;
   fonts: BuilderFonts;
   translate: Translating | null;
+  /** The kind of page being edited, for using a saved page layout (D127). */
+  pageType: PageType;
   /** Saved parts can be shared (D125): the dialog that saves one offers the choice. */
   sharing: boolean;
   dialog: Dialog | null;
@@ -2768,7 +3000,22 @@ function Dialogs({
         />
       )}
 
-      {savedPart && (
+      {savedPart?.kind === "page" && (
+        <SavedLayoutDialog
+          key={savedPart.id + savedPart.updatedAt}
+          actions={grid.actions}
+          part={savedPart}
+          fits={fitsPage({ kind: "page", pageType: savedPart.content.pageType }, pageType)}
+          onClose={onClose}
+          onParts={onParts}
+          onUse={() => {
+            onUse(savedPart);
+            onClose();
+          }}
+        />
+      )}
+
+      {savedPart && savedPart.kind !== "page" && (
         <SavedPartDialog
           key={savedPart.id + savedPart.updatedAt}
           actions={grid.actions}
@@ -4573,7 +4820,7 @@ function SavedPartDialog({
   upload,
 }: {
   actions: PageOwnerContext["actions"];
-  part: SavedPart;
+  part: PlainPart;
   onClose: () => void;
   onParts: (parts: SavedPart[]) => void;
   onUse: () => void;

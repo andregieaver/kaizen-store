@@ -34,7 +34,10 @@ const hero = (): PageRow => ({
 });
 const page = (slug: string, rows: PageRow[]): PageContent => ({ ...newPageContent(), title: `Page ${slug}`, slug: `${slug}-${run}`, rows });
 const texts = (content: PageContent) => content.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks.map((b) => (b as HeadingBlock).text)));
-const asGlobal = (part: SavedPart): GlobalPart => ({ id: part.id, kind: part.kind, content: part.content, translations: part.translations });
+const asGlobal = (part: SavedPart): GlobalPart => {
+  if (part.kind === "page") throw new Error("A page layout is never global.");
+  return { id: part.id, kind: part.kind, content: part.content, translations: part.translations };
+};
 
 async function stored(id: string): Promise<{ draft: PageContent; published: PageContent | null }> {
   const [row] = await db().execute<Row>(sql`select draft, published from commerce.pages where id = ${id}::uuid`);

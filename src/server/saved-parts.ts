@@ -3,8 +3,9 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { asDoc, fromDoc, refreshUses, sameGlobal, type AnyPart, type PartKind, type Translations } from "@/lib/global-parts";
+import { asDoc, fromDoc, refreshUses, sameGlobal, withoutUses, type AnyPart, type PartKind, type Translations } from "@/lib/global-parts";
 import { newPageContent } from "@/lib/page-content";
+import type { PageLayout } from "@/lib/page-layout";
 import { cleanTranslations } from "@/lib/page-translation";
 import { SAVED_PARTS_MAX, parseSavedPart, savedPartInput, type SavedPart } from "@/lib/saved-parts";
 import type { PartSharing } from "@/lib/templates";
@@ -59,6 +60,12 @@ export async function listSavedParts(owner: Owner): Promise<SavedPart[]> {
   });
 }
 
+/** A whole page layout as it may be kept (D127): never global, so no row holds a use of a global, and no texts in other languages. */
+const plainLayout = (layout: PageLayout): PageLayout => ({
+  ...layout,
+  rows: layout.rows.map((row) => withoutUses("row", row)),
+});
+
 const problemsOf = (issues: { message: string }[]) => [...new Set(issues.map((i) => i.message))];
 
 /**
@@ -112,10 +119,17 @@ export async function createSavedPart(account: Account, owner: Owner, input: unk
   if (owner !== null && sharing !== "private" && !(await isStoreOwner(account.id, owner))) return { ok: false, problems: [NOT_OWNER] };
   const result = await inTransaction(async (tx) => {
     const parts = await lockSavedParts(tx, owner);
-    if (parts.length >= SAVED_PARTS_MAX) {
+    // Whole page layouts (D127) are not among the locked parts (never global) but count toward the same limit.
+    const [layouts] = await tx.execute<Row>(sql`
+      select count(*)::int as n from commerce.saved_parts where store_id is not distinct from ${owner}::uuid and kind = 'page'
+    `);
+    if (parts.length + Number(layouts.n) >= SAVED_PARTS_MAX) {
       return { ok: false, problems: [`At most ${SAVED_PARTS_MAX} saved parts. Delete some first.`] };
     }
-    const ready = await prepare(owner, parts, kind, parsed.data.content, parsed.data.translations, global);
+    const ready =
+      parsed.data.kind === "page"
+        ? { content: plainLayout(parsed.data.content), translations: {} }
+        : await prepare(owner, parts, parsed.data.kind, parsed.data.content, parsed.data.translations, global);
     if ("problems" in ready) return { ok: false, problems: ready.problems };
     const [row] = await tx.execute<Row>(sql`
       insert into commerce.saved_parts (store_id, kind, name, content, global, translations, sharing, created_by, updated_by)
@@ -147,14 +161,27 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
   const result = await inTransaction(async (tx) => {
     const parts = await lockSavedParts(tx, owner);
     const before = parts.find((p) => p.id === id && p.kind === kind);
-    if (!before) return { ok: false, problems: ["This saved part no longer exists."] };
-    const [current] = await tx.execute<Row>(sql`select sharing from commerce.saved_parts where id = ${id}::uuid`);
+    const [current] = await tx.execute<Row>(sql`
+      select sharing, kind from commerce.saved_parts where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid for update
+    `);
+    if (!current || current.kind !== kind || (kind !== "page" && !before)) {
+      return { ok: false, problems: ["This saved part no longer exists."] };
+    }
     shared = owner === null ? "marketplace" : says ? parsed.data.sharing : (String(current.sharing) as PartSharing);
     sharingChanged = shared !== current.sharing;
     if (sharingChanged && owner !== null && !(await isStoreOwner(account.id, owner))) return { ok: false, problems: [NOT_OWNER] };
+    if (parsed.data.kind === "page") {
+      await tx.execute(sql`
+        update commerce.saved_parts
+           set name = ${name}, content = ${JSON.stringify(plainLayout(parsed.data.content))}::jsonb, sharing = ${shared},
+               updated_at = now(), updated_by = ${account.id}::uuid
+         where id = ${id}::uuid
+      `);
+      return { ok: true, id, parts: [] };
+    }
     // The builder's dialog does not show texts in other languages: a global keeps its own.
     const others = parts.filter((p) => p.id !== id);
-    const ready = await prepare(owner, others, kind, parsed.data.content, before.translations, global);
+    const ready = await prepare(owner, others, parsed.data.kind, parsed.data.content, before!.translations, global);
     if ("problems" in ready) return { ok: false, problems: ready.problems };
     await tx.execute(sql`
       update commerce.saved_parts
@@ -162,15 +189,15 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
              translations = ${JSON.stringify(ready.translations)}::jsonb, updated_at = now(), updated_by = ${account.id}::uuid
        where id = ${id}::uuid
     `);
-    const after: StoredPart = { ...before, name, global, ...ready };
-    const changed = global && before.global && !sameGlobal(kind, ready, before);
-    if (changed || (before.global && !global)) {
+    const after: StoredPart = { ...before!, name, global, ...ready };
+    const changed = global && before!.global && !sameGlobal(parsed.data.kind, ready, before!);
+    if (changed || (before!.global && !global)) {
       const spread = await spreadGlobals(tx, {
         accountId: account.id,
         owner,
         parts: [...others, after],
-        changed: changed ? [{ id, kind, ...ready }] : [],
-        detach: before.global && !global ? new Set([id]) : new Set(),
+        changed: changed ? [{ id, kind: parsed.data.kind, ...ready }] : [],
+        detach: before!.global && !global ? new Set([id]) : new Set(),
       });
       pages = spread.pages;
     }
@@ -194,7 +221,15 @@ export async function deleteSavedPart(account: Account, owner: Owner, id: string
   const result = await inTransaction(async (tx) => {
     const parts = await lockSavedParts(tx, owner);
     const part = parts.find((p) => p.id === id);
-    if (!part) return { ok: true, id, parts: [] };
+    if (!part) {
+      // A whole page layout (D127) is not global, so it is not among the locked parts.
+      const [layout] = await tx.execute<Row>(sql`
+        delete from commerce.saved_parts where id = ${id}::uuid and store_id is not distinct from ${owner}::uuid and kind = 'page'
+        returning name
+      `);
+      if (layout) name = layout.name;
+      return { ok: true, id, parts: [] };
+    }
     await tx.execute(sql`delete from commerce.saved_parts where id = ${id}::uuid`);
     name = part.name;
     if (part.global) {

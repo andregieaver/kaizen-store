@@ -12,6 +12,7 @@ import { TemplatesModal } from "./templates-modal";
 import { SHARING_NOTE, SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
 import { initialState, type TemplateController, type TemplateState } from "./templates-lists";
+import type { TemplateUse } from "./templates-use";
 import { fakeActions, item, saved } from "./templates-test-support";
 
 /** Drawn on the server as the other admin components' tests do: what a person sees before any script runs. */
@@ -56,16 +57,19 @@ const controller = (
   };
 };
 
+const idle: TemplateUse = { using: null, issues: {}, added: null, run: () => {} };
+
 const tab = (over: Partial<ComponentProps<typeof TemplatesTab>> = {}) =>
   text(
     createElement(TemplatesTab, {
       controller: controller(),
-      actions: fakeActions().actions,
+      use: idle,
       source: "marketplace",
       onSource: () => {},
       shown: true,
       onBrowse: () => {},
-      onUse: () => {},
+      onPreview: () => {},
+      pageType: "page",
       rowsFull: false,
       blocksFull: false,
       ...over,
@@ -121,10 +125,15 @@ const modal = (over: Partial<ComponentProps<typeof TemplatesModal>> = {}) =>
   text(
     createElement(TemplatesModal, {
       controller: controller(),
+      use: idle,
       source: "marketplace",
       onSource: () => {},
       open: true,
       onClose: () => {},
+      onPreview: () => {},
+      pageType: "page",
+      rowsFull: false,
+      blocksFull: false,
       ...over,
     }),
   );
@@ -153,7 +162,7 @@ describe("the templates modal", () => {
 
   it("has kind chips, an Activated only switch and a search box, each named", () => {
     const out = modal();
-    for (const chip of ["All", "Rows", "Columns", "Components"]) expect(out).toContain(`>${chip}</button>`);
+    for (const chip of ["All", "Page layouts", "Rows", "Columns", "Components"]) expect(out).toContain(`>${chip}</button>`);
     expect(out).toMatch(/aria-pressed="true"[^>]*>All/);
     expect(out).toContain('role="switch"');
     expect(out).toContain("Activated only");
@@ -255,6 +264,7 @@ const builder = (
 ) =>
   text(
     createElement(PageBuilder, {
+      pageType: "page",
       rows: [],
       onRows: () => {},
       saved: saved_,

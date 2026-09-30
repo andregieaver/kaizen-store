@@ -6,6 +6,7 @@ import type { PartSharing, TemplateActions, TemplateItem } from "@/lib/templates
 
 export const item = (over: Partial<TemplateItem> & { id: string }): TemplateItem => ({
   kind: "row",
+  pageType: null,
   name: "Hero",
   summary: "2 columns: heading, text",
   publisher: "Kaffe AS",
@@ -15,6 +16,10 @@ export const item = (over: Partial<TemplateItem> & { id: string }): TemplateItem
   updatedAt: "2026-09-01T10:00:00Z",
   ...over,
 });
+
+/** A page layout template (D127) for a kind of page. */
+export const layoutItem = (over: Partial<TemplateItem> & { id: string }): TemplateItem =>
+  item({ kind: "page", pageType: "page", name: "Landing page", summary: "3 rows: heading, text", ...over });
 
 export const row = (id: string): PageRow => ({
   id,
@@ -64,6 +69,7 @@ export function fakeActions(
       calls.use.push(id);
       return answers.use ?? { ok: true, part: saved("copy") };
     },
+    previewHref: (id) => `/admin/preview/templates/${id}`,
     setSharing: async (id, sharing) => {
       calls.setSharing.push([id, sharing]);
       return { ok: true };

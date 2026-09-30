@@ -3202,12 +3202,12 @@ export const pageRedirects = commerce.table(
 );
 
 /**
- * A row, column or component saved to use again (D46): Kaizen's own
+ * A row, column, component or whole page layout saved to use again (D46, D127): Kaizen's own
  * (`store_id` null) or a store's, shown under Saved in the page builder.
  * Using one puts a copy on the page; changing it later changes what the
  * next use gets, not the pages that already have it, unless it is global
  * (D98): then every page's copy is its use and follows it. Shape:
- * `PageRow`, `PageColumn` or `PageBlock` in lib/page-content.
+ * `PageRow`, `PageColumn` or `PageBlock` in lib/page-content, or `PageLayout` in lib/page-layout.
  */
 export const savedParts = commerce.table(
   "saved_parts",
@@ -3215,7 +3215,7 @@ export const savedParts = commerce.table(
     id: uuid("id").primaryKey().defaultRandom(),
     /** Null for Kaizen's own. */
     storeId: uuid("store_id").references(() => stores.id),
-    /** `row`, `column` or `block`. */
+    /** `row`, `column`, `block` or `page` (a whole page's layout, D127). */
     kind: text("kind").notNull(),
     name: text("name").notNull(),
     content: jsonb("content").notNull(),
@@ -3242,7 +3242,9 @@ export const savedParts = commerce.table(
     index("saved_parts_created_by_idx").on(t.createdBy),
     index("saved_parts_updated_by_idx").on(t.updatedBy),
     index("saved_parts_hidden_by_idx").on(t.hiddenBy),
-    check("saved_parts_kind", sql`${t.kind} in ('row', 'column', 'block')`),
+    check("saved_parts_kind", sql`${t.kind} in ('row', 'column', 'block', 'page')`),
+    // A whole page layout (D127) is never global: its uses would be whole pages.
+    check("saved_parts_page_not_global", sql`${t.kind} <> 'page' or not ${t.global}`),
     check("saved_parts_name", sql`length(trim(${t.name})) between 1 and 80`),
     check("saved_parts_sharing", sql`${t.sharing} in ('private', 'stores', 'marketplace')`),
     check("saved_parts_kaizen_sharing", sql`${t.storeId} is not null or ${t.sharing} = 'marketplace'`),

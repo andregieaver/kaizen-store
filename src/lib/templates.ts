@@ -1,3 +1,4 @@
+import type { PageRow, PageType } from "./page-content";
 import type { SavedPart, SavedPartKind } from "./saved-parts";
 
 /**
@@ -28,13 +29,18 @@ export const KIND_LABELS: Record<SavedPartKind, { one: string; many: string }> =
   row: { one: "Row", many: "Rows" },
   column: { one: "Column", many: "Columns" },
   block: { one: "Component", many: "Components" },
+  // A whole page's layout (D127).
+  page: { one: "Page layout", many: "Page layouts" },
 };
-export const KIND_ORDER: readonly SavedPartKind[] = ["row", "column", "block"];
+/** Page layouts first: the biggest building block. */
+export const KIND_ORDER: readonly SavedPartKind[] = ["page", "row", "column", "block"];
 
 /** One template as a store sees it in a list: light, without its content (that comes when it is used). */
 export type TemplateItem = {
   id: string;
   kind: SavedPartKind;
+  /** For a page layout (D127): the kind of page it is for, and only there can it be used; null for the rest. */
+  pageType: PageType | null;
   name: string;
   /** What is in it, in a few words: "2 columns: heading, text, button". Worked out on the server from its content. */
   summary: string;
@@ -45,6 +51,25 @@ export type TemplateItem = {
   /** Whether this store has switched it on for its builder's Templates tab. Kaizen's are on until a store switches them off. */
   active: boolean;
   updatedAt: string;
+};
+
+/**
+ * A template as the preview shows it (D127): the same sanitised content a use would copy, drawn before anything is
+ * activated or copied. `rows` is always what is drawn: a page layout's rows, a row itself, a column as a row of one
+ * column, a block as a single-column row. Its pictures still point at the publisher's files: it is view-only.
+ */
+export type TemplatePreview = {
+  id: string;
+  kind: SavedPartKind;
+  name: string;
+  publisher: string;
+  fromKaizen: boolean;
+  /** For a page layout: the kind of page it is for; null for the rest. */
+  pageType: PageType | null;
+  summary: string;
+  rows: PageRow[];
+  /** A page layout's own CSS when it is clean, else empty. */
+  css: string;
 };
 
 export type TemplateResult<T extends object = object> = ({ ok: true } & T) | { ok: false; problems: string[] };
@@ -60,6 +85,11 @@ export type TemplateActions = {
   setActive: (id: string, active: boolean) => Promise<TemplateResult>;
   /** A template made ready to place on a page: a copy that is not saved, with what belonged to the other store left out. */
   use: (id: string) => Promise<TemplateResult<{ part: SavedPart }>>;
+  /**
+   * Where a template is shown before it is activated or used (D127): the address of a page with nothing but the
+   * template on it, drawn as the store's own pages are, for the builder to show in a frame. Nothing is copied or saved.
+   */
+  previewHref: (id: string) => string;
   /** Changes how one of this store's own saved parts is shared. */
   setSharing: (id: string, sharing: PartSharing) => Promise<TemplateResult>;
 };
@@ -68,6 +98,8 @@ export type TemplateActions = {
 export function summaryText(kind: SavedPartKind, columns: number, blockNames: readonly string[]): string {
   const names = [...new Set(blockNames)].slice(0, 4).join(", ");
   if (kind === "block") return names || "Empty";
+  // A page layout: `columns` is its rows.
+  if (kind === "page") return [`${columns} ${columns === 1 ? "row" : "rows"}`, names].filter(Boolean).join(": ");
   const shape = kind === "row" ? `${columns} ${columns === 1 ? "column" : "columns"}` : "";
   return [shape, names].filter(Boolean).join(": ") || "Empty";
 }

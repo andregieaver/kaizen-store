@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { pageColumnSchema, pageRowSchema, type PageBlock, type PageRow } from "./page-content";
+import { pageLayoutSchema, type PageLayout } from "./page-layout";
 import {
   cleanHref,
   isStorageUrl,
@@ -247,5 +248,99 @@ describe("template media", () => {
     expect(mapTemplateMedia("block", outside, (url) => (isStorageUrl(url) ? null : url))).toEqual(outside);
     expect(leftoverStorageUrls(row())).toHaveLength(7);
     expect(leftoverStorageUrls(row(), new Set(templateMediaUrls("row", row())))).toEqual([]);
+  });
+});
+
+describe("page layouts (D127)", () => {
+  /** Two rows: the store-bound one above, and one holding a site part and a product part (for headers and product layouts). */
+  const layout = (pageType: PageLayout["pageType"] = "page", css = ".hero { color: red; }"): PageLayout => {
+    const second = {
+      id: "row2",
+      type: "row",
+      layout: "1",
+      columns: [
+        {
+          id: "col2",
+          blocks: [
+            { id: "s1", type: "site", part: "logo" },
+            { id: "p1", type: "product", part: "title" },
+            {
+              id: "img2",
+              type: "image",
+              image: { url: `${PUBLIC}/product-media/${from.id}/second.webp`, width: 10, height: 10, alt: "" },
+              caption: "",
+            },
+            richText("r2", "Second", "/s/other-shop/no/about", { global: "44444444-4444-4444-8444-444444444444" }),
+            { id: "f2", type: "newsletter", recipients: ["a@b.example"] },
+          ],
+        },
+      ],
+      global: "55555555-5555-4555-8555-555555555555",
+    } as unknown as PageRow;
+    return { pageType, rows: [row(), second], css };
+  };
+  const cleaned = (l: PageLayout, trusted = false) => sanitizeTemplate("page", l, from, trusted) as PageLayout;
+  const ids = (l: PageLayout) => l.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks.map((b) => b.id)));
+
+  it("reads the blocks of every row and says how many rows it has", () => {
+    expect(partBlocks("page", layout())).toHaveLength(18);
+    expect(templateSummary("page", layout())).toMatch(/^2 rows: text, button/);
+    expect(templateSummary("page", { pageType: "page", rows: [], css: "" })).toBe("0 rows");
+  });
+
+  it("takes everything foreign out of every row", () => {
+    const clean = cleaned(layout());
+    expect(clean.rows.every((r) => r.global === undefined)).toBe(true);
+    const second = clean.rows[1].columns[0].blocks;
+    expect(second.find((b) => b.id === "r2")?.global).toBeUndefined();
+    expect(JSON.stringify(second.find((b) => b.id === "r2"))).not.toContain("link");
+    expect((second.find((b) => b.id === "f2") as { recipients: string[] }).recipients).toEqual([]);
+    expect(partBlocks("row", clean.rows[0]).find((b) => b.id === "b2")).toMatchObject({ href: "" });
+    expect(clean.rows[0].columns[0].link).toBeUndefined();
+    expect(pageLayoutSchema.safeParse(clean).error?.issues).toBeUndefined();
+  });
+
+  it("keeps the ids, the page type and the order, and does not change what it was given", () => {
+    const original = layout("header");
+    const before = JSON.stringify(original);
+    const clean = cleaned(original);
+    expect(clean.pageType).toBe("header");
+    expect(ids(clean)).toEqual(ids(original));
+    expect(clean.rows.map((r) => r.id)).toEqual(["row1", "row2"]);
+    expect(JSON.stringify(original)).toBe(before);
+  });
+
+  it("keeps site parts and product parts: a layout is only for pages of its own kind", () => {
+    const blocks = cleaned(layout("header")).rows[1].columns[0].blocks;
+    expect(blocks.find((b) => b.id === "s1")).toEqual({ id: "s1", type: "site", part: "logo" });
+    expect(blocks.find((b) => b.id === "p1")).toMatchObject({ type: "product", part: "title" });
+  });
+
+  it("empties another owner's HTML in every row, but not Kaizen's", () => {
+    const html = (l: PageLayout) => partBlocks("page", l).find((b) => b.id === "b10") as { html: string };
+    expect(html(cleaned(layout())).html).toBe("");
+    expect(html(cleaned(layout(), true)).html).toBe("<script>track()</script>");
+  });
+
+  it("keeps clean CSS and empties CSS that does not pass or reaches into Storage", () => {
+    expect(cleaned(layout()).css).toBe(".hero { color: red; }");
+    expect(cleaned(layout("page", "")).css).toBe("");
+    expect(cleaned(layout("page", "</style><script>")).css).toBe("");
+    expect(cleaned(layout("page", `.a { background: url("${PUBLIC}/product-media/${from.id}/bg.webp"); }`)).css).toBe(
+      "",
+    );
+    expect(cleaned(layout("page", "@import url(https://evil.example/a.css);")).css).toBe("");
+  });
+
+  it("collects the media of every row, once each, and maps them all", () => {
+    const urls = templateMediaUrls("page", layout());
+    expect(urls).toHaveLength(8);
+    expect(urls.some((url) => url.endsWith("/second.webp"))).toBe(true);
+    const mapped = mapTemplateMedia("page", layout(), (url) => url.replace(from.id ?? "", "new-store")) as PageLayout;
+    expect(leftoverStorageUrls(mapped).every((url) => url.includes("new-store"))).toBe(true);
+    expect(leftoverStorageUrls(mapped)).toHaveLength(8);
+    const left = mapTemplateMedia("page", cleaned(layout()), () => null) as PageLayout;
+    expect(leftoverStorageUrls(left)).toEqual([]);
+    expect(pageLayoutSchema.safeParse(left).error?.issues).toBeUndefined();
   });
 });

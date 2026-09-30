@@ -1,46 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
-import type { SavedPart } from "@/lib/saved-parts";
-import {
-  KIND_LABELS,
-  TEMPLATE_SOURCES,
-  TEMPLATE_SOURCE_LABELS,
-  type TemplateActions,
-  type TemplateItem,
-  type TemplateSource,
-} from "@/lib/templates";
+import type { PageType } from "@/lib/page-content";
+import { TEMPLATE_SOURCES, TEMPLATE_SOURCE_LABELS, type TemplateItem, type TemplateSource } from "@/lib/templates";
 
-import { activated, groupTemplates, noneActivated } from "./templates-helpers";
+import { forPage, groupTemplates, noneActivated, blockedReason } from "./templates-helpers";
 import type { TemplateController } from "./templates-lists";
-import { EmptyState, Problems, Publisher, groupHeading } from "./templates-parts";
+import { CardButtons, EmptyState, Problems, Publisher, groupHeading } from "./templates-parts";
+import type { TemplateUse } from "./templates-use";
 
 /**
  * The builder's Templates tab (D125): the templates this store has switched on, from its own stores or the marketplace,
  * to add to the page as copies, and a way into the modal that lists them all. Its lists come from `controller`, which the
- * modal shares, and are read when the tab is first shown.
+ * modal shares, and are read when the tab is first shown. A page layout (D127) is offered only on the kind of page it is
+ * made for; every card can be previewed first.
  */
 export function TemplatesTab({
   controller,
-  actions,
+  use,
   source,
   onSource,
   shown,
   onBrowse,
-  onUse,
+  onPreview,
+  pageType,
   rowsFull,
   blocksFull,
 }: {
   controller: TemplateController;
-  actions: TemplateActions;
+  use: TemplateUse;
   source: TemplateSource;
   onSource: (source: TemplateSource) => void;
   /** The tab is the one open, in a sidebar that is open. */
   shown: boolean;
   onBrowse: () => void;
-  /** Puts a template's copy on the page, like a saved part. */
-  onUse: (part: SavedPart) => void;
+  /** Opens the preview of a template; `opener` is the button, which gets the focus back when the preview closes. */
+  onPreview: (item: TemplateItem, source: TemplateSource, opener: HTMLElement) => void;
+  /** The kind of page being edited. */
+  pageType: PageType;
   rowsFull: boolean;
   blocksFull: boolean;
 }) {
@@ -49,30 +47,15 @@ export function TemplatesTab({
     if (shown) load(source);
   }, [shown, source, load]);
 
-  const [using, setUsing] = useState<string | null>(null);
-  const [issues, setIssues] = useState<Record<string, string[]>>({});
-  const use = async (item: TemplateItem) => {
-    setUsing(item.id);
-    setIssues((current) => ({ ...current, [item.id]: [] }));
-    try {
-      const result = await actions.use(item.id);
-      if (result.ok) onUse(result.part);
-      else setIssues((current) => ({ ...current, [item.id]: result.problems }));
-    } catch {
-      setIssues((current) => ({ ...current, [item.id]: ["It could not be added. Try again."] }));
-    }
-    setUsing(null);
-  };
-
   const list = controller.lists[source];
-  const groups = groupTemplates(activated(list.items));
+  const groups = groupTemplates(forPage(list.items, pageType));
   const empty = noneActivated(source);
 
   return (
     <>
       <p className="text-xs text-muted">
-        Templates you have switched on. Press Use to add a copy to the page: it is yours to change, and later edits by
-        whoever shared it never reach it.
+        Templates you have switched on. Press Preview to see one first, or Use to add a copy to the page: it is yours to
+        change, and later edits by whoever shared it never reach it.
       </p>
       <div role="group" aria-label="Templates from" className="grid grid-cols-2 gap-1 rounded-md bg-surface p-1">
         {TEMPLATE_SOURCES.map((each) => (
@@ -116,25 +99,27 @@ export function TemplatesTab({
             <ul className="flex flex-col gap-1">
               {group.items.map((item) => (
                 <li key={item.id} className="flex flex-col gap-1 rounded-md border border-border p-2">
-                  <div className="flex items-start gap-2">
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm" title={item.name}>
-                        {item.name}
-                      </span>
-                      {item.summary && <span className="text-xs text-muted">{item.summary}</span>}
-                      <Publisher item={item} />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => use(item)}
-                      disabled={using !== null || (item.kind === "block" ? blocksFull : rowsFull)}
-                      aria-label={`Use ${KIND_LABELS[item.kind].one.toLowerCase()} ${item.name}`}
-                      className="min-h-9 shrink-0 rounded-md border border-border px-3 text-xs font-medium hover:bg-surface disabled:opacity-50"
-                    >
-                      {using === item.id ? "Adding …" : "Use"}
-                    </button>
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm" title={item.name}>
+                      {item.name}
+                    </span>
+                    {item.summary && <span className="text-xs text-muted">{item.summary}</span>}
+                    <Publisher item={item} />
                   </div>
-                  <Problems problems={issues[item.id]} />
+                  <CardButtons
+                    item={item}
+                    reason={blockedReason(item, { pageType, rowsFull, blocksFull })}
+                    using={use.using === item.id}
+                    disabled={use.using !== null}
+                    onPreview={(opener) => onPreview(item, source, opener)}
+                    onUse={() => use.run(item)}
+                  />
+                  <Problems problems={use.issues[item.id]} />
+                  {use.added === item.id && (
+                    <p role="status" className="text-xs text-muted">
+                      Added to the page.
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

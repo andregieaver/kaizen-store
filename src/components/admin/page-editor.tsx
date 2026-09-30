@@ -27,6 +27,7 @@ import {
   type PageType,
   type PageThumbnail,
 } from "@/lib/page-content";
+import { layoutOf } from "@/lib/page-layout";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { defaultFooter, defaultHeader, type StandardMenus } from "@/lib/site-layout";
@@ -54,6 +55,7 @@ import { CssPanel } from "./css-panel";
 import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
 import { ColorField, newId, PageBuilder } from "./page-builder";
+import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -153,6 +155,8 @@ export function PageEditor({
   const [locale, setLocale] = useState(main.locale);
   // The CSS panel (D100): the page's own CSS, and the site's as written there (saved from the panel).
   const [cssOpen, setCssOpen] = useState(false);
+  // Saving the page's layout as a template (D127).
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [siteCss, setSiteCss] = useState(context.siteCss);
   const language = context.languages.find((l) => l.locale === locale) ?? main;
   const translating = language.locale !== main.locale;
@@ -295,6 +299,18 @@ export function PageEditor({
       router.push(`${adminBase}/${outcome.id}`);
     });
 
+  // The owner's saved parts changed (one saved, changed or deleted): a global changed or deleted under Saved (the server
+  // has changed the pages using it) reaches this page's uses of it at once.
+  const updateParts = (next: SavedPart[]) => {
+    const before = new Map(parts.map((p) => [p.id, p]));
+    const globals = globalsOf(next);
+    const changed = new Map([...globals].filter(([id]) => before.get(id)?.global && before.get(id)?.updatedAt !== next.find((p) => p.id === id)?.updatedAt));
+    const gone = new Set([...known.current.keys()].filter((id) => !globals.has(id)));
+    known.current = globals;
+    setParts(next);
+    if (changed.size > 0 || gone.size > 0) setContent((current) => refreshUses(current, changed, (id) => gone.has(id)));
+  };
+
   const liveSlug = saved?.published ? saved.slug : null;
   const moving = liveSlug !== null && content.slug !== liveSlug && pageSlugProblem(content.slug, reserved) === null;
   const excerpt = pageExcerpt(view);
@@ -312,17 +328,11 @@ export function PageEditor({
         translate={translating ? { name: language.name, mainName: main.name, source: content.rows } : null}
         css={[siteCss, content.css ?? ""]}
         saved={parts}
-        onSaved={(next) => {
-          // A global changed or deleted under Saved (the server has changed the pages using it): its uses here follow.
-          const before = new Map(parts.map((p) => [p.id, p]));
-          const globals = globalsOf(next);
-          const changed = new Map([...globals].filter(([id]) => before.get(id)?.global && before.get(id)?.updatedAt !== next.find((p) => p.id === id)?.updatedAt));
-          const gone = new Set([...known.current.keys()].filter((id) => !globals.has(id)));
-          known.current = globals;
-          setParts(next);
-          if (changed.size > 0 || gone.size > 0) setContent((current) => refreshUses(current, changed, (id) => gone.has(id)));
-        }}
+        onSaved={updateParts}
         templates={context.templates}
+        pageType={context.type}
+        pageCss={content.css ?? ""}
+        onPageCss={(css) => changeCss(css ?? "")}
         productParts={context.type === "product_layout"}
         fieldGroups={context.fields?.groups ?? null}
         shopParts={context.type === "page" && context.owner !== null}
@@ -566,6 +576,19 @@ export function PageEditor({
         </div>
       )}
 
+      <SaveTemplateDialog
+        open={templateOpen}
+        create={actions.createPart}
+        layout={layoutOf(content, context.type)}
+        defaultName={defaultTemplateName(content.title)}
+        canShare={context.templates !== null}
+        onClose={() => setTemplateOpen(false)}
+        onSaved={(next) => {
+          updateParts(next);
+          setMessage(SAVED_AS_TEMPLATE);
+        }}
+      />
+
       <CssPanel
         open={cssOpen}
         onClose={() => setCssOpen(false)}
@@ -621,6 +644,14 @@ export function PageEditor({
                 View {noun}
               </a>
             )}
+            <button
+              type="button"
+              onClick={() => setTemplateOpen(true)}
+              aria-haspopup="dialog"
+              className="underline"
+            >
+              Save as template
+            </button>
             {saved && (
               <button type="button" onClick={duplicate} disabled={busy} className="underline disabled:opacity-50">
                 Duplicate

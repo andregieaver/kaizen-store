@@ -41,11 +41,11 @@ export class GlobalsRefused extends Error {
 
 const KINDS: PartKind[] = ["block", "column", "row"];
 
-/** The owner's saved parts, locked until the transaction ends. */
+/** The owner's saved parts that can be global (not whole page layouts, D127), locked until the transaction ends. */
 export async function lockSavedParts(tx: Tx, owner: Owner): Promise<StoredPart[]> {
   const rows = await tx.execute<Row>(sql`
     select id, kind, name, global, content, translations from commerce.saved_parts
-    where store_id is not distinct from ${owner}::uuid
+    where store_id is not distinct from ${owner}::uuid and kind <> 'page'
     order by created_at
     for update
   `);

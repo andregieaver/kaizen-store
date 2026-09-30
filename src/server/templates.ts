@@ -4,7 +4,9 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { parseSavedPart, savedPartInput, type SavedPart } from "@/lib/saved-parts";
+import type { PageLayout } from "@/lib/page-layout";
+import type { PageRow, PageType } from "@/lib/page-content";
+import { parseSavedPart, savedPartInput, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import {
   TEMPLATE_MEDIA_BYTES_MAX,
   TEMPLATE_MEDIA_MAX,
@@ -15,11 +17,13 @@ import {
   templateMediaUrls,
   templateSummary,
   type ForeignStore,
+  type PartContent,
 } from "@/lib/template-content";
 import {
   PART_SHARING,
   type PartSharing,
   type TemplateItem,
+  type TemplatePreview,
   type TemplateResult,
   type TemplateSource,
 } from "@/lib/templates";
@@ -119,6 +123,7 @@ export async function listTemplates(
       {
         id: part.id,
         kind: part.kind,
+        pageType: part.kind === "page" ? part.content.pageType : null,
         name: part.name,
         summary: templateSummary(part.kind, part.content),
         publisher: String(row.publisher),
@@ -160,26 +165,19 @@ export async function setTemplateActive(
 // Using
 // ---------------------------------------------------------------------------
 
-/** What a use reaches outside the database: Storage's copy, replaceable in tests. */
-export type TemplateDeps = { copyFile?: typeof copyStoredFile };
-
-/**
- * A template as a copy to put on the store's page (not saved): the saved part with global marks, form recipients,
- * links and ids into the other store, its owner's contact details and its HTML gone (Kaizen's HTML stays), and its
- * pictures and videos copied into this store's media library, so a page never depends on another owner's files.
- * A file that cannot be copied is left out; one use copies at most `TEMPLATE_MEDIA_MAX` files and
- * `TEMPLATE_MEDIA_BYTES_MAX` bytes, the rest are left out too. The copy has the template's id, is not global and
- * is shared with nobody; the builder gives everything in it new ids as it places it.
- */
-export async function applyTemplate(
+/** A template the store may see, read and made ready for another store: what `applyTemplate` and `previewTemplate` share. */
+async function readTemplate(
   storeId: string,
   account: Account,
   id: string,
-  deps: TemplateDeps = {},
-): Promise<TemplateResult<{ part: SavedPart }>> {
+): Promise<
+  | { ok: true; template: SavedPart; sourceId: string | null; publisher: string; clean: PartContent }
+  | { ok: false; problems: string[] }
+> {
   if (!isId(id)) return unavailable;
   const [row] = await db().execute<Row>(sql`
-    select sp.id, sp.kind, sp.name, sp.content, sp.updated_at, sp.store_id as source_id, s.slug as source_slug
+    select sp.id, sp.kind, sp.name, sp.content, sp.updated_at, sp.store_id as source_id, s.slug as source_slug,
+      coalesce(s.name, 'Kaizen') as publisher
     from commerce.saved_parts sp
     left join commerce.stores s on s.id = sp.store_id
     where sp.id = ${id}::uuid and ${visibleTo(storeId, account.id, "any")}
@@ -202,6 +200,29 @@ export async function applyTemplate(
     hosts: sourceSlug ? storeOrigins(sourceSlug).map((origin) => new URL(origin).host) : [],
   };
   const clean = sanitizeTemplate(template.kind, template.content, from, sourceId === null);
+  return { ok: true, template, sourceId, publisher: String(row.publisher), clean };
+}
+
+/** What a use reaches outside the database: Storage's copy, replaceable in tests. */
+export type TemplateDeps = { copyFile?: typeof copyStoredFile };
+
+/**
+ * A template as a copy to put on the store's page (not saved): the saved part with global marks, form recipients,
+ * links and ids into the other store, its owner's contact details and its HTML gone (Kaizen's HTML stays), and its
+ * pictures and videos copied into this store's media library, so a page never depends on another owner's files.
+ * A file that cannot be copied is left out; one use copies at most `TEMPLATE_MEDIA_MAX` files and
+ * `TEMPLATE_MEDIA_BYTES_MAX` bytes, the rest are left out too. The copy has the template's id, is not global and
+ * is shared with nobody; the builder gives everything in it new ids as it places it.
+ */
+export async function applyTemplate(
+  storeId: string,
+  account: Account,
+  id: string,
+  deps: TemplateDeps = {},
+): Promise<TemplateResult<{ part: SavedPart }>> {
+  const read = await readTemplate(storeId, account, id);
+  if (!read.ok) return read;
+  const { template, sourceId, clean } = read;
 
   // Pictures and videos: the site's own files are copied into this store's library, others stay as they are.
   const wanted = templateMediaUrls(template.kind, clean).filter(isStorageUrl);
@@ -265,6 +286,59 @@ export async function applyTemplate(
 }
 
 // ---------------------------------------------------------------------------
+// Preview
+// ---------------------------------------------------------------------------
+
+const PREVIEW_ROW = "preview-row";
+const PREVIEW_COLUMN = "preview-column";
+
+/** What a template draws as: always rows (a column a row of one column, a block a single-column row holding it). */
+function previewRows(part: SavedPart): PageRow[] {
+  if (part.kind === "page") return part.content.rows;
+  if (part.kind === "row") return [part.content];
+  const column = part.kind === "column" ? part.content : { id: PREVIEW_COLUMN, blocks: [part.content] };
+  return [{ id: PREVIEW_ROW, type: "row", layout: "1", columns: [column] }];
+}
+
+/**
+ * A template as it is shown before it is activated or used (D127), for the store's members who may see it (the same
+ * `visibleTo` rule as a use: a hidden one, the store's own and another owner's private one are unavailable): the
+ * content a use would copy, cleaned the same way, drawn as `rows` and the layout's own `css`. View-only: nothing is
+ * copied, written or audited, so its pictures still point at the publisher's public files.
+ */
+export async function previewTemplate(
+  storeId: string,
+  account: Account,
+  id: string,
+): Promise<TemplateResult<{ preview: TemplatePreview }>> {
+  const read = await readTemplate(storeId, account, id);
+  if (!read.ok) return read;
+  const { template, publisher, sourceId, clean } = read;
+  const checked = savedPartInput.safeParse({
+    kind: template.kind,
+    name: template.name,
+    content: clean,
+    sharing: "private",
+  });
+  if (!checked.success) return problem("This template could not be made ready for your store.");
+  const part = { ...template, kind: checked.data.kind, content: checked.data.content } as SavedPart;
+  return {
+    ok: true,
+    preview: {
+      id,
+      kind: part.kind,
+      name: template.name,
+      publisher,
+      fromKaizen: sourceId === null,
+      pageType: part.kind === "page" ? part.content.pageType : null,
+      summary: templateSummary(part.kind, part.content),
+      rows: previewRows(part),
+      css: part.kind === "page" ? (part.content as PageLayout).css : "",
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Sharing
 // ---------------------------------------------------------------------------
 
@@ -304,7 +378,9 @@ export async function setPartSharing(
 
 export type ModerationItem = {
   id: string;
-  kind: "row" | "column" | "block";
+  kind: SavedPartKind;
+  /** For a page layout (D127): the kind of page it is for. */
+  pageType: PageType | null;
   name: string;
   summary: string;
   /** The store's name, or "Kaizen". */
@@ -344,6 +420,7 @@ export async function listMarketplaceTemplates(): Promise<ModerationItem[]> {
       {
         id: String(row.id),
         kind: row.kind as ModerationItem["kind"],
+        pageType: part?.kind === "page" ? part.content.pageType : null,
         name: String(row.name),
         summary: part ? templateSummary(part.kind, part.content) : "Cannot be read",
         publisher: String(row.publisher),

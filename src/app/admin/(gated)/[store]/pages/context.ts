@@ -7,6 +7,7 @@ import { reservedPageSlugs, type PageType } from "@/lib/page-content";
 import { pageLanguages } from "@/lib/page-translation";
 import { marketPath, storeBase, storeHref, storeOrigin } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { templatePreviewPath } from "@/lib/template-paths";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
@@ -84,6 +85,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       setActive: bind(setTemplateActiveAction),
       use: bind(applyTemplateAction),
       setSharing: bind(setPartSharingAction),
+      // A page with nothing but the template on it, for the builder's frame (D127).
+      previewHref: (id: string) => templatePreviewPath(store.slug, id),
     },
     fields: {
       groups: fieldGroups,

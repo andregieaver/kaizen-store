@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."saved_parts" DROP CONSTRAINT "saved_parts_kind";--> statement-breakpoint
+ALTER TABLE "commerce"."saved_parts" ADD CONSTRAINT "saved_parts_page_not_global" CHECK ("commerce"."saved_parts"."kind" <> 'page' or not "commerce"."saved_parts"."global");--> statement-breakpoint
+ALTER TABLE "commerce"."saved_parts" ADD CONSTRAINT "saved_parts_kind" CHECK ("commerce"."saved_parts"."kind" in ('row', 'column', 'block', 'page'));

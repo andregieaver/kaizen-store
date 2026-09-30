@@ -11,6 +11,7 @@ import {
   type PageText,
 } from "./page-content";
 import type { GlobalPart, Translations } from "./global-parts";
+import { layoutBlocks, pageLayoutSchema, type PageLayout } from "./page-layout";
 import { PART_SHARING, type PartSharing } from "./templates";
 
 /**
@@ -21,7 +22,8 @@ import { PART_SHARING, type PartSharing } from "./templates";
 export const SAVED_NAME_MAX = 80;
 export const SAVED_PARTS_MAX = 200;
 
-export type SavedPartKind = "row" | "column" | "block";
+/** A whole page's layout is one too (D127): saved, shared and used as a template, never a global. */
+export type SavedPartKind = "row" | "column" | "block" | "page";
 
 export type SavedPart = {
   id: string;
@@ -39,11 +41,14 @@ export type SavedPart = {
   | { kind: "row"; content: PageRow }
   | { kind: "column"; content: PageColumn }
   | { kind: "block"; content: PageBlock }
+  | { kind: "page"; content: PageLayout }
 );
 
 /** A global saved part as its uses are made from it (D98); null for one that is not global. */
 export function globalOf(part: SavedPart): GlobalPart | null {
-  return part.global ? { id: part.id, kind: part.kind, content: part.content, translations: part.translations } : null;
+  return part.global && part.kind !== "page"
+    ? { id: part.id, kind: part.kind, content: part.content, translations: part.translations }
+    : null;
 }
 
 /** The owner's globals by id. */
@@ -58,6 +63,7 @@ export const SAVED_KIND_LABELS: Record<SavedPartKind, { one: string; many: strin
   row: { one: "Row", many: "Rows" },
   column: { one: "Column", many: "Columns" },
   block: { one: "Component", many: "Components" },
+  page: { one: "Page layout", many: "Page layouts" },
 };
 
 const name = z
@@ -67,18 +73,22 @@ const name = z
   .max(SAVED_NAME_MAX, `Keep the name under ${SAVED_NAME_MAX} characters.`);
 
 const blocksOf = (part: { kind: SavedPartKind; content: unknown }): PageBlock[] =>
-  part.kind === "row"
-    ? (part.content as PageRow).columns.flatMap((c) => c.blocks)
-    : part.kind === "column"
-      ? (part.content as PageColumn).blocks
-      : [part.content as PageBlock];
+  part.kind === "page"
+    ? layoutBlocks(part.content as PageLayout)
+    : part.kind === "row"
+      ? (part.content as PageRow).columns.flatMap((c) => c.blocks)
+      : part.kind === "column"
+        ? (part.content as PageColumn).blocks
+        : [part.content as PageBlock];
 
 const idsOf = (part: { kind: SavedPartKind; content: unknown }): string[] =>
-  part.kind === "row"
-    ? [(part.content as PageRow).id, ...(part.content as PageRow).columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]
-    : part.kind === "column"
-      ? [(part.content as PageColumn).id, ...(part.content as PageColumn).blocks.map((b) => b.id)]
-      : [(part.content as PageBlock).id];
+  part.kind === "page"
+    ? (part.content as PageLayout).rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])])
+    : part.kind === "row"
+      ? [(part.content as PageRow).id, ...(part.content as PageRow).columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]
+      : part.kind === "column"
+        ? [(part.content as PageColumn).id, ...(part.content as PageColumn).blocks.map((b) => b.id)]
+        : [(part.content as PageBlock).id];
 
 /** Texts in other languages by their place (checked again against the content when saved, `cleanTranslations`). */
 const translations = z
@@ -99,8 +109,12 @@ export const savedPartInput = z
     z.object({ kind: z.literal("row"), content: pageRowSchema, ...shared }),
     z.object({ kind: z.literal("column"), content: pageColumnSchema, ...shared }),
     z.object({ kind: z.literal("block"), content: pageBlockSchema, ...shared }),
+    z.object({ kind: z.literal("page"), content: pageLayoutSchema, ...shared }),
   ])
   .superRefine((part, ctx) => {
+    if (part.kind === "page" && part.global) {
+      ctx.addIssue({ code: "custom", message: "A whole page layout cannot be global." });
+    }
     if (blocksOf(part).length > BLOCKS_MAX) {
       ctx.addIssue({ code: "custom", message: `It holds more than ${BLOCKS_MAX} blocks.` });
     }

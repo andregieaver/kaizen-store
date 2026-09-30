@@ -609,3 +609,338 @@ describe("using a template", () => {
     expect(await templates.applyTemplate(mine, both, "nope", { copyFile })).toMatchObject({ ok: false });
   });
 });
+
+describe("page layouts as templates (D127)", () => {
+  const copied: string[] = [];
+  const copyFile = async (bucket: string, from: string, to: string) => {
+    copied.push(from);
+    return `${files}/${bucket}/${to}`;
+  };
+  const picture = async (owner: string, name: string) => {
+    const path = `${owner}/${run}-${name}.webp`;
+    await db().execute(sql`
+      insert into commerce.media (store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height)
+      values (${owner}::uuid, 'image', ${`${files}/product-media/${path}`}, ${`${files}/product-media/${path}-480`}, 'product-media', ${path},
+        ${`${path}-480`}, ${`${name}-${run}`}, 'image/webp', 1000, 800, 600)
+    `);
+    return `${files}/product-media/${path}`;
+  };
+  const image = (id: string, url: string) =>
+    ({ id, type: "image", image: { url, width: 800, height: 600, alt: "Alt" }, caption: "" }) as unknown as PageBlock;
+  const rowOf = (id: string, blocks: unknown[], extra: object = {}) =>
+    ({ id, type: "row", layout: "1", columns: [{ id: `${id}-col`, blocks }], ...extra }) as unknown as PageRow;
+  const layoutOf = (pageType: string, rows: PageRow[], css = "") => ({ pageType, rows, css });
+
+  async function layout(name: string, content: ReturnType<typeof layoutOf>, sharing = "marketplace", by = both) {
+    const result = await saved.createSavedPart(by, pub, { kind: "page", name: `${name} ${run}`, content, sharing });
+    if (!result.ok) throw new Error(result.problems.join(" "));
+    return result.id;
+  }
+  it("keeps a page layout as a saved part of its own: never global, no marks, sharing as for the rest", async () => {
+    const marked = rowOf("r1", [text("b1", "Hi")], { global: "22222222-2222-4222-8222-222222222222" });
+    const id = await layout("PL keep", layoutOf("page", [marked], ".a { color: red; }"), "private");
+    const list = await saved.listSavedParts(pub);
+    const part = list.find((p) => p.id === id);
+    expect(part).toMatchObject({ kind: "page", global: false, sharing: "private", translations: {}, uses: 0 });
+    expect(part?.kind === "page" && part.content).toMatchObject({ pageType: "page", css: ".a { color: red; }" });
+    expect(part?.kind === "page" && part.content.rows[0].global).toBeUndefined();
+
+    const global = await saved.createSavedPart(both, pub, {
+      kind: "page",
+      name: `PL global ${run}`,
+      content: layoutOf("page", [rowOf("r1", [text("b1", "Hi")])]),
+      global: true,
+    });
+    expect(global).toMatchObject({ ok: false });
+    expect(
+      await saved.createSavedPart(staff, pub, {
+        kind: "page",
+        name: `PL staff ${run}`,
+        content: layoutOf("page", [rowOf("r1", [text("b1", "Hi")])]),
+        sharing: "stores",
+      }),
+    ).toEqual({ ok: false, problems: [templates.NOT_OWNER] });
+    // Bad CSS is refused, as on a page.
+    expect(
+      await saved.createSavedPart(both, pub, {
+        kind: "page",
+        name: `PL css ${run}`,
+        content: layoutOf("page", [rowOf("r1", [text("b1", "Hi")])], "@import url(https://x.example/a.css);"),
+      }),
+    ).toMatchObject({ ok: false });
+  });
+
+  it("updates and deletes a page layout, and only an owner changes how it is shared", async () => {
+    const id = await layout("PL update", layoutOf("article", [rowOf("r1", [text("b1", "One")])]), "private");
+    const input = (words: string, extra: object = {}) => ({
+      kind: "page",
+      name: `PL update ${run}`,
+      content: layoutOf("article", [rowOf("r1", [text("b1", words)])]),
+      ...extra,
+    });
+    const same = await saved.updateSavedPart(staff, pub, id, input("Two"));
+    expect(same.ok && JSON.stringify(same.parts.find((p) => p.id === id)?.content)).toContain("Two");
+    expect(await saved.updateSavedPart(staff, pub, id, input("Two", { sharing: "marketplace" }))).toEqual({
+      ok: false,
+      problems: [templates.NOT_OWNER],
+    });
+    expect(await saved.updateSavedPart(both, pub, id, input("Three", { global: true }))).toMatchObject({ ok: false });
+    expect(await saved.updateSavedPart(both, pub, id, input("Three", { sharing: "marketplace" }))).toMatchObject({
+      ok: true,
+    });
+    // The kind stays: a row cannot overwrite it, and another store cannot touch it.
+    expect(
+      await saved.updateSavedPart(both, pub, id, {
+        kind: "row",
+        name: `x ${run}`,
+        content: rowOf("r1", [text("b1", "x")]),
+      }),
+    ).toMatchObject({ ok: false });
+    expect(await saved.updateSavedPart(both, mine, id, input("Hijack"))).toMatchObject({ ok: false });
+    const removed = await saved.deleteSavedPart(both, pub, id);
+    expect(removed.ok && removed.parts.find((p) => p.id === id)).toBeUndefined();
+    expect((await saved.listSavedParts(pub)).some((p) => p.id === id)).toBe(false);
+  });
+
+  it("lists page layouts with the kind of page they are for, and null for the others", async () => {
+    const header = await layout(
+      "PL list header",
+      layoutOf("header", [rowOf("r1", [{ id: "s1", type: "site", part: "logo" }]), rowOf("r2", [text("b2", "Menu")])]),
+    );
+    const plain = await part(pub, both, "PL list block", "marketplace");
+    const list = await templates.listTemplates(mine, both, "marketplace");
+    expect(list.find((t) => t.id === header)).toMatchObject({
+      kind: "page",
+      pageType: "header",
+      summary: "2 rows: site part, text",
+      publisher: `Pub Shop ${run}`,
+      active: false,
+    });
+    expect(list.find((t) => t.id === plain)).toMatchObject({ kind: "block", pageType: null });
+  });
+
+  it("shares page layouts like the others: marketplace to every member, stores to owners of both, never private or hidden", async () => {
+    const one = layoutOf("page", [rowOf("r1", [text("b1", "Hi")])]);
+    const market = await layout("PL vis market", one, "marketplace");
+    const stores = await layout("PL vis stores", one, "stores");
+    await layout("PL vis private", one, "private");
+    expect(await ids(theirs, other, "marketplace")).toContain("PL vis market");
+    expect(await ids(theirs, other, "marketplace")).not.toContain("PL vis stores");
+    expect(await ids(mine, both, "stores")).toEqual(expect.arrayContaining(["PL vis stores"]));
+    expect(await ids(mine, both, "stores")).not.toContain("PL vis private");
+    expect(await ids(mine, staff, "stores")).toEqual([]);
+    expect(await ids(pub, both, "marketplace")).not.toContain("PL vis market");
+
+    expect(await templates.setTemplateHidden(moderator, market, true)).toEqual({ ok: true });
+    expect(await ids(theirs, other, "marketplace")).not.toContain("PL vis market");
+    expect(await templates.applyTemplate(theirs, other, market)).toMatchObject({ ok: false });
+    expect(await templates.previewTemplate(theirs, other, market)).toMatchObject({ ok: false });
+    expect((await templates.listMarketplaceTemplates()).find((t) => t.id === market)).toMatchObject({
+      kind: "page",
+      pageType: "page",
+      hidden: true,
+    });
+    await templates.setTemplateHidden(moderator, market, false);
+    expect(await ids(theirs, other, "marketplace")).toContain("PL vis market");
+    expect((await templates.listMarketplaceTemplates()).find((t) => t.id === stores)).toBeUndefined();
+  });
+
+  it("switches page layouts on and off for a store like the other templates", async () => {
+    const id = await layout("PL act", layoutOf("footer", [rowOf("r1", [text("b1", "Hi")])]));
+    const find = async () => (await templates.listTemplates(theirs, other, "marketplace")).find((t) => t.id === id);
+    expect(await find()).toMatchObject({ active: false, kind: "page", pageType: "footer" });
+    expect(await templates.setTemplateActive(theirs, other, id, true)).toEqual({ ok: true });
+    expect(await find()).toMatchObject({ active: true });
+    expect(await templates.setTemplateActive(theirs, other, id, false)).toEqual({ ok: true });
+    expect(await find()).toMatchObject({ active: false });
+    expect(await templates.setTemplateActive(pub, both, id, true)).toMatchObject({ ok: false });
+  });
+
+  it("uses a page layout: pictures of every row are copied within the caps, the rest cleaned, CSS kept when clean", async () => {
+    copied.length = 0;
+    const first = await picture(pub, "pl-first");
+    const second = await picture(pub, "pl-second");
+    const bg = await picture(pub, "pl-bg");
+    const id = await layout(
+      "PL use",
+      layoutOf(
+        "page",
+        [
+          rowOf("r1", [
+            image("b1", first),
+            { id: "b2", type: "button", label: "Buy", href: `/s/tpl-pub-${run}/no/products` },
+          ]),
+          rowOf(
+            "r2",
+            [
+              image("b3", second),
+              {
+                id: "b4",
+                type: "emailForm",
+                recipients: ["o@pub.example"],
+                subject: "",
+                fields: [],
+                submitLabel: "",
+                successMessage: "",
+              },
+            ],
+            {
+              background: { type: "image", image: { url: bg, width: 800, height: 600 }, overlay: null },
+            },
+          ),
+        ],
+        ".hero { color: red; }",
+      ),
+    );
+    const result = await templates.applyTemplate(theirs, other, id, { copyFile });
+    if (!result.ok || result.part.kind !== "page") throw new Error("not used");
+    const content = result.part.content;
+    expect(result.part).toMatchObject({ id, global: false, sharing: "private", uses: 0 });
+    expect(content.pageType).toBe("page");
+    expect(content.css).toBe(".hero { color: red; }");
+    const json = JSON.stringify(content);
+    expect(json).not.toContain(pub);
+    expect(json).not.toContain("tpl-pub");
+    expect(json).not.toContain("o@pub.example");
+    expect(json.match(new RegExp(`/product-media/${theirs}/`, "g"))).toHaveLength(3);
+    expect(new Set(copied.filter((c) => !c.endsWith("-480")))).toEqual(
+      new Set([`${pub}/${run}-pl-first.webp`, `${pub}/${run}-pl-second.webp`, `${pub}/${run}-pl-bg.webp`]),
+    );
+    expect((content.rows[0].columns[0].blocks[1] as { href: string }).href).toBe("");
+  });
+});
+
+describe("previewing a template (D127)", () => {
+  const image = (id: string, url: string) =>
+    ({ id, type: "image", image: { url, width: 800, height: 600, alt: "Alt" }, caption: "" }) as unknown as PageBlock;
+  const rowOf = (id: string, blocks: unknown[]) =>
+    ({ id, type: "row", layout: "1", columns: [{ id: `${id}-col`, blocks }] }) as unknown as PageRow;
+  const make = async (name: string, input: Record<string, unknown>, sharing = "marketplace") => {
+    const result = await saved.createSavedPart(both, pub, { name: `${name} ${run}`, sharing, ...input });
+    if (!result.ok) throw new Error(result.problems.join(" "));
+    return result.id;
+  };
+  const preview = async (storeId: string, who: Account, id: string) => {
+    const result = await templates.previewTemplate(storeId, who, id);
+    if (!result.ok) throw new Error(result.problems.join(" "));
+    return result.preview;
+  };
+  const counts = async () => {
+    const [media] = await db().execute<Row>(
+      sql`select count(*)::int as n from commerce.media where store_id = ${theirs}::uuid`,
+    );
+    const [log] = await db().execute<Row>(
+      sql`select count(*)::int as n from commerce.audit_log where store_id = ${theirs}::uuid or store_id = ${mine}::uuid`,
+    );
+    return [Number(media.n), Number(log.n)];
+  };
+
+  it("draws a page layout as its rows and CSS, cleaned as a use would, and writes nothing", async () => {
+    const path = `${pub}/${run}-pv-pic.webp`;
+    const url = `${files}/product-media/${path}`;
+    await db().execute(sql`
+      insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes)
+      values (${pub}::uuid, 'image', ${url}, 'product-media', ${path}, ${`pv-pic-${run}`}, 'image/webp', 1000)
+    `);
+    const id = await make("PV layout", {
+      kind: "page",
+      content: {
+        pageType: "header",
+        css: ".a { color: blue; }",
+        rows: [
+          rowOf("r1", [{ id: "s1", type: "site", part: "logo" }, image("b1", url)]),
+          rowOf("r2", [
+            { id: "b2", type: "button", label: "Go", href: `/s/tpl-pub-${run}/no/x` },
+            {
+              id: "b3",
+              type: "emailForm",
+              recipients: ["o@pub.example"],
+              subject: "",
+              fields: [],
+              submitLabel: "",
+              successMessage: "",
+            },
+          ]),
+        ],
+      },
+    });
+    const before = await counts();
+    const view = await preview(theirs, other, id);
+    expect(view).toMatchObject({
+      id,
+      kind: "page",
+      name: `PV layout ${run}`,
+      publisher: `Pub Shop ${run}`,
+      fromKaizen: false,
+      pageType: "header",
+      css: ".a { color: blue; }",
+      summary: "2 rows: site part, picture, button, email form",
+    });
+    expect(view.rows.map((r) => r.id)).toEqual(["r1", "r2"]);
+    const json = JSON.stringify(view.rows);
+    expect(json).not.toContain("tpl-pub");
+    expect(json).not.toContain("o@pub.example");
+    // View-only: the picture is still the publisher's, and nothing was copied, written or audited.
+    expect(json).toContain(url);
+    expect(await counts()).toEqual(before);
+  });
+
+  it("wraps a row, column or component in rows, with ids that stay unique", async () => {
+    const row = await make("PV row", { kind: "row", content: rowOf("rw", [text("b1", "Hi")]) });
+    const column = await make("PV column", {
+      kind: "column",
+      content: { id: "cl", blocks: [text("b1", "Hi"), text("b2", "There")] },
+    });
+    const block = await make("PV block", { kind: "block", content: text("b1", "Hi") });
+    const r = await preview(theirs, other, row);
+    expect(r).toMatchObject({ kind: "row", pageType: null, css: "" });
+    expect(r.rows.map((x) => x.id)).toEqual(["rw"]);
+    const c = await preview(theirs, other, column);
+    expect(c.rows).toHaveLength(1);
+    expect(c.rows[0].columns.map((x) => x.id)).toEqual(["cl"]);
+    expect(c.rows[0].columns[0].blocks).toHaveLength(2);
+    const b = await preview(theirs, other, block);
+    expect(b.rows).toHaveLength(1);
+    expect(b.rows[0].columns).toHaveLength(1);
+    expect(b.rows[0].columns[0].blocks.map((x) => x.id)).toEqual(["b1"]);
+    for (const view of [r, c, b]) {
+      const all = view.rows.flatMap((x) => [x.id, ...x.columns.flatMap((y) => [y.id, ...y.blocks.map((z) => z.id)])]);
+      expect(new Set(all).size).toBe(all.length);
+    }
+  });
+
+  it("names Kaizen as the publisher of its own templates, and keeps its HTML", async () => {
+    const made = await saved.createSavedPart(moderator, null, {
+      kind: "block",
+      name: `PV kaizen ${run}`,
+      content: { id: "b1", type: "html", html: "<b>Hi</b>", title: "Hi" },
+    });
+    if (!made.ok) throw new Error("not saved");
+    const view = await preview(theirs, other, made.id);
+    expect(view).toMatchObject({ publisher: "Kaizen", fromKaizen: true });
+    expect(view.rows[0].columns[0].blocks[0]).toMatchObject({ html: "<b>Hi</b>" });
+  });
+
+  it("is unavailable exactly when a use would be: own store, private, hidden, not a member, unknown", async () => {
+    const one = { kind: "block", content: text("b1", "Hi") };
+    const market = await make("PV a market", one);
+    const stores = await make("PV a stores", one, "stores");
+    const priv = await make("PV a private", one, "private");
+    const unavailable = { ok: false, problems: ["This template is not available to your store."] };
+    expect(await templates.previewTemplate(theirs, other, market)).toMatchObject({ ok: true });
+    expect(await templates.previewTemplate(pub, both, market)).toEqual(unavailable);
+    expect(await templates.previewTemplate(theirs, other, priv)).toEqual(unavailable);
+    expect(await templates.previewTemplate(mine, both, priv)).toEqual(unavailable);
+    expect(await templates.previewTemplate(theirs, other, stores)).toEqual(unavailable);
+    expect(await templates.previewTemplate(mine, both, stores)).toMatchObject({ ok: true });
+    expect(await templates.previewTemplate(mine, pubOwner, stores)).toEqual(unavailable);
+    expect(await templates.previewTemplate(mine, stranger, market)).toEqual(unavailable);
+    expect(await templates.previewTemplate(theirs, other, "nope")).toEqual(unavailable);
+    // A template that cannot be read is not shown either.
+    const [broken] = await db().execute<Row>(sql`
+      insert into commerce.saved_parts (store_id, kind, name, content, sharing)
+      values (${pub}::uuid, 'page', ${`PV broken ${run}`}, '{"pageType":"nope"}'::jsonb, 'marketplace') returning id
+    `);
+    expect(await templates.previewTemplate(theirs, other, String(broken.id))).toMatchObject({ ok: false });
+  });
+});

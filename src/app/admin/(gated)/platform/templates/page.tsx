@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { LAYOUT_TYPE_LABELS } from "@/lib/page-layout";
 import { KIND_LABELS, SHARING_LABELS } from "@/lib/templates";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listMarketplaceTemplates } from "@/server/templates";
@@ -27,9 +28,9 @@ export default async function PlatformTemplatesPage() {
       <div>
         <h1 className="text-2xl font-semibold">Templates</h1>
         <p className="max-w-3xl text-sm text-muted">
-          Rows, columns and components that store owners share with every store, live as soon as they are shared, with
-          the store&apos;s name on them, and Kaizen&apos;s own saved parts. Hide one and it is in no store&apos;s list;
-          pages that already have a copy keep it.
+          Whole page layouts, rows, columns and components that store owners share with every store, live as soon as
+          they are shared, with the store&apos;s name on them, and Kaizen&apos;s own saved parts. Hide one and it is in
+          no store&apos;s list; pages that already have a copy keep it.
         </p>
       </div>
       <p className="text-sm text-muted">
@@ -51,7 +52,8 @@ export default async function PlatformTemplatesPage() {
                 )}
               </span>
               <span className="text-muted">
-                {KIND_LABELS[template.kind].one}: {template.summary}
+                {KIND_LABELS[template.kind].one}
+                {template.pageType ? ` for ${LAYOUT_TYPE_LABELS[template.pageType].many}` : ""}: {template.summary}
               </span>
               <span className="text-muted">
                 By {template.publisher}

@@ -130,3 +130,32 @@ have them too, and `clone_store()` needs nothing); every other template is off u
   (`setTemplateHidden()`, platform admins only, audited as `platform.template_hidden` / `_unhidden`). Copies already made
   stay.
 - Nothing here is cached, so there are no tags to update; the media library and saved parts are read fresh.
+
+## As built: page layouts and preview (D127), server side
+
+A whole page's layout is a template too: a saved part (`commerce.saved_parts`) of kind `page` whose content is a
+`PageLayout` (`src/lib/page-layout.ts`: `pageType`, the page's `rows` and its own `css`; nothing else of the page comes
+with it). It is saved, shared (`sharing`), switched on, hidden and used exactly as rows, columns and components are
+(D125), and only ever for pages of its own kind (`layoutFits()`): a header's rows are made of components no article has.
+Migration `template_page_layouts` widens `saved_parts_kind` and adds `saved_parts_page_not_global`: a page layout is
+never global, so it is left out of the globals machinery (`lockSavedParts()` skips it), counts toward the 200 saved
+parts, and has its uses of globals taken out when saved (`plainLayout()`); no texts in other languages.
+
+- **Using** (`applyTemplate()`): `sanitizeTemplate('page', …)` cleans every row as a row is cleaned (site parts and
+  product parts stay, since the layout only goes to the same kind of page); the layout's CSS stays only when it passes
+  `cssProblem()` and holds no address in Storage, else it is emptied. Pictures of all rows are copied under the same
+  caps (30 files, 80 MB), then the same last check and `savedPartInput`.
+- **Preview** (`previewTemplate(storeId, account, id)`): the same visibility rule (`visibleTo`) and the same cleaning as
+  a use, but nothing is copied, written or audited, so its pictures still point at the publisher's public files. It
+  returns a `TemplatePreview` (`src/lib/templates.ts`) whose `rows` are always what is drawn: a page layout's rows, a
+  row itself, a column as a row of one column, a block as a single-column row (`preview-row`, `preview-column`).
+- **Preview page**: `/admin/account/templates/s/{store}/{templateId}/preview` (`templatePreviewPath()`,
+  `src/lib/template-paths.ts`), in the chrome-free `(print)` route group and so not in `ADMIN_PAGES`; `noindex`,
+  `requireMember()`, 404 when the template is unavailable. It draws the template with the store's own theme (`[data-theme-canvas]`),
+  fonts and CSS through `PageDrawing` (`[store]/pages/drawing.tsx`, also what the draft preview uses) as its kind of
+  page: a header or footer in the store's first country, a product layout with one of its products, an article under
+  its heading, anything else as rows. A slim bar says "Preview — nothing is saved or copied" with the name, kind and
+  publisher; the content is `inert` with `pointer-events: none`, so no link, form or focus does anything. It follows
+  the width of its frame, so a 390 px frame shows the phone layout.
+- **Lists**: `TemplateItem.pageType` and the moderation list's `pageType` say which kind of page a layout is for (null
+  for the rest); the moderation page names it ("Page layout for headers").
