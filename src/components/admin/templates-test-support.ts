@@ -69,7 +69,7 @@ export function fakeActions(
       calls.use.push(id);
       return answers.use ?? { ok: true, part: saved("copy") };
     },
-    previewHref: (id) => `/admin/preview/templates/${id}`,
+    previewStore: "demo",
     setSharing: async (id, sharing) => {
       calls.setSharing.push([id, sharing]);
       return { ok: true };

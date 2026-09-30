@@ -392,7 +392,7 @@ describe("asking the server for a template's copy", () => {
   });
 
   it("previews a template at the address the server gives", () => {
-    expect(fakeActions().actions.previewHref("abc")).toContain("abc");
+    expect(fakeActions().actions.previewStore).toBe("demo");
   });
 });
 

@@ -185,6 +185,7 @@ import { tileEntity } from "@/lib/tile-fields";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
 import type { PartSharing, TemplateActions, TemplateItem, TemplateSource } from "@/lib/templates";
+import { templatePreviewPath } from "@/lib/template-paths";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
@@ -889,7 +890,7 @@ export function PageBuilder({
             />
             <TemplatePreviewDialog
               item={previewed}
-              href={previewed ? templates.previewHref(previewed.id) : null}
+              href={previewed ? templatePreviewPath(templates.previewStore, previewed.id) : null}
               returnFocus={previewOpener}
               reason={previewed ? blockedReason(previewed, { pageType, rowsFull, blocksFull }) : null}
               switching={previewed ? controller.busy.has(previewed.id) : false}

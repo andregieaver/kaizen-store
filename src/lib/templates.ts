@@ -86,10 +86,11 @@ export type TemplateActions = {
   /** A template made ready to place on a page: a copy that is not saved, with what belonged to the other store left out. */
   use: (id: string) => Promise<TemplateResult<{ part: SavedPart }>>;
   /**
-   * Where a template is shown before it is activated or used (D127): the address of a page with nothing but the
-   * template on it, drawn as the store's own pages are, for the builder to show in a frame. Nothing is copied or saved.
+   * The store a template is previewed for (D127): the builder shows `templatePreviewPath(previewStore, id)`, a page
+   * with nothing but the template on it, drawn as the store's own pages are, in a frame. Nothing is copied or saved.
+   * A plain value, not a function: this object is handed from the server to the browser, which cannot take a function.
    */
-  previewHref: (id: string) => string;
+  previewStore: string;
   /** Changes how one of this store's own saved parts is shared. */
   setSharing: (id: string, sharing: PartSharing) => Promise<TemplateResult>;
 };
