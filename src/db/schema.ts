@@ -5867,3 +5867,36 @@ export const planFeatureGrants = commerce.table(
   },
   (t) => [primaryKey({ columns: [t.featureId, t.planId] }), index("plan_feature_grants_plan_idx").on(t.planId)],
 );
+
+/**
+ * A store's own agreement with a shipping carrier (D133, `src/lib/shipping-carriers.ts`): the carrier's API details the
+ * store saved from Integrations, prepared before the carrier's connection exists. Non-secret details are in `details`;
+ * the secrets (API keys) are one encrypted JSON in `secrets_encrypted`, with `secret_hints` (their last four
+ * characters) to recognise them by. Nothing is sent to a carrier from this row yet.
+ */
+export const shippingCarriers = commerce.table(
+  "shipping_carriers",
+  {
+    storeId: storeId().references(() => stores.id),
+    /** `bring`, `postnord`, `porterbuddy` or `helthjem`. */
+    carrier: text("carrier").notNull(),
+    /** `test` or `live`. */
+    environment: text("environment").notNull().default("test"),
+    details: jsonb("details").notNull().default({}),
+    secretsEncrypted: text("secrets_encrypted"),
+    secretHints: jsonb("secret_hints").notNull().default({}),
+    /** The countries (markets) the store wants to ship to with it. */
+    countries: text("countries").array().notNull().default(sql`'{}'::text[]`),
+    /** Every detail the carrier needs is saved. */
+    complete: boolean("complete").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.carrier] }),
+    index("shipping_carriers_updated_by_idx").on(t.updatedBy),
+    check("shipping_carriers_carrier", sql`${t.carrier} in ('bring', 'postnord', 'porterbuddy', 'helthjem')`),
+    check("shipping_carriers_environment", sql`${t.environment} in ('test', 'live')`),
+  ],
+);

@@ -1457,6 +1457,20 @@
       "when": 1790804769574,
       "tag": "20260930214609_plan_features_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 208,
+      "version": "7",
+      "when": 1790807539668,
+      "tag": "20260930223219_shipping_carriers",
+      "breakpoints": true
+    },
+    {
+      "idx": 209,
+      "version": "7",
+      "when": 1790807544061,
+      "tag": "20260930223224_shipping_carriers_rules",
+      "breakpoints": true
     }
   ]
 }

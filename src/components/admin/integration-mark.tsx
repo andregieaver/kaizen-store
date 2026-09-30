@@ -4,6 +4,10 @@ const TONES: Record<string, string> = {
   make: "bg-violet-700 text-white",
   slack: "bg-fuchsia-900 text-white",
   tripletex: "bg-sky-800 text-white",
+  bring: "bg-red-700 text-white",
+  postnord: "bg-blue-700 text-white",
+  porterbuddy: "bg-emerald-700 text-white",
+  helthjem: "bg-amber-600 text-white",
 };
 
 export function IntegrationMark({ id }: { id: string }) {

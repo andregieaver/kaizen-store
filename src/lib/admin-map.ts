@@ -335,8 +335,11 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   }),
   store("company.place.new", "/settings/company/places/new", "New place", "Store", "Adds a shop or pickup point."),
   store("company.place", "/settings/company/places/[placeId]", "Place", "Store", "One shop or pickup point."),
-  store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing.", { keywords: ["zapier", "make", "slack", "webhooks"] }),
+  store("integrations", "/integrations", "Integrations", "Store", "Zapier, Make and Slack, and how their sends are doing; shipping carriers being prepared.", { keywords: ["zapier", "make", "slack", "webhooks", "shipping carriers"] }),
   store("integration", "/integrations/[provider]", "Integration", "Store", "Connects one integration, chooses its events, tests it, and shows recent sends."),
+  store("integrations.shipping", "/integrations/shipping/[carrier]", "Shipping carrier", "Store", "Saves the store's own agreement with Posten / Bring, PostNord, Porterbuddy or Helthjem, ready for the day its connection arrives.", {
+    keywords: ["posten", "bring", "postnord", "porterbuddy", "helthjem", "carrier", "freight", "labels", "tracking"],
+  }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
   store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizen's.", { keywords: ["model", "provider", "openai"] }),
   store("features", "/settings/features", "Features", "Store", "Switches on bookings and subscription boxes, and sets the store's time zone. (Work is switched on under Work, at the owner's level.)", {
