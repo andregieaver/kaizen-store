@@ -12,6 +12,7 @@ import {
   type OverviewTimer,
   type WorkOverview,
 } from "@/lib/work-overview";
+import { workBase } from "@/lib/work-paths";
 
 type Row = Record<string, unknown>;
 
@@ -54,7 +55,7 @@ export async function getWorkOverview(store: {
   timeZone: string;
 }): Promise<WorkOverviewView> {
   const storeId = store.id;
-  const base = `/admin/${store.slug}/work`;
+  const base = workBase(store.slug);
   const today = todayIn(store.timeZone);
 
   const [invoiceRows, entryRows, timerRows, clientCountRows] = await Promise.all([

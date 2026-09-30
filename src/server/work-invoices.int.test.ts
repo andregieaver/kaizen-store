@@ -46,7 +46,7 @@ vi.mock("@/server/auth", async () => {
 });
 
 const invoices = await import("./work-invoices");
-const actions = await import("@/app/admin/(gated)/[store]/work/invoice-actions");
+const actions = await import("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions");
 const { getStore } = await import("./stores");
 
 /**

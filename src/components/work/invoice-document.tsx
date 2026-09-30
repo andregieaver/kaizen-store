@@ -295,6 +295,11 @@ function Head({ doc, title, facts }: { doc: Doc; title: string; facts: [string, 
       <div>
         <h1>{title}</h1>
         {doc.documentNumber && <p className="wd-strong">{doc.documentNumber}</p>}
+        {doc.kind === "invoice" && doc.imported && (
+          <p className="wd-muted" style={{ fontSize: "9pt" }}>
+            {doc.labels.importedNote}
+          </p>
+        )}
       </div>
       <dl className="wd-meta" aria-label={title}>
         {facts

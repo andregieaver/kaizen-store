@@ -70,6 +70,8 @@ export type DocumentLabels = {
   paid: string;
   hoursUnit: string;
   unitUnit: string;
+  /** The small note on an invoice moved in from Kaizen Life (docs/work.md WP15). */
+  importedNote: string;
 };
 
 const LABELS: Record<DocumentLanguage, DocumentLabels> = {
@@ -108,6 +110,7 @@ const LABELS: Record<DocumentLanguage, DocumentLabels> = {
     paid: "Paid",
     hoursUnit: "h",
     unitUnit: "pcs",
+    importedNote: "Imported from Kaizen Life",
   },
   nb: {
     invoice: "Faktura",
@@ -144,6 +147,7 @@ const LABELS: Record<DocumentLanguage, DocumentLabels> = {
     paid: "Betalt",
     hoursUnit: "t",
     unitUnit: "stk",
+    importedNote: "Importert fra Kaizen Life",
   },
   sv: {
     invoice: "Faktura",
@@ -180,6 +184,7 @@ const LABELS: Record<DocumentLanguage, DocumentLabels> = {
     paid: "Betald",
     hoursUnit: "tim",
     unitUnit: "st",
+    importedNote: "Importerad från Kaizen Life",
   },
   da: {
     invoice: "Faktura",
@@ -216,6 +221,7 @@ const LABELS: Record<DocumentLanguage, DocumentLabels> = {
     paid: "Betalt",
     hoursUnit: "t",
     unitUnit: "stk",
+    importedNote: "Importeret fra Kaizen Life",
   },
 };
 

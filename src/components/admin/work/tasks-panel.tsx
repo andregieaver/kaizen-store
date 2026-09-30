@@ -25,7 +25,7 @@ import {
   reorderTasksAction,
   setTaskEstimateAction,
   setTaskStatusAction,
-} from "@/app/admin/(gated)/[store]/work/actions";
+} from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import { formatDuration } from "@/lib/work-time";
 import { liveMinutes } from "@/lib/work-timer-ui";
 import {
@@ -470,7 +470,7 @@ function TaskRow({
         </span>
         <span className="ml-auto flex flex-wrap items-center gap-1">
           <TimerToggle
-            target={{ assignmentId, assignmentName, clientId, clientName, taskId: task.id, taskTitle: task.title }}
+            target={{ storeSlug, storeName: null, assignmentId, assignmentName, clientId, clientName, taskId: task.id, taskTitle: task.title }}
             subject={task.title}
           />
           <button type="button" onClick={onLogTime} className={smallButton}>

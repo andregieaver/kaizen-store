@@ -28,7 +28,7 @@ export type Account = {
 /** An account's access to one store. */
 export type Membership = { account: Account; store: Store; role: Role };
 
-export type StoreSummary = { slug: string; name: string; role: Role };
+export type StoreSummary = { slug: string; name: string; role: Role; /** The store has Work switched on (D122). */ workOn: boolean };
 
 type Row = Record<string, unknown>;
 
@@ -89,7 +89,7 @@ export async function requirePlatformAdmin(): Promise<Account> {
 /** The stores an account works in, by name. */
 export async function listStores(account: Account): Promise<StoreSummary[]> {
   const rows = await db().execute<Row>(sql`
-    select s.slug, s.name, m.role
+    select s.slug, s.name, m.role, 'work' = any(s.modules) as work_on
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${account.id}::uuid and m.disabled_at is null
@@ -100,6 +100,7 @@ export async function listStores(account: Account): Promise<StoreSummary[]> {
     slug: String(row.slug),
     name: String(row.name),
     role: row.role as Role,
+    workOn: Boolean(row.work_on),
   }));
 }
 

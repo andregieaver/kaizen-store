@@ -642,8 +642,8 @@ describe("how an invoice reads", () => {
     expect(readFxRate("abc")).toBeNull();
     expect(readFxRate("1.123456789")).toBeNull();
     expect(problemHref("company", { storeSlug: "kaffe", clientId: "c1" }).href).toBe("/admin/kaffe/settings/company");
-    expect(problemHref("settings", { storeSlug: "kaffe", clientId: "c1" }).href).toBe("/admin/kaffe/settings/work");
-    expect(problemHref("client", { storeSlug: "kaffe", clientId: "c1" }).href).toBe("/admin/kaffe/work/clients/c1");
+    expect(problemHref("settings", { storeSlug: "kaffe", clientId: "c1" }).href).toBe("/admin/account/work/s/kaffe/settings");
+    expect(problemHref("client", { storeSlug: "kaffe", clientId: "c1" }).href).toBe("/admin/account/work/s/kaffe/clients/c1");
     expect(problemHref("invoice", { storeSlug: "kaffe", clientId: "c1" }).href).toBe("#invoice-lines");
   });
 });

@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 // The actions are server code (they import the database); the dialogs call them only when submitted.
 vi.mock("server-only", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-actions", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-view-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { CreditForm, CreditInvoiceButton } from "./invoice-credit-dialog";

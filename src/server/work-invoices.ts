@@ -169,8 +169,13 @@ export type BuyerSnapshot = {
 export type InvoiceHeader = {
   id: string;
   status: InvoiceStatus;
+  /** Prefix and number; for an imported invoice its Life number, or the label `Imported`. Null while a draft. */
   documentNumber: string | null;
   number: number | null;
+  /** Moved in from Kaizen Life (docs/work.md WP15): history with its own number and amounts, never from the series. */
+  imported: boolean;
+  /** The number the invoice had in Life, when it had one. */
+  legacyNumber: string | null;
   clientId: string;
   assignmentId: string | null;
   recurringInvoiceId: string | null;
@@ -2295,7 +2300,7 @@ function totalsOfStored(lines: readonly InvoiceLine[]): InvoiceTotals {
 }
 
 const INVOICE_SELECT = sql`
-  select i.id, i.status, i.number, i.document_number, i.client_id, i.assignment_id, i.recurring_invoice_id, i.currency::text as currency,
+  select i.id, i.status, i.number, i.document_number, i.imported, i.legacy_number, i.client_id, i.assignment_id, i.recurring_invoice_id, i.currency::text as currency,
          i.locale, i.payment_days, i.issued_on::text as issued_on, i.due_on::text as due_on, i.sent_at, i.paid_at,
          i.service_from::text as service_from, i.service_to::text as service_to, i.notes, i.reference, i.subtotal_minor, i.vat_minor,
          i.total_minor, i.vat_home_minor, i.fx_rate::text as fx_rate, i.seller, i.buyer, i.vat_notes, i.public_token, i.sent_to,
@@ -2320,6 +2325,8 @@ function toHeader(
     status,
     documentNumber: text(row.document_number),
     number: intOrNull(row.number),
+    imported: row.imported === true,
+    legacyNumber: text(row.legacy_number),
     clientId: String(row.client_id),
     assignmentId: text(row.assignment_id),
     recurringInvoiceId: text(row.recurring_invoice_id),
@@ -2688,7 +2695,10 @@ export type InvoiceDocument = DocumentBase & {
   /** A draft is a preview: no number, live seller and buyer. */
   draft: boolean;
   status: InvoiceStatus;
+  /** As printed: for an imported invoice its Life number, or null when Life gave it none. */
   documentNumber: string | null;
+  /** Imported from Kaizen Life: the document carries a note saying so and is never emailed. */
+  imported: boolean;
   issuedOn: string | null;
   dueOn: string | null;
   paymentDays: number | null;
@@ -2770,12 +2780,15 @@ export async function invoiceDocumentData(storeId: string, invoiceId: string): P
     totals.vatMinor === invoice.vatMinor &&
     totals.totalMinor === invoice.totalMinor;
   const owed = draft ? invoice.totalMinor : detail.amounts.outstandingMinor;
+  // An imported invoice prints the number it had in Life; when it had none, no number (never the label `Imported`).
+  const printedNumber = invoice.imported ? invoice.legacyNumber : invoice.documentNumber;
   return {
     kind: "invoice",
     invoiceId,
     draft,
     status: invoice.status,
-    documentNumber: invoice.documentNumber,
+    documentNumber: printedNumber,
+    imported: invoice.imported,
     language,
     locale: invoice.locale,
     labels: documentLabels(language),
@@ -2797,7 +2810,7 @@ export async function invoiceDocumentData(storeId: string, invoiceId: string): P
     payment: {
       bankAccount: sellerDoc.bankAccount,
       bic: sellerDoc.bic,
-      paymentReference: invoice.documentNumber,
+      paymentReference: printedNumber,
       note: sellerDoc.paymentNote,
       dueOn: invoice.dueOn ?? invoice.tentativeDueOn,
       amountDueMinor: owed,

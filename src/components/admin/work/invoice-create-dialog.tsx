@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 
-import { createDraftInvoiceAction } from "@/app/admin/(gated)/[store]/work/invoice-actions";
+import { createDraftInvoiceAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
 import {
   findAssignmentDraftAction,
   newInvoiceChoicesAction,
-} from "@/app/admin/(gated)/[store]/work/invoice-view-actions";
+} from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions";
 import { Modal } from "@/components/admin/modal";
 import type { NewInvoiceChoices } from "@/server/work-invoice-screens";
 
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 export type NewInvoiceProps = {
   storeSlug: string;
@@ -95,7 +96,7 @@ function NewInvoiceForm({
   const draftId = chosenAssignment?.draftInvoiceId ?? existing;
   const shown = currency ?? chosenClient?.currency ?? "";
   const currencies = shown && !choices.currencies.includes(shown) ? [shown, ...choices.currencies] : choices.currencies;
-  const base = `/admin/${storeSlug}/work`;
+  const base = workBase(storeSlug);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -29,6 +29,7 @@ function invoice(locale: string, over: Partial<InvoiceDocument> = {}): InvoiceDo
     draft: false,
     status: "sent",
     documentNumber: "W-1001",
+    imported: false,
     language,
     locale,
     labels: documentLabels(language),

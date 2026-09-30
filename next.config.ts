@@ -3,6 +3,7 @@ import { PHASE_DEVELOPMENT_SERVER, PHASE_PRODUCTION_BUILD } from "next/constants
 
 import { storeDomain, storeHosts } from "./src/lib/paths";
 import { siteUrl } from "./src/lib/site";
+import { LEGACY_WORK_REDIRECTS } from "./src/lib/work-paths";
 import { storeHostRoutes } from "./src/lib/store-hosts";
 import { readStoreHosts } from "./src/lib/store-hosts-build";
 
@@ -37,7 +38,8 @@ export default async function config(phase: string): Promise<NextConfig> {
   return {
     ...nextConfig,
     ...(building ? { env: { NEXT_PUBLIC_STORE_HOSTS: JSON.stringify(hosts) } } : {}),
-    redirects: async () => routes.redirects,
+    // Work moved to the owner's level (D123): its old store-level addresses go to the new ones.
+    redirects: async () => [...LEGACY_WORK_REDIRECTS, ...routes.redirects],
     rewrites: async () => ({ beforeFiles: routes.rewrites, afterFiles: [], fallback: [] }),
   };
 }

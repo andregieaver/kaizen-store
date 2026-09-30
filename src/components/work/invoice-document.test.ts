@@ -83,6 +83,7 @@ function invoice(o: InvoiceOptions = {}): InvoiceDocument {
     draft: false,
     status: "sent",
     documentNumber: "W-1001",
+    imported: false,
     language,
     locale,
     labels: documentLabels(language),

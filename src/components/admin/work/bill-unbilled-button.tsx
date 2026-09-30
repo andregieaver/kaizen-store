@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { billUnbilledAction } from "@/app/admin/(gated)/[store]/work/invoice-view-actions";
+import { billUnbilledAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions";
 
 import { Problems, secondaryButton } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 /**
  * "Bill unbilled time" (docs/work.md 6.4): opens the assignment's draft invoice (or starts one; a client without an
@@ -38,7 +39,7 @@ export function BillUnbilledButton({
           clientId: clientId ?? null,
           assignmentId: assignmentId ?? null,
         });
-        if (result.ok) router.push(`/admin/${storeSlug}/work/invoices/${result.invoiceId}`);
+        if (result.ok) router.push(`${workBase(storeSlug)}/invoices/${result.invoiceId}`);
         else setProblems(result.problems);
       } catch {
         setProblems(["The invoice could not be made. Check your connection and try again."]);

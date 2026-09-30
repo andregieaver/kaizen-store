@@ -47,7 +47,7 @@ type Row = Record<string, unknown>;
  * a new email. A reminder is once per invoice and day.
  */
 
-/** `reason` is a short code when nothing was sent: `not_found`, `not_issued`, `not_open`, `no_email`, `invalid_email`, `already_sent`, `failed`. */
+/** `reason` is a short code when nothing was sent: `not_found`, `not_issued`, `imported`, `not_open`, `no_email`, `invalid_email`, `already_sent`, `failed`. */
 export type WorkEmailResult = { sent: boolean; reason?: string; outcome?: SendOutcome; to?: string };
 
 export type WorkEmailOptions = {
@@ -177,6 +177,8 @@ export async function sendInvoiceEmail(
   if (!isUuid(storeId) || !isUuid(invoiceId)) return refused("not_found");
   const doc = await invoiceDocumentData(storeId, invoiceId);
   if (!doc) return refused("not_found");
+  // An imported invoice was sent from Kaizen Life: never emailed again from here (nor by the import).
+  if (doc.imported) return refused("imported");
   if (!printableState(doc).printable || !doc.documentNumber) return refused("not_issued");
   const address = chooseAddress(opts.to, doc.buyer.email, await clientEmailOf(storeId, invoiceId));
   if (!address.ok) return refused(address.reason);
@@ -265,6 +267,7 @@ export async function sendPaymentReminderEmail(
   if (!isUuid(storeId) || !isUuid(invoiceId)) return refused("not_found");
   const doc = await invoiceDocumentData(storeId, invoiceId);
   if (!doc) return refused("not_found");
+  if (doc.imported) return refused("imported");
   if (!printableState(doc).printable || !doc.documentNumber) return refused("not_issued");
   if (doc.status !== "sent" || doc.payment.amountDueMinor <= 0) return refused("not_open");
   const address = chooseAddress(opts.to, doc.buyer.email, await clientEmailOf(storeId, invoiceId));

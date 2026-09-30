@@ -15,6 +15,7 @@ import {
   setWorkSeries,
   workReadiness,
 } from "./work-settings";
+import { workBase } from "@/lib/work-paths";
 
 type Row = Record<string, unknown>;
 
@@ -437,7 +438,7 @@ describe("the overview's rows", () => {
     expect(view.invoiceNumbers[String(draft.id)]).toBe(String(issued.document_number));
     expect(view.overview.attention[0]).toMatchObject({
       text: "1 invoice is overdue, the oldest by 26 days.",
-      href: `/admin/${slug}/work/invoices?show=overdue`,
+      href: `${workBase(slug)}/invoices?show=overdue`,
     });
 
     // A payment that covers it takes it out of the overdue.

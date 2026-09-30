@@ -4891,8 +4891,12 @@ export const workInvoices = commerce.table(
     status: text("status").notNull().default("draft"),
     series: text("series").notNull().default("work_invoice"),
     number: bigint("number", { mode: "number" }),
-    /** Prefix and number, e.g. `W-1042`; null while a draft. */
+    /** Prefix and number, e.g. `W-1042`; null while a draft. An imported invoice shows its Life number here, or `Imported`. */
     documentNumber: text("document_number"),
+    /** Imported from Kaizen Life (docs/work.md WP15): history that keeps its own number and amounts, never numbered from the series. */
+    imported: boolean("imported").notNull().default(false),
+    /** The number the invoice had in Life, when it had one (imported invoices only). */
+    legacyNumber: text("legacy_number"),
     issuedOn: date("issued_on", { mode: "string" }),
     dueOn: date("due_on", { mode: "string" }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
@@ -4928,7 +4932,13 @@ export const workInvoices = commerce.table(
   (t) => [
     unique("work_invoices_store_id_key").on(t.storeId, t.id),
     unique("work_invoices_series_number_key").on(t.storeId, t.series, t.number),
-    unique("work_invoices_document_number_key").on(t.storeId, t.documentNumber),
+    // An imported invoice without a number of its own is only labelled `Imported`, so many share it.
+    uniqueIndex("work_invoices_document_number_key")
+      .on(t.storeId, t.documentNumber)
+      .where(sql`not ${t.imported} or ${t.legacyNumber} is not null`),
+    uniqueIndex("work_invoices_legacy_number_key")
+      .on(t.storeId, t.legacyNumber)
+      .where(sql`${t.legacyNumber} is not null`),
     unique("work_invoices_recurring_period_key").on(t.storeId, t.recurringInvoiceId, t.recurringPeriod),
     foreignKey({
       name: "work_invoices_client_fk",
@@ -4958,7 +4968,13 @@ export const workInvoices = commerce.table(
     check("work_invoices_currency", sql`${t.currency} ~ '^[A-Z]{3}$'`),
     check("work_invoices_amounts", sql`${t.subtotalMinor} >= 0 and ${t.vatMinor} >= 0 and ${t.totalMinor} = ${t.subtotalMinor} + ${t.vatMinor}`),
     // Numbered exactly when issued: a draft never holds a number, so deleting one burns none.
-    check("work_invoices_number", sql`(${t.status} = 'draft') = (${t.number} is null) and (${t.number} is null) = (${t.documentNumber} is null)`),
+    // (An imported invoice is the exception: issued, with no series number, see `work_imported_invoices`.)
+    check(
+      "work_invoices_number",
+      sql`${t.imported} or ((${t.status} = 'draft') = (${t.number} is null) and (${t.number} is null) = (${t.documentNumber} is null))`,
+    ),
+    check("work_invoices_imported", sql`not ${t.imported} or (${t.status} <> 'draft' and ${t.number} is null and ${t.documentNumber} is not null)`),
+    check("work_invoices_legacy_number", sql`${t.legacyNumber} is null or (${t.imported} and length(trim(${t.legacyNumber})) between 1 and 60)`),
     check(
       "work_invoices_issued",
       sql`${t.status} = 'draft' or (${t.issuedOn} is not null and ${t.dueOn} is not null and ${t.sentAt} is not null and ${t.seller} is not null and ${t.buyer} is not null and ${t.locale} is not null and ${t.paymentDays} is not null)`,
@@ -5075,8 +5091,9 @@ export const workTimeEntries = commerce.table(
 );
 
 /**
- * A running timer: one per person per store. Start and stop are the functions
- * `commerce.work_start_timer` and `commerce.work_stop_timer`.
+ * A running timer: one per person across all their stores (D123; the primary key
+ * is still store and person, the unique index on the person is the rule). Start and
+ * stop are the functions `commerce.work_start_timer` and `commerce.work_stop_timer`.
  */
 export const workTimers = commerce.table(
   "work_timers",
@@ -5102,7 +5119,7 @@ export const workTimers = commerce.table(
       columns: [t.storeId, t.assignmentId, t.taskId],
       foreignColumns: [workTasks.storeId, workTasks.assignmentId, workTasks.id],
     }).onDelete("cascade"),
-    index("work_timers_account_idx").on(t.accountId),
+    uniqueIndex("work_timers_account_idx").on(t.accountId),
     index("work_timers_assignment_idx").on(t.storeId, t.assignmentId, t.taskId),
   ],
 );

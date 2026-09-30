@@ -311,10 +311,10 @@ describe("discarding a timer", () => {
       update commerce.work_timers set started_at = now() - interval '12 minutes'
       where store_id = ${owner.store.id}::uuid and account_id = ${owner.account.id}::uuid`);
     expect(ok(await time.discardTimer(owner)).discarded).toBe(true);
-    expect(await time.getRunningTimer(owner.store.id, owner.account.id)).toBeNull();
+    expect(await time.getRunningTimer(owner.account.id)).toBeNull();
     // Nothing was logged, and the admin's timer is untouched.
     expect((await time.listTimeEntries(owner.store.id, { assignmentId: job })).entries).toHaveLength(0);
-    expect(await time.getRunningTimer(owner.store.id, ctx.admin.account.id)).not.toBeNull();
+    expect(await time.getRunningTimer(ctx.admin.account.id)).not.toBeNull();
     const events = await run(sql`
       select data from commerce.work_events
       where store_id = ${owner.store.id}::uuid and type = 'timer.discarded' and account_id = ${owner.account.id}::uuid`);

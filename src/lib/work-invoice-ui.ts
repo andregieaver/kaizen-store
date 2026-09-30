@@ -23,6 +23,7 @@ import {
 import { daysBetween, dueState, isDay, type Day } from "./work-dates";
 import { documentLanguage } from "./work-invoice-text";
 import { LINE_DESCRIPTION_MAX, NOTES_MAX, REFERENCE_MAX, invoiceInput } from "./work-input";
+import { workBase } from "./work-paths";
 import { parseDuration } from "./work-time";
 import { alignCategory, priceInvoice, type VatContext, type VatLineCategory, type VatNoteKey } from "./work-vat";
 
@@ -810,9 +811,9 @@ export function problemHref(
     case "company":
       return { href: `${base}/settings/company`, label: "Open the Company page" };
     case "settings":
-      return { href: `${base}/settings/work`, label: "Open Work settings" };
+      return { href: `${workBase(args.storeSlug)}/settings`, label: "Open Work settings" };
     case "client":
-      return { href: `${base}/work/clients/${args.clientId}`, label: "Open the client" };
+      return { href: `${workBase(args.storeSlug)}/clients/${args.clientId}`, label: "Open the client" };
     case "invoice":
       return { href: "#invoice-lines", label: "Go to the lines" };
   }

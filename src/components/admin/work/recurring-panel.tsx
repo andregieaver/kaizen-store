@@ -10,6 +10,7 @@ import { listRecurring, type RecurringList, type RecurringSummary } from "@/serv
 
 import { DeleteRecurringButton, NewRecurringButton, TemplateActions } from "./recurring-controls";
 import { Badge } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 export type RecurringPanelProps = {
   storeSlug: string;
@@ -128,7 +129,7 @@ function TemplateCard({
           <dt className="inline text-muted">Latest invoice: </dt>
           <dd className="inline">
             {template.last ? (
-              <Link href={`/admin/${storeSlug}/work/invoices/${template.last.invoiceId}`} className="underline">
+              <Link href={`${workBase(storeSlug)}/invoices/${template.last.invoiceId}`} className="underline">
                 {template.last.documentNumber ?? "Draft"} for {formatDay(template.last.period, locale)}
               </Link>
             ) : (

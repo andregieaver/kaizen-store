@@ -19,6 +19,10 @@ import { MAX_ENTRY_MINUTES, formatDuration } from "./work-time";
 export const PENDING_KEY = "pending";
 
 export type TimerTarget = {
+  /** The store the assignment is in: a person has one timer across all their stores (D123), so it says where it runs. */
+  storeSlug: string;
+  /** Null for a clock just started here, until the server's view (which names the store) is read. */
+  storeName: string | null;
   assignmentId: string;
   assignmentName: string;
   clientId: string;
@@ -49,6 +53,8 @@ export function timerFromServer(server: RunningTimer, nowMs: number): ClientTime
   return {
     key: server.startedAt,
     accountId: server.accountId,
+    storeSlug: server.storeSlug,
+    storeName: server.storeName,
     assignmentId: server.assignmentId,
     assignmentName: server.assignmentName,
     clientId: server.clientId,

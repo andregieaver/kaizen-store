@@ -26,7 +26,7 @@ export function ClientsList({
   query,
   show,
 }: {
-  /** `/admin/{store}/work`. */
+  /** `workBase(store)`. */
   base: string;
   clients: WorkClientItem[];
   query: string;

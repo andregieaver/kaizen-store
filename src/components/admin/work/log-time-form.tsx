@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 
-import { logTimeAction } from "@/app/admin/(gated)/[store]/work/actions";
+import { logTimeAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import { NO_PROBLEMS, timePayload, type FormProblems } from "@/lib/work-ui";
 import type { AssignmentChoice } from "@/server/work-choices";
 

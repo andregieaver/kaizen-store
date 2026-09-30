@@ -7,8 +7,8 @@ import type { CreditNoteSummary, InvoicePayment } from "@/server/work-invoices";
 
 // The actions are server code (they import the database); the buttons call them only when pressed.
 vi.mock("server-only", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-actions", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-view-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { IssuedInvoiceView } from "./invoice-issued";
@@ -128,7 +128,7 @@ describe("an issued invoice", () => {
     const html = render();
     expect(html).toContain(">Record payment<");
     expect(html).toContain(">Credit invoice<");
-    expect(html).toContain('href="/admin/kaffe/work/invoices/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a3001/print"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/invoices/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a3001/print"');
     expect(html).toContain("Preview or print");
   });
 
@@ -176,7 +176,7 @@ describe("an issued invoice", () => {
     expect(html).toContain("Design workshop (0.75)");
     expect(html).toContain("Credited: 0.75");
     expect(html).toContain("Issued by Kari.");
-    expect(html).toContain('href="/admin/kaffe/work/credit-notes/cn1/print"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/credit-notes/cn1/print"');
     expect(html).toContain("Preview or print WCN-1");
     expect(render()).toContain("This invoice has not been credited.");
   });
@@ -269,7 +269,7 @@ describe("the places on the client and assignment pages", () => {
     expect(html).toContain('data-slot="client-invoices"');
     expect(html).toContain(">Invoices<");
     expect(html).toContain(">New invoice<");
-    expect(html).toContain('href="/admin/kaffe/work/invoices?client=c1"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/invoices?client=c1"');
     const archived = clean(
       renderToString(
         createElement(ClientInvoicesSlot, {
@@ -302,7 +302,7 @@ describe("the places on the client and assignment pages", () => {
     expect(none).toContain('data-slot="assignment-invoices"');
     expect(none).toContain(">New invoice<");
     const draft = clean(renderToString(createElement(AssignmentInvoicesSlot, { ...props, draftInvoiceId: "d1" })));
-    expect(draft).toContain('href="/admin/kaffe/work/invoices/d1"');
+    expect(draft).toContain('href="/admin/account/work/s/kaffe/invoices/d1"');
     expect(draft).toContain(">Open the draft<");
     expect(draft).not.toContain(">New invoice<");
     expect(draft).toContain("There is one draft at a time.");

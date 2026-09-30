@@ -14,6 +14,7 @@ import { ReportFilters } from "./report-filters";
 import { ReportTable } from "./report-table";
 import { ReportTotalsView } from "./report-totals";
 import { secondaryButton } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 export type ReportViewProps = {
   storeSlug: string;
@@ -30,7 +31,7 @@ export type ReportViewProps = {
  * figures come from `getPeriodReport()`; the settings are in the address.
  */
 export function ReportView({ storeSlug, locale, today, params, report, clients }: ReportViewProps) {
-  const base = `/admin/${storeSlug}/work/reports`;
+  const base = `${workBase(storeSlug)}/reports`;
   const query = reportQuery(params);
   const empty = isEmptyReport(report);
   return (

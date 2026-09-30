@@ -106,7 +106,7 @@ export function ClientAssignments({
   assignments,
   locale,
 }: {
-  /** `/admin/{store}/work`. */
+  /** `workBase(store)`. */
   base: string;
   assignments: WorkAssignmentItem[];
   locale: string;

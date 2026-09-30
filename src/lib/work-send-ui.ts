@@ -12,6 +12,7 @@ export type SendKind = "invoice" | "reminder";
 const REASONS: Record<string, string> = {
   not_found: "This invoice was not found.",
   not_issued: "Only an issued invoice can be sent. Issue it first.",
+  imported: "This invoice was imported from Kaizen Life, where it was sent. It is not emailed from here.",
   not_open: "Nothing is left to pay on this invoice, so there is nothing to remind about.",
   no_email: "Give an email address to send it to.",
   invalid_email: "That is not an email address.",

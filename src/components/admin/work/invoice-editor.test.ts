@@ -7,8 +7,8 @@ import type { RunningTimer } from "@/server/work-time";
 
 // The actions are server code (they import the database); the editor calls them only when it saves or a button is pressed.
 vi.mock("server-only", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-actions", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-view-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { DraftEditor } from "./invoice-draft-editor";
@@ -50,7 +50,7 @@ const render = (over: Partial<Props> = {}, timer: WorkTimer | null = null) => {
 describe("the draft invoice editor", () => {
   it("shows the details: who it is for, the language, VAT treatment, currency, days to pay and when it would be due", () => {
     const html = render();
-    expect(html).toContain('href="/admin/kaffe/work/clients/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a1001"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/clients/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a1001"');
     expect(html).toContain("Acme AB");
     expect(html).toContain("Website rebuild");
     expect(html).toContain("Norwegian");
@@ -137,8 +137,8 @@ describe("the draft invoice editor", () => {
     const html = render();
     expect(html).toContain("2 things to fix before you can issue this invoice.");
     expect(html).toContain("Add the bank account invoices are paid to.");
-    expect(html).toContain('href="/admin/kaffe/settings/work"');
-    expect(html).toContain('href="/admin/kaffe/work/clients/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a1001"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/settings"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/clients/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a1001"');
     expect(html).toContain("Open Work settings");
     expect(html).toContain(">Fix<");
     expect(html).toContain(">Check<");
@@ -152,7 +152,7 @@ describe("the draft invoice editor", () => {
     const html = render();
     expect(html).toContain("Issue invoice …");
     expect(html).toContain("Delete draft");
-    expect(html).toContain('href="/admin/kaffe/work/invoices/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a3001/print"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/invoices/6f1c0f37-5f39-4d0e-9d55-7f0d0f6a3001/print"');
     expect(html).toContain("Add unbilled time");
     expect(html).not.toContain("Issue as W-13");
     expect(html).not.toContain("The number is taken when you issue");
@@ -211,6 +211,9 @@ describe("the draft invoice editor", () => {
       startedAt: new Date(start).toISOString(),
       serverNow: new Date(start + 20 * 60_000).toISOString(),
       accountId: "u1",
+      storeId: "s1",
+      storeSlug: STORE,
+      storeName: "Store",
       assignmentId: "6f1c0f37-5f39-4d0e-9d55-7f0d0f6a1002",
       assignmentName: "Website rebuild",
       clientId: "c1",
@@ -222,7 +225,7 @@ describe("the draft invoice editor", () => {
     };
     const running = timerFromServer(server, start + 20 * 60_000);
     const api: WorkTimer = {
-      storeSlug: STORE,
+      showStore: false,
       timer: running,
       pendingEntry: null,
       now: start + 20 * 60_000,

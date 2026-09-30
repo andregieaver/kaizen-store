@@ -15,6 +15,7 @@ import { SendCreditNoteButton, SendInvoiceSlot } from "./invoice-send-slot";
 import { InvoiceStatusChip } from "./invoice-status";
 import { InvoiceTotalsView } from "./invoice-totals";
 import { Badge, card, hintText, secondaryButton } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 export type IssuedViewProps = {
   storeSlug: string;
@@ -40,7 +41,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
   const money = (minor: number) => formatMoney(minor, invoice.currency, locale);
   const when = (iso: string) =>
     new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone }).format(new Date(iso));
-  const base = `/admin/${storeSlug}/work/invoices/${invoice.id}`;
+  const base = `${workBase(storeSlug)}/invoices/${invoice.id}`;
   const notes = vatNotesFor(invoice.vatNotes, invoice.locale, seller?.country);
   const open = invoice.status === "sent";
   const canCredit = invoice.status !== "void";
@@ -57,13 +58,16 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           <Link href={`${base}/print`} className={secondaryButton}>
             Preview or print
           </Link>
-          <SendInvoiceSlot
-            storeSlug={storeSlug}
-            invoiceId={invoice.id}
-            clientEmail={buyer?.email ?? detail.client.billingEmail}
-            sentTo={invoice.sentTo}
-            canRemind={open && amounts.outstandingMinor > 0}
-          />
+          {/* An imported invoice was sent from Kaizen Life: it is never emailed from here. */}
+          {!invoice.imported && (
+            <SendInvoiceSlot
+              storeSlug={storeSlug}
+              invoiceId={invoice.id}
+              clientEmail={buyer?.email ?? detail.client.billingEmail}
+              sentTo={invoice.sentTo}
+              canRemind={open && amounts.outstandingMinor > 0}
+            />
+          )}
           {open && amounts.outstandingMinor > 0 && (
             <RecordPaymentButton
               storeSlug={storeSlug}
@@ -115,7 +119,11 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           The document
         </h2>
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <Fact label="Number" value={invoice.documentNumber ?? ""} />
+          <Fact
+            label="Number"
+            value={invoice.documentNumber ?? ""}
+            note={invoice.imported ? "Imported from Kaizen Life" : undefined}
+          />
           <Fact label="Issued" value={invoice.issuedOn ? formatDay(invoice.issuedOn, locale) : "–"} />
           <Fact
             label="Due"
@@ -126,7 +134,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           <Fact
             label="Client"
             value={
-              <Link href={`/admin/${storeSlug}/work/clients/${detail.client.id}`} className="underline">
+              <Link href={`${workBase(storeSlug)}/clients/${detail.client.id}`} className="underline">
                 {buyer?.name ?? detail.client.name}
               </Link>
             }
@@ -335,7 +343,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
                   <span className="tabular-nums">{formatMoney(note.totalMinor, note.currency, locale)}</span>
                 </span>
                 {note.reason && <span className="text-muted">{note.reason}</span>}
-                <Link href={`/admin/${storeSlug}/work/credit-notes/${note.id}/print`} className="self-start underline">
+                <Link href={`${workBase(storeSlug)}/credit-notes/${note.id}/print`} className="self-start underline">
                   Preview or print {note.documentNumber}
                 </Link>
                 <SendCreditNoteButton

@@ -30,12 +30,18 @@ describe("the admin map (D103)", () => {
         .filter((r) => !listed("platform").has(r))
         .map((r) => `platform ${r || "/"}`),
       ...["", "/stores", "/account", "/account/usage", "/account/billing"].filter((r) => !listed("account").has(r)).map((r) => `account ${r || "/"}`),
+      // Work (D123) is the owner's: the combined pages and one store's own screens under it.
+      ...routes(path.join(gated, "(owner)/account/work"), "/account/work")
+        .filter((r) => !listed("account").has(r))
+        .map((r) => `account ${r}`),
     ];
     expect(missing).toEqual([]);
     // And nothing listed that is not a page.
     const pages = new Set([...routes(path.join(gated, "[store]")).map((r) => `store:${r}`), ...routes(path.join(gated, "platform")).map((r) => `platform:${r}`)]);
     const stale = ADMIN_PAGES.filter((p) => p.area !== "account" && !pages.has(`${p.area}:${p.path}`)).map((p) => `${p.area}:${p.path}`);
     expect(stale).toEqual([]);
+    const workPages = new Set(routes(path.join(gated, "(owner)/account/work"), "/account/work"));
+    expect(ADMIN_PAGES.filter((p) => p.area === "account" && p.group === "Work" && !workPages.has(p.path)).map((p) => p.path)).toEqual([]);
     expect(new Set(ADMIN_PAGES.map((p) => `${p.area}:${p.id}`)).size).toBe(ADMIN_PAGES.length);
   });
 
@@ -79,14 +85,21 @@ describe("the admin map (D103)", () => {
       expect(pagesFor("store").filter((p) => p.needs === name)).toEqual([]);
       expect(pagesFor("store", { [name]: true })).toEqual(expect.arrayContaining(pages.filter((p) => p.area === "store")));
     }
-    // Work (D122): one page per entry of its navigation, findable by what owners call things.
-    expect(matchPath("/admin/kaffe/work")?.page.id).toBe("work");
-    expect(matchPath("/admin/kaffe/settings/work")?.page.id).toBe("work.settings");
+    // Work (D122, D123): at the owner's level, the combined pages and one store's own screens.
+    expect(matchPath("/admin/account/work")?.page.id).toBe("work");
+    expect(matchPath("/admin/account/work/settings")?.page.id).toBe("work.settings");
+    expect(matchPath("/admin/account/work/s/kaffe/settings")).toMatchObject({ page: { id: "work.store.settings" }, storeSlug: "kaffe" });
+    expect(matchPath("/admin/account/work/s/kaffe/invoices/abc")).toMatchObject({ page: { id: "work.invoice" }, params: { invoiceId: "abc" }, storeSlug: "kaffe" });
+    const store = ADMIN_PAGES.find((p) => p.id === "work.store.clients")!;
+    expect(pageHref(store, {}, "kaffe")).toBe("/admin/account/work/s/kaffe/clients");
+    expect(pageHref(store, { store: "acme" })).toBe("/admin/account/work/s/acme/clients");
     expect(findPages("store", "log my hours with a timer").map((p) => p.id)).not.toContain("work.time");
     expect(findPages("store", "log my hours with a timer", { work: true })[0]?.id).toBe("work.time");
-    expect(findPages("store", "invoice number prefix", { work: true })[0]?.id).toBe("work.settings");
+    expect(findPages("store", "invoice number prefix", { work: true })[0]?.id).toBe("work.store.settings");
     expect(findPages("store", "which invoices are overdue", { work: true })[0]?.id).toBe("work.invoices");
-    expect(adminMapText("store", { owner: true })).not.toContain("[work.settings]");
-    expect(adminMapText("store", { owner: true, work: true })).toContain("Work settings [work.settings]");
+    // Where Work is switched on is always offered, or nobody could find the switch.
+    expect(findPages("store", "switch on work").map((p) => p.id)).toContain("work.settings");
+    expect(adminMapText("store", { owner: true })).not.toContain("[work.invoices]");
+    expect(adminMapText("store", { owner: true, work: true })).toContain("Work invoices [work.invoices]");
   });
 });

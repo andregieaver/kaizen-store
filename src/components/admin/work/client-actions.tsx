@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 
-import { archiveClientAction, deleteClientAction } from "@/app/admin/(gated)/[store]/work/actions";
+import { archiveClientAction, deleteClientAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import type { WorkClient } from "@/server/work";
 
 import { Modal } from "../modal";
 import { AssignmentForm, type AssignmentFormProps } from "./assignment-form";
 import { ClientForm, type ClientFormProps } from "./client-form";
 import { Problems, dangerLink, primaryButton, secondaryButton } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 /** A button that opens a form in a dialog; the form is given a way to close it. */
 export function FormDialogButton({
@@ -52,7 +53,7 @@ export function NewClientButton(props: ClientFormShared) {
           onCancel={close}
           onDone={(id) => {
             close();
-            router.push(`/admin/${props.storeSlug}/work/clients/${id}`);
+            router.push(`${workBase(props.storeSlug)}/clients/${id}`);
           }}
         />
       )}
@@ -80,7 +81,7 @@ export function NewAssignmentButton(props: Omit<AssignmentFormProps, "assignment
           onCancel={close}
           onDone={(id) => {
             close();
-            router.push(`/admin/${props.storeSlug}/work/assignments/${id}`);
+            router.push(`${workBase(props.storeSlug)}/assignments/${id}`);
           }}
         />
       )}
@@ -169,7 +170,7 @@ export function DeleteClientButton({
           start(async () => {
             try {
               const result = await deleteClientAction(storeSlug, clientId);
-              if (result.ok) router.push(`/admin/${storeSlug}/work/clients`);
+              if (result.ok) router.push(`${workBase(storeSlug)}/clients`);
               else setProblems(result.problems);
             } catch {
               setProblems(["That did not work. Check your connection and try again."]);

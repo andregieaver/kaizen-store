@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 
-import { generateLinesFromTimeAction } from "@/app/admin/(gated)/[store]/work/invoice-actions";
-import { unbilledTimeAction } from "@/app/admin/(gated)/[store]/work/invoice-view-actions";
+import { generateLinesFromTimeAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
+import { unbilledTimeAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions";
 import { Modal } from "@/components/admin/modal";
 import { formatMoney } from "@/lib/money";
 import { formatDay, isDay } from "@/lib/work-dates";

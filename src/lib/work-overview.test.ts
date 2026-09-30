@@ -10,7 +10,7 @@ import {
 
 const TODAY = "2026-09-29";
 const NOW = Date.parse("2026-09-29T12:00:00Z");
-const BASE = "/admin/kaizen/work";
+const BASE = "/admin/account/work/s/kaizen";
 
 const invoice = (o: Partial<OverviewInvoice> & Pick<OverviewInvoice, "id" | "status">): OverviewInvoice => ({
   clientId: "c1",

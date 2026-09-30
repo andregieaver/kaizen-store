@@ -3185,7 +3185,7 @@ describe("work: clients, time and invoices (D122)", () => {
     expect(await nextNumber(w.storeId)).toBe(1);
   });
 
-  it("runs one timer per person per store: starting another stops and logs the first", async () => {
+  it("runs one timer per person in a store: starting another stops and logs the first", async () => {
     const w = await workStore();
     const second = await workAssignment(w.storeId, w.clientId, "Second");
     const task = (await one<{ id: string }>("insert into commerce.work_tasks (store_id, assignment_id, title) values ($1, $2, 'Task') returning id", [w.storeId, second])).id;
@@ -3196,10 +3196,10 @@ describe("work: clients, time and invoices (D122)", () => {
     const first = await start(w.account, w.assignmentId);
     expect(first.stopped_entry_id).toBeNull();
     expect((await db.query("select 1 from commerce.work_timers where store_id = $1", [w.storeId])).rows).toHaveLength(1);
-    // The table itself allows one row per person.
+    // The table itself allows one row per person, in any store.
     await expect(
       db.query("insert into commerce.work_timers (store_id, account_id, assignment_id) values ($1, $2, $3)", [w.storeId, w.account, second]),
-    ).rejects.toThrow(/work_timers_store_id_account_id_pk/);
+    ).rejects.toThrow(/work_timers_(store_id_account_id_pk|account_idx)/);
     // A colleague has a timer of their own.
     await start(colleague, w.assignmentId);
     expect((await db.query("select 1 from commerce.work_timers where store_id = $1", [w.storeId])).rows).toHaveLength(2);
@@ -3232,6 +3232,71 @@ describe("work: clients, time and invoices (D122)", () => {
     await start(w.account, second, task);
     await db.query("delete from commerce.work_tasks where id = $1", [task]);
     expect((await db.query("select 1 from commerce.work_timers where store_id = $1 and account_id = $2", [w.storeId, w.account])).rows).toEqual([]);
+  });
+
+  it("runs one timer per person across stores: starting in one stops and logs the one in another (D123)", async () => {
+    const a = await workStore();
+    const b = await workStore();
+    // The same person works for both stores.
+    const person = a.account;
+    const start = (storeId: string, assignment: string) =>
+      one<{ timer_started_at: Date; stopped_entry_id: string | null }>("select * from commerce.work_start_timer($1, $2, $3, NULL)", [storeId, person, assignment]);
+    const first = await start(a.storeId, a.assignmentId);
+    expect(first.stopped_entry_id).toBeNull();
+    await db.query("update commerce.work_timers set started_at = now() - interval '20 minutes' where account_id = $1", [person]);
+
+    // Starting in the other store stops the first, and its entry is logged to its own store's assignment.
+    const second = await start(b.storeId, b.assignmentId);
+    expect(second.stopped_entry_id).not.toBeNull();
+    const entry = await one<Row>("select store_id, assignment_id, account_id, minutes from commerce.work_time_entries where id = $1", [second.stopped_entry_id]);
+    expect(entry).toMatchObject({ store_id: a.storeId, assignment_id: a.assignmentId, account_id: person });
+    expect(Number(entry.minutes)).toBeGreaterThanOrEqual(20);
+    expect(Number(entry.minutes)).toBeLessThanOrEqual(21);
+    const running = await db.query<Row>("select store_id, assignment_id from commerce.work_timers where account_id = $1", [person]);
+    expect(running.rows).toEqual([{ store_id: b.storeId, assignment_id: b.assignmentId }]);
+    // The time.logged event is in the first store's history, not the second's.
+    const events = async (storeId: string) => (await db.query("select 1 from commerce.work_events where store_id = $1 and type = 'time.logged'", [storeId])).rows.length;
+    expect(await events(a.storeId)).toBe(1);
+    expect(await events(b.storeId)).toBe(0);
+
+    // The table refuses a second row for the person, even in another store; other people's timers are their own.
+    await expect(
+      db.query("insert into commerce.work_timers (store_id, account_id, assignment_id) values ($1, $2, $3)", [a.storeId, person, a.assignmentId]),
+    ).rejects.toThrow(/work_timers_account_idx/);
+    const colleague = await createAccount("work-colleague-across@example.com");
+    await one("select * from commerce.work_start_timer($1, $2, $3, NULL)", [a.storeId, colleague, a.assignmentId]);
+    expect((await db.query("select 1 from commerce.work_timers")).rows.length).toBeGreaterThanOrEqual(2);
+    expect((await db.query("select 1 from commerce.work_timers where account_id = $1", [person])).rows).toHaveLength(1);
+
+    // Stopping in the store where it runs logs there; asking the wrong store finds nothing.
+    expect((await db.query("select * from commerce.work_stop_timer($1, $2)", [a.storeId, person])).rows).toEqual([]);
+    expect((await one<Row>("select store_id from commerce.work_stop_timer($1, $2)", [b.storeId, person])).store_id).toBe(b.storeId);
+  });
+
+  it("started earlier in several stores (before D123), the newest timer keeps running when the rule is made", async () => {
+    const a = await workStore();
+    const b = await workStore();
+    // The old table allowed one timer per person and store: put the state of the old schema back, then run the migration's clean-up.
+    await db.query("drop index commerce.work_timers_account_idx");
+    try {
+      await db.query("insert into commerce.work_timers (store_id, account_id, assignment_id, started_at) values ($1, $2, $3, now() - interval '50 minutes')", [a.storeId, a.account, a.assignmentId]);
+      await db.query("insert into commerce.work_timers (store_id, account_id, assignment_id, started_at) values ($1, $2, $3, now() - interval '5 minutes')", [b.storeId, a.account, b.assignmentId]);
+      await db.query(`
+        do $$ declare r record; begin
+          for r in select t.store_id, t.account_id from (select w.store_id, w.account_id,
+                     row_number() over (partition by w.account_id order by w.started_at desc, w.store_id) as n
+                   from commerce.work_timers w) t where t.n > 1
+          loop perform commerce.work_stop_timer(r.store_id, r.account_id, null); end loop; end; $$`);
+      const left = await db.query<Row>("select store_id from commerce.work_timers where account_id = $1", [a.account]);
+      expect(left.rows).toEqual([{ store_id: b.storeId }]);
+      const logged = await one<Row>("select store_id, minutes from commerce.work_time_entries where account_id = $1", [a.account]);
+      expect(logged.store_id).toBe(a.storeId);
+      expect(Number(logged.minutes)).toBeGreaterThanOrEqual(50);
+      expect(Number(logged.minutes)).toBeLessThanOrEqual(51);
+    } finally {
+      await db.query("delete from commerce.work_timers where account_id = $1", [a.account]);
+      await db.query('create unique index "work_timers_account_idx" on commerce.work_timers using btree (account_id)');
+    }
   });
 
   it("records payments that only add, and moves the invoice to paid and back", async () => {
@@ -3570,5 +3635,301 @@ describe("work: clients, time and invoices (D122)", () => {
       });
     });
     expect(missing.map((key) => `${key.tbl}.${key.conname}`)).toEqual([]);
+  });
+});
+
+describe("work: invoices imported from Kaizen Life (WP15)", () => {
+  type Row = Record<string, unknown>;
+  let importCounter = 0;
+
+  /** A store with the details an invoice needs, one client with an address, and a member. */
+  async function importStore() {
+    importCounter += 1;
+    const storeId = await createStore(`work-import-${importCounter}`, ["NO"]);
+    await db.query(
+      `update commerce.stores set legal_name = 'Konsulent AS', organisation_number = '923456789',
+         postal_address = 'Storgata 1, 0155 Oslo', country = 'NO', contact_email = 'post@konsulent.example',
+         time_zone = 'Europe/Oslo', modules = array['work'] where id = $1`,
+      [storeId],
+    );
+    await db.query(
+      `insert into commerce.work_settings (store_id, vat_registered, vat_number, bank_account)
+       values ($1, true, 'NO923456789MVA', 'NO9386011117947')`,
+      [storeId],
+    );
+    const account = await createAccount(`work-import-${importCounter}@example.com`);
+    const { id: clientId } = await one<{ id: string }>(
+      `insert into commerce.work_clients (store_id, name, country, billing_address, locale, currency)
+       values ($1, 'Kunde', 'NO', '{"line1":"Kundeveien 2","postalCode":"0250","city":"Oslo"}'::jsonb, 'nb-NO', 'NOK') returning id`,
+      [storeId],
+    );
+    return { storeId, account, clientId };
+  }
+
+  const SELLER = JSON.stringify({ legal_name: "Konsulent AS", country: "NO" });
+  const BUYER = JSON.stringify({ name: "Kunde", client_name: "Kunde", address: {}, country: "NO" });
+
+  /**
+   * What the import's SQL does for one invoice, in a transaction that says it is importing: an issued
+   * invoice with its own number (or the label), amounts and lines.
+   */
+  async function importInvoice(
+    w: { storeId: string; clientId: string },
+    over: { legacy?: string | null; label?: string; issuedOn?: string; total?: number; status?: string; lines?: number } = {},
+  ): Promise<{ invoiceId: string; lineId: string }> {
+    const legacy = over.legacy === undefined ? null : over.legacy;
+    const total = over.total ?? 125000;
+    const excl = total / 1.25;
+    return db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      const { rows } = await tx.query<{ id: string }>(
+        `insert into commerce.work_invoices (store_id, client_id, status, document_number, imported, legacy_number, issued_on, due_on, sent_at,
+           currency, locale, payment_days, subtotal_minor, vat_minor, total_minor, seller, buyer)
+         values ($1, $2, $3, $4, true, $5, $6, ($6::date + 14), ($6::date + time '12:00') at time zone 'Europe/Oslo',
+           'NOK', 'nb-NO', 14, $7, $8, $9, $10::jsonb, $11::jsonb) returning id`,
+        [w.storeId, w.clientId, over.status ?? "sent", over.label ?? legacy ?? "Imported", legacy, over.issuedOn ?? "2026-04-02", excl, total - excl, total, SELLER, BUYER],
+      );
+      const invoiceId = rows[0].id;
+      const line = await tx.query<{ id: string }>(
+        `insert into commerce.work_invoice_lines (store_id, invoice_id, position, description, quantity_hundredths, unit_price_minor, vat_category, vat_rate, excl_minor, vat_minor, incl_minor)
+         values ($1, $2, 0, 'Konsulentbistand', 100, $3, 'standard', 0.25, $3, $4, $5) returning id`,
+        [w.storeId, invoiceId, excl, total - excl, total],
+      );
+      return { invoiceId, lineId: line.rows[0].id };
+    });
+  }
+
+  const draftWithLine = async (w: { storeId: string; clientId: string }) => {
+    const { id } = await one<{ id: string }>("insert into commerce.work_invoices (store_id, client_id, currency) values ($1, $2, 'NOK') returning id", [w.storeId, w.clientId]);
+    await db.query(
+      `insert into commerce.work_invoice_lines (store_id, invoice_id, position, description, quantity_hundredths, unit_price_minor, vat_category)
+       values ($1, $2, 0, 'Rådgivning', 150, 100000, 'standard')`,
+      [w.storeId, id],
+    );
+    return id;
+  };
+  const issue = (w: { storeId: string; account: string }, invoiceId: string, issuedOn: string | null = null) =>
+    one<Row>("select * from commerce.issue_work_invoice($1, $2, $3, $4)", [w.storeId, invoiceId, w.account, issuedOn]);
+  const nextNumber = async (storeId: string, series = "work_invoice") =>
+    (await one<{ next_number: number }>("select next_number from commerce.document_series where store_id = $1 and series = $2", [storeId, series])).next_number;
+  const invoiceRow = (id: string) => one<Row>("select * from commerce.work_invoices where id = $1", [id]);
+
+  it("can only be made while importing, and only as issued, unnumbered invoices with their own label", async () => {
+    const w = await importStore();
+    const insert = (set: string) =>
+      db.query(
+        `insert into commerce.work_invoices (store_id, client_id, status, document_number, imported, issued_on, due_on, sent_at, currency, locale, payment_days, seller, buyer${set})
+         values ($1, $2, 'sent', 'Imported', true, '2026-04-02', '2026-04-16', now(), 'NOK', 'nb-NO', 14, '{}'::jsonb, '{}'::jsonb)`,
+        [w.storeId, w.clientId],
+      );
+    await expect(insert("")).rejects.toThrow(/work_invoice\.imported_only/);
+    // A draft cannot be imported, and an imported invoice has no series number.
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      await expect(
+        tx.query("insert into commerce.work_invoices (store_id, client_id, status, imported, currency) values ($1, $2, 'draft', true, 'NOK')", [w.storeId, w.clientId]),
+      ).rejects.toThrow(/work_invoices_imported/);
+    });
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      await expect(
+        tx.query(
+          `insert into commerce.work_invoices (store_id, client_id, status, number, document_number, imported, issued_on, due_on, sent_at, currency, locale, payment_days, seller, buyer)
+           values ($1, $2, 'sent', 5, 'W-5', true, '2026-04-02', '2026-04-16', now(), 'NOK', 'nb-NO', 14, '{}'::jsonb, '{}'::jsonb)`,
+          [w.storeId, w.clientId],
+        ),
+      ).rejects.toThrow(/work_invoices_imported/);
+    });
+    // A Life number belongs to an imported invoice only.
+    await expect(db.query("update commerce.work_clients set name = name where id = $1", [w.clientId])).resolves.toBeDefined();
+    const draft = await draftWithLine(w);
+    await expect(db.query("update commerce.work_invoices set legacy_number = '2154' where id = $1", [draft])).rejects.toThrow(/work_invoices_legacy_number/);
+    await expect(db.query("update commerce.work_invoices set imported = true where id = $1", [draft])).rejects.toThrow(/work_invoices_imported/);
+  });
+
+  it("is issued with its own number, amounts and lines, and takes nothing from the series", async () => {
+    const w = await importStore();
+    const numbered = await importInvoice(w, { legacy: "2154", total: 502875 });
+    const unnumbered = await importInvoice(w, { legacy: null });
+    const other = await importInvoice(w, { legacy: null });
+    expect(await invoiceRow(numbered.invoiceId)).toMatchObject({ status: "sent", imported: true, legacy_number: "2154", document_number: "2154", number: null, total_minor: 502875 });
+    expect(await invoiceRow(unnumbered.invoiceId)).toMatchObject({ imported: true, legacy_number: null, document_number: "Imported", number: null });
+    expect(await invoiceRow(other.invoiceId)).toMatchObject({ document_number: "Imported" });
+    expect(await nextNumber(w.storeId)).toBe(1);
+    expect(await nextNumber(w.storeId, "work_credit_note")).toBe(1);
+    // Two invoices with the same Life number are one invoice imported twice.
+    await expect(importInvoice(w, { legacy: "2154" })).rejects.toThrow(/work_invoices_legacy_number_key|work_invoices_document_number_key/);
+    // Its amounts are its own, and the lines add up.
+    const amounts = await one<Row>("select * from commerce.work_invoice_amounts($1, $2)", [w.storeId, numbered.invoiceId]);
+    expect(amounts).toMatchObject({ total_minor: 502875, paid_minor: 0, outstanding_minor: 502875 });
+  });
+
+  it("stays as it is: no edits, no deleting, no more lines, no un-importing", async () => {
+    const w = await importStore();
+    const { invoiceId, lineId } = await importInvoice(w, { legacy: "2154" });
+    await expect(db.query("update commerce.work_invoices set notes = 'x' where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoices set total_minor = 1, subtotal_minor = 1, vat_minor = 0 where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoices set imported = false where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoices set legacy_number = '1' where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("delete from commerce.work_invoices where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoice_lines set description = 'x' where id = $1", [lineId])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("delete from commerce.work_invoice_lines where id = $1", [lineId])).rejects.toThrow(/work_invoice\.immutable/);
+    // A line cannot be added afterwards, outside the import.
+    await expect(
+      db.query(
+        "insert into commerce.work_invoice_lines (store_id, invoice_id, position, description, quantity_hundredths, unit_price_minor) values ($1, $2, 1, 'x', 100, 100)",
+        [w.storeId, invoiceId],
+      ),
+    ).rejects.toThrow(/work_invoice\.immutable/);
+    // And the status only follows the money, as for any issued invoice.
+    await expect(db.query("update commerce.work_invoices set status = 'paid' where id = $1", [invoiceId])).rejects.toThrow(/work_invoice\.status/);
+  });
+
+  it("still cannot be made or edited the normal way: a normal issued invoice has a number and cannot change", async () => {
+    const w = await importStore();
+    await expect(
+      db.query(
+        `insert into commerce.work_invoices (store_id, client_id, status, issued_on, due_on, sent_at, currency, locale, payment_days, seller, buyer)
+         values ($1, $2, 'sent', '2026-04-02', '2026-04-16', now(), 'NOK', 'nb-NO', 14, '{}'::jsonb, '{}'::jsonb)`,
+        [w.storeId, w.clientId],
+      ),
+    ).rejects.toThrow(/work_invoice\.draft_only/);
+    const draft = await draftWithLine(w);
+    await expect(db.query("update commerce.work_invoices set status = 'sent' where id = $1", [draft])).rejects.toThrow(/work_invoice\.draft_only/);
+    await expect(db.query("update commerce.work_invoices set number = 7, document_number = 'W-7' where id = $1", [draft])).rejects.toThrow(/work_invoices_number/);
+    await expect(db.query("update commerce.work_invoices set document_number = 'W-7' where id = $1", [draft])).rejects.toThrow(/work_invoices_number/);
+    const issued = await issue(w, draft);
+    expect(issued).toMatchObject({ number: 1, document_number: "W-1", imported: false, legacy_number: null });
+    await expect(db.query("update commerce.work_invoices set notes = 'x' where id = $1", [draft])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoices set imported = true where id = $1", [draft])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("update commerce.work_invoices set number = null, document_number = null where id = $1", [draft])).rejects.toThrow(/work_invoice\.immutable/);
+    await expect(db.query("delete from commerce.work_invoices where id = $1", [draft])).rejects.toThrow(/work_invoice\.immutable/);
+  });
+
+  it("leaves numbering alone: the first normal invoice is still number 1, whatever was imported and whenever it is dated", async () => {
+    const w = await importStore();
+    await importInvoice(w, { legacy: "2154", issuedOn: "2026-09-20" });
+    await importInvoice(w, { legacy: null, issuedOn: "2026-09-25" });
+    const first = await issue(w, await draftWithLine(w), "2026-08-01");
+    expect(first).toMatchObject({ number: 1, document_number: "W-1" });
+    const second = await issue(w, await draftWithLine(w), "2026-08-02");
+    expect(second).toMatchObject({ number: 2, document_number: "W-2" });
+    expect(await nextNumber(w.storeId)).toBe(3);
+    // The owner can still start the series where the old numbers left off, before the first real issue.
+    const v = await importStore();
+    await importInvoice(v, { legacy: "2154" });
+    await db.query("select commerce.work_set_series($1, 'work_invoice', 'F', 2155)", [v.storeId]);
+    expect(await issue(v, await draftWithLine(v))).toMatchObject({ document_number: "F2155", number: 2155 });
+  });
+
+  it("keeps a Life number from being issued again by the series", async () => {
+    const w = await importStore();
+    await importInvoice(w, { legacy: "W-1" });
+    const draft = await draftWithLine(w);
+    await expect(issue(w, draft)).rejects.toThrow(/work_invoices_document_number_key/);
+    // The refused issue gave its number back and left the draft a draft.
+    expect(await nextNumber(w.storeId)).toBe(1);
+    expect(await invoiceRow(draft)).toMatchObject({ status: "draft", number: null });
+  });
+
+  it("takes payments like any issued invoice, and a paid one is paid by its payment row", async () => {
+    const w = await importStore();
+    const { invoiceId } = await importInvoice(w, { legacy: "2154", total: 502875 });
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      await tx.query(
+        "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method, reference) values ($1, $2, 502875, 'NOK', '2026-06-25', 'other', 'imported')",
+        [w.storeId, invoiceId],
+      );
+    });
+    const paid = await invoiceRow(invoiceId);
+    expect(paid.status).toBe("paid");
+    // Noon on the day it was received, in the store's time zone.
+    expect((paid.paid_at as Date).toISOString()).toBe("2026-06-25T10:00:00.000Z");
+    // The import wrote no payment or paid history of its own (it writes one `invoice.imported` entry).
+    const quiet = await db.query("select type from commerce.work_events where store_id = $1 and entity_id = $2", [w.storeId, invoiceId]);
+    expect(quiet.rows).toEqual([]);
+
+    const open = await importInvoice(w, { legacy: null, total: 125000 });
+    await db.query(
+      "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 125000, 'NOK', '2026-09-10', 'bank')",
+      [w.storeId, open.invoiceId],
+    );
+    expect((await invoiceRow(open.invoiceId)).status).toBe("paid");
+    const history = await db.query<{ type: string }>("select type from commerce.work_events where store_id = $1 and entity_id = $2 order by id", [w.storeId, open.invoiceId]);
+    expect(history.rows.map((e) => e.type)).toEqual(["payment.recorded", "invoice.paid"]);
+  });
+
+  it("queues no integration event while importing, and does for what happens to it afterwards", async () => {
+    const w = await importStore();
+    await db.query(
+      `insert into commerce.store_integrations (store_id, provider, enabled, webhook_url_encrypted, webhook_hint, events)
+       values ($1, 'zapier', true, 'x', 'x', array['work_client.created', 'work_invoice.sent', 'work_invoice.paid', 'work_invoice.credited'])`,
+      [w.storeId],
+    );
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      await tx.query("insert into commerce.work_clients (store_id, name, currency) values ($1, 'Importert', 'NOK')", [w.storeId]);
+    });
+    const paid = await importInvoice(w, { legacy: "1" });
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      await tx.query(
+        "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 125000, 'NOK', '2026-04-20', 'other')",
+        [w.storeId, paid.invoiceId],
+      );
+    });
+    expect((await db.query("select 1 from commerce.integration_deliveries where store_id = $1", [w.storeId])).rows).toEqual([]);
+    // A payment recorded later is news again.
+    const open = await importInvoice(w, { legacy: "2" });
+    await db.query(
+      "insert into commerce.work_invoice_payments (store_id, invoice_id, amount_minor, currency, received_on, method) values ($1, $2, 125000, 'NOK', '2026-09-10', 'bank')",
+      [w.storeId, open.invoiceId],
+    );
+    const queued = await db.query<{ event: string; subject_id: string }>("select event, subject_id from commerce.integration_deliveries where store_id = $1", [w.storeId]);
+    expect(queued.rows).toEqual([{ event: "work_invoice.paid", subject_id: open.invoiceId }]);
+  });
+
+  it("can be credited: a new credit note from the store's own series, with the invoice's own seller and buyer", async () => {
+    const w = await importStore();
+    const { invoiceId } = await importInvoice(w, { legacy: "2154", total: 502875, issuedOn: "2026-06-08" });
+    const note = await one<Row>("select * from commerce.credit_work_invoice($1, $2, $3, 'Feil på fakturaen', null, '2026-09-29')", [w.storeId, invoiceId, w.account]);
+    expect(note).toMatchObject({ document_number: "WCN-1", total_minor: 502875, subtotal_minor: 402300 });
+    expect(note.seller).toEqual(JSON.parse(SELLER));
+    expect(note.buyer).toEqual(JSON.parse(BUYER));
+    expect(await invoiceRow(invoiceId)).toMatchObject({ status: "void", document_number: "2154", imported: true });
+    // The invoice series was never touched by it.
+    expect(await nextNumber(w.storeId)).toBe(1);
+    expect(await nextNumber(w.storeId, "work_credit_note")).toBe(2);
+    // A credit note may not be dated before the invoice it credits.
+    const { invoiceId: later } = await importInvoice(w, { legacy: "2155", issuedOn: "2026-09-01" });
+    await expect(one("select * from commerce.credit_work_invoice($1, $2, $3, null, null, '2026-08-01')", [w.storeId, later, w.account])).rejects.toThrow(/date_before_invoice/);
+  });
+
+  it("puts time on an imported invoice's line only while importing, and then keeps it there", async () => {
+    const w = await importStore();
+    const { rows: assignments } = await db.query<{ id: string }>("insert into commerce.work_assignments (store_id, client_id, name) values ($1, $2, 'Jobb') returning id", [w.storeId, w.clientId]);
+    const assignmentId = assignments[0].id;
+    const account = w.account;
+    const entry = (lineId: string | null) =>
+      db.query(
+        "insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes, invoice_line_id) values ($1, $2, $3, '2026-04-01', 90, $4)",
+        [w.storeId, assignmentId, account, lineId],
+      );
+    const { lineId } = await importInvoice(w, { legacy: "2154" });
+    await expect(entry(lineId)).rejects.toThrow(/work_time\.draft_only/);
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.work_importing', 'on', true)");
+      await tx.query(
+        "insert into commerce.work_time_entries (store_id, assignment_id, account_id, work_date, minutes, invoice_line_id) values ($1, $2, $3, '2026-04-01', 90, $4)",
+        [w.storeId, assignmentId, account, lineId],
+      );
+    });
+    await expect(db.query("update commerce.work_time_entries set minutes = 60 where invoice_line_id = $1", [lineId])).rejects.toThrow(/work_time\.immutable/);
+    // A normal invoice's issued lines still take no time, importing or not.
+    const draft = await draftWithLine(w);
+    const issued = await issue(w, draft);
+    const { rows: lines } = await db.query<{ id: string }>("select id from commerce.work_invoice_lines where invoice_id = $1", [issued.id]);
+    await expect(entry(lines[0].id)).rejects.toThrow(/work_time\.draft_only/);
   });
 });

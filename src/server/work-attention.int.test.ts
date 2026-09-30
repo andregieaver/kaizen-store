@@ -16,6 +16,7 @@ import {
   reportToday,
   type ReportFixture,
 } from "./work-reports-test-support";
+import { workBase } from "@/lib/work-paths";
 
 vi.mock("next/cache", () => ({
   cacheLife: () => {},
@@ -88,14 +89,14 @@ describe("Work in the control center", () => {
       "Arbeid: 2h of time has been unbilled for over 30 days.",
       "Arbeid: 1 invoice draft has been waiting for over 7 days.",
     ]);
-    expect(work[0]).toMatchObject({ href: `/admin/${slug}/work/invoices?show=overdue`, action: "Open invoices", urgent: true });
+    expect(work[0]).toMatchObject({ href: `${workBase(slug)}/invoices?show=overdue`, action: "Open invoices", urgent: true });
     // "Invoice time" opens the list, where the new-invoice sheet is
-    expect(work[1].href).toBe(`/admin/${slug}/work/invoices`);
-    expect(work[2].href).toBe(`/admin/${slug}/work/invoices?show=drafts`);
+    expect(work[1].href).toBe(`${workBase(slug)}/invoices`);
+    expect(work[2].href).toBe(`${workBase(slug)}/invoices?show=drafts`);
     // and they are among the store's other items in the list
     const items = attentionFor(view.stores);
     expect(items.filter((i) => i.href.includes("/work"))).toHaveLength(3);
-    expect(items[0].href).toBe(`/admin/${slug}/work/invoices?show=overdue`);
+    expect(items[0].href).toBe(`${workBase(slug)}/invoices?show=overdue`);
   });
 
   it("says nothing for a store that has Work switched off, whatever data it holds", async () => {
@@ -114,7 +115,7 @@ describe("Work in the control center", () => {
     const stores = [on.f, empty].map((f) => ({ id: f.storeId, slug: f.slug, name: "Arbeid", timeZone: "Europe/Oslo" }));
     const items = await attention.workAttention(stores);
     expect(items.get(on.f.storeId)!).toHaveLength(3);
-    expect(items.get(on.f.storeId)!.every((i) => i.href.startsWith(`/admin/${on.f.slug}/work`))).toBe(true);
+    expect(items.get(on.f.storeId)!.every((i) => i.href.startsWith(workBase(on.f.slug)))).toBe(true);
     expect(items.get(empty.storeId)).toEqual([]);
     // a store not asked about is not in the answer, and no stores is no queries
     expect(items.has(off.f.storeId)).toBe(false);

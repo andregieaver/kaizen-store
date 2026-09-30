@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import { deleteTimeEntryAction, setEntryNoteAction } from "@/app/admin/(gated)/[store]/work/actions";
+import { deleteTimeEntryAction, setEntryNoteAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import { formatDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 import { entryAccess } from "@/lib/work-ui";
 import type { TimeEntryItem } from "@/server/work-time";
 
 import { Badge, Problems, dangerLink, smallControl } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 function EntryRow({
   storeSlug,
@@ -153,7 +154,7 @@ export function TimeEntryList({
   locale: string;
   empty?: string;
 }) {
-  const base = `/admin/${storeSlug}/work`;
+  const base = workBase(storeSlug);
   if (entries.length === 0) {
     return <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">{empty}</p>;
   }

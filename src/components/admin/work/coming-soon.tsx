@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { workBase } from "@/lib/work-paths";
 
 /**
  * A stand-in for a Work page that is built in a later step, so the menu's
@@ -10,7 +11,7 @@ export function WorkComingSoon({ storeSlug, title }: { storeSlug: string; title:
       <h1 className="text-2xl font-semibold">{title}</h1>
       <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
         Coming in the next step.{" "}
-        <Link href={`/admin/${storeSlug}/work`} className="underline">
+        <Link href={workBase(storeSlug)} className="underline">
           Back to Work
         </Link>
       </p>

@@ -33,7 +33,7 @@ type Row = Record<string, unknown>;
  * Time entries and timers (docs/work.md 1.7, 4.2, 4.9, 7.2 WP3). Entries
  * are integer minutes; what a person typed ("1h30") is read with
  * `parseDuration()` (`src/lib/work-time.ts`) before it gets here. A timer is a
- * row in the database (one per person per store), started and stopped by the
+ * row in the database (one per person across all their stores, D123), started and stopped by the
  * SQL functions `work_start_timer` / `work_stop_timer`, so switching timers
  * and rounding up are atomic and the same whatever calls them.
  *
@@ -458,6 +458,10 @@ export async function deleteTimeEntry(member: Membership, entryId: string): Prom
  */
 export type RunningTimer = {
   accountId: string;
+  /** The store it runs in (D123: a person has one timer across all their stores). */
+  storeId: string;
+  storeSlug: string;
+  storeName: string;
   assignmentId: string;
   assignmentName: string;
   clientId: string;
@@ -491,7 +495,8 @@ export type TimerEstimate = {
 };
 
 const RUNNING_SELECT = sql`
-  select w.account_id, w.assignment_id, a.name as assignment_name, a.client_id, c.name as client_name,
+  select w.account_id, w.store_id, st.slug as store_slug, st.name as store_name,
+         w.assignment_id, a.name as assignment_name, a.client_id, c.name as client_name,
          w.task_id, t.title as task_title, w.started_at, now() as server_now,
          floor(extract(epoch from now() - w.started_at))::bigint as elapsed_seconds,
          a.estimated_minutes as assignment_estimate, t.estimated_minutes as task_estimate,
@@ -501,6 +506,7 @@ const RUNNING_SELECT = sql`
          coalesce((select sum(e.minutes) from commerce.work_time_entries e
                     where e.store_id = w.store_id and e.assignment_id = w.assignment_id and e.task_id = w.task_id), 0)::int as task_logged
   from commerce.work_timers w
+  join commerce.stores st on st.id = w.store_id
   join commerce.work_assignments a on a.store_id = w.store_id and a.id = w.assignment_id
   join commerce.work_clients c on c.store_id = a.store_id and c.id = a.client_id
   left join commerce.work_tasks t on t.store_id = w.store_id and t.id = w.task_id
@@ -536,6 +542,9 @@ function toRunningTimer(row: Row): RunningTimer {
   }
   return {
     accountId: String(row.account_id),
+    storeId: String(row.store_id),
+    storeSlug: String(row.store_slug),
+    storeName: String(row.store_name),
     assignmentId: String(row.assignment_id),
     assignmentName: String(row.assignment_name),
     clientId: String(row.client_id),
@@ -549,11 +558,20 @@ function toRunningTimer(row: Row): RunningTimer {
   };
 }
 
-/** The person's running timer in this store, or null. */
-export async function getRunningTimer(storeId: string, accountId: string): Promise<RunningTimer | null> {
+/**
+ * The person's running timer, or null (D123: one across all their stores, with the store it runs in).
+ * Only one in a store they are still a member of and that still has Work on is shown: a timer left
+ * in a store they have since left, or that switched Work off, is not theirs to see (it is stopped
+ * and logged when they start another, or by an owner of that store).
+ */
+export async function getRunningTimer(accountId: string): Promise<RunningTimer | null> {
   if (!isUuid(accountId)) return null;
   const [row] = await readDb().execute<Row>(sql`
-    ${RUNNING_SELECT} where w.store_id = ${storeId}::uuid and w.account_id = ${accountId}::uuid
+    ${RUNNING_SELECT}
+    where w.account_id = ${accountId}::uuid
+      and 'work' = any(st.modules)
+      and exists (select 1 from commerce.store_members m
+                  where m.store_id = w.store_id and m.account_id = w.account_id and m.disabled_at is null)
   `);
   return row ? toRunningTimer(row) : null;
 }
@@ -589,8 +607,9 @@ const toStopped = (row: Row): StoppedEntry => ({
 });
 
 /**
- * Starts the member's timer on an assignment (and a task of it). One runs per
- * person per store: a timer that was running is stopped and logged first, in
+ * Starts the member's timer on an assignment (and a task of it) of this store.
+ * One runs per person across ALL their stores (D123): a timer that was running,
+ * in this or another store, is stopped and logged first (to its own store), in
  * the same transaction, and reported as `stopped`.
  */
 export async function startTimer(
@@ -610,12 +629,13 @@ export async function startTimer(
       `);
       let stopped: StoppedEntry | null = null;
       if (started.stopped_entry_id) {
+        // The clock that ran may have been in another of the person's stores: the entry's own store is what counts.
         const [entry] = await tx.execute<Row>(sql`
-          select id, assignment_id, task_id, work_date::text as work_date, minutes
-          from commerce.work_time_entries where store_id = ${store.id}::uuid and id = ${String(started.stopped_entry_id)}::uuid
+          select id, store_id, assignment_id, task_id, work_date::text as work_date, minutes
+          from commerce.work_time_entries where id = ${String(started.stopped_entry_id)}::uuid and account_id = ${account.id}::uuid
         `);
         stopped = entry ? toStopped(entry) : null;
-        if (stopped?.taskId) await syncTaskHoursToDraftLine(tx, { storeId: store.id, taskId: stopped.taskId });
+        if (entry && stopped?.taskId) await syncTaskHoursToDraftLine(tx, { storeId: String(entry.store_id), taskId: stopped.taskId });
       }
       return { ok: true, startedAt: iso(started.timer_started_at) as string, stopped };
     }),
@@ -670,7 +690,7 @@ export async function discardTimer({ account, store }: Membership): Promise<Work
   return workGuard(() =>
     db().transaction(async (tx): Promise<WorkResult<{ discarded: boolean }>> => {
       await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtextextended('work_timer:' || ${store.id}::text || ${account.id}::text, 0))`,
+        sql`select pg_advisory_xact_lock(hashtextextended('work_timer:' || ${account.id}::text, 0))`,
       );
       const [timer] = await tx.execute<Row>(sql`
         delete from commerce.work_timers where store_id = ${store.id}::uuid and account_id = ${account.id}::uuid

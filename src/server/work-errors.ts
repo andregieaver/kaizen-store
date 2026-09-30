@@ -47,6 +47,7 @@ export const WORK_ERROR_MESSAGES: Record<string, string> = {
     "Only a draft invoice can be changed this way. An issued invoice is issued by issuing a draft.",
   "work_invoice.immutable": "An issued invoice cannot be changed or deleted. Credit it with a credit note instead.",
   "work_invoice.status": "That status change is not allowed for this invoice.",
+  "work_invoice.imported_only": "Imported invoices are made by the Kaizen Life import only.",
   "work_invoice.assignment": "The assignment belongs to another client.",
   "work_invoice.recurring": "The repeating invoice belongs to another client.",
   // Credit notes

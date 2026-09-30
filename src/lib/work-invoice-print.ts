@@ -17,9 +17,14 @@ export type PrintableState = { printable: true } | { printable: false; reason: "
  * and buyer are still live, so a printout of it could be mistaken for the
  * invoice. There is no draft preview and no watermark.
  */
-export function printableState(invoice: { status: string; documentNumber: string | null }): PrintableState {
+export function printableState(invoice: {
+  status: string;
+  documentNumber: string | null;
+  /** Moved in from Kaizen Life: issued without a series number, and it may have had no number there either. */
+  imported?: boolean;
+}): PrintableState {
   if (invoice.status === "draft") return { printable: false, reason: "draft" };
-  if (!invoice.documentNumber?.trim()) return { printable: false, reason: "unnumbered" };
+  if (!invoice.documentNumber?.trim() && !invoice.imported) return { printable: false, reason: "unnumbered" };
   return { printable: true };
 }
 

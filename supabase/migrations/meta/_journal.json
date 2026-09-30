@@ -1359,6 +1359,20 @@
       "when": 1790721697271,
       "tag": "20260929224137_work_recurring_skip",
       "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1790724003722,
+      "tag": "20260929232003_work_timer_across_stores",
+      "breakpoints": true
+    },
+    {
+      "idx": 195,
+      "version": "7",
+      "when": 1790724961326,
+      "tag": "20260929233601_work_imported_invoices",
+      "breakpoints": true
     }
   ]
 }

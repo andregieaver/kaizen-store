@@ -2114,3 +2114,166 @@ decided while building:
   a draft that is not ready and its once-a-day note, "Issue now", store isolation, Work off and closed stores, owner-only
   auto-issue, deleting), `work-recurring-ui.test.ts`, `recurring-panel.test.ts` (server renders of the panel and form)
   and a case in `commerce.test.ts` for the trigger.
+
+## As built: combined owner view (D123)
+
+Work moved up from the store to the store owner's level (the control center): an owner who runs several stores, "different
+income streams, one control center", manages all their clients, hours and invoices from `/admin/account/work`. **The data
+stays per store.** Each store is the legal seller: its own invoice numbers (gap-free series), VAT, bank details, currency
+and settings, and an invoice is still issued by `commerce.issue_work_invoice()` in that store. What D123 adds is a combined
+view across the account's stores and a place to switch Work on. No migration and no new table were needed.
+
+* **Addresses** (`src/lib/work-paths.ts`: `WORK_ROOT`, `workBase(slug)`, the only way links are built). The combined pages
+  are `/admin/account/work` (overview), `/clients`, `/time`, `/invoices`, `/reports` (+ `/reports/csv`) and `/settings`.
+  One store's own screens are `/admin/account/work/s/{store}/…` (`s` is shorter than any store address): overview, clients
+  and client, assignment, time, invoices and invoice, reports, settings. Every row of a combined list links to the store's own
+  screen, where the row is edited; the combined pages create nothing themselves.
+* **Which stores** (`workStoresFor(account)` in `src/server/work-owner.ts`, one query): the stores where the account is an
+  active member (`store_members.disabled_at is null`, store not `closed`), split into `using` (Work on) and `off` (Work off,
+  and the account is an owner, so it can switch it on). Each has role, name, slug, time zone, its first market's currency
+  and when the account last did something in its Work (`work_events`). Every reader takes those stores, never a slug from
+  the address: `?store=slug` only chooses among them (`scopeStores()`, `activeStoreSlug()`; a slug the account cannot see is
+  treated as "all", so it opens nothing and leaks nothing). A store the account is not in never appears; an admin's
+  store with Work off is not listed at all.
+* **Role rules, as the store pages:** everyone who works in a store sees its clients, invoices, reports and overview; time
+  is everyone's in stores the account owns and only the account's own in the others (`timeVisibility()`, decided by the
+  membership: an address asking for someone else's time in a store the account only staffs finds nothing). Owners only:
+  the Work switch, and everything the store's own settings pages restrict.
+* **One query per kind, for all the stores** (`readDb()`, `store_id in (…)`): `getOwnerOverview()` (the rows of
+  `getWorkOverview()` for all stores, put through `workOverview()` per store's own day, then `combineOverviews()`),
+  `listOwnerClients()`, `listOwnerTime()`, `listOwnerInvoices()` (page, totals per currency, tab counts) and `getOwnerSettings()`.
+  Reports are the exception: each store's own `getPeriodReport()` once per store, in parallel, merged by `mergeReports()`
+  (the rows stay each store's own, the totals are added per currency), so a report figure is the store report's figure.
+* **Money is never added across currencies** (`src/lib/work-owner.ts`, pure, unit tested): figures are added only within a
+  currency (`addFigures()` throws on two currencies, `figuresPerCurrency()`), minutes and counts are added freely, an
+  empty total is the store's own main currency (`storeMainCurrency()`, never a guess), and the pages show one block per
+  currency and each store's own figures beside the total, with a note that currencies are never added. Days are each
+  store's own (`todayIn(store.timeZone)`): a report preset is worked out per store (`parseOwnerReportParams()`, the store
+  report's presets and custom days; the combined report has no client filter, a client belongs to one store) and the page
+  says when stores in different zones give different days.
+* **Pages** (`src/app/admin/(gated)/(owner)/account/work/…`, components in `src/components/admin/work/owner-*.tsx`):
+  the overview (attention across stores, figures per currency, a by-store table, unbilled time by client, overdue invoices,
+  running timers, and what each store still lacks before its first invoice), clients (search, active / archived / all,
+  store filter, store on each row), time (store, client once a store is chosen, person in owned stores, days, billable,
+  invoicing, search; read-only rows leading to the store's Time page), invoices (the store list's status tabs and filters,
+  a store filter, totals per currency) and reports (the store report's controls, the store on each row, totals per currency).
+  **"New client" and "New invoice"** first ask which store (`NewInStoreButton`: a plain link with one store; otherwise a
+  dialog whose default is the narrowed store, else the last one the account used, else the first), then lead to that store's
+  own create flow (`newClientHref()`, `newInvoiceHref()`: its clients page, its invoices page with the New invoice dialog
+  open), so the create rules live in one place.
+* **CSV** (`reports/csv/route.ts`, `ownerReportToCsv()`): a Store column first, then the client (and assignment), plain
+  decimals, a total row per currency, all text through `toCsv()` (formula-safe) and the byte order mark; only stores the
+  account belongs to.
+* **Settings** (`settings/page.tsx`, actions in `work-owner-actions.ts`): a card per store with "Use Work in this store"
+  (owners only; an admin sees it disabled), what turning it off keeps (`switchOffNote()`), what is missing before the first
+  invoice (`sellerReadiness()` per store, one query) and a link to the store's own Work settings. `switchWorkModule()`
+  reads the membership itself, so any slug the browser sends can only change a store the account owns (an admin: "Only an
+  owner can switch Work on or off."; a store it is not in, or left: "That store was not found."), calls `setWorkModule()`
+  (adds or removes `'work'` in `stores.modules`, audited `work.enabled` / `work.disabled`) and the action then calls
+  `updateTag(storeTag(slug))`. Off hides, never deletes. The store's Features page no longer has the switch.
+* **Empty state:** while none of the account's stores uses Work, every combined page shows a short explanation and the
+  switches instead of empty tables (`OwnerWorkStart`); an account that owns no store to switch it on in is told to ask an owner.
+* **Tests:** `work-owner.test.ts` (choosing stores, defaults for "New …", currency arithmetic, overview and report merges,
+  zero totals, the CSV, per-store days), `owner-pages.test.ts` (server renders in every state), and
+  `work-owner.int.test.ts` against a real database (an account owning a NOK and an EUR store, admin in a third, plus a
+  stranger's store, a store with Work off, a disabled membership and a closed store: nothing added across currencies,
+  isolation, staff vs owner time, the report merged against each store's own report, the CSV, and the switch owner-only and
+  audited).
+* **Not built:** a combined client detail, invoice or assignment page (they stay the store's), print views of the combined
+  report, and a combined recurring-invoices list.
+
+## As built in D123 (Work at the owner level)
+
+Work moved up from the store level to the store owner's level (the control center, D107): someone who runs several
+sites keeps every income stream's clients, hours and invoices in one place. Data did not move and stays per store: each
+store is the legal seller, with its own numbering series, VAT, bank details, currency and settings, and `stores.modules`
+is still the source of truth for the switch. Only the screens moved, and the person's timer became one across stores.
+
+* **Where it lives.** `src/lib/work-paths.ts` is the only way Work links are built: `WORK_ROOT` (`/admin/account/work`) and
+  `workBase(slug)` (`/admin/account/work/s/{slug}`; `s` is shorter than any store address, so no store can take it).
+
+  | Address | What |
+  | --- | --- |
+  | `/admin/account/work`, `…/clients`, `…/time`, `…/invoices`, `…/reports`, `…/settings` | the combined pages over every store the account belongs to (see the section above) |
+  | `/admin/account/work/s/{store}` (and `/clients`, `/clients/{id}`, `/assignments/{id}`, `/invoices`, `/invoices/{id}`, `/time`, `/reports`, `/settings`) | one store's own screens, unchanged in content |
+  | `/admin/account/work/s/{store}/invoices/export`, `…/payments/export`, `…/reports/csv` | that store's CSV route handlers |
+  | `/admin/account/work/s/{store}/invoices/{id}/print`, `…/credit-notes/{id}/print`, `…/reports/print` | print views, in the `(print)` route group (below) |
+
+  The store's pages, action files (`actions.ts`, `invoice-actions.ts`, …) and route handlers were `git mv`'d from
+  `(gated)/[store]/work/**` and `(gated)/[store]/settings/work` to `(gated)/(owner)/account/work/s/[store]/**`, and
+  the prints from `(gated)/(print)/[store]/work/**` to `(gated)/(print)/account/work/s/[store]/**`. The `(print)` group is a
+  sibling of `(owner)`, so the prints have the same URLs without the owner frame or the Work shell; routes in two groups
+  may share a URL prefix as long as no two share a full path. Every link, redirect, `refresh()`, router push, CSV and
+  print URL, attention item (`work-attention.ts`, `getWorkOverview()`) and the admin map use `workBase()`.
+* **Shell.** `(owner)/layout.tsx` has a *Work* tab (`WORK_ROOT`) for owners (so they can switch it on) and for staff when a
+  store of theirs has Work on (`StoreSummary.workOn`, read by `listStores()`). `(owner)/account/work/layout.tsx` draws the
+  sub-navigation (`WorkNav`: Overview, Clients, Time, Invoices, Reports, Settings) and the timer shell (`WorkShell`,
+  `WorkTimerProvider`, once for both the combined and the store screens, so the clock carries on between them). On a
+  store's own screens the navigation also shows a link back to the combined view, the store's name and a switch to another
+  store with Work on. `s/[store]/layout.tsx` only calls `requireMember()` early; every page and action still checks for itself.
+  The store level lost its Work tab, its sidebar group and the Work card on Features; the switch is on the owner's
+  Work settings page (`switchWorkModule()`). `Store.workOn` stays.
+* **Admin map** (`src/lib/admin-map.ts`). Work pages are `area: "account"` with the group `Work` (helper `work()`), all
+  needing `work` except the overview and the settings, which are always offered so the switch can be found. The combined
+  pages and the store's (`work.store`, `work.store.clients`, …, `work.client`, `work.assignment`, `work.invoice`) are
+  listed; a page with a `[store]` param takes the store in hand (`pageHref()`), and `matchPath()` reports that store.
+  The coverage test also walks `(owner)/account/work`.
+* **One timer across stores.** A person has one running timer for all their stores. Migration
+  `20260929232003_work_timer_across_stores.sql` (`pnpm exec drizzle-kit generate --custom --name work_timer_across_stores`):
+  `commerce.work_start_timer(p_store, p_account, p_assignment, p_task)` keeps its signature but takes the advisory lock on
+  the person alone (`'work_timer:' || account`, also in `work_stop_timer`), stops and logs the person's timer in ANY store
+  in the same transaction (each entry to its own store's assignment, its `time.logged` event in that store's history),
+  then starts the new one; `work_timers` keeps its primary key (store, person) and gets the unique index
+  `work_timers_account_idx` on the person as the rule. The migration first stops and logs the older timers of anyone who
+  has several (the newest keeps running). `getRunningTimer(accountId)` returns the person's timer with `storeId`,
+  `storeSlug` and `storeName` (only in a store they are still a member of and that still has Work on);
+  `startTimer()` reports the entry of a timer stopped in another store by its own store; `discardTimer()` uses the same
+  lock. In the browser `useWorkTimer({ showStore, accountId, serverTimer })` starts, stops and discards against the
+  timer's own store (`TimerTarget` and `ClientTimer` carry `storeSlug`/`storeName`), and the bar names the store when the
+  person has Work on in more than one. Estimate warnings work across stores unchanged.
+* **Old addresses.** `LEGACY_WORK_REDIRECTS` (`work-paths.ts`, added to `redirects` in `next.config.ts`; temporary,
+  307): `/admin/{store}/work`, `/admin/{store}/work/{path}` and `/admin/{store}/settings/work` lead to
+  `/admin/account/work/s/{store}[/{path}]` (the query string is kept). The first segment excludes `account` and `platform`
+  so `/admin/account/work` does not match `/admin/:store/work` and loop. A redirect names nothing of the store: the target
+  page checks membership. Tested in `work-paths.test.ts` (with Next's own path matcher) and `e2e/work.spec.ts`.
+* **Tests.** PGlite: `commerce.test.ts` (one timer per person and store, across stores with the entry logged to the first
+  store, the unique index, the clean-up of timers from before); `work-time.int.test.ts` (a timer started in another store
+  stops and logs the first, `getRunningTimer(account)` names the store, a left store hides it); `work-paths.test.ts`;
+  `admin-map.test.ts`; the Work screen tests use the new addresses.
+
+## As built in WP15 (import from Kaizen Life)
+
+`scripts/import-life-work.mjs <life-export.json> <store-slug>` reads a JSON export of one Life space (read-only SELECTs, made by
+whoever runs it; it never connects to a database), converts it with the pure `src/lib/work-import.ts` and writes **one SQL
+transaction** plus a dry-run reconciliation report. Nothing is written to Life, nothing emailed, no D41 event queued. Tested by
+`work-import.test.ts` (rounding, ids, mapping, the SQL text), the PGlite cases in `commerce.test.ts` ("invoices imported from
+Kaizen Life") and `work-import.int.test.ts` (the generated SQL run for a fixture: totals reconcile, again does nothing, a
+store with other Work rows is refused, the readers, no email, a normal invoice still gets the next number). Fixture:
+`src/lib/work-import-fixture.ts`.
+
+* **Migration `work_imported_invoices`.** `work_invoices.imported boolean` and `legacy_number text`. An imported invoice is
+  issued (`sent`, then `paid` by its own payment row) and keeps Life's frozen amounts and lines: no series `number`
+  (`number` is null), `document_number` holds Life's number or the label `Imported` (so every reader, list, CSV and
+  document header shows it with no change), `legacy_number` is unique per store, and `document_number` is unique per store
+  except for the unnumbered `Imported` ones (so the series can never issue a number Life already used). Relaxed for imported
+  rows only: the numbering check, the guard that an invoice starts as a draft, and the immutability guards for lines and
+  time, **and only inside a transaction that ran `select set_config('commerce.work_importing', 'on', true)`** (else
+  `work_invoice.imported_only`). Afterwards they are ordinary issued invoices: immutable (`imported` and `legacy_number`
+  too), payments, credit notes (`credit_work_invoice` works from the snapshots; the credit note is a new document from the
+  `work_credit_note` series). While importing, the payment and paid history entries and the D41 client and invoice events are
+  not written (the import writes one `invoice.imported` entry per invoice). Imported invoices never count for the series'
+  date order or its "last issued".
+* **What it makes.** Clients (Norwegian businesses, domestic VAT, no address: Life keeps none), assignments (`invoiced` becomes
+  `done`; the estimate warnings move from the invoice to the assignment), tasks, time entries (attributed to the store member
+  named by e-mail; a task's billable time goes on that task's line), repeating invoices (Life's VAT-inclusive amount becomes
+  the net price at the space's default VAT, schedule kept, auto-issue off), invoices and lines. Life's sent and paid invoices
+  are imported (see above); a paid one gets a payment of its total, method `other`, reference `imported`, dated by Life's
+  paid date, else the date of the linked Finances transaction, else the due date. Life's drafts stay ordinary drafts, priced
+  by Store's formula with no dates. Ids are uuid v5 of the Life id in the store's namespace and every insert is `on conflict
+  do nothing`, so it can be run twice; it aborts if the store has Work rows that are not from it, if the store, member, module
+  or time zone is not as expected, and checks its own totals, statuses, the series and the integration queue at the end.
+* **Left out.** Anything that cannot be imported faithfully is listed in the report and skipped with what depends on it (Life's
+  voided invoices need a credit note; a total that is not its subtotal plus VAT). Imported invoices are not emailed: the
+  invoice and reminder emails are refused with `imported`; the print page and the copy-link still work.
+* **Seller snapshot.** Read from the store's details and Work settings when the SQL runs (like `issue_work_invoice`): save the
+  Work settings (VAT number, bank account, payment note) first, or the frozen seller lacks them for good.

@@ -47,8 +47,6 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
     // The AI manager (D94, D103), for owners.
     ...(role === "owner" ? [{ href: `${base}/assistant`, label: "AI manager" }] : []),
     { href: `${base}/orders`, label: "Orders" },
-    // Clients, hours and invoices (D122), once the store has switched Work on: the tab is its overview.
-    ...(store.workOn ? [{ href: `${base}/work`, label: "Work" }] : []),
     { href: `${base}/subscriptions`, label: "Subscriptions" },
     { href: `${base}/products`, label: "Products" },
     { href: `${base}/product-layouts`, label: "Product layouts" },
@@ -71,21 +69,6 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
               { href: `${base}/bookings/stays`, label: "Stays and rentals" },
               { href: `${base}/bookings/units`, label: "Rooms and items" },
               { href: `${base}/hosts`, label: "Hosts" },
-            ],
-          },
-        ]
-      : []),
-    // Work (D122): its overview is the tab above, the rest of it is here.
-    ...(store.workOn
-      ? [
-          {
-            heading: "Work",
-            items: [
-              { href: `${base}/work/clients`, label: "Clients" },
-              { href: `${base}/work/invoices`, label: "Invoices" },
-              { href: `${base}/work/time`, label: "Time" },
-              { href: `${base}/work/reports`, label: "Reports" },
-              { href: `${base}/settings/work`, label: "Work settings" },
             ],
           },
         ]

@@ -17,6 +17,7 @@ import {
   reportToday,
   type ReportFixture,
 } from "./work-reports-test-support";
+import { workBase } from "@/lib/work-paths";
 
 vi.mock("next/cache", () => ({
   cacheLife: () => {},
@@ -38,7 +39,7 @@ vi.mock("@/server/auth", () => ({
 }));
 
 const reports = await import("./work-reports");
-const route = await import("@/app/admin/(gated)/[store]/work/reports/csv/route");
+const route = await import("@/app/admin/(gated)/(owner)/account/work/s/[store]/reports/csv/route");
 const { getStore } = await import("./stores");
 
 type Row = Record<string, unknown>;
@@ -271,7 +272,7 @@ describe("the period report", () => {
 
   it("downloads as CSV, formula-safe, with the byte order mark and a safe file name", async () => {
     await db().execute(sql`update commerce.work_clients set name = '=HYPERLINK("http://evil","x")' where id = ${beta}::uuid`);
-    const request = (query: string) => new Request(`https://example.com/admin/${f.slug}/work/reports/csv${query}`);
+    const request = (query: string) => new Request(`https://example.com${workBase(f.slug)}/reports/csv${query}`);
     const ctx = { params: Promise.resolve({ store: f.slug }) };
     const response = await route.GET(request(`?period=custom&from=${from()}&to=${to()}&by=assignment`), ctx as never);
     expect(response.status).toBe(200);

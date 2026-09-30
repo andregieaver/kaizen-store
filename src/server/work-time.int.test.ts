@@ -463,14 +463,14 @@ describe("listing entries", () => {
 
 describe("timers", () => {
   it("starts a timer, one per person, and reads it", async () => {
-    expect(await time.getRunningTimer(owner.store.id, owner.account.id)).toBeNull();
+    expect(await time.getRunningTimer(owner.account.id)).toBeNull();
     const started = await time.startTimer(owner, { assignmentId, taskId });
     expect(started.ok).toBe(true);
     if (!started.ok) return;
     expect(started.stopped).toBeNull();
     expect(new Date(started.startedAt).getTime()).toBeLessThanOrEqual(Date.now() + 1000);
 
-    const running = await time.getRunningTimer(owner.store.id, owner.account.id);
+    const running = await time.getRunningTimer(owner.account.id);
     expect(running).toMatchObject({
       accountId: owner.account.id,
       assignmentId,
@@ -481,8 +481,7 @@ describe("timers", () => {
       startedAt: started.startedAt,
     });
     expect(running?.elapsedSeconds).toBeLessThan(5);
-    expect(await time.getRunningTimer(owner.store.id, admin.account.id)).toBeNull();
-    expect(await time.getRunningTimer(b.owner.store.id, owner.account.id)).toBeNull();
+    expect(await time.getRunningTimer(admin.account.id)).toBeNull();
     // The admin has a timer of their own.
     expect((await time.startTimer(admin, { assignmentId })).ok).toBe(true);
     const all = await time.listRunningTimers(owner.store.id);
@@ -506,7 +505,7 @@ describe("timers", () => {
     expect(switched.stopped).toMatchObject({ assignmentId, taskId, minutes: 11 });
     const entry = await time.getTimeEntry(owner.store.id, switched.stopped!.id);
     expect(entry).toMatchObject({ billable: true, accountId: owner.account.id, minutes: 11, note: null });
-    const now = await time.getRunningTimer(owner.store.id, owner.account.id);
+    const now = await time.getRunningTimer(owner.account.id);
     expect(now?.assignmentId).toBe(other);
     expect(now?.taskId).toBeNull();
     const [count] = await run(sql`
@@ -515,6 +514,46 @@ describe("timers", () => {
     expect(count.n).toBe(1);
     expect(await events(owner.store.id, switched.stopped!.id)).toEqual(["time.logged"]);
     await time.stopTimer(owner);
+  });
+
+  it("runs one timer across all a person's stores: starting in another store logs the first to its own (D123)", async () => {
+    // The owner of store A also works in store B.
+    await run(sql`
+      insert into commerce.store_members (store_id, account_id, role)
+      values (${b.owner.store.id}::uuid, ${owner.account.id}::uuid, 'admin') on conflict do nothing`);
+    const inB: Membership = { account: owner.account, role: "admin", store: b.owner.store };
+    const theirClient = await newClient(b.owner);
+    const theirJob = await newAssignment(b.owner, theirClient, { name: "Elsewhere" });
+
+    expect((await time.startTimer(owner, { assignmentId })).ok).toBe(true);
+    await run(sql`
+      update commerce.work_timers set started_at = now() - interval '29 minutes 5 seconds'
+      where account_id = ${owner.account.id}::uuid`);
+    const moved = await time.startTimer(inB, { assignmentId: theirJob });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    // The clock that ran in store A is logged there, to A's assignment, and reported.
+    expect(moved.stopped).toMatchObject({ assignmentId, minutes: 30 });
+    const logged = await time.getTimeEntry(owner.store.id, moved.stopped!.id);
+    expect(logged).toMatchObject({ accountId: owner.account.id, minutes: 30 });
+    expect(await time.getTimeEntry(b.owner.store.id, moved.stopped!.id)).toBeNull();
+
+    // One timer, now in store B, read without naming a store and with the store's name.
+    const running = await time.getRunningTimer(owner.account.id);
+    expect(running).toMatchObject({
+      assignmentId: theirJob,
+      storeId: b.owner.store.id,
+      storeSlug: b.owner.store.slug,
+      storeName: b.owner.store.name,
+    });
+    const [count] = await run(sql`select count(*)::int as n from commerce.work_timers where account_id = ${owner.account.id}::uuid`);
+    expect(count.n).toBe(1);
+
+    // Not shown once the person has left the store it runs in.
+    await run(sql`update commerce.store_members set disabled_at = now() where store_id = ${b.owner.store.id}::uuid and account_id = ${owner.account.id}::uuid`);
+    expect(await time.getRunningTimer(owner.account.id)).toBeNull();
+    await run(sql`update commerce.store_members set disabled_at = null where store_id = ${b.owner.store.id}::uuid and account_id = ${owner.account.id}::uuid`);
+    await time.stopTimer(inB);
   });
 
   it("rounds a stopped timer up to the minute, at least one, and logs it on the day it started", async () => {
@@ -534,7 +573,7 @@ describe("timers", () => {
       note: "Reviewed the draft",
       billable: true,
     });
-    expect(await time.getRunningTimer(owner.store.id, owner.account.id)).toBeNull();
+    expect(await time.getRunningTimer(owner.account.id)).toBeNull();
 
     // Just short of a whole number of minutes is that many, not one more.
     await time.startTimer(owner, { assignmentId });
@@ -577,13 +616,13 @@ describe("timers", () => {
       ok: false,
       problems: ["Only an owner can stop someone else's timer."],
     });
-    expect(await time.getRunningTimer(owner.store.id, admin.account.id)).not.toBeNull();
+    expect(await time.getRunningTimer(admin.account.id)).not.toBeNull();
     const stopped = await time.stopTimer(owner, { forAccountId: admin.account.id });
     expect(stopped.ok && stopped.entry?.minutes).toBe(1);
     if (stopped.ok && stopped.entry) {
       expect((await time.getTimeEntry(owner.store.id, stopped.entry.id))?.accountId).toBe(admin.account.id);
     }
-    expect(await time.getRunningTimer(owner.store.id, admin.account.id)).toBeNull();
+    expect(await time.getRunningTimer(admin.account.id)).toBeNull();
     expect((await time.stopTimer(owner, { forAccountId: "nope" })).ok).toBe(false);
   });
 
@@ -594,7 +633,7 @@ describe("timers", () => {
       problems: ["That task is not on this assignment."],
     });
     expect((await time.startTimer(owner, { assignmentId: "nope" })).ok).toBe(false);
-    expect(await time.getRunningTimer(owner.store.id, owner.account.id)).toBeNull();
+    expect(await time.getRunningTimer(owner.account.id)).toBeNull();
   });
 
   it("stops a timer whose task is deleted only after the timer is stopped", async () => {
@@ -602,7 +641,7 @@ describe("timers", () => {
     if (!own.ok) throw new Error("no task");
     await time.startTimer(owner, { assignmentId, taskId: own.id });
     expect((await work.deleteTask(owner, own.id)).ok).toBe(false);
-    expect(await time.getRunningTimer(owner.store.id, owner.account.id)).not.toBeNull();
+    expect(await time.getRunningTimer(owner.account.id)).not.toBeNull();
     await time.stopTimer(owner);
   });
 });
@@ -621,7 +660,7 @@ describe("estimate warnings", () => {
     await log(owner, { assignmentId: job, taskId: plain.id, minutes: 20 });
 
     await time.startTimer(owner, { assignmentId: job, taskId: estimated.id });
-    let timer = await time.getRunningTimer(owner.store.id, owner.account.id);
+    let timer = await time.getRunningTimer(owner.account.id);
     expect(timer?.estimate).toMatchObject({
       target: "task",
       estimatedMinutes: 60,
@@ -637,7 +676,7 @@ describe("estimate warnings", () => {
       update commerce.work_timers set started_at = now() - interval '22 minutes 30 seconds'
       where store_id = ${owner.store.id}::uuid and account_id = ${owner.account.id}::uuid
     `);
-    timer = await time.getRunningTimer(owner.store.id, owner.account.id);
+    timer = await time.getRunningTimer(owner.account.id);
     expect(timer?.elapsedSeconds).toBeGreaterThanOrEqual(1350);
     expect(timer?.estimate).toMatchObject({ stage: "near", alert: "near" });
 
@@ -645,7 +684,7 @@ describe("estimate warnings", () => {
       update commerce.work_timers set started_at = now() - interval '31 minutes'
       where store_id = ${owner.store.id}::uuid and account_id = ${owner.account.id}::uuid
     `);
-    expect((await time.getRunningTimer(owner.store.id, owner.account.id))?.estimate).toMatchObject({
+    expect((await time.getRunningTimer(owner.account.id))?.estimate).toMatchObject({
       stage: "over",
       alert: "over",
     });
@@ -653,7 +692,7 @@ describe("estimate warnings", () => {
     // A task without an estimate falls back on the assignment's: 50 logged of 100, all tasks together.
     const switched = await time.startTimer(owner, { assignmentId: job, taskId: plain.id });
     if (!switched.ok || !switched.stopped) throw new Error("the first timer was not stopped");
-    timer = await time.getRunningTimer(owner.store.id, owner.account.id);
+    timer = await time.getRunningTimer(owner.account.id);
     expect(timer?.estimate).toMatchObject({
       target: "assignment",
       estimatedMinutes: 100,
@@ -666,7 +705,7 @@ describe("estimate warnings", () => {
   it("has nothing to warn about without an estimate, or with warnings off", async () => {
     const none = await newAssignment(owner, clientId, { name: "No estimate" });
     await time.startTimer(owner, { assignmentId: none });
-    expect((await time.getRunningTimer(owner.store.id, owner.account.id))?.estimate).toBeNull();
+    expect((await time.getRunningTimer(owner.account.id))?.estimate).toBeNull();
 
     const off = await newAssignment(owner, clientId, {
       name: "Warnings off",
@@ -675,10 +714,10 @@ describe("estimate warnings", () => {
     });
     await time.startTimer(owner, { assignmentId: off });
     await run(sql`
-      update commerce.work_timers set started_at = now() - interval '30 minutes'
+      update commerce.work_timers set started_at = now() - interval '29 minutes 5 seconds'
       where store_id = ${owner.store.id}::uuid and account_id = ${owner.account.id}::uuid
     `);
-    const timer = await time.getRunningTimer(owner.store.id, owner.account.id);
+    const timer = await time.getRunningTimer(owner.account.id);
     expect(timer?.estimate).toMatchObject({ settings: { minutes: null }, stage: "ok", alert: null });
     await time.stopTimer(owner);
   });

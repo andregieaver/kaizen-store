@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 // The actions are server code (they import the database); the dialogs call them only when pressed.
 vi.mock("server-only", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/send-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/send-actions", () => ({}));
 
 import { InvoiceExportSlot } from "./invoice-export-slot";
 import { SendCreditNoteButton, SendInvoiceSlot } from "./invoice-send-slot";
@@ -47,13 +47,13 @@ describe("the CSV downloads", () => {
     const html = renderToStaticMarkup(
       createElement(InvoiceExportSlot, { storeSlug: "konsult", query: "?show=overdue&client=abc" }),
     );
-    expect(html).toContain('href="/admin/konsult/work/invoices/export?show=overdue&amp;client=abc"');
-    expect(html).toContain('href="/admin/konsult/work/payments/export"');
+    expect(html).toContain('href="/admin/account/work/s/konsult/invoices/export?show=overdue&amp;client=abc"');
+    expect(html).toContain('href="/admin/account/work/s/konsult/payments/export"');
     expect(html).toContain("Export invoices (CSV)");
   });
 
   it("links the whole register when nothing is filtered", () => {
     const html = renderToStaticMarkup(createElement(InvoiceExportSlot, { storeSlug: "konsult", query: "" }));
-    expect(html).toContain('href="/admin/konsult/work/invoices/export"');
+    expect(html).toContain('href="/admin/account/work/s/konsult/invoices/export"');
   });
 });

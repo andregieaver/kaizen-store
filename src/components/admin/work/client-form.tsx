@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 
-import { createClientAction, updateClientAction } from "@/app/admin/(gated)/[store]/work/actions";
+import { createClientAction, updateClientAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import { documentLanguage, DOCUMENT_LANGUAGES } from "@/lib/work-invoice-text";
 import { VAT_TREATMENTS, VAT_TREATMENT_LABELS, suggestTreatment, type VatTreatment } from "@/lib/work-vat";
 import { NO_PROBLEMS, clientPayload, moneyField, type ClientFormValues, type FormProblems } from "@/lib/work-ui";

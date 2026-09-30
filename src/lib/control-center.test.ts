@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { attentionFor, changeText, totalSales, type StoreFigures } from "./control-center";
 import { workOverview } from "./work-overview";
+import { workBase } from "@/lib/work-paths";
 
 const store = (over: Partial<StoreFigures> = {}): StoreFigures => ({
   slug: "kaffe",
@@ -66,7 +67,7 @@ describe("the control center (D107)", () => {
       ],
       entries: [],
       timers: [],
-      base: `/admin/${slug}/work`,
+      base: workBase(slug),
       label: name,
     }).attention;
     const work = workOf("b", "B");
@@ -82,8 +83,8 @@ describe("the control center (D107)", () => {
     );
     // The overdue invoice is 28 days late, so it is urgent and comes before the stock; staff see it too.
     expect(items.map((i) => i.href)).toEqual([
-      "/admin/b/work/invoices?show=overdue",
-      "/admin/d/work/invoices?show=overdue",
+      "/admin/account/work/s/b/invoices?show=overdue",
+      "/admin/account/work/s/d/invoices?show=overdue",
       "/admin/a/products",
     ]);
     expect(items[0]).toMatchObject({ urgent: true, action: "Open invoices" });

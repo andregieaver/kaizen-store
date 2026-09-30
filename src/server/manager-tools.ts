@@ -69,7 +69,8 @@ const area = (ctx: ManagerContext) => (ctx.store ? "store" : "platform");
 // Guiding ------------------------------------------------------------------------------------
 
 function describe(ctx: ManagerContext, page: (typeof ADMIN_PAGES)[number]) {
-  const params = pageParams(page);
+  // A store's Work screens take the store (D123); in a store's assistant it is the one in hand.
+  const params = pageParams(page).filter((name) => !(name === "store" && ctx.store));
   return {
     id: page.id,
     title: page.title,

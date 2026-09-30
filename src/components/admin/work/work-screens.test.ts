@@ -9,7 +9,7 @@ import { EMPTY_TIME_FILTERS } from "@/lib/work-ui";
 import { timerFromServer } from "@/lib/work-timer-ui";
 
 // The actions are server code (they import the database); the screens only call them when a button is pressed.
-vi.mock("@/app/admin/(gated)/[store]/work/actions", () => {
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/actions", () => {
   const action = () => vi.fn(async () => ({ ok: true }));
   return {
     createClientAction: action(),
@@ -37,8 +37,8 @@ vi.mock("@/app/admin/(gated)/[store]/work/actions", () => {
 });
 // The invoice screens' places (`invoice-slots`) read invoices with server code and call its actions.
 vi.mock("server-only", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-actions", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-view-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { AssignmentStatusControl } from "./assignment-actions";
@@ -68,7 +68,7 @@ import type { WorkTimer } from "./use-work-timer";
 
 const html = (element: ReactElement) => renderToString(element).replace(/<!-- -->/g, "");
 
-const BASE = "/admin/kaffe/work";
+const BASE = "/admin/account/work/s/kaffe";
 
 // --- Fixtures ------------------------------------------------------------------------
 
@@ -201,6 +201,9 @@ const entry = (over: Partial<TimeEntryItem> = {}): TimeEntryItem => ({
 
 const server = (over: Partial<RunningTimer> = {}): RunningTimer => ({
   accountId: "me",
+  storeId: "s1",
+  storeSlug: "kaffe",
+  storeName: "Kaffe",
   assignmentId: "a1",
   assignmentName: "Website rebuild",
   clientId: "c1",
@@ -226,7 +229,7 @@ const estimateOf = (left: number, minutes: number | null = 10): RunningTimer["es
 });
 
 const api = (over: Partial<WorkTimer> = {}): WorkTimer => ({
-  storeSlug: "kaffe",
+  showStore: false,
   timer: null,
   pendingEntry: null,
   now: 0,
@@ -262,7 +265,7 @@ describe("the running timer bar", () => {
     expect(out).toContain("0:12:34");
     expect(out).toContain("Design, Website rebuild");
     expect(out).toContain("for Acme AB");
-    expect(out).toContain(`/admin/kaffe/work/assignments/a1`);
+    expect(out).toContain(`/admin/account/work/s/kaffe/assignments/a1`);
     expect(out).toContain("Stop");
     expect(out).toContain("Discard");
   });
@@ -328,6 +331,8 @@ describe("the estimate popup", () => {
 
 describe("the start and stop buttons", () => {
   const target = {
+    storeSlug: "kaffe",
+    storeName: "Kaffe",
     assignmentId: "a1",
     assignmentName: "Website rebuild",
     clientId: "c1",
@@ -483,7 +488,7 @@ describe("the client list", () => {
         show: "all",
       }),
     );
-    expect(out).toContain('href="/admin/kaffe/work/clients/c1"');
+    expect(out).toContain('href="/admin/account/work/s/kaffe/clients/c1"');
     expect(out).toContain("Acme AB");
     expect(out).toContain("Anna Berg · ap@acme.example");
     expect(out).toContain("15h");
@@ -562,7 +567,7 @@ describe("the client page's parts", () => {
         ],
       }),
     );
-    expect(out).toContain('href="/admin/kaffe/work/assignments/a1"');
+    expect(out).toContain('href="/admin/account/work/s/kaffe/assignments/a1"');
     expect(out).toContain("Website rebuild");
     expect(out).toContain("Active");
     expect(out).toContain("(client&#x27;s rate)");
@@ -668,7 +673,7 @@ describe("the assignment page's parts", () => {
     expect(out).toContain("Hourly, ");
     expect(out).toContain("4h 30m, ");
     expect(out).toContain("10 minutes before, with a message");
-    expect(out).toContain('href="/admin/kaffe/work/clients/c1"');
+    expect(out).toContain('href="/admin/account/work/s/kaffe/clients/c1"');
   });
 
   it("colours the bar amber when nearly used up and red when over, and says so in words", () => {
@@ -827,8 +832,8 @@ describe("time entries", () => {
     expect(out).toContain("1h 30m");
     expect(out).toContain("Design");
     expect(out).toContain("Kari");
-    expect(out).toContain('href="/admin/kaffe/work/assignments/a1"');
-    expect(out).toContain('href="/admin/kaffe/work/clients/c1"');
+    expect(out).toContain('href="/admin/account/work/s/kaffe/assignments/a1"');
+    expect(out).toContain('href="/admin/account/work/s/kaffe/clients/c1"');
     expect(out).toContain('value="Kick-off call"');
     expect(out).toContain('aria-label="Note for 1h 30m on 28/09/2026"');
     expect(out).toContain("Delete");

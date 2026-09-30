@@ -27,11 +27,13 @@ import {
   runningTimerAction,
   startTimerAction,
   stopTimerAction,
-} from "@/app/admin/(gated)/[store]/work/actions";
+} from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 
 /**
  * The running timer as the page shows it, ahead of the server (docs/work.md
- * 1.7, from Life's `use-work-timer.ts`).
+ * 1.7, from Life's `use-work-timer.ts`). One per person across all their
+ * stores (D123): it carries the store it runs in, and starting one in another
+ * store stops and logs this one.
  *
  * The timer is a row in the database, so it survives a reload and shows on
  * every device; this hook is the browser's view of it. Pressing start or stop
@@ -135,7 +137,8 @@ export function playChime(stage: "near" | "over"): void {
 export type TimerAlert = { stage: "near" | "over"; timer: ClientTimer };
 
 export type WorkTimer = {
-  storeSlug: string;
+  /** The person works in more than one store with Work on, so the bar says which one a timer runs in. */
+  showStore: boolean;
   timer: ClientTimer | null;
   /** Minutes of a clock just stopped, shown as logged until the server's figures include them. */
   pendingEntry: PendingEntry | null;
@@ -161,11 +164,11 @@ const CHECK_MS = 5000;
 const REREAD_MS = 60_000;
 
 export function useWorkTimer({
-  storeSlug,
+  showStore,
   accountId,
   serverTimer,
 }: {
-  storeSlug: string;
+  showStore: boolean;
   accountId: string;
   serverTimer: RunningTimer | null;
 }): WorkTimer {
@@ -193,12 +196,12 @@ export function useWorkTimer({
 
   const reread = useCallback(async () => {
     try {
-      const server = await runningTimerAction(storeSlug);
+      const server = await runningTimerAction();
       setSync((current) => reconcileTimer(current, server, Date.now()));
     } catch {
       /* offline: the view stays as it is and is read again later */
     }
-  }, [storeSlug]);
+  }, []);
 
   // Somebody may have started or stopped a timer somewhere else.
   useEffect(() => {
@@ -234,7 +237,7 @@ export function useWorkTimer({
             }
           : before.pendingEntry,
       });
-      startTimerAction(storeSlug, target.assignmentId, target.taskId)
+      startTimerAction(target.storeSlug, target.assignmentId, target.taskId)
         .then((result) => {
           if (!result.ok) {
             setSync(before);
@@ -259,7 +262,7 @@ export function useWorkTimer({
         })
         .finally(() => setBusy(false));
     },
-    [accountId, reread, storeSlug],
+    [accountId, reread],
   );
 
   const stop = useCallback(() => {
@@ -274,7 +277,7 @@ export function useWorkTimer({
       stopping: running.key,
       pendingEntry: { assignmentId: running.assignmentId, taskId: running.taskId, minutes },
     });
-    stopTimerAction(storeSlug)
+    stopTimerAction(running.storeSlug)
       .then((result) => {
         if (!result.ok) {
           setSync(before);
@@ -298,7 +301,7 @@ export function useWorkTimer({
         setError("The timer could not be stopped. Check your connection and try again.");
       })
       .finally(() => setBusy(false));
-  }, [reread, storeSlug]);
+  }, [reread]);
 
   const discard = useCallback(() => {
     const before = latest.current;
@@ -307,7 +310,7 @@ export function useWorkTimer({
     setError(null);
     setBusy(true);
     setSync({ timer: null, stopping: running.key, pendingEntry: null });
-    discardTimerAction(storeSlug)
+    discardTimerAction(running.storeSlug)
       .then((result) => {
         if (!result.ok) {
           setSync(before);
@@ -322,7 +325,7 @@ export function useWorkTimer({
         setError("The timer could not be discarded. Check your connection and try again.");
       })
       .finally(() => setBusy(false));
-  }, [reread, storeSlug]);
+  }, [reread]);
 
   // Estimate warnings, while the page is open: each stage once per running timer.
   const { timer } = sync;
@@ -351,7 +354,7 @@ export function useWorkTimer({
   const now = useNow(sync.timer !== null || sync.pendingEntry !== null);
 
   return {
-    storeSlug,
+    showStore,
     timer: sync.timer,
     pendingEntry: sync.pendingEntry,
     now,

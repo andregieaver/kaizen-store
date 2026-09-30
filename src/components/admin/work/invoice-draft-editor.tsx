@@ -9,7 +9,7 @@ import {
   invoiceReadinessAction,
   releaseTimeFromInvoiceAction,
   saveDraftInvoiceAction,
-} from "@/app/admin/(gated)/[store]/work/invoice-actions";
+} from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
 import { Modal } from "@/components/admin/modal";
 import { AutosaveQueue, type SaveState } from "@/lib/work-autosave";
 import { ROUND_UP_STEPS_MINUTES, roundUpHours, type RoundUpStep } from "@/lib/work-calc";
@@ -53,6 +53,7 @@ import {
   smallButton,
   smallControl,
 } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 export type DraftEditorProps = {
   storeSlug: string;
@@ -98,7 +99,7 @@ export function DraftEditor(props: DraftEditorProps) {
   const router = useRouter();
   const timer = useWorkTimerApi();
 
-  const list = `/admin/${storeSlug}/work/invoices`;
+  const list = `${workBase(storeSlug)}/invoices`;
   const ctx: VatContext = useMemo(
     () => ({
       sellerVatRegistered: vat.sellerVatRegistered,
@@ -406,7 +407,7 @@ export function DraftEditor(props: DraftEditorProps) {
           <div>
             <dt className="text-muted">Client</dt>
             <dd>
-              <Link href={`/admin/${storeSlug}/work/clients/${client.id}`} className="underline">
+              <Link href={`${workBase(storeSlug)}/clients/${client.id}`} className="underline">
                 {client.name}
               </Link>
             </dd>
@@ -427,11 +428,11 @@ export function DraftEditor(props: DraftEditorProps) {
               {vat.sellerVatRegistered ? treatment : "No VAT: your business is not registered for VAT"}
               <span className={`block ${hintText}`}>
                 Set on the{" "}
-                <Link href={`/admin/${storeSlug}/work/clients/${client.id}`} className="underline">
+                <Link href={`${workBase(storeSlug)}/clients/${client.id}`} className="underline">
                   client
                 </Link>{" "}
                 and in{" "}
-                <Link href={`/admin/${storeSlug}/settings/work`} className="underline">
+                <Link href={`${workBase(storeSlug)}/settings`} className="underline">
                   Work settings
                 </Link>
                 .

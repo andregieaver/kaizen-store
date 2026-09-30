@@ -2,7 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from "react";
 
-import { creditInvoiceAction } from "@/app/admin/(gated)/[store]/work/invoice-actions";
+import { creditInvoiceAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
 import { Modal } from "@/components/admin/modal";
 import { formatMoney } from "@/lib/money";
 import { MANUAL_PAYMENT_METHODS } from "@/lib/work-input";

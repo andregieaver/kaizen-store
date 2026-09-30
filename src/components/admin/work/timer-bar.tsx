@@ -5,6 +5,7 @@ import Link from "next/link";
 import { timerElapsedMs } from "@/lib/work-timer-ui";
 import { alertMessage } from "@/lib/work-timer-ui";
 import { formatTimerClock } from "@/lib/work-time";
+import { workBase } from "@/lib/work-paths";
 import { STAGE_STYLES, remainingLabel, stageOf } from "@/lib/work-ui";
 
 import { useWorkTimerApi } from "./timer-context";
@@ -58,12 +59,15 @@ export function TimerBar() {
           </span>
           <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
             <Link
-              href={`/admin/${api.storeSlug}/work/assignments/${timer.assignmentId}`}
+              href={`${workBase(timer.storeSlug)}/assignments/${timer.assignmentId}`}
               className="font-medium underline"
             >
               {timer.taskTitle ? `${timer.taskTitle}, ${timer.assignmentName}` : timer.assignmentName}
             </Link>{" "}
-            <span className="text-muted">for {timer.clientName}</span>
+            <span className="text-muted">
+              for {timer.clientName}
+              {api.showStore ? `, ${timer.storeName ?? timer.storeSlug}` : ""}
+            </span>
           </span>
           {remaining && <span className={`text-xs ${STAGE_STYLES[stage].text}`}>{remaining}</span>}
           <button type="button" onClick={api.stop} disabled={pending} className={smallButton}>

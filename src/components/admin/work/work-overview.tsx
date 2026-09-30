@@ -10,7 +10,7 @@ import type { ReadinessProblem } from "@/lib/work-vat";
 
 /** What the overview shows, from the reader's rows and the names to put on them (`getWorkOverview`). */
 export type OverviewProps = {
-  /** `/admin/{store}/work`. */
+  /** `workBase(store)`. */
   base: string;
   settingsHref: string;
   locale: string;

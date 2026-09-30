@@ -95,8 +95,8 @@ describe("the reports page", () => {
 
   it("links to the print view and the downloads with the same settings, and a client's time entries", () => {
     const all = view(buildPeriodReport(input()), { period: "last_month", by: "assignment" });
-    expect(all).toContain('href="/admin/kaffe/work/reports/print?period=last_month&amp;by=assignment"');
-    expect(all).toContain('href="/admin/kaffe/work/reports/csv?period=last_month&amp;by=assignment"');
+    expect(all).toContain('href="/admin/account/work/s/kaffe/reports/print?period=last_month&amp;by=assignment"');
+    expect(all).toContain('href="/admin/account/work/s/kaffe/reports/csv?period=last_month&amp;by=assignment"');
     expect(all).not.toContain("Time entries CSV");
     const one = view(buildPeriodReport(input()), { client: C1 });
     expect(one).toContain(`csv?period=this_month&amp;client=${C1}&amp;format=time`);
@@ -106,7 +106,7 @@ describe("the reports page", () => {
   it("offers the presets and the groups, marks the current ones, and keeps the custom days", () => {
     const text = html(
       createElement(ReportFilters, {
-        base: "/admin/kaffe/work/reports",
+        base: "/admin/account/work/s/kaffe/reports",
         params: params({ period: "custom", from: "2026-01-05", to: "2026-02-06", by: "assignment" }),
         today: TODAY,
         clients: [{ id: C1, name: "Acme" }],
@@ -121,7 +121,7 @@ describe("the reports page", () => {
     expect(text).toContain("All clients");
     expect((text.match(/aria-current="page"/g) ?? []).length).toBe(2);
     // a preset link carries the rest of the settings and no dates
-    expect(text).toContain('href="/admin/kaffe/work/reports?period=last_month&amp;by=assignment"');
+    expect(text).toContain('href="/admin/account/work/s/kaffe/reports?period=last_month&amp;by=assignment"');
   });
 
   it("explains a custom period it could not use", () => {

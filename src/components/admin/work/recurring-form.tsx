@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 
-import { createRecurringAction, updateRecurringAction } from "@/app/admin/(gated)/[store]/work/recurring-actions";
+import { createRecurringAction, updateRecurringAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/recurring-actions";
 import { bpToPercent } from "@/lib/work-calc";
 import { QUANTITY_MESSAGE, VAT_CATEGORY_LABELS, quantityField } from "@/lib/work-invoice-ui";
 import { NO_PROBLEMS, moneyField, type FormProblems } from "@/lib/work-ui";

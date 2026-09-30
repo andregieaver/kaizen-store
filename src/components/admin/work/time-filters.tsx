@@ -21,7 +21,7 @@ export function TimeFiltersForm({
   people,
   today,
 }: {
-  /** `/admin/{store}/work`. */
+  /** `workBase(store)`. */
   base: string;
   filters: TimeFilters;
   clients: Option[];

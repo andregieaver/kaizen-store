@@ -112,7 +112,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 /**
  * The overview's figures and the things that need attention, from plain
  * rows and the store's today. `base` is the Work area's address
- * (`/admin/{store}/work`), where the attention items point; `label` names the
+ * (`/admin/account/work/s/{store}`, D123), where the attention items point; `label` names the
  * store in the control center's list across stores.
  */
 export function workOverview(args: {

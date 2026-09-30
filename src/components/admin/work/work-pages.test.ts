@@ -19,11 +19,11 @@ import { WorkOff } from "./work-off";
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "");
 
 const TODAY = "2026-09-29";
-const BASE = "/admin/kaffe/work";
+const BASE = "/admin/account/work/s/kaffe";
 
 const base = (over: Partial<OverviewProps> = {}): OverviewProps => ({
   base: BASE,
-  settingsHref: "/admin/kaffe/settings/work",
+  settingsHref: "/admin/account/work/s/kaffe/settings",
   locale: "en",
   today: TODAY,
   overview: workOverview({
@@ -93,7 +93,7 @@ describe("the Work overview", () => {
     const out = html(createElement(OverviewBody, base({ missing })));
     expect(out).toContain("Before your first invoice");
     expect(out).toContain("Add your business&#x27;s legal name on the Company page.");
-    expect(out).toContain('href="/admin/kaffe/settings/work"');
+    expect(out).toContain('href="/admin/account/work/s/kaffe/settings"');
   });
 
   it("shows figures per currency, attention items, unbilled time, overdue invoices and running timers", () => {
@@ -246,10 +246,10 @@ describe("the numbering form", () => {
 describe("the stand-ins", () => {
   it("point to the switch when Work is off, and back to Work while a page is still to come", () => {
     const off = html(createElement(WorkOff, { storeSlug: "kaffe", title: "Clients" }));
-    expect(off).toContain('href="/admin/kaffe/settings/features"');
+    expect(off).toContain('href="/admin/account/work/settings"');
     expect(off).toContain("Work is off");
     const soon = html(createElement(WorkComingSoon, { storeSlug: "kaffe", title: "Clients" }));
     expect(soon).toContain("Coming in the next step.");
-    expect(soon).toContain('href="/admin/kaffe/work"');
+    expect(soon).toContain('href="/admin/account/work/s/kaffe"');
   });
 });

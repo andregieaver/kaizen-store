@@ -56,6 +56,21 @@ const account = (id: string, path: string, title: string, what: string, extra: P
   ...extra,
 });
 
+/**
+ * Work (D123) is the owner's: an account-level page in the group Work, offered when a store of the
+ * person's has Work on. The overview and the settings, where it is switched on, are always offered.
+ */
+const work = (id: string, path: string, title: string, what: string, extra: Partial<AdminPage> = {}): AdminPage => ({
+  id,
+  area: "account",
+  path,
+  title,
+  group: "Work",
+  what,
+  needs: "work",
+  ...extra,
+});
+
 export const ADMIN_PAGES: readonly AdminPage[] = [
   // Store: main sections --------------------------------------------------------------
   store("overview", "", "Overview", "Main", "The store's start page: the setup checklist until the store is ready, then its state at a glance.", {
@@ -153,49 +168,67 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("emails", "/emails", "Emails", "Main", "Every email the store sent to shoppers, and whether it went out.", { keywords: ["sent emails", "email log"] }),
   store("email", "/emails/[emailId]", "Email", "Main", "One email as the shopper got it."),
 
-  // Store: work (D122) ----------------------------------------------------------------------
-  store("work", "/work", "Work", "Work", "The Work overview: unbilled time, invoice drafts, what clients owe and what is overdue, what needs attention and which timers are running.", {
-    needs: "work",
-    tasks: ["See what is unbilled per client", "See overdue invoices", "See who has a timer running", "See what is missing before the first invoice"],
-    keywords: ["consulting", "hours", "clients", "receivables", "unbilled", "freelance", "overview"],
+  // Work (D122, D123): at the owner's level, `/admin/account/work`. Every store's Work together, and one store's own
+  // screens under `/s/[store]` (each store is the seller: its own numbering, VAT and bank details).
+  work("work", "/account/work", "Work", "The Work overview across every store: unbilled time, invoice drafts, what clients owe and what is overdue, what needs attention and which timer is running.", {
+    needs: undefined,
+    tasks: ["See what is unbilled per client and store", "See overdue invoices in every store", "See which timer is running", "See what is missing before a store's first invoice"],
+    keywords: ["consulting", "hours", "clients", "receivables", "unbilled", "freelance", "overview", "income streams"],
   }),
-  store("work.clients", "/work/clients", "Clients", "Work", "The people and companies the store bills for its work, with their assignments.", {
-    needs: "work",
-    tasks: ["Add a client", "Find a client", "Archive a client"],
+  work("work.clients", "/account/work/clients", "Work clients", "Every client of every store with Work on, and adding one to a store.", {
+    tasks: ["Find a client in any store", "Add a client to a store"],
     keywords: ["customers", "assignments", "consulting", "billing address"],
   }),
-  store("work.client", "/work/clients/[clientId]", "Work client", "Work", "One client: how they are billed (address, VAT treatment, currency, hourly rate, days to pay), their assignments with time logged and time not yet invoiced, and archiving or deleting the client.", {
-    needs: "work",
-    tasks: ["Change the client's details or hourly rate", "Add an assignment", "Archive or bring back the client", "Delete a client with no history (owners)"],
-    keywords: ["client", "billing address", "vat treatment", "hourly rate", "assignments", "archive"],
-  }),
-  store("work.assignment", "/work/assignments/[assignmentId]", "Assignment", "Work", "One assignment for a client: progress against its estimate, its tasks (added, ordered, estimated, ticked off), the time logged on it and a timer to start on it or any task.", {
-    needs: "work",
-    tasks: ["Add tasks and estimates", "Start or stop a timer", "Log time by hand", "Mark the assignment paused or done", "Edit the rate, fixed fee or estimate warnings"],
-    keywords: ["assignment", "task", "estimate", "timer", "log time", "hours", "fixed fee"],
-  }),
-  store("work.invoices", "/work/invoices", "Work invoices", "Work", "Invoices for hours and services: drafts, issued, overdue, paid and credited, and making a new one.", {
-    needs: "work",
-    tasks: ["Start an invoice from unbilled time", "See what is overdue (?show=overdue)", "See drafts (?show=drafts)", "Issue, record a payment or credit an invoice"],
-    keywords: ["invoice", "credit note", "bill", "payment", "overdue", "hours", "consulting"],
-  }),
-  store("work.invoice", "/work/invoices/[invoiceId]", "Work invoice", "Work", "One invoice: a draft to edit (lines, unbilled time, live totals, the checklist and issuing it), or an issued invoice with its payments, credit notes and history.", {
-    needs: "work",
-    tasks: ["Edit the lines of a draft", "Add unbilled time", "Issue the invoice", "Record or reverse a payment", "Credit the invoice (owners)", "Delete a draft"],
-    keywords: ["invoice", "draft", "issue", "credit note", "payment", "lines", "overdue"],
-  }),
-  store("work.time", "/work/time", "Time", "Work","Time logged on assignments, and starting or stopping a timer.", {
-    needs: "work",
+  work("work.time", "/account/work/time", "Time", "Time logged on assignments in every store, and the one timer a person has across all their stores.", {
     tasks: ["Log time", "Start a timer", "See this week's hours"],
     keywords: ["hours", "timer", "timesheet", "time entries", "track time"],
   }),
-  store("work.reports", "/work/reports", "Work reports", "Work", "A client's hours and amounts for a period, to print or download as CSV.", {
-    needs: "work",
+  work("work.invoices", "/account/work/invoices", "Work invoices", "Invoices of every store: drafts, issued, overdue, paid and credited, and making a new one in a store.", {
+    tasks: ["See what is overdue (?show=overdue)", "See drafts (?show=drafts)", "Start an invoice in a store"],
+    keywords: ["invoice", "credit note", "bill", "payment", "overdue", "hours", "consulting"],
+  }),
+  work("work.reports", "/account/work/reports", "Work reports", "Hours and amounts for a period across stores, to print or download as CSV.", {
+    tasks: ["Report a period", "Download a CSV"],
+    keywords: ["report", "export", "csv", "hours", "period"],
+  }),
+  work("work.settings", "/account/work/settings", "Work settings", "Which stores have Work switched on, and each store's invoice details with what is missing before its first invoice.", {
+    needs: undefined,
+    tasks: ["Switch Work on or off for a store", "Open a store's invoice settings"],
+    keywords: ["modules", "features", "switch on work", "invoice settings"],
+  }),
+  work("work.store", "/account/work/s/[store]", "Store's Work", "One store's Work overview: unbilled time, drafts, what its clients owe, what needs attention and its running timers.", {
+    tasks: ["See what is unbilled", "See overdue invoices", "See what is missing before the first invoice"],
+    keywords: ["consulting", "hours", "receivables", "unbilled", "overview"],
+  }),
+  work("work.store.clients", "/account/work/s/[store]/clients", "Store's clients", "The people and companies one store bills for its work, with their assignments.", {
+    tasks: ["Add a client", "Find a client", "Archive a client"],
+    keywords: ["customers", "assignments", "consulting", "billing address"],
+  }),
+  work("work.client", "/account/work/s/[store]/clients/[clientId]", "Work client", "One client: how they are billed (address, VAT treatment, currency, hourly rate, days to pay), their assignments with time logged and time not yet invoiced, and archiving or deleting the client.", {
+    tasks: ["Change the client's details or hourly rate", "Add an assignment", "Archive or bring back the client", "Delete a client with no history (owners)"],
+    keywords: ["client", "billing address", "vat treatment", "hourly rate", "assignments", "archive"],
+  }),
+  work("work.assignment", "/account/work/s/[store]/assignments/[assignmentId]", "Assignment", "One assignment for a client: progress against its estimate, its tasks (added, ordered, estimated, ticked off), the time logged on it and a timer to start on it or any task.", {
+    tasks: ["Add tasks and estimates", "Start or stop a timer", "Log time by hand", "Mark the assignment paused or done", "Edit the rate, fixed fee or estimate warnings"],
+    keywords: ["assignment", "task", "estimate", "timer", "log time", "hours", "fixed fee"],
+  }),
+  work("work.store.invoices", "/account/work/s/[store]/invoices", "Store's invoices", "One store's invoices for hours and services: drafts, issued, overdue, paid and credited, and making a new one.", {
+    tasks: ["Start an invoice from unbilled time", "See what is overdue (?show=overdue)", "See drafts (?show=drafts)", "Issue, record a payment or credit an invoice"],
+    keywords: ["invoice", "credit note", "bill", "payment", "overdue", "hours", "consulting"],
+  }),
+  work("work.invoice", "/account/work/s/[store]/invoices/[invoiceId]", "Work invoice", "One invoice: a draft to edit (lines, unbilled time, live totals, the checklist and issuing it), or an issued invoice with its payments, credit notes and history.", {
+    tasks: ["Edit the lines of a draft", "Add unbilled time", "Issue the invoice", "Record or reverse a payment", "Credit the invoice (owners)", "Delete a draft"],
+    keywords: ["invoice", "draft", "issue", "credit note", "payment", "lines", "overdue"],
+  }),
+  work("work.store.time", "/account/work/s/[store]/time", "Store's time", "Time logged on one store's assignments, and starting or stopping a timer.", {
+    tasks: ["Log time", "Start a timer", "See this week's hours"],
+    keywords: ["hours", "timer", "timesheet", "time entries", "track time"],
+  }),
+  work("work.store.reports", "/account/work/s/[store]/reports", "Store's Work reports", "A client's hours and amounts in one store for a period, to print or download as CSV.", {
     tasks: ["Report a client's period", "Download a CSV"],
     keywords: ["report", "export", "csv", "hours", "period"],
   }),
-  store("work.settings", "/settings/work", "Work settings", "Work", "VAT registration, bank details, payment terms and note, invoice footer, estimate warnings and the invoice and credit note numbering, with what is still missing before the first invoice.", {
-    needs: "work",
+  work("work.store.settings", "/account/work/s/[store]/settings", "Store's Work settings", "One store's VAT registration, bank details, payment terms and note, invoice footer, estimate warnings and the invoice and credit note numbering, with what is still missing before the first invoice.", {
     tasks: ["Say whether the business is VAT registered and give the VAT number", "Set the bank account", "Set the days to pay", "Choose the invoice number prefix and start number (before the first invoice)"],
     keywords: ["invoice settings", "vat", "bank account", "iban", "numbering", "invoice number", "payment terms"],
   }),
@@ -298,9 +331,9 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   store("integration", "/integrations/[provider]", "Integration", "Store", "Connects one integration, chooses its events, tests it, and shows recent sends."),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
   store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizen's.", { keywords: ["model", "provider", "openai"] }),
-  store("features", "/settings/features", "Features", "Store", "Switches on bookings, subscription boxes and Work (clients, hours and invoices), and sets the store's time zone.", {
+  store("features", "/settings/features", "Features", "Store", "Switches on bookings and subscription boxes, and sets the store's time zone. (Work is switched on under Work, at the owner's level.)", {
     needs: "owner",
-    keywords: ["modules", "bookings", "subscription boxes", "work", "time zone"],
+    keywords: ["modules", "bookings", "subscription boxes", "time zone"],
   }),
   store("cookies", "/settings/cookies", "Cookies and tracking", "Store", "The cookie scan, tracking tools, the consent banner and the store's own code.", {
     keywords: ["gdpr", "consent", "pixel", "analytics"],
@@ -411,7 +444,8 @@ export function areaBase(area: AdminArea, storeSlug?: string): string {
 export function pageHref(page: AdminPage, params: Record<string, string>, storeSlug?: string): string | null {
   let path = page.path;
   for (const name of pageParams(page)) {
-    const value = params[name];
+    // A store's own Work screens are at `/account/work/s/[store]`: the store in hand names it.
+    const value = params[name] ?? (name === "store" ? storeSlug : undefined);
     if (!value || !/^[A-Za-z0-9_-]{1,80}$/.test(value)) return null;
     path = path.replace(`[${name}]`, value);
   }
@@ -495,7 +529,8 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
         }
         return part === rest[i];
       });
-      if (ok) return { page, params, storeSlug };
+      // A store's Work is at the owner's level (D123), but it is that store's: name it.
+      if (ok) return { page, params, storeSlug: storeSlug ?? params.store ?? null };
     }
   }
   return null;
@@ -503,7 +538,9 @@ export function matchPath(pathname: string): { page: AdminPage; params: Record<s
 
 /** The map as the AI reads it: every page without params, one line each, by group. */
 export function adminMapText(area: "store" | "platform", flags: SiteFlags = {}): string {
-  const pages = pagesFor(area, flags).filter((page) => pageParams(page).length === 0 && page.area === area);
+  const pages = pagesFor(area, flags).filter(
+    (page) => pageParams(page).length === 0 && (page.area === area || (page.area === "account" && page.group === "Work")),
+  );
   const groups = new Map<string, AdminPage[]>();
   for (const page of pages) groups.set(page.group, [...(groups.get(page.group) ?? []), page]);
   return [...groups.entries()]

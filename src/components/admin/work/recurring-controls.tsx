@@ -10,7 +10,7 @@ import {
   restoreRecurringPeriodAction,
   setRecurringActiveAction,
   skipRecurringPeriodAction,
-} from "@/app/admin/(gated)/[store]/work/recurring-actions";
+} from "@/app/admin/(gated)/(owner)/account/work/s/[store]/recurring-actions";
 import { formatDay } from "@/lib/work-dates";
 
 import { FormDialogButton } from "./client-actions";
@@ -18,6 +18,7 @@ import type { RecurringInvoice } from "@/server/work-recurring";
 
 import { RecurringForm, type RecurringFormProps } from "./recurring-form";
 import { Problems, dangerLink, primaryButton, secondaryButton, smallButton } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 type SharedForm = Omit<RecurringFormProps, "template" | "onDone" | "onCancel">;
 
@@ -126,7 +127,7 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   {o.invoiceId ? (
-                    <Link href={`/admin/${storeSlug}/work/invoices/${o.invoiceId}`} className={smallButton}>
+                    <Link href={`${workBase(storeSlug)}/invoices/${o.invoiceId}`} className={smallButton}>
                       Open the draft
                     </Link>
                   ) : (

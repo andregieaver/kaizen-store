@@ -26,6 +26,8 @@ const STARTED = "2026-09-29T10:00:00.000Z";
 const NOW_SERVER = "2026-09-29T10:12:30.000Z"; // 12 min 30 s later on the server's clock
 
 const target: TimerTarget = {
+  storeSlug: "kaffe",
+  storeName: "Kaffe",
   assignmentId: "a1",
   assignmentName: "Website",
   clientId: "c1",
@@ -36,6 +38,9 @@ const target: TimerTarget = {
 
 const server = (over: Partial<RunningTimer> = {}): RunningTimer => ({
   accountId: "me",
+  storeId: "s1",
+  storeSlug: "kaffe",
+  storeName: "Kaffe",
   assignmentId: "a1",
   assignmentName: "Website",
   clientId: "c1",

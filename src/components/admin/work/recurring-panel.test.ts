@@ -3,11 +3,12 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { RecurringList, RecurringSummary } from "@/server/work-recurring";
+import { workBase } from "@/lib/work-paths";
 
 // The actions and the reads are server code (they import the database); the screens call them only when a button is pressed.
 vi.mock("server-only", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/recurring-actions", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/recurring-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/actions", () => ({}));
 vi.mock("@/server/auth", () => ({ requireMember: async () => ({}) }));
 vi.mock("@/server/work-recurring", () => ({ listRecurring: async () => ({ today: "", templates: [] }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
@@ -99,7 +100,7 @@ describe("the repeating invoices panel", () => {
       templates: [template({ invoiceCount: 2, last: { invoiceId: "i1", period: "2026-09-15", status: "sent", documentNumber: "W-4" } })],
     });
     expect(made).not.toContain(">Delete<");
-    expect(made).toContain(`href="/admin/${STORE}/work/invoices/i1"`);
+    expect(made).toContain(`href="${workBase(STORE)}/invoices/i1"`);
     expect(made).toContain("W-4 for 15/09/2026");
   });
 
@@ -118,7 +119,7 @@ describe("the repeating invoices panel", () => {
     expect(out).toContain("Generate draft");
     expect(out).toContain("older than 40 days");
     expect(out).toContain("draft waiting to be issued");
-    expect(out).toContain(`href="/admin/${STORE}/work/invoices/d1"`);
+    expect(out).toContain(`href="${workBase(STORE)}/invoices/d1"`);
     expect(out).toContain("Skip this period");
     expect(out).toContain("Skip and delete the draft");
     expect(out).toContain("Issue now");

@@ -78,6 +78,8 @@ const header = (over: Partial<InvoiceHeader> = {}): InvoiceHeader => ({
   status: "draft",
   documentNumber: null,
   number: null,
+  imported: false,
+  legacyNumber: null,
   clientId: CLIENT,
   assignmentId: ASSIGNMENT,
   recurringInvoiceId: null,

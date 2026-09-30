@@ -2,7 +2,7 @@
 
 import { useId, useState, useTransition, type FormEvent } from "react";
 
-import { issueInvoiceAction } from "@/app/admin/(gated)/[store]/work/invoice-actions";
+import { issueInvoiceAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
 import { Modal } from "@/components/admin/modal";
 import { formatMoney } from "@/lib/money";
 import { dueOn, formatDay, isDay } from "@/lib/work-dates";

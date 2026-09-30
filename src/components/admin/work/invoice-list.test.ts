@@ -8,8 +8,8 @@ import type { NewInvoiceChoices } from "@/server/work-invoice-screens";
 
 // The actions are server code (they import the database); the screens call them only when a button is pressed.
 vi.mock("server-only", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-actions", () => ({}));
-vi.mock("@/app/admin/(gated)/[store]/work/invoice-view-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions", () => ({}));
+vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions", () => ({}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 
 import { NewInvoiceLoader } from "./invoice-create-dialog";
@@ -85,16 +85,16 @@ describe("the invoices list", () => {
       expect(html).toMatch(new RegExp(`>${label}<span[^>]*>${count}</span>`));
     }
     expect(html).toMatch(
-      /href="\/admin\/kaffe\/work\/invoices\?show=overdue"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/admin\/kaffe\/work\/invoices\?show=overdue"/,
+      /href="\/admin\/account\/work\/s\/kaffe\/invoices\?show=overdue"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/admin\/account\/work\/s\/kaffe\/invoices\?show=overdue"/,
     );
-    expect(html).toContain('href="/admin/kaffe/work/invoices?show=drafts"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/invoices?show=drafts"');
     expect(html).toContain('aria-label="Invoice status"');
     expect(tabCount("all", list().counts)).toBe(6);
   });
 
   it("shows each invoice with its number, client, dates, amounts and a status in words", () => {
     const html = view();
-    expect(html).toContain('href="/admin/kaffe/work/invoices/i-late"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/invoices/i-late"');
     for (const word of ["Draft", "Overdue", "19 days late", "Due soon", "Due in 4 days", "Issued", "Paid", "Void"])
       expect(html).toContain(word);
     expect(html).toContain("W-10");
@@ -128,8 +128,8 @@ describe("the invoices list", () => {
       params: parseInvoiceListParams({ show: "sent", page: "2" }),
     });
     expect(paged).toContain("Page 2 of 3, 60 invoices");
-    expect(paged).toContain('href="/admin/kaffe/work/invoices?show=sent"');
-    expect(paged).toContain('href="/admin/kaffe/work/invoices?show=sent&amp;page=3"');
+    expect(paged).toContain('href="/admin/account/work/s/kaffe/invoices?show=sent"');
+    expect(paged).toContain('href="/admin/account/work/s/kaffe/invoices?show=sent&amp;page=3"');
     expect(view()).not.toContain("Page 1 of");
   });
 
@@ -181,14 +181,14 @@ describe("the new invoice dialog", () => {
   it("offers to open the draft an assignment already has, instead of starting another", () => {
     const html = open({ clientId: CLIENT, assignmentId: "a2" });
     expect(html).toContain("This assignment already has a draft invoice.");
-    expect(html).toContain('href="/admin/kaffe/work/invoices/d1"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/invoices/d1"');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Start the draft/);
   });
 
   it("sends a store without clients to add one", () => {
     const html = open({ choices: { clients: [], assignments: [], currencies: ["EUR"] } });
     expect(html).toContain("There is no client to invoice yet.");
-    expect(html).toContain('href="/admin/kaffe/work/clients"');
+    expect(html).toContain('href="/admin/account/work/s/kaffe/clients"');
   });
 
   it("reads its choices itself when the page did not bring them", () => {

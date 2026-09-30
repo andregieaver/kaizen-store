@@ -14,6 +14,7 @@ import {
 } from "@/lib/work-overview";
 
 import { attentionHref } from "./work-overview";
+import { workBase } from "@/lib/work-paths";
 
 type Row = Record<string, unknown>;
 
@@ -116,7 +117,7 @@ export async function workAttention(
   }));
 
   for (const store of stores) {
-    const base = `/admin/${store.slug}/work`;
+    const base = workBase(store.slug);
     const overview = workOverview({
       today: todayIn(store.timeZone, now),
       now,

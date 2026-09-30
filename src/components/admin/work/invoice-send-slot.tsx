@@ -7,7 +7,7 @@ import {
   sendCreditNoteAction,
   sendInvoiceAction,
   sendReminderAction,
-} from "@/app/admin/(gated)/[store]/work/send-actions";
+} from "@/app/admin/(gated)/(owner)/account/work/s/[store]/send-actions";
 import { Modal } from "@/components/admin/modal";
 import { MESSAGE_MAX } from "@/lib/work-email";
 import { sendFormProblems, sentText, type SendKind } from "@/lib/work-send-ui";

@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { deleteAssignmentAction, setAssignmentStatusAction } from "@/app/admin/(gated)/[store]/work/actions";
+import { deleteAssignmentAction, setAssignmentStatusAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import { ASSIGNMENT_STATUS_LABELS } from "@/lib/work-ui";
 
 import { Field, Problems, dangerLink, smallControl } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 type Status = keyof typeof ASSIGNMENT_STATUS_LABELS;
 
@@ -106,7 +107,7 @@ export function DeleteAssignmentButton({
           start(async () => {
             try {
               const result = await deleteAssignmentAction(storeSlug, assignmentId);
-              if (result.ok) router.push(`/admin/${storeSlug}/work/clients/${clientId}`);
+              if (result.ok) router.push(`${workBase(storeSlug)}/clients/${clientId}`);
               else setProblems(result.problems);
             } catch {
               setProblems(["That did not work. Check your connection and try again."]);

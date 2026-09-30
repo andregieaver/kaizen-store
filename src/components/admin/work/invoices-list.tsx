@@ -17,6 +17,7 @@ import { NewInvoiceButton } from "./invoice-create-dialog";
 import { InvoiceExportSlot } from "./invoice-export-slot";
 import { InvoiceStatusChip } from "./invoice-status";
 import { control, secondaryButton, smallButton } from "./work-parts";
+import { workBase } from "@/lib/work-paths";
 
 const th = "px-3 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
@@ -64,7 +65,7 @@ export function InvoicesListView({
   choices,
   openNew = false,
 }: InvoicesListProps) {
-  const base = `/admin/${storeSlug}/work/invoices`;
+  const base = `${workBase(storeSlug)}/invoices`;
   const pages = Math.max(1, Math.ceil(list.total / list.pageSize));
   const link = (change: Partial<InvoiceListParams>) => `${base}${invoiceListQuery(params, change)}`;
   const empty = tabCount("all", list.counts) === 0;

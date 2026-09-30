@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 
-import { createAssignmentAction, updateAssignmentAction } from "@/app/admin/(gated)/[store]/work/actions";
+import { createAssignmentAction, updateAssignmentAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import type { EstimateAlertSettings } from "@/lib/work-estimate";
 import { formatMoney } from "@/lib/money";
 import {

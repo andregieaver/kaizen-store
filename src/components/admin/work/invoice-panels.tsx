@@ -10,6 +10,7 @@ import { listWorkInvoices } from "@/server/work-invoices";
 import { BillUnbilledButton } from "./bill-unbilled-button";
 import { NewInvoiceButton } from "./invoice-create-dialog";
 import { InvoiceStatusChip } from "./invoice-status";
+import { workBase } from "@/lib/work-paths";
 
 export { BillUnbilledButton };
 
@@ -56,7 +57,7 @@ export function ClientInvoicesPanel({ storeSlug, clientId, clientName, locale, a
         />
       </Suspense>
       <p className="text-sm">
-        <Link href={`/admin/${storeSlug}/work/invoices?client=${clientId}`} className="underline">
+        <Link href={`${workBase(storeSlug)}/invoices?client=${clientId}`} className="underline">
           Open the invoices list for this client
         </Link>
       </p>
@@ -102,7 +103,7 @@ export function AssignmentInvoicesPanel({
           Invoices
         </h2>
         {draftInvoiceId ? (
-          <Link href={`/admin/${storeSlug}/work/invoices/${draftInvoiceId}`} className={button}>
+          <Link href={`${workBase(storeSlug)}/invoices/${draftInvoiceId}`} className={button}>
             Open the draft
           </Link>
         ) : (
@@ -185,7 +186,7 @@ async function InvoiceList({
 }) {
   const { store } = await requireMember(storeSlug);
   const list = await listWorkInvoices(store.id, { ...filter, pageSize: 50 });
-  const base = `/admin/${storeSlug}/work/invoices`;
+  const base = `${workBase(storeSlug)}/invoices`;
   if (list.rows.length === 0)
     return <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">{empty}</p>;
   return (

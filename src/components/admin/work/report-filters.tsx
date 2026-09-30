@@ -30,7 +30,7 @@ export function ReportFilters({
   today,
   clients,
 }: {
-  /** `/admin/{store}/work/reports`. */
+  /** `workBase(store)/reports`. */
   base: string;
   params: ReportParams;
   today: string;

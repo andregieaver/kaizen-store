@@ -96,6 +96,8 @@ export function QuickTimer({
               if (!assignment) return;
               const task = assignment.tasks.find((option) => option.id === taskId);
               api.start({
+                storeSlug,
+                storeName: null,
                 assignmentId: assignment.id,
                 assignmentName: assignment.name,
                 clientId: assignment.clientId,
