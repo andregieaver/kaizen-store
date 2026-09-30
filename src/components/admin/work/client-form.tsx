@@ -2,14 +2,19 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 
-import { createClientAction, updateClientAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
+import {
+  createClientAction,
+  lookupCompanyAction,
+  searchCompaniesAction,
+  updateClientAction,
+} from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
+import { BrregLookup, RegisterNote } from "@/components/admin/brreg-lookup";
 import { clientPrefill, formatOrganisationNumber, type BrregCompany } from "@/lib/brreg";
 import { documentLanguage, DOCUMENT_LANGUAGES } from "@/lib/work-invoice-text";
 import { VAT_TREATMENTS, VAT_TREATMENT_LABELS, suggestTreatment, type VatTreatment } from "@/lib/work-vat";
 import { NO_PROBLEMS, clientPayload, moneyField, type ClientFormValues, type FormProblems } from "@/lib/work-ui";
 import type { WorkClient } from "@/server/work";
 
-import { BrregLookup } from "./brreg-lookup";
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
 
 const LANGUAGE_NAMES: Record<(typeof DOCUMENT_LANGUAGES)[number], string> = {
@@ -179,28 +184,12 @@ export function ClientForm({
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <BrregLookup storeSlug={storeSlug} onPick={fill} />
-        {fromRegister && (
-          <div role="status" className="rounded-md border border-border px-3 py-2 text-sm">
-            <p>
-              Filled in from the register: {fromRegister.legalName},{" "}
-              {formatOrganisationNumber(fromRegister.organisationNumber)}
-              {fromRegister.organisationFormName ? ` (${fromRegister.organisationFormName})` : ""}. Check the details
-              below before you save.
-            </p>
-            {!fromRegister.vatRegistered && (
-              <p className={hintText}>Not in the VAT register, so no VAT number was filled in.</p>
-            )}
-            {!fromRegister.address && (
-              <p className={hintText}>The register has no address for this company: fill it in yourself.</p>
-            )}
-            {fromRegister.warnings.map((warning) => (
-              <p key={warning} className="font-medium text-red-700 dark:text-red-400">
-                {warning}
-              </p>
-            ))}
-          </div>
-        )}
+        <BrregLookup
+          lookup={(input) => lookupCompanyAction(storeSlug, input)}
+          search={(input) => searchCompaniesAction(storeSlug, input)}
+          onPick={fill}
+        />
+        {fromRegister && <RegisterNote company={fromRegister} fills="client" />}
       </div>
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-1 font-medium">Client</legend>

@@ -12,9 +12,11 @@ import { listTiers } from "@/server/customer-tiers";
 import {
   deleteCompanyAction,
   inviteToCompanyAction,
+  lookupRegisterCompanyAction,
   removeCompanyMemberAction,
   revokeCompanyInviteAction,
   saveCompanyAction,
+  searchRegisterCompaniesAction,
   setMainAccountAction,
 } from "../actions";
 
@@ -56,7 +58,12 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
           Settings
         </h2>
         <ActionForm action={saveCompanyAction.bind(null, store.slug, company.id)} className="flex flex-col gap-3">
-          <CompanyFields groups={groups} values={company} />
+          <CompanyFields
+            groups={groups}
+            values={company}
+            lookup={lookupRegisterCompanyAction.bind(null, store.slug)}
+            search={searchRegisterCompaniesAction.bind(null, store.slug)}
+          />
           <div>
             <SubmitButton>Save</SubmitButton>
           </div>

@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { FormState } from "@/components/admin/action-form";
 import { INVITES_PER_BATCH, parseInviteEmails } from "@/lib/customer-tiers";
 import { requireMember } from "@/server/auth";
+import { lookupCompany, searchCompanies, type BrregLookup, type BrregSearch } from "@/server/brreg";
 import { addMainAccount, createInvites, deleteCompany, removeMember, revokeInvite, saveCompany, staffEmailMarket } from "@/server/companies";
 import type { SaveResult } from "@/server/settings";
 
@@ -105,4 +106,19 @@ export async function revokeCompanyInviteAction(storeSlug: string, companyId: st
   if (!done) return { status: "error", messages: ["That invitation is no longer open."] };
   refresh();
   return { status: "ok", messages: ["Invitation withdrawn."] };
+}
+
+/**
+ * A company from Brønnøysundregistrene by organisation number, to fill in a company account's name and number
+ * (D124). Store staff only; only the number goes to the register.
+ */
+export async function lookupRegisterCompanyAction(storeSlug: string, input: string): Promise<BrregLookup> {
+  await requireMember(storeSlug);
+  return lookupCompany(String(input).slice(0, 60));
+}
+
+/** The same by name: up to eight companies to choose from. */
+export async function searchRegisterCompaniesAction(storeSlug: string, input: string): Promise<BrregSearch> {
+  await requireMember(storeSlug);
+  return searchCompanies(String(input).slice(0, 120));
 }

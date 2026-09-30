@@ -2,7 +2,6 @@
 
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
-import { lookupCompanyAction, searchCompaniesAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
 import {
   BRREG_NAME_MIN,
   classifyQuery,
@@ -12,7 +11,9 @@ import {
   type BrregHit,
 } from "@/lib/brreg";
 
-import { control, errorText, hintText, secondaryButton } from "./work-parts";
+import type { BrregLookup as Lookup, BrregSearch as Search } from "@/server/brreg";
+
+import { control, errorText, hintText, secondaryButton } from "./work/work-parts";
 
 type Status =
   | { kind: "idle" }
@@ -23,19 +24,28 @@ type Status =
 const UNAVAILABLE = "The company register did not answer. Type the details yourself, or try again in a moment.";
 
 /**
- * Fills in a client from Brønnøysundregistrene (`src/server/brreg.ts`): type an organisation number and the company
- * is fetched, or type a name and pick from what the register finds. Nothing is saved from here: `onPick` puts the
- * details into the form, where every field can still be changed. Someone typing a name sees matches after a pause;
+ * Fills in a form from Brønnøysundregistrene (`src/server/brreg.ts`): type an organisation number and the company
+ * is fetched, or type a name and pick from what the register finds. A Work client and a shop's company account both
+ * use it; each passes the two server actions it may call (`lookup`, `search`), so who may ask is its own rule.
+ * Nothing is saved from here: `onPick` puts the details into the form, where every field can still be changed. Someone typing a name sees matches after a pause;
  * Enter or the button asks straight away. An answer that arrives after a newer question is dropped.
  */
-export function BrregLookup({ storeSlug, onPick }: { storeSlug: string; onPick: (company: BrregCompany) => void }) {
+export function BrregLookup({
+  lookup,
+  search,
+  onPick,
+}: {
+  lookup: (input: string) => Promise<Lookup>;
+  search: (input: string) => Promise<Search>;
+  onPick: (company: BrregCompany) => void;
+}) {
   const id = useId();
   const [input, setInput] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const latest = useRef(0);
 
   const lookNumber = async (text: string, ticket: number) => {
-    const result = await lookupCompanyAction(storeSlug, text);
+    const result = await lookup(text);
     if (ticket !== latest.current) return;
     if (result.ok) {
       setStatus({ kind: "idle" });
@@ -59,7 +69,7 @@ export function BrregLookup({ storeSlug, onPick }: { storeSlug: string; onPick: 
   };
 
   const lookName = async (text: string, ticket: number) => {
-    const result = await searchCompaniesAction(storeSlug, text);
+    const result = await search(text);
     if (ticket !== latest.current) return;
     if (!result.ok) {
       setStatus(
@@ -189,6 +199,33 @@ export function BrregLookup({ storeSlug, onPick }: { storeSlug: string; onPick: 
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * What a lookup did to the form, in words, and what to look at before saving: no VAT number if the company is not in
+ * the VAT register, no address, and a warning for a company that is bankrupt, being wound up or deleted.
+ */
+export function RegisterNote({ company, fills }: { company: BrregCompany; fills: "client" | "company" }) {
+  return (
+    <div role="status" className="rounded-md border border-border px-3 py-2 text-sm">
+      <p>
+        Filled in from the register: {company.legalName}, {formatOrganisationNumber(company.organisationNumber)}
+        {company.organisationFormName ? ` (${company.organisationFormName})` : ""}. Check the details below before you
+        save.
+      </p>
+      {fills === "client" && !company.vatRegistered && (
+        <p className={hintText}>Not in the VAT register, so no VAT number was filled in.</p>
+      )}
+      {fills === "client" && !company.address && (
+        <p className={hintText}>The register has no address for this company: fill it in yourself.</p>
+      )}
+      {company.warnings.map((warning) => (
+        <p key={warning} className="font-medium text-red-700 dark:text-red-400">
+          {warning}
+        </p>
+      ))}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { requireMember } from "@/server/auth";
 import { listCompanies, employeePercent } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
 
-import { saveCompanyAction } from "./actions";
+import { lookupRegisterCompanyAction, saveCompanyAction, searchRegisterCompaniesAction } from "./actions";
 
 export const metadata: Metadata = { title: "Companies" };
 
@@ -75,7 +75,12 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
           New company
         </h2>
         <ActionForm action={saveCompanyAction.bind(null, store.slug, null)} className="flex flex-col gap-3">
-          <CompanyFields groups={groups} main />
+          <CompanyFields
+            groups={groups}
+            main
+            lookup={lookupRegisterCompanyAction.bind(null, store.slug)}
+            search={searchRegisterCompaniesAction.bind(null, store.slug)}
+          />
           <div>
             <SubmitButton>Make company</SubmitButton>
           </div>
