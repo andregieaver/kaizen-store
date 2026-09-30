@@ -1443,6 +1443,20 @@
       "when": 1790794061222,
       "tag": "20260930184741_affiliate_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1790804763993,
+      "tag": "20260930214603_plan_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1790804769574,
+      "tag": "20260930214609_plan_features_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
@@ -31,7 +32,11 @@ export default async function PlansPage() {
             What stores pay Kaizen: a price per month or year (excluding VAT; Norwegian stores are
             charged 25 % MVA on top) and a fee on each of their sales. Saving copies the plan to
             Stripe. A changed price applies to new subscriptions; stores on the old price keep it
-            until you move them.
+            until you move them.{" "}
+            <Link href="/admin/platform/plans/features" className="underline">
+              Say what each plan includes
+            </Link>
+            .
           </p>
         </div>
         <ActionForm action={syncPlansAction} successMessage="Plans are up to date in Stripe." className="flex flex-col items-end gap-1">

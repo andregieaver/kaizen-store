@@ -397,6 +397,9 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
   platform("plans", "/plans", "Plans", "Platform", "Kaizen's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
+  platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {
+    keywords: ["compare plans", "features", "what is included", "tiers"],
+  }),
   platform("discounts", "/discounts", "Discounts", "Platform", "Discount codes for stores' plans."),
   platform("discount", "/discounts/[discountId]", "Discount", "Platform", "One plan discount code."),
   platform("plan-reminders", "/plan-reminders", "Plan reminders", "Platform", "Emails to owners who left a plan checkout."),

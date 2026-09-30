@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PlanDiscount } from "@/components/admin/plan-discount";
+import { PlanFeatureTable } from "@/components/plan-feature-table";
 import { formatMoney } from "@/lib/money";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { mainCurrency } from "@/lib/markets";
 import { requireMember } from "@/server/auth";
+import { getFeatureMatrix } from "@/server/plan-features";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
 
@@ -27,7 +29,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
 
-  const [billing, plans] = await Promise.all([getStoreBilling(store.id), listPlans()]);
+  const [billing, plans, matrix] = await Promise.all([getStoreBilling(store.id), listPlans(), getFeatureMatrix()]);
   const isOwner = role === "owner";
   const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
   const mode = billingMode();
@@ -132,6 +134,15 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {offered.length > 0 && matrix.features.some((feature) => feature.planIds.length > 0) && (
+        <section aria-labelledby="compare-heading" className="flex flex-col gap-3">
+          <h2 id="compare-heading" className="font-medium">
+            Compare plans
+          </h2>
+          <PlanFeatureTable matrix={matrix} planIds={offered.map((plan) => plan.id)} current={onPlan ? billing?.planId : null} />
         </section>
       )}
 

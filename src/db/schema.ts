@@ -5827,3 +5827,43 @@ export const referralVisits = commerce.table(
     check("referral_visits_count", sql`${t.visits} >= 0`),
   ],
 );
+
+/**
+ * The platform's list of features (D132, `src/lib/plan-features.ts`): what Kaizen can tell a store owner a plan includes,
+ * in rows grouped by `category`. The matrix of which plan has which feature is `plan_feature_grants`. It is what the
+ * plan comparison shows; it does not switch anything on or off by itself.
+ */
+export const planFeatures = commerce.table(
+  "plan_features",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    category: text("category").notNull(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    /** Order within the whole list; a category shows where its first feature is. */
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("plan_features_updated_by_idx").on(t.updatedBy),
+    check("plan_features_name", sql`length(trim(${t.name})) between 1 and 80`),
+    check("plan_features_category", sql`length(trim(${t.category})) between 1 and 60`),
+    check("plan_features_description", sql`length(${t.description}) <= 300`),
+  ],
+);
+
+/** A feature a plan includes (D132): a row means included; none means not. */
+export const planFeatureGrants = commerce.table(
+  "plan_feature_grants",
+  {
+    featureId: uuid("feature_id")
+      .notNull()
+      .references(() => planFeatures.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.featureId, t.planId] }), index("plan_feature_grants_plan_idx").on(t.planId)],
+);
