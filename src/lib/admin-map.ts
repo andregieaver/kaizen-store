@@ -350,7 +350,16 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   account("stores", "", "Control center", "Every store you run at a glance: what needs you first, the week's sales and orders, stock running out, and the latest orders.", {
     keywords: ["overview", "dashboard", "home", "all my stores", "bird's eye", "attention"],
   }),
-  account("stores.all", "/stores", "Stores", "Your stores, and creating another."),
+  account("stores.all", "/stores", "Stores", "Your stores, creating another and duplicating one, and the copies made lately."),
+  account("stores.copy", "/stores/copy/[store]", "Duplicate a store", "Make a new store from one you own: choose all, some or none of its pages, products and posts, and whether customers and order history come along. Settings always come, without secrets.", {
+    needs: "owner",
+    keywords: ["duplicate", "copy", "clone", "copy a store", "duplicate store", "new store from"],
+    tasks: ["Name the new store and choose its address", "Choose pages, products and posts", "Copy customers and order history, after confirming data use"],
+  }),
+  account("stores.copy.progress", "/stores/copies/[copyId]", "Store copy", "How a store copy is going: the steps, what is copied so far and, when done, links to the new store.", {
+    needs: "owner",
+    keywords: ["copy progress", "duplicate progress"],
+  }),
   account("account.billing", "/account/billing", "Billing", "The plan of each store you own, what it costs, when it renews and Kaizen's fee.", {
     keywords: ["plan", "subscription", "invoice", "renews", "fee", "cost"],
   }),

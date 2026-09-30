@@ -18,6 +18,7 @@ import { pruneSearchLog } from "@/server/search";
 import { sendDuePlanReminders } from "@/server/plan-reminders";
 import { sendDueBookingReminders } from "@/server/shopper-emails";
 import { prepareDueDeliveries } from "@/server/standing-orders";
+import { runStoreCopies } from "@/server/store-copy";
 import { prepareDueRecurringWork } from "@/server/work-recurring";
 
 /**
@@ -34,12 +35,14 @@ import { prepareDueRecurringWork } from "@/server/work-recurring";
  * show them; and shoppers' weekly delivery lists whose cutoff has passed
  * made into that delivery's orders (D102); and Work's repeating invoices
  * that are due made as drafts, and issued and emailed where their owner
- * switched that on (D122, never throws).
+ * switched that on (D122, never throws); and one duplicated store's copy
+ * (pictures, customers, order history) taken up where it stopped (D129,
+ * never throws).
  */
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -55,13 +58,14 @@ async function run(request: Request) {
     pruneFormSubmissions(),
     prepareDueDeliveries(),
     prepareDueRecurringWork(),
+    runStoreCopies(),
   ]);
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

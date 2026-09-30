@@ -12,6 +12,7 @@ import {
   addOrderNote,
   cancelOrder,
   CARRIERS,
+  COPIED_ORDER_MESSAGE,
   markBalancePaid,
   markSent,
   refundOrder,
@@ -42,6 +43,7 @@ export async function sendOrderAction(
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
   if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const input = z
     .object({
       carrier: z.enum(CARRIERS.map((c) => c.id) as [string, ...string[]]),
@@ -93,6 +95,7 @@ export async function refundOrderAction(
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
   if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const typed = String(form.get("amount") ?? "").trim();
   const amountMinor = typed === "" ? 0 : parsePrice(typed, found.order.currency);
   if (amountMinor === null) return failed(`"${typed}" is not an amount in ${found.order.currency}.`);
@@ -118,6 +121,7 @@ export async function cancelOrderAction(
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
   if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const reason = String(form.get("reason") ?? "").trim().slice(0, 500) || "Cancelled by the store";
   const outcome = await cancelOrder(found.member.store.id, orderId, reason, found.member.account.id);
   if (!outcome.ok) return failed(outcome.problem);
@@ -135,6 +139,7 @@ export async function markBalancePaidAction(
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
   if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const method = VENUE_METHODS.find((m) => m === form.get("method")) ?? "other";
   if (!(await markBalancePaid(found.member.store.id, orderId, method, found.member.account.id))) {
     return failed("Nothing is left to pay on this order.");
@@ -152,6 +157,7 @@ export async function updateContactAction(
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
   if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const field = (name: string, max = 200) => String(form.get(name) ?? "").trim().slice(0, max);
   const email = z.email().safeParse(field("email"));
   if (!email.success) return failed("Enter a valid email address.");
@@ -179,6 +185,7 @@ export async function addNoteAction(
 ): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
   if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const note = String(form.get("note") ?? "").trim().slice(0, 2000);
   if (!note) return failed("Write a note first.");
   await addOrderNote(found.member.store.id, orderId, note, found.member.account.email);
@@ -190,6 +197,7 @@ export async function addNoteAction(
 export async function resendConfirmationAction(storeSlug: string, orderId: string): Promise<OrderActionState> {
   const found = await orderFor(storeSlug, orderId);
   if (!found) return failed("This order no longer exists.");
+  if (found.order.copied) return failed(COPIED_ORDER_MESSAGE);
   const outcome = await sendOrderConfirmation(found.member.store.id, orderId, { resend: true });
   refresh();
   if (outcome === "sent") return done(`Sent to ${found.order.email}.`);

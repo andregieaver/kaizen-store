@@ -40,7 +40,7 @@ export async function campaignNotices(storeId: string, market: Market): Promise<
       case when c.usage_limit is null then 0 else (
         select count(distinct ol.order_id)::int from commerce.order_lines ol
         join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-        where ol.store_id = c.store_id and ol.campaign_parts @> jsonb_build_array(jsonb_build_object('id', c.id::text)) and o.status <> 'cancelled'
+        where ol.store_id = c.store_id and ol.campaign_parts @> jsonb_build_array(jsonb_build_object('id', c.id::text)) and o.status <> 'cancelled' and o.copied_from is null
       ) end as used
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid and c.active and c.tier_ids = '[]'::jsonb

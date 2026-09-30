@@ -109,10 +109,11 @@ export async function removeStoredFiles(bucket: string, paths: string[]): Promis
 
 /**
  * Copies a file inside one of the public media buckets, in Storage itself (nothing is downloaded): a template's
- * picture or video into the store that uses it (D125). The new file's public address, or null if it could not be copied.
+ * picture or video into the store that uses it (D125), or a store's files into its copy (D129). The new file's public address, or null if it could not be copied.
  */
 export async function copyStoredFile(bucket: string, from: string, to: string): Promise<string | null> {
-  if (![BUCKET, VIDEOS_BUCKET].includes(bucket)) return null;
+  // A store copy (D129) also carries a custom field's files over.
+  if (![BUCKET, VIDEOS_BUCKET, FIELD_FILES_BUCKET].includes(bucket)) return null;
   const secret = secretKey();
   if ("problem" in secret) return null;
   const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {

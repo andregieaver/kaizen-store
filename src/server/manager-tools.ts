@@ -267,7 +267,7 @@ async function getStoreTool(_ctx: ManagerContext, { store: slug }: PlatformToolI
     getStoreBilling(store.id),
     db().execute<Row>(sql`
       select (select count(*)::int from commerce.products where store_id = ${store.id}::uuid and status = 'active') as products,
-        (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed')) as orders
+        (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed') and copied_from is null) as orders
     `),
   ]);
   return {

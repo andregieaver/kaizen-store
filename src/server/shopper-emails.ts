@@ -219,7 +219,8 @@ export async function sendOrderConfirmation(
   { resend = false }: { resend?: boolean } = {},
 ): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
-  if (!order || !order.email || order.status === "pending_payment" || order.status === "cancelled") return null;
+  // History copied from another store (D129) is never mailed about; the database refuses its emails too.
+  if (!order || order.copied || !order.email || order.status === "pending_payment" || order.status === "cancelled") return null;
   const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;
@@ -300,7 +301,7 @@ async function orderNotice(
   }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[]; attachments?: OutgoingEmail["attachments"] },
 ): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
-  if (!order?.email) return null;
+  if (!order?.email || order.copied) return null;
   const ctx = await context(storeId, order.marketCode, order.locale, order.currency);
   if (!ctx) return null;
   const { store, market, text, m } = ctx;

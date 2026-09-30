@@ -44,6 +44,12 @@ export type RefundRow = {
   by: string | null;
 };
 
+/**
+ * What a copied order (D129) answers to anything that would change it. The database refuses these too (triggers
+ * on the order, its lines and everything that acts on an order), so this is the plain reason, not the only guard.
+ */
+export const COPIED_ORDER_MESSAGE = "This order is history copied from another store, so it is read-only.";
+
 export type OrderAdmin = Omit<OrderView, "lines"> & {
   lines: OrderLineAdmin[];
   shipments: Shipment[];
@@ -157,9 +163,10 @@ export async function markSent(
 ): Promise<Shipment | null> {
   return db().transaction(async (tx) => {
     const [order] = await tx.execute<Row>(sql`
-      select status from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
+      select status, copied_from is not null as copied from commerce.orders
+      where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
     `);
-    if (!order || !["paid", "fulfilled"].includes(String(order.status))) return null;
+    if (!order || Boolean(order.copied) || !["paid", "fulfilled"].includes(String(order.status))) return null;
     const carrierName = CARRIERS.find((c) => c.id === input.carrier)?.name ?? input.carrier;
     const [row] = await tx.execute<Row>(sql`
       insert into commerce.shipments (store_id, order_id, carrier, tracking_number, tracking_url, created_by)
@@ -238,6 +245,7 @@ export async function refundOrder(
 ): Promise<RefundOutcome> {
   const order = await getOrderAdmin(storeId, orderId);
   if (!order) return { ok: false, problem: "This order no longer exists." };
+  if (order.copied) return { ok: false, problem: COPIED_ORDER_MESSAGE };
   if (!order.canRefund) return { ok: false, problem: "This order was not paid through Kaizen's Stripe, so refund it in Stripe." };
   if (!Number.isInteger(input.amountMinor) || input.amountMinor < 0 || input.amountMinor > order.refundableMinor) {
     return { ok: false, problem: "The amount is more than is left to refund." };
@@ -357,6 +365,7 @@ export async function cancelOrder(
 ): Promise<RefundOutcome> {
   const order = await getOrderAdmin(storeId, orderId);
   if (!order) return { ok: false, problem: "This order no longer exists." };
+  if (order.copied) return { ok: false, problem: COPIED_ORDER_MESSAGE };
   // A weekly delivery not yet sent (D102) is not charged yet: cancelling it lets its stock go.
   if (order.status === "pending_payment" && (await isDeliveryOrder(storeId, orderId))) {
     await cancelUnpaidOrder(orderId, `cancelled by staff: ${reason}`);
@@ -396,7 +405,7 @@ export async function updateOrderContact(
   const [row] = await db().execute<Row>(sql`
     update commerce.orders set email = ${input.email},
       shipping_address = shipping_address || ${JSON.stringify(input.shippingAddress)}::jsonb
-    where store_id = ${storeId}::uuid and id = ${orderId}::uuid and status <> 'pending_payment'
+    where store_id = ${storeId}::uuid and id = ${orderId}::uuid and status <> 'pending_payment' and copied_from is null
     returning id
   `);
   if (!row) return false;
@@ -405,6 +414,10 @@ export async function updateOrderContact(
 }
 
 export async function addOrderNote(storeId: string, orderId: string, note: string, by: string): Promise<void> {
+  const [copied] = await db().execute<Row>(sql`
+    select 1 from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid and copied_from is not null
+  `);
+  if (copied) throw new Error(COPIED_ORDER_MESSAGE);
   await event(storeId, orderId, "note.added", { note, by }, "staff");
 }
 
@@ -426,6 +439,7 @@ export async function markBalancePaid(
     const [order] = await tx.execute<Row>(sql`
       select balance_minor, currency from commerce.orders
       where store_id = ${storeId}::uuid and id = ${orderId}::uuid and status in ('paid', 'fulfilled') and balance_minor > 0
+        and copied_from is null
       for update
     `);
     if (!order) return false;

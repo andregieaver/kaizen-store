@@ -2,6 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { minorUnitDigits } from "@/lib/money";
+import { COPY_RULES } from "@/lib/store-copy-rules";
 import { RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { RESERVED_STORE_SLUGS } from "@/lib/paths";
 import { MODULES } from "@/lib/store-modules";
@@ -3988,5 +3989,692 @@ describe("work: invoices imported from Kaizen Life (WP15)", () => {
     const issued = await issue(w, draft);
     const { rows: lines } = await db.query<{ id: string }>("select id from commerce.work_invoice_lines where invoice_id = $1", [issued.id]);
     await expect(entry(lines[0].id)).rejects.toThrow(/work_time\.draft_only/);
+  });
+});
+
+// Every table with a `store_id` has a decision about duplicating a store (D129): copied, or left with the original.
+// A new store-owned table fails this test until it is added to COPY_RULES in src/lib/store-copy-rules.ts (and, if it
+// is copied, to `commerce.duplicate_store()` or `copy_customers()`/`copy_orders()` in a migration; see docs/store-copy.md).
+describe("duplicating a store: every store-owned table has a decision (D129)", () => {
+  it("lists exactly the tables that have a store_id", async () => {
+    const { rows } = await db.query<{ relname: string }>(
+      `select c.relname from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'commerce' and c.relkind in ('r', 'p')
+         and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'store_id' and not a.attisdropped)
+       order by 1`,
+    );
+    const tables = rows.map((row) => row.relname);
+    expect(tables.filter((table) => !(table in COPY_RULES))).toEqual([]);
+    expect(Object.keys(COPY_RULES).filter((table) => !tables.includes(table))).toEqual([]);
+  });
+});
+
+describe("duplicating a store (D129)", () => {
+  let owner: string;
+  let helper: string;
+  let src: string;
+  const ids = {} as Record<string, string>;
+
+  const rows = async <T = Record<string, unknown>>(text: string, params: unknown[] = []) =>
+    (await db.query<T>(text, params)).rows;
+  const scalar = async <T>(text: string, params: unknown[] = []) => Object.values((await rows(text, params))[0] ?? {})[0] as T;
+  const cloneId = (newStore: string, id: string) => scalar<string>("select commerce.clone_id($1, $2)", [newStore, id]);
+  const copyOf = async (
+    slug: string,
+    pages: string[] | null = null,
+    products: string[] | null = null,
+    posts: string[] | null = null,
+  ) =>
+    scalar<string>("select commerce.duplicate_store($1, $2, $3, $4, $5::uuid[], $6::uuid[], $7::uuid[])", [
+      src,
+      slug,
+      slug,
+      owner,
+      pages,
+      products,
+      posts,
+    ]);
+  const count = (table: string, storeId: string) =>
+    scalar<number>(`select count(*)::int from commerce.${table} where store_id = $1`, [storeId]);
+
+  async function product(handle: string, status: string, over: { digital?: boolean } = {}) {
+    const { productId, variantId } = await createProduct({ storeId: src });
+    await db.query("update commerce.products set handle = $2 where id = $1", [productId, handle]);
+    await db.query("update commerce.product_translations set title = $2 where product_id = $1", [productId, `Title ${handle}`]);
+    if (over.digital) {
+      await db.query("update commerce.product_variants set delivery = 'digital' where id = $1", [variantId]);
+      await db.query("update commerce.products set delivery = 'digital' where id = $1", [productId]);
+    }
+    await db.query("select commerce.set_price($1, 'DE', 1000, $2)", [variantId, daysAgo(40)]);
+    await db.query("select commerce.set_price($1, 'DE', 900, $2)", [variantId, daysAgo(1)]);
+    await db.query("insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 5)", [
+      src,
+      variantId,
+      ids.location,
+    ]);
+    if (status !== "draft") await db.query("update commerce.products set status = $2 where id = $1", [productId, status]);
+    ids[handle] = productId;
+    ids[`${handle}-variant`] = variantId;
+    return { productId, variantId };
+  }
+
+  const page = async (type: string, slug: string, content: object, published: boolean) =>
+    (
+      await one<{ id: string }>(
+        `insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at)
+         values ($1, $2, $3, $4::jsonb, $5::jsonb, ${published ? "'2026-01-02'" : "null"}, ${published ? "'2026-01-02'" : "null"}) returning id`,
+        [src, type, slug, JSON.stringify(content), published ? JSON.stringify(content) : null],
+      )
+    ).id;
+
+  beforeAll(async () => {
+    owner = await createAccount("copier@example.com");
+    helper = await createAccount("copier-staff@example.com");
+    src = await createStore("copy-source", ["DE", "NO"]);
+    await db.query(
+      `update commerce.stores set legal_name = 'Karis AS', organisation_number = '999888777', modules = '{bookings,work}',
+         custom_css = 'a { color: red }', setup_completed_at = now(), locales = '{en-IE,nb-NO}', status = 'active'
+       where id = $1`,
+      [src],
+    );
+    await db.query("insert into commerce.store_members (store_id, account_id, role) values ($1, $2, 'owner'), ($1, $3, 'admin')", [
+      src,
+      owner,
+      helper,
+    ]);
+    ids.location = (
+      await one<{ id: string }>("insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Lager', 'NO') returning id", [src])
+    ).id;
+    await db.query("insert into commerce.shipping_rates (store_id, market_code, currency, amount_minor) values ($1, 'DE', 'EUR', 490)", [src]);
+    await db.query("insert into commerce.payment_methods (store_id, market_code, method, enabled) values ($1, 'DE', 'card', true)", [src]);
+
+    // Secrets and other things that never come along.
+    await db.query(
+      "insert into commerce.payment_credentials (store_id, provider, mode, secret_key_ciphertext) values ($1, 'stripe', 'test', 'sk-secret')",
+      [src],
+    );
+    await db.query("insert into commerce.stripe_accounts (store_id, mode, account_id) values ($1, 'test', 'acct_original')", [src]);
+    await db.query("insert into commerce.store_domains (store_id, hostname, token) values ($1, 'original.example', 'tok')", [src]);
+    await db.query(
+      "insert into commerce.store_integrations (store_id, provider, enabled, webhook_url_encrypted, webhook_hint, events) values ($1, 'slack', true, 'x', 'x', '{order.paid,customer.created}')",
+      [src],
+    );
+    await db.query("insert into commerce.ai_providers (store_id, provider, api_key_encrypted, api_key_hint) values ($1, 'openai', 'x', 'x')", [src]);
+    await db.query("insert into commerce.work_clients (store_id, name, currency) values ($1, 'Client', 'EUR')", [src]);
+    await db.query("insert into commerce.hosts (store_id, account_id, name) values ($1, $2, 'A host')", [src, helper]);
+
+    // Categories and tags.
+    ids.shoes = (
+      await one<{ id: string }>(
+        "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'product', 'category', 'Shoes', 'shoes') returning id",
+        [src],
+      )
+    ).id;
+    ids.sale = (
+      await one<{ id: string }>(
+        "insert into commerce.terms (store_id, content_type, kind, name, slug) values ($1, 'product', 'tag', 'Sale', 'sale') returning id",
+        [src],
+      )
+    ).id;
+    ids.boots = (
+      await one<{ id: string }>(
+        "insert into commerce.terms (store_id, content_type, kind, name, slug, parent_id) values ($1, 'product', 'category', 'Boots', 'boots', $2) returning id",
+        [src, ids.shoes],
+      )
+    ).id;
+
+    // Products: one of each kind of state.
+    await product("alpha", "active");
+    await product("beta", "draft");
+    await product("gamma", "archived");
+    await product("delta", "active", { digital: true });
+    await db.query("insert into commerce.product_terms (store_id, product_id, term_id) values ($1, $2, $3), ($1, $2, $4), ($1, $5, $3)", [
+      src,
+      ids.alpha,
+      ids.shoes,
+      ids.sale,
+      ids.beta,
+    ]);
+    await db.query(
+      "insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent) values ($1, $2, 'month', 1, 10)",
+      [src, ids.alpha],
+    );
+
+    // Menus and pages.
+    ids.menu = (
+      await one<{ id: string }>(
+        `insert into commerce.menus (store_id, name, items) values ($1, 'Main',
+          $2::jsonb) returning id`,
+        [
+          src,
+          JSON.stringify([
+            { label: {}, link: { kind: "home" }, depth: 0 },
+            { label: {}, link: { kind: "product", handle: "alpha" }, depth: 0 },
+            { label: {}, link: { kind: "product", handle: "beta" }, depth: 0 },
+            { label: {}, link: { kind: "products" }, depth: 1 },
+            { label: {}, link: { kind: "url", url: "https://example.com" }, depth: 0 },
+          ]),
+        ],
+      )
+    ).id;
+    ids.group = (
+      await one<{ id: string }>(
+        `insert into commerce.field_groups (store_id, name, slug, entities, fields)
+         values ($1, 'Related', 'related', '["product","page"]', '[{"id":"f_related00001","name":"related","label":"Related","type":"product","access":"public"}]') returning id`,
+        [src],
+      )
+    ).id;
+    const content = (title: string) => ({
+      title,
+      rows: [{ id: "row-1", menu: ids.menu, group: ids.group, categories: [ids.shoes], tags: [ids.sale], store: src }],
+    });
+    ids.about = await page("page", "about", content("About"), true);
+    ids.draftPage = await page("page", "coming", content("Coming"), false);
+    ids.post = await page("article", "hello", content("Hello"), true);
+    ids.draftPost = await page("article", "later", content("Later"), false);
+    ids.header = await page("header", "main-header", content("Header"), true);
+    ids.layout = await page("product_layout", "layout", content("Layout"), true);
+    await db.query(
+      `update commerce.stores set front_page_id = $2, header_id = $3, header_menu_id = $4, product_layout_id = $5,
+         theme = $6::jsonb where id = $1`,
+      [src, ids.about, ids.header, ids.menu, ids.layout, JSON.stringify({ base: "a", savedId: null, settings: {} })],
+    );
+    await db.query("insert into commerce.page_roles (store_id, role, page_id) values ($1, 'blog', $2)", [src, ids.post]);
+    await db.query("update commerce.products set product_layout_id = $2 where id = $1", [ids.alpha, ids.layout]);
+
+    // Campaigns, codes and field values that name products.
+    await db.query(
+      `insert into commerce.campaigns (store_id, name, kind, percent, product_ids) values
+         ($1, 'On alpha', 'percent', 10, $2::jsonb),
+         ($1, 'On beta', 'percent', 10, $3::jsonb),
+         ($1, 'Everything', 'percent', 5, '[]')`,
+      [src, JSON.stringify([ids.alpha]), JSON.stringify([ids.beta])],
+    );
+    await db.query(
+      `insert into commerce.campaigns (store_id, name, kind, gift_variant_id, gift_quantity)
+       values ($1, 'Gift beta', 'gift', $2, 1)`,
+      [src, ids["beta-variant"]],
+    );
+    await db.query(
+      "insert into commerce.discount_codes (store_id, code, kind, percent, product_ids) values ($1, 'BETA10', 'percent', 10, $2::jsonb), ($1, 'ALL10', 'percent', 10, null)",
+      [src, JSON.stringify([ids.beta])],
+    );
+    await db.query(
+      "insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, 'product', $2, '', $3::jsonb), ($1, 'store', $1, '', '{\"f_x\":\"own\"}')",
+      [src, ids.alpha, JSON.stringify({ f_related00001: [ids.alpha, ids.beta] })],
+    );
+    await db.query(
+      "insert into commerce.customer_tiers (store_id, name, percent) values ($1, 'VIP', 10)",
+      [src],
+    );
+    await db.query("insert into commerce.saved_parts (store_id, kind, name, content, sharing) values ($1, 'block', 'Mine', $2::jsonb, 'marketplace')", [
+      src,
+      JSON.stringify({ id: "b1", menuId: ids.menu }),
+    ]);
+  });
+
+  it("copies the settings and everything chosen, remapping ids, and leaves the original alone", async () => {
+    const before = await scalar<string>(
+      "select md5((select string_agg(to_jsonb(p)::text, '' order by id) from commerce.products p where store_id = $1) || (select string_agg(to_jsonb(g)::text, '' order by id) from commerce.pages g where store_id = $1))",
+      [src],
+    );
+    const copy = await copyOf("copy-all");
+
+    const [store] = await rows<Record<string, unknown>>("select * from commerce.stores where id = $1", [copy]);
+    expect(store).toMatchObject({
+      slug: "copy-all",
+      legal_name: "Karis AS",
+      organisation_number: "999888777",
+      custom_css: "a { color: red }",
+      setup_completed_at: null,
+      is_template: false,
+      created_by: owner,
+    });
+    // The Work module is the owner's own bookkeeping; it is not switched on.
+    expect(store.modules).toEqual(["bookings"]);
+    // Only the person copying owns it.
+    expect(await rows("select account_id, role from commerce.store_members where store_id = $1", [copy])).toEqual([
+      { account_id: owner, role: "owner" },
+    ]);
+
+    // Products (not archived), with their parts, under new ids.
+    expect(await rows("select handle, status from commerce.products where store_id = $1 order by handle", [copy])).toEqual([
+      { handle: "alpha", status: "active" },
+      { handle: "beta", status: "draft" },
+      // A download waits as a draft for its files.
+      { handle: "delta", status: "draft" },
+    ]);
+    const alpha = await cloneId(copy, ids.alpha);
+    expect(await scalar("select id from commerce.products where store_id = $1 and handle = 'alpha'", [copy])).toBe(alpha);
+    expect(await count("product_variants", copy)).toBe(3);
+    expect(await count("inventory_levels", copy)).toBe(3);
+    // The current price only, as a new price: no reduction it never made.
+    expect(await rows("select amount_minor from commerce.prices where store_id = $1 and variant_id = $2", [copy, await cloneId(copy, ids["alpha-variant"])])).toEqual([
+      { amount_minor: 900 },
+    ]);
+    expect(await scalar("select prior_30d_minor from commerce.current_prices where variant_id = $1", [await cloneId(copy, ids["alpha-variant"])])).toBeNull();
+    expect(await count("selling_plans", copy)).toBe(1);
+    expect(await count("terms", copy)).toBe(3);
+    expect(await count("product_terms", copy)).toBe(3);
+    expect(await scalar("select parent_id from commerce.terms where id = $1", [await cloneId(copy, ids.boots)])).toBe(await cloneId(copy, ids.shoes));
+
+    // Pages, posts, header and layout, draft and published, with what they name remapped.
+    expect(await rows("select type, slug, published is not null as live from commerce.pages where store_id = $1 order by type, slug", [copy])).toEqual([
+      { type: "article", slug: "hello", live: true },
+      { type: "article", slug: "later", live: false },
+      { type: "header", slug: "main-header", live: true },
+      { type: "page", slug: "about", live: true },
+      { type: "page", slug: "coming", live: false },
+      { type: "product_layout", slug: "layout", live: true },
+    ]);
+    const about = await scalar<{ rows: [{ menu: string; group: string; categories: string[]; tags: string[]; store: string }] }>(
+      "select draft from commerce.pages where id = $1",
+      [await cloneId(copy, ids.about)],
+    );
+    expect(about.rows[0]).toEqual({
+      id: "row-1",
+      menu: await cloneId(copy, ids.menu),
+      group: await cloneId(copy, ids.group),
+      categories: [await cloneId(copy, ids.shoes)],
+      tags: [await cloneId(copy, ids.sale)],
+      store: copy,
+    });
+    expect(await scalar("select first_published_at::date::text from commerce.pages where id = $1", [await cloneId(copy, ids.post)])).toBe("2026-01-02");
+    expect(store).toMatchObject({
+      front_page_id: await cloneId(copy, ids.about),
+      header_id: await cloneId(copy, ids.header),
+      header_menu_id: await cloneId(copy, ids.menu),
+      product_layout_id: await cloneId(copy, ids.layout),
+    });
+    expect(await scalar("select page_id from commerce.page_roles where store_id = $1 and role = 'blog'", [copy])).toBe(await cloneId(copy, ids.post));
+    expect(await scalar("select product_layout_id from commerce.products where id = $1", [alpha])).toBe(await cloneId(copy, ids.layout));
+
+    // Settings: markets, shipping, payment switches, groups, codes, saved parts (private ones).
+    expect(await count("markets", copy)).toBe(2);
+    expect(await count("shipping_rates", copy)).toBe(1);
+    expect(await count("payment_methods", copy)).toBe(1);
+    expect(await count("customer_tiers", copy)).toBe(1);
+    expect(await count("field_groups", copy)).toBe(1);
+    expect(await count("inventory_locations", copy)).toBe(1);
+    expect(await count("discount_codes", copy)).toBe(2);
+    expect(await rows("select name, sharing from commerce.saved_parts where store_id = $1", [copy])).toEqual([{ name: "Mine", sharing: "private" }]);
+    expect(await scalar("select content ->> 'menuId' from commerce.saved_parts where store_id = $1", [copy])).toBe(await cloneId(copy, ids.menu));
+    expect(await scalar<number>("select count(*)::int from commerce.field_values where store_id = $1 and entity = 'store' and entity_id = $1", [copy])).toBe(1);
+
+    // The original is as it was.
+    expect(
+      await scalar<string>(
+        "select md5((select string_agg(to_jsonb(p)::text, '' order by id) from commerce.products p where store_id = $1) || (select string_agg(to_jsonb(g)::text, '' order by id) from commerce.pages g where store_id = $1))",
+        [src],
+      ),
+    ).toBe(before);
+    expect(await count("store_members", src)).toBe(2);
+  });
+
+  it("copies only what is chosen: none, some, all (null means all, an empty list none)", async () => {
+    const none = await copyOf("copy-none", [], [], []);
+    expect(await count("products", none)).toBe(0);
+    expect(await count("product_variants", none)).toBe(0);
+    expect(await count("prices", none)).toBe(0);
+    // Headers, footers and product layouts are settings and come anyway; pages and posts do not.
+    expect(await rows("select type from commerce.pages where store_id = $1 order by type", [none])).toEqual([
+      { type: "header" },
+      { type: "product_layout" },
+    ]);
+    // What pointed at a page that was not copied points at nothing.
+    expect(await scalar("select front_page_id from commerce.stores where id = $1", [none])).toBeNull();
+    expect(await count("page_roles", none)).toBe(0);
+    // The structure stays: categories, menus, settings.
+    expect(await count("terms", none)).toBe(3);
+    expect(await count("menus", none)).toBe(1);
+    expect(await count("markets", none)).toBe(2);
+    expect(await scalar("select product_layout_id from commerce.stores where id = $1", [none])).toBe(await cloneId(none, ids.layout));
+
+    const some = await copyOf("copy-some", [ids.about], [ids.alpha], [ids.post]);
+    expect(await rows("select handle from commerce.products where store_id = $1", [some])).toEqual([{ handle: "alpha" }]);
+    expect(await rows("select slug from commerce.pages where store_id = $1 and type in ('page', 'article') order by slug", [some])).toEqual([
+      { slug: "about" },
+      { slug: "hello" },
+    ]);
+    // Archived products are never copied, even when chosen; other stores' ids choose nothing.
+    const archived = await copyOf("copy-archived", null, [ids.gamma, ids.alpha]);
+    expect(await rows("select handle from commerce.products where store_id = $1", [archived])).toEqual([{ handle: "alpha" }]);
+  });
+
+  it("drops what named a product that was not copied, and switches off what would reach the whole store", async () => {
+    const copy = await copyOf("copy-alpha-only", null, [ids.alpha]);
+    // A menu's link to a product that is gone goes, with the items under it; the rest stays.
+    const items = await scalar<{ link: { kind: string; handle?: string } }[]>("select items from commerce.menus where store_id = $1", [copy]);
+    expect(items.map((item) => item.link.kind + (item.link.handle ? `:${item.link.handle}` : ""))).toEqual([
+      "home",
+      "product:alpha",
+      "url",
+    ]);
+    // A campaign for products that were not copied is off (it would reach everything), the others as they were.
+    expect(await rows("select name, active from commerce.campaigns where store_id = $1 order by name", [copy])).toEqual([
+      { name: "Everything", active: true },
+      { name: "On alpha", active: true },
+      { name: "On beta", active: false },
+    ]);
+    expect(await scalar("select product_ids from commerce.campaigns where store_id = $1 and name = 'On alpha'", [copy])).toEqual([await cloneId(copy, ids.alpha)]);
+    expect(await scalar("select product_ids from commerce.campaigns where store_id = $1 and name = 'On beta'", [copy])).toEqual([]);
+    // A gift of a product that was not copied is left out.
+    expect(await scalar("select count(*)::int from commerce.campaigns where store_id = $1 and kind = 'gift'", [copy])).toBe(0);
+    expect(await rows("select code, active from commerce.discount_codes where store_id = $1 order by code", [copy])).toEqual([
+      { code: "ALL10", active: true },
+      { code: "BETA10", active: false },
+    ]);
+    // A relation to a product that was not copied leaves the field value.
+    expect(await scalar("select values from commerce.field_values where store_id = $1 and entity = 'product'", [copy])).toEqual({
+      f_related00001: [await cloneId(copy, ids.alpha)],
+    });
+
+    // With everything copied, all of it stays.
+    const all = await copyOf("copy-with-beta");
+    expect(await scalar("select count(*)::int from commerce.campaigns where store_id = $1 and active", [all])).toBe(4);
+    expect(await scalar("select jsonb_array_length(items)::int from commerce.menus where store_id = $1", [all])).toBe(5);
+  });
+
+  it("copies nothing that belongs to the original alone, and nothing of the new store points back at it", async () => {
+    const copy = await copyOf("copy-isolated");
+    const { rows: tables } = await db.query<{ relname: string }>(
+      `select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+       where n.nspname = 'commerce' and c.relkind = 'r'
+         and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'store_id' and not a.attisdropped)`,
+    );
+    // Made for every store on its own: numbering, the payment provider row, the owner as member.
+    const made = new Map([["document_series", 5], ["payment_providers", 1], ["store_members", 1]]);
+    for (const { relname } of tables) {
+      const rule = COPY_RULES[relname];
+      if (rule.group === "never") expect([relname, await count(relname, copy)]).toEqual([relname, made.get(relname) ?? 0]);
+    }
+    // Numbering starts again.
+    expect(await rows("select series, next_number::int from commerce.document_series where store_id = $1 order by series", [copy])).toEqual([
+      { series: "credit_note", next_number: 1 },
+      { series: "invoice", next_number: 1 },
+      { series: "order", next_number: 1001 },
+      { series: "work_credit_note", next_number: 1 },
+      { series: "work_invoice", next_number: 1 },
+    ]);
+    // No Stripe account, keys, domain, integration, AI provider or host came along; the switches did.
+    expect(await scalar("select enabled from commerce.payment_providers where store_id = $1", [copy])).toBe(true);
+    // Nothing of the new store names anything of the original's: its store, products, pages, terms, menus ...
+    const theirs = (
+      await rows<{ id: string }>(
+        `select id from commerce.products where store_id = $1 union all select id from commerce.product_variants where store_id = $1
+         union all select id from commerce.pages where store_id = $1 union all select id from commerce.terms where store_id = $1
+         union all select id from commerce.menus where store_id = $1 union all select id from commerce.field_groups where store_id = $1
+         union all select id from commerce.saved_parts where store_id = $1 union all select id from commerce.customer_tiers where store_id = $1
+         union all select id from commerce.discount_codes where store_id = $1 union all select id from commerce.campaigns where store_id = $1
+         union all select id from commerce.inventory_locations where store_id = $1 union all select id from commerce.economic_operators where store_id = $1
+         union all select $1::uuid`,
+        [src],
+      )
+    ).map((row) => row.id);
+    for (const { relname } of tables) {
+      if (COPY_RULES[relname].group === "never" || COPY_RULES[relname].group === "derived") continue;
+      const hits = await scalar<number>(
+        `select count(*)::int from commerce.${relname} t where t.store_id = $1 and to_jsonb(t)::text like any ($2::text[])`,
+        [copy, theirs.map((id) => `%${id}%`)],
+      );
+      expect([relname, hits]).toEqual([relname, 0]);
+    }
+  });
+
+  describe("customers and orders", () => {
+    let copy: string;
+    let orderIds: Record<string, string>;
+    let customerIds: Record<string, string>;
+
+    const batches = async (fn: "copy_customers" | "copy_orders", limit: number) => {
+      const calls: { handled: number; copied: number }[] = [];
+      let after: string | null = null;
+      for (;;) {
+        const [batch]: { last_id: string | null; handled: number; copied: number }[] = await rows<{ last_id: string | null; handled: number; copied: number }>(
+          `select * from commerce.${fn}($1, $2, $3::uuid, $4)`,
+          [src, copy, after, limit],
+        );
+        if (batch.handled === 0) return calls;
+        calls.push({ handled: batch.handled, copied: batch.copied });
+        after = batch.last_id;
+      }
+    };
+
+    beforeAll(async () => {
+      const tier = await scalar<string>("select id from commerce.customer_tiers where store_id = $1", [src]);
+      const company = await scalar<string>(
+        "insert into commerce.customer_companies (store_id, name, tier_id) values ($1, 'Acme AS', $2) returning id",
+        [src, tier],
+      );
+      customerIds = {};
+      for (const [name, over] of Object.entries({
+        vip: `password_hash = 'scrypt$secret', auth_user_id = gen_random_uuid(), email_verified_at = now(), last_sign_in_at = now(), failed_sign_ins = 2, avatar_path = 'a/b.webp', tier_id = '${tier}', company_id = '${company}', company_role = 'owner', phone = '+4712345678'`,
+        plain: "name = 'Plain'",
+        third: "name = 'Third'",
+      })) {
+        customerIds[name] = await scalar<string>(
+          "insert into commerce.customers (store_id, email) values ($1, $2) returning id",
+          [src, `${name}@copy.example`],
+        );
+        await db.query(`update commerce.customers set ${over} where id = $1`, [customerIds[name]]);
+      }
+      await db.query(
+        "insert into commerce.customer_sessions (store_id, customer_id, token_hash, expires_at) values ($1, $2, 'h', now() + interval '1 day')",
+        [src, customerIds.vip],
+      );
+      await db.query(
+        "insert into commerce.customer_codes (store_id, email, code_hash, expires_at) values ($1, 'vip@copy.example', 'h', now() + interval '1 day')",
+        [src],
+      );
+      await db.query("insert into commerce.email_opt_outs (store_id, email, source) values ($1, 'gone@copy.example', 'unsubscribe'), ($1, 'gone2@copy.example', 'complaint')", [src]);
+      const fieldGroup = await scalar<string>(
+        `insert into commerce.field_groups (store_id, name, slug, entities, fields)
+         values ($1, 'Staff notes', 'staff-notes', '["customer","order"]', '[{"id":"f_note0000001","name":"note","label":"Note","type":"text","access":"staff"}]') returning id`,
+        [src],
+      );
+      void fieldGroup;
+      await db.query(
+        "insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, 'customer', $2, '', '{\"f_note0000001\":\"likes red\"}')",
+        [src, customerIds.vip],
+      );
+
+      const code = await scalar<string>("select id from commerce.discount_codes where store_id = $1 and code = 'ALL10'", [src]);
+      orderIds = {};
+      const order = async (key: string, number: string, status: string, customer: string | null, extra = "") => {
+        const id = await scalar<string>(
+          `insert into commerce.orders (store_id, number, market_code, currency, locale, customer_id, email, status,
+             subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address,
+             placed_at, discount_code_id, discount_code, member_discount_minor, member_label, member_percent ${extra ? ", " + extra.split("=")[0] : ""})
+           values ($1, $2, 'DE', 'EUR', 'de-DE', $3, 'buyer@copy.example', $4, 2000, 490, 100, 320, 2390,
+             '{"name":"Buyer"}', '{"name":"Buyer","country":"DE"}', '2026-03-04T10:00:00Z', $5, 'ALL10', 100, 'VIP', 10 ${extra ? ", " + extra.split("=")[1] : ""}) returning id`,
+          [src, number, customer, status, code],
+        );
+        await db.query(
+          `insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
+             total_minor, tax_minor, tax_rate, tax_code, member_discount_minor)
+           values ($1, $2, $3, 'SKU', 'A thing', 2, 1000, 100, 1900, 320, 0.19, 'txcd_99999999', 100)`,
+          [src, id, ids["alpha-variant"]],
+        );
+        orderIds[key] = id;
+        return id;
+      };
+      await order("paid", "1001", "paid", customerIds.vip);
+      await order("fulfilled", "1002", "fulfilled", null);
+      await order("cancelled", "1003", "cancelled", customerIds.plain);
+      await order("pending", "1004", "pending_payment", null);
+      await db.query(
+        "insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, 'stripe', 'pi_1', 2390, 'EUR', 'captured')",
+        [src, orderIds.paid],
+      );
+      await db.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values ($1, $2, 'DHL', '123')", [src, orderIds.fulfilled]);
+      await db.query("insert into commerce.order_events (store_id, order_id, type, data, actor) values ($1, $2, 'order.paid', '{}', 'system')", [src, orderIds.paid]);
+      await db.query(
+        "insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, 'order', $2, '', '{\"f_note0000001\":\"gift wrap\"}')",
+        [src, orderIds.paid],
+      );
+
+      copy = await copyOf("copy-people");
+      // What would tell the outside world about a new order or customer.
+      await db.query(
+        "insert into commerce.store_integrations (store_id, provider, enabled, webhook_url_encrypted, webhook_hint, events) values ($1, 'slack', true, 'x', 'x', '{order.paid,customer.created}')",
+        [copy],
+      );
+      await db.query(
+        "insert into commerce.store_copies (source_store_id, new_store_id, requested_by, options) values ($1, $2, $3, '{}')",
+        [src, copy, owner],
+      );
+    });
+
+    it("only runs into a store a copy is running for", async () => {
+      const stranger = await createStore("copy-stranger", ["DE"]);
+      await expect(db.query("select * from commerce.copy_customers($1, $2, null, 10)", [src, stranger])).rejects.toThrow(/no store copy is running/);
+      await expect(db.query("select * from commerce.copy_orders($1, $2, null, 10)", [src, stranger])).rejects.toThrow(/no store copy is running/);
+    });
+
+    it("copies shoppers in batches without anything that lets them sign in, and again without copying twice", async () => {
+      expect(await batches("copy_customers", 2)).toEqual([
+        { handled: 2, copied: 2 },
+        { handled: 1, copied: 1 },
+      ]);
+      // A rerun finds them all done.
+      expect(await batches("copy_customers", 10)).toEqual([{ handled: 3, copied: 0 }]);
+      expect(await count("customers", copy)).toBe(3);
+
+      const vip = await cloneId(copy, customerIds.vip);
+      const [row] = await rows<Record<string, unknown>>("select * from commerce.customers where id = $1", [vip]);
+      expect(row).toMatchObject({
+        email: "vip@copy.example",
+        phone: "+4712345678",
+        copied_from: customerIds.vip,
+        password_hash: null,
+        auth_user_id: null,
+        email_verified_at: null,
+        last_sign_in_at: null,
+        failed_sign_ins: 0,
+        locked_until: null,
+        avatar_path: null,
+        tier_id: await scalar("select id from commerce.customer_tiers where store_id = $1", [copy]),
+        company_role: "owner",
+      });
+      // Their group and company are the copies.
+      expect(row.company_id).toBe(await cloneId(copy, await scalar("select id from commerce.customer_companies where store_id = $1", [src])));
+      // Nothing to sign in with, nothing kept about them.
+      for (const table of ["customer_sessions", "customer_codes", "customer_sign_in_links", "wishlists", "consents", "carts"]) {
+        expect([table, await count(table, copy)]).toEqual([table, 0]);
+      }
+      // Staff notes about a customer come along.
+      expect(await scalar("select values from commerce.field_values where store_id = $1 and entity = 'customer'", [copy])).toEqual({ f_note0000001: "likes red" });
+      // No integration hears of them.
+      expect(await count("integration_deliveries", copy)).toBe(0);
+      // People who unsubscribed stay unsubscribed, and it can be run again.
+      expect(await scalar("select commerce.copy_opt_outs($1, $2)", [src, copy])).toBe(2);
+      expect(await scalar("select commerce.copy_opt_outs($1, $2)", [src, copy])).toBe(0);
+      expect(await rows("select email, source from commerce.email_opt_outs where store_id = $1 order by email", [copy])).toEqual([
+        { email: "gone2@copy.example", source: "complaint" },
+        { email: "gone@copy.example", source: "unsubscribe" },
+      ]);
+    });
+
+    it("copies order history as read-only orders numbered C-…, not those waiting for payment", async () => {
+      const stock = () =>
+        rows("select variant_id, on_hand, available::int from commerce.available_stock where store_id = $1 order by on_hand", [copy]);
+      const stockBefore = await stock();
+      expect(await batches("copy_orders", 2)).toEqual([
+        { handled: 2, copied: 2 },
+        { handled: 1, copied: 1 },
+      ]);
+      expect(await batches("copy_orders", 10)).toEqual([{ handled: 3, copied: 0 }]);
+      expect(await rows("select number, status, copied_from is not null as copied from commerce.orders where store_id = $1 order by number", [copy])).toEqual([
+        { number: "C-1001", status: "paid", copied: true },
+        { number: "C-1002", status: "fulfilled", copied: true },
+        { number: "C-1003", status: "cancelled", copied: true },
+      ]);
+      const paid = await cloneId(copy, orderIds.paid);
+      const [order] = await rows<Record<string, unknown>>("select * from commerce.orders where id = $1", [paid]);
+      expect(order).toMatchObject({
+        total_minor: 2390,
+        tax_minor: 320,
+        discount_minor: 100,
+        member_label: "VIP",
+        discount_code: "ALL10",
+        email: "buyer@copy.example",
+        balance_minor: 0,
+        cart_id: null,
+        subscription_id: null,
+        customer_id: await cloneId(copy, customerIds.vip),
+        discount_code_id: await cloneId(copy, await scalar("select id from commerce.discount_codes where store_id = $1 and code = 'ALL10'", [src])),
+      });
+      expect(new Date(order.placed_at as string).toISOString()).toBe("2026-03-04T10:00:00.000Z");
+      expect(await scalar("select customer_id from commerce.orders where id = $1", [await cloneId(copy, orderIds.fulfilled)])).toBeNull();
+      expect(await rows("select sku, quantity, total_minor, variant_id from commerce.order_lines where order_id = $1", [paid])).toEqual([
+        { sku: "SKU", quantity: 2, total_minor: 1900, variant_id: await cloneId(copy, ids["alpha-variant"]) },
+      ]);
+      // One event, `copied`; no payment, refund, invoice, shipment, download, reservation or email.
+      expect(await rows("select type, data ->> 'original_number' as number from commerce.order_events where order_id = $1", [paid])).toEqual([
+        { type: "copied", number: "1001" },
+      ]);
+      for (const table of ["payments", "refunds", "invoices", "shipments", "order_downloads", "inventory_reservations", "email_messages", "bookings", "integration_deliveries"]) {
+        expect([table, await count(table, copy)]).toEqual([table, 0]);
+      }
+      // Stock and numbering are untouched.
+      expect(await stock()).toEqual(stockBefore);
+      expect(await scalar("select commerce.next_document_number($1, 'order')", [copy])).toBe(1001);
+      expect(await scalar("select values from commerce.field_values where store_id = $1 and entity = 'order'", [copy])).toEqual({ f_note0000001: "gift wrap" });
+      // The original is untouched.
+      expect(await count("payments", src)).toBe(1);
+      expect(await scalar("select count(*)::int from commerce.orders where store_id = $1 and copied_from is not null", [src])).toBe(0);
+    });
+
+    it("refuses everything that would act on a copied order", async () => {
+      const paid = await cloneId(copy, orderIds.paid);
+      const line = await scalar<string>("select id from commerce.order_lines where order_id = $1", [paid]);
+      const refused = /copied_order/;
+      await expect(db.query("update commerce.orders set status = 'fulfilled' where id = $1", [paid])).rejects.toThrow(refused);
+      await expect(db.query("update commerce.orders set email = 'x@example.com' where id = $1", [paid])).rejects.toThrow(refused);
+      await expect(db.query("update commerce.orders set copied_from = null where id = $1", [paid])).rejects.toThrow(refused);
+      await expect(db.query("update commerce.order_lines set quantity = 3 where id = $1", [line])).rejects.toThrow(refused);
+      await expect(db.query("delete from commerce.order_lines where id = $1", [line])).rejects.toThrow(refused);
+      await expect(
+        db.query(
+          "insert into commerce.order_lines (store_id, order_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code) values ($1, $2, 'S', 'T', 1, 1, 1, 0, 0, 'x')",
+          [copy, paid],
+        ),
+      ).rejects.toThrow(refused);
+      await expect(
+        db.query("insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency) values ($1, $2, 'stripe', 'pi_new', 1, 'EUR')", [copy, paid]),
+      ).rejects.toThrow(refused);
+      await expect(db.query("insert into commerce.shipments (store_id, order_id) values ($1, $2)", [copy, paid])).rejects.toThrow(refused);
+      await expect(
+        db.query("insert into commerce.order_events (store_id, order_id, type, actor) values ($1, $2, 'order.paid', 'system')", [copy, paid]),
+      ).rejects.toThrow(refused);
+      await expect(
+        db.query("insert into commerce.email_messages (store_id, kind, to_address, subject, html, text, order_id) values ($1, 'order', 'a@b.no', 's', 'h', 't', $2)", [copy, paid]),
+      ).rejects.toThrow(refused);
+      await expect(
+        db.query(
+          "insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, order_id, expires_at) values ($1, $2, $3, 1, $4, now() + interval '1 hour')",
+          [copy, await cloneId(copy, ids["alpha-variant"]), await cloneId(copy, ids.location), paid],
+        ),
+      ).rejects.toThrow(refused);
+      // The payment and cancel functions cannot touch it either.
+      const settled = (text: string) => db.query<{ done: boolean }>(text, [paid]).then((r) => r.rows[0].done, () => false);
+      expect(await settled("select commerce.complete_order_payment($1, 'cs_x') as done")).toBe(false);
+      expect(await settled("select commerce.cancel_unpaid_order($1, 'x') as done")).toBe(false);
+      expect(await scalar("select status from commerce.orders where id = $1", [paid])).toBe("paid");
+      // A customer deleting their account may still let go of their orders.
+      await db.query("update commerce.orders set customer_id = null where id = $1", [paid]);
+      expect(await scalar("select customer_id from commerce.orders where id = $1", [paid])).toBeNull();
+      // An order cannot be made a copy, nor a copy of an unpaid one made.
+      const real = await createOrder(`R-${++counter}`);
+      await expect(db.query("update commerce.orders set copied_from = $2 where id = $1", [real, real])).rejects.toThrow(refused);
+      await expect(
+        db.query(
+          `insert into commerce.orders (store_id, number, market_code, currency, locale, email, subtotal_minor, tax_minor, total_minor, billing_address, shipping_address, copied_from)
+           values ($1, 'C-9', 'DE', 'EUR', 'de-DE', '', 1, 0, 1, '{}', '{}', $2)`,
+          [copy, real],
+        ),
+      ).rejects.toThrow(refused);
+    });
   });
 });

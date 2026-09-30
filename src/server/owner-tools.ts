@@ -74,13 +74,19 @@ const fail = (message: string): never => {
 const mainLocale = (store: Store) => store.markets[0]?.locale ?? "en";
 const money = (store: Store, minor: number, currency: string) => formatMoney(minor, currency, mainLocale(store));
 
-/** An order by its number or id, the store's only. */
-async function findOrderId(store: Store, ref: string): Promise<string> {
+/**
+ * An order by its number or id, the store's only. History copied from another store (D129) can be read
+ * (`read: true`) but never acted on: anything that changes an order, sends about it or refunds it is refused.
+ */
+async function findOrderId(store: Store, ref: string, { read = false }: { read?: boolean } = {}): Promise<string> {
   const byId = /^[0-9a-f-]{36}$/i.test(ref);
   const [row] = await db().execute<Row>(sql`
-    select id from commerce.orders
+    select id, copied_from is not null as copied from commerce.orders
     where store_id = ${store.id}::uuid and ${byId ? sql`id = ${ref}::uuid` : sql`number = ${ref.replace(/^#/, "")}`}
   `);
+  if (row && Boolean(row.copied) && !read) {
+    return fail(`Order ${ref} is history copied from another store, so it is read-only: nothing can be changed, sent or refunded.`);
+  }
   return row ? String(row.id) : fail(`No order ${ref} in this store.`);
 }
 
@@ -106,8 +112,8 @@ async function storeOverview({ store }: OwnerToolContext) {
     select
       (select count(*)::int from commerce.products where store_id = ${store.id}::uuid and status = 'active') as active_products,
       (select count(*)::int from commerce.products where store_id = ${store.id}::uuid and status = 'draft') as draft_products,
-      (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed')) as orders,
-      (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status = 'paid') as orders_to_handle
+      (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed') and copied_from is null) as orders,
+      (select count(*)::int from commerce.orders where store_id = ${store.id}::uuid and status = 'paid' and copied_from is null) as orders_to_handle
   `);
   return {
     name: store.name,
@@ -127,7 +133,7 @@ async function storeOverview({ store }: OwnerToolContext) {
 async function salesSummary({ store }: OwnerToolContext, { days }: OwnerToolInput<"sales_summary">) {
   // The period starts at midnight in the store's time zone, `days` days back counting today.
   const since = sql`(date_trunc('day', now() at time zone ${store.timeZone}) - make_interval(days => ${days - 1})) at time zone ${store.timeZone}`;
-  const paid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
+  const paid = sql`(o.copied_from is null and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured'))`;
   const [totals, refunds, top] = await Promise.all([
     db().execute<Row>(sql`
       select o.currency, count(*)::int as orders, sum(o.total_minor)::bigint as total
@@ -188,17 +194,20 @@ async function listOrdersTool({ store }: OwnerToolContext, input: OwnerToolInput
       placed: o.placedAt,
       total: money(store, o.totalMinor, o.currency),
       items: o.items,
+      // History copied from another store (D129): read-only, and in no sales figure.
+      ...(o.copied ? { copied_history: true } : {}),
     })),
   };
 }
 
 async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInput<"get_order">) {
-  const view = await getOrderAdmin(store.id, await findOrderId(store, order));
+  const view = await getOrderAdmin(store.id, await findOrderId(store, order, { read: true }));
   if (!view) return fail(`No order ${order} in this store.`);
   const m = (minor: number) => money(store, minor, view.currency);
   return {
     number: view.number,
     status: view.status,
+    ...(view.copied ? { copied_history: "This order was copied from another store: it is read-only history." } : {}),
     placed: view.placedAt,
     customer: { email: view.email, name: view.shippingAddress?.name ?? view.billingAddress?.name ?? null },
     country: view.marketCode,
@@ -486,10 +495,10 @@ async function storeCheckup(ctx: OwnerToolContext) {
   const [[counts], [low], progress, integrations, restock] = await Promise.all([
     db().execute<Row>(sql`
       select
-        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid'
+        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
            and o.placed_at < now() - interval '2 days'
            and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as late_orders,
-        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid'
+        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
            and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as to_send,
         (select count(distinct lower(q.query))::int from commerce.search_queries q
            where q.store_id = ${store.id}::uuid and q.results = 0 and q.created_at > now() - interval '7 days') as searches_missed,
@@ -783,7 +792,7 @@ async function emailCustomerTool({ store }: OwnerToolContext, { to, subject, mes
     ? await db().execute<Row>(sql`
         select email, id as order_id, market_code, locale from (
           select o.email, o.id, o.market_code, o.locale, o.created_at from commerce.orders o
-          where o.store_id = ${store.id}::uuid and lower(o.email) = lower(${to})
+          where o.store_id = ${store.id}::uuid and lower(o.email) = lower(${to}) and o.copied_from is null
           union all
           select c.email, null::uuid, null, c.locale, c.created_at from commerce.customers c
           where c.store_id = ${store.id}::uuid and lower(c.email) = lower(${to})

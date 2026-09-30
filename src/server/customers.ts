@@ -138,11 +138,14 @@ async function upsertCustomer(storeId: string, email: string): Promise<string> {
   return String(row.id);
 }
 
-/** Links the store's orders and subscriptions with this email to the customer. */
+/**
+ * Links the store's orders and subscriptions with this email to the customer. Orders copied from another store
+ * (D129) are history and stay as they are.
+ */
 export async function claimOrders(storeId: string, customerId: string, email: string) {
   await db().execute(sql`
     update commerce.orders set customer_id = ${customerId}::uuid
-    where store_id = ${storeId}::uuid and lower(email) = ${email} and customer_id is null
+    where store_id = ${storeId}::uuid and lower(email) = ${email} and customer_id is null and copied_from is null
   `);
   await db().execute(sql`
     update commerce.subscriptions set customer_id = ${customerId}::uuid
@@ -512,6 +515,7 @@ export async function listCustomerOrders(storeId: string, customerId: string): P
       (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items
     from commerce.orders o
     where o.store_id = ${storeId}::uuid and o.customer_id = ${customerId}::uuid and o.status <> 'pending_payment'
+      and o.copied_from is null
       and (o.status <> 'cancelled' or exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured'))
     order by o.placed_at desc
     limit 200
@@ -538,10 +542,11 @@ export async function lastShippingAddress(storeId: string, customerId: string): 
   return (row?.shipping_address ?? {}) as Address;
 }
 
-/** Whether the order belongs to the customer (for their order page). */
+/** Whether the order belongs to the customer (for their order page); an order copied from another store (D129) is the owner's history, not the shopper's. */
 export async function ownsOrder(storeId: string, customerId: string, orderId: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
-    select 1 from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid and customer_id = ${customerId}::uuid
+    select 1 from commerce.orders
+    where store_id = ${storeId}::uuid and id = ${orderId}::uuid and customer_id = ${customerId}::uuid and copied_from is null
   `);
   return Boolean(row);
 }

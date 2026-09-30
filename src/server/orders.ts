@@ -86,6 +86,11 @@ export type OrderView = {
   company: { name: string; number: string } | null;
   /** The market's standard VAT rate, which shipping takes, for showing businesses amounts without VAT. */
   shippingVatRate: number;
+  /**
+   * History copied from another store (D129): numbered `C-{original number}`, read-only. Nothing can be paid, sent, refunded,
+   * cancelled or changed on it, and it counts in no sales figure.
+   */
+  copied: boolean;
 };
 
 export type OrderBooking = {
@@ -182,6 +187,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     ? { name: String(row.company_name), number: String(row.organisation_number ?? "") }
     : null,
   shippingVatRate: Number(row.shipping_vat_rate ?? 0),
+  copied: row.copied_from !== null && row.copied_from !== undefined,
 });
 
 export async function getOrder(storeId: string, orderId: string): Promise<OrderView | null> {
@@ -361,6 +367,8 @@ export type OrderListRow = {
   id: string;
   number: string;
   status: OrderStatus;
+  /** History copied from another store (D129). */
+  copied: boolean;
   email: string;
   name: string | null;
   placedAt: string;
@@ -378,16 +386,17 @@ export async function listOrders(
   const wasPaid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
   const rows = await db().execute<Row>(sql`
     select o.id, o.number, o.status, o.email, o.shipping_address ->> 'name' as name,
-           o.placed_at, o.total_minor, o.currency,
+           o.placed_at, o.total_minor, o.currency, o.copied_from is not null as copied,
            (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items
     from commerce.orders o
     where o.store_id = ${storeId}::uuid
       and ${
+        // History copied from another store (D129) is listed with the orders, whatever its status, and is never to send or unpaid.
         toSend
-          ? sql`o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')`
+          ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')`
           : unpaid
-            ? sql`(o.status = 'pending_payment' or (o.status = 'cancelled' and not ${wasPaid}))`
-            : sql`(o.status not in ('pending_payment', 'cancelled') or (o.status = 'cancelled' and ${wasPaid}))`
+            ? sql`o.copied_from is null and (o.status = 'pending_payment' or (o.status = 'cancelled' and not ${wasPaid}))`
+            : sql`(o.copied_from is not null or o.status not in ('pending_payment', 'cancelled') or (o.status = 'cancelled' and ${wasPaid}))`
       }
     order by o.placed_at desc
     limit 200
@@ -396,6 +405,7 @@ export async function listOrders(
     id: String(row.id),
     number: String(row.number),
     status: row.status as OrderStatus,
+    copied: Boolean(row.copied),
     email: String(row.email ?? ""),
     name: row.name ? String(row.name) : null,
     placedAt: new Date(String(row.placed_at)).toISOString(),

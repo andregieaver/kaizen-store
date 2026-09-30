@@ -4,8 +4,11 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StoresList } from "@/components/admin/stores-list";
 import { listStores, requireAccount } from "@/server/auth";
+import { COPY_PHASE_LABELS } from "@/lib/store-copy";
+import { copyProgressPath } from "@/lib/store-copy-paths";
 import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
+import { listStoreCopies } from "@/server/store-copy";
 
 import { createStoreAction } from "./actions";
 
@@ -16,9 +19,12 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 /** All the account's stores, and a way to create another. */
 export default async function AllStoresPage() {
   const account = await requireAccount();
-  const [stores, hostings] = await Promise.all([listStores(account), listHostings(account)]);
+  const [stores, hostings, copies] = await Promise.all([listStores(account), listHostings(account), listStoreCopies(account)]);
   const owned = stores.filter((store) => store.role === "owner").length;
   const canCreate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
+  // Duplicating (D129) makes one more store, so it has the same room as creating one.
+  const canDuplicate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
+  const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;
 
   return (
     <div className="flex flex-col gap-8">
@@ -26,7 +32,12 @@ export default async function AllStoresPage() {
         <h1 className="text-2xl font-semibold">Your stores</h1>
         <p className="text-sm text-muted">Each store has its own products, Stripe account and plan.</p>
       </div>
-      <StoresList stores={stores} />
+      <StoresList stores={stores} canDuplicate={canDuplicate} platformAdmin={account.platformAdmin} />
+      {full && (
+        <p role="note" className="max-w-xl text-sm text-muted">
+          You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizen for more. Creating or duplicating a store is switched off until then.
+        </p>
+      )}
 
       {canCreate && (
         <section aria-labelledby="new-store" className="flex max-w-xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
@@ -63,6 +74,26 @@ export default async function AllStoresPage() {
               <SubmitButton>Create store</SubmitButton>
             </div>
           </ActionForm>
+        </section>
+      )}
+      {copies.length > 0 && (
+        <section aria-labelledby="copies-heading" className="flex flex-col gap-2">
+          <h2 id="copies-heading" className="text-lg font-semibold">
+            Recent copies
+          </h2>
+          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+            {copies.map((copy) => (
+              <li key={copy.id} className="p-4">
+                <Link href={copyProgressPath(copy.id)} className="font-medium underline-offset-2 hover:underline">
+                  {copy.newName}
+                </Link>
+                <span className="block text-muted">
+                  Copy of {copy.sourceName} ·{" "}
+                  {copy.status === "failed" ? "Failed" : copy.status === "done" ? "Done" : COPY_PHASE_LABELS[copy.phase]}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
       {hostings.length > 0 && (

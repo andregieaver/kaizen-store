@@ -1387,6 +1387,20 @@
       "when": 1790769940448,
       "tag": "20260930120540_template_page_layouts",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1790780706074,
+      "tag": "20260930150506_store_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 199,
+      "version": "7",
+      "when": 1790780711308,
+      "tag": "20260930150511_store_copy_rules",
+      "breakpoints": true
     }
   ]
 }

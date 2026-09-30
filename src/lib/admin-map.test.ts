@@ -30,6 +30,10 @@ describe("the admin map (D103)", () => {
         .filter((r) => !listed("platform").has(r))
         .map((r) => `platform ${r || "/"}`),
       ...["", "/stores", "/account", "/account/usage", "/account/billing"].filter((r) => !listed("account").has(r)).map((r) => `account ${r || "/"}`),
+      // Duplicating a store (D129) lives under the owner's stores.
+      ...routes(path.join(gated, "(owner)/stores"), "/stores")
+        .filter((r) => !listed("account").has(r))
+        .map((r) => `account ${r}`),
       // Work (D123) is the owner's: the combined pages and one store's own screens under it.
       ...routes(path.join(gated, "(owner)/account/work"), "/account/work")
         .filter((r) => !listed("account").has(r))

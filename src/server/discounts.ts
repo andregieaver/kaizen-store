@@ -54,9 +54,9 @@ function toDiscount(row: Row): StoreDiscount {
 
 const used = (customerId: string | null) => sql`
   (select count(*)::int from commerce.orders o
-    where o.store_id = d.store_id and o.discount_code_id = d.id and o.status <> 'cancelled') as used,
+    where o.store_id = d.store_id and o.discount_code_id = d.id and o.status <> 'cancelled' and o.copied_from is null) as used,
   (select count(*)::int from commerce.orders o
-    where o.store_id = d.store_id and o.discount_code_id = d.id and o.status <> 'cancelled'
+    where o.store_id = d.store_id and o.discount_code_id = d.id and o.status <> 'cancelled' and o.copied_from is null
       and ${customerId}::uuid is not null and o.customer_id = ${customerId}::uuid) as used_by_customer
 `;
 
@@ -81,7 +81,7 @@ export async function listDiscounts(storeId: string): Promise<DiscountListRow[]>
     select d.*, ${used(null)},
       (select coalesce(jsonb_object_agg(currency, total), '{}'::jsonb) from (
         select o.currency, sum(o.discount_minor)::bigint as total from commerce.orders o
-        where o.store_id = d.store_id and o.discount_code_id = d.id
+        where o.store_id = d.store_id and o.discount_code_id = d.id and o.copied_from is null
           and o.status not in ('cancelled', 'pending_payment')
         group by o.currency) g) as given
     from commerce.discount_codes d

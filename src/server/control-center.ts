@@ -13,7 +13,8 @@ import { workAttention } from "./work-attention";
 type Row = Record<string, unknown>;
 
 /** An order paid for: a captured payment, online or at the venue. */
-const paid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
+/** Paid: a captured payment. History copied from another store (D129) has none, and is left out by name as well. */
+const paid = sql`(o.copied_from is null and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured'))`;
 
 export type LatestOrder = { id: string; number: string; storeSlug: string; storeName: string; name: string | null; status: string; totalMinor: number; currency: string; placedAt: string };
 
@@ -70,7 +71,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     db().execute<Row>(sql`
       select o.store_id, count(*)::int as n, min(o.placed_at) as oldest
       from commerce.orders o
-      where o.store_id in (${idList(ids)}) and o.status = 'paid'
+      where o.store_id in (${idList(ids)}) and o.status = 'paid' and o.copied_from is null
         and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')
       group by o.store_id
     `),
@@ -91,7 +92,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
              nullif(o.shipping_address ->> 'name', '') as name
       from commerce.orders o
       join commerce.stores s on s.id = o.store_id
-      where o.store_id in (${idList(ids)}) and o.status not in ('pending_payment', 'cancelled')
+      where o.store_id in (${idList(ids)}) and o.status not in ('pending_payment', 'cancelled') and o.copied_from is null
       order by o.placed_at desc
       limit 8
     `),

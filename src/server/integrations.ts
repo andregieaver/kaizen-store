@@ -294,7 +294,7 @@ export async function buildPayload(
   };
   if (delivery.event === "test") {
     const [latest] = await db().execute<Row>(sql`
-      select id from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed')
+      select id from commerce.orders where store_id = ${store.id}::uuid and status in ('paid', 'fulfilled', 'closed') and copied_from is null
       order by placed_at desc limit 1
     `);
     const order = latest ? await orderData(store.id, store.slug, String(latest.id)) : null;

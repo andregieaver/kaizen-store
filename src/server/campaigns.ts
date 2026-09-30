@@ -78,13 +78,13 @@ export async function listCampaigns(storeId: string): Promise<CampaignListRow[]>
          where v.store_id = c.store_id and v.id = c.gift_variant_id) as gift_title,
       (select count(distinct ol.order_id)::int from commerce.order_lines ol
          join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-         where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled') as orders,
+         where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.copied_from is null) as orders,
       (select coalesce(jsonb_object_agg(currency, total), '{}'::jsonb) from (
          select o.currency, sum((part ->> 'minor')::bigint)::bigint as total
          from commerce.order_lines ol
          join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
          cross join lateral jsonb_array_elements(ol.campaign_parts) part
-         where ol.store_id = c.store_id and part ->> 'id' = c.id::text and o.status not in ('cancelled', 'pending_payment')
+         where ol.store_id = c.store_id and part ->> 'id' = c.id::text and o.copied_from is null and o.status not in ('cancelled', 'pending_payment')
          group by o.currency) g) as given
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid
@@ -259,12 +259,12 @@ export async function runningCampaigns(
     select c.*, case when c.usage_limit is null then 0 else (
       select count(distinct ol.order_id)::int from commerce.order_lines ol
       join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled'
+      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.copied_from is null
     ) end as used,
     case when c.per_customer_limit is null or ${customerId}::uuid is null then 0 else (
       select count(distinct ol.order_id)::int from commerce.order_lines ol
       join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
-      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.customer_id = ${customerId}::uuid
+      where ol.store_id = c.store_id and ${partOf("c.id")} and o.status <> 'cancelled' and o.copied_from is null and o.customer_id = ${customerId}::uuid
     ) end as used_by_customer
     from commerce.campaigns c
     where c.store_id = ${storeId}::uuid and c.active

@@ -28,7 +28,7 @@ const byMainCurrency = (store: Store) => (a: string, b: string) =>
   (a === store.markets[0]?.currency ? -1 : 0) - (b === store.markets[0]?.currency ? -1 : 0) || a.localeCompare(b);
 
 /** An order paid for: a captured payment, online or at the venue. */
-const paid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
+const paid = sql`(o.copied_from is null and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured'))`;
 /** Midnight in the store's time zone, `days` days back counting today. */
 const since = (store: Store, days: number) =>
   sql`(date_trunc('day', now() at time zone ${store.timeZone}) - make_interval(days => ${days - 1})) at time zone ${store.timeZone}`;
@@ -263,7 +263,7 @@ export async function salesFunnel({ store }: Ctx, { days }: OwnerToolInput<"sale
         and (c.status = 'converted' or exists (select 1 from commerce.cart_lines l where l.cart_id = c.id))) as carts_filled,
       (select count(*)::int from commerce.abandoned_checkouts a where a.store_id = ${store.id}::uuid and a.captured_at >= ${from}) as left_at_checkout,
       (select count(*)::int from commerce.abandoned_checkouts a where a.store_id = ${store.id}::uuid and a.captured_at >= ${from} and a.recovered_at is not null) as won_back,
-      (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.created_at >= ${from}) as placed,
+      (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.created_at >= ${from} and o.copied_from is null) as placed,
       (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.created_at >= ${from} and ${paid}) as paid,
       (select count(*)::int from commerce.search_queries q where q.store_id = ${store.id}::uuid and q.created_at >= ${from}) as searches,
       (select count(*)::int from commerce.search_queries q where q.store_id = ${store.id}::uuid and q.created_at >= ${from}

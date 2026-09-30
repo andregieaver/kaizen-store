@@ -17,9 +17,12 @@ type Row = Record<string, unknown>;
  * order's, so no email ever stands in an address.
  */
 
-/** An order that was paid, even if it was cancelled and refunded later (the order's alias is `o`). */
-export const bought = sql`(o.status in ('paid', 'fulfilled', 'closed')
-  or (o.status = 'cancelled' and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')))`;
+/**
+ * An order that was paid, even if it was cancelled and refunded later (the order's alias is `o`). An order copied from
+ * another store (D129) is history, not something this store sold, so it is never counted.
+ */
+export const bought = sql`(o.copied_from is null and (o.status in ('paid', 'fulfilled', 'closed')
+  or (o.status = 'cancelled' and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured'))))`;
 
 const LIVE = sql`('active', 'past_due', 'paused')`;
 
@@ -88,7 +91,7 @@ export async function customerSummary(storeId: string, id: string): Promise<Cust
       (select coalesce(jsonb_object_agg(currency, total), '{}') from (
         select o.currency, sum(o.total_minor)::bigint as total from commerce.orders o
         where o.store_id = ${storeId}::uuid and (lower(o.email) = ${ref.email} or o.customer_id = ${ref.customerId}::uuid)
-          and o.status in ('paid', 'fulfilled', 'closed')
+          and o.copied_from is null and o.status in ('paid', 'fulfilled', 'closed')
         group by o.currency) t) as spent
   `);
   return {
@@ -182,7 +185,7 @@ export type CustomerDetail = CustomerSummary & {
   accountCreatedAt: string | null;
   lastSignInAt: string | null;
   firstOrderAt: string | null;
-  orderList: { id: string; number: string; status: OrderStatus; placedAt: string; totalMinor: number; currency: string; items: number; subscriptionId: string | null; refunded: boolean }[];
+  orderList: { id: string; number: string; status: OrderStatus; placedAt: string; totalMinor: number; currency: string; items: number; subscriptionId: string | null; refunded: boolean; /** History copied from another store (D129). */ copied: boolean }[];
   subscriptionList: { id: string; number: string; status: SubscriptionStatus; totalMinor: number; currency: string; interval: string; intervalCount: number; currentPeriodEnd: string | null; orders: number }[];
   wishlistItems: number;
   cartRemindersOptedOut: boolean;
@@ -205,9 +208,11 @@ export async function getCustomerDetail(storeId: string, ref: CustomerRef): Prom
         o.shipping_address, o.billing_address,
         (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items,
         exists (select 1 from commerce.refunds r join commerce.payments p on p.id = r.payment_id
-                where p.order_id = o.id and r.status <> 'failed') as refunded
+                where p.order_id = o.id and r.status <> 'failed') as refunded,
+        o.copied_from is not null as copied
       from commerce.orders o
-      where o.store_id = ${storeId}::uuid and ${mine("o")} and ${bought}
+      -- History copied from another store (D129) is listed, but never counted.
+      where o.store_id = ${storeId}::uuid and ${mine("o")} and (${bought} or o.copied_from is not null)
       order by o.placed_at desc
     `),
     db().execute<Row>(sql`
@@ -246,6 +251,7 @@ export async function getCustomerDetail(storeId: string, ref: CustomerRef): Prom
       items: Number(o.items),
       subscriptionId: o.subscription_id ? String(o.subscription_id) : null,
       refunded: Boolean(o.refunded),
+      copied: Boolean(o.copied),
     })),
     subscriptionList: subscriptions.map((s) => ({
       id: String(s.id),

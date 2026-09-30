@@ -1653,10 +1653,13 @@ export const customers = commerce.table(
      * of theirs.
      */
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    /** Set on a customer copied from another store (D129): the original's id, so a rerun copies nobody twice. */
+    copiedFrom: uuid("copied_from"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
+    uniqueIndex("customers_copied_from_key").on(t.storeId, t.copiedFrom).where(sql`${t.copiedFrom} is not null`),
     unique("customers_store_id_key").on(t.storeId, t.id),
     unique("customers_store_auth_user_key").on(t.storeId, t.authUserId),
     uniqueIndex("customers_store_email_idx").on(t.storeId, sql`lower(${t.email})`),
@@ -1923,9 +1926,17 @@ export const orders = commerce.table(
     /** The company the order was placed for (B2B), shown on the order and its invoice. */
     companyName: text("company_name"),
     organisationNumber: text("organisation_number"),
+    /**
+     * Set on an order copied from another store (D129): the original's id. A copied order is read-only history
+     * (numbered `C-{original number}`, with no payment, refund, invoice, shipment or effect on stock), refused by
+     * triggers in the store-copy migration.
+     */
+    copiedFrom: uuid("copied_from"),
     createdAt: createdAt(),
   },
   (t) => [
+    uniqueIndex("orders_copied_from_key").on(t.storeId, t.copiedFrom).where(sql`${t.copiedFrom} is not null`),
+    check("orders_copied_number", sql`${t.copiedFrom} is null or ${t.number} like 'C-%'`),
     foreignKey({
       name: "orders_host_fk",
       columns: [t.storeId, t.hostId],
@@ -5289,4 +5300,77 @@ export const workEvents = commerce.table(
     check("work_events_names", sql`length(${t.entityType}) between 1 and 40 and length(${t.type}) between 1 and 60`),
     check("work_events_data", sql`jsonb_typeof(${t.data}) = 'object'`),
   ],
+);
+
+/**
+ * A store duplicated from another (D129, `docs/store-copy.md`): one row per copy, kept for its progress page and
+ * for the job in the five-minute cron, which does the media, customers and orders phase by phase and can pick a
+ * copy up again where it stopped. The settings, pages, products and posts are copied at once by
+ * `commerce.duplicate_store()`; `counts` holds what was asked for and what is done, `cursor` where the batches are.
+ */
+export const storeCopies = commerce.table(
+  "store_copies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceStoreId: uuid("source_store_id")
+      .notNull()
+      .references(() => stores.id),
+    newStoreId: uuid("new_store_id")
+      .notNull()
+      .references(() => stores.id),
+    requestedBy: uuid("requested_by")
+      .notNull()
+      .references(() => accounts.id),
+    /** What the owner chose (`StoreCopyOptions`, `src/lib/store-copy.ts`). */
+    options: jsonb("options").notNull(),
+    status: text("status").notNull().default("running"),
+    /** `queued`, `content`, `media`, `people`, `orders`, `finishing` or `done`. */
+    phase: text("phase").notNull().default("queued"),
+    /** Per kind `{ done, total }`. */
+    counts: jsonb("counts").notNull().default({}),
+    /** Where the batches stand (the last customer and order handled), so a rerun goes on from there. */
+    cursor: jsonb("cursor").notNull().default({}),
+    /** Pictures and files that could not be copied and were left out, never left pointing at the original. */
+    mediaLeftOut: integer("media_left_out").notNull().default(0),
+    /** Plain-English reason when it failed. */
+    problem: text("problem"),
+    /** How many times the job took it up; the job gives up past a limit. */
+    attempts: integer("attempts").notNull().default(0),
+    /** One run at a time: a run holds the copy until this time. */
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: updatedAt(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("store_copies_source_idx").on(t.sourceStoreId),
+    index("store_copies_new_idx").on(t.newStoreId),
+    index("store_copies_requested_by_idx").on(t.requestedBy),
+    index("store_copies_open_idx").on(t.status, t.claimedUntil),
+    check("store_copies_status", sql`${t.status} in ('running', 'done', 'failed')`),
+    check(
+      "store_copies_phase",
+      sql`${t.phase} in ('queued', 'content', 'media', 'people', 'orders', 'finishing', 'done')`,
+    ),
+    check("store_copies_different", sql`${t.sourceStoreId} <> ${t.newStoreId}`),
+  ],
+);
+
+/**
+ * Which new address a file of the original got in a copy (D129): what makes the media phase resumable and lets a
+ * rerun copy nothing twice. `new_url` is null for a file that could not be copied (left out).
+ */
+export const storeCopyFiles = commerce.table(
+  "store_copy_files",
+  {
+    copyId: uuid("copy_id")
+      .notNull()
+      .references(() => storeCopies.id, { onDelete: "cascade" }),
+    sourceUrl: text("source_url").notNull(),
+    newUrl: text("new_url"),
+    /** The file's own address, as against its small copy's (`thumbnail_url`), so a copy counts files, not addresses. */
+    main: boolean("main").notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.copyId, t.sourceUrl] })],
 );
