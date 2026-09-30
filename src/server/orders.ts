@@ -41,7 +41,8 @@ export type OrderView = {
   shippingMinor: number;
   /**
    * What discount codes, groups and campaigns took off, and the code (D31): not the bonus credits used, which are
-   * `creditMinor` (the database keeps both in the order's discount, so subtotal + shipping − discount − credits = total).
+   * `creditMinor`, nor the friend's welcome discount (D131), which is `referralDiscountMinor` (the database keeps all in the
+   * order's discount, so subtotal + shipping − discount − referral − credits = total).
    */
   discountMinor: number;
   discountCode: string | null;
@@ -52,6 +53,8 @@ export type OrderView = {
   /** The part campaigns gave (D114), by name. */
   campaignDiscountMinor: number;
   campaignLabel: string | null;
+  /** The friend's welcome discount (D131), in the order's currency, taken off goods before codes and credits. */
+  referralDiscountMinor: number;
   /** The bonus credits used on the order (D130), in the order's currency, taken off goods last. */
   creditMinor: number;
   /**
@@ -160,13 +163,14 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   placedAt: new Date(String(row.placed_at)).toISOString(),
   subtotalMinor: Number(row.subtotal_minor),
   shippingMinor: Number(row.shipping_minor),
-  discountMinor: Number(row.discount_minor ?? 0) - Number(row.credit_minor ?? 0),
+  discountMinor: Number(row.discount_minor ?? 0) - Number(row.credit_minor ?? 0) - Number(row.referral_discount_minor ?? 0),
   discountCode: row.discount_code ? String(row.discount_code) : null,
   memberDiscountMinor: Number(row.member_discount_minor ?? 0),
   memberLabel: row.member_label ? String(row.member_label) : null,
   memberPercent: row.member_percent === null || row.member_percent === undefined ? null : Number(row.member_percent),
   campaignDiscountMinor: Number(row.campaign_discount_minor ?? 0),
   campaignLabel: row.campaign_label ? String(row.campaign_label) : null,
+  referralDiscountMinor: Number(row.referral_discount_minor ?? 0),
   creditMinor: Number(row.credit_minor ?? 0),
   bonus: orderBonus(row),
   taxMinor: Number(row.tax_minor),

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
@@ -335,6 +336,35 @@ export const OWNER_TOOLS = [
     "spend",
   ),
   tool(
+    "get_affiliate_program",
+    "The store's referral program (signed-in customers share a link; a friend's first order gets a welcome discount and the customer who shared it earns bonus credits): whether it is on (it needs the bonus program), the friend's discount, what a referrer earns and for how many orders, the monthly limit, how long a link is remembered, the rules in plain words, and what it did lately (customers with a link, visits, orders through links, credits earned, credits usable and pending, orders that earned nothing). With `customer` (an email) it also gives that customer's link, friends and earnings, and who referred them. Use it before set_affiliate_program or block_affiliate and for any question about referrals or affiliates; never work out a figure yourself.",
+    z.object({ customer: z.string().trim().min(3).max(200).optional().describe("A customer's email or id, to read their referrals too.") }),
+  ),
+  tool(
+    "set_affiliate_program",
+    "Changes the referral program: switches it on or off and sets the rules. Give only what changes; everything else stays as it is. It can be switched on only while the bonus program is on, because the reward is bonus credits (set_bonus_program first). Customers must be signed in; a friend gets the welcome discount only on their first paid order; nobody can refer themselves; existing credits are kept when it is turned off. This changes what shoppers are promised, so say the resulting rules back in plain words. Needs the owner's approval.",
+    z.object({
+      enabled: z.boolean().optional().describe("True turns the program on, false off."),
+      friend_percent: z.number().int().min(0).max(AFFILIATE_FRIEND_PERCENT_MAX).optional().describe(`The friend's welcome discount on the goods of their first order, in whole percent, 0 for none, up to ${AFFILIATE_FRIEND_PERCENT_MAX}.`),
+      friend_max: z.string().trim().max(30).nullable().optional().describe("The most the welcome discount takes off, as the owner writes it in the store's main currency (such as 100 or 99,50); null for no limit."),
+      reward_percent: z.number().min(0).max(50).optional().describe("Bonus credits the referrer earns per 100 the friend pays online for goods, in percent with at most two decimals: 5 is 5%. 0 to 50."),
+      reward_orders: z.number().int().min(1).max(100).nullable().optional().describe("How many of the friend's paid orders earn the referrer credits (1 is only the first); null for every order."),
+      monthly_cap: z.string().trim().max(30).nullable().optional().describe("The most one referrer can earn in a calendar month, as the owner writes it in the store's main currency; null for no limit."),
+      cookie_days: z.number().int().min(1).max(AFFILIATE_COOKIE_DAYS_MAX).optional().describe(`Days a visitor's link is remembered once they allow marketing cookies, 1 to ${AFFILIATE_COOKIE_DAYS_MAX}.`),
+    }),
+    "public",
+  ),
+  tool(
+    "block_affiliate",
+    "Stops one customer earning referral credits, or lets them earn again, with a reason that the audit log keeps: for abuse such as referring themselves with another account. What they have already earned stays; their pending friends' orders earn nothing once paid while they are blocked. The customer needs a link (they get one when they open Refer a friend). Unblocking lets them earn credits, which the store pays as price reductions, so it needs the owner's approval like blocking does.",
+    z.object({
+      customer: z.string().trim().min(3).max(200).describe("The customer's email (from list_customers) or id."),
+      blocked: z.boolean().describe("True blocks them, false lets them earn again."),
+      reason: z.string().trim().min(3).max(200).describe("Why, kept in the audit log; staff see it."),
+    }),
+    "spend",
+  ),
+  tool(
     "create_field_group",
     "Makes a group of custom fields for products, pages, articles or the store itself, on every one of that kind: a name and its fields, each with a label, a type, and choices for select, radio, button group and checkbox types. Fields are private (only staff see them) unless you set access public because the owner wants them on the site; the site then shows them through the product layout's Custom fields component (the standard product page shows public groups after the description). Only plain types can be made here: pictures, files, links, things that point at products or pages, groups and repeaters are made in the admin editor. Needs the owner's approval.",
     z.object({
@@ -483,6 +513,20 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     }
     case "adjust_customer_credits":
       return `${adjustmentPhrase(text("amount"), text("customer"))} (${text("reason")}).`;
+    case "set_affiliate_program": {
+      const parts = [
+        input.enabled === true ? "switch the referral program on" : input.enabled === false ? "switch the referral program off" : "",
+        input.friend_percent !== undefined ? `friend's welcome discount ${text("friend_percent")} %` : "",
+        input.friend_max === null ? "no limit on the welcome discount" : input.friend_max !== undefined ? `welcome discount at most ${text("friend_max")}` : "",
+        input.reward_percent !== undefined ? `referrer earns ${text("reward_percent")} % in bonus credits` : "",
+        input.reward_orders === null ? "credits for every order of the friend" : input.reward_orders !== undefined ? `credits for the friend's first ${text("reward_orders")} order${input.reward_orders === 1 ? "" : "s"}` : "",
+        input.monthly_cap === null ? "no monthly limit per referrer" : input.monthly_cap !== undefined ? `at most ${text("monthly_cap")} a month per referrer` : "",
+        input.cookie_days !== undefined ? `a link is remembered ${text("cookie_days")} days` : "",
+      ].filter(Boolean);
+      return `Change the referral program: ${parts.join("; ") || "no change"}.`;
+    }
+    case "block_affiliate":
+      return `${input.blocked === false ? "Let" : "Stop"} ${text("customer")} ${input.blocked === false ? "earn" : "earning"} referral credits (${text("reason")}).`;
     case "create_field_group": {
       const fields = Array.isArray(input.fields) ? (input.fields as { label?: unknown; type?: unknown; access?: unknown }[]) : [];
       const list = fields.map((f) => `${String(f.label)} (${String(f.type ?? "text")}${f.access === "public" ? ", shown on the site" : ""})`).join(", ");
@@ -502,6 +546,16 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Set the stock of ${text("sku")} to ${text("quantity")}.`;
     case "post_to_slack":
       return `Post to the store's Slack channel: "${text("message")}"`;
+    case "set_referral_program": {
+      const parts = [
+        input.enabled === true ? "switch the referral program on" : input.enabled === false ? "switch the referral program off" : "",
+        input.percent !== undefined ? `commission ${text("percent")} % of the fees a referred store pays Kaizen` : "",
+        input.months !== undefined ? `earned for ${text("months")} months after a store opens` : "",
+        input.pending_days !== undefined ? `credit waits ${text("pending_days")} days before it can be used` : "",
+        input.cookie_days !== undefined ? `the referral cookie lasts ${text("cookie_days")} days` : "",
+      ].filter(Boolean);
+      return `Change the referral program: ${parts.join("; ") || "no change"}.`;
+    }
     case "approve_access_request":
       return `Approve ${text("request")}'s request: create the store at /s/${text("slug")} and email them a sign-in link.`;
     case "decline_access_request":

@@ -125,6 +125,18 @@ const text = {
       expiryHow: "Bruk den på neste bestilling: kreditten trekkes fra prisen på varer i kassen.",
       expiryButton: "Se bonuskreditten min",
     },
+    /** The referral program (D131): the friend's welcome discount on an order confirmation, and the referrer's email when a friend's order earned credits. */
+    affiliate: {
+      discountRow: "Velkomstrabatt",
+      earnedSubject: (store: string) => `Du har tjent bonuskreditt hos ${store}`,
+      earnedHeading: "En venn bestilte via lenken din",
+      earnedGreeting: (name: string) => `Hei, ${name}!`,
+      earnedGreetingAnon: "Hei!",
+      earnedLine: (amount: string, date: string) => `Du tjente ${amount} i bonuskreditt, som kan brukes fra ${date}.`,
+      earnedNow: (amount: string) => `Du tjente ${amount} i bonuskreditt, som du kan bruke nå.`,
+      earnedHow: "Takk for at du sprer ordet. Kreditten trekkes tilbake hvis bestillingen refunderes eller kanselleres.",
+      earnedButton: "Se tipsene mine",
+    },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
       invoiceSubject: (store: string, number: string) => `Faktura ${number} fra ${store}`,
@@ -283,6 +295,18 @@ const text = {
       expiryIntro: (amount: string, date: string) => `${amount} av din bonuskredit går ut ${date}.`,
       expiryHow: "Använd den på nästa beställning: krediten dras av från priset på varor i kassan.",
       expiryButton: "Se min bonuskredit",
+    },
+    /** The referral program (D131): the friend's welcome discount on an order confirmation, and the referrer's email when a friend's order earned credits. */
+    affiliate: {
+      discountRow: "Välkomstrabatt",
+      earnedSubject: (store: string) => `Du har tjänat bonuskredit hos ${store}`,
+      earnedHeading: "En vän beställde via din länk",
+      earnedGreeting: (name: string) => `Hej, ${name}!`,
+      earnedGreetingAnon: "Hej!",
+      earnedLine: (amount: string, date: string) => `Du tjänade ${amount} i bonuskredit, som kan användas från ${date}.`,
+      earnedNow: (amount: string) => `Du tjänade ${amount} i bonuskredit, som du kan använda nu.`,
+      earnedHow: "Tack för att du sprider ordet. Krediten dras tillbaka om beställningen återbetalas eller avbeställs.",
+      earnedButton: "Se mina tips",
     },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
@@ -443,6 +467,18 @@ const text = {
       expiryHow: "Brug den på din næste ordre: krediten trækkes fra prisen på varer i kassen.",
       expiryButton: "Se min bonuskredit",
     },
+    /** The referral program (D131): the friend's welcome discount on an order confirmation, and the referrer's email when a friend's order earned credits. */
+    affiliate: {
+      discountRow: "Velkomstrabat",
+      earnedSubject: (store: string) => `Du har optjent bonuskredit hos ${store}`,
+      earnedHeading: "En ven bestilte via dit link",
+      earnedGreeting: (name: string) => `Hej, ${name}!`,
+      earnedGreetingAnon: "Hej!",
+      earnedLine: (amount: string, date: string) => `Du optjente ${amount} i bonuskredit, som kan bruges fra ${date}.`,
+      earnedNow: (amount: string) => `Du optjente ${amount} i bonuskredit, som du kan bruge nu.`,
+      earnedHow: "Tak, fordi du spreder budskabet. Krediten trækkes tilbage, hvis ordren refunderes eller annulleres.",
+      earnedButton: "Se mine anbefalinger",
+    },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
       invoiceSubject: (store: string, number: string) => `Faktura ${number} fra ${store}`,
@@ -602,6 +638,18 @@ const text = {
       expiryHow: "Use them on your next order: they come off the price of goods at checkout.",
       expiryButton: "See my bonus credits",
     },
+    /** The referral program (D131): the friend's welcome discount on an order confirmation, and the referrer's email when a friend's order earned credits. */
+    affiliate: {
+      discountRow: "Welcome discount",
+      earnedSubject: (store: string) => `You earned bonus credits at ${store}`,
+      earnedHeading: "A friend ordered through your link",
+      earnedGreeting: (name: string) => `Hi, ${name}!`,
+      earnedGreetingAnon: "Hi!",
+      earnedLine: (amount: string, date: string) => `You earned ${amount} in bonus credits, usable from ${date}.`,
+      earnedNow: (amount: string) => `You earned ${amount} in bonus credits, ready to use.`,
+      earnedHow: "Thank you for spreading the word. The credits are taken back if the order is refunded or cancelled.",
+      earnedButton: "See my referrals",
+    },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
       invoiceSubject: (store: string, number: string) => `Invoice ${number} from ${store}`,
@@ -677,6 +725,42 @@ export function orderBonusEarned(
   now?: Date,
 ): string | null {
   return earnedText(bonus, { money, date, line: text.bonus.earnedLine, ready: text.bonus.earnedNow }, now);
+}
+
+/** The friend's welcome discount (D131) on an order confirmation, among the totals: nothing when there was none. */
+export function orderReferralRows(
+  text: EmailText,
+  referralMinor: number,
+  money: (minor: number) => string,
+): { label: string; value: string; muted: boolean }[] {
+  return referralMinor > 0 ? [{ label: text.affiliate.discountRow, value: `−${money(referralMinor)}`, muted: true }] : [];
+}
+
+/** What the referrer's email (a friend's order earned them credits) needs, as they read it: the sender formats the amounts and dates. */
+export type AffiliateRewardData = {
+  store: string;
+  /** The referrer's name; empty when there is none. */
+  customerName: string;
+  /** What they earned, formatted. */
+  amount: string;
+  /** When the credits can be used, formatted; null when they already can be. */
+  usableFrom: string | null;
+  /** The full address of Refer a friend. */
+  url: string;
+};
+
+/** The words of the email to a referrer when a friend's order has earned them credits: never who the friend is. */
+export function affiliateRewardText(text: EmailText, data: AffiliateRewardData) {
+  const a = text.affiliate;
+  const name = data.customerName.trim().split(/\s+/)[0] ?? "";
+  const earned = data.usableFrom ? a.earnedLine(data.amount, data.usableFrom) : a.earnedNow(data.amount);
+  return {
+    subject: a.earnedSubject(data.store),
+    preview: earned,
+    heading: a.earnedHeading,
+    paragraphs: [name ? a.earnedGreeting(name) : a.earnedGreetingAnon, earned, a.earnedHow],
+    button: { text: a.earnedButton, url: data.url },
+  };
 }
 
 /**

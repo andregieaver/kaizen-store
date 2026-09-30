@@ -78,6 +78,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       items: [
         { href: `${base}/campaigns`, label: "Campaigns" },
         { href: `${base}/bonus`, label: "Bonus credits" },
+        { href: `${base}/affiliates`, label: "Referral program" },
         { href: `${base}/customers`, label: "Customers" },
         { href: `${base}/customer-groups`, label: "Customer groups" },
         { href: `${base}/companies`, label: "Companies" },

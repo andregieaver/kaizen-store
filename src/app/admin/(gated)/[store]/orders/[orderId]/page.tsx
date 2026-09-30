@@ -13,6 +13,7 @@ import {
   ResendButton,
   SendForm,
 } from "@/components/admin/order-actions";
+import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
@@ -22,6 +23,7 @@ import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { formatDeliveryDate } from "@/lib/standing-orders";
+import { orderAttribution } from "@/server/affiliates";
 import { requireMember } from "@/server/auth";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
@@ -64,7 +66,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const { store: slug, orderId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -72,6 +74,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     customerSummary(store.id, orderId),
     listCartAdds(store.id, { orderId }),
     deliveryOfOrder(store.id, orderId),
+    // Whose friend it is, when a referral link led to it (D131).
+    orderAttribution(store.id, orderId),
   ]);
   if (!order) notFound();
   const locale = store.markets[0]?.locale ?? order.locale;
@@ -239,6 +243,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   <dd>−{money(order.discountMinor)}</dd>
                 </div>
               )}
+              <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} />
               <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
               <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
               <div className="flex justify-between text-muted"><dt>VAT included (standard rate)</dt><dd>{money(order.taxMinor)}</dd></div>
@@ -257,6 +262,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
             </dl>
           </section>
+
+          {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} />}
 
           {order.balanceMinor > 0 && order.status !== "cancelled" && (
             <section aria-labelledby="balance" className={card}>

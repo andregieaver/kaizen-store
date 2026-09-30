@@ -2,6 +2,7 @@ import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
 
 import { refreshAltTexts } from "@/server/alt-texts";
+import { runAffiliateJobs } from "@/server/affiliate-emails";
 import { runBonusJobs } from "@/server/bonus";
 import { syncDueFeeds } from "@/server/calendar-sync";
 import { sendDueCartReminders } from "@/server/cart-reminders";
@@ -40,12 +41,13 @@ import { prepareDueRecurringWork } from "@/server/work-recurring";
  * (pictures, customers, order history) taken up where it stopped (D129,
  * never throws); and the bonus program's upkeep (D130, never throws): credits
  * past their expiry written off, a reminder to those whose credits expire
- * soon, and credits held by unpaid orders given back.
+ * soon, and credits held by unpaid orders given back; and the referral program's emails (D131, never throws): the
+ * customers whose friends' orders earned them credits are told, once per order.
  */
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -63,13 +65,14 @@ async function run(request: Request) {
     prepareDueRecurringWork(),
     runStoreCopies(),
     runBonusJobs(),
+    runAffiliateJobs(),
   ]);
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

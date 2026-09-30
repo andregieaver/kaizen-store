@@ -31,6 +31,7 @@ import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
+import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
 import { commissionOf, hostCheckoutAccount } from "./host-payments";
@@ -73,6 +74,8 @@ export type PlacedOrder = {
   shippingDiscountMinor: number;
   /** The bonus credits used on it (D130), in the order's currency: part of the discount Stripe is sent as a coupon. */
   creditMinor: number;
+  /** The friend's welcome discount (D131), in the order's currency: part of the same coupon. */
+  referralMinor: number;
   /** The VAT included in the total. */
   taxMinor: number;
   totalMinor: number;
@@ -171,7 +174,7 @@ export async function placeOrder(
   return inTransaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
       select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience, s.time_zone,
-        c.bonus_request_minor
+        c.bonus_request_minor, c.affiliate_code
       from commerce.carts c
       join commerce.stores s on s.id = c.store_id
       where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.market_code = ${market.code}
@@ -179,8 +182,9 @@ export async function placeOrder(
       for update of c
     `);
     if (!cart) return { ok: false, problem: "empty" };
-    // Bonus credits (D130) are taken under the customer's lock, so two checkouts cannot both spend the same credits.
-    if (customerId && Number(cart.bonus_request_minor) > 0) {
+    // Bonus credits (D130) are taken under the customer's lock, so two checkouts cannot both spend the same credits; the
+    // same lock keeps a friend's first order (D131) from being placed twice with the welcome discount at once.
+    if (customerId) {
       await tx.execute(sql`select id from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid for update`);
     }
 
@@ -294,6 +298,8 @@ export async function placeOrder(
         discount: 0,
         /** The part of the discount that is the buyer's group or company discount (D108). */
         member: 0,
+        /** The part of the discount that is the friend's welcome discount (D131), taken off before codes and credits. */
+        referral: 0,
         /** The part of the discount that is bonus credits (D130), taken off last. */
         bonus: 0,
         /** What a campaign took off (D114), which one, and whether the line is a free product it gave. */
@@ -441,6 +447,21 @@ export async function placeOrder(
       }
     }
 
+    // The friend's welcome discount (D131): a signed-in customer's first order, through an affiliate's link, off goods
+    // bought once after campaigns and the group's discount, before any code. Never a host's order. The same arithmetic
+    // as the cart page (`cartSummary()`), worked out under the customer's lock.
+    const program = await bonusProgram(tx, storeId);
+    const friend = hostId ? null : await friendState(tx, storeId, customerId, cart.affiliate_code ? String(cart.affiliate_code) : null, program);
+    const welcome = friend
+      ? welcomeFor(friend, market, priced.map((p) => (p.gift || p.recurring || p.unit <= 0 ? 0 : Math.max(0, p.total))))
+      : { totalMinor: 0, lines: priced.map(() => 0) };
+    priced.forEach((p, i) => {
+      p.referral = welcome.lines[i] ?? 0;
+      p.discount += p.referral;
+      p.total -= p.referral;
+    });
+    const referralTotal = priced.reduce((sum, p) => sum + p.referral, 0);
+
     // The cart's discount code (D31), checked again here under a lock, so
     // two checkouts cannot both take a code's last use.
     let discount: { id: string; code: string } | null = null;
@@ -476,7 +497,7 @@ export async function placeOrder(
           p.renewUnit = renewal;
           lowered.add(i);
         }
-        p.discount = p.campaign + p.member + (applied.lines[String(i)] ?? 0);
+        p.discount = p.campaign + p.member + p.referral + (applied.lines[String(i)] ?? 0);
         p.total = p.unit * p.quantity - p.discount;
       });
       if (lowered.size > 0) basket = shippingFor();
@@ -501,7 +522,6 @@ export async function placeOrder(
     // Bonus credits (D130) come last, off goods bought once that are still to pay online: after campaigns, the group's
     // discount and codes, and not off a subscription, the part left for a venue, fees or shipping. Worked out under the
     // customer's lock from the same rules as the cart page (`cartSummary()`), and brought down to what they still have.
-    const program = await bonusProgram(tx, storeId);
     const credits = hostId ? null : await creditState(tx, { storeId, market }, customerId, cartId, program);
     const creditPlan = planFor(
       credits,
@@ -518,6 +538,7 @@ export async function placeOrder(
     }
     const creditTotal = priced.reduce((sum, p) => sum + p.bonus, 0);
     const discountAll = discountTotal + creditTotal;
+    // discountTotal already holds the welcome discount: it is part of each line's discount.
     const tax =
       priced.reduce((sum, p) => sum + vatIncluded(p.total, p.rate), 0) +
       fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
@@ -535,7 +556,8 @@ export async function placeOrder(
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
         company_name, organisation_number, balance_minor, host_id,
-        member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor
+        member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor,
+        referral_discount_minor
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
@@ -543,7 +565,7 @@ export async function placeOrder(
         ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
         ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
         ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null},
-        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}
+        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}, ${referralTotal}
       )
       returning id
     `);
@@ -555,7 +577,7 @@ export async function placeOrder(
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
-          campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor
+          campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${vatIncluded(p.total, p.rate)},
@@ -565,7 +587,7 @@ export async function placeOrder(
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
           ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
           ${p.range && p.startsAt ? p.count : null},
-          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}
+          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}, ${p.referral}
         )
         returning id
       `);
@@ -653,6 +675,13 @@ export async function placeOrder(
         select commerce.bonus_redeem(${storeId}::uuid, ${customerId}::uuid, ${orderId}::uuid, ${creditDebit}, ${`redeem:${orderId}`})
       `);
     }
+    // Whose friend the order is (D131): an attribution row, rejected with its reason when a guard stopped the reward,
+    // else waiting for payment; the welcome discount it was given is kept with it.
+    if (friend && customerId && !["off", "none", "guest"].includes(friend.verdict)) {
+      await tx.execute(sql`
+        select commerce.affiliate_attribute_order(${orderId}::uuid, ${cart.affiliate_code ? String(cart.affiliate_code) : null}, ${referralTotal})
+      `);
+    }
     // The cart now asks for what the order used, so a change to it (and only a change) asks checkout to start again.
     if (Number(cart.bonus_request_minor) > 0 || creditTotal > 0) {
       await tx.execute(sql`
@@ -698,6 +727,7 @@ export async function placeOrder(
         shippingMinor: shipping,
         shippingDiscountMinor: shippingDiscount,
         creditMinor: creditTotal,
+        referralMinor: referralTotal,
         taxMinor: tax,
         totalMinor: total,
         dueNowMinor: total - balance,
@@ -707,12 +737,13 @@ export async function placeOrder(
         // not already in a lowered subscriber's price. In a subscription,
         // shipping is a line, so free shipping is in the coupon too.
         discount:
-          discount || memberTotal > 0 || campaignTotal > 0 || creditTotal > 0
+          discount || memberTotal > 0 || campaignTotal > 0 || referralTotal > 0 || creditTotal > 0
             ? {
                 code: [
                   discount?.code,
                   memberTotal > 0 ? member!.label : null,
                   campaignTotal > 0 ? campaignText : null,
+                  referralTotal > 0 ? t(market.lang).affiliate.discountRow : null,
                   creditTotal > 0 ? t(market.lang).bonus.discountRow : null,
                 ]
                   .filter(Boolean)
@@ -867,6 +898,8 @@ export async function startCheckout(
     contact?: CheckoutContact | null;
   } = {},
 ): Promise<CheckoutStart> {
+  // A referral cookie the visitor allowed (D131) is kept with the cart before the order is placed.
+  await rememberAffiliate({ storeId: shop.storeId, market: shop.market }, cartId);
   const found = await getCheckoutAccount(shop.storeId);
   const stripe = found && platformStripe(found.mode);
   if (!found || !stripe) return { ok: false, problem: "payments_off" };

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { tool, type OwnerTool } from "./owner-tools";
+import { REFERRAL_COMMISSION_BPS_MAX, REFERRAL_COOKIE_DAYS_MAX, REFERRAL_MONTHS_MAX, REFERRAL_PENDING_DAYS_MAX } from "./referrals";
 
 /**
  * The AI manager's own tools (D103), beside the store's (`OWNER_TOOLS`) or
@@ -47,6 +48,11 @@ export const MANAGER_TOOLS = [
     "recall",
     "Searches everything you remember about the person, beyond what is in your instructions.",
     z.object({ query: z.string().trim().min(2).max(200) }),
+  ),
+  tool(
+    "get_my_referrals",
+    "The person's own referrals (Kaizen's referral program): their link and code, visits, how many asked for a store, the stores that opened through it with the credit each earned, and their credit per currency, usable and waiting. Answers only from their own account; it never shows a referred store's customers or orders.",
+    z.object({}),
   ),
   tool(
     "decide_approval",
@@ -115,6 +121,23 @@ export const PLATFORM_TOOLS = [
     "list_platform_emails",
     "The latest emails Kaizen and the stores sent: what, to whom, from which store and whether they went out. `failed_only` shows those that did not.",
     z.object({ failed_only: z.boolean().default(false), limit: z.number().int().min(1).max(50).default(20) }),
+  ),
+  tool(
+    "get_referral_program",
+    "Kaizen's referral program: whether it is on, its commission, months, pending days and cookie days, and its totals per currency (referrers, referred stores, commission earned, credit used and credit owed). `referrers` lists the most active referrers with what they brought in and their credit.",
+    z.object({ referrers: z.boolean().default(false), limit: z.number().int().min(1).max(25).default(10) }),
+  ),
+  tool(
+    "set_referral_program",
+    "Changes Kaizen's referral program: switch it on or off, or change the commission (percent of the fees the referred store pays Kaizen), the months a store earns it, the days earned credit waits before it can be used, or the days the referral cookie lasts. Leave out what should not change. A referral already made keeps the terms it was made with. Changes what Kaizen pays out, so it is kept for the platform admin's approval.",
+    z.object({
+      enabled: z.boolean().optional(),
+      percent: z.number().min(0).max(REFERRAL_COMMISSION_BPS_MAX / 100).optional().describe(`Commission in percent of the fees the referred store pays Kaizen, 0 to ${REFERRAL_COMMISSION_BPS_MAX / 100}, at most two decimals.`),
+      months: z.number().int().min(1).max(REFERRAL_MONTHS_MAX).optional().describe("How many months after a store opens it earns commission."),
+      pending_days: z.number().int().min(0).max(REFERRAL_PENDING_DAYS_MAX).optional().describe("Days before earned credit can be used."),
+      cookie_days: z.number().int().min(1).max(REFERRAL_COOKIE_DAYS_MAX).optional().describe("Days the referral cookie lasts, once a visitor allows it."),
+    }),
+    "public",
   ),
   tool(
     "platform_ai_usage",
@@ -186,6 +209,9 @@ export const TOOL_WORDS: Record<string, string> = {
   get_bonus_program: "Looking at bonus credits",
   set_bonus_program: "Preparing the bonus change",
   adjust_customer_credits: "Preparing the credits change",
+  get_affiliate_program: "Looking at the referral program",
+  set_affiliate_program: "Preparing the referral change",
+  block_affiliate: "Preparing the change",
   find_admin_page: "Finding the page",
   open_admin_page: "Opening the page",
   use_skill: "Getting the playbook",
@@ -204,6 +230,9 @@ export const TOOL_WORDS: Record<string, string> = {
   plan_reminder_stats: "Looking at plan reminders",
   list_platform_emails: "Looking at emails",
   platform_ai_usage: "Looking at AI usage",
+  get_referral_program: "Looking at referrals",
+  set_referral_program: "Preparing the referral change",
+  get_my_referrals: "Looking at your referrals",
   ai_usage: "Looking at AI usage",
   ask_kaizen_life: "Asking Kaizen Life",
 };

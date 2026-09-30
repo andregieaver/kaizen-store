@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cartSubtotal } from "@/lib/cart";
+import { NO_CART_AFFILIATE } from "@/lib/affiliates";
 import { memberOffAfterCampaign } from "@/lib/campaigns";
 import { vatIncluded } from "@/lib/checkout";
 import { venuePart } from "@/lib/pay-later";
@@ -8,6 +9,7 @@ import { basketShipping, planPrice } from "@/lib/subscriptions";
 
 import { db } from "@/db/client";
 
+import { cartAffiliateOf, codeInPlay, friendState, welcomeFor } from "./affiliates";
 import { bonusProgram, cartBonusOf, creditState, planFor } from "./bonus";
 import { readCartId, type Cart, type CartLine, type Shop } from "./cart";
 import { evaluateCampaigns } from "./campaigns";
@@ -85,6 +87,21 @@ export async function cartSummary(
     member && !line.plan && line.unitPriceMinor > 0 ? memberOffAfterCampaign(line.unitPriceMinor, line.quantity, campaignOff[i], member.percent) : 0,
   );
   const memberDiscountMinor = memberOff.reduce((sum, off) => sum + off, 0);
+  // The friend's welcome discount (D131) comes next, off goods bought once after campaigns and the group's discount and
+  // before any code and the credits; only a signed-in friend's first order, and never a host's.
+  const program = await bonusProgram(db(), storeId);
+  const sellerIsHost = payable.some((line) => line.hostId);
+  const cartId = who.cartId !== undefined ? who.cartId : await readCartId(shop);
+  const friend = sellerIsHost ? null : await friendState(db(), storeId, customerId, await codeInPlay(db(), storeId, cartId), program);
+  const welcome = friend
+    ? welcomeFor(
+        friend,
+        market,
+        payable.map((line, i) => (line.plan || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - campaignOff[i] - memberOff[i]))),
+      )
+    : { totalMinor: 0, lines: payable.map(() => 0) };
+  const referralOff = welcome.lines;
+  const referralMinor = welcome.totalMinor;
   // The discount code, checked against this basket as checkout will (D31).
   const code = await previewCartDiscount(
     { storeId, market },
@@ -95,7 +112,7 @@ export async function cartSummary(
         // What the code is taken off: the price after the group's discount for what is bought once.
         unitMinor: member && !line.plan ? planPrice(line.unitPriceMinor, member.percent) : line.unitPriceMinor,
         quantity: line.quantity,
-        todayMinor: today(line) - campaignOff[i] - memberOff[i],
+        todayMinor: today(line) - campaignOff[i] - memberOff[i] - referralOff[i],
         recurring: line.plan !== null,
       })),
       shippingMinor: shipping ?? 0,
@@ -126,27 +143,29 @@ export async function cartSummary(
   const codeLine = (i: number) => applied?.lines[String(i)] ?? 0;
   const memberLine = (i: number) => memberOff[i] ?? 0;
   const campaignLine = (i: number) => campaignOff[i] ?? 0;
+  const referralLine = (i: number) => referralOff[i] ?? 0;
+  /** What codes, the group and campaigns take off a line (the discount row); the welcome discount and the credits are their own rows. */
   const lineDiscount = (i: number) => codeLine(i) + memberLine(i) + campaignLine(i);
+  /** Everything off a line before the credits. */
+  const lineOff = (i: number) => lineDiscount(i) + referralLine(i);
   // Appointments paid at the venue, or the rest after a deposit (D66), as checkout will work it out.
-  const venueOf = payable.map((line, i) => venuePart(today(line) - lineDiscount(i), line.payment));
+  const venueOf = payable.map((line, i) => venuePart(today(line) - lineOff(i), line.payment));
   const balance = venueOf.reduce((sum, part) => sum + part, 0);
   // Bonus credits (D130) come last, off goods bought once that are still to pay online: after campaigns, the group's
   // discount and codes, and never off a subscription, the part left for a venue, sign-up fees or shipping.
-  const program = await bonusProgram(db(), storeId);
-  const sellerIsHost = payable.some((line) => line.hostId);
-  const credits = sellerIsHost ? null : await creditState(db(), shop, customerId, who.cartId !== undefined ? who.cartId : await readCartId(shop), program);
-  const eligible = payable.map((line, i) => (line.plan || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - lineDiscount(i) - venueOf[i])));
-  const dueBeforeCredits = subtotal + feeMinor + (shipping ?? 0) - discountMinor - balance;
+  const credits = sellerIsHost ? null : await creditState(db(), shop, customerId, cartId, program);
+  const eligible = payable.map((line, i) => (line.plan || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - lineOff(i) - venueOf[i])));
+  const dueBeforeCredits = subtotal + feeMinor + (shipping ?? 0) - discountMinor - referralMinor - balance;
   const creditPlan = planFor(credits, eligible, dueBeforeCredits);
   const bonusMinor = creditPlan.usingMinor;
   const bonusLine = (i: number) => creditPlan.lines[i] ?? 0;
-  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor - bonusMinor;
+  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor - referralMinor - bonusMinor;
   const vat =
-    payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i) - bonusLine(i), line.vatRate), 0) +
+    payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineOff(i) - bonusLine(i), line.vatRate), 0) +
     fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
     vatIncluded((shipping ?? 0) - (applied?.shippingMinor ?? 0), checkout.vatRate);
   // What this order will earn: what is paid online for goods and fees once credits are off, as the database counts it.
-  const paidOnlineGoods = payable.reduce((sum, line, i) => sum + today(line) - lineDiscount(i) - bonusLine(i) - venueOf[i], 0) + feeMinor;
+  const paidOnlineGoods = payable.reduce((sum, line, i) => sum + today(line) - lineOff(i) - bonusLine(i) - venueOf[i], 0) + feeMinor;
   const bonus = cartBonusOf(shop.market, program, credits, creditPlan, customerId !== null, paidOnlineGoods, !sellerIsHost);
   // Nothing to pay online: the shopper tells who books instead of Stripe asking.
   const atVenueOnly = balance > 0 && balance === total;
@@ -180,6 +199,10 @@ export async function cartSummary(
     lineDiscount,
     codeLine,
     memberLine,
+    /** The friend's welcome discount (D131), in the currency shown: off goods before codes and credits, its own line; `discountMinor` leaves it out. */
+    referralMinor,
+    referralLine,
+    referral: friend ? cartAffiliateOf(friend, referralMinor) : NO_CART_AFFILIATE,
     /** Bonus credits used (D130), in the currency shown: off the goods last, part of the order's discount; `discountMinor` leaves them out. */
     bonusMinor,
     bonusLine,

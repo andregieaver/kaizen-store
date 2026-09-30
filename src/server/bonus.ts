@@ -90,7 +90,7 @@ export async function bonusProgram(runner: Runner, storeId: string): Promise<Bon
 }
 
 /** Who may change what: the account's role in the store (an owner, or an admin), or null. */
-async function roleIn(accountId: string, storeId: string): Promise<"owner" | "admin" | null> {
+export async function roleIn(accountId: string, storeId: string): Promise<"owner" | "admin" | null> {
   const [row] = await db().execute<Row>(sql`
     select role from commerce.store_members
     where store_id = ${storeId}::uuid and account_id = ${accountId}::uuid and disabled_at is null
@@ -212,7 +212,7 @@ export async function bonusOverview(storeId: string): Promise<BonusOverview> {
       (select coalesce(sum(remaining) filter (where available_at <= now()), 0) from live)::bigint as outstanding,
       (select coalesce(sum(remaining) filter (where available_at > now()), 0) from live)::bigint as pending,
       (select count(distinct customer_id) from live)::int as customers,
-      (select coalesce(sum(amount_minor) filter (where kind = 'earn'), 0) from commerce.bonus_entries
+      (select coalesce(sum(amount_minor) filter (where kind in ('earn', 'referral')), 0) from commerce.bonus_entries
         where store_id = ${storeId}::uuid and created_at > now() - interval '30 days')::bigint as earned,
       (select coalesce(-sum(amount_minor) filter (where kind = 'redeem'), 0) from commerce.bonus_entries
         where store_id = ${storeId}::uuid and created_at > now() - interval '30 days')::bigint as redeemed,

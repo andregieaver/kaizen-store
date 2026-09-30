@@ -87,6 +87,7 @@ const { preRegisterCustomer, startSession } = await import("./customers");
 const { bonusOverview, customerBonus, getBonusSettings, setCartCredits, shopperBonus } = await import("./bonus");
 const { cancelOrder, refundOrder } = await import("./order-admin");
 const { setCartCompany } = await import("./cart");
+const { attachReferral, rememberAffiliate } = await import("./affiliates");
 
 const run = Date.now().toString(36);
 const slug = `kinds-${run}`;
@@ -1184,5 +1185,464 @@ describe("checkout with bonus credits (D130)", () => {
         and exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')
     `);
     expect(trend.series.at(-1)?.taken[0]).toBe(new Intl.NumberFormat(no.locale, { style: "currency", currency: "NOK" }).format(Number(today.taken) / 100));
+  });
+});
+
+/**
+ * A friend's welcome discount (D131) in every kind of basket: what the cart page shows is what checkout charges to the
+ * minor unit, it is taken after campaigns and the group's discount and before codes and credits, it is kept with the order
+ * and its lines so VAT and refunds agree, the order is attributed to whose link it came through, and the referrer earns
+ * what the database says when it is paid.
+ */
+describe("checkout with a friend's welcome discount (D131)", () => {
+  const rates = new Map([["NOK", { rate: 11.5 }], ["EUR", { rate: 1 }]]);
+  let referrer: { id: string; code: string };
+  let codeNumber = 0;
+
+  const program = (over: { affiliate?: boolean; bonus?: boolean; percent?: number; max?: number | null; bps?: number; orders?: number | null; earnBps?: number } = {}) =>
+    (async () => {
+      await db().execute(sql`
+        insert into commerce.bonus_settings (store_id, enabled, earn_bps, pending_days, max_redeem_percent, min_redeem_minor, currency)
+        values (${storeId}::uuid, ${over.bonus ?? true}, ${over.earnBps ?? 500}, 14, 50, 0, 'NOK')
+        on conflict (store_id) do update set enabled = excluded.enabled, earn_bps = excluded.earn_bps
+      `);
+      await db().execute(sql`
+        insert into commerce.affiliate_settings (store_id, enabled, reward_bps, reward_orders, friend_percent, friend_max_minor)
+        values (${storeId}::uuid, ${over.affiliate ?? true}, ${over.bps ?? 500}, ${over.orders === undefined ? 1 : over.orders}, ${over.percent ?? 10}, ${over.max ?? null})
+        on conflict (store_id) do update set enabled = excluded.enabled, reward_bps = excluded.reward_bps, reward_orders = excluded.reward_orders,
+          friend_percent = excluded.friend_percent, friend_max_minor = excluded.friend_max_minor
+      `);
+    })();
+
+  /** A customer with a referral link. */
+  async function withLink(): Promise<{ id: string; code: string }> {
+    const id = await preRegisterCustomer(storeId, `referrer-${Date.now()}-${Math.random().toString(36).slice(2)}-${run}@example.com`);
+    const code = `kinds${String(++codeNumber).padStart(3, "0")}${run}`.slice(0, 16).toLowerCase().replace(/[^a-z0-9]/g, "a");
+    await db().execute(sql`insert into commerce.affiliates (store_id, customer_id, code) values (${storeId}::uuid, ${id}::uuid, ${code})`);
+    return { id, code };
+  }
+
+  /** A new signed-in shopper (in a group or a company when asked). */
+  async function friend(kind?: "group" | "company"): Promise<string> {
+    if (kind) return signInBuyer(kind);
+    const created = await preRegisterCustomer(storeId, `friend-${Date.now()}-${Math.random().toString(36).slice(2)}-${run}@example.com`);
+    await startSession(storeId, created);
+    return created;
+  }
+
+  const ledger = async (customerId: string) => {
+    const [row] = await db().execute<Row>(sql`select * from commerce.bonus_balance(${storeId}::uuid, ${customerId}::uuid)`);
+    return { available: Number(row.available_minor), pending: Number(row.pending_minor) };
+  };
+  const verified = async (customerId: string) => Boolean((await db().execute<Row>(sql`select commerce.bonus_verify(${storeId}::uuid, ${customerId}::uuid) as ok`))[0].ok);
+  const attribution = async (orderId: string) => {
+    const [row] = await db().execute<Row>(sql`
+      select status, reject_reason, discount_minor, reward_minor, affiliate_customer_id, friend_customer_id
+      from commerce.affiliate_attributions where order_id = ${orderId}::uuid
+    `);
+    return row && { status: String(row.status), reason: row.reject_reason ? String(row.reject_reason) : null, discount: Number(row.discount_minor), reward: Number(row.reward_minor), affiliate: String(row.affiliate_customer_id), friend: row.friend_customer_id ? String(row.friend_customer_id) : null };
+  };
+  const onlineGoods = async (orderId: string) => {
+    const [row] = await db().execute<Row>(sql`select coalesce(sum(total_minor - venue_minor), 0)::bigint as n from commerce.order_lines where order_id = ${orderId}::uuid`);
+    return Number(row.n);
+  };
+  /** What the referrer earns on an order: the goods paid online, their share, in the credits' currency. */
+  const rewardOf = async (orderId: string, currency: string, bps = 500) => convertCredits(Math.floor(((await onlineGoods(orderId)) * bps) / 10_000), currency, "NOK", rates, "down")!;
+
+  async function pay(open: { orderId: string; sessionId: string }, params: Record<string, unknown>) {
+    fake.sessions.set(open.sessionId, {
+      status: "complete",
+      payment_status: "paid",
+      mode: params.mode,
+      payment_intent: `pi_${open.sessionId}`,
+      ...(params.mode === "subscription" && { subscription: `sub_welcome_${run}_${open.orderId}` }),
+    });
+    return getShopperOrder(storeId, open.orderId, open.sessionId);
+  }
+
+  /** A cart for `buyerId` (signed in, or a guest) with what `fill` adds and the referrer's link kept on it; the checkout, unpaid. */
+  async function checkout(buyerId: string | null, fill: () => Promise<void>, link: string | null = referrer.code, consent: { digital?: boolean } = {}) {
+    jar.clear();
+    view = no;
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    if (buyerId) await startSession(storeId, buyerId);
+    await fill();
+    if (link) await rememberAffiliate(shop(), cartId(), link);
+    const summary = await cartSummary(shop(), await getCart(shop()));
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", consent, { customerId: buyerId });
+    const open = await getOpenCheckout(storeId, cartId());
+    return { summary, started, open, params: fake.created.at(-1)?.params ?? {}, cart: cartId() };
+  }
+
+  beforeAll(async () => {
+    const [home] = await db().execute<Row>(sql`select id from commerce.terms where store_id = ${storeId}::uuid and content_type = 'product' and slug = 'hjem'`);
+    homeCategory = String(home.id);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
+    await program();
+    let [tier] = await db().execute<Row>(sql`select id from commerce.customer_tiers where store_id = ${storeId}::uuid limit 1`);
+    tier ??= (await db().execute<Row>(sql`insert into commerce.customer_tiers (store_id, name, percent) values (${storeId}::uuid, 'Wholesale', 10) returning id`))[0];
+    tierId = String(tier.id);
+    let [company] = await db().execute<Row>(sql`select id from commerce.customer_companies where store_id = ${storeId}::uuid limit 1`);
+    company ??= (
+      await db().execute<Row>(sql`
+        insert into commerce.customer_companies (store_id, name, tier_id, employee_share_percent) values (${storeId}::uuid, 'Acme AS', ${tierId}::uuid, 50) returning id
+      `)
+    )[0];
+    companyId = String(company.id);
+    const [code] = await db().execute<Row>(sql`select id from commerce.discount_codes where store_id = ${storeId}::uuid and code = ${`TI${run}`.toUpperCase()}`);
+    if (!code) {
+      const made = await saveDiscount(member, null, { code: `TI${run}`.toUpperCase(), kind: "percent", percent: 10 });
+      if (!made.ok) throw new Error(made.problems.join(" "));
+    }
+    referrer = await withLink();
+  });
+  afterAll(async () => {
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.affiliate_settings set enabled = false where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.bonus_settings set enabled = false where store_id = ${storeId}::uuid`);
+  });
+
+  type WelcomeScenario = Scenario & { /** Nothing the welcome discount can be taken off: no goods bought once. */ none?: boolean; company?: boolean };
+  const welcomeScenarios: WelcomeScenario[] = [
+    { name: "goods, with shipping", fill: () => add("DEMO-MUG-WHITE", 2), bookings: 0 },
+    { name: "a download", fill: () => add("DEMO-LAMP", 1), consent: { digital: true }, bookings: 0 },
+    {
+      name: "a subscription with a mug bought once: the subscription is not lowered",
+      fill: async () => {
+        const [plan] = await db().execute<Row>(sql`
+          insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent)
+          values (${storeId}::uuid, ${product["demo-notatbok"]}::uuid, 'month', 2, 10) returning id
+        `);
+        await add("DEMO-NOTEBOOK-LINED", 1, undefined, String(plan.id));
+        await add("DEMO-MUG-WHITE", 2);
+      },
+      consent: { subscription: true },
+      bookings: 0,
+    },
+    {
+      name: "a subscription alone: nothing to take it off",
+      fill: async () => {
+        const [plan] = await db().execute<Row>(sql`
+          insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent)
+          values (${storeId}::uuid, ${product["demo-notatbok"]}::uuid, 'month', 2, 10) returning id
+        `);
+        await add("DEMO-NOTEBOOK-LINED", 1, undefined, String(plan.id));
+      },
+      consent: { subscription: true },
+      none: true,
+      bookings: 0,
+    },
+    { name: "an appointment with a deposit", fill: addAppointment, massage: "deposit", bookings: 1 },
+    { name: "an appointment paid at the venue", fill: addAppointment, massage: "venue", bookings: 1 },
+    { name: "a stay, two nights with a deposit", fill: () => addStay(2), bookings: 1 },
+    { name: "a bike for two days", fill: () => addRental("DEMO-SYKKEL", "day", 2), bookings: 1 },
+    {
+      name: "a stay, a massage and a mug with a code, for a group member",
+      fill: async () => {
+        await addStay(2);
+        await addAppointment();
+        await add("DEMO-MUG-WHITE", 1);
+      },
+      massage: "deposit",
+      code: `TI${run}`.toUpperCase(),
+      buyer: "group",
+      bookings: 2,
+    },
+    { name: "goods for a business buying for its company", fill: () => add("DEMO-MUG-WHITE", 3), company: true, bookings: 0 },
+    {
+      name: "a free product, a 3 for 2, a group's discount and a code",
+      fill: async () => {
+        await addStay(2);
+        await add("DEMO-MUG-WHITE", 3);
+      },
+      campaigns: () => [threeForTwo(), freeNotebook({ thresholds: { NO: "100" } })],
+      gifts: 1,
+      code: `TI${run}`.toUpperCase(),
+      buyer: "group",
+      bookings: 1,
+    },
+    { name: "goods, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), euro: true, bookings: 0 },
+    {
+      name: "a mug and a massage with a deposit and a code, for a company's employee, shown in euro",
+      fill: async () => {
+        await addAppointment();
+        await add("DEMO-MUG-WHITE", 2);
+      },
+      massage: "deposit",
+      code: `TI${run}`.toUpperCase(),
+      buyer: "company",
+      euro: true,
+      bookings: 1,
+    },
+    {
+      name: "campaigns and a group's discount, shown in euro",
+      fill: () => add("DEMO-MUG-WHITE", 4),
+      campaigns: () => [threeForTwo({ stacks: true }), percentCampaign(10, { stacks: true })],
+      buyer: "group",
+      euro: true,
+      bookings: 0,
+    },
+  ];
+
+  it.each(welcomeScenarios)("$name: what the cart shows is what is charged, kept, attributed and rewarded", async (scenario) => {
+    jar.clear();
+    view = scenario.euro ? noInEuro : no;
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    for (const input of scenario.campaigns?.() ?? []) {
+      const saved = await saveCampaign(member, null, input);
+      if (!saved.ok) throw new Error(saved.problems.join(" "));
+    }
+    await db().execute(sql`
+      update commerce.appointment_settings set payment = ${scenario.massage ?? "now"}, deposit_percent = 30
+      where store_id = ${storeId}::uuid and product_id = ${product["demo-massasje"]}::uuid
+    `);
+    const buyerId = await friend(scenario.buyer);
+    await scenario.fill();
+    if (scenario.code) expect(await setCartCode(shop(), scenario.code)).toBe(true);
+    if (scenario.company) await setCartCompany(shop(), { name: "Acme AS", number: "923456789" });
+    await rememberAffiliate(shop(), cartId(), referrer.code);
+
+    const cart = await getCart(shop());
+    const summary = await cartSummary(shop(), cart);
+    expect(summary.blocked).toBe(false);
+    // The welcome discount is 10 % of the goods bought once that campaigns and the group's discount left, rounded down.
+    const goods = summary.payable.reduce((sum, line, i) => sum + (line.plan || line.unitPriceMinor <= 0 ? 0 : Math.max(0, summary.today(line) - summary.campaignLine(i) - summary.memberLine(i))), 0);
+    expect(summary.referralMinor).toBe(Math.floor(goods / 10));
+    if (scenario.none) {
+      expect(summary.referralMinor).toBe(0);
+      expect(summary.referral.state).toBe("none");
+    } else {
+      expect(summary.referralMinor).toBeGreaterThan(0);
+      expect(summary.referral).toEqual({ state: "applied", percent: 10, discountMinor: summary.referralMinor });
+    }
+    // Its own line: `discountMinor` (codes, group, campaigns) and the credits leave it out, and the total adds up.
+    expect(summary.total).toBe(summary.subtotal + summary.feeMinor + (summary.shipping ?? 0) - summary.discountMinor - summary.referralMinor - summary.bonusMinor);
+    expect(summary.payable.reduce((sum, _line, i) => sum + summary.referralLine(i), 0)).toBe(summary.referralMinor);
+
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", scenario.consent ?? {}, {
+      customerId: buyerId,
+      contact: { name: "Kari", email: `kari-${run}@example.com`, phone: "99999999" },
+    });
+    expect(started).toMatchObject({ ok: true });
+    const open = await getOpenCheckout(storeId, cartId());
+    if (!open) {
+      // Paid at the venue alone: confirmed at once, so there is no payment form, but the order is placed all the same.
+      const [placed] = await db().execute<Row>(sql`select id, total_minor, referral_discount_minor from commerce.orders where customer_id = ${buyerId}::uuid order by placed_at desc limit 1`);
+      expect(Number(placed.referral_discount_minor)).toBe(summary.referralMinor);
+      expect(Number(placed.total_minor)).toBe(summary.total);
+      return;
+    }
+    expect(open).toMatchObject({ changed: false, expired: false, clientSecret: expect.stringMatching(/_secret_test$/) });
+
+    // The order is what the cart showed, and the welcome discount is its own part of the discount.
+    const order = await getOrder(storeId, open.orderId);
+    const giftValue = summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0);
+    expect({ total: order?.totalMinor, vat: order?.taxMinor, balance: order?.balanceMinor, referral: order?.referralDiscountMinor, off: order?.discountMinor }).toEqual({
+      total: summary.total,
+      vat: summary.vat,
+      balance: summary.balance,
+      referral: summary.referralMinor,
+      off: summary.discountMinor + giftValue,
+    });
+    const lines = await db().execute<Row>(sql`select discount_minor, referral_discount_minor, total_minor, venue_minor, gift, selling_plan_id from commerce.order_lines where order_id = ${open.orderId}::uuid`);
+    expect(lines.reduce((sum, l) => sum + Number(l.referral_discount_minor), 0)).toBe(summary.referralMinor);
+    for (const l of lines) {
+      expect(Number(l.referral_discount_minor)).toBeLessThanOrEqual(Number(l.discount_minor));
+      expect(Number(l.venue_minor)).toBeLessThanOrEqual(Number(l.total_minor));
+      // Never a free product, never what renews.
+      if (l.gift || l.selling_plan_id) expect(Number(l.referral_discount_minor)).toBe(0);
+    }
+    // Stripe is asked for what is due now, the welcome discount inside its coupon (or in each line's amount for a deposit).
+    const { params } = fake.created.at(-1)!;
+    expect(chargedNow(params)).toBe(summary.dueNowMinor);
+    expect(JSON.stringify(params)).not.toContain("payment_method_types");
+    // Part of the one coupon Stripe is given (or of each line's amount, for a deposit).
+    if (summary.referralMinor > 0 && summary.balance === 0) expect(params).toHaveProperty("discounts");
+    const [paymentRow] = await db().execute<Row>(sql`select amount_minor from commerce.payments where order_id = ${open.orderId}::uuid and provider = 'stripe'`);
+    expect(Number(paymentRow.amount_minor)).toBe(summary.dueNowMinor);
+    // Whose friend it is: waiting for payment, with the discount it was given.
+    expect(await attribution(open.orderId)).toEqual({ status: "pending", reason: null, discount: summary.referralMinor, reward: 0, affiliate: referrer.id, friend: buyerId });
+    expect(await getOpenCheckout(storeId, cartId())).toMatchObject({ changed: false });
+
+    // Paid: the referrer earns 5 % of what was paid online for goods, as the database counts it, usable after the return period.
+    const before = await ledger(referrer.id);
+    expect((await pay(open, params))?.status).toBe("paid");
+    const reward = await rewardOf(open.orderId, order!.currency);
+    expect(await attribution(open.orderId)).toMatchObject({ status: reward > 0 ? "rewarded" : "rejected", reward });
+    expect(await ledger(referrer.id)).toEqual({ available: before.available, pending: before.pending + reward });
+    if (reward > 0) expect((await db().execute<Row>(sql`select referred_by_customer_id as r from commerce.customers where id = ${buyerId}::uuid`))[0].r).toBe(referrer.id);
+    expect(await verified(referrer.id)).toBe(true);
+    // Paying a second time changes nothing.
+    await pay(open, params);
+    expect((await ledger(referrer.id)).pending).toBe(before.pending + reward);
+  });
+
+  it("takes it off before a code and the credits, which count what is left", async () => {
+    const buyer = await friend();
+    await db().execute(sql`select commerce.bonus_adjust(${storeId}::uuid, ${buyer}::uuid, 500000, 'test credits', null, ${`test-${buyer}`})`);
+    const made = await saveDiscount(member, null, { code: `WEL${run}`.toUpperCase(), kind: "percent", percent: 10 });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const placed = await checkout(buyer, async () => {
+      await add("DEMO-MUG-WHITE", 2);
+      expect(await setCartCode(shop(), `WEL${run}`.toUpperCase())).toBe(true);
+    });
+    const asked = await setCartCredits(shop(), placed.cart, buyer, 1_000_000_000);
+    expect(asked).toMatchObject({ ok: true });
+    // Re-read and place again with the credits asked for.
+    const again = await checkout(buyer, async () => {
+      jar.set(`cart_${storeId}_${no.slug}`, placed.cart);
+    });
+    // Two mugs, 498 NOK: 10 % welcome (49.80), then the code's 10 % of the 448.20 left (44.82), then credits up to half of the 403.38 left.
+    expect(again.summary.referralMinor).toBe(4_980);
+    expect(again.summary.codeDiscountMinor).toBe(4_482);
+    expect(again.summary.bonusMinor).toBe(Math.floor((49_800 - 4_980 - 4_482) / 2));
+    const order = await getOrder(storeId, again.open!.orderId);
+    expect(order).toMatchObject({ referralDiscountMinor: 4_980, creditMinor: again.summary.bonusMinor, discountMinor: 4_482, totalMinor: again.summary.total });
+    expect(order!.totalMinor).toBe(49_800 + 9_900 - 4_980 - 4_482 - again.summary.bonusMinor);
+    // Only what was paid online for goods earns: the referrer's 5 % is of it, and the friend's own 5 % too.
+    await pay(again.open!, again.params);
+    expect((await attribution(again.open!.orderId))?.reward).toBe(Math.floor((await onlineGoods(again.open!.orderId)) * 500 / 10_000));
+    // The code's page counts what the code gave, not the welcome discount or the credits.
+    const { listDiscounts } = await import("./discounts");
+    expect((await listDiscounts(storeId)).find((d) => d.code === `WEL${run}`.toUpperCase())?.given.NOK).toBeGreaterThanOrEqual(4_482);
+  });
+
+  it("is capped at the owner's most, in the currency shown", async () => {
+    await program({ max: 2_000 });
+    try {
+      const buyer = await friend();
+      const capped = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2));
+      expect(capped.summary.referralMinor).toBe(2_000);
+      // Shown in euro the 20 NOK cap is 1.73 EUR (rounded down), and 10 % of the two mugs is more than that.
+      const buyer2 = await friend();
+      jar.clear();
+      view = noInEuro;
+      await startSession(storeId, buyer2);
+      await add("DEMO-MUG-WHITE", 2);
+      await rememberAffiliate(shop(), cartId(), referrer.code);
+      const inEuro = await cartSummary(shop(), await getCart(shop()));
+      expect(inEuro.referralMinor).toBe(173);
+      view = no;
+    } finally {
+      await program();
+    }
+  });
+
+  it("gives a friend who registered through a link the discount without a code in the cart, and their later orders no discount", async () => {
+    const buyer = await friend();
+    expect(await attachReferral(storeId, buyer, referrer.code)).toBe(true);
+    const placed = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2), null);
+    expect(placed.summary.referral).toEqual({ state: "applied", percent: 10, discountMinor: 4_980 });
+    expect(await attribution(placed.open!.orderId)).toMatchObject({ status: "pending", affiliate: referrer.id, friend: buyer, discount: 4_980 });
+    await pay(placed.open!, placed.params);
+    // The next order still belongs to the referrer, with no welcome discount; one rewarded order is all the store gives here.
+    const next = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2), null);
+    expect(next.summary.referralMinor).toBe(0);
+    expect(await attribution(next.open!.orderId)).toBeUndefined();
+  });
+
+  it("gives a guest only the nudge, and attributes nothing", async () => {
+    const guest = await checkout(null, () => add("DEMO-MUG-WHITE", 2));
+    expect(guest.summary.referral).toEqual({ state: "guest", percent: 10, discountMinor: 0 });
+    expect(guest.summary.referralMinor).toBe(0);
+    expect(guest.summary.total).toBe(49_800 + 9_900);
+    const order = await getOrder(storeId, guest.open!.orderId);
+    expect(order).toMatchObject({ referralDiscountMinor: 0, discountMinor: 0 });
+    expect(await attribution(guest.open!.orderId)).toBeUndefined();
+    const before = await ledger(referrer.id);
+    await pay(guest.open!, guest.params);
+    expect(await ledger(referrer.id)).toEqual(before);
+  });
+
+  it("is for the first order only: a friend who has ordered before gets nothing, and it is recorded", async () => {
+    const buyer = await friend();
+    const first = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2));
+    expect(first.summary.referralMinor).toBeGreaterThan(0);
+    await pay(first.open!, first.params);
+    // The next cart, with the same link in it: no discount, and no reward (one order earns, by default).
+    const second = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2));
+    expect(second.summary.referral.state).toBe("none");
+    expect(second.summary.referralMinor).toBe(0);
+    expect(second.summary.total).toBe(49_800 + 9_900);
+    expect(await attribution(second.open!.orderId)).toBeUndefined();
+    // Someone who ordered before and arrives with a link is a rejected attribution.
+    const old = await friend();
+    await pay((await checkout(old, () => add("DEMO-MUG-WHITE", 1), null)).open!, fake.created.at(-1)!.params);
+    const late = await checkout(old, () => add("DEMO-MUG-WHITE", 2));
+    expect(late.summary.referralMinor).toBe(0);
+    expect(await attribution(late.open!.orderId)).toMatchObject({ status: "rejected", reason: "not_new", discount: 0 });
+  });
+
+  it("gives the referrer nothing and the friend nothing when they are the same person, or the referrer is blocked", async () => {
+    await startSession(storeId, referrer.id);
+    const own = await checkout(referrer.id, () => add("DEMO-MUG-WHITE", 2));
+    expect(own.summary.referral.state).toBe("none");
+    expect(own.summary.referralMinor).toBe(0);
+    expect(await attribution(own.open!.orderId)).toMatchObject({ status: "rejected", reason: "self", discount: 0 });
+    const other = await withLink();
+    await db().execute(sql`update commerce.affiliates set blocked_at = now(), blocked_reason = 'abuse' where customer_id = ${other.id}::uuid`);
+    const blocked = await checkout(await friend(), () => add("DEMO-MUG-WHITE", 2), other.code);
+    // A blocked referrer's code is not even kept on the cart.
+    expect(blocked.summary.referralMinor).toBe(0);
+    expect(await attribution(blocked.open!.orderId)).toBeUndefined();
+  });
+
+  it("does nothing while either program is off, and an order placed while it was on earns nothing once it is off", async () => {
+    await program({ bonus: false });
+    try {
+      const off = await checkout(await friend(), () => add("DEMO-MUG-WHITE", 2));
+      expect(off.summary.referral.state).toBe("none");
+      expect(off.summary.total).toBe(49_800 + 9_900);
+    } finally {
+      await program();
+    }
+    const buyer = await friend();
+    const placed = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2));
+    expect(placed.summary.referralMinor).toBeGreaterThan(0);
+    await program({ affiliate: false });
+    try {
+      const before = await ledger(referrer.id);
+      await pay(placed.open!, placed.params);
+      expect(await attribution(placed.open!.orderId)).toMatchObject({ status: "rejected", reason: "off" });
+      expect(await ledger(referrer.id)).toEqual(before);
+    } finally {
+      await program();
+    }
+  });
+
+  it("takes back the reward by the refunded share, and all of it when the order is cancelled", async () => {
+    const buyer = await friend();
+    const placed = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2));
+    const orderId = placed.open!.orderId;
+    await pay(placed.open!, placed.params);
+    const reward = (await attribution(orderId))!.reward;
+    expect(reward).toBeGreaterThan(0);
+    const before = await ledger(referrer.id);
+    const dueNow = placed.summary.dueNowMinor;
+    const third = Math.floor(dueNow / 3);
+    expect(await refundOrder(storeId, orderId, { amountMinor: third, reason: "a third", restock: [] }, member.account.id)).toMatchObject({ ok: true });
+    expect((await ledger(referrer.id)).pending).toBe(before.pending - Math.floor((reward * third) / dueNow));
+    await refundOrder(storeId, orderId, { amountMinor: dueNow - third, reason: "rest", restock: [] }, member.account.id);
+    expect(await ledger(referrer.id)).toEqual({ available: before.available, pending: before.pending - reward });
+    expect((await attribution(orderId))?.status).toBe("reversed");
+    expect(await verified(referrer.id)).toBe(true);
+    // A cancelled order takes back what is left.
+    const other = await checkout(await friend(), () => add("DEMO-MUG-WHITE", 2));
+    await pay(other.open!, other.params);
+    const pending = (await ledger(referrer.id)).pending;
+    const got = (await attribution(other.open!.orderId))!.reward;
+    expect(await cancelOrder(storeId, other.open!.orderId, "changed my mind", member.account.id)).toMatchObject({ ok: true });
+    expect((await ledger(referrer.id)).pending).toBe(pending - got);
+    expect((await attribution(other.open!.orderId))?.status).toBe("reversed");
+  });
+
+  it("shows the welcome discount on the order page, apart from codes and credits, and in the integration's discount", async () => {
+    const buyer = await friend();
+    const placed = await checkout(buyer, () => add("DEMO-MUG-WHITE", 2));
+    await pay(placed.open!, placed.params);
+    const order = await getOrder(storeId, placed.open!.orderId);
+    expect(order).toMatchObject({ referralDiscountMinor: 4_980, discountMinor: 0, creditMinor: 0, totalMinor: 49_800 + 9_900 - 4_980 });
+    const shopper = await getShopperOrder(storeId, placed.open!.orderId, placed.open!.sessionId);
+    expect(shopper).toMatchObject({ referralDiscountMinor: 4_980 });
   });
 });

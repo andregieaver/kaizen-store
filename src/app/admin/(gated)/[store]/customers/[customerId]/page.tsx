@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/customer-affiliate";
 import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
@@ -11,6 +12,7 @@ import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
+import { customerAffiliate } from "@/server/affiliates";
 import { requireMember } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { getBonusSettings, customerBonus } from "@/server/bonus";
@@ -18,6 +20,7 @@ import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
 
+import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
 import { adjustBonusAction, saveCustomerFieldsAction } from "./actions";
 
@@ -49,6 +52,8 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
   const [bonusSettings, bonus] = customer.customerId
     ? await Promise.all([getBonusSettings(store.id), customerBonus(store.id, customer.customerId)])
     : [null, null];
+  // Referrals (D131) belong to the account too: their link, who referred them and the orders through links.
+  const affiliate = customer.customerId ? await customerAffiliate(store.id, customer.customerId) : null;
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
@@ -179,6 +184,16 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
               orderIds={Object.fromEntries(customer.orderList.map((o) => [o.number, o.id]))}
               who={customer.name || customer.email}
               adjust={adjustBonusAction.bind(null, store.slug, customer.customerId)}
+            />
+          )}
+
+          {customer.customerId && affiliate && showsAffiliate(affiliate) && (
+            <CustomerAffiliateSection
+              data={affiliate}
+              storeSlug={store.slug}
+              locale={locale}
+              who={customer.name || customer.email}
+              block={blockAffiliateAction.bind(null, store.slug, customer.customerId)}
             />
           )}
 

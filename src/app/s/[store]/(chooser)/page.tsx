@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { codeFromSearch } from "@/lib/affiliates";
 import { t } from "@/lib/i18n";
 import { marketForCountry, type Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
+import { affiliateSite } from "@/server/affiliates";
 import { getOpenStore } from "@/server/stores";
 
 /**
@@ -13,10 +15,20 @@ import { getOpenStore } from "@/server/stores";
  * it suggests one from the visitor's country but never redirects, so visitors
  * choose and search engines see every market.
  */
-export default async function Chooser({ params }: PageProps<"/s/[store]">) {
+export default async function Chooser({ params, searchParams }: PageProps<"/s/[store]">) {
   const store = await getOpenStore((await params).store);
   if (!store || store.markets.length === 0) notFound();
-  if (store.markets.length === 1) redirect(marketPath(store.slug, store.markets[0].slug));
+  if (store.markets.length === 1) {
+    const target = marketPath(store.slug, store.markets[0].slug);
+    // A friend's referral link (D131) keeps its code through the redirect, which needs the address: only while the store's
+    // program is on, so every other front door is still redirected as before.
+    if (!(await affiliateSite(store.id)).on) redirect(target);
+    return (
+      <Suspense fallback={null}>
+        <KeepReferral target={target} searchParams={searchParams} />
+      </Suspense>
+    );
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">
@@ -48,6 +60,13 @@ export default async function Chooser({ params }: PageProps<"/s/[store]">) {
       </Suspense>
     </main>
   );
+}
+
+/** The one market's address, with the friend's code in it when the front door was opened with one (D131). */
+async function KeepReferral({ target, searchParams }: { target: string; searchParams: PageProps<"/s/[store]">["searchParams"] }): Promise<never> {
+  const ref = (await searchParams).ref;
+  const code = codeFromSearch(`?ref=${encodeURIComponent(Array.isArray(ref) ? (ref[0] ?? "") : (ref ?? ""))}`);
+  redirect(code ? `${target}?ref=${code}` : target);
 }
 
 async function Suggestion({ storeSlug, markets }: { storeSlug: string; markets: Market[] }) {

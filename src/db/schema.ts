@@ -262,6 +262,8 @@ export const accessRequests = commerce.table(
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     /** The store created when the request was approved. */
     storeId: uuid("store_id").references((): AnyPgColumn => stores.id),
+    /** The referral code the request came with (D131), checked against `referrers` when the request is approved. */
+    referralCode: text("referral_code"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -1655,6 +1657,8 @@ export const customers = commerce.table(
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     /** Set on a customer copied from another store (D129): the original's id, so a rerun copies nobody twice. */
     copiedFrom: uuid("copied_from"),
+    /** The affiliate (D131, a customer of the same store) whose link they registered through; null for none. */
+    referredByCustomerId: uuid("referred_by_customer_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1673,8 +1677,14 @@ export const customers = commerce.table(
       columns: [t.storeId, t.companyId],
       foreignColumns: [customerCompanies.storeId, customerCompanies.id],
     }),
+    foreignKey({
+      name: "customers_referred_by_fk",
+      columns: [t.storeId, t.referredByCustomerId],
+      foreignColumns: [t.storeId, t.id],
+    }).onDelete("set null"),
     index("customers_tier_idx").on(t.storeId, t.tierId),
     index("customers_company_idx").on(t.storeId, t.companyId),
+    index("customers_referred_by_idx").on(t.storeId, t.referredByCustomerId),
     check(
       "customers_company_role",
       sql`(${t.companyId} is null and ${t.companyRole} is null) or (${t.companyId} is not null and ${t.companyRole} is not null and ${t.companyRole} in ('owner', 'employee'))`,
@@ -1820,6 +1830,8 @@ export const carts = commerce.table(
      */
     bonusRequestMinor: bigint("bonus_request_minor", { mode: "number" }).notNull().default(0),
     bonusRequestCurrency: char("bonus_request_currency", { length: 3 }),
+    /** The affiliate code the shopper arrived with (D131), kept from the consented cookie; checked again at checkout. */
+    affiliateCode: text("affiliate_code"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1913,6 +1925,12 @@ export const orders = commerce.table(
      */
     bonusEarnedMinor: bigint("bonus_earned_minor", { mode: "number" }),
     bonusAvailableAt: timestamp("bonus_available_at", { withTimezone: true }),
+    /**
+     * The friend's welcome discount from an affiliate's link (D131), in the order's currency: a part of the discount
+     * (so the total adds up), taken off goods after campaigns and the group's discount and before codes and credits,
+     * spread over the lines as `order_lines.referral_discount_minor`.
+     */
+    referralDiscountMinor: money("referral_discount_minor").default(0),
     /** VAT contained in the total. Prices are VAT-inclusive. */
     taxMinor: money("tax_minor"),
     totalMinor: money("total_minor"),
@@ -2057,6 +2075,8 @@ export const orderLines = commerce.table(
     campaignDiscountMinor: money("campaign_discount_minor").default(0),
     /** The part that bonus credits paid (D130), taken off last; the credits' share of the line, so VAT and refunds agree. */
     bonusDiscountMinor: money("bonus_discount_minor").default(0),
+    /** The part the friend's welcome discount gave (D131); the line's share, so VAT and refunds agree. */
+    referralDiscountMinor: money("referral_discount_minor").default(0),
     campaignId: uuid("campaign_id"),
     /** Every campaign that gave something on this line: `[{ id, name, minor }]`, the first being `campaign_id`. */
     campaignParts: jsonb("campaign_parts").notNull().default([]),
@@ -2095,6 +2115,7 @@ export const orderLines = commerce.table(
     check("order_lines_member_discount", sql`${t.memberDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_campaign_discount", sql`${t.campaignDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_bonus_discount", sql`${t.bonusDiscountMinor} between 0 and ${t.discountMinor}`),
+    check("order_lines_referral_discount", sql`${t.referralDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
   ],
 );
@@ -5449,7 +5470,7 @@ export const bonusEntries = commerce.table(
     id: uuid("id").primaryKey().defaultRandom(),
     storeId: storeId().references(() => stores.id),
     customerId: uuid("customer_id").notNull(),
-    /** `earn`, `redeem`, `restore`, `reverse`, `expire` or `adjust` (`BonusEntryKind`). */
+    /** `earn`, `redeem`, `restore`, `reverse`, `expire`, `adjust` or `referral` (`BonusEntryKind`). */
     kind: text("kind").notNull(),
     amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
     orderId: uuid("order_id"),
@@ -5489,11 +5510,11 @@ export const bonusEntries = commerce.table(
     index("bonus_entries_expiry_idx")
       .on(t.expiresAt)
       .where(sql`${t.amountMinor} > 0 and ${t.expiresAt} is not null`),
-    check("bonus_entries_kind", sql`${t.kind} in ('earn', 'redeem', 'restore', 'reverse', 'expire', 'adjust')`),
+    check("bonus_entries_kind", sql`${t.kind} in ('earn', 'redeem', 'restore', 'reverse', 'expire', 'adjust', 'referral')`),
     check("bonus_entries_amount", sql`${t.amountMinor} <> 0`),
     check(
       "bonus_entries_sign",
-      sql`(${t.kind} in ('earn', 'restore') and ${t.amountMinor} > 0) or (${t.kind} in ('redeem', 'reverse', 'expire') and ${t.amountMinor} < 0) or ${t.kind} = 'adjust'`,
+      sql`(${t.kind} in ('earn', 'restore', 'referral') and ${t.amountMinor} > 0) or (${t.kind} in ('redeem', 'reverse', 'expire') and ${t.amountMinor} < 0) or ${t.kind} = 'adjust'`,
     ),
     check("bonus_entries_lot", sql`${t.amountMinor} < 0 or ${t.availableAt} is not null`),
     check("bonus_entries_note", sql`length(${t.note}) <= 500`),
@@ -5524,5 +5545,285 @@ export const bonusAllocations = commerce.table(
     }).onDelete("cascade"),
     index("bonus_allocations_entry_idx").on(t.storeId, t.entryId),
     check("bonus_allocations_amount", sql`${t.amountMinor} > 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// The affiliate program (D131, docs/affiliates.md): two levels, each its own set of tables.
+// ---------------------------------------------------------------------------
+
+/**
+ * Kaizen's referral program (D131, `src/lib/referrals.ts`), one row: store owners refer other store owners and earn a
+ * share of the fees the referred store pays Kaizen, as credit against their own Kaizen invoices. Off until a platform
+ * admin turns it on.
+ */
+export const referralSettings = commerce.table(
+  "referral_settings",
+  {
+    id: boolean("id").primaryKey().default(true),
+    enabled: boolean("enabled").notNull().default(false),
+    /** The share of the referred store's plan fees and Kaizen's sale fees that the referrer earns, in basis points. */
+    commissionBps: integer("commission_bps").notNull().default(1000),
+    /** How many months after the referred store was created its fees earn commission. */
+    months: integer("months").notNull().default(12),
+    /** Days after a fee is paid before its credit can be used (fees can be refunded). */
+    pendingDays: integer("pending_days").notNull().default(30),
+    /** Days the referral cookie lasts, once the visitor has allowed it. */
+    cookieDays: integer("cookie_days").notNull().default(30),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("referral_settings_updated_by_idx").on(t.updatedBy),
+    check("referral_settings_singleton", sql`${t.id}`),
+    check("referral_settings_commission", sql`${t.commissionBps} between 0 and 5000`),
+    check("referral_settings_months", sql`${t.months} between 1 and 60`),
+    check("referral_settings_pending", sql`${t.pendingDays} between 0 and 90`),
+    check("referral_settings_cookie", sql`${t.cookieDays} between 1 and 90`),
+  ],
+);
+
+/** An account's referral code (D131): made the first time its owner opens Referrals; one per account. */
+export const referrers = commerce.table(
+  "referrers",
+  {
+    accountId: uuid("account_id")
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    /** Lower case letters and digits, 6 to 16 (`REFERRAL_CODE` in lib/referrals). */
+    code: text("code").notNull().unique(),
+    /** A platform admin stopped the account earning; what it has earned stays, nothing new is earned. */
+    blockedAt: timestamp("blocked_at", { withTimezone: true }),
+    blockedReason: text("blocked_reason").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [check("referrers_code", sql`${t.code} ~ '^[a-z0-9]{6,16}$'`)],
+);
+
+/**
+ * A store that came through a referral (D131): made when the request with the code is approved. Fees the store pays
+ * Kaizen in `[created_at, created_at + months)` earn the referrer commission, at the rate and months set when it was
+ * made (so a later change never reaches an earlier promise).
+ */
+export const referrals = commerce.table(
+  "referrals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    referrerAccountId: uuid("referrer_account_id")
+      .notNull()
+      .references(() => referrers.accountId, { onDelete: "cascade" }),
+    /** The store that was opened; one referral each. */
+    storeId: uuid("store_id")
+      .notNull()
+      .unique()
+      .references(() => stores.id),
+    accessRequestId: uuid("access_request_id").references(() => accessRequests.id),
+    commissionBps: integer("commission_bps").notNull(),
+    months: integer("months").notNull(),
+    /** `active`, or `void` when staff found it was not genuine (self-referral): it earns nothing more. */
+    status: text("status").notNull().default("active"),
+    voidReason: text("void_reason").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("referrals_referrer_idx").on(t.referrerAccountId, t.createdAt),
+    index("referrals_access_request_idx").on(t.accessRequestId),
+    check("referrals_status", sql`${t.status} in ('active', 'void')`),
+  ],
+);
+
+/**
+ * The referral credit ledger (D131), like the bonus ledger (D130) but per account and currency: append-only, signed minor
+ * units, every grant a lot usable from `available_at`, every use or take-back paid out of lots through
+ * `referral_allocations`, each entry once per idempotency key. Applied to the account's own Kaizen plan invoices
+ * (`apply`, `invoice_ref` the Stripe invoice). Only `commerce.referral_*` functions write here.
+ */
+export const referralEntries = commerce.table(
+  "referral_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** `earn`, `apply`, `restore`, `reverse` or `adjust`. */
+    kind: text("kind").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    /** For an `earn`: what paid the commission, `plan_invoice` (a Stripe invoice id) or `sale_fee` (a payment id). */
+    sourceKind: text("source_kind"),
+    sourceRef: text("source_ref"),
+    referralId: uuid("referral_id").references(() => referrals.id),
+    /** For an `apply` or `restore`: the Kaizen invoice the credit was put on. */
+    invoiceRef: text("invoice_ref"),
+    availableAt: timestamp("available_at", { withTimezone: true }),
+    note: text("note").notNull().default(""),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("referral_entries_account_idx").on(t.accountId, t.currency, t.createdAt),
+    index("referral_entries_referral_idx").on(t.referralId),
+    index("referral_entries_source_idx").on(t.sourceKind, t.sourceRef),
+    index("referral_entries_invoice_idx").on(t.invoiceRef),
+    index("referral_entries_created_by_idx").on(t.createdBy),
+    check("referral_entries_kind", sql`${t.kind} in ('earn', 'apply', 'restore', 'reverse', 'adjust')`),
+    check("referral_entries_amount", sql`${t.amountMinor} <> 0`),
+    check(
+      "referral_entries_sign",
+      sql`(${t.kind} in ('earn', 'restore') and ${t.amountMinor} > 0) or (${t.kind} in ('apply', 'reverse') and ${t.amountMinor} < 0) or ${t.kind} = 'adjust'`,
+    ),
+    check("referral_entries_lot", sql`${t.amountMinor} < 0 or ${t.availableAt} is not null`),
+    check("referral_entries_note", sql`length(${t.note}) <= 500`),
+  ],
+);
+
+/** What of a lot a negative referral entry took (D131); append-only, as `bonus_allocations`. */
+export const referralAllocations = commerce.table(
+  "referral_allocations",
+  {
+    lotId: uuid("lot_id")
+      .notNull()
+      .references(() => referralEntries.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => referralEntries.id, { onDelete: "cascade" }),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.lotId, t.entryId] }),
+    index("referral_allocations_entry_idx").on(t.entryId),
+    check("referral_allocations_amount", sql`${t.amountMinor} > 0`),
+  ],
+);
+
+/**
+ * A store's affiliate program (D131, `src/lib/affiliates.ts`): its signed-in customers refer friends. The referrer earns
+ * bonus credits (D130, kind `referral`) on the friend's paid orders and the friend gets a welcome discount on their first
+ * order. Off until the owner turns it on, and needs the bonus program on. A store without a row has the defaults, off.
+ */
+export const affiliateSettings = commerce.table(
+  "affiliate_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    enabled: boolean("enabled").notNull().default(false),
+    /** The referrer's credits per 100 the friend pays for goods, in basis points: 500 is 5 %. */
+    rewardBps: integer("reward_bps").notNull().default(500),
+    /** How many of the friend's paid orders earn the referrer credits; null for every one. */
+    rewardOrders: integer("reward_orders").default(1),
+    /** The friend's welcome discount on their first order, in percent of goods; 0 for none. */
+    friendPercent: integer("friend_percent").notNull().default(10),
+    /** The most the welcome discount takes off, in minor units of the store's main currency; null for no limit. */
+    friendMaxMinor: bigint("friend_max_minor", { mode: "number" }),
+    /** The most one referrer can earn in a calendar month, in minor units of the credits' currency; null for no limit. */
+    monthlyCapMinor: bigint("monthly_cap_minor", { mode: "number" }),
+    /** Days the link's cookie lasts once the visitor has allowed it. */
+    cookieDays: integer("cookie_days").notNull().default(30),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("affiliate_settings_updated_by_idx").on(t.updatedBy),
+    check("affiliate_settings_reward", sql`${t.rewardBps} between 0 and 5000`),
+    check("affiliate_settings_orders", sql`${t.rewardOrders} is null or ${t.rewardOrders} between 1 and 100`),
+    check("affiliate_settings_friend", sql`${t.friendPercent} between 0 and 50`),
+    check("affiliate_settings_friend_max", sql`${t.friendMaxMinor} is null or ${t.friendMaxMinor} between 0 and 100000000`),
+    check("affiliate_settings_cap", sql`${t.monthlyCapMinor} is null or ${t.monthlyCapMinor} between 0 and 1000000000`),
+    check("affiliate_settings_cookie", sql`${t.cookieDays} between 1 and 90`),
+  ],
+);
+
+/** A customer's referral code in a store (D131): made the first time they open Refer a friend; one per customer. */
+export const affiliates = commerce.table(
+  "affiliates",
+  {
+    storeId: storeId().references(() => stores.id),
+    customerId: uuid("customer_id").notNull(),
+    /** Lower case letters and digits, 6 to 16, unique in the store. */
+    code: text("code").notNull(),
+    /** Staff stopped them earning; what they have earned stays, nothing new is earned. */
+    blockedAt: timestamp("blocked_at", { withTimezone: true }),
+    blockedReason: text("blocked_reason").notNull().default(""),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.customerId] }),
+    unique("affiliates_code_key").on(t.storeId, t.code),
+    foreignKey({
+      name: "affiliates_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    check("affiliates_code", sql`${t.code} ~ '^[a-z0-9]{6,16}$'`),
+  ],
+);
+
+/**
+ * One attributed order (D131): who referred it, the friend's welcome discount, and the credits the referrer earned
+ * (in the program's credits currency; `rewarded_at` when they were granted). `status` follows the order: `pending` until
+ * it is paid, `rewarded` once paid, `reversed` when it is cancelled or fully refunded, `rejected` when a guard stopped the
+ * reward (`reject_reason`: `self`, `not_new`, `blocked`, `cap`, `limit`, `off`). At most one per order.
+ */
+export const affiliateAttributions = commerce.table(
+  "affiliate_attributions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    orderId: uuid("order_id").notNull(),
+    affiliateCustomerId: uuid("affiliate_customer_id").notNull(),
+    /** The friend, when signed in; null for a guest (who gets no welcome discount). */
+    friendCustomerId: uuid("friend_customer_id"),
+    code: text("code").notNull(),
+    discountMinor: money("discount_minor").default(0),
+    rewardMinor: bigint("reward_minor", { mode: "number" }).notNull().default(0),
+    status: text("status").notNull().default("pending"),
+    rejectReason: text("reject_reason"),
+    rewardedAt: timestamp("rewarded_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("affiliate_attributions_store_id_key").on(t.storeId, t.id),
+    unique("affiliate_attributions_order_key").on(t.storeId, t.orderId),
+    foreignKey({
+      name: "affiliate_attributions_order_fk",
+      columns: [t.storeId, t.orderId],
+      foreignColumns: [orders.storeId, orders.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "affiliate_attributions_affiliate_fk",
+      columns: [t.storeId, t.affiliateCustomerId],
+      foreignColumns: [affiliates.storeId, affiliates.customerId],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "affiliate_attributions_friend_fk",
+      columns: [t.storeId, t.friendCustomerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("set null"),
+    index("affiliate_attributions_affiliate_idx").on(t.storeId, t.affiliateCustomerId, t.createdAt),
+    index("affiliate_attributions_friend_idx").on(t.storeId, t.friendCustomerId),
+    check("affiliate_attributions_status", sql`${t.status} in ('pending', 'rewarded', 'reversed', 'rejected')`),
+    check("affiliate_attributions_reward", sql`${t.rewardMinor} >= 0`),
+  ],
+);
+
+/**
+ * Visits to a referral link, counted by day and code, with nothing about the visitor (D131): `store_id` null is Kaizen's
+ * own program. Only for the dashboards' "visits".
+ */
+export const referralVisits = commerce.table(
+  "referral_visits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id),
+    code: text("code").notNull(),
+    day: date("day").notNull(),
+    visits: integer("visits").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("referral_visits_key").on(sql`coalesce(${t.storeId}, '00000000-0000-0000-0000-000000000000'::uuid)`, t.code, t.day),
+    index("referral_visits_store_idx").on(t.storeId),
+    check("referral_visits_count", sql`${t.visits} >= 0`),
   ],
 );

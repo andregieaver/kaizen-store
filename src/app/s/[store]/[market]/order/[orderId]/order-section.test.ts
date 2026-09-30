@@ -42,6 +42,7 @@ const order = (over: Record<string, unknown> = {}) => ({
   memberPercent: null,
   campaignDiscountMinor: 0,
   campaignLabel: null,
+  referralDiscountMinor: 0,
   totalMinor: 9000,
   taxMinor: 1680,
   balanceMinor: 0,
@@ -108,5 +109,31 @@ describe("the order's totals with bonus credits", () => {
       .replace(/\s+/g, " ");
     expect(page).toContain(`${t("nb").bonus.usedRow} −`);
     expect(page).toContain("Du tjente");
+  });
+});
+
+describe("the order's totals with a friend's welcome discount (D131)", () => {
+  it("show nothing about it for an order without one", async () => {
+    expect(await totals()).not.toContain("Welcome discount");
+  });
+
+  it("show it as a line of its own, apart from a code's discount and the credits", async () => {
+    getShopperOrder.mockResolvedValue(
+      order({ referralDiscountMinor: 1000, bonus: { usedMinor: 1500, earnedMinor: 0, availableAt: null } }),
+    );
+    const words = await totals();
+    expect(words).toContain("Welcome discount −€10.00");
+    expect(words).toContain("Bonus credits used −€15.00");
+    expect(words).not.toContain("Discount −");
+  });
+
+  it("read in the store's language", async () => {
+    getShopperOrder.mockResolvedValue(order({ referralDiscountMinor: 1000 }));
+    const nb = { ...shop, market: { ...market, lang: "nb", locale: "nb-NO" } as Market };
+    const page = renderToString(await OrderDetails(nb))
+      .replace(/<!-- -->/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ");
+    expect(page).toContain(`${t("nb").affiliate.discountRow} −`);
   });
 });

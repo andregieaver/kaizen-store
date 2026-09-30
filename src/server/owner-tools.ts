@@ -50,6 +50,17 @@ import {
 } from "@/lib/bonus-admin";
 import { mainCurrency } from "@/lib/markets";
 import { adjustBonus, bonusOverview, customerBonus, getBonusSettings, saveBonusSettings } from "./bonus";
+import { AFFILIATE_DEFAULTS, affiliateSettingsInput, type AffiliateSettings } from "@/lib/affiliates";
+import {
+  AFFILIATE_EXPLANATION,
+  AFFILIATE_NEEDS_BONUS,
+  attributionStatus,
+  example as affiliateExample,
+  overviewRows as affiliateOverviewRows,
+  rulesSummary as affiliateRulesSummary,
+} from "@/lib/affiliate-admin";
+import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
+import { cookiesTag } from "./site-cookies";
 import { catalogTag } from "./catalog";
 import { campaignsTag } from "./campaign-notices";
 import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
@@ -850,6 +861,9 @@ async function setBonusProgramTool(ctx: OwnerToolContext, input: OwnerToolInput<
   if (!result.ok) return fail(result.problems.join(" "));
   ctx.invalidate(storeTag(store.slug));
   ctx.invalidate(catalogTag(store.id));
+  // The referral program works only while the bonus program is on (D131): its link capture and cookie follow.
+  ctx.invalidate(affiliateTag(store.id));
+  ctx.invalidate(cookiesTag(store.id));
   const currency = mainCurrency(store);
   return {
     done: settings.enabled ? "The bonus program is on with these rules." : "The bonus program is off. Balances are kept.",
@@ -877,6 +891,111 @@ async function adjustCustomerCreditsTool(ctx: OwnerToolContext, input: OwnerTool
     done: `${amountMinor > 0 ? `Added ${format(amountMinor)} in credits to` : `Took ${format(-amountMinor)} in credits from`} ${who.email}.`,
     available_now: format(balance.availableMinor),
     pending: format(balance.pendingMinor),
+    admin: adminLink(store, `/customers/${who.id}`),
+  };
+}
+
+// The referral program (D131) -----------------------------------------------------------------
+
+async function getAffiliateProgramTool({ store }: OwnerToolContext, { customer }: OwnerToolInput<"get_affiliate_program">) {
+  const locale = mainLocale(store);
+  const [program, overview, bonus] = await Promise.all([getAffiliateSettings(store.id), affiliateOverview(store.id), getBonusSettings(store.id)]);
+  const format = moneyIn(program.currency, locale);
+  const who = customer ? await findBonusCustomer(store, customer) : null;
+  const mine = who ? await customerAffiliate(store.id, who.id) : null;
+  return {
+    on: program.enabled && program.bonusOn,
+    switched_on: program.enabled,
+    bonus_program_on: program.bonusOn,
+    ...(!program.bonusOn && { needs: AFFILIATE_NEEDS_BONUS }),
+    credits_are_in: program.currency,
+    how_it_works: AFFILIATE_EXPLANATION,
+    friend_percent: program.friendPercent,
+    friend_most_off: program.friendMaxMinor === null ? "no limit" : format(program.friendMaxMinor),
+    referrer_percent: bpsToPercentText(program.rewardBps),
+    orders_that_earn: program.rewardOrders ?? "every order",
+    monthly_limit_per_referrer: program.monthlyCapMinor === null ? "no limit" : format(program.monthlyCapMinor),
+    link_remembered_days: program.cookieDays,
+    rules_for_shoppers: affiliateRulesSummary(program, format, bonus.pendingDays),
+    example: affiliateExample(program, program.currency, locale),
+    lately: Object.fromEntries(affiliateOverviewRows(overview, format).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
+    ...(who && mine && {
+      customer: {
+        email: who.email,
+        link_code: mine.code,
+        blocked: mine.blocked,
+        ...(mine.blocked && { blocked_reason: mine.blockedReason }),
+        friends_who_ordered: mine.friends,
+        credits_earned: format(mine.earnedMinor),
+        referred_by: mine.referredBy ? { email: mine.referredBy.email, code: mine.referredBy.code } : null,
+        orders_through_links: mine.attributions.slice(0, 10).map((row) => ({ order: row.orderNumber, status: attributionStatus(row), credits: row.rewardMinor > 0 ? moneyIn(row.creditsCurrency, locale)(row.rewardMinor) : undefined })),
+      },
+    }),
+    page: adminLink(store, "/affiliates"),
+  };
+}
+
+/** The settings a change would make: what the store has now, with what was given put over it. Problems are said for the model. */
+async function affiliateSettingsFor(store: Store, input: OwnerToolInput<"set_affiliate_program">): Promise<{ settings: AffiliateSettings; bonusOn: boolean }> {
+  if (Object.values(input).every((v) => v === undefined)) return fail("Say what to change: switch it on or off, the friend's discount, what a referrer earns, for how many orders, the monthly limit or how long a link is remembered.");
+  const current = await getAffiliateSettings(store.id);
+  const { bonusOn, currency, ...settings } = current;
+  const next: AffiliateSettings = { ...AFFILIATE_DEFAULTS, ...settings };
+  if (input.enabled !== undefined) next.enabled = input.enabled;
+  if (input.friend_percent !== undefined) next.friendPercent = input.friend_percent;
+  if (input.friend_max !== undefined) {
+    const minor = input.friend_max === null ? null : parsePrice(input.friend_max, currency);
+    if (input.friend_max !== null && minor === null) return fail(`The most the welcome discount takes off is an amount in ${currency}, such as 100 or 99,50, or null for no limit.`);
+    next.friendMaxMinor = minor;
+  }
+  if (input.reward_percent !== undefined) {
+    const bps = percentTextToBps(String(input.reward_percent));
+    if (bps === null) return fail("What a referrer earns is a percentage with at most two decimals, such as 5 or 2.5.");
+    next.rewardBps = bps;
+  }
+  if (input.reward_orders !== undefined) next.rewardOrders = input.reward_orders;
+  if (input.monthly_cap !== undefined) {
+    const minor = input.monthly_cap === null ? null : parsePrice(input.monthly_cap, currency);
+    if (input.monthly_cap !== null && minor === null) return fail(`The monthly limit is an amount in ${currency}, such as 500, or null for no limit.`);
+    next.monthlyCapMinor = minor;
+  }
+  if (input.cookie_days !== undefined) next.cookieDays = input.cookie_days;
+  return { settings: next, bonusOn };
+}
+
+async function setAffiliateProgramTool(ctx: OwnerToolContext, input: OwnerToolInput<"set_affiliate_program">) {
+  const { store } = ctx;
+  const { settings } = await affiliateSettingsFor(store, input);
+  const result = await saveAffiliateSettings(ctx.account, store.id, settings);
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(affiliateTag(store.id));
+  ctx.invalidate(cookiesTag(store.id));
+  ctx.invalidate(storeTag(store.slug));
+  ctx.invalidate(catalogTag(store.id));
+  const program = await getAffiliateSettings(store.id);
+  const bonus = await getBonusSettings(store.id);
+  return {
+    done: settings.enabled ? "The referral program is on with these rules." : "The referral program is off. Credits already earned are kept.",
+    rules_for_shoppers: affiliateRulesSummary(settings, moneyIn(program.currency, mainLocale(store)), bonus.pendingDays),
+    ...(settings.enabled && { note: "Visitors are asked about marketing cookies, because a friend's link is remembered only with their consent." }),
+    admin: adminLink(store, "/affiliates"),
+  };
+}
+
+/** The customer with a link, found, or the reason there is none. */
+async function affiliateCustomerFor(store: Store, ref: string) {
+  const who = await findBonusCustomer(store, ref);
+  const [link] = await db().execute<Row>(sql`select 1 from commerce.affiliates where store_id = ${store.id}::uuid and customer_id = ${who.id}::uuid`);
+  return link ? who : fail(`${who.email} has no referral link yet: customers get one when they open Refer a friend in My account.`);
+}
+
+async function blockAffiliateTool(ctx: OwnerToolContext, input: OwnerToolInput<"block_affiliate">) {
+  const { store } = ctx;
+  const who = await affiliateCustomerFor(store, input.customer);
+  const result = await setAffiliateBlocked(ctx.account, store.id, who.id, input.blocked, input.reason);
+  if (!result.ok) return fail(result.problems.join(" "));
+  return {
+    done: input.blocked ? `${who.email} is blocked: they earn no more referral credits.` : `${who.email} earns referral credits again.`,
     admin: adminLink(store, `/customers/${who.id}`),
   };
 }
@@ -1193,7 +1312,7 @@ async function createFieldGroupTool(ctx: OwnerToolContext, input: OwnerToolInput
  * `OwnerToolError` with the reason for the model.
  */
 export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<void> {
-  if (name !== "set_fields" && name !== "create_field_group" && name !== "set_bonus_program" && name !== "adjust_customer_credits") return;
+  if (name !== "set_fields" && name !== "create_field_group" && name !== "set_bonus_program" && name !== "adjust_customer_credits" && name !== "set_affiliate_program" && name !== "block_affiliate") return;
   const tool = OWNER_TOOLS_BY_NAME[name];
   const input = tool ? readToolInput(tool, raw) : null;
   if (!input?.ok) return fail(`The arguments could not be read: ${input?.problem ?? "unknown tool"}`);
@@ -1206,6 +1325,18 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
   }
   if (name === "adjust_customer_credits") {
     await adjustmentFor(ctx.store, input.input as OwnerToolInput<"adjust_customer_credits">);
+    return;
+  }
+  // A referral change that could not be made is refused now too: the rules, and the bonus program being on.
+  if (name === "set_affiliate_program") {
+    const { settings, bonusOn } = await affiliateSettingsFor(ctx.store, input.input as OwnerToolInput<"set_affiliate_program">);
+    const checked = affiliateSettingsInput.safeParse(settings);
+    if (!checked.success) return fail(checked.error.issues.map((i) => i.message).join(" "));
+    if (settings.enabled && !bonusOn) return fail(AFFILIATE_NEEDS_BONUS);
+    return;
+  }
+  if (name === "block_affiliate") {
+    await affiliateCustomerFor(ctx.store, (input.input as OwnerToolInput<"block_affiliate">).customer);
     return;
   }
   if (name === "set_fields") await prepareSetFields(ctx, input.input as OwnerToolInput<"set_fields">);
@@ -1251,6 +1382,9 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   get_bonus_program: getBonusProgramTool,
   set_bonus_program: setBonusProgramTool,
   adjust_customer_credits: adjustCustomerCreditsTool,
+  get_affiliate_program: getAffiliateProgramTool,
+  set_affiliate_program: setAffiliateProgramTool,
+  block_affiliate: blockAffiliateTool,
   customer_insights: customerInsights,
   product_performance: productPerformance,
   sales_trend: salesTrend,

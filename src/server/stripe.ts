@@ -70,11 +70,19 @@ export const ACCOUNT_EVENTS = [
   "v2.core.account[configuration.merchant].capability_status_updated",
 ];
 
-/** Kaizen's own subscriptions to stores (Stripe Billing on Kaizen's account). */
+/**
+ * Kaizen's own subscriptions to stores (Stripe Billing on Kaizen's account), and the invoices and credit notes of their
+ * plans, which the referral program (D131) earns commission on and puts credit on.
+ */
 export const BILLING_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] = [
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
+  "invoice.created",
+  "invoice.paid",
+  "invoice.voided",
+  "invoice.deleted",
+  "credit_note.created",
 ];
 
 export type WebhookKind = "snapshot" | "thin" | "billing";

@@ -1,5 +1,6 @@
 import {
   BONUS_KIND_LABELS,
+  isGrantKind,
   bonusSettingsInput,
   earnAmount,
   restoreShare,
@@ -279,7 +280,7 @@ export const entryLabel = (entry: Pick<BonusEntry, "kind">): string => BONUS_KIN
 
 /** Whether a grant can be used yet (its date has passed), or null for lines that are not grants. */
 export function isUsableNow(entry: Pick<BonusEntry, "kind" | "availableAt">, now: Date): boolean | null {
-  if (entry.kind !== "earn" || !entry.availableAt) return null;
+  if (!isGrantKind(entry.kind) || !entry.availableAt) return null;
   return new Date(entry.availableAt).getTime() <= now.getTime();
 }
 

@@ -133,6 +133,12 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
               <dd>−{money(order.discountMinor)}</dd>
             </div>
           )}
+          {order.referralDiscountMinor > 0 && (
+            <div className="flex justify-between">
+              <dt>{m.affiliate.discountRow}</dt>
+              <dd>−{money(order.referralDiscountMinor)}</dd>
+            </div>
+          )}
           {order.bonus && order.bonus.usedMinor > 0 && (
             <div className="flex justify-between">
               <dt>{m.bonus.usedRow}</dt>

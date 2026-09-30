@@ -7,7 +7,7 @@ import { formatBookingTime } from "@/lib/booking-slots";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { discountNote } from "@/lib/customer-tiers";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
-import { emailText, orderBonusEarned, orderBonusRows, type EmailText } from "@/lib/email-text";
+import { emailText, orderBonusEarned, orderBonusRows, orderReferralRows, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
 import { t, type Messages } from "@/lib/i18n";
 import { conversionFor, localizationOf } from "@/lib/localization";
@@ -149,7 +149,8 @@ function orderLines(
             },
           ]
         : []),
-      // Bonus credits used (D130), after the discounts.
+      // The friend's welcome discount (D131) and the bonus credits used (D130), after the discounts.
+      ...orderReferralRows(text, order.referralDiscountMinor, money),
       ...orderBonusRows(text, order.bonus, money),
       { label: text.total, value: money(order.totalMinor), strong: true },
       { label: text.vat, value: money(order.taxMinor), muted: true },

@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore } from "react";
 
 import {
+  CONSENT_CHANGED_EVENT,
   CONSENT_DAYS,
   FULL_CONSENT,
   KNOWN_COOKIES,
@@ -251,6 +252,7 @@ export function ConsentManager({ storeId, tracking, code = {}, categories, texts
     }).catch(() => {});
     setDecided(true);
     setChoosing(false);
+    window.dispatchEvent(new Event(CONSENT_CHANGED_EVENT));
     const withdrawn = stored ? OPTIONAL_CATEGORIES.filter((c) => stored.choices[c] && !allowed[c]) : [];
     if (withdrawn.length > 0) {
       // A tool already running cannot be stopped: its cookies go, and the page starts again without it.

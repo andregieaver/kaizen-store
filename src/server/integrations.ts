@@ -222,9 +222,10 @@ async function orderData(storeId: string, storeSlug: string, orderId: string) {
     customer_name: order.billingAddress.name || order.shippingAddress.name || "",
     subtotal: money(order.subtotalMinor),
     shipping: money(order.shippingMinor),
-    // Bonus credits used (D130) are part of the discount, so subtotal + shipping - discount is still the total.
-    discount: money(order.discountMinor + order.creditMinor),
+    // Bonus credits used (D130) and the friend's welcome discount (D131) are part of the discount, so subtotal + shipping - discount is still the total.
+    discount: money(order.discountMinor + order.referralDiscountMinor + order.creditMinor),
     credits_used: money(order.creditMinor),
+    referral_discount: money(order.referralDiscountMinor),
     discount_code: order.discountCode ?? "",
     vat: money(order.taxMinor),
     total: money(order.totalMinor),

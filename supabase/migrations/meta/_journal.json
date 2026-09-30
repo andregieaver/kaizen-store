@@ -1422,6 +1422,27 @@
       "when": 1790789759702,
       "tag": "20260930173559_bonus_program_store_copy",
       "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1790794046683,
+      "tag": "20260930184726_affiliate_program",
+      "breakpoints": true
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1790794055939,
+      "tag": "20260930184735_referral_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1790794061222,
+      "tag": "20260930184741_affiliate_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -118,6 +118,34 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "refer-store-owners",
+    area: "store",
+    title: "Refer other store owners",
+    when: "The owner asks about Kaizen's referral program, their referral link or code, credit on their Kaizen invoices, or how to earn from recommending Kaizen.",
+    steps: [
+      "Call get_my_referrals: it answers from their own account (link, code, visits, stores that opened, credit per currency). Never guess a figure, and never say anything about a referred store's customers or orders: it is not known to them and is not shown.",
+      "Explain in two sentences: when another store owner opens a store through their link, they earn a share of the fees that store pays Kaizen (its plan and Kaizen's fee on its sales) for a number of months, as credit that comes off their own Kaizen plan invoices. Credit is kept per currency and waits a few days before it can be used.",
+      "Their link is in the answer: offer to open the page (account.referrals) to copy it. Offer to write a short message they can send, in their own voice, without claims about savings or earnings.",
+      "If the program is off or they are blocked, say so in one line and do not promise anything.",
+    ],
+  },
+  {
+    id: "set-up-referrals",
+    area: "store",
+    title: "Set up a referral program",
+    when: "The owner wants customers to bring friends, asks about referrals, affiliates, tips or invite-a-friend discounts, or wants to change, check or police the referral program.",
+    steps: [
+      "Call get_affiliate_program to see whether it is on and how it is set. It answers from the store's own data: never guess a percentage or a figure.",
+      "The referral program rewards in bonus credits, so the bonus program must be on first (set-up-bonus-program). If it is off, say so and set that up before anything else.",
+      "Explain in two sentences: signed-in customers get their own link; a friend who orders for the first time through it gets a welcome discount, and the customer who shared it earns bonus credits. Only new customers count, nobody can refer themselves, and credits are taken back if the order is refunded or cancelled.",
+      "Ask what they want: the friend's discount (10% is a typical start, with an optional cap), how much the referrer earns (5%), for how many of the friend's orders (only the first by default), an optional monthly limit per referrer, and how long a link is remembered. Every percent is a cost, twice on the first order.",
+      "Say the rules back in plain words, then call set_affiliate_program with only what changes (kept for their approval). Do not turn it on until they have said yes.",
+      "The link is remembered in a cookie only for visitors who allow marketing cookies, so the store's cookie banner appears once the program is on; tell the owner.",
+      "To stop a customer earning (for example referring themselves with a second account), use block_affiliate with their email and a reason; get_affiliate_program with `customer` shows their friends and earnings first.",
+      "Open the page (affiliates) for the settings, the referrers and the orders that came through links; the customer page (customer) shows one customer's referrals.",
+    ],
+  },
+  {
     id: "improve-search",
     area: "store",
     title: "Help shoppers find things",
@@ -275,6 +303,18 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "Call platform_overview for stores, plans and requests.",
       "Call plan_reminder_stats for plan checkouts left unfinished, list_platform_emails for emails that failed, and platform_ai_usage for how much of the AI was used, by whom and on whose key.",
       "Say what needs doing first (waiting requests, failed emails, stores without a plan), each with its page.",
+    ],
+  },
+  {
+    id: "referral-program",
+    area: "platform",
+    title: "Run the referral program",
+    when: "The platform admin asks about referrals, affiliates, commission for referring store owners, or wants to change the program's terms.",
+    steps: [
+      "Call get_referral_program (with referrers: true to see who brings in the most). Say whether it is on, the terms, and the totals per currency: never add amounts across currencies.",
+      "set_referral_program changes it (kept for approval). A referral keeps the commission and months it was made with, so a change only affects stores referred afterwards; off stops new referrals and new commission but earned credit stays usable.",
+      "Blocking a referrer, voiding a referral and adjusting credit are done on the page (referrals), each with a reason: offer to open it.",
+      "Turning it on also lists the referral cookie on the cookie page and shows visitors the marketing cookie choice; say so.",
     ],
   },
   {

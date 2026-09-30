@@ -222,7 +222,15 @@ function totalsList(view: CheckoutView, market: Market) {
         order.lines.filter((line) => !line.gift).map((line) => ({ minor: line.unitPriceMinor * line.quantity, rate: line.taxRate })),
       )
     : bonusMinor;
-  const discountNet = linesNet + shippingNet - (order.totalMinor - order.taxMinor) - (business ? bonusNet : 0);
+  // So is the friend's welcome discount (D131).
+  const referralMinor = order.referralDiscountMinor;
+  const referralNet = business
+    ? creditsNet(
+        referralMinor,
+        order.lines.filter((line) => !line.gift).map((line) => ({ minor: line.unitPriceMinor * line.quantity, rate: line.taxRate })),
+      )
+    : referralMinor;
+  const discountNet = linesNet + shippingNet - (order.totalMinor - order.taxMinor) - (business ? bonusNet + referralNet : 0);
   return (
     <>
       <dl className="flex flex-col gap-1 text-sm">
@@ -243,6 +251,12 @@ function totalsList(view: CheckoutView, market: Market) {
               {discountNote(order) && <span className="text-sm text-muted"> ({discountNote(order)})</span>}
             </dt>
             <dd>−{money(business ? discountNet : order.discountMinor)}</dd>
+          </div>
+        )}
+        {referralMinor > 0 && (
+          <div className="flex justify-between">
+            <dt>{m.affiliate.discountRow}</dt>
+            <dd>−{money(referralNet)}</dd>
           </div>
         )}
         {bonusMinor > 0 && (

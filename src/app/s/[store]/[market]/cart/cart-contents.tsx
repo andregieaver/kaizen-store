@@ -335,7 +335,7 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
   );
 }
 
-function summaryList({ m, view }: Draw) {
+function summaryList({ store, market, m, view }: Draw) {
   const { summary, business, money, net, sumNet } = view;
   const {
     payable,
@@ -358,6 +358,8 @@ function summaryList({ m, view }: Draw) {
     vat,
     balance,
     bonusMinor,
+    referralMinor,
+    referral,
   } = summary;
   const { terms } = view;
   return (
@@ -419,6 +421,18 @@ function summaryList({ m, view }: Draw) {
             </dd>
           </div>
         )}
+        {referralMinor > 0 && (
+          // The friend's welcome discount (D131), off goods before codes and credits.
+          <div className="flex justify-between gap-4">
+            <dt>{m.affiliate.discountRow}</dt>
+            <dd>
+              −
+              {business
+                ? money(creditsNet(referralMinor, payable.map((line) => ({ minor: today(line), rate: line.vatRate }))))
+                : money(referralMinor)}
+            </dd>
+          </div>
+        )}
         {bonusMinor > 0 && (
           <div className="flex justify-between gap-4">
             <dt>{m.bonus.discountRow}</dt>
@@ -466,6 +480,14 @@ function summaryList({ m, view }: Draw) {
       )}
       {terms && <p className="text-sm">{terms}</p>}
       {applied && Object.keys(applied.renewalUnits).length > 0 && <p className="text-sm">{m.discountRenews}</p>}
+      {referral.state === "guest" && (
+        // A friend's link is in play but nobody is signed in: the welcome discount is for a signed-in first order (D131).
+        <p className="text-sm text-muted">
+          <Link href={marketPath(store.slug, market.slug, "/account")} className="underline">
+            {m.affiliate.signInForDiscount(String(referral.percent))}
+          </Link>
+        </p>
+      )}
     </>
   );
 }

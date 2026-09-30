@@ -11,6 +11,7 @@ import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
+import { rememberAffiliate } from "@/server/affiliates";
 import { changeLine, readCartId, setCartCompany } from "@/server/cart";
 import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
@@ -79,6 +80,12 @@ export async function addToCart(
     undefined,
     input.booking,
   );
+  // The referral code the page held (D131), else the consented cookie's, is kept with the cart; checked by the server.
+  if (result.outcome !== "removed") {
+    const cartId = await readCartId(input.shop);
+    const ref = formData.get("ref");
+    if (cartId) await rememberAffiliate(input.shop, cartId, typeof ref === "string" ? ref.slice(0, 32) : null);
+  }
   refresh();
   return result.outcome === "removed"
     ? { outcome: "error", quantity: 0 }

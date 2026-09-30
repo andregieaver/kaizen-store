@@ -7,6 +7,7 @@ import { slugProblem } from "@/lib/slug";
 import { emailSignInLink } from "@/lib/supabase/mailer";
 
 import { audit, type Account } from "./auth";
+import { notifyReferralOpened, usableReferralCode } from "./referrals";
 
 type Row = Record<string, unknown>;
 
@@ -15,17 +16,23 @@ export type AccessRequestInput = {
   email: string;
   storeName: string;
   message: string;
+  /** The referral code the sign-up came with (D131): from the link's address or form, else the cookie kept after consent. */
+  referralCode?: string | null;
 };
 
 /**
  * Records a request to join the beta. A second request from an email that
  * already has one pending is quietly merged, so the form never reveals who
- * has asked before.
+ * has asked before. A referral code (D131) is kept with the request when it is
+ * a real one of a referrer who is not blocked; any other is dropped without a
+ * word, so the form reveals nothing about codes either. Approving the request
+ * makes the referral, in SQL.
  */
 export async function createAccessRequest(input: AccessRequestInput): Promise<void> {
+  const referralCode = await usableReferralCode(input.referralCode);
   await db().execute(sql`
-    insert into commerce.access_requests (email, name, store_name, message)
-    values (${input.email}, ${input.name}, ${input.storeName}, ${input.message})
+    insert into commerce.access_requests (email, name, store_name, message, referral_code)
+    values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode})
     on conflict ((lower(email))) where status = 'pending' do nothing
   `);
 }
@@ -112,6 +119,7 @@ export async function approveAccessRequest(
   if (!storeName.trim()) return { ok: false, problems: ["Enter a store name."] };
 
   let email: string;
+  let storeId: string;
   try {
     const [row] = await db().execute<Row>(sql`
       select commerce.approve_access_request(
@@ -120,9 +128,12 @@ export async function approveAccessRequest(
       (select email from commerce.access_requests where id = ${requestId}::uuid) as email
     `);
     email = String(row.email);
+    storeId = String(row.store_id);
   } catch (error) {
     return { ok: false, problems: [approvalProblem(error, slug)] };
   }
+  // A store that came through a referral (D131, made by the approval itself): its referrer hears it is open. Best effort.
+  await notifyReferralOpened(storeId).catch(() => null);
 
   return { ok: true, slug, email, invited: await emailSignInLink(email, origin) };
 }

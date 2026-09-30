@@ -318,8 +318,8 @@ export function verificationTags(seo: StoreSeo): Metadata["verification"] {
  */
 export const storeSitemapPath = (slug: string) => `${storeBase(slug)}/store-sitemap.xml`;
 
-/** Kaizen's own pages that are not for crawlers. */
-const PLATFORM_PRIVATE = ["/admin", "/api/", "/auth/"];
+/** Kaizen's own pages that are not for crawlers (`/r/` is a referral link, D131: crawlers would only inflate its visits). */
+const PLATFORM_PRIVATE = ["/admin", "/api/", "/auth/", "/r/"];
 
 /**
  * The robots.txt for the whole site: Kaizen's rules (with its pages closed

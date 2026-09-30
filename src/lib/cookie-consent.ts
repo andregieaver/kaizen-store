@@ -68,6 +68,9 @@ export function toolCategories(tracking: TrackingSettings): OptionalCategory[] {
 /** How long a choice lasts before a visitor is asked again, as Datatilsynet recommends at most. */
 export const CONSENT_DAYS = 365;
 
+/** Sent on `window` when the visitor has just made a choice, for what waits on it (Kaizen's referral cookie, D131). */
+export const CONSENT_CHANGED_EVENT = "kaizen:consent-changed";
+
 /** The consent cookie of Kaizen's site (null) or a store's, one per site so choices are the site's own. */
 export const consentCookieName = (storeId: string | null) => `consent_${storeId ?? "kaizen"}`;
 
@@ -132,6 +135,10 @@ export type KnownCookie = {
   colorMode?: boolean;
   /** Set only on sites with a modal that opens by itself and is not shown every time (D121). */
   modals?: boolean;
+  /** Set only on Kaizen's site while its referral program is on (D131). */
+  referrals?: boolean;
+  /** Set only in stores whose referral program (the affiliate program, D131) is on. */
+  affiliate?: boolean;
 };
 
 /**
@@ -202,6 +209,39 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker at du lukket et popup-vindu, slik at det ikke åpnes igjen med en gang; lagres til du lukker fanen, eller i så mange dager nettstedet har valgt.",
       sv: "Kommer ihåg att du stängde ett popup-fönster, så att det inte öppnas igen direkt; sparas tills du stänger fliken eller så många dagar som webbplatsen har valt.",
       da: "Husker, at du lukkede et popup-vindue, så det ikke åbner igen med det samme; gemmes, til du lukker fanen, eller i det antal dage, webstedet har valgt.",
+    },
+  },
+  {
+    // In a cookie, set by the sign-up page and only once a visitor who allowed marketing arrives by a referral link (D131).
+    name: "kaizen_ref",
+    pattern: /^kaizen_ref$/,
+    provider: "Kaizen",
+    category: "marketing",
+    days: 30,
+    on: "platform",
+    referrals: true,
+    purpose: {
+      en: "Remembers which Kaizen store owner's referral link you came from, so they are credited if you ask for a store; kept for the number of days the referral program sets.",
+      nb: "Husker hvilken Kaizen-butikkeiers anbefalingslenke du kom fra, slik at vedkommende får æren hvis du ber om en butikk; lagres i så mange dager som anbefalingsprogrammet bestemmer.",
+      sv: "Kommer ihåg vilken Kaizen-butiksägares rekommendationslänk du kom från, så att hen krediteras om du ber om en butik; sparas i så många dagar som rekommendationsprogrammet bestämmer.",
+      da: "Husker, hvilken Kaizen-butiksejers anbefalingslink du kom fra, så vedkommende krediteres, hvis du beder om en butik; gemmes i det antal dage, anbefalingsprogrammet bestemmer.",
+    },
+  },
+  {
+    // A cookie, written by the browser and only once a visitor has allowed marketing, in a store whose referral program
+    // is on and only for a visitor who opened a friend's link (D131).
+    name: "kaizen_aff_…",
+    pattern: /^kaizen_aff_[0-9a-f-]{36}$/,
+    provider: "Kaizen",
+    category: "marketing",
+    days: 90,
+    on: "store",
+    affiliate: true,
+    purpose: {
+      en: "Remembers which friend's referral link you came from, so the store can give you a welcome discount and thank them; the number of days is the store's choice, at most 90.",
+      nb: "Husker hvilken venns tipslenke du kom fra, slik at butikken kan gi deg velkomstrabatt og takke vennen; antall dager bestemmer butikken, høyst 90.",
+      sv: "Kommer ihåg vilken väns tipslänk du kom från, så att butiken kan ge dig välkomstrabatt och tacka vännen; antalet dagar bestämmer butiken, högst 90.",
+      da: "Husker, hvilken vens anbefalingslink du kom fra, så butikken kan give dig velkomstrabat og takke vennen; antallet af dage bestemmer butikken, højst 90.",
     },
   },
   {
@@ -429,7 +469,9 @@ export function declaredCookies(
     chat = false,
     colorMode = false,
     modals = false,
-  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean } = {},
+    referrals = false,
+    affiliate = false,
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -438,6 +480,8 @@ export function declaredCookies(
       (!cookie.chat || chat) &&
       (!cookie.colorMode || colorMode) &&
       (!cookie.modals || modals) &&
+      (!cookie.affiliate || affiliate) &&
+      (!cookie.referrals || referrals) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );
 }

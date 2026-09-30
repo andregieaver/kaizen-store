@@ -39,6 +39,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
     "Staff, rooms and rental items (a host's stay with the original; a calendar's secret address is made again).",
   ),
   bonus_settings: settings("The bonus program's rules (D130): percentages, waits and expiry; balances are not copied."),
+  affiliate_settings: settings("The store's referral program's rules (D131): the friend's discount, the reward, limits and cookie days; its customers' links and earnings are not copied."),
   booking_seasons: catalogue("A stay's or rental's seasonal prices; go with the product."),
   campaigns: settings(
     "Offers (D114); one for products that were not copied is switched off, a gift of a product not copied is left out.",
@@ -122,6 +123,10 @@ export const COPY_RULES: Record<string, CopyRule> = {
   access_requests: never("Sign-up requests belong to the platform."),
   bonus_allocations: never("What each use of credits took from which grant: part of a customer's ledger (D130)."),
   bonus_entries: never("Customers' bonus credits (D130) are their balance with the original store, like their orders' payments."),
+  affiliates: never("Customers' referral codes (D131) belong to the original store's customers; a copied customer makes theirs again when they open Refer a friend."),
+  affiliate_attributions: never("Which order came through whose link, and what it earned (D131), is history of the original store: a copied order never carries a referral."),
+  referrals: never("Kaizen's referral program (D131) is the platform's: a store referred by a link stays so, and a copy is not a new referral."),
+  referral_visits: never("Counts of visits to referral links by day and code (D131), with nothing about the visitor; they stay where they were counted."),
   ai_providers: never("The owner's own AI keys are secrets."),
   ai_usage: never("A log of the original's AI use."),
   assistant_approvals: never("The AI manager's conversations belong to the account and the store they happened in."),

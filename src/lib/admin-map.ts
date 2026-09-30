@@ -263,6 +263,10 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
     tasks: ["Turn the bonus program on or off", "Change how much customers earn back", "Set when credits expire", "See the credits the store owes"],
     keywords: ["bonus", "credits", "loyalty", "points", "rewards", "reward customers", "returning customers", "repeat customers", "cashback", "store credit", "earn", "redeem", "reward program"],
   }),
+  store("affiliates", "/affiliates", "Referral program", "Sales", "The referral program: signed-in customers share a link, a friend's first order gets a welcome discount and the customer who shared it earns bonus credits. Set the friend's discount, the reward, how many orders earn it, a monthly limit and how long a link is remembered; needs the bonus program. See the referrers and the orders that came through links, and block a referrer with a reason.", {
+    tasks: ["Turn the referral program on or off", "Change the friend's welcome discount", "Change how much a referrer earns", "Block a referrer who abuses it", "See who referred whom"],
+    keywords: ["referral", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"],
+  }),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"] }),
   store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason)."),
   store("customer-groups", "/customer-groups", "Customer groups", "Sales", "Discount groups such as Wholesale: a fixed percentage off for the customers in them.", {
@@ -371,6 +375,11 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "ai", "provider", "model"],
     tasks: ["See your total AI usage per provider and model", "See usage per store", "Choose the period"],
   }),
+  account("account.referrals", "/account/referrals", "Referrals", "Your referral link and code, how many came by it, the stores that opened through it and the credit you earned on what they pay Kaizen, which comes off your own Kaizen invoices.", {
+    needs: "owner",
+    keywords: ["referral", "refer", "affiliate", "invite", "recommend", "commission", "credit", "link", "code"],
+    tasks: ["Copy your referral link", "See the stores that opened through it", "See your credit and how it is used"],
+  }),
   account("account", "/account", "Your account", "Your name, picture, password, light or dark, and Kaizen Life.", {
     keywords: ["profile", "password", "avatar", "dark mode"],
   }),
@@ -393,6 +402,10 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   platform("plan-reminders", "/plan-reminders", "Plan reminders", "Platform", "Emails to owners who left a plan checkout."),
   platform("plan-reminder.new", "/plan-reminders/new", "New plan reminder", "Platform", "Adds a plan reminder step."),
   platform("plan-reminder", "/plan-reminders/[stepId]", "Plan reminder", "Platform", "One plan reminder step."),
+  platform("referrals", "/referrals", "Referrals", "Platform", "Kaizen's referral program: whether it is on, the commission, months, pending days and cookie days; the referrers with block, unblock and credit adjustments; the referred stores with void; and totals per currency.", {
+    keywords: ["referral", "refer", "affiliate", "commission", "invite", "credit", "referrer"],
+    tasks: ["Switch the referral program on or off and set its terms", "Block or unblock a referrer", "Void a referral", "Add or remove a referrer's credit with a reason"],
+  }),
   platform("stripe", "/stripe", "Stripe", "Platform", "Kaizen's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
   platform("pages", "/pages", "Pages", "Kaizen site", "Kaizen's own website pages."),
   platform("page.new", "/pages/new", "New page", "Kaizen site", "Starts a Kaizen page."),

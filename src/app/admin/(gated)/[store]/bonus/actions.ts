@@ -3,9 +3,11 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { BonusResult } from "@/lib/bonus";
+import { affiliateTag } from "@/server/affiliates";
 import { requireMember } from "@/server/auth";
 import { saveBonusSettings } from "@/server/bonus";
 import { catalogTag } from "@/server/catalog";
+import { cookiesTag } from "@/server/site-cookies";
 import { storeTag } from "@/server/stores";
 
 /**
@@ -20,6 +22,9 @@ export async function saveBonusAction(storeSlug: string, raw: unknown): Promise<
     // What the storefront shows about earning credits (cards, cart, account) follows the settings.
     updateTag(storeTag(member.store.slug));
     updateTag(catalogTag(member.store.id));
+    // The referral program works only while the bonus program is on (D131): its link capture and cookie follow.
+    updateTag(affiliateTag(member.store.id));
+    updateTag(cookiesTag(member.store.id));
     refresh();
   }
   return result;

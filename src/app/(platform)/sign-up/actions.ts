@@ -1,8 +1,10 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
+import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
 import { createAccessRequest } from "@/server/platform";
 
 const input = z.object({
@@ -32,8 +34,11 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
   if (!parsed.success) {
     return { status: "error", messages: parsed.error.issues.map((issue) => issue.message) };
   }
+  // A referral (D131): the code the link put in the form, else the cookie, which only exists when the visitor allowed it.
+  // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
+  const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
   try {
-    await createAccessRequest(parsed.data);
+    await createAccessRequest({ ...parsed.data, referralCode });
   } catch {
     return { status: "error", messages: ["Your request could not be saved. Please try again."] };
   }

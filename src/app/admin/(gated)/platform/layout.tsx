@@ -44,6 +44,7 @@ const groups: NavGroup[] = [
     items: [
       { href: `${base}/discounts`, label: "Discounts" },
       { href: `${base}/plan-reminders`, label: "Plan reminders" },
+      { href: `${base}/referrals`, label: "Referrals" },
       { href: `${base}/stripe`, label: "Stripe" },
     ],
   },

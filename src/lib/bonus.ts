@@ -66,7 +66,8 @@ export type BonusEntryKind =
   | "restore" // used credits returned because the order was cancelled or refunded
   | "reverse" // granted credits taken back because the order was cancelled or refunded
   | "expire" // credits that passed their expiry unused
-  | "adjust"; // added or removed by staff, with a reason
+  | "adjust" // added or removed by staff, with a reason
+  | "referral"; // granted to a referrer for a friend's paid order (D131, the affiliate program)
 
 export const BONUS_KIND_LABELS: Record<BonusEntryKind, string> = {
   earn: "Earned",
@@ -75,7 +76,11 @@ export const BONUS_KIND_LABELS: Record<BonusEntryKind, string> = {
   reverse: "Taken back",
   expire: "Expired",
   adjust: "Adjusted by the store",
+  referral: "Referral reward",
 };
+
+/** Kinds that are lots: credits granted to be used until they are (earned on an order, or for a friend's order). */
+export const isGrantKind = (kind: BonusEntryKind): boolean => kind === "earn" || kind === "referral";
 
 /** One line of a customer's history, amounts in the credits' currency (signed: what was added or taken). */
 export type BonusEntry = {

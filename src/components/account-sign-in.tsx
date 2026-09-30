@@ -14,6 +14,8 @@ import {
   type SignInState,
 } from "@/app/s/[store]/[market]/account/actions";
 
+import { AffiliateField } from "./affiliate-field";
+
 export type SignInLabels = {
   intro: string;
   email: string;
@@ -218,6 +220,7 @@ function AccountSignIn({ store, market, labels }: { store: string; market: strin
       <div className="flex flex-col gap-4">
         <p role="status">{codeState.message}</p>
         <form action={verify} className="flex flex-col gap-3">
+          <AffiliateField store={store} />
           <CodeInput label={labels.code} />
           <Message state={verifyState} />
           <button type="submit" disabled={verifying} className={button}>
@@ -298,6 +301,7 @@ function Register({
     <div className="flex flex-col gap-4">
       <p>{labels.registerIntro}</p>
       <form action={register} className="flex flex-col gap-3">
+        <AffiliateField store={store} />
         <label className="flex flex-col gap-1 font-medium">
           {labels.name}
           <input name="name" autoComplete="name" defaultValue={state.name} maxLength={200} className={input} />

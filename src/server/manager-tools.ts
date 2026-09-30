@@ -15,6 +15,7 @@ import {
   type PlatformToolName,
 } from "@/lib/manager-tools";
 import { formatMoney } from "@/lib/money";
+import { referralUrl } from "@/lib/referrals";
 import { readToolInput } from "@/lib/owner-tools";
 import { saysYes } from "@/lib/speech-text";
 import { siteUrl } from "@/lib/site";
@@ -28,9 +29,12 @@ import { getStoreBilling, listPlans, listStoreBilling } from "./billing";
 import { listEmails } from "./email";
 import { OwnerToolError } from "./owner-tools";
 import { planReminderStats } from "./plan-reminders";
+import { ensureBillingEvents } from "./referral-billing";
+import { getReferralSettings, listReferrers, referralTotals, referrerOverview, REFERRALS_TAG, saveReferralSettings } from "./referrals";
 import { approveAccessRequest, declineAccessRequest, listAccessRequests } from "./platform";
 import { getPlatformCustomer, listPlatformCustomers } from "./platform-customers";
 import { getStore, type Store } from "./stores";
+import { platformModes } from "./stripe";
 
 type Row = Record<string, unknown>;
 
@@ -153,9 +157,44 @@ async function decideApprovalTool(ctx: ManagerContext, { approval, approve }: Ma
     : { done: "Declined; nothing was done.", what: String(row.summary) };
 }
 
+// Referrals (D131) ----------------------------------------------------------------------------
+
+/** The person's own referral overview, in words and figures worked out in code (amounts per currency, never added). */
+async function getMyReferrals(ctx: ManagerContext) {
+  const o = await referrerOverview(ctx.account, 10);
+  if (!o.code) {
+    return { program_on: o.enabled, note: o.enabled ? "They own no store yet, so they have no referral link." : "The referral program is not running.", page: "/admin/account/referrals" };
+  }
+  return {
+    program_on: o.enabled,
+    blocked: o.blocked,
+    link: referralUrl(siteUrl(), o.code),
+    code: o.code,
+    terms: `${percent(o.settings.commissionBps)} of the fees a referred store pays Kaizen for ${o.settings.months} months, as credit on their own Kaizen invoices; usable ${o.settings.pendingDays} days after the fee is paid`,
+    visits: o.visits,
+    asked_for_a_store: o.signedUp,
+    stores: o.stores.map((s) => ({
+      store: s.storeName,
+      status: s.status,
+      opened: s.since.slice(0, 10),
+      earns_until: s.until.slice(0, 10),
+      earned: s.earned.map((e) => money(e.minor, e.currency)),
+    })),
+    credit: o.balances.map((b) => ({
+      currency: b.currency,
+      usable: money(b.availableMinor, b.currency),
+      waiting: money(b.pendingMinor, b.currency),
+      next_usable: b.pendingAt?.slice(0, 10) ?? null,
+    })),
+    latest: o.entries.slice(0, 5).map((e) => ({ date: e.createdAt.slice(0, 10), what: e.note, amount: money(e.amountMinor, e.currency) })),
+    page: "/admin/account/referrals",
+  };
+}
+
 type Handler = (ctx: ManagerContext, input: never) => Promise<unknown>;
 
 const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
+  get_my_referrals: getMyReferrals,
   find_admin_page: findAdminPage,
   open_admin_page: openAdminPage,
   use_skill: useSkill,
@@ -358,7 +397,51 @@ async function platformAiUsage(_ctx: ManagerContext, { days, store, owner }: Pla
   return { period: `the last ${days} days, today included`, ...summarizeUsage(rows), by_store_owner_account: owners, admin: "/admin/platform/ai/usage" };
 }
 
+async function getReferralProgram(_ctx: ManagerContext, { referrers, limit }: PlatformToolInput<"get_referral_program">) {
+  const [settings, totals, list] = await Promise.all([getReferralSettings(), referralTotals(), referrers ? listReferrers() : Promise.resolve([])]);
+  const sums = (rows: { currency: string; minor: number }[]) => rows.map((r) => money(r.minor, r.currency));
+  return {
+    on: settings.enabled,
+    commission: percent(settings.commissionBps),
+    months: settings.months,
+    pending_days: settings.pendingDays,
+    cookie_days: settings.cookieDays,
+    referrers: totals.referrers,
+    referred_stores: totals.referredStores,
+    commission_earned: sums(totals.earned),
+    credit_used_on_invoices: sums(totals.applied),
+    credit_owed: sums(totals.outstanding),
+    ...(referrers && {
+      top_referrers: list
+        .sort((a, b) => b.stores - a.stores || b.visits - a.visits)
+        .slice(0, limit)
+        .map((r) => ({ email: r.email, stores: r.stores, visits: r.visits, blocked: Boolean(r.blockedAt), credit: r.balances.map((b) => money(b.availableMinor, b.currency)) })),
+    }),
+    admin: "/admin/platform/referrals",
+  };
+}
+
+async function setReferralProgram(ctx: ManagerContext, input: PlatformToolInput<"set_referral_program">) {
+  const before = await getReferralSettings();
+  const result = await saveReferralSettings(ctx.account, {
+    enabled: input.enabled ?? before.enabled,
+    commissionBps: input.percent === undefined ? before.commissionBps : Math.round(input.percent * 100),
+    months: input.months ?? before.months,
+    pendingDays: input.pending_days ?? before.pendingDays,
+    cookieDays: input.cookie_days ?? before.cookieDays,
+  });
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(REFERRALS_TAG);
+  // Invoices and credit notes reach the program through Kaizen's billing webhook: make sure it sends them.
+  if (input.enabled) await Promise.all(platformModes().map((mode) => ensureBillingEvents(mode)));
+  const after = await getReferralSettings();
+  await audit(ctx.account.id, null, "platform.assistant.set_referral_program", { input });
+  return { done: `The referral program is ${after.enabled ? "on" : "off"}: ${percent(after.commissionBps)} for ${after.months} months, credit usable after ${after.pendingDays} days.` };
+}
+
 const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
+  get_referral_program: getReferralProgram,
+  set_referral_program: setReferralProgram,
   platform_overview: platformOverview,
   list_access_requests: listRequests,
   approve_access_request: approveRequest,

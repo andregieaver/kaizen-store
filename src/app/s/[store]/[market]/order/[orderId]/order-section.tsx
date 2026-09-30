@@ -216,6 +216,13 @@ function totalsList({ order, m, money }: OrderView) {
           <dd>−{money(order.discountMinor)}</dd>
         </div>
       )}
+      {order.referralDiscountMinor > 0 && (
+        // The friend's welcome discount (D131).
+        <div className="flex justify-between">
+          <dt>{m.affiliate.discountRow}</dt>
+          <dd>−{money(order.referralDiscountMinor)}</dd>
+        </div>
+      )}
       {order.bonus && order.bonus.usedMinor > 0 && (
         // Bonus credits used (D130).
         <div className="flex justify-between">

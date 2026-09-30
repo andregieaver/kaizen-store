@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { earnPercentText, pendingParts } from "@/lib/bonus-shopper";
-import type { ShopperBonus } from "@/lib/bonus";
+import { isGrantKind, type ShopperBonus } from "@/lib/bonus";
 import type { Messages } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 
@@ -93,7 +93,7 @@ export function BonusAccountView({
             {bonus.entries.map((entry) => {
               const orderId = entry.orderNumber ? orderIds[entry.orderNumber] : undefined;
               const when =
-                entry.kind === "earn"
+                isGrantKind(entry.kind)
                   ? [
                       entry.availableAt &&
                         new Date(entry.availableAt).getTime() > now.getTime() &&

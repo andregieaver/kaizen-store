@@ -1,5 +1,5 @@
 import { withoutVat } from "./b2b";
-import type { BonusEntry, CartBonus } from "./bonus";
+import { isGrantKind, type BonusEntry, type CartBonus } from "./bonus";
 import { minorUnitDigits } from "./money";
 
 /**
@@ -131,7 +131,7 @@ export function pendingParts(
 ): { availableAt: string; amountMinor: number }[] {
   const byDay = new Map<string, { availableAt: string; amountMinor: number }>();
   for (const entry of entries) {
-    if (entry.kind !== "earn" || !entry.availableAt || entry.amountMinor <= 0) continue;
+    if (!isGrantKind(entry.kind) || !entry.availableAt || entry.amountMinor <= 0) continue;
     if (new Date(entry.availableAt).getTime() <= now.getTime()) continue;
     const day = entry.availableAt.slice(0, 10);
     const part = byDay.get(day);

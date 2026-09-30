@@ -10,6 +10,7 @@ import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { t } from "@/lib/i18n";
 import { passwordProblem } from "@/lib/password";
 import { marketPath } from "@/lib/paths";
+import { attachReferral } from "@/server/affiliates";
 import { removeCustomerAvatar, setCustomerAvatar } from "@/server/avatars";
 import { chooseBusinessBuyer } from "@/server/b2b";
 import { readCartId } from "@/server/cart";
@@ -54,6 +55,12 @@ export type ResetState = { step: "email" | "code"; email: string; message: strin
 
 const email = z.email().max(254);
 
+/** The referral code a sign-up form carried from the page's memory (D131), or null: the server checks it. */
+const formRef = (form: FormData): string | null => {
+  const ref = form.get("ref");
+  return typeof ref === "string" && ref !== "" ? ref.slice(0, 32) : null;
+};
+
 /** Emails a sign-in code. Says the same whatever the address, so it reveals no accounts. */
 export async function requestCodeAction(
   storeSlug: string,
@@ -82,6 +89,8 @@ export async function verifyCodeAction(
   const code = String(form.get("code") ?? "").replace(/\D/g, "");
   const customerId = code.length === 6 ? await verifySignInCode(shop.store.id, previous.email, code) : null;
   if (!customerId) return { ...previous, error: true, message: t(shop.market.lang).account.wrongCode };
+  // A friend who signs up with the code of a link in hand is tied to its referrer (D131); nothing for an older account.
+  await attachReferral(shop.store.id, customerId, formRef(form));
   await startSession(shop.store.id, customerId);
   redirect(marketPath(shop.store.slug, shop.market.slug, "/account"));
 }
@@ -228,6 +237,7 @@ export async function registerAction(
   if (!outcome.ok) {
     return { ...state, known: outcome.known, message: outcome.known === "account" ? m.knownAccount : m.knownPurchases };
   }
+  await attachReferral(shop.store.id, outcome.customerId, formRef(form));
   await startSession(shop.store.id, outcome.customerId);
   // After the response, so signing up does not wait for the email service.
   after(() => sendWelcome(shop.store.id, outcome.customerId, { marketCode: shop.market.code, locale: shop.market.locale }));

@@ -17,9 +17,11 @@ import {
 import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 import { codeCategories, customCodeInput, type CustomCode } from "@/lib/custom-code";
 
+import { affiliateSite } from "./affiliates";
 import { audit, type Account } from "./auth";
 import { getChatAgent } from "./chat-agent";
 import { usesRememberedModals } from "./page-modals";
+import { referralPublicSettings } from "./referrals";
 
 type Row = Record<string, unknown>;
 
@@ -80,7 +82,15 @@ export async function siteCookies(
   const chat = (await getChatAgent(storeId))?.enabled ?? false;
   // Pop-ups that remember being closed keep it in the browser, as a preference (D121).
   const modals = await usesRememberedModals(storeId);
-  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals }).forEach(list);
+  // Kaizen's referral link is kept in a cookie, as marketing, while its program is on (D131): the banner asks for it.
+  const referral = storeId === null ? await referralPublicSettings() : null;
+  // A store with a referral program keeps the link a visitor opened, as marketing, once they allow it (D131).
+  const site = storeId === null ? null : await affiliateSite(storeId);
+  const affiliate = site?.on ?? false;
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate })
+    .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
+    .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.cookieDays } : cookie))
+    .forEach(list);
 
   const { items, notes } = await siteFindings(storeId);
   for (const item of reviewFindings(items, notes)) {

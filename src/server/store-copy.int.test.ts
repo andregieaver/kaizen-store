@@ -362,6 +362,18 @@ beforeAll(async () => {
   await db().execute(sql`
     insert into commerce.delivery_schedules (store_id, market_code, currency, name, delivery_weekday) values (${S}::uuid, 'DE', 'EUR', 'Fridays', 5)
   `);
+  // The referral program (D131): its rules, a customer's link, a friend who came through it and an order that did.
+  await db().execute(sql`
+    insert into commerce.affiliate_settings (store_id, enabled, reward_bps, reward_orders, friend_percent, friend_max_minor, monthly_cap_minor, cookie_days)
+    values (${S}::uuid, true, 700, 3, 12, 5000, 90000, 45)
+  `);
+  await db().execute(sql`insert into commerce.affiliates (store_id, customer_id, code) values (${S}::uuid, ${ids.customerVip}::uuid, ${`vip${run}`.slice(0, 16).padEnd(6, "x")})`);
+  await db().execute(sql`update commerce.customers set referred_by_customer_id = ${ids.customerVip}::uuid where id = ${ids.customerPlain}::uuid`);
+  await db().execute(sql`update commerce.orders set referral_discount_minor = 50 where id = ${ids.paid}::uuid`);
+  await db().execute(sql`
+    insert into commerce.affiliate_attributions (store_id, order_id, affiliate_customer_id, friend_customer_id, code) 
+    select ${S}::uuid, ${ids.cancelled}::uuid, ${ids.customerVip}::uuid, ${ids.customerPlain}::uuid, code from commerce.affiliates where customer_id = ${ids.customerVip}::uuid
+  `);
 });
 
 afterAll(async () => {
@@ -823,6 +835,23 @@ describe("a whole copy, run to the end", () => {
       ),
     ).toBe(0);
     expect(await count("payments", S)).toBe(1);
+  });
+
+  it("copies the referral program's rules and nothing of its links, who came through them or what they were given", async () => {
+    expect(await rows(sql`
+      select enabled, reward_bps, reward_orders, friend_percent, friend_max_minor, monthly_cap_minor, cookie_days
+      from commerce.affiliate_settings where store_id = ${N}::uuid
+    `)).toEqual([
+      { enabled: true, reward_bps: 700, reward_orders: 3, friend_percent: 12, friend_max_minor: "5000", monthly_cap_minor: "90000", cookie_days: 45 },
+    ]);
+    expect(await count("affiliates", N)).toBe(0);
+    expect(await count("affiliate_attributions", N)).toBe(0);
+    // A copied shopper is nobody's friend, and a copied order carries no referral discount.
+    expect(await scalar<number>(sql`select count(*)::int from commerce.customers where store_id = ${N}::uuid and referred_by_customer_id is not null`)).toBe(0);
+    expect(await scalar<number>(sql`select coalesce(sum(referral_discount_minor), 0)::int from commerce.orders where store_id = ${N}::uuid`)).toBe(0);
+    expect(await scalar<number>(sql`select coalesce(sum(referral_discount_minor), 0)::int from commerce.order_lines where store_id = ${N}::uuid`)).toBe(0);
+    // The original keeps all of it.
+    expect(await count("affiliate_attributions", S)).toBe(1);
   });
 
   it("copies nothing that belongs to the original alone", async () => {

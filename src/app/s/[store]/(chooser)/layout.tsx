@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { CustomCss } from "@/components/custom-css";
+import { StoreAffiliate } from "@/components/store-affiliate";
 import { StoreColorScript } from "@/components/store-color-switch";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
@@ -74,6 +75,10 @@ export default async function ChooserLayout({ children, params }: Props) {
         <CustomCss css={store.customCss} name={`store-${store.id}`} />
         {children}
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        {/* A friend's referral link (D131): it goes with the visitor to the market they choose. */}
+        <Suspense fallback={null}>
+          <StoreAffiliate store={store} base={null} />
+        </Suspense>
         {/* The front door asks and loads as the store's markets do (D58, D61), in its first market's language. */}
         {market && (
           <Suspense fallback={null}>

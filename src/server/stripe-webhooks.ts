@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
 import { adoptDeliveryCard, isDeliveryOrder } from "./standing-orders";
 import { markCheckoutRecovered } from "./cart-reminders";
+import { sendReferrerRewardEmail } from "./affiliate-emails";
 import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
 import { recordHostCommission } from "./host-payments";
 import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
@@ -101,6 +102,8 @@ export async function applySession(
     await sendOrderConfirmation(storeId, orderId);
     // Staff with an email hear of their new appointments (D65), once each.
     await sendBookingStaffNotices(storeId, orderId);
+    // The customer whose link led to this order hears of the credits it earned them (D131), once per order.
+    await sendReferrerRewardEmail(storeId, orderId).catch(() => null);
     if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
   } else if (failed || expired) {
     if (!delivery) await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");

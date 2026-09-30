@@ -76,6 +76,8 @@ const summary = (over: Record<string, unknown> = {}) => ({
   vat: 1700,
   balance: 0,
   bonusMinor: 0,
+  referralMinor: 0,
+  referral: { state: "none", percent: 0, discountMinor: 0 },
   plan: null,
   renewal: null,
   trial: false,
@@ -162,5 +164,39 @@ describe("the cart's credits piece", () => {
     expect(markup).toContain("Use bonus credits");
     readCartBonus.mockResolvedValue(bonus({ enabled: false }));
     expect(renderToString(await CartContents({ store, market, m }))).not.toContain("Use bonus credits");
+  });
+});
+
+describe("the cart's totals with a friend's welcome discount (D131)", () => {
+  it("show it as its own row, apart from the discount and the credits, and it comes off the total", async () => {
+    cartSummary.mockResolvedValue(
+      summary({ referralMinor: 1000, referral: { state: "applied", percent: 10, discountMinor: 1000 }, total: 7500, vat: 1500 }),
+    );
+    const text = words(await draw(CartSummary));
+    expect(text).toContain("Welcome discount −€10.00");
+    expect(text).toMatch(/Total €75\.00/);
+    expect(text).not.toContain("Discount (");
+    expect(text).not.toContain("Sign in to get");
+  });
+
+  it("show a business the discount without VAT, like the other amounts", async () => {
+    getBuyer.mockResolvedValue("business");
+    cartSummary.mockResolvedValue(summary({ referralMinor: 1000, referral: { state: "applied", percent: 10, discountMinor: 1000 } }));
+    // 10.00 at 25% VAT is 8.00 without it.
+    expect(words(await draw(CartSummary))).toContain("Welcome discount −€8.00");
+  });
+
+  it("invite a guest who came through a friend's link to sign in for it, to the store's own sign-in", async () => {
+    cartSummary.mockResolvedValue(summary({ referral: { state: "guest", percent: 10, discountMinor: 0 } }));
+    const markup = renderToString(await CartSummary({ store, market, m }));
+    expect(words(markup)).toContain("Sign in to get 10% off the goods in your first order");
+    expect(markup).toContain('href="/s/demo/ie/account"');
+    expect(words(markup)).not.toContain("Welcome discount");
+  });
+
+  it("say nothing when it does not apply, so the cart never tells a shopper why a guard stopped them", async () => {
+    const text = words(await draw(CartSummary));
+    expect(text).not.toContain("Welcome discount");
+    expect(text).not.toContain("Sign in to get");
   });
 });

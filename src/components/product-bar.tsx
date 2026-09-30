@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/money";
 import type { PriceVat } from "@/lib/pricing";
 import { planPrice } from "@/lib/subscriptions";
 
+import { AffiliateField } from "./affiliate-field";
 import type { AddToCartLabels } from "./add-to-cart";
 import { useBuyer } from "./buyer";
 import { useOpenCartAfterAdd } from "./cart-drawer";
@@ -99,6 +100,7 @@ export function ProductBar({
         <input type="hidden" name="market" value={market} />
         <input type="hidden" name="variantId" value={variant.id} />
         <input type="hidden" name="quantity" value="1" />
+        <AffiliateField store={store} />
         {plan && <input type="hidden" name="sellingPlanId" value={plan.id} />}
         <div className="min-w-0 flex-1" aria-live="polite">
           {shown && message ? (

@@ -9,7 +9,7 @@ import { requireAccount } from "@/server/auth";
 /**
  * The store owner's level (D107): the control center over all their stores,
  * their stores, billing, AI usage and account. Five sections need no
- * sidebar, so they are the tabs, with Work (D123) between Stores and Billing.
+ * sidebar, so they are the tabs, with Work (D123) between Stores and Billing and Referrals (D131) before Account.
  * Someone who only works in stores (staff) sees the two that are theirs, and
  * Work when one of their stores has it on.
  */
@@ -26,6 +26,7 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
         ...work,
         { href: "/admin/account/billing", label: "Billing" },
         { href: "/admin/account/usage", label: "AI usage" },
+        { href: "/admin/account/referrals", label: "Referrals" },
         { href: "/admin/account", label: "Account", exact: true },
       ]
     : [

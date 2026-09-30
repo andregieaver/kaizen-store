@@ -55,7 +55,7 @@ is one click from the control center.
 
 | Tabs | Sidebar groups |
 |---|---|
-| Overview · Requests · Customers · Stores · Plans · AI manager | **Website** (Pages, Blog, Media, Menus, Header and footer, Headers, Footers, Fonts, Search, Cookies, Google reviews) · **Billing** (Discounts, Plan reminders, Stripe) · **AI** (AI, AI usage, Chat agent, Search test) · **Communication** (Emails) |
+| Overview · Requests · Customers · Stores · Plans · AI manager | **Website** (Pages, Blog, Media, Menus, Header and footer, Headers, Footers, Fonts, Search, Cookies, Google reviews) · **Billing** (Discounts, Plan reminders, Referrals, Stripe) · **AI** (AI, AI usage, Chat agent, Search test) · **Communication** (Emails) |
 
 The overview is the operator's first look: requests waiting, stores by state,
 plans, emails that failed, AI use, each with the page to act on.
@@ -64,7 +64,7 @@ plans, emails that failed, AI use, each with the page to act on.
 
 | Tabs | Sidebar groups |
 |---|---|
-| Overview · Stores · Billing · AI usage · Account | None: five sections need no sidebar, so all of them are tabs (and the slide-out menu on phones) |
+| Overview · Stores · Work · Billing · AI usage · Referrals · Account | None: the sections need no sidebar, so all of them are tabs (and the slide-out menu on phones) |
 
 The overview is an operational bird's-eye view of every store the owner owns:
 

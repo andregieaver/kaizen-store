@@ -60,6 +60,7 @@ const order = (over: Record<string, unknown> = {}) => ({
   memberPercent: null,
   campaignDiscountMinor: 0,
   campaignLabel: null,
+  referralDiscountMinor: 0,
   totalMinor: 8500,
   taxMinor: 1700,
   balanceMinor: 0,
@@ -118,6 +119,39 @@ describe("the checkout's totals with bonus credits", () => {
     const text = words(renderToString(await CheckoutTotals({ store, market })));
     expect(text).toContain("Bonus credits −€12.00");
     expect(text).toContain("Discount −€8.00");
+  });
+});
+
+describe("the checkout's totals with a friend's welcome discount (D131)", () => {
+  it("show it as its own row, apart from a code's discount and the credits", async () => {
+    getOrder.mockResolvedValue(order({ referralDiscountMinor: 1000, totalMinor: 9000, taxMinor: 1800 }));
+    const text = words(renderToString(await CheckoutTotals({ store, market })));
+    expect(text).toContain("Welcome discount −€10.00");
+    expect(text).not.toContain("Discount −");
+    expect(text).not.toContain("Bonus credits");
+  });
+
+  it("keep a business's discount apart from the welcome discount and the credits, all without VAT", async () => {
+    // 100.00 of goods, a 10.00 code, a 10.00 welcome discount and 15.00 of credits, paid 65.00 with 25% VAT.
+    getOrder.mockResolvedValue(
+      order({
+        company: { name: "Acme", number: "123456789" },
+        discountMinor: 1000,
+        referralDiscountMinor: 1000,
+        totalMinor: 6500,
+        taxMinor: 1300,
+        bonus: { usedMinor: 1500, earnedMinor: 0, availableAt: null },
+      }),
+    );
+    const text = words(renderToString(await CheckoutTotals({ store, market })));
+    expect(text).toContain("Welcome discount −€8.00");
+    expect(text).toContain("Bonus credits −€12.00");
+    expect(text).toContain("Discount −€8.00");
+  });
+
+  it("have no row for an order without one", async () => {
+    getOrder.mockResolvedValue(order());
+    expect(words(renderToString(await CheckoutTotals({ store, market })))).not.toContain("Welcome discount");
   });
 });
 

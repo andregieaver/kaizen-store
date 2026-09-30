@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { referralPublicSettings } from "@/server/referrals";
 
 import { requestAccess } from "./actions";
 import { KaizenLifePrefill } from "./kaizen-life-prefill";
+import { ReferralKeeper } from "./referral-keeper";
 
 export const metadata: Metadata = {
   title: "Start your store",
@@ -15,7 +17,9 @@ export const metadata: Metadata = {
 const field = "flex flex-col gap-1 text-sm font-medium";
 const control = "min-h-11 rounded-md border border-border bg-background px-3 font-normal";
 
-export default function SignUpPage() {
+export default async function SignUpPage() {
+  // The referral program (D131): kept out of the address's way, so the page stays the same for everyone.
+  const referrals = await referralPublicSettings();
   return (
     <main id="main" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
       <div>
@@ -27,6 +31,7 @@ export default function SignUpPage() {
       </div>
       <KaizenLifePrefill />
       <ActionForm action={requestAccess} className="flex flex-col gap-4" replaceOnSuccess id="sign-up-form">
+        <ReferralKeeper enabled={referrals.enabled} days={referrals.cookieDays} />
         <label className={field}>
           Your name
           <input name="name" required autoComplete="name" className={control} />
