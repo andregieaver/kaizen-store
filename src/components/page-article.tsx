@@ -4,6 +4,7 @@ import { blockFonts, blockShowsUnbound, type PageBlock, type PageContent, type P
 
 import { withoutBindings } from "@/lib/field-binding";
 import { t } from "@/lib/i18n";
+import { blockTarget, motionNeeds, partFx } from "@/lib/motion-attrs";
 import { flowRows } from "@/lib/page-modal";
 import type { GridPlace } from "@/server/content-grid";
 import { placeLang } from "@/server/place-lang";
@@ -13,6 +14,7 @@ import { CustomCss } from "./custom-css";
 import { CustomFieldSection } from "./custom-field-section";
 import { FieldLoopSection } from "./field-loop-section";
 import { MenuSection } from "./menu-section";
+import { MotionSupport } from "./motion-support";
 import { FontLinks } from "./font-links";
 import { FormSection } from "./form-section";
 import { GoogleReviewsSection } from "./google-reviews-section";
@@ -57,14 +59,18 @@ export function PageArticle({
       c.blocks.some((b) => (b.type === "heading" && b.level === 1 && blockShowsUnbound(b)) || (b.type === "product" && b.part === "title")),
     ),
   );
+  // Motion (D128): the first flow row is drawn without waiting for scripts; the runtime is loaded only if something needs it.
+  const first = flowRows(rows)[0];
+  const motion = motionNeeds(rows);
   return (
-    <article className="flex flex-col gap-8">
+    <article className="flex flex-col gap-8" {...(motion.any ? { "data-fx-clip": "" } : {})}>
       {/* The page's own CSS (D100), for the whole page. */}
       {!inAdmin && <CustomCss css={content.css} name={`page-${place.pageId ?? "layout"}`} />}
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
-        <PageRowView key={row.id} row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
+        <PageRowView key={row.id} row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} first={row === first} />
       ))}
+      <MotionSupport needs={motion} />
     </article>
   );
 }
@@ -95,15 +101,18 @@ export function PageRowView({
   place,
   renderBlock,
   inAdmin = false,
+  first = false,
 }: {
   row: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
   /** A preview in the admin: a modal there does not open by itself. */
   inAdmin?: boolean;
+  /** The first row in the flow of what is drawn (D128): its entrances play by CSS at once, without waiting for scripts. */
+  first?: boolean;
 }) {
   if (row.modal) return <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />;
-  return <RowMarkup row={row} place={place} renderBlock={renderBlock} />;
+  return <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} />;
 }
 
 /**
@@ -144,33 +153,50 @@ function RowMarkup({
   place,
   renderBlock,
   inPanel = false,
+  first = false,
 }: {
   row: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
   inPanel?: boolean;
+  first?: boolean;
 }) {
   const box = rowBox(row, "site", inPanel);
   const grid = rowGrid(row);
+  // Motion (D128): a row's effects, its columns' (which take the row's entrance when it staggers them) and its blocks'.
+  const rowFx = partFx(row.motion, "row", { firstRow: first });
   return (
     <div className={row.width === "full" || inPanel ? undefined : "mx-auto w-full max-w-(--content-width)"}>
-      <div id={box.id} className={box.className} style={box.style}>
-        <PartBackground background={row.background} />
+      <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
+        <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} />
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
-            {row.columns.map((column) => {
+            {row.columns.map((column, columnIndex) => {
               const col = columnBox(column, row, "site");
+              const colFx = partFx(column.motion, "column", {
+                firstRow: first,
+                index: columnIndex,
+                parentStagger: row.motion?.enter?.stagger,
+                parentEnter: row.motion?.enter,
+              });
               return (
-                <div key={column.id} id={col.id} className={col.className} style={col.style}>
-                  <PartBackground background={column.background} />
+                <div key={column.id} id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
+                  <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} />
                   <ColumnLinkCover column={column} />
-                  {column.blocks.filter(blockShowsUnbound).map((block) => {
+                  {column.blocks.filter(blockShowsUnbound).map((block, blockIndex) => {
                     const b = blockBox(block, "site");
+                    const fx = partFx(block.motion, blockTarget(block), {
+                      firstRow: first,
+                      image: block.type === "image",
+                      index: blockIndex,
+                      parentStagger: column.motion?.enter?.stagger,
+                      parentEnter: column.motion?.enter,
+                    });
                     // A product or site component with nothing to show leaves no space behind (D79, D80).
                     const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
                     if (own === null) return null;
                     return (
-                      <div key={block.id} id={b.id} className={b.className || undefined} style={b.style}>
+                      <div key={block.id} id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs}>
                         <FontLinks families={blockFonts(block)} />
                         {own !== undefined ? (
                           own

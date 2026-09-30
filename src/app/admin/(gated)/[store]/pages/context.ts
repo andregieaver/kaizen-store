@@ -36,6 +36,7 @@ import {
   applyTemplateAction,
 } from "./actions";
 import { duplicateStorePageAction } from "./duplicate-action";
+import { planMotionAction } from "./motion-action";
 
 /** Where a store's pages (or articles, D57) are edited. */
 export const storePagesBase = (store: Pick<Store, "slug">, type: PageType = "page") =>
@@ -98,6 +99,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       unpublish: typed(unpublishStorePageAction),
       remove: typed(deleteStorePageAction),
       duplicate: typed(duplicateStorePageAction),
+      motion: typed(planMotionAction),
       createTerm: typed(createStorePageTermAction),
       createPart: bind(createStorePartAction),
       updatePart: bind(updateStorePartAction),

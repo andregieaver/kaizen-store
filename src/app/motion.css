@@ -1,0 +1,758 @@
+/*
+ * Motion (D128): entrances, hover, scroll and background effects owners pick from lists (`src/lib/motion.ts`), drawn
+ * from `data-fx-*` attributes and `--fx-*` custom properties (`src/lib/motion-attrs.ts`); the small runtime
+ * (`src/lib/motion-runtime.ts`) only starts waypoints, splits text, follows the pointer and, in browsers without CSS
+ * scroll timelines, feeds `--fx-p`. Nothing here is written by owners, and owners' own CSS is unaffected.
+ *
+ * Rules the whole file keeps:
+ *  - Content is always reachable. A part starts hidden only when it has a `view` entrance, and is shown by any of: the
+ *    runtime marking it `data-fx-in`; "reduce motion" (every effect below sits in `prefers-reduced-motion:
+ *    no-preference`, so it gets none of them); no scripting (`<noscript>` and `scripting: none`); or the failsafe
+ *    (4 s after the page, while the runtime has not said `data-fx-ready`).
+ *  - Only `transform` (and `translate`, `scale`, `rotate`), `opacity`, `filter` and `clip-path` move, never layout.
+ *    The entrance owns `transform`, `opacity`, `filter` and `clip-path` while it plays; a scroll effect owns
+ *    `translate`, `scale`, `rotate` (a fade or focus with scroll also `opacity`/`filter`, and is left out on a part that
+ *    has an entrance); hover owns `transform`. A part's animations are one list of three slots: entrance, scroll, ambient.
+ *  - In the `components` layer, so a utility on the same element (`absolute`, `sticky`) still wins.
+ */
+@layer components {
+  /* ---------------------------------------------------------------- structure, not motion */
+
+  /* A background's frame holds layers; a layer is the picture, video or colours that move inside it. */
+  [data-fx-layer] {
+    position: absolute;
+    inset: 0;
+  }
+  [data-fx-gradient] {
+    container-type: size;
+  }
+
+  /* Text split into words, letters or lines (the runtime): each piece moves, spaces between them wrap as text does. */
+  [data-fx-w] {
+    display: inline-block;
+  }
+  [data-fx-g] {
+    display: inline-block;
+    white-space: nowrap;
+  }
+  /* The whole text for screen readers, next to its split copy (which is `aria-hidden`). */
+  [data-fx-sr] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ---------------------------------------------------------------- gradients (colours only, no pictures) */
+
+  [data-fx-grad] {
+    position: absolute;
+    inset: 0;
+  }
+  /* Two to four colours flowing across at an angle: a layer twice the frame, slid by half. */
+  [data-fx-grad="shift"] {
+    inset: 0 auto auto 0;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(var(--fx-angle, 135deg), var(--fx-stops));
+  }
+  /* Soft blobs of colour on the first colour, each drifting on its own. */
+  [data-fx-grad="aurora"] {
+    background-color: var(--fx-c1);
+  }
+  [data-fx-blob] {
+    position: absolute;
+    width: 70%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, var(--fx-bc), transparent);
+    opacity: 0.9;
+  }
+  [data-fx-blob="1"] {
+    --fx-bc: var(--fx-c2);
+    left: -10%;
+    top: -25%;
+  }
+  [data-fx-blob="2"] {
+    --fx-bc: var(--fx-c3);
+    right: -15%;
+    top: 5%;
+    width: 80%;
+  }
+  [data-fx-blob="3"] {
+    --fx-bc: var(--fx-c4);
+    left: 15%;
+    bottom: -45%;
+  }
+  /* Still spots of colour. */
+  [data-fx-grad="mesh"] {
+    background:
+      radial-gradient(at 18% 22%, var(--fx-c2) 0, transparent 52%),
+      radial-gradient(at 82% 14%, var(--fx-c3) 0, transparent 50%),
+      radial-gradient(at 74% 84%, var(--fx-c4) 0, transparent 52%),
+      radial-gradient(at 14% 82%, var(--fx-c2) 0, transparent 46%), var(--fx-c1);
+  }
+  /* Colours around the centre, on a square big enough to cover the frame at any turn. */
+  [data-fx-grad="conic"] {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    width: 150vmax;
+    width: calc(1.5 * max(100cqw, 100cqh));
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    background: conic-gradient(from 0deg, var(--fx-stops));
+  }
+  /* A fine noise over it, drawn once as a small tile. */
+  [data-fx-grain] {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.22;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* How fast colours flow, by `data-fx-flow` on the gradient: a factor on each kind's own time. `still` has none. */
+    [data-fx-flow="slow"] {
+      --fx-gf: 1;
+    }
+    [data-fx-flow="medium"] {
+      --fx-gf: 0.55;
+    }
+    [data-fx-flow="fast"] {
+      --fx-gf: 0.28;
+    }
+    [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-grad="shift"] {
+      animation: fx-slide calc(44s * var(--fx-gf)) ease-in-out infinite alternate;
+    }
+    [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-grad="conic"] {
+      animation: fx-turn calc(110s * var(--fx-gf)) linear infinite;
+    }
+    [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-blob="1"] {
+      animation: fx-blob-a calc(26s * var(--fx-gf)) ease-in-out infinite alternate;
+    }
+    [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-blob="2"] {
+      animation: fx-blob-b calc(34s * var(--fx-gf)) ease-in-out infinite alternate;
+    }
+    [data-fx-flow]:not([data-fx-flow="still"]) [data-fx-blob="3"] {
+      animation: fx-blob-c calc(44s * var(--fx-gf)) ease-in-out infinite alternate;
+    }
+  }
+  @keyframes fx-slide {
+    to {
+      translate: -50% -50%;
+    }
+  }
+  @keyframes fx-turn {
+    to {
+      rotate: 360deg;
+    }
+  }
+  @keyframes fx-blob-a {
+    to {
+      translate: 55% 45%;
+      scale: 1.25;
+    }
+  }
+  @keyframes fx-blob-b {
+    to {
+      translate: -45% 55%;
+      scale: 0.85;
+    }
+  }
+  @keyframes fx-blob-c {
+    to {
+      translate: 35% -60%;
+      scale: 1.2;
+    }
+  }
+
+  /* ---------------------------------------------------------------- everything that moves */
+
+  @media (prefers-reduced-motion: no-preference) {
+    /*
+     * Each part's animations are three slots: entrance, scroll-linked, ambient (a background's slow zoom or drift, a
+     * hover float). Names are reset here, so a part never takes a parent's from the custom properties it inherits.
+     */
+    [data-fx-enter],
+    [data-fx-scroll],
+    [data-fx-bgm],
+    [data-fx-hover="float"] {
+      --fx-en: none;
+      --fx-sn-on: none;
+      --fx-fn: none;
+      animation-name: var(--fx-en), var(--fx-sn-on), var(--fx-fn);
+      animation-duration: var(--fx-dur, 700ms), 1s, var(--fx-fdur, 3s);
+      animation-timing-function: var(--fx-ease, cubic-bezier(0.22, 1, 0.36, 1)), linear, ease-in-out;
+      animation-delay: calc(var(--fx-delay, 0ms) + var(--fx-i, 0) * var(--fx-stagger, 0ms)), 0s, 0s;
+      animation-fill-mode: backwards, both, both;
+      animation-iteration-count: 1, 1, infinite;
+      animation-direction: normal, normal, alternate;
+    }
+
+    /* ------------------------------------------------------------ entrances */
+
+    [data-fx-enter] {
+      --fx-en: fx-in;
+      --fx-dur: 700ms;
+      --fx-ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --fx-dist: 40px;
+      --fx-amt: 1;
+      --fx-delay: 0ms;
+      --fx-stagger: 0ms;
+      --fx-i: 0;
+      /* Where it starts: hidden by default; each effect sets what it starts from. */
+      --fx-o0: 0;
+      --fx-t0: none;
+      --fx-f0: none;
+      --fx-c0: none;
+      --fx-c1: inset(0);
+    }
+    [data-fx-enter="fade-up"] {
+      --fx-t0: translate3d(0, var(--fx-dist), 0);
+    }
+    [data-fx-enter="fade-down"] {
+      --fx-t0: translate3d(0, calc(var(--fx-dist) * -1), 0);
+    }
+    [data-fx-enter="fade-left"] {
+      --fx-t0: translate3d(var(--fx-dist), 0, 0);
+    }
+    [data-fx-enter="fade-right"] {
+      --fx-t0: translate3d(calc(var(--fx-dist) * -1), 0, 0);
+    }
+    [data-fx-enter="zoom-in"] {
+      --fx-t0: scale(calc(1 - 0.12 * var(--fx-amt)));
+    }
+    [data-fx-enter="zoom-out"] {
+      --fx-t0: scale(calc(1 + 0.12 * var(--fx-amt)));
+    }
+    [data-fx-enter="pop"] {
+      --fx-en: fx-pop;
+      --fx-t0: scale(calc(1 - 0.2 * var(--fx-amt)));
+    }
+    [data-fx-enter="blur-in"] {
+      --fx-f0: blur(calc(8px * var(--fx-amt)));
+    }
+    [data-fx-enter="blur-up"] {
+      --fx-f0: blur(calc(6px * var(--fx-amt)));
+      --fx-t0: translate3d(0, calc(var(--fx-dist) * 0.6), 0);
+    }
+    [data-fx-enter="wipe-left"] {
+      --fx-en: fx-clip;
+      --fx-o0: 1;
+      --fx-c0: inset(0 100% 0 0);
+    }
+    [data-fx-enter="wipe-up"] {
+      --fx-en: fx-clip;
+      --fx-o0: 1;
+      --fx-c0: inset(100% 0 0 0);
+    }
+    [data-fx-enter="iris"] {
+      --fx-en: fx-clip;
+      --fx-o0: 1;
+      --fx-c0: circle(0% at 50% 50%);
+      --fx-c1: circle(75% at 50% 50%);
+    }
+    [data-fx-enter="flip-x"] {
+      --fx-t0: perspective(900px) rotateX(-60deg);
+      transform-origin: 50% 0;
+    }
+    [data-fx-enter="flip-y"] {
+      --fx-t0: perspective(900px) rotateY(60deg);
+      transform-origin: 0 50%;
+    }
+    [data-fx-enter="rotate-in"] {
+      --fx-t0: rotate(calc(-6deg * var(--fx-amt))) scale(0.96);
+    }
+    /* Text: each word, letter or line moves by these (the wrapper's own entrance is off; see the split rules below). */
+    [data-fx-enter="words"] {
+      --fx-stagger: 60ms;
+      --fx-t0: translate3d(0, 0.55em, 0);
+    }
+    [data-fx-enter="words-blur"] {
+      --fx-stagger: 60ms;
+      --fx-t0: translate3d(0, 0.25em, 0);
+      --fx-f0: blur(calc(8px * var(--fx-amt)));
+    }
+    [data-fx-enter="chars"] {
+      --fx-stagger: 24ms;
+      --fx-t0: translate3d(0, 0.45em, 0);
+    }
+    [data-fx-enter="lines"] {
+      --fx-stagger: 120ms;
+      --fx-t0: translate3d(0, 0.7em, 0);
+    }
+    [data-fx-text] {
+      --fx-en: none;
+    }
+    /*
+     * A picture in the page's first row (the largest thing painted first) never starts invisible: it moves, softens or
+     * uncovers from part of its size instead of from nothing.
+     */
+    [data-fx-nofade] {
+      --fx-o0: 1;
+    }
+    [data-fx-nofade][data-fx-enter="fade"] {
+      --fx-f0: blur(6px);
+    }
+    [data-fx-nofade][data-fx-enter="wipe-left"] {
+      --fx-c0: inset(0 50% 0 0);
+    }
+    [data-fx-nofade][data-fx-enter="wipe-up"] {
+      --fx-c0: inset(50% 0 0 0);
+    }
+    [data-fx-nofade][data-fx-enter="iris"] {
+      --fx-c0: circle(35% at 50% 50%);
+    }
+
+    /* Waiting for its waypoint: shown from its start state, held there until the runtime marks it in. */
+    [data-fx-enter][data-fx-trigger="view"]:not([data-fx-in], [data-fx-each], [data-fx-text]) {
+      --fx-en: none;
+      opacity: var(--fx-o0);
+      transform: var(--fx-t0);
+      filter: var(--fx-f0);
+      clip-path: var(--fx-c0);
+    }
+    /* Split text: the wrapper shows once split; its pieces wait, then move in turn. */
+    [data-fx-text][data-fx-trigger="view"]:not([data-fx-split]) {
+      opacity: 0;
+    }
+    [data-fx-split]:not([data-fx-in]) [data-fx-w] {
+      opacity: var(--fx-o0);
+      transform: var(--fx-t0);
+      filter: var(--fx-f0);
+    }
+    [data-fx-split][data-fx-in] [data-fx-w],
+    [data-fx-text][data-fx-trigger="load"] [data-fx-w] {
+      animation: fx-in var(--fx-dur) var(--fx-ease) calc(var(--fx-delay) + var(--fx-i, 0) * var(--fx-stagger)) backwards;
+    }
+
+    /* Nothing stays hidden if the runtime never arrives: revealed 4 s in, until it says it is ready. */
+    html:not([data-fx-ready]) [data-fx-enter][data-fx-trigger="view"]:not([data-fx-in], [data-fx-each], [data-fx-text]),
+    html:not([data-fx-ready]) [data-fx-text][data-fx-trigger="view"]:not([data-fx-split]),
+    html:not([data-fx-ready]) [data-fx-split]:not([data-fx-in]) [data-fx-w] {
+      animation: fx-failsafe 400ms ease 4s both;
+    }
+
+    /* A page that moves things sideways keeps its sides: nothing pushed out of view makes the page wider (`clip` scrolls nothing). */
+    [data-fx-clip] {
+      overflow-x: clip;
+    }
+
+    /* ------------------------------------------------------------ scroll-linked */
+
+    [data-fx-scroll],
+    [data-fx-bgm] {
+      --fx-sk: 1;
+      --fx-tl: view();
+      --fx-r0: 0;
+      --fx-r1: 1;
+      --fx-range: cover 0% cover 100%;
+    }
+    /* A background's layer is measured on its frame. */
+    [data-fx-tl="parent"] {
+      --fx-tl: --fx-bg;
+    }
+    [data-fx-scroll="parallax"] {
+      --fx-sn: fx-s-parallax;
+    }
+    [data-fx-scroll="parallax-fast"] {
+      --fx-sn: fx-s-parallax-fast;
+    }
+    [data-fx-scroll="drift-left"] {
+      --fx-sn: fx-s-drift-left;
+    }
+    [data-fx-scroll="drift-right"] {
+      --fx-sn: fx-s-drift-right;
+    }
+    [data-fx-scroll="fade-scroll"] {
+      --fx-sn: fx-s-fade;
+    }
+    [data-fx-scroll="scale-up"] {
+      --fx-sn: fx-s-scale-up;
+      --fx-range: entry 0% entry 90%;
+      --fx-r1: 0.45;
+    }
+    [data-fx-scroll="scale-down"] {
+      --fx-sn: fx-s-scale-down;
+      --fx-range: entry 0% entry 90%;
+      --fx-r1: 0.45;
+    }
+    [data-fx-scroll="blur-scroll"] {
+      --fx-sn: fx-s-blur;
+      --fx-range: entry 0% entry 80%;
+      --fx-r1: 0.45;
+    }
+    [data-fx-scroll="rotate"] {
+      --fx-sn: fx-s-rotate;
+    }
+    [data-fx-scroll="bg-parallax"] {
+      --fx-sn: fx-s-bg-parallax;
+    }
+    [data-fx-scroll="bg-zoom-scroll"] {
+      --fx-sn: fx-s-bg-zoom;
+    }
+    [data-fx-scroll="bg-blur-scroll"] {
+      --fx-sn: fx-s-bg-blur;
+      --fx-range: entry 0% entry 80%;
+      --fx-r1: 0.45;
+    }
+    [data-fx-scroll="bg-fade-scroll"] {
+      --fx-sn: fx-s-bg-fade;
+      --fx-range: entry 0% entry 60%;
+      --fx-r1: 0.35;
+    }
+    /* A background's layer is larger than its frame, so its edges never show as it moves. */
+    [data-fx-bgm="parallax"] {
+      inset: calc(var(--fx-sk) * -14%) 0;
+    }
+    [data-fx-bgm="blur-scroll"] {
+      inset: calc(var(--fx-sk) * -22px);
+    }
+    [data-fx-bgm="drift"] {
+      inset: 0 calc(var(--fx-sk) * -8%);
+    }
+    /* Ambient: slow, on their own (intensity scales how far and how quickly). */
+    [data-fx-bgm="ken-burns"] {
+      --fx-fn: fx-kenburns;
+      --fx-fdur: calc(30s / var(--fx-sk));
+    }
+    [data-fx-bgm="drift"] {
+      --fx-fn: fx-drift;
+      --fx-fdur: calc(26s / var(--fx-sk));
+    }
+
+    @keyframes fx-s-parallax {
+      from {
+        translate: 0 calc(var(--fx-sk) * -48px);
+      }
+      to {
+        translate: 0 calc(var(--fx-sk) * 48px);
+      }
+    }
+    @keyframes fx-s-parallax-fast {
+      from {
+        translate: 0 calc(var(--fx-sk) * 48px);
+      }
+      to {
+        translate: 0 calc(var(--fx-sk) * -48px);
+      }
+    }
+    @keyframes fx-s-drift-left {
+      from {
+        translate: calc(var(--fx-sk) * 6vw) 0;
+      }
+      to {
+        translate: calc(var(--fx-sk) * -6vw) 0;
+      }
+    }
+    @keyframes fx-s-drift-right {
+      from {
+        translate: calc(var(--fx-sk) * -6vw) 0;
+      }
+      to {
+        translate: calc(var(--fx-sk) * 6vw) 0;
+      }
+    }
+    @keyframes fx-s-fade {
+      0% {
+        opacity: 0;
+      }
+      25%,
+      75% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+    @keyframes fx-s-scale-up {
+      from {
+        scale: calc(1 - 0.2 * var(--fx-sk));
+      }
+      to {
+        scale: 1;
+      }
+    }
+    @keyframes fx-s-scale-down {
+      from {
+        scale: calc(1 + 0.2 * var(--fx-sk));
+      }
+      to {
+        scale: 1;
+      }
+    }
+    @keyframes fx-s-blur {
+      from {
+        filter: blur(calc(var(--fx-sk) * 10px));
+      }
+      to {
+        filter: blur(0);
+      }
+    }
+    @keyframes fx-s-rotate {
+      from {
+        rotate: calc(var(--fx-sk) * -5deg);
+      }
+      to {
+        rotate: calc(var(--fx-sk) * 5deg);
+      }
+    }
+    @keyframes fx-s-bg-parallax {
+      from {
+        translate: 0 calc(var(--fx-sk) * -9%);
+      }
+      to {
+        translate: 0 calc(var(--fx-sk) * 9%);
+      }
+    }
+    @keyframes fx-s-bg-zoom {
+      from {
+        scale: 1;
+      }
+      to {
+        scale: calc(1 + 0.22 * var(--fx-sk));
+      }
+    }
+    @keyframes fx-s-bg-blur {
+      from {
+        filter: blur(calc(var(--fx-sk) * 10px));
+      }
+      to {
+        filter: blur(0);
+      }
+    }
+    @keyframes fx-s-bg-fade {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    @keyframes fx-kenburns {
+      from {
+        scale: 1.06;
+        translate: 0 0;
+      }
+      to {
+        scale: calc(1.06 + 0.12 * var(--fx-sk));
+        translate: calc(var(--fx-sk) * -2.5%) calc(var(--fx-sk) * -2%);
+      }
+    }
+    @keyframes fx-drift {
+      from {
+        translate: calc(var(--fx-sk) * -4%) 0;
+      }
+      to {
+        translate: calc(var(--fx-sk) * 4%) 0;
+      }
+    }
+
+    /* Where the browser has scroll timelines, the animation is tied to the scroll by CSS alone. */
+    @supports (animation-timeline: view()) {
+      [data-fx-bgroot] {
+        view-timeline: --fx-bg block;
+      }
+      [data-fx-scroll] {
+        --fx-sn-on: var(--fx-sn);
+        animation-duration: var(--fx-dur, 700ms), auto, var(--fx-fdur, 3s);
+        animation-timeline: auto, var(--fx-tl), auto;
+        animation-range: normal, var(--fx-range), normal;
+      }
+    }
+    /*
+     * Where it has not (Firefox), the runtime measures the parts near the screen and gives each `--fx-p` (0 to 1
+     * through its pass), which sets how far a paused animation has got. Off screen, or before the runtime, the part
+     * simply sits in its own place.
+     */
+    @supports not (animation-timeline: view()) {
+      [data-fx-scroll][data-fx-live] {
+        --fx-sn-on: var(--fx-sn);
+        animation-play-state: running, paused, running;
+        animation-delay:
+          calc(var(--fx-delay, 0ms) + var(--fx-i, 0) * var(--fx-stagger, 0ms)),
+          calc(-1s * clamp(0, (var(--fx-p, 0) - var(--fx-r0)) / (var(--fx-r1) - var(--fx-r0)), 1)), 0s;
+        will-change: translate, scale, rotate, opacity, filter;
+      }
+    }
+
+    /* ------------------------------------------------------------ hover (devices that can hover) */
+
+    @media (hover: hover) {
+      [data-fx-hover] {
+        --fx-hk: 1;
+      }
+      [data-fx-hover="lift"],
+      [data-fx-hover="grow"] {
+        transition:
+          transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 280ms ease-out;
+      }
+      [data-fx-hover="lift"]:hover {
+        transform: translate3d(0, calc(var(--fx-hk) * -6px), 0);
+        box-shadow: 0 calc(var(--fx-hk) * 14px) calc(var(--fx-hk) * 30px) -10px rgb(0 0 0 / 0.3) !important;
+      }
+      [data-fx-hover="grow"]:hover {
+        transform: scale(calc(1 + 0.04 * var(--fx-hk)));
+      }
+      [data-fx-hover="float"]:hover {
+        --fx-fn: fx-float;
+        --fx-fdur: 2.4s;
+      }
+      /* Following the pointer (the runtime sets --fx-px and --fx-py, -1 to 1 from the middle, and --fx-x and --fx-y in pixels). */
+      [data-fx-hover="tilt"],
+      [data-fx-hover="magnetic"] {
+        transition: transform 140ms ease-out;
+      }
+      [data-fx-hover="tilt"]:hover {
+        transform: perspective(900px) rotateX(calc(var(--fx-py, 0) * -8deg * var(--fx-hk)))
+          rotateY(calc(var(--fx-px, 0) * 8deg * var(--fx-hk)));
+      }
+      [data-fx-hover="magnetic"]:hover {
+        transform: translate3d(
+          calc(var(--fx-px, 0) * 10px * var(--fx-hk)),
+          calc(var(--fx-py, 0) * 8px * var(--fx-hk)),
+          0
+        );
+      }
+      [data-fx-hover="spotlight"],
+      [data-fx-hover="shine"] {
+        position: relative;
+      }
+      [data-fx-hover="spotlight"]::after,
+      [data-fx-hover="shine"]::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border-radius: inherit;
+      }
+      [data-fx-hover="spotlight"]::after {
+        opacity: 0;
+        transition: opacity 300ms ease-out;
+        background: radial-gradient(
+          calc(240px * var(--fx-hk)) circle at var(--fx-x, 50%) var(--fx-y, 50%),
+          color-mix(in srgb, var(--accent) 16%, transparent),
+          transparent 70%
+        );
+      }
+      [data-fx-hover="spotlight"]:hover::after {
+        opacity: 1;
+      }
+      [data-fx-hover="glow"] {
+        transition: box-shadow 300ms ease-out;
+      }
+      [data-fx-hover="glow"]:hover {
+        box-shadow: 0 0 calc(var(--fx-hk) * 28px) calc(var(--fx-hk) * 2px)
+          color-mix(in srgb, var(--accent) 40%, transparent) !important;
+      }
+      /* A glint sweeping across (a gradient slid by its position: painted, not laid out). */
+      [data-fx-hover="shine"]::after {
+        background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.35) 50%, transparent 65%) no-repeat;
+        background-size: 250% 100%;
+        background-position: 130% 0;
+      }
+      [data-fx-hover="shine"]:hover::after {
+        background-position: -30% 0;
+        transition: background-position 900ms ease;
+      }
+      [data-fx-hover="image-zoom"] {
+        overflow: hidden;
+      }
+      [data-fx-hover="image-zoom"] :is(img, picture, video) {
+        transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      [data-fx-hover="image-zoom"]:hover :is(img, picture, video) {
+        transform: scale(calc(1 + 0.08 * var(--fx-hk)));
+      }
+      /* The column pointed at (or focused in) stays; its neighbours fade back. */
+      [data-fx-hover="dim"] {
+        transition: opacity 300ms ease-out;
+      }
+      :has(> [data-fx-hover="dim"]:is(:hover, :focus-within)) > [data-fx-hover="dim"]:not(:hover, :focus-within) {
+        opacity: 0.45;
+      }
+    }
+    @keyframes fx-float {
+      from {
+        transform: translate3d(0, 0, 0);
+      }
+      to {
+        transform: translate3d(0, calc(var(--fx-hk, 1) * -7px), 0);
+      }
+    }
+  }
+
+  /* ---------------------------------------------------------------- keyframes of the entrances */
+
+  @keyframes fx-in {
+    from {
+      opacity: var(--fx-o0);
+      transform: var(--fx-t0);
+      filter: var(--fx-f0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+  @keyframes fx-pop {
+    0% {
+      opacity: var(--fx-o0);
+      transform: var(--fx-t0);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fx-clip {
+    from {
+      opacity: var(--fx-o0);
+      clip-path: var(--fx-c0);
+      transform: var(--fx-t0);
+      filter: var(--fx-f0);
+    }
+    to {
+      opacity: 1;
+      clip-path: var(--fx-c1);
+      transform: none;
+      filter: none;
+    }
+  }
+  @keyframes fx-failsafe {
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      clip-path: none;
+    }
+  }
+
+  /* Without scripting nothing waits for a waypoint (the page's `<noscript>` says the same for browsers older than this). */
+  @media (scripting: none) {
+    [data-fx-enter][data-fx-trigger="view"],
+    [data-fx-text],
+    [data-fx-w] {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+      clip-path: none !important;
+    }
+  }
+}

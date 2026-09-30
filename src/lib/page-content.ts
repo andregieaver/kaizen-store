@@ -1,6 +1,18 @@
 import { z } from "zod";
 
 import { cssProblem } from "./custom-css";
+import {
+  GRADIENT_COLORS_MAX,
+  GRADIENT_COLORS_MIN,
+  GRADIENT_FLOWS,
+  GRADIENT_STYLES,
+  backgroundMotionSchema,
+  partMotionSchema,
+  type BackgroundMotion,
+  type GradientFlow,
+  type GradientStyle,
+  type PartMotion,
+} from "./motion";
 import { fontFamily } from "./fonts";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
@@ -320,6 +332,8 @@ export type PartBase = {
   shadow?: Shadow;
   htmlId?: string;
   className?: string;
+  /** Entrance, hover and scroll effects (D128, `src/lib/motion.ts`). */
+  motion?: PartMotion;
   /**
    * A use of a global row, column or component (D98): the saved part's id,
    * on the part the use starts at. What it holds is the global's own, the
@@ -344,7 +358,19 @@ export type Background =
       overlay: { color: Color; opacity: number } | null;
       /** How soft the picture is drawn, in pixels (up to `BLUR_MAX`); none when left out. */
       blur?: number;
-    };
+    }
+  | GradientBackground;
+/** Colours that move (D128): no picture to load; `flow` is how fast they move by themselves. */
+export type GradientBackground = {
+  type: "gradient";
+  style: GradientStyle;
+  colors: Color[];
+  /** Degrees, for the shifting kind; 135 when left out. */
+  angle?: number;
+  flow?: GradientFlow;
+  /** A fine noise over it. */
+  grain?: boolean;
+};
 export const BLUR_MAX = 20;
 /**
  * A row's background video: plays without sound, on a loop, with a colour
@@ -1206,6 +1232,8 @@ export type PageColumn = PartBase & {
   id: string;
   blocks: PageBlock[];
   background?: Background;
+  /** How the background moves (D128), with a picture, video or gradient. */
+  backgroundMotion?: BackgroundMotion;
   /** What is behind the column blurred, in pixels (D86); only with no background or a colour. */
   backdropBlur?: number;
   link?: ColumnLink;
@@ -1237,6 +1265,8 @@ export type PageRow = PartBase & {
   /** Where columns' content sits, top (the default), middle or bottom. */
   align?: VerticalAlign;
   background?: RowBackground;
+  /** How the background moves (D128), with a picture, video or gradient. */
+  backgroundMotion?: BackgroundMotion;
   /** What is behind the row blurred, in pixels (D86): a header over a picture, say. Only with no background or a colour. */
   backdropBlur?: number;
   /**
@@ -1643,6 +1673,7 @@ const borderWidth = z
   .max(BORDER_MAX, `Keep a border at ${BORDER_MAX} pixels or less.`);
 
 const partBase = {
+  motion: partMotionSchema,
   style: spacing,
   border: z
     .object({
@@ -1691,6 +1722,14 @@ const colorBackground = z.object({ type: z.literal("color"), color, opacity: z.n
 /** How much what is behind a part is blurred (D86), with no background or a colour. */
 const backdropBlur = z.number().int().min(1).max(BLUR_MAX).optional();
 const imageBackground = z.object({ type: z.literal("image"), image: picture, overlay, blur });
+const gradientBackground = z.object({
+  type: z.literal("gradient"),
+  style: z.enum(Object.keys(GRADIENT_STYLES) as [GradientStyle, ...GradientStyle[]]),
+  colors: z.array(color).min(GRADIENT_COLORS_MIN).max(GRADIENT_COLORS_MAX),
+  angle: z.number().int().min(0).max(360).optional(),
+  flow: z.enum(Object.keys(GRADIENT_FLOWS) as [GradientFlow, ...GradientFlow[]]).optional(),
+  grain: z.boolean().optional(),
+});
 const videoBackground = z.object({
   type: z.literal("video"),
   video: z.object({ url: z.url({ protocol: /^https?$/, error: "A background video has an invalid address." }).max(1000) }),
@@ -1701,12 +1740,12 @@ const videoBackground = z.object({
 
 /** A column's background: a colour or a picture; only rows take a video. */
 const background = z
-  .discriminatedUnion("type", [colorBackground, imageBackground], {
+  .discriminatedUnion("type", [colorBackground, imageBackground, gradientBackground], {
     error: (issue) =>
       (issue.input as { type?: unknown } | undefined)?.type === "video" ? "Only rows can have a background video." : undefined,
   })
   .optional();
-const rowBackground = z.discriminatedUnion("type", [colorBackground, imageBackground, videoBackground]).optional();
+const rowBackground = z.discriminatedUnion("type", [colorBackground, imageBackground, gradientBackground, videoBackground]).optional();
 
 /** A block's own font (D59): a Google Fonts family, or none for the site's. */
 const blockFont = optionalText(fontFamily);
@@ -2299,6 +2338,7 @@ export const pageColumnSchema = z.object({
   id: itemId,
   blocks: z.array(pageBlockSchema),
   background,
+  backgroundMotion: backgroundMotionSchema,
   backdropBlur,
   link: z
     .object({
@@ -2328,6 +2368,7 @@ export const pageRowSchema = z
     equalHeight: z.boolean().optional(),
     align: z.enum(["top", "middle", "bottom"]).optional(),
     background: rowBackground,
+    backgroundMotion: backgroundMotionSchema,
     backdropBlur,
     modal: rowModalSchema.optional(),
     ...partBase,

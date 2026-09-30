@@ -28,6 +28,10 @@ import {
   type PageThumbnail,
 } from "@/lib/page-content";
 import { layoutOf } from "@/lib/page-layout";
+import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
+import { WandSparkles } from "lucide-react";
+
+import { MAKE_COOL_LABEL, MakeCoolDialog } from "./make-cool-dialog";
 import { copyRow, newBlock, newRow } from "@/lib/page-rows";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { defaultFooter, defaultHeader, type StandardMenus } from "@/lib/site-layout";
@@ -157,6 +161,10 @@ export function PageEditor({
   const [cssOpen, setCssOpen] = useState(false);
   // Saving the page's layout as a template (D127).
   const [templateOpen, setTemplateOpen] = useState(false);
+  // "Make my page cool" (D128): the AI manager adds motion; the rows from before are kept for one undo, and the canvas plays it.
+  const [coolOpen, setCoolOpen] = useState(false);
+  const [coolUndo, setCoolUndo] = useState<{ before: PageRow[]; after: PageRow[] } | null>(null);
+  const [motionRequest, setMotionRequest] = useState(0);
   const [siteCss, setSiteCss] = useState(context.siteCss);
   const language = context.languages.find((l) => l.locale === locale) ?? main;
   const translating = language.locale !== main.locale;
@@ -189,6 +197,25 @@ export function PageEditor({
   };
   // Rows change by function: a text block's editor reports from an earlier render.
   const changeRows = (update: (rows: PageRow[]) => PageRow[]) => edit((current) => ({ ...current, rows: update(current.rows) }));
+  /** Puts the plan's motion on the page (nothing the owner already animated is changed) and shows it on the canvas. */
+  const applyCool = (plan: MotionPlan) => {
+    const before = content.rows;
+    const result = applyMotionPlan(before, plan);
+    if (result.changed === 0) {
+      setMessage("Nothing to add: your page already has motion wherever it fits.");
+      return;
+    }
+    changeRows(() => result.rows);
+    setCoolUndo({ before, after: result.rows });
+    setMotionRequest((n) => n + 1);
+    setMessage(`${plan.summary}${plan.aiUsed ? "" : " (Your store has no AI set up, so a standard design was used.)"}`);
+  };
+  const undoCool = () => {
+    if (!coolUndo) return;
+    changeRows(() => coolUndo.before);
+    setCoolUndo(null);
+    setMessage("Motion removed again.");
+  };
   /** The page as the language being written reads. */
   const view = translating ? localizePage(content, locale) : content;
 
@@ -331,6 +358,7 @@ export function PageEditor({
         onSaved={updateParts}
         templates={context.templates}
         pageType={context.type}
+        motionRequest={motionRequest}
         pageCss={content.css ?? ""}
         onPageCss={(css) => changeCss(css ?? "")}
         productParts={context.type === "product_layout"}
@@ -621,7 +649,30 @@ export function PageEditor({
           </button>
           <p role="status" aria-live="polite" className="text-sm">
             {message ?? (dirty ? "Unsaved changes." : state ? STATE_TEXT[state] : "Not saved yet.")}
+            {/* One undo, only while nothing else has been changed since. */}
+            {coolUndo && coolUndo.after === content.rows && (
+              <button type="button" onClick={undoCool} className="ml-2 underline">
+                Undo
+              </button>
+            )}
           </p>
+          {!translating && (
+            <button
+              type="button"
+              onClick={() => setCoolOpen(true)}
+              aria-label={MAKE_COOL_LABEL}
+              title={MAKE_COOL_LABEL}
+              className="flex size-11 items-center justify-center rounded-md border border-border hover:bg-surface"
+            >
+              <WandSparkles aria-hidden className="size-5" />
+            </button>
+          )}
+          <MakeCoolDialog
+            open={coolOpen}
+            onClose={() => setCoolOpen(false)}
+            run={() => actions.motion(JSON.stringify(content.rows))}
+            onApply={applyCool}
+          />
           <button
             type="button"
             onClick={() => setCssOpen((open) => !open)}

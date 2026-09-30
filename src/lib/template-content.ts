@@ -278,7 +278,10 @@ const resolved = <T extends { url: string }>(value: T, resolve: MediaResolver): 
 
 type Background = { type: string; image?: Picture; video?: { url: string }; poster?: Picture | null };
 
-/** A background with its pictures and video through `resolve`, or undefined when what it shows is left out. */
+/**
+ * A background with its pictures and video through `resolve`, or undefined when what it shows is left out. A colour or a
+ * gradient (D128) holds no file and is returned as it is; so is the part's motion, which is only names.
+ */
 function editBackground<T extends Background | undefined>(background: T, resolve: MediaResolver): T | undefined {
   if (!background) return background;
   if (background.type === "image" && background.image) {
@@ -324,13 +327,13 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
       const background = editBackground(column.background, resolve);
       return background
         ? { ...column, background: background as PageColumn["background"] }
-        : (without(column, ["background"]) as PageColumn);
+        : (without(column, ["background", "backgroundMotion"]) as PageColumn);
     },
     row: (row) => {
       const background = editBackground(row.background, resolve);
       return background
         ? { ...row, background: background as PageRow["background"] }
-        : (without(row, ["background"]) as PageRow);
+        : (without(row, ["background", "backgroundMotion"]) as PageRow);
     },
   });
 }

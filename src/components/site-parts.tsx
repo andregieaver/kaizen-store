@@ -3,7 +3,9 @@ import { Suspense, type ReactNode } from "react";
 
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
+import { motionNeeds } from "@/lib/motion-attrs";
 import type { PageBlock, PageContent, SiteBlock } from "@/lib/page-content";
+import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { siteBlocks } from "@/lib/site-layout";
@@ -18,6 +20,7 @@ import { StoreColorSwitch } from "./store-color-switch";
 import { CartLink, CartLinkShell } from "./cart-link";
 import { Icon } from "./icons";
 import { PageRowView, rowShows } from "./page-article";
+import { MotionSupport } from "./motion-support";
 import { BUILT_IN, Brand as KaizenBrand } from "./platform-layout";
 import { HidingHeader } from "./store-chrome";
 import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice } from "./store-layout";
@@ -228,11 +231,15 @@ export function SiteRows({ content, ctx, place }: { content: PageContent; ctx: S
   // A part with nothing to show leaves no space behind (null), as a product's does (D79).
   const render = (block: PageBlock) =>
     block.type === "site" ? (sitePartShows(block, ctx) ? <SitePartView block={block} ctx={ctx} /> : null) : undefined;
+  const rows = content.rows.filter(rowShows);
+  // Motion (D128): a header's or footer's first row plays its entrances by CSS at once; the runtime only if something needs it.
+  const first = flowRows(rows)[0];
   return (
     <>
-      {content.rows.filter(rowShows).map((row) => (
-        <PageRowView key={row.id} row={row} place={place} renderBlock={render} />
+      {rows.map((row) => (
+        <PageRowView key={row.id} row={row} place={place} renderBlock={render} first={row === first} />
       ))}
+      <MotionSupport needs={motionNeeds(rows)} />
     </>
   );
 }

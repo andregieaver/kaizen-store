@@ -27,6 +27,7 @@ import {
   updateSavedPartAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
+import { planMotionAction } from "./motion-action";
 
 /** The page editor's context for Kaizen's own pages (D42, D53) or articles (D57); `author` starts a new article. */
 export async function platformPageContext(type: PageType = "page", author = ""): Promise<PageOwnerContext> {
@@ -58,6 +59,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       unpublish: unpublishPageAction.bind(null, type),
       remove: deletePageAction.bind(null, type),
       duplicate: duplicatePageAction.bind(null, type),
+      motion: planMotionAction.bind(null, type),
       createTerm: createPageTermAction.bind(null, type),
       createPart: createSavedPartAction,
       updatePart: updateSavedPartAction,

@@ -4,6 +4,7 @@ import type { GridData } from "@/lib/content-grid";
 import type { FieldGroup, FieldLookups } from "@/lib/custom-fields";
 import type { SiteFonts } from "@/lib/fonts";
 import type { PageType } from "@/lib/page-content";
+import type { MotionPlanResult } from "@/lib/motion-plan";
 import type { TranslateResult } from "@/lib/page-translate-ai";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import type { PageLanguage } from "@/lib/page-translation";
@@ -83,6 +84,8 @@ export type PageOwnerContext = {
     remove: (id: string) => Promise<{ problems: string[] } | void>;
     /** Makes a draft copy (D126): from what the editor holds (its JSON), or from the saved draft when none is given. */
     duplicate: (id: string, edited?: string) => Promise<DuplicateResult>;
+    /** "Make my page cool" (D128): a motion plan for the rows the editor holds (their JSON); the editor applies it. */
+    motion: (rowsJson: string) => Promise<MotionPlanResult>;
     createTerm: (input: { kind: TermKind; name: string; slug?: string; parentId?: string | null }) => Promise<TermsResult>;
     createPart: (input: unknown) => Promise<SavedResult>;
     updatePart: (id: string, input: unknown) => Promise<SavedResult>;

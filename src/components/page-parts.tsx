@@ -10,12 +10,15 @@ import {
   type PageBlock,
   type PageColumn,
   type ColumnJustify,
+  type GradientBackground,
   type PageRow,
   type RowBackground,
   type TextAlignments,
   type VerticalAlign,
 } from "@/lib/page-content";
 import { fontClass } from "@/lib/fonts";
+import type { BackgroundMotion } from "@/lib/motion";
+import { backgroundFx } from "@/lib/motion-attrs";
 import { summarize } from "@/lib/seo";
 
 import { BackgroundVideo } from "./background-video";
@@ -52,9 +55,9 @@ const TEXT_ALIGN = {
   desktop: { left: "lg:text-left", center: "lg:text-center", right: "lg:text-right" },
 } as const;
 
-/** Rounded corners over a background picture or video clip it. */
+/** Rounded corners over a background picture, video or gradient clip it. */
 const clips = (part: PageRow | PageColumn) =>
-  Boolean(part.radius) && (part.background?.type === "image" || part.background?.type === "video");
+  Boolean(part.radius) && (part.background?.type === "image" || part.background?.type === "video" || part.background?.type === "gradient");
 
 /**
  * A part's colour, see-through if it has an opacity, and what is behind it
@@ -197,14 +200,72 @@ const blurredMedia = (blur: number): CSSProperties | undefined =>
     ? { inset: -2 * blur, width: `calc(100% + ${4 * blur}px)`, height: `calc(100% + ${4 * blur}px)`, filter: `blur(${blur}px)` }
     : undefined;
 
+const HEX = /^#[0-9a-f]{6}$/i;
+const BACKGROUND_FRAME = "absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]";
+
+/** A gradient's colours as custom properties, from the colours the page holds (only `#rrggbb`, whatever else is dropped). */
+function gradientVars(gradient: GradientBackground): CSSProperties | null {
+  const colors = gradient.colors.filter((c) => HEX.test(c));
+  if (colors.length < 2) return null;
+  const angle = Number.isFinite(gradient.angle) ? Math.max(0, Math.min(360, gradient.angle as number)) : 135;
+  return {
+    "--fx-c1": colors[0],
+    "--fx-c2": colors[1 % colors.length],
+    "--fx-c3": colors[2 % colors.length],
+    "--fx-c4": colors[3 % colors.length],
+    // Round and back to the first, so a flowing or turning gradient has no seam.
+    "--fx-stops": [...colors, colors[0]].join(", "),
+    "--fx-angle": `${angle}deg`,
+  } as CSSProperties;
+}
+
+/** Colours that move, drawn with CSS alone (motion.css): no picture to load, behind the part's content like any background. */
+function GradientLayer({ gradient, motion, firstRow, preview }: { gradient: GradientBackground; motion?: BackgroundMotion; firstRow?: boolean; preview?: boolean }) {
+  const vars = gradientVars(gradient);
+  if (!vars) return null;
+  const fx = backgroundFx(motion, { firstRow, preview });
+  return (
+    <div aria-hidden className={BACKGROUND_FRAME} data-fx-bgroot="" data-fx-gradient="" data-fx-flow={gradient.flow ?? "slow"} style={vars}>
+      <div data-fx-layer="" {...fx.attrs} style={fx.style}>
+        <div data-fx-grad={gradient.style}>
+          {gradient.style === "aurora" && (
+            <>
+              <span data-fx-blob="1" />
+              <span data-fx-blob="2" />
+              <span data-fx-blob="3" />
+            </>
+          )}
+        </div>
+      </div>
+      {gradient.grain && <div data-fx-grain="" />}
+    </div>
+  );
+}
+
 /**
- * A background picture or video (rows only), softened if blurred, and the
+ * A background picture, video or gradient, softened if blurred, and the
  * colour over it, behind what the row or column holds. A video shows its
  * still until it plays, and instead of it for people who prefer less
- * motion.
+ * motion. With `motion` (D128) the picture or video sits on a layer larger
+ * than its frame that moves with the scroll or by itself; without it the
+ * markup is the plain one. `firstRow` is the page's first row, and `preview`
+ * the builder's canvas.
  */
-export function PartBackground({ background }: { background: RowBackground | undefined }) {
+export function PartBackground({
+  background,
+  motion,
+  firstRow,
+  preview,
+}: {
+  background: RowBackground | undefined;
+  motion?: BackgroundMotion;
+  firstRow?: boolean;
+  preview?: boolean;
+}) {
+  if (background?.type === "gradient") return <GradientLayer gradient={background} motion={motion} firstRow={firstRow} preview={preview} />;
   if (background?.type !== "image" && background?.type !== "video") return null;
+  const fx = backgroundFx(motion, { firstRow, preview });
+  const layered = Object.keys(fx.attrs).length > 0;
   const blur = background.blur ?? 0;
   const media = cx("absolute object-cover", blur ? "max-w-none" : "inset-0 size-full");
   const still = background.type === "image" ? background.image : background.poster;
@@ -213,8 +274,14 @@ export function PartBackground({ background }: { background: RowBackground | und
   );
   return (
     <>
-      <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]">
-        {picture}
+      <div aria-hidden className={BACKGROUND_FRAME} {...(layered ? { "data-fx-bgroot": "" } : {})}>
+        {layered ? (
+          <div data-fx-layer="" {...fx.attrs} style={fx.style}>
+            {picture}
+          </div>
+        ) : (
+          picture
+        )}
       </div>
       {background.type === "video" && (
         <BackgroundVideo
@@ -222,6 +289,7 @@ export function PartBackground({ background }: { background: RowBackground | und
           poster={background.poster?.url}
           className={media}
           style={blurredMedia(blur)}
+          layer={layered ? fx : undefined}
         />
       )}
       {background.overlay && (

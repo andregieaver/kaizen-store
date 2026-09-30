@@ -29,6 +29,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useRef,
   useState,
   useTransition,
   type CSSProperties,
@@ -57,6 +58,9 @@ import { TemplatePreviewDialog } from "./templates-preview";
 import { useTemplateUse, type TemplateUse } from "./templates-use";
 import { SavedLayoutDialog } from "./saved-layout-dialog";
 import { ModalBar } from "./modal-preview";
+import { BackgroundMotionFields, GradientFields } from "./gradient-fields";
+import { MotionFields } from "./motion-fields";
+import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import {
   BLOCKS_MAX,
   ROW_LAYOUTS,
@@ -140,6 +144,8 @@ import {
   type PageType,
 } from "@/lib/page-content";
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
+import { hasMotion, type BackgroundMotion, type EnterMotion } from "@/lib/motion";
+import { backgroundMoves, drawTarget, motionSignature, switchBackground, type MotionPart } from "@/lib/motion-edit";
 import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, type ShopPart } from "@/lib/store-parts";
 import {
   copyBlock,
@@ -416,6 +422,8 @@ type Actions = {
   lang: string | undefined;
   /** A global saved part's name (D98), for the canvas's marks. */
   globalName: (id: string) => string;
+  /** Whether the canvas plays the parts' motion (D128); off, it draws none of it. */
+  motionPreview: boolean;
 };
 
 /** The site's own fonts for the canvas, and installing a family a block chooses (D59). */
@@ -441,6 +449,7 @@ export function PageBuilder({
   translate = null,
   templates = null,
   pageType,
+  motionRequest = 0,
   pageCss = "",
   onPageCss = () => {},
   productParts = false,
@@ -468,6 +477,8 @@ export function PageBuilder({
   /** The kind of page being edited: a page layout (D127) can only be used on its own kind. */
   pageType: PageType;
   /** The page's own CSS, which a page layout may bring along (D127), and how to change it. */
+  /** Counts up each time the editor adds motion for the owner (D128): the canvas then plays it. */
+  motionRequest?: number;
   pageCss?: string;
   onPageCss?: (css: string | undefined) => void;
   /** No longer used: Kaizen's saved parts reach a store through the Templates tab (D125). */
@@ -512,6 +523,19 @@ export function PageBuilder({
   const [leftFolded, setLeftFolded] = useFolded("left");
   const [rightFolded, setRightFolded] = useFolded("right");
   const panelId = useId();
+  // The canvas plays the parts' motion only while asked to (D128); each switch on plays every entrance again.
+  const [motionOn, setMotionOn] = useState(false);
+  const [motionRun, setMotionRun] = useState(0);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const motionSign = motionSignature(rows);
+  useCanvasMotion(canvasRef, motionOn, motionSign, motionRun);
+  // Motion the AI manager just added is shown at once (D128).
+  const [seenRequest, setSeenRequest] = useState(motionRequest);
+  if (motionRequest !== seenRequest) {
+    setSeenRequest(motionRequest);
+    setMotionOn(true);
+    setMotionRun((n) => n + 1);
+  }
   const blockCount = pageBlocks({ rows }).length;
   const blocksFull = blockCount >= BLOCKS_MAX;
   const rowsFull = rows.length >= ROWS_MAX;
@@ -725,6 +749,7 @@ export function PageBuilder({
     blocksFull,
     lang,
     globalName: (id) => parts.find((p) => p.id === id)?.name ?? "Global",
+    motionPreview: motionOn,
   };
 
   // What a block that takes its content from a custom field (D118) can take: the product's in a layout, the page's or article's
@@ -794,8 +819,20 @@ export function PageBuilder({
           />
           )}
 
+          <div className="flex min-w-0 flex-col gap-3">
+          {!translate && (
+            <MotionPreviewToggle
+              on={motionOn}
+              onChange={(on) => {
+                setMotionOn(on);
+                if (on) setMotionRun((n) => n + 1);
+              }}
+              onReplay={() => setMotionRun((n) => n + 1)}
+            />
+          )}
           {/* The canvas draws with the site's own fonts (D59) and a store's theme (D60), as the site does. */}
           <div
+            ref={canvasRef}
             style={fonts.style}
             // With owners' CSS (D100), whatever it draws stays inside the canvas, even `position: fixed`.
             className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""} ${css.some((c) => c.trim()) ? "[contain:paint]" : ""}`}
@@ -807,6 +844,8 @@ export function PageBuilder({
             {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin. */}
             <ScopedCss css={css} root="[data-custom-css]" />
             <Canvas
+              // Switching the preview on starts every entrance again; off, the canvas is drawn plain.
+              key={motionOn ? `motion-${motionRun}` : "plain"}
               rows={rows}
               dragging={dragging}
               target={target}
@@ -817,6 +856,7 @@ export function PageBuilder({
               }
               blank={blankPage}
             />
+          </div>
           </div>
 
           {rightFolded && (
@@ -1738,6 +1778,7 @@ function Canvas({
                 key={row.id}
                 row={row}
                 name={`Row ${index + 1}`}
+                first={index === 0}
                 line={target?.id === row.id && dragging?.kind !== "row" ? (target.after ? "after" : "before") : null}
                 dragging={dragging}
                 target={target}
@@ -1827,10 +1868,13 @@ function Tools({
   deleteDisabled = false,
   mark,
   tag,
+  motion = false,
 }: {
   label: string;
   /** A short word after the label: a modal row's "Modal" (D121). */
   tag?: string;
+  /** The part has motion effects of its own (D128): a small wave says so. */
+  motion?: boolean;
   /** A global's use, or the page's own part inside one (D98): said after the label, in its colour. */
   mark?: PartMark | null;
   /** The drag handle, made where `useSortable` is (see `handleClass`); none while translating. */
@@ -1881,6 +1925,7 @@ function Tools({
       )}
       <span className="px-1 text-xs whitespace-nowrap">
         {label}
+        {motion && <MotionMark />}
         {tag && <span className="ml-1 rounded bg-white/25 px-1 text-[10px] font-medium uppercase">{tag}</span>}
         {mark && <span className="font-medium"> · {mark.text}</span>}
       </span>
@@ -1906,6 +1951,7 @@ const markAttributes = (part: PageRow | PageColumn | PageBlock) => ({
 function RowItem({
   row,
   name,
+  first,
   line,
   dragging,
   target,
@@ -1913,6 +1959,8 @@ function RowItem({
 }: {
   row: PageRow;
   name: string;
+  /** The page's first row, which motion treats gently (D128). */
+  first: boolean;
   line: "before" | "after" | null;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
@@ -1926,6 +1974,7 @@ function RowItem({
   const remove = () => actions.onRows((rows) => removeRow(rows, row.id));
   const box = rowBox(row, "canvas");
   const grid = rowGrid(row);
+  const fx = canvasFx(actions.motionPreview, row.motion, "row", { firstRow: first });
 
   return (
     <li
@@ -1943,6 +1992,7 @@ function RowItem({
       <Tools
         label={name}
         tag={row.modal ? "Modal" : undefined}
+        motion={hasMotion(row)}
         mark={markOf(row, actions)}
         handle={
           <button
@@ -1966,8 +2016,8 @@ function RowItem({
       {/* A modal's row stays in the page here (D121): badged, with a preview of the real modal. */}
       {row.modal && <ModalBar row={row} lang={actions.lang} />}
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
-        <div className={box.className} style={box.style}>
-          <PartBackground background={row.background} />
+        <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
+          <PartBackground background={row.background} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
           <div className={rowInnerClass(row, "canvas")}>
             <div className={grid.className} style={grid.style}>
               {row.columns.map((column, index) => (
@@ -1975,6 +2025,7 @@ function RowItem({
                   key={column.id}
                   column={column}
                   row={row}
+                  index={index}
                   name={`${name}, column ${index + 1}`}
                   dragging={dragging}
                   target={target}
@@ -1992,6 +2043,7 @@ function RowItem({
 function ColumnItem({
   column,
   row,
+  index,
   name,
   dragging,
   target,
@@ -1999,6 +2051,8 @@ function ColumnItem({
 }: {
   column: PageColumn;
   row: PageRow;
+  /** Its place in the row, for a row's stagger (D128). */
+  index: number;
   name: string;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
@@ -2007,6 +2061,7 @@ function ColumnItem({
   const rowId = row.id;
   const count = row.columns.length;
   const box = columnBox(column, row, "canvas");
+  const fx = canvasFx(actions.motionPreview, column.motion, "column", { index, parentStagger: row.motion?.enter?.stagger, parentEnter: row.motion?.enter });
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `column:${column.id}`,
     data: { kind: "column", columnId: column.id, rowId } satisfies DragData,
@@ -2050,6 +2105,7 @@ function ColumnItem({
       ) : (
       <Tools
         label={name.replace(/^Row \d+, c/, "C")}
+        motion={hasMotion(column)}
         mark={markOf(column, actions)}
         handle={
           <button
@@ -2075,8 +2131,8 @@ function ColumnItem({
       )}
       <Line at={columnLine} vertical />
       {/* The column itself, as the site draws it, inside its band for pointing. */}
-      <div className={box.className} style={box.style}>
-      <PartBackground background={column.background} />
+      <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
+      <PartBackground background={column.background} {...canvasBackground(actions.motionPreview, column.backgroundMotion)} />
       {column.link && (
         <span className="pointer-events-none absolute top-0 right-0 z-10 max-w-[80%] -translate-y-full truncate rounded-t bg-foreground/80 px-1.5 py-0.5 text-[11px] text-background">
           Links to {column.link.href || "…"}
@@ -2088,6 +2144,9 @@ function ColumnItem({
             key={block.id}
             block={block}
             columnId={column.id}
+            index={index}
+            parentStagger={column.motion?.enter?.stagger}
+            parentEnter={column.motion?.enter}
             name={`${name}, ${blockLabels[block.type].toLowerCase()} ${index + 1}`}
             line={line(block.id)}
             actions={actions}
@@ -2120,12 +2179,19 @@ function ColumnItem({
 function BlockItem({
   block,
   columnId,
+  index,
+  parentStagger,
+  parentEnter,
   name,
   line,
   actions,
 }: {
   block: PageBlock;
   columnId: string;
+  /** Its place in the column, and the column's stagger, for its entrance (D128). */
+  index: number;
+  parentStagger: number | undefined;
+  parentEnter: EnterMotion | undefined;
   name: string;
   line: "before" | "after" | null;
   actions: Actions;
@@ -2137,6 +2203,13 @@ function BlockItem({
   });
   const remove = () => actions.onRows((rows) => removeBlock(rows, block.id));
   const edit = () => actions.open({ kind: "edit-block", blockId: block.id });
+  const box = blockBox(block, "canvas");
+  const fx = canvasFx(actions.motionPreview, block.motion, drawTarget({ kind: "block", blockType: block.type }), {
+    index,
+    parentStagger,
+    parentEnter,
+    image: block.type === "image",
+  });
 
   return (
     <div
@@ -2161,6 +2234,7 @@ function BlockItem({
       ) : (
       <Tools
         label={blockLabels[block.type]}
+        motion={hasMotion(block)}
         mark={markOf(block, actions)}
         handle={
           <button
@@ -2185,7 +2259,7 @@ function BlockItem({
       />
       )}
       <Line at={line} />
-      <div className={blockBox(block, "canvas").className || undefined} style={blockBox(block, "canvas").style}>
+      <div className={box.className || undefined} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
         <FontLinks families={blockFonts(block)} />
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
         {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
@@ -2337,6 +2411,20 @@ function Dialogs({
       <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
     );
   };
+  /** The entrance, hover and scroll effects of the row, column or block a dialog is for (D128). */
+  const motionFields = (target: Styled) => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    const kind: MotionPart =
+      target.kind === "block" ? { kind: "block", blockType: (part as PageBlock).type } : { kind: target.kind };
+    return (
+      <MotionFields
+        part={kind}
+        motion={part.motion}
+        onChange={(motion) => onRows((current) => patchPart(current, target, { motion }))}
+      />
+    );
+  };
   /** The border, rounded corners and shadow of the row, column or block a dialog is for (D49). */
   const frameFields = (target: Styled) => (
     <FrameFields
@@ -2407,6 +2495,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2456,6 +2545,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2505,6 +2595,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2551,6 +2642,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2588,6 +2680,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2625,6 +2718,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2657,6 +2751,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2701,6 +2796,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2740,6 +2836,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2804,6 +2901,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2852,6 +2950,7 @@ function Dialogs({
                 {frameFields({ kind: "block", id: block.id })}
               </>
             }
+            motion={motionFields({ kind: "block", id: block.id })}
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
@@ -2919,11 +3018,15 @@ function Dialogs({
                   }
                   backdropBlur={column.backdropBlur}
                   onBackdropBlur={(backdropBlur) => onRows((current) => patchColumn(current, column.id, { backdropBlur }))}
+                  target="column"
+                  motion={column.backgroundMotion}
+                  onMotion={(backgroundMotion) => onRows((current) => patchColumn(current, column.id, { backgroundMotion }))}
                 />
                 {spacingFields({ kind: "column", id: column.id })}
                 {frameFields({ kind: "column", id: column.id })}
               </>
             }
+            motion={motionFields({ kind: "column", id: column.id })}
             advanced={advancedFields({ kind: "column", id: column.id })}
           />
         )}
@@ -2949,11 +3052,15 @@ function Dialogs({
                   onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
                   backdropBlur={row.backdropBlur}
                   onBackdropBlur={(backdropBlur) => onRows((current) => patchRow(current, row.id, { backdropBlur }))}
+                  target="row"
+                  motion={row.backgroundMotion}
+                  onMotion={(backgroundMotion) => onRows((current) => patchRow(current, row.id, { backgroundMotion }))}
                 />
                 {spacingFields({ kind: "row", id: row.id })}
                 {frameFields({ kind: "row", id: row.id })}
               </>
             }
+            motion={motionFields({ kind: "row", id: row.id })}
             advanced={advancedFields({ kind: "row", id: row.id })}
           />
         )}
@@ -3409,11 +3516,12 @@ function ImageFields({
 const SETTINGS_TABS = [
   { key: "general", label: "General" },
   { key: "style", label: "Style" },
+  { key: "motion", label: "Motion" },
   { key: "advanced", label: "Advanced" },
 ] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number]["key"];
 
-/** A settings dialog's three tabs (D48): what it holds, how it looks, and its id and classes. */
+/** A settings dialog's four tabs (D48, D128): what it holds, how it looks, how it moves, and its id and classes. */
 function SettingsTabs(panels: Record<SettingsTab, ReactNode>) {
   const [tab, setTab] = useState<SettingsTab>("general");
   const id = useId();
@@ -3468,6 +3576,9 @@ function BackgroundFields({
   onChange,
   backdropBlur,
   onBackdropBlur,
+  target,
+  motion,
+  onMotion,
 }: {
   value: RowBackground | undefined;
   upload: Upload | null;
@@ -3476,17 +3587,23 @@ function BackgroundFields({
   onChange: (background: RowBackground | undefined) => void;
   backdropBlur: number | undefined;
   onBackdropBlur: (blur: number | undefined) => void;
+  /** Whether this is a row's or a column's, for the effects offered a background (D128). */
+  target: "row" | "column";
+  /** How the picture, video or gradient moves; only they can. */
+  motion: BackgroundMotion | undefined;
+  onMotion: (motion: BackgroundMotion | undefined) => void;
 }) {
   // A picture or video chosen as the kind waits for its upload before it is kept.
   const [kind, setKind] = useState<"none" | RowBackground["type"]>(value?.type ?? "none");
   const choose = (next: typeof kind) => {
     setKind(next);
-    // A picture or video is drawn over what is behind, so blurring that would show nothing.
-    if ((next === "image" || next === "video") && backdropBlur) onBackdropBlur(undefined);
-    if (next === "none") onChange(undefined);
-    if (next === "color") onChange({ type: "color", color: value?.type === "color" ? value.color : "#f3f4f6" });
-    if (next === "image") onChange(value?.type === "image" ? value : undefined);
-    if (next === "video") onChange(value?.type === "video" ? value : undefined);
+    // The new kind is made from its own settings only, so nothing of the old one stays on it (D128).
+    const switched = switchBackground(value, next);
+    // A picture, video or gradient is drawn over what is behind, so blurring that would show nothing.
+    if (switched.clearBackdropBlur && backdropBlur) onBackdropBlur(undefined);
+    onChange(switched.background);
+    // A colour does not move.
+    if (switched.clearMotion && motion) onMotion(undefined);
   };
   const media = value?.type === "image" || value?.type === "video" ? value : null;
   const kept = { overlay: media?.overlay ?? null, ...(media?.blur ? { blur: media.blur } : {}) };
@@ -3498,6 +3615,7 @@ function BackgroundFields({
           { value: "none", label: "None" },
           { value: "color", label: "Colour" },
           { value: "image", label: "Picture" },
+          { value: "gradient", label: "Gradient" },
           ...(startVideo !== undefined ? [{ value: "video" as const, label: "Video" }] : []),
         ]}
         value={kind}
@@ -3552,7 +3670,7 @@ function BackgroundFields({
           {media?.type === kind ? (
             // The picture or video as the page draws it, with its colour and blur, so changes show here at once.
             <div className="relative isolate h-48 w-full overflow-hidden rounded-md border border-border">
-              <PartBackground background={media} />
+              <PartBackground background={media} motion={motion} preview />
             </div>
           ) : (
             <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
@@ -3607,6 +3725,17 @@ function BackgroundFields({
           )}
         </div>
       )}
+      {kind === "gradient" && value?.type === "gradient" && (
+        <div className="flex flex-col gap-4">
+          {/* The gradient as the page draws it, moving as it will. */}
+          <div className="relative isolate h-40 w-full overflow-hidden rounded-md border border-border">
+            <PartBackground background={value} motion={motion} preview />
+          </div>
+          <GradientFields value={value} onChange={onChange} />
+        </div>
+      )}
+      {/* A picture, video or gradient can move; a colour cannot. */}
+      {backgroundMoves(value) && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
     </div>
   );
 }

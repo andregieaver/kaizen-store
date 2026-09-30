@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./motion.css";
 
 /*
  * Light and dark (D99): a choice on <html data-color-mode>, else the

@@ -12,11 +12,14 @@ export function BackgroundVideo({
   poster,
   className,
   style,
+  layer,
 }: {
   src: string;
   poster: string | undefined;
   className: string;
   style: CSSProperties | undefined;
+  /** Motion (D128): the video sits on a layer that moves with the scroll or by itself, inside its frame. */
+  layer?: { attrs: Record<string, string>; style: CSSProperties };
 }) {
   const ref = useRef<HTMLVideoElement>(null);
 
@@ -37,19 +40,28 @@ export function BackgroundVideo({
     return () => reduce.removeEventListener("change", follow);
   }, []);
 
+  const video = (
+    <video
+      ref={ref}
+      src={src}
+      poster={poster}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      className={`${className} motion-reduce:hidden`}
+      style={style}
+    />
+  );
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]">
-      <video
-        ref={ref}
-        src={src}
-        poster={poster}
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        className={`${className} motion-reduce:hidden`}
-        style={style}
-      />
+    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]" {...(layer ? { "data-fx-bgroot": "" } : {})}>
+      {layer ? (
+        <div data-fx-layer="" {...layer.attrs} style={layer.style}>
+          {video}
+        </div>
+      ) : (
+        video
+      )}
     </div>
   );
 }
