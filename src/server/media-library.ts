@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 
@@ -15,7 +15,7 @@ import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor, AiError, embedTexts, type AiConnection } from "./ai";
 import { audit } from "./auth";
-import { removeStoredFiles, uploadProductImage, type UploadResult } from "./media";
+import { copyStoredFile, removeStoredFiles, uploadProductImage, type UploadResult } from "./media";
 import { getStore } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -133,6 +133,89 @@ export async function registerVideo(
     )
     on conflict (url) do nothing
   `);
+}
+
+/** A library item as Storage keeps it, for copying it to another owner's library (D125). */
+export type LibraryFile = {
+  id: string;
+  kind: MediaKind;
+  url: string;
+  thumbnailUrl: string | null;
+  bucket: string;
+  path: string;
+  thumbnailPath: string | null;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  width: number | null;
+  height: number | null;
+};
+
+/**
+ * The owner's library items whose address (or small copy's) is one of `urls`, by the address asked for. Only the
+ * owner's own: an address that is another owner's, or none of the library's, is not found.
+ */
+export async function libraryFilesByUrl(storeId: string | null, urls: string[]): Promise<Map<string, LibraryFile>> {
+  const found = new Map<string, LibraryFile>();
+  if (urls.length === 0) return found;
+  const list = sql.join(urls.map((url) => sql`${url}`), sql`, `);
+  const rows = await db().execute<Row>(sql`
+    select id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height
+    from commerce.media
+    where ${owned(storeId)} and (url in (${list}) or thumbnail_url in (${list}))
+  `);
+  for (const row of rows) {
+    const file: LibraryFile = {
+      id: String(row.id),
+      kind: row.kind as MediaKind,
+      url: String(row.url),
+      thumbnailUrl: row.thumbnail_url === null ? null : String(row.thumbnail_url),
+      bucket: String(row.bucket),
+      path: String(row.path),
+      thumbnailPath: row.thumbnail_path === null ? null : String(row.thumbnail_path),
+      fileName: String(row.file_name),
+      contentType: String(row.content_type),
+      sizeBytes: Number(row.size_bytes),
+      width: row.width === null ? null : Number(row.width),
+      height: row.height === null ? null : Number(row.height),
+    };
+    for (const url of [file.url, file.thumbnailUrl]) if (url && urls.includes(url)) found.set(url, file);
+  }
+  return found;
+}
+
+/**
+ * Copies a file of another owner's library (a template's picture or video, D125) into this store's, in Storage and
+ * in the library, under its own name; its alt texts are not copied (the picture's own in a page comes with the
+ * page, and the alt-text run describes it for this store). The new item's addresses, or null if the file could not be
+ * copied. `copyFile` is Storage's copy, replaceable in tests.
+ */
+export async function copyToLibrary(
+  target: { storeId: string; accountId: string },
+  file: LibraryFile,
+  copyFile: typeof copyStoredFile = copyStoredFile,
+): Promise<{ url: string; thumbnailUrl: string | null } | null> {
+  const name = randomUUID();
+  const extension = (path: string) => path.match(/\.[A-Za-z0-9]{1,5}$/)?.[0] ?? "";
+  const path = `${target.storeId}/${name}${extension(file.path)}`;
+  const url = await copyFile(file.bucket, file.path, path);
+  if (!url) return null;
+  let thumbnail: { url: string; path: string } | null = null;
+  if (file.thumbnailPath) {
+    const thumbnailPath = `${target.storeId}/${name}-480${extension(file.thumbnailPath)}`;
+    const thumbnailUrl = await copyFile(file.bucket, file.thumbnailPath, thumbnailPath);
+    if (thumbnailUrl) thumbnail = { url: thumbnailUrl, path: thumbnailPath };
+  }
+  await db().execute(sql`
+    insert into commerce.media (
+      store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by
+    ) values (
+      ${target.storeId}::uuid, ${file.kind}, ${url}, ${thumbnail?.url ?? null}, ${file.bucket}, ${path}, ${thumbnail?.path ?? null},
+      ${file.fileName}, ${file.contentType}, ${file.sizeBytes}, ${file.width}, ${file.height}, ${target.accountId}::uuid
+    )
+    on conflict (url) do nothing
+  `);
+  return { url, thumbnailUrl: thumbnail?.url ?? null };
 }
 
 // ---------------------------------------------------------------------------

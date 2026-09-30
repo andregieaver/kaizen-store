@@ -28,6 +28,7 @@ const groups: NavGroup[] = [
       { href: `${base}/pages`, label: "Pages" },
       { href: `${base}/articles`, label: "Blog" },
       { href: `${base}/media`, label: "Media" },
+      { href: `${base}/templates`, label: "Templates" },
       { href: `${base}/menus`, label: "Menus" },
       { href: `${base}/navigation`, label: "Header and footer" },
       { href: `${base}/headers`, label: "Headers" },

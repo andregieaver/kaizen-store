@@ -13,7 +13,6 @@ import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layo
 import { ProductLayoutView } from "@/components/product-parts";
 import { ScopedCss } from "@/components/custom-css";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
-import { withoutRecipients } from "@/lib/forms";
 import { t } from "@/lib/i18n";
 import { LAYOUT_TYPES, termContentOf, type PageContent, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, type PageRole } from "@/lib/page-roles";
@@ -122,6 +121,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           frontPageId={type === "page" ? store.frontPageId : null}
           productsPageId={type === "page" ? store.productsPageId : null}
           roles={type === "page" ? Object.fromEntries(Object.entries(store.pageRoles).map(([role, id]) => [id, role as PageRole])) : {}}
+          duplicate={context.actions.duplicate}
         />
       )}
       {(type === "header" || type === "footer") && (
@@ -212,10 +212,8 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
 
 export async function StoreNewPageView({ type, params }: { type: PageType; params: StoreParams }) {
   const { store, account } = await requireMember((await params).store);
-  const [saved, library, terms, gridTerms] = await Promise.all([
+  const [saved, terms, gridTerms] = await Promise.all([
     listSavedParts(store.id),
-    // Kaizen's saved parts, to start from (D56).
-    listSavedParts(null).then(withoutRecipients),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
   ]);
@@ -226,7 +224,6 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
       <PageEditor
         page={null}
         savedParts={saved}
-        library={library}
         terms={terms}
         gridTerms={gridTerms}
         fieldRoles={[]}
@@ -240,12 +237,10 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
 export async function StoreEditPageView({ type, params, searchParams }: { type: PageType; params: PageParams; searchParams: Query }) {
   const { store: storeSlug, pageId } = await params;
   const { store, account } = await requireMember(storeSlug);
-  const [page, { saved: justSaved }, saved, library, terms, gridTerms] = await Promise.all([
+  const [page, { saved: justSaved }, saved, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,
     searchParams,
     listSavedParts(store.id),
-    // Kaizen's saved parts, to start from (D56).
-    listSavedParts(null).then(withoutRecipients),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
     bothTerms(store.id),
   ]);
@@ -269,7 +264,6 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
               : null
         }
         savedParts={saved}
-        library={library}
         terms={terms}
         gridTerms={gridTerms}
         fieldData={fieldData}

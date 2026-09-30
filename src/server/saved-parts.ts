@@ -7,10 +7,12 @@ import { asDoc, fromDoc, refreshUses, sameGlobal, type AnyPart, type PartKind, t
 import { newPageContent } from "@/lib/page-content";
 import { cleanTranslations } from "@/lib/page-translation";
 import { SAVED_PARTS_MAX, parseSavedPart, savedPartInput, type SavedPart } from "@/lib/saved-parts";
+import type { PartSharing } from "@/lib/templates";
 
 import { audit, type Account } from "./auth";
 import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals, type StoredPart } from "./global-parts";
 import { ownerLanguages } from "./pages";
+import { NOT_OWNER, isStoreOwner } from "./templates";
 
 /**
  * Saved rows, columns and components (D46) for the page builder's Saved
@@ -31,7 +33,7 @@ const actionPrefix = (owner: Owner) => (owner === null ? "platform" : "store");
 
 export async function listSavedParts(owner: Owner): Promise<SavedPart[]> {
   const rows = await db().execute<Row>(sql`
-    select sp.id, sp.kind, sp.name, sp.content, sp.updated_at, sp.global, sp.translations,
+    select sp.id, sp.kind, sp.name, sp.content, sp.updated_at, sp.global, sp.translations, sp.sharing,
       case when sp.global then (
         select count(*)::int from commerce.pages p
         where p.store_id is not distinct from sp.store_id
@@ -51,6 +53,7 @@ export async function listSavedParts(owner: Owner): Promise<SavedPart[]> {
       global: Boolean(row.global),
       translations: row.translations,
       uses: Number(row.uses ?? 0),
+      sharing: String(row.sharing),
     });
     return part ? [part] : [];
   });
@@ -104,6 +107,9 @@ export async function createSavedPart(account: Account, owner: Owner, input: unk
   const parsed = savedPartInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error.issues) };
   const { kind, name, global } = parsed.data;
+  // Kaizen's own are the marketplace's (D125); a store's are shared only by its owners.
+  const sharing = owner === null ? "marketplace" : parsed.data.sharing;
+  if (owner !== null && sharing !== "private" && !(await isStoreOwner(account.id, owner))) return { ok: false, problems: [NOT_OWNER] };
   const result = await inTransaction(async (tx) => {
     const parts = await lockSavedParts(tx, owner);
     if (parts.length >= SAVED_PARTS_MAX) {
@@ -112,15 +118,15 @@ export async function createSavedPart(account: Account, owner: Owner, input: unk
     const ready = await prepare(owner, parts, kind, parsed.data.content, parsed.data.translations, global);
     if ("problems" in ready) return { ok: false, problems: ready.problems };
     const [row] = await tx.execute<Row>(sql`
-      insert into commerce.saved_parts (store_id, kind, name, content, global, translations, created_by, updated_by)
+      insert into commerce.saved_parts (store_id, kind, name, content, global, translations, sharing, created_by, updated_by)
       values (${owner}::uuid, ${kind}, ${name}, ${JSON.stringify(ready.content)}::jsonb, ${global},
-        ${JSON.stringify(ready.translations)}::jsonb, ${account.id}::uuid, ${account.id}::uuid)
+        ${JSON.stringify(ready.translations)}::jsonb, ${sharing}, ${account.id}::uuid, ${account.id}::uuid)
       returning id
     `);
     return { ok: true, id: String(row.id), parts: [] };
   });
   if (!result.ok) return result;
-  await audit(account.id, owner, `${actionPrefix(owner)}.part_saved`, { part: result.id, kind, name, ...(global && { global }) });
+  await audit(account.id, owner, `${actionPrefix(owner)}.part_saved`, { part: result.id, kind, name, ...(global && { global }), ...(owner !== null && sharing !== "private" && { sharing }) });
   return { ...result, parts: await listSavedParts(owner) };
 }
 
@@ -133,18 +139,26 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
   const parsed = savedPartInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error.issues) };
   const { kind, name, global } = parsed.data;
+  // How it is shared (D125) changes only when the input says so, and only by an owner; Kaizen's stay the marketplace's.
+  const says = typeof input === "object" && input !== null && Object.hasOwn(input, "sharing");
   let pages = 0;
+  let shared: PartSharing = "private";
+  let sharingChanged = false as boolean;
   const result = await inTransaction(async (tx) => {
     const parts = await lockSavedParts(tx, owner);
     const before = parts.find((p) => p.id === id && p.kind === kind);
     if (!before) return { ok: false, problems: ["This saved part no longer exists."] };
+    const [current] = await tx.execute<Row>(sql`select sharing from commerce.saved_parts where id = ${id}::uuid`);
+    shared = owner === null ? "marketplace" : says ? parsed.data.sharing : (String(current.sharing) as PartSharing);
+    sharingChanged = shared !== current.sharing;
+    if (sharingChanged && owner !== null && !(await isStoreOwner(account.id, owner))) return { ok: false, problems: [NOT_OWNER] };
     // The builder's dialog does not show texts in other languages: a global keeps its own.
     const others = parts.filter((p) => p.id !== id);
     const ready = await prepare(owner, others, kind, parsed.data.content, before.translations, global);
     if ("problems" in ready) return { ok: false, problems: ready.problems };
     await tx.execute(sql`
       update commerce.saved_parts
-         set name = ${name}, content = ${JSON.stringify(ready.content)}::jsonb, global = ${global},
+         set name = ${name}, content = ${JSON.stringify(ready.content)}::jsonb, global = ${global}, sharing = ${shared},
              translations = ${JSON.stringify(ready.translations)}::jsonb, updated_at = now(), updated_by = ${account.id}::uuid
        where id = ${id}::uuid
     `);
@@ -163,7 +177,13 @@ export async function updateSavedPart(account: Account, owner: Owner, id: string
     return { ok: true, id, parts: [] };
   });
   if (!result.ok) return result;
-  await audit(account.id, owner, `${actionPrefix(owner)}.part_updated`, { part: id, name, ...(global && { global }), ...(pages > 0 && { pages }) });
+  await audit(account.id, owner, `${actionPrefix(owner)}.part_updated`, {
+    part: id,
+    name,
+    ...(global && { global }),
+    ...(pages > 0 && { pages }),
+    ...(sharingChanged && { sharing: shared }),
+  });
   return { ...result, pages, parts: await listSavedParts(owner) };
 }
 

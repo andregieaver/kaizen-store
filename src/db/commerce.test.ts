@@ -1709,8 +1709,9 @@ describe("integrations with Slack (D101)", () => {
 });
 
 describe("saved parts", () => {
+  // Kaizen's own (no store) are always the marketplace's (D125).
   const save = (kind: string, name: string) =>
-    db.query("insert into commerce.saved_parts (kind, name, content) values ($1, $2, '{}')", [kind, name]);
+    db.query("insert into commerce.saved_parts (kind, name, content, sharing) values ($1, $2, '{}', 'marketplace')", [kind, name]);
 
   it("keeps rows, columns and components with a name", async () => {
     await expect(save("row", "Hero")).resolves.toBeDefined();
@@ -1721,12 +1722,57 @@ describe("saved parts", () => {
 
   it("are not global until said, and keep a global's translations as an object (D98)", async () => {
     const { rows } = await db.query<{ global: boolean; translations: unknown }>(
-      "insert into commerce.saved_parts (kind, name, content) values ('block', 'Plain', '{}') returning global, translations",
+      "insert into commerce.saved_parts (kind, name, content, sharing) values ('block', 'Plain', '{}', 'marketplace') returning global, translations",
     );
     expect(rows[0]).toEqual({ global: false, translations: {} });
     await expect(
-      db.query("insert into commerce.saved_parts (kind, name, content, global, translations) values ('row', 'Hero', '{}', true, '[]')"),
+      db.query("insert into commerce.saved_parts (kind, name, content, sharing, global, translations) values ('row', 'Hero', '{}', 'marketplace', true, '[]')"),
     ).rejects.toThrow(/saved_parts_translations/);
+  });
+});
+
+describe("templates (D125)", () => {
+  const part = (values: { store: string | null; sharing?: string; name?: string }) =>
+    one<{ id: string }>(
+      `insert into commerce.saved_parts (store_id, kind, name, content${values.sharing ? ", sharing" : ""})
+       values ($1, 'block', $2, '{}'${values.sharing ? ", $3" : ""}) returning id`,
+      values.sharing ? [values.store, values.name ?? "Template", values.sharing] : [values.store, values.name ?? "Template"],
+    );
+
+  it("shares a store's part privately unless said, with the three ways only", async () => {
+    const plain = await part({ store });
+    expect((await one<{ sharing: string }>("select sharing from commerce.saved_parts where id = $1", [plain.id])).sharing).toBe("private");
+    for (const sharing of ["stores", "marketplace"]) await expect(part({ store, sharing })).resolves.toBeDefined();
+    await expect(part({ store, sharing: "everyone" })).rejects.toThrow(/saved_parts_sharing/);
+  });
+
+  it("makes Kaizen's own parts the marketplace's, never private or for stores", async () => {
+    await expect(part({ store: null })).rejects.toThrow(/saved_parts_kaizen_sharing/);
+    await expect(part({ store: null, sharing: "private" })).rejects.toThrow(/saved_parts_kaizen_sharing/);
+    await expect(part({ store: null, sharing: "stores" })).rejects.toThrow(/saved_parts_kaizen_sharing/);
+    await expect(part({ store: null, sharing: "marketplace" })).resolves.toBeDefined();
+  });
+
+  it("records who hid a template, and takes a store's switches with the template", async () => {
+    const admin = await createAccount("moderator@example.com");
+    const template = await part({ store, sharing: "marketplace" });
+    await db.query("update commerce.saved_parts set hidden_at = now(), hidden_by = $2 where id = $1", [template.id, admin]);
+    expect((await one<{ hidden: boolean }>("select hidden_at is not null as hidden from commerce.saved_parts where id = $1", [template.id])).hidden).toBe(true);
+
+    await db.query("insert into commerce.template_activations (store_id, part_id, active, changed_by) values ($1, $2, true, $3)", [other, template.id, admin]);
+    await expect(
+      db.query("insert into commerce.template_activations (store_id, part_id, active) values ($1, $2, false)", [other, template.id]),
+    ).rejects.toThrow(/template_activations_store_id_part_id_pk/);
+    await expect(
+      db.query("insert into commerce.template_activations (store_id, part_id, active) values ($1, gen_random_uuid(), true)", [other]),
+    ).rejects.toThrow(/template_activations_part_id_saved_parts_id_fk/);
+    await expect(
+      db.query("insert into commerce.template_activations (store_id, part_id, active) values (gen_random_uuid(), $1, true)", [template.id]),
+    ).rejects.toThrow(/template_activations_store_id_stores_id_fk/);
+
+    await db.query("delete from commerce.saved_parts where id = $1", [template.id]);
+    const left = await one<{ n: number }>("select count(*)::int as n from commerce.template_activations where part_id = $1", [template.id]);
+    expect(left.n).toBe(0);
   });
 });
 

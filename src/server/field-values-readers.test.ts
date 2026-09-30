@@ -25,6 +25,8 @@ const READERS = [
   "src/server/listing.ts",
   // A content grid's tile fields: products, pages and articles.
   "src/server/field-tiles.ts",
+  // Duplicating a page: copies a page's or article's values to the copy, staff only.
+  "src/server/page-duplicate.ts",
 ];
 
 function sources(root: string): string[] {

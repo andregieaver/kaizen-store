@@ -11,6 +11,7 @@ import {
   type PageText,
 } from "./page-content";
 import type { GlobalPart, Translations } from "./global-parts";
+import { PART_SHARING, type PartSharing } from "./templates";
 
 /**
  * Rows, columns and components saved to use again (D46). Shared by the
@@ -32,6 +33,8 @@ export type SavedPart = {
   translations: Translations;
   /** How many pages (drafts or live) use a global. */
   uses: number;
+  /** Who else can use it as a template (D125); Kaizen's own are the marketplace's. */
+  sharing: PartSharing;
 } & (
   | { kind: "row"; content: PageRow }
   | { kind: "column"; content: PageColumn }
@@ -88,7 +91,7 @@ const translations = z
   )
   .default({});
 
-const shared = { name, global: z.boolean().default(false), translations };
+const shared = { name, global: z.boolean().default(false), translations, sharing: z.enum(PART_SHARING).default("private") };
 
 /** What the builder sends to save, with the checks shown to the admin. */
 export const savedPartInput = z
@@ -119,6 +122,7 @@ export function parseSavedPart(row: {
   global?: boolean;
   translations?: unknown;
   uses?: number;
+  sharing?: string;
 }): SavedPart | null {
   const parsed = savedPartInput.safeParse({
     kind: row.kind,
@@ -126,6 +130,7 @@ export function parseSavedPart(row: {
     content: row.content,
     global: row.global ?? false,
     translations: row.translations ?? {},
+    sharing: row.sharing ?? "private",
   });
   return parsed.success ? ({ id: row.id, updatedAt: row.updatedAt, uses: row.uses ?? 0, ...parsed.data } as SavedPart) : null;
 }

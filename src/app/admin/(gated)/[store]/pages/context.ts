@@ -26,11 +26,16 @@ import {
   saveStoreCssAction,
   translateStorePageAction,
   saveStorePageAction,
+  setPartSharingAction,
+  setTemplateActiveAction,
   storeGridPreviewAction,
   storeGridTermsAction,
+  templatesListAction,
   unpublishStorePageAction,
   updateStorePartAction,
+  applyTemplateAction,
 } from "./actions";
+import { duplicateStorePageAction } from "./duplicate-action";
 
 /** Where a store's pages (or articles, D57) are edited. */
 export const storePagesBase = (store: Pick<Store, "slug">, type: PageType = "page") =>
@@ -73,6 +78,13 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
+    // Templates shared between stores and the marketplace (D125), bound to the store.
+    templates: {
+      list: bind(templatesListAction),
+      setActive: bind(setTemplateActiveAction),
+      use: bind(applyTemplateAction),
+      setSharing: bind(setPartSharingAction),
+    },
     fields: {
       groups: fieldGroups,
       lookups,
@@ -83,6 +95,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       save: typed(saveStorePageAction),
       unpublish: typed(unpublishStorePageAction),
       remove: typed(deleteStorePageAction),
+      duplicate: typed(duplicateStorePageAction),
       createTerm: typed(createStorePageTermAction),
       createPart: bind(createStorePartAction),
       updatePart: bind(updateStorePartAction),

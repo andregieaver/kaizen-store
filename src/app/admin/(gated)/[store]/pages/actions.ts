@@ -21,6 +21,9 @@ import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRo
 import { createRolePage } from "@/server/page-roles";
 import { isPageRole, ROLE_COPY } from "@/lib/page-roles";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
+import { PART_SHARING, TEMPLATE_SOURCES, type PartSharing, type TemplateItem, type TemplateResult, type TemplateSource } from "@/lib/templates";
+import type { SavedPart } from "@/lib/saved-parts";
+import { applyTemplate, listTemplates, setPartSharing, setTemplateActive } from "@/server/templates";
 import { saveSiteCss } from "@/server/site-css";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
 import { storeTag } from "@/server/stores";
@@ -198,6 +201,39 @@ export async function deleteStorePartAction(storeSlug: string, id: string): Prom
   const result = await deleteSavedPart(member.account, member.store.id, id);
   if (result.ok && result.pages) pagesChanged(member);
   return result;
+}
+
+// Templates (D125): saved parts shared with the owner's other stores or the marketplace. The server decides what
+// the store may see; these only check what the browser sent.
+
+const unknownTemplate = { ok: false, problems: ["Unknown template."] } satisfies TemplateResult;
+
+/** The templates the store may see from a source, active or not. */
+export async function templatesListAction(storeSlug: string, source: TemplateSource): Promise<TemplateItem[]> {
+  const member = await requireMember(storeSlug);
+  if (!TEMPLATE_SOURCES.includes(source)) return [];
+  return listTemplates(member.store.id, member.account, source);
+}
+
+/** Switches a template on or off for the store's builder. */
+export async function setTemplateActiveAction(storeSlug: string, id: string, active: boolean): Promise<TemplateResult> {
+  const member = await requireMember(storeSlug);
+  if (!isId(id) || typeof active !== "boolean") return unknownTemplate;
+  return setTemplateActive(member.store.id, member.account, id, active);
+}
+
+/** A copy of a template for the page, with the other store's own things left out and its pictures copied here. */
+export async function applyTemplateAction(storeSlug: string, id: string): Promise<TemplateResult<{ part: SavedPart }>> {
+  const member = await requireMember(storeSlug);
+  if (!isId(id)) return unknownTemplate;
+  return applyTemplate(member.store.id, member.account, id);
+}
+
+/** Who can use one of the store's saved parts as a template; owners only. */
+export async function setPartSharingAction(storeSlug: string, id: string, sharing: PartSharing): Promise<TemplateResult> {
+  const member = await requireMember(storeSlug);
+  if (!isId(id) || !PART_SHARING.includes(sharing)) return unknownTemplate;
+  return setPartSharing(member.store.id, member.account, id, sharing);
 }
 
 // The store's page and article categories and tags (D50, D57).

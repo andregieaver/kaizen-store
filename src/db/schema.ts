@@ -3223,6 +3223,14 @@ export const savedParts = commerce.table(
     global: boolean("global").notNull().default(false),
     /** A global's texts in the owner's other languages (D55), by their place in `content`. */
     translations: jsonb("translations").notNull().default({}),
+    /**
+     * Who else can use it as a template (D125): `private` (this store), `stores` (the other stores its
+     * owner owns) or `marketplace` (every store owner). Kaizen's own (no store) are always the marketplace's.
+     */
+    sharing: text("sharing").notNull().default("private"),
+    /** Set by a platform admin: a hidden template is in no list; copies already made stay. */
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    hiddenBy: uuid("hidden_by").references(() => accounts.id),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedAt: updatedAt(),
@@ -3233,8 +3241,39 @@ export const savedParts = commerce.table(
     check("saved_parts_translations", sql`jsonb_typeof(${t.translations}) = 'object'`),
     index("saved_parts_created_by_idx").on(t.createdBy),
     index("saved_parts_updated_by_idx").on(t.updatedBy),
+    index("saved_parts_hidden_by_idx").on(t.hiddenBy),
     check("saved_parts_kind", sql`${t.kind} in ('row', 'column', 'block')`),
     check("saved_parts_name", sql`length(trim(${t.name})) between 1 and 80`),
+    check("saved_parts_sharing", sql`${t.sharing} in ('private', 'stores', 'marketplace')`),
+    check("saved_parts_kaizen_sharing", sql`${t.storeId} is not null or ${t.sharing} = 'marketplace'`),
+    // The marketplace's and the owner's other stores' lists.
+    index("saved_parts_shared_idx").on(t.sharing, t.updatedAt).where(sql`${t.sharing} <> 'private'`),
+  ],
+);
+
+/**
+ * A store's choice to have a template (D125) in the page builder's Templates tab, or not: one row per store
+ * and template it has switched on or off. Kaizen's own saved parts (no store) count as on until a store
+ * switches them off (`coalesce(active, store_id is null)`); every other template is off until switched on.
+ * A template that is deleted takes its rows with it.
+ */
+export const templateActivations = commerce.table(
+  "template_activations",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    partId: uuid("part_id")
+      .notNull()
+      .references(() => savedParts.id, { onDelete: "cascade" }),
+    active: boolean("active").notNull(),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull().defaultNow(),
+    changedBy: uuid("changed_by").references(() => accounts.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.partId] }),
+    index("template_activations_part_idx").on(t.partId),
+    index("template_activations_changed_by_idx").on(t.changedBy),
   ],
 );
 

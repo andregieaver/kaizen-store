@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import type { PageState, PageSummary } from "@/server/pages";
+import type { DuplicateResult } from "@/lib/page-duplicate";
 import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
+
+import { DuplicateButton } from "./duplicate-button";
 
 const STATE_LABELS: Record<PageState, string> = {
   draft: "Draft",
@@ -22,6 +25,7 @@ export function PagesTable({
   frontPageId = null,
   productsPageId = null,
   roles = {},
+  duplicate,
 }: {
   pages: PageSummary[];
   adminBase: string;
@@ -32,6 +36,8 @@ export function PagesTable({
   productsPageId?: string | null;
   /** The pages chosen for the blog, search and 404 places (D112), by page id. */
   roles?: Record<string, PageRole>;
+  /** Makes a copy as a draft (D126), bound to the owner and kind of page; without it the list offers no Duplicate. */
+  duplicate?: (id: string) => Promise<DuplicateResult>;
 }) {
   return (
         <div className="overflow-x-auto rounded-lg border border-border bg-background">
@@ -102,6 +108,12 @@ export function PagesTable({
                         <a href={`${siteBase}/${page.slug}`} target="_blank" rel="noopener" className="underline">
                           View<span className="sr-only"> {page.title}</span>
                         </a>
+                      </>
+                    )}
+                    {duplicate && (
+                      <>
+                        {" · "}
+                        <DuplicateButton id={page.id} title={page.title} adminBase={adminBase} duplicate={duplicate} />
                       </>
                     )}
                   </td>

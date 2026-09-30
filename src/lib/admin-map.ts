@@ -401,6 +401,9 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   platform("footer", "/footers/[pageId]", "Footer", "Kaizen site", "Builds a Kaizen footer."),
   platform("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Kaizen site", "Previews a Kaizen footer."),
   platform("media", "/media", "Media", "Kaizen site", "Kaizen's media library."),
+  platform("templates", "/templates", "Templates", "Kaizen site", "The marketplace's templates, store owners' and Kaizen's own: hide one from every store's list, or show it again.", {
+    keywords: ["marketplace", "saved parts", "moderation"],
+  }),
   platform("menus", "/menus", "Menus", "Kaizen site", "Kaizen's menus."),
   platform("navigation", "/navigation", "Header and footer", "Kaizen site", "Kaizen's logos, icon, business details and menus."),
   platform("fonts", "/fonts", "Fonts", "Kaizen site", "Kaizen's self-hosted fonts."),

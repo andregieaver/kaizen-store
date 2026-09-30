@@ -45,6 +45,11 @@ import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
 import { ModalFields, ModalPicker } from "./modal-fields";
+import { FoldButton, Rail, RailHeader, railColumns, useFolded } from "./builder-rails";
+import { TemplatesModal } from "./templates-modal";
+import { SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
+import { TemplatesTab } from "./templates-tab";
+import { useTemplateLists, type TemplateController } from "./templates-lists";
 import { ModalBar } from "./modal-preview";
 import {
   BLOCKS_MAX,
@@ -171,6 +176,7 @@ import { productLoopConfig, productLoopPatch } from "@/lib/field-loop";
 import { tileEntity } from "@/lib/tile-fields";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
+import type { PartSharing, TemplateActions, TemplateSource } from "@/lib/templates";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
 import type { GridStore } from "@/server/content-grid";
 import type { MenuPreview } from "@/server/menus";
@@ -421,7 +427,7 @@ export function PageBuilder({
   grid,
   fonts,
   translate = null,
-  library = [],
+  templates = null,
   productParts = false,
   siteParts = null,
   shopParts = false,
@@ -442,7 +448,9 @@ export function PageBuilder({
   fieldGroups?: FieldGroup[] | null;
   grid: GridContext;
   fonts: BuilderFonts;
-  /** Kaizen's saved parts, for a store's pages: a starter library to copy from, not to change (D56). */
+  /** Templates shared between stores and the marketplace (D125), for the Templates tab and the sharing of saved parts; null on Kaizen's own pages. */
+  templates?: TemplateActions | null;
+  /** No longer used: Kaizen's saved parts reach a store through the Templates tab (D125). */
   library?: SavedPart[];
   /** Set while the page's texts are translated (D55). */
   translate?: Translating | null;
@@ -468,9 +476,17 @@ export function PageBuilder({
   /** The column last worked in, where pressing a component adds it. */
   const [lastColumn, setLastColumn] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
-  /** A saved part by id: the owner's, or one from Kaizen's library. */
-  const findPart = (id: string) => parts.find((p) => p.id === id) ?? library.find((p) => p.id === id);
+  /** A saved part by id. */
+  const findPart = (id: string) => parts.find((p) => p.id === id);
   const [tab, setTab] = useState<Tab>("components");
+  // Templates (D125): the lists the tab and its modal share, where the tab looks, and whether the modal is open.
+  const controller = useTemplateLists(templates);
+  const [source, setSource] = useState<TemplateSource>("marketplace");
+  const [browsing, setBrowsing] = useState(false);
+  // The sidebars can be folded away; each is kept per browser.
+  const [leftFolded, setLeftFolded] = useFolded("left");
+  const [rightFolded, setRightFolded] = useFolded("right");
+  const panelId = useId();
   const blockCount = pageBlocks({ rows }).length;
   const blocksFull = blockCount >= BLOCKS_MAX;
   const rowsFull = rows.length >= ROWS_MAX;
@@ -499,19 +515,20 @@ export function PageBuilder({
   /**
    * Puts a saved part on the page: a row at `index`, a column into a row (or
    * a row of its own), a block into a column. A global one (D98) is a new
-   * use of it; any other a copy, and Kaizen's library's are copies without
-   * any global's marks (D56).
+   * use of it; any other a copy, and a template's (`foreign`, D125, once made
+   * ready by the server) is a copy without any global's marks, its grids
+   * showing this store's products (D56).
    */
   const placeSaved = (
     saved: SavedPart,
     place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number } = {},
+    foreign = false,
   ) => {
-    const fromLibrary = library.includes(saved);
-    const part = fromLibrary ? forStore(saved) : saved;
-    const global = fromLibrary ? null : globalOf(part);
+    const part = foreign ? forStore(saved) : saved;
+    const global = foreign ? null : globalOf(part);
     // A saved part's custom ids come along unless the page already uses them (D48).
     const copy = <T extends PageRow | PageColumn | PageBlock>(content: T, copier: (c: T) => T): T =>
-      global ? (newUse(global, newId()) as T) : copier(fromLibrary ? withoutUses(part.kind, content) : content);
+      global ? (newUse(global, newId()) as T) : copier(foreign ? withoutUses(part.kind, content) : content);
     if (part.kind === "row") {
       const row = copy(part.content, (c) => copyRow(c, newId, htmlIds(rows)));
       if (!rowsFull) onRows((current) => insertRow(current, row, place.index ?? current.length));
@@ -686,11 +703,20 @@ export function PageBuilder({
           },
         }}
       >
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]">
+        <div className={`grid items-start gap-6 ${railColumns(leftFolded, rightFolded)}`}>
+          {leftFolded && <Rail side="left" label="building blocks" controls={`${panelId}-left`} onOpen={() => setLeftFolded(false)} />}
           {translate ? (
-            <TranslateNote translate={translate} />
+            <TranslateNote
+              translate={translate}
+              id={`${panelId}-left`}
+              hidden={leftFolded}
+              header={<FoldButton side="left" label="building blocks" controls={`${panelId}-left`} onFold={() => setLeftFolded(true)} />}
+            />
           ) : (
           <Sidebar
+            id={`${panelId}-left`}
+            hidden={leftFolded}
+            onFold={() => setLeftFolded(true)}
             tab={tab}
             onTab={setTab}
             onAddRow={(layout) => addRow(layout)}
@@ -703,9 +729,9 @@ export function PageBuilder({
             customFields={fieldGroups !== null && grid.owner !== null && !productParts}
             shop={shopParts}
             parts={parts}
-            library={library}
             onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
-            onUseLibrary={(part) => placeSaved(part)}
+            templates={templates && { actions: templates, controller, source, onSource: setSource, onBrowse: () => setBrowsing(true), onUse: (part) => placeSaved(part, {}, true) }}
+            onShared={(id, sharing) => setParts(parts.map((p) => (p.id === id ? { ...p, sharing } : p)))}
             rowsFull={rowsFull}
             blocksFull={blocksFull}
           />
@@ -726,8 +752,14 @@ export function PageBuilder({
             <Canvas rows={rows} dragging={dragging} target={target} actions={actions} />
           </div>
 
+          {rightFolded && (
+            <Rail side="right" label="settings" controls={`${panelId}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
+          )}
           {/* On phones the title and settings come first. */}
-          <div className="order-first flex min-w-0 flex-col gap-6 lg:order-none">{aside}</div>
+          <div id={`${panelId}-right`} hidden={rightFolded} className="order-first flex min-w-0 flex-col gap-6 lg:order-none">
+            <RailHeader side="right" label="settings" controls={`${panelId}-right`} onFold={() => setRightFolded(true)} />
+            {aside}
+          </div>
         </div>
 
         <DragOverlay dropAnimation={null}>
@@ -771,7 +803,9 @@ export function PageBuilder({
           grid={grid}
           fonts={fonts}
           translate={translate}
+          sharing={templates !== null}
         />
+        {templates && <TemplatesModal controller={controller} source={source} onSource={setSource} open={browsing} onClose={() => setBrowsing(false)} />}
       </DndContext>
     </BindEntitiesContext>
     </FieldGroupsContext>
@@ -786,11 +820,26 @@ const TABS = [
   { key: "components", label: "Components" },
   { key: "rows", label: "Rows" },
   { key: "saved", label: "Saved" },
-  { key: "layers", label: "Layers" },
 ] as const;
-type Tab = (typeof TABS)[number]["key"];
+/** Only where a store can share and use templates (D125). */
+const TEMPLATES_TAB = { key: "templates", label: "Templates" } as const;
+type Tab = (typeof TABS)[number]["key"] | typeof TEMPLATES_TAB.key;
+
+/** What the Templates tab needs (D125); none on Kaizen's own pages, which have no such tab. */
+type TemplatesInSidebar = {
+  actions: TemplateActions;
+  controller: TemplateController;
+  source: TemplateSource;
+  onSource: (source: TemplateSource) => void;
+  onBrowse: () => void;
+  /** Puts a template's copy on the page. */
+  onUse: (part: SavedPart) => void;
+};
 
 function Sidebar({
+  id: panelId,
+  hidden,
+  onFold,
   tab,
   onTab: setTab,
   onAddRow,
@@ -801,12 +850,16 @@ function Sidebar({
   customFields,
   shop,
   parts,
-  library,
   onOpenSaved,
-  onUseLibrary,
+  templates,
+  onShared,
   rowsFull,
   blocksFull,
 }: {
+  id: string;
+  /** Folded away, leaving a rail (D125). */
+  hidden: boolean;
+  onFold: () => void;
   tab: Tab;
   onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
@@ -821,25 +874,33 @@ function Sidebar({
   /** The store's working pages' components can be added (D113). */
   shop: boolean;
   parts: SavedPart[];
-  library: SavedPart[];
   onOpenSaved: (partId: string) => void;
-  onUseLibrary: (part: SavedPart) => void;
+  /** Where a store's parts can be shared and its templates used (D125); null on Kaizen's own pages. */
+  templates: TemplatesInSidebar | null;
+  /** One of the saved parts was shared differently. */
+  onShared: (id: string, sharing: PartSharing) => void;
   rowsFull: boolean;
   blocksFull: boolean;
 }) {
   const id = useId();
+  const tabs = templates ? [...TABS, TEMPLATES_TAB] : TABS;
   const select = (index: number) => {
-    const next = TABS[(index + TABS.length) % TABS.length].key;
+    const next = tabs[(index + tabs.length) % tabs.length].key;
     setTab(next);
     document.getElementById(`${id}-${next}`)?.focus();
   };
   return (
     <aside
+      id={panelId}
+      hidden={hidden}
       aria-label="Building blocks"
       className="flex min-w-0 flex-col rounded-lg border border-border bg-background lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
     >
-      <div role="tablist" aria-label="Building blocks" className="grid grid-cols-4 border-b border-border">
-        {TABS.map((t, index) => (
+      <div className="border-b border-border px-4 py-1.5">
+        <RailHeader side="left" label="building blocks" controls={panelId} onFold={onFold} />
+      </div>
+      <div role="tablist" aria-label="Building blocks" className={`grid border-b border-border ${templates ? "grid-cols-4" : "grid-cols-3"}`}>
+        {tabs.map((t, index) => (
           <button
             key={t.key}
             id={`${id}-${t.key}`}
@@ -859,7 +920,7 @@ function Sidebar({
           </button>
         ))}
       </div>
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <div
           key={t.key}
           id={`${id}-${t.key}-panel`}
@@ -987,12 +1048,25 @@ function Sidebar({
             </>
           )}
           {t.key === "saved" && (
-            <>
-              <SavedList parts={parts} onOpen={onOpenSaved} />
-              {library.length > 0 && <LibraryList parts={library} onUse={onUseLibrary} />}
-            </>
+            <SavedList
+              parts={parts}
+              onOpen={onOpenSaved}
+              sharing={templates && { setSharing: templates.actions.setSharing, onChanged: onShared }}
+            />
           )}
-          {t.key === "layers" && <p className="text-sm text-muted">Coming soon.</p>}
+          {t.key === "templates" && templates && (
+            <TemplatesTab
+              controller={templates.controller}
+              actions={templates.actions}
+              source={templates.source}
+              onSource={templates.onSource}
+              shown={tab === "templates" && !hidden}
+              onBrowse={templates.onBrowse}
+              onUse={templates.onUse}
+              rowsFull={rowsFull}
+              blocksFull={blocksFull}
+            />
+          )}
         </div>
       ))}
     </aside>
@@ -1061,7 +1135,16 @@ function LayoutPreview({ layout }: { layout: RowLayout }) {
  * Saved rows, columns and components (D46), by kind. Drag one onto the page
  * to use a copy; press one to change it (or add it from there).
  */
-function SavedList({ parts, onOpen }: { parts: SavedPart[]; onOpen: (partId: string) => void }) {
+function SavedList({
+  parts,
+  onOpen,
+  sharing,
+}: {
+  parts: SavedPart[];
+  onOpen: (partId: string) => void;
+  /** Where parts can be shared (D125): each shows who can use it and lets the store change that. */
+  sharing: { setSharing: TemplateActions["setSharing"]; onChanged: (id: string, sharing: PartSharing) => void } | null;
+}) {
   if (parts.length === 0) {
     return (
       <p className="text-xs text-muted">
@@ -1083,8 +1166,9 @@ function SavedList({ parts, onOpen }: { parts: SavedPart[]; onOpen: (partId: str
             <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{SAVED_KIND_LABELS[kind].many}</h3>
             <ul className="flex flex-col gap-1">
               {own.map((part) => (
-                <li key={part.id}>
-                  <SavedItem part={part} onOpen={() => onOpen(part.id)} />
+                <li key={part.id} className="flex flex-col gap-1">
+                  <SavedItem part={part} onOpen={() => onOpen(part.id)} showSharing={sharing !== null} />
+                  {sharing && <SharingSelect part={part} setSharing={sharing.setSharing} onChanged={sharing.onChanged} />}
                 </li>
               ))}
             </ul>
@@ -1096,44 +1180,9 @@ function SavedList({ parts, onOpen }: { parts: SavedPart[]; onOpen: (partId: str
 }
 
 /**
- * Kaizen's saved parts in a store's builder (D56): a starter library. Each
- * is dragged onto the page, or pressed to add it where the last work was;
- * the store gets a copy and the library stays as it is.
- */
-function LibraryList({ parts, onUse }: { parts: SavedPart[]; onUse: (part: SavedPart) => void }) {
-  return (
-    <section aria-labelledby="library-heading" className="mt-2 flex flex-col gap-3 border-t border-border pt-4">
-      <div>
-        <h3 id="library-heading" className="text-sm font-medium">
-          Kaizen&apos;s library
-        </h3>
-        <p className="text-xs text-muted">Ready-made parts to start from. Drag one onto the page, or press it to add a copy.</p>
-      </div>
-      {(["row", "column", "block"] as const).map((kind) => {
-        const own = parts.filter((p) => p.kind === kind);
-        if (own.length === 0) return null;
-        return (
-          <section key={kind} aria-label={`Library ${SAVED_KIND_LABELS[kind].many.toLowerCase()}`} className="flex flex-col gap-2">
-            <h4 className="text-xs font-medium tracking-wide text-muted uppercase">{SAVED_KIND_LABELS[kind].many}</h4>
-            <ul className="flex flex-col gap-1">
-              {own.map((part) => (
-                <li key={part.id}>
-                  {/* A store gets a plain copy, even of one of Kaizen's globals (D98). */}
-                  <SavedItem part={{ ...part, global: false }} onOpen={() => onUse(part)} action="add a copy" />
-                </li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
-    </section>
-  );
-}
-
-/**
- * A part from Kaizen's library made fit for a store's page (D56): its
- * content grids show the store's own products and drop Kaizen's categories
- * and tags, which are not the store's.
+ * A template's copy made fit for a store's page (D56, D125): its content
+ * grids show the store's own products and drop the categories and tags of
+ * whoever it came from, which are not the store's.
  */
 function forStore(part: SavedPart): SavedPart {
   const block = (b: PageBlock): PageBlock =>
@@ -1147,7 +1196,7 @@ function forStore(part: SavedPart): SavedPart {
 }
 
 /** A saved part: the pointer drags it onto the page; pressing it (mouse or keyboard) opens it. */
-function SavedItem({ part, onOpen, action = "open to change or add" }: { part: SavedPart; onOpen: () => void; action?: string }) {
+function SavedItem({ part, onOpen, showSharing = false }: { part: SavedPart; onOpen: () => void; showSharing?: boolean }) {
   const { setNodeRef, listeners, isDragging } = useDraggable({
     id: `saved:${part.id}`,
     data: { kind: "saved", partId: part.id, part: part.kind } satisfies DragData,
@@ -1158,15 +1207,15 @@ function SavedItem({ part, onOpen, action = "open to change or add" }: { part: S
       type="button"
       onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLButtonElement> | undefined}
       onClick={onOpen}
-      aria-label={`${part.name}, saved ${part.global ? "global " : ""}${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: ${action}`}
+      aria-label={`${part.name}, saved ${part.global ? "global " : ""}${SAVED_KIND_LABELS[part.kind].one.toLowerCase()}: open to change or add`}
       className={`w-full touch-none text-left ${isDragging ? "opacity-40" : ""}`}
     >
-      <SavedTile part={part} />
+      <SavedTile part={part} showSharing={showSharing} />
     </button>
   );
 }
 
-function SavedTile({ part, lifted = false }: { part: SavedPart | null; lifted?: boolean }) {
+function SavedTile({ part, lifted = false, showSharing = false }: { part: SavedPart | null; lifted?: boolean; showSharing?: boolean }) {
   if (!part) return null;
   return (
     <span
@@ -1190,6 +1239,12 @@ function SavedTile({ part, lifted = false }: { part: SavedPart | null; lifted?: 
         <span className="text-xs text-muted">
           {SAVED_KIND_LABELS[part.kind].one}
           {part.global && <span className="font-medium text-violet-700 dark:text-violet-300"> · Global</span>}
+          {showSharing && part.sharing !== "private" && (
+            <>
+              {" "}
+              <SharingBadge sharing={part.sharing} />
+            </>
+          )}
         </span>
       </span>
     </span>
@@ -1993,10 +2048,13 @@ function Dialogs({
   grid,
   fonts,
   translate,
+  sharing,
 }: {
   grid: GridContext;
   fonts: BuilderFonts;
   translate: Translating | null;
+  /** Saved parts can be shared (D125): the dialog that saves one offers the choice. */
+  sharing: boolean;
   dialog: Dialog | null;
   rows: PageRow[];
   onRows: Rows;
@@ -2698,6 +2756,7 @@ function Dialogs({
       {dialog?.kind === "save-as" && (
         <SaveAsDialog
           create={grid.actions.createPart}
+          sharing={sharing}
           part={dialog.part}
           onCancel={() => (dialog.back ? open(dialog.back) : onClose())}
           onSaved={(next, id, global) => {
@@ -2732,12 +2791,15 @@ function Dialogs({
 // ---------------------------------------------------------------------------
 
 /** In place of the sidebar while translating: what can be done here, and where the rest is. */
-function TranslateNote({ translate }: { translate: Translating }) {
+function TranslateNote({ translate, id, hidden, header }: { translate: Translating; id: string; hidden: boolean; header: ReactNode }) {
   return (
-    <section aria-labelledby="translate-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm">
-      <h2 id="translate-heading" className="font-medium">
-        Translating into {translate.name}
-      </h2>
+    <section id={id} hidden={hidden} aria-labelledby="translate-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <h2 id="translate-heading" className="font-medium">
+          Translating into {translate.name}
+        </h2>
+        {header}
+      </div>
       <p>
         Point at a text on the page and press <strong>Translate</strong> (or double-click it) to write it in {translate.name}.
         The title and search texts are on the right.
@@ -4397,11 +4459,14 @@ function GlobalControls({
 /** Names a row, column or component and saves it under Saved (D46). */
 function SaveAsDialog({
   create,
+  sharing: canShare,
   part,
   onCancel,
   onSaved,
 }: {
   create: PageOwnerContext["actions"]["createPart"];
+  /** Offers who else can use it (D125): a store's builder only. */
+  sharing: boolean;
   part: SavedPartDraft;
   onCancel: () => void;
   onSaved: (parts: SavedPart[], id: string, global: boolean) => void;
@@ -4409,13 +4474,17 @@ function SaveAsDialog({
   const id = useId();
   const [name, setName] = useState("");
   const [global, setGlobal] = useState(false);
+  const [shared, setShared] = useState<PartSharing>("private");
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
   const kind = SAVED_KIND_LABELS[part.kind].one.toLowerCase();
   const submit = () =>
     start(async () => {
+      const sharing = canShare ? { sharing: shared } : {};
       // A global's content gets ids of its own; the part on the page keeps its ids and becomes its first use.
-      const result = await create(global ? { kind: part.kind, content: globalContent(part.kind, part.content), name, global } : { ...part, name });
+      const result = await create(
+        global ? { kind: part.kind, content: globalContent(part.kind, part.content), name, global, ...sharing } : { ...part, name, ...sharing },
+      );
       if (result.ok) onSaved(result.parts, result.id, global);
       else setProblems(result.problems);
     });
@@ -4479,6 +4548,7 @@ function SaveAsDialog({
             ? `It is added under Saved in the left sidebar, to drag onto any page. This ${kind} becomes its first use.`
             : `It is added under Saved in the left sidebar, to drag onto any page. This page keeps its ${kind} as it is.`}
         </p>
+        {canShare && <SharingChoice value={shared} onChange={setShared} />}
         {problems.length > 0 && (
           <p role="alert" className="text-sm text-red-700 dark:text-red-400">
             {problems.join(" ")}
@@ -4537,7 +4607,7 @@ function SavedPartDialog({
         : { kind: "block", content: rows[0].columns[0].blocks[0] };
   const save = () =>
     start(async () => {
-      const result = await actions.updatePart(part.id, { ...content(), name, global });
+      const result = await actions.updatePart(part.id, { ...content(), name, global, sharing: part.sharing });
       if (!result.ok) return setProblems(result.problems);
       onParts(result.parts);
       onClose();

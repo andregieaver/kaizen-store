@@ -22,6 +22,7 @@ import { bothTerms, listTerms } from "@/server/taxonomy";
 
 import { choosePlatformSiteLayoutAction, createPageTermAction, deletePageTermAction, updatePageTermAction } from "./actions";
 import { platformPageContext } from "./context";
+import { duplicatePageAction } from "./duplicate-action";
 
 /**
  * Kaizen's pages (D42) and blog articles (D57): the same list, editor,
@@ -88,7 +89,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       ) : type === "header" || type === "footer" ? (
         <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(null))[type]} />
       ) : (
-        <PagesTable pages={pages} adminBase={base} siteBase={copy.sitePrefix} />
+        <PagesTable pages={pages} adminBase={base} siteBase={copy.sitePrefix} duplicate={duplicatePageAction.bind(null, type)} />
       )}
       {(type === "header" || type === "footer") && (
         <SiteLayoutChoice

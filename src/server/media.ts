@@ -107,6 +107,25 @@ export async function removeStoredFiles(bucket: string, paths: string[]): Promis
   return !error;
 }
 
+/**
+ * Copies a file inside one of the public media buckets, in Storage itself (nothing is downloaded): a template's
+ * picture or video into the store that uses it (D125). The new file's public address, or null if it could not be copied.
+ */
+export async function copyStoredFile(bucket: string, from: string, to: string): Promise<string | null> {
+  if (![BUCKET, VIDEOS_BUCKET].includes(bucket)) return null;
+  const secret = secretKey();
+  if ("problem" in secret) return null;
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(bucket);
+  const { error } = await storage.copy(from, to);
+  if (error) {
+    console.error("[media] file could not be copied:", error.message);
+    return null;
+  }
+  return storage.getPublicUrl(to).data.publicUrl;
+}
+
 // ---------------------------------------------------------------------------
 // Background videos for page rows
 // ---------------------------------------------------------------------------

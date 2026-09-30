@@ -96,3 +96,37 @@ response in the test run exceeds its budget.
 - The admin is keyboard-friendly and meets WCAG 2.2 AA, like the storefront.
 - New merchants are guided by a setup wizard and a checklist rather than
   documentation.
+
+## As built: templates (D125), server side
+
+Saved rows, columns and components (`commerce.saved_parts`, D46) can be shared as templates. `saved_parts.sharing` is
+`private` (this store only, the default), `stores` (the other stores its owner owns) or `marketplace` (every store
+owner); Kaizen's own saved parts (`store_id` null) are always `marketplace`, published by "Kaizen" (a check keeps it
+so). `hidden_at`/`hidden_by` are set by a platform admin. `commerce.template_activations (store_id, part_id, active)`
+holds a store's choice to have a template in the builder's Templates tab; a row goes with its template. Kaizen's parts
+are on until a store switches them off (`coalesce(activation.active, saved_part.store_id is null)`, so stores made later
+have them too, and `clone_store()` needs nothing); every other template is off until switched on.
+
+- **Who sees what** is one SQL condition, `visibleTo()` in `src/server/templates.ts`, used by list, activate and use:
+  never the viewing store's own parts, never a hidden one, the viewing account must work in the viewing store, the
+  marketplace's are for every member, and a `stores` template is for an account that is an **owner of both** stores
+  (`store_members.role = 'owner'`, not disabled), read on every request so a lost ownership takes it away at once. A
+  `stores` template is not in the marketplace list and the other way round; hiding applies to every list and survives
+  the publisher changing the sharing.
+- **Sharing** is set by owners only: `createSavedPart`/`updateSavedPart` take `sharing` (an update that does not say
+  keeps it; an unchanged value from staff is fine, a change is refused) and `setPartSharing()` changes it alone. Both
+  write `commerce.audit_log` (`store.part_saved`, `store.part_updated`, `store.part_sharing`).
+- **Using is a copy** (`applyTemplate()`, not saved; the builder places it with its own copy functions). Pure rules in
+  `src/lib/template-content.ts` (`sanitizeTemplate()`, `mapTemplateMedia()`): global marks and `local` marks, form
+  recipients, field bindings and field ids, menu, category, tag and grid store references, links into the source store
+  (its `/s/{slug}` paths, its hosts, anything carrying an id, files in Storage), `mailto:`/`tel:` links, social profile
+  addresses, and another owner's HTML component (Kaizen's stays) are taken out. Pictures, videos, stills and backgrounds
+  the source store's media library holds are copied in Storage into the using store's folder and registered in its
+  library (`copyToLibrary()`, `copyStoredFile()`); one that is not in the source's library, or cannot be copied, is left
+  out, never left pointing at the source. One use copies at most `TEMPLATE_MEDIA_MAX` (30) files and
+  `TEMPLATE_MEDIA_BYTES_MAX` (80 MB). A last check refuses a result that still holds an address in Storage that is not
+  one of the new copies, and the result must pass `savedPartInput`. Texts in other languages are not carried.
+- **Moderation**: `/admin/platform/templates` lists marketplace templates and any hidden one with Hide / Show again
+  (`setTemplateHidden()`, platform admins only, audited as `platform.template_hidden` / `_unhidden`). Copies already made
+  stay.
+- Nothing here is cached, so there are no tags to update; the media library and saved parts are read fresh.

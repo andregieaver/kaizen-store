@@ -89,7 +89,6 @@ export function PageEditor({
   page,
   notice = null,
   savedParts,
-  library = [],
   terms: initialTerms,
   gridTerms = {},
   fieldData: initialFieldData = EMPTY_DATA,
@@ -101,7 +100,7 @@ export function PageEditor({
   notice?: string | null;
   /** The owner's saved rows, columns and components, for the builder's Saved tab (D46). */
   savedParts: SavedPart[];
-  /** Kaizen's saved parts as a starter library, on a store's pages (D56). */
+  /** No longer used: Kaizen's saved parts reach a store through the builder's Templates tab (D125). */
   library?: SavedPart[];
   /** The owner's page and article categories and tags, for content grids (D57); this type's are `terms`. */
   gridTerms?: Partial<Record<PageType, Term[]>>;
@@ -281,6 +280,21 @@ export function PageEditor({
       if (outcome) setProblems(outcome.problems);
     });
 
+  // A copy as a draft (D126) of what the editor holds now, unsaved changes too; the person lands in the copy's editor.
+  const duplicate = () =>
+    startBusy(async () => {
+      if (!saved) return;
+      setProblems([]);
+      const outcome = await actions.duplicate(saved.id, JSON.stringify(content));
+      if (!outcome.ok) {
+        setProblems(outcome.problems);
+        return;
+      }
+      // The original keeps its own unsaved changes: leaving for the copy must not ask about them.
+      setDirty(false);
+      router.push(`${adminBase}/${outcome.id}`);
+    });
+
   const liveSlug = saved?.published ? saved.slug : null;
   const moving = liveSlug !== null && content.slug !== liveSlug && pageSlugProblem(content.slug, reserved) === null;
   const excerpt = pageExcerpt(view);
@@ -308,7 +322,7 @@ export function PageEditor({
           setParts(next);
           if (changed.size > 0 || gone.size > 0) setContent((current) => refreshUses(current, changed, (id) => gone.has(id)));
         }}
-        library={library}
+        templates={context.templates}
         productParts={context.type === "product_layout"}
         fieldGroups={context.fields?.groups ?? null}
         shopParts={context.type === "page" && context.owner !== null}
@@ -606,6 +620,11 @@ export function PageEditor({
               <a href={`${siteBase}/${liveSlug}`} target="_blank" rel="noopener" className="underline">
                 View {noun}
               </a>
+            )}
+            {saved && (
+              <button type="button" onClick={duplicate} disabled={busy} className="underline disabled:opacity-50">
+                Duplicate
+              </button>
             )}
             {saved?.published && (
               <button type="button" onClick={unpublish} disabled={busy} className="underline disabled:opacity-50">
