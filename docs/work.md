@@ -2277,3 +2277,13 @@ store with other Work rows is refused, the readers, no email, a normal invoice s
   invoice and reminder emails are refused with `imported`; the print page and the copy-link still work.
 * **Seller snapshot.** Read from the store's details and Work settings when the SQL runs (like `issue_work_invoice`): save the
   Work settings (VAT number, bank account, payment note) first, or the frozen seller lacks them for good.
+
+
+### Import run for Human Web (2026-09-30)
+
+`scripts/import-life-work.mjs` was run against production for the store `human-web` from Kaizen Life's
+space of `andre@humanweb.no`: 5 clients, 5 assignments, 12 tasks, 13 time entries, 2 recurring templates,
+13 invoices (3 paid, 9 sent, 1 draft) with 58 lines and 3 payments. Issued total 106,584.11 NOK, equal to
+Life's; the invoice series was not touched and no integration event was queued. Human Web's Work settings
+had a VAT number but no bank account when it ran, so the seller snapshot on the 12 imported invoices has
+none (an issued invoice is immutable). The other Life space (`a.n.d.r.e@humanweb.no`) was not imported.
