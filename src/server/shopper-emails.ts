@@ -7,7 +7,7 @@ import { formatBookingTime } from "@/lib/booking-slots";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { discountNote } from "@/lib/customer-tiers";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
-import { emailText, type EmailText } from "@/lib/email-text";
+import { emailText, orderBonusEarned, orderBonusRows, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
 import { t, type Messages } from "@/lib/i18n";
 import { conversionFor, localizationOf } from "@/lib/localization";
@@ -149,6 +149,8 @@ function orderLines(
             },
           ]
         : []),
+      // Bonus credits used (D130), after the discounts.
+      ...orderBonusRows(text, order.bonus, money),
       { label: text.total, value: money(order.totalMinor), strong: true },
       { label: text.vat, value: money(order.taxMinor), muted: true },
       // Paid at the appointment (D66): what is still to pay there.
@@ -236,6 +238,10 @@ export async function sendOrderConfirmation(
     { type: "heading", text: text.orderHeading },
     { type: "paragraph", text: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number) },
     orderLines(order, text, m, money, storeSiteUrl(store.slug)),
+    // The credits this order earned (D130), once it is paid: when they can be used.
+    ...[orderBonusEarned(text, order.bonus, money, (iso) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" }))].flatMap((earned) =>
+      earned ? [{ type: "paragraph" as const, text: earned }] : [],
+    ),
     ...[companyText(order, m)].flatMap((company) => (company ? [{ type: "paragraph" as const, text: company }] : [])),
     ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
     ...(digital ? [{ type: "paragraph" as const, text: text.downloadsReady }] : []),

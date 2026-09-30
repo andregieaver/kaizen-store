@@ -78,6 +78,11 @@ export const STORE_PIECES = {
     name: "Discount code",
     hint: "The field for a discount code in the cart.",
   },
+  cart_credits: {
+    route: "cart",
+    name: "Bonus credits",
+    hint: "Where a signed-in shopper uses their bonus credits, or sees what the order earns; a guest is invited to sign in. Nothing in a store without a bonus program.",
+  },
   cart_checkout: {
     route: "cart",
     name: "Checkout button",
@@ -97,6 +102,11 @@ export const STORE_PIECES = {
     route: "checkout",
     name: "Checkout discount code",
     hint: "The field for a discount code at the checkout.",
+  },
+  checkout_credits: {
+    route: "checkout",
+    name: "Checkout bonus credits",
+    hint: "Where a signed-in shopper uses their bonus credits at the checkout, or sees what the order earns. Nothing in a store without a bonus program.",
   },
   checkout_totals: {
     route: "checkout",

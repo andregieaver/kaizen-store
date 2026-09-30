@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { Avatar } from "@/components/avatar";
@@ -12,12 +13,13 @@ import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requireMember } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
+import { getBonusSettings, customerBonus } from "@/server/bonus";
 import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
 
 import { setCustomerGroupAction } from "../../customer-groups/actions";
-import { saveCustomerFieldsAction } from "./actions";
+import { adjustBonusAction, saveCustomerFieldsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -43,6 +45,10 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
   ]);
   if (!customer) notFound();
   const access = customer.customerId ? await customerAccess(store.id, customer.customerId) : null;
+  // Bonus credits (D130) belong to the account, so a guest has none.
+  const [bonusSettings, bonus] = customer.customerId
+    ? await Promise.all([getBonusSettings(store.id), customerBonus(store.id, customer.customerId)])
+    : [null, null];
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
@@ -162,6 +168,19 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
               </ul>
             )}
           </section>
+
+          {customer.customerId && bonusSettings && bonus && showsBonus(bonusSettings.enabled, bonus.entries) && (
+            <CustomerBonus
+              enabled={bonusSettings.enabled}
+              balance={bonus.balance}
+              entries={bonus.entries}
+              locale={locale}
+              adminBase={base}
+              orderIds={Object.fromEntries(customer.orderList.map((o) => [o.number, o.id]))}
+              who={customer.name || customer.email}
+              adjust={adjustBonusAction.bind(null, store.slug, customer.customerId)}
+            />
+          )}
 
           {/* Custom fields (D120) are kept for the customer's account, so a guest has none. */}
           {customer.customerId && (

@@ -4678,3 +4678,415 @@ describe("duplicating a store (D129)", () => {
     });
   });
 });
+
+describe("the bonus program (D130)", () => {
+  let shop: string;
+  let ownerAccount: string;
+
+  beforeAll(async () => {
+    shop = await createStore("bonus-shop", ["NO", "DE"]);
+    await db.query("update commerce.stores set country = 'NO' where id = $1", [shop]);
+    await db.query(
+      `insert into commerce.store_currencies (store_id, currency, rate, round_to, position)
+       values ($1, 'NOK', 11.5, 1, 0), ($1, 'EUR', 1, 1, 1)`,
+      [shop],
+    );
+    ownerAccount = await createAccount("bonus-owner@example.com");
+  });
+
+  /** Turns the program on (or changes it) for the store. */
+  const settings = (over: { enabled?: boolean; earn?: number; pendingDays?: number; expires?: number | null } = {}) =>
+    db.query(
+      `insert into commerce.bonus_settings (store_id, enabled, earn_bps, pending_days, max_redeem_percent, expires_months, currency)
+       values ($1, $2, $3, $4, 50, $5, commerce.bonus_currency($1))
+       on conflict (store_id) do update set enabled = excluded.enabled, earn_bps = excluded.earn_bps,
+         pending_days = excluded.pending_days, expires_months = excluded.expires_months`,
+      [shop, over.enabled ?? true, over.earn ?? 500, over.pendingDays ?? 14, over.expires ?? null],
+    );
+
+  const customer = async () => {
+    counter += 1;
+    return (await one<{ id: string }>("insert into commerce.customers (store_id, email) values ($1, $2) returning id", [shop, `bonus-${counter}@example.com`])).id;
+  };
+
+  /** An order waiting for payment with one line of goods (and shipping on top), in NOK unless said. */
+  async function order(customerId: string | null, goods: number, over: { venue?: number; shipping?: number; currency?: string; host?: boolean } = {}) {
+    counter += 1;
+    const shipping = over.shipping ?? 0;
+    const currency = over.currency ?? "NOK";
+    const { id } = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, customer_id,
+         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address)
+       values ($1, $2, $3, $4, 'nb-NO', 'x@example.com', $5, $6, $7, 0, 0, $8, '{}', '{}') returning id`,
+      [shop, `B-${counter}`, currency === "NOK" ? "NO" : "DE", currency, customerId, goods, shipping, goods + shipping],
+    );
+    await db.query(
+      `insert into commerce.order_lines (store_id, order_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code, venue_minor, delivery)
+       values ($1, $2, 'SIGNUP-FEE', 'Thing', 1, $3, $3, 0, 0.25, 'txcd_99999999', $4, 'digital')`,
+      [shop, id, goods, over.venue ?? 0],
+    );
+    return id;
+  }
+
+  const pay = async (orderId: string) => (await one<{ done: boolean }>("select commerce.complete_order_payment($1, 'cs') as done", [orderId])).done;
+  const balance = (customerId: string) =>
+    one<{ available_minor: string; pending_minor: string; expiring_minor: string; expiring_at: Date | null }>("select * from commerce.bonus_balance($1, $2)", [shop, customerId]).then((r) => ({
+      available: Number(r.available_minor),
+      pending: Number(r.pending_minor),
+      expiringMinor: Number(r.expiring_minor),
+      expiringAt: r.expiring_at,
+    }));
+  const verified = async (customerId: string) => (await one<{ ok: boolean }>("select commerce.bonus_verify($1, $2) as ok", [shop, customerId])).ok;
+  const entries = async (customerId: string) =>
+    (await db.query<{ kind: string; amount_minor: string; order_id: string | null; key: string }>(
+      "select kind, amount_minor, order_id, idempotency_key as key from commerce.bonus_entries where customer_id = $1 order by created_at, amount_minor desc",
+      [customerId],
+    )).rows.map((r) => ({ kind: r.kind, amount: Number(r.amount_minor), orderId: r.order_id }));
+  /** Moves a customer's whole ledger back in time, so credits pending for 14 days have passed them (the ledger is immutable, but a test may pull the trigger). */
+  async function ageBonus(customerId: string, days: number) {
+    await db.exec("alter table commerce.bonus_entries disable trigger bonus_entries_immutable");
+    await db.query(
+      `update commerce.bonus_entries set created_at = created_at - make_interval(days => $2), available_at = available_at - make_interval(days => $2),
+         expires_at = expires_at - make_interval(days => $2) where customer_id = $1`,
+      [customerId, days],
+    );
+    await db.exec("alter table commerce.bonus_entries enable trigger bonus_entries_immutable");
+  }
+  const grant = (customerId: string, amount: number, over: { availableInDays?: number; expiresInDays?: number | null; key?: string } = {}) => {
+    counter += 1;
+    return db.query(
+      `select commerce.bonus_grant($1, $2, 'adjust', $3, null, null, now() + make_interval(days => $4),
+         case when $5::int is null then null else now() + make_interval(days => $5::int) end, 'test', null, $6)`,
+      [shop, customerId, amount, over.availableInDays ?? 0, over.expiresInDays ?? null, over.key ?? `grant-${counter}`],
+    );
+  };
+  const redeem = (customerId: string, orderId: string, amount: number) =>
+    one<{ taken: string }>("select commerce.bonus_redeem($1, $2, $3, $4, $5) as taken", [shop, customerId, orderId, amount, `redeem:${orderId}`]);
+
+  it("keeps the ledger append-only: no change to an entry or an allocation, and no delete but the customer's", async () => {
+    await settings();
+    const c = await customer();
+    await grant(c, 1_000);
+    const o = await order(c, 10_000);
+    await redeem(c, o, 400);
+    const refused = /append-only/;
+    await expect(db.query("update commerce.bonus_entries set amount_minor = 5 where customer_id = $1", [c])).rejects.toThrow(refused);
+    await expect(db.query("delete from commerce.bonus_entries where customer_id = $1", [c])).rejects.toThrow(refused);
+    await expect(db.query("update commerce.bonus_allocations set amount_minor = 1 where entry_id in (select id from commerce.bonus_entries where customer_id = $1)", [c])).rejects.toThrow(refused);
+    await expect(db.query("delete from commerce.bonus_allocations where store_id = $1", [shop])).rejects.toThrow(refused);
+    // The customer deleting their account takes their ledger with them, allocations too.
+    await db.query("update commerce.orders set customer_id = null where id = $1", [o]);
+    await db.query("delete from commerce.customers where id = $1", [c]);
+    expect(Number((await one<{ n: string }>("select count(*) as n from commerce.bonus_entries where customer_id = $1", [c])).n)).toBe(0);
+    expect(Number((await one<{ n: string }>("select count(*) as n from commerce.bonus_allocations a where not exists (select 1 from commerce.bonus_entries e where e.id = a.entry_id)")).n)).toBe(0);
+  });
+
+  it("grants and uses each happen once per key", async () => {
+    const c = await customer();
+    await grant(c, 500, { key: "once" });
+    await grant(c, 500, { key: "once" });
+    expect((await balance(c)).available).toBe(500);
+    const o = await order(c, 10_000);
+    expect(Number((await redeem(c, o, 200)).taken)).toBe(200);
+    expect(Number((await redeem(c, o, 200)).taken)).toBe(200);
+    expect((await balance(c)).available).toBe(300);
+    expect(await verified(c)).toBe(true);
+  });
+
+  it("refuses to use more than is usable now: a balance never goes below zero", async () => {
+    const c = await customer();
+    await grant(c, 300);
+    await grant(c, 1_000, { availableInDays: 5 });
+    const o = await order(c, 10_000);
+    await expect(redeem(c, o, 301)).rejects.toThrow("bonus.insufficient");
+    expect(Number((await redeem(c, o, 300)).taken)).toBe(300);
+    const p = await order(c, 10_000);
+    await expect(redeem(c, p, 1)).rejects.toThrow("bonus.insufficient");
+    expect(await balance(c)).toMatchObject({ available: 0, pending: 1_000 });
+    // Whatever writes the ledger, an entry that is not covered by lots cannot be committed.
+    await expect(
+      db.query(
+        `insert into commerce.bonus_entries (store_id, customer_id, kind, amount_minor, idempotency_key)
+         values ($1, $2, 'expire', -1, 'sneaky')`,
+        [shop, c],
+      ),
+    ).rejects.toThrow("bonus.below_zero");
+    // Nor an allocation beyond what a lot holds.
+    const lot = await one<{ id: string }>("select id from commerce.bonus_entries where customer_id = $1 and amount_minor = 300", [c]);
+    const spend = await one<{ id: string }>("select id from commerce.bonus_entries where customer_id = $1 and kind = 'redeem'", [c]);
+    await expect(
+      db.query("insert into commerce.bonus_allocations (store_id, lot_id, entry_id, amount_minor) values ($1, $2, $3, 1)", [shop, lot.id, spend.id]),
+    ).rejects.toThrow();
+    expect(await verified(c)).toBe(true);
+  });
+
+  it("uses the credits that expire first, then the oldest", async () => {
+    const c = await customer();
+    await grant(c, 100, { expiresInDays: 90 });
+    await grant(c, 100, { expiresInDays: 30 });
+    await grant(c, 100);
+    const o = await order(c, 10_000);
+    await redeem(c, o, 250);
+    // Two lots are gone (the one expiring on day 30 and the one day 90); 50 is left of the last, which never expires.
+    const left = await db.query<{ amount_minor: string; remaining: string; expires_at: Date | null }>(
+      "select amount_minor, remaining, expires_at from commerce.bonus_lots($1, $2) order by expires_at nulls last",
+      [shop, c],
+    );
+    expect(left.rows.map((r) => [Number(r.amount_minor), Number(r.remaining)])).toEqual([[100, 0], [100, 0], [100, 50]]);
+    expect(left.rows[2].expires_at).toBeNull();
+  });
+
+  it("earns on what is paid online for goods, once, and only for a signed-in customer", async () => {
+    await settings({ earn: 500, pendingDays: 14 });
+    const c = await customer();
+    // 1000 of goods, 99 of shipping, 300 of the goods left for the venue: 5 % of 700.
+    const o = await order(c, 1_000, { shipping: 99, venue: 300 });
+    expect(await pay(o)).toBe(true);
+    expect(await entries(c)).toEqual([{ kind: "earn", amount: 35, orderId: o }]);
+    expect(await pay(o)).toBe(false);
+    expect(await entries(c)).toHaveLength(1);
+    const row = await one<{ bonus_earned_minor: string; bonus_available_at: Date }>("select bonus_earned_minor, bonus_available_at from commerce.orders where id = $1", [o]);
+    expect(Number(row.bonus_earned_minor)).toBe(35);
+    expect(row.bonus_available_at.getTime()).toBeGreaterThan(Date.now() + 13 * 86_400_000);
+    // A guest earns nothing.
+    const guest = await order(null, 10_000);
+    await pay(guest);
+    expect(Number((await one<{ n: string }>("select count(*) as n from commerce.bonus_entries where order_id = $1", [guest])).n)).toBe(0);
+    // Nor does a host's order (the store's credits are not the host's to give).
+    const hostAccount = await createAccount(`bonus-host-${++counter}@example.com`);
+    const { id: hostId } = await one<{ id: string }>("insert into commerce.hosts (store_id, account_id, name) values ($1, $2, 'Host') returning id", [shop, hostAccount]);
+    const hosted = await order(c, 10_000);
+    await db.query("update commerce.orders set host_id = $2 where id = $1", [hosted, hostId]);
+    await pay(hosted);
+    expect(Number((await one<{ n: string }>("select count(*) as n from commerce.bonus_entries where order_id = $1", [hosted])).n)).toBe(0);
+    expect(await verified(c)).toBe(true);
+  });
+
+  it("keeps earned credits pending for the return period, then usable", async () => {
+    await settings({ earn: 1_000, pendingDays: 14 });
+    const c = await customer();
+    await pay(await order(c, 5_000));
+    expect(await balance(c)).toMatchObject({ available: 0, pending: 500 });
+    await ageBonus(c, 13);
+    expect(await balance(c)).toMatchObject({ available: 0, pending: 500 });
+    await ageBonus(c, 2);
+    expect(await balance(c)).toMatchObject({ available: 500, pending: 0 });
+    // With no return period they are usable at once.
+    await settings({ earn: 1_000, pendingDays: 0 });
+    const d = await customer();
+    await pay(await order(d, 5_000));
+    expect(await balance(d)).toMatchObject({ available: 500, pending: 0 });
+    await settings();
+  });
+
+  it("converts what is earned into the credits' currency at the store's rates, rounded down", async () => {
+    await settings({ earn: 1_000, pendingDays: 0 });
+    const c = await customer();
+    // 100.00 EUR of goods at 10 % is 10.00 EUR = 115.00 NOK.
+    await pay(await order(c, 10_000, { currency: "EUR" }));
+    expect((await balance(c)).available).toBe(11_500);
+    const convert = (amount: number, from: string, to: string) => one<{ v: string | null }>("select commerce.bonus_convert($1, $2, $3, $4) as v", [shop, amount, from, to]);
+    expect(Number((await convert(1_150, "NOK", "EUR")).v)).toBe(100);
+    expect(Number((await convert(1_149, "NOK", "EUR")).v)).toBe(99);
+    expect((await convert(100, "NOK", "SEK")).v).toBeNull();
+    expect(Number((await convert(100, "NOK", "NOK")).v)).toBe(100);
+    await settings();
+  });
+
+  it("changes to the settings do not touch what was already earned", async () => {
+    await settings({ earn: 500, pendingDays: 14, expires: 12 });
+    const c = await customer();
+    await pay(await order(c, 10_000));
+    const before = await db.query("select amount_minor, available_at, expires_at from commerce.bonus_entries where customer_id = $1", [c]);
+    await settings({ earn: 2_000, pendingDays: 0, expires: 1 });
+    await pay(await order(null, 10_000));
+    expect((await db.query("select amount_minor, available_at, expires_at from commerce.bonus_entries where customer_id = $1", [c])).rows).toEqual(before.rows);
+    // The program off: nothing more is earned or used, and the balance stays.
+    await settings({ enabled: false });
+    const o = await order(c, 10_000);
+    await pay(o);
+    expect(await entries(c)).toHaveLength(1);
+    await expect(redeem(c, o, 1)).rejects.toThrow("bonus.off");
+    expect((await balance(c)).pending).toBe(500);
+    await settings();
+  });
+
+  it("holds used credits against an order, gives them back when it is never paid, and takes them again if it is paid late", async () => {
+    await settings({ earn: 500, pendingDays: 0 });
+    const c = await customer();
+    await grant(c, 1_000);
+    const o = await order(c, 10_000);
+    await redeem(c, o, 600);
+    expect((await balance(c)).available).toBe(400);
+    await db.query("select commerce.cancel_unpaid_order($1, 'expired')", [o]);
+    expect((await balance(c)).available).toBe(1_000);
+    expect((await entries(c)).map((e) => e.kind)).toEqual(expect.arrayContaining(["adjust", "redeem", "restore"]));
+    // Cancelling twice gives nothing back twice.
+    await db.query("select commerce.cancel_unpaid_order($1, 'again')", [o]);
+    expect((await balance(c)).available).toBe(1_000);
+    // The payment arrives after the order was cancelled: the credits it used are taken again, and it earns.
+    expect(await pay(o)).toBe(true);
+    expect(await balance(c)).toMatchObject({ available: 400 + 500 });
+    expect(await verified(c)).toBe(true);
+    // ...and as far as the customer still has them: the rest is the store's loss, noted on the order.
+    const p = await order(c, 10_000);
+    await redeem(c, p, 900);
+    await db.query("select commerce.cancel_unpaid_order($1, 'expired')", [p]);
+    const spent = await order(c, 10_000);
+    await redeem(c, spent, 800);
+    await pay(p);
+    const short = await one<{ data: { missing: number } }>("select data from commerce.order_events where order_id = $1 and type = 'bonus.short'", [p]);
+    expect(short.data.missing).toBe(800);
+    // 100 were left to take; what p earned (500) is usable.
+    expect((await balance(c)).available).toBe(500);
+    expect(await verified(c)).toBe(true);
+    await settings();
+  });
+
+  it("takes back what a refunded part earned and returns the refunded share of what was used, adding up exactly", async () => {
+    await settings({ earn: 1_000, pendingDays: 0 });
+    const c = await customer();
+    await grant(c, 1_000);
+    // 10 000 of goods, 1 000 paid with credits: 9 000 paid online earn 900.
+    const o = await order(c, 9_000);
+    await redeem(c, o, 1_000);
+    await pay(o);
+    const { id: paymentId } = await one<{ id: string }>(
+      "insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, 'stripe', $3, 9000, 'NOK', 'captured') returning id",
+      [shop, o, `cs_refund_${counter}`],
+    );
+    const refund = (amount: number, status = "succeeded") =>
+      db.query("insert into commerce.refunds (store_id, payment_id, amount_minor, reason, status) values ($1, $2, $3, 'test', $4::commerce.refund_status)", [shop, paymentId, amount, status]);
+    expect(await balance(c)).toMatchObject({ available: 900 });
+    // Refund a third: 300 of the earned 900 are taken back, a third of the 1 000 used comes back (333).
+    await refund(3_000);
+    expect(await balance(c)).toMatchObject({ available: 900 - 300 + 333 });
+    // A refund that failed changes nothing.
+    await refund(1_000, "failed");
+    expect(await balance(c)).toMatchObject({ available: 933 });
+    // The rest: everything earned is taken back and everything used has come back, to the unit.
+    await refund(3_000);
+    await refund(3_000);
+    expect(await balance(c)).toMatchObject({ available: 1_000 });
+    const kinds = await entries(c);
+    expect(kinds.filter((e) => e.kind === "reverse").reduce((s, e) => s + e.amount, 0)).toBe(-900);
+    expect(kinds.filter((e) => e.kind === "restore").reduce((s, e) => s + e.amount, 0)).toBe(1_000);
+    expect(await verified(c)).toBe(true);
+  });
+
+  it("never takes back more than is left of the credits an order earned", async () => {
+    await settings({ earn: 1_000, pendingDays: 0 });
+    const c = await customer();
+    const o = await order(c, 10_000);
+    await pay(o);
+    // The customer spends all of it on another order before the refund.
+    const other = await order(c, 10_000);
+    await redeem(c, other, 1_000);
+    expect((await balance(c)).available).toBe(0);
+    const { id: paymentId } = await one<{ id: string }>(
+      "insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, 'stripe', $3, 10000, 'NOK', 'captured') returning id",
+      [shop, o, `cs_cap_${counter}`],
+    );
+    await db.query("insert into commerce.refunds (store_id, payment_id, amount_minor, reason, status) values ($1, $2, 10000, 'test', 'succeeded')", [shop, paymentId]);
+    // What was used stays used: nothing is taken, and the balance is not below zero.
+    expect((await balance(c)).available).toBe(0);
+    expect((await entries(c)).some((e) => e.kind === "reverse")).toBe(false);
+    expect(await verified(c)).toBe(true);
+  });
+
+  it("takes back the rest of what a paid order earned, and returns what it used, when it is cancelled", async () => {
+    await settings({ earn: 1_000, pendingDays: 14 });
+    const c = await customer();
+    await grant(c, 400);
+    const o = await order(c, 6_000);
+    await redeem(c, o, 400);
+    await pay(o);
+    expect(await balance(c)).toMatchObject({ available: 0, pending: 600 });
+    await db.query("update commerce.orders set status = 'cancelled' where id = $1", [o]);
+    expect(await balance(c)).toMatchObject({ available: 400, pending: 0 });
+    expect(await verified(c)).toBe(true);
+    // Cancelled only once: nothing more happens.
+    expect((await entries(c)).length).toBe(5);
+    await settings();
+  });
+
+  it("writes off credits past their expiry, oldest first, once, and finds who to remind", async () => {
+    await settings({ earn: 1_000, pendingDays: 0, expires: 1 });
+    const c = await customer();
+    await pay(await order(c, 10_000));
+    expect(await balance(c)).toMatchObject({ available: 1_000 });
+    expect((await balance(c)).expiringAt).not.toBeNull();
+    // Not due yet: 30 days of a month later they are.
+    const due = async () => Number((await one<{ n: string }>("select commerce.bonus_expire_due() as n")).n);
+    const soon = (await db.query("select * from commerce.bonus_expiring(45) where customer_id = $1", [c])).rows;
+    expect(soon).toHaveLength(1);
+    expect(Number((soon[0] as { amount_minor: string }).amount_minor)).toBe(1_000);
+    expect((await db.query("select * from commerce.bonus_expiring(3) where customer_id = $1", [c])).rows).toHaveLength(0);
+    await due();
+    expect((await entries(c)).some((e) => e.kind === "expire")).toBe(false);
+    await ageBonus(c, 40);
+    // Expired credits no longer count, even before the job has written them off.
+    expect(await balance(c)).toMatchObject({ available: 0, pending: 0 });
+    expect(await due()).toBeGreaterThanOrEqual(1);
+    expect((await entries(c)).filter((e) => e.kind === "expire")).toEqual([{ kind: "expire", amount: -1_000, orderId: null }]);
+    expect(await due()).toBe(0);
+    expect(await verified(c)).toBe(true);
+    await settings();
+  });
+
+  it("lets staff add and take away credits with a reason, never below zero", async () => {
+    const c = await customer();
+    const adjust = (amount: number) =>
+      db.query("select commerce.bonus_adjust($1, $2, $3, 'goodwill', $4, $5)", [shop, c, amount, ownerAccount, `adjust-${amount}-${++counter}`]);
+    await adjust(700);
+    await grant(c, 200, { availableInDays: 3, key: `pending-${counter}` });
+    expect(await balance(c)).toMatchObject({ available: 700, pending: 200 });
+    await adjust(-800);
+    // Usable credits go first, then the pending ones.
+    expect(await balance(c)).toMatchObject({ available: 0, pending: 100 });
+    await expect(adjust(-101)).rejects.toThrow("bonus.insufficient");
+    await expect(adjust(0)).rejects.toThrow("bonus.zero");
+    const note = await one<{ note: string; created_by: string }>("select note, created_by from commerce.bonus_entries where customer_id = $1 and amount_minor = -800", [c]);
+    expect(note).toEqual({ note: "goodwill", created_by: ownerAccount });
+    expect(await verified(c)).toBe(true);
+  });
+
+  it("never earns on an order copied from another store, whatever calls it", async () => {
+    await settings({ earn: 1_000, pendingDays: 0 });
+    const c = await customer();
+    const o = await order(c, 10_000);
+    // Made a copy behind the triggers' back (they refuse it), as a copy's history would be.
+    await db.exec("set session_replication_role = replica");
+    await db.query("update commerce.orders set copied_from = id, number = 'C-' || number where id = $1", [o]);
+    await db.exec("set session_replication_role = origin");
+    await db.query("select commerce.bonus_order_paid($1, 'pending_payment')", [o]);
+    await db.query("select commerce.bonus_order_paid($1, 'cancelled')", [o]);
+    // It cannot be paid either: the copy's rules refuse.
+    await expect(pay(o)).rejects.toThrow("copied_order");
+    expect(await entries(c)).toEqual([]);
+    await settings();
+  });
+
+  it("copies a store's bonus settings and never its customers' credits", async () => {
+    await settings({ earn: 750, pendingDays: 7, expires: 6 });
+    const c = await customer();
+    await grant(c, 100);
+    const owner = await createAccount("bonus-copier@example.com");
+    const { id: copy } = await one<{ id: string }>("select commerce.duplicate_store($1, 'bonus-copy', 'Bonus copy', $2) as id", [shop, owner]);
+    const copied = await one<{ earn_bps: number; pending_days: number; expires_months: number; currency: string; enabled: boolean }>(
+      "select earn_bps, pending_days, expires_months, currency, enabled from commerce.bonus_settings where store_id = $1",
+      [copy],
+    );
+    expect(copied).toEqual({ earn_bps: 750, pending_days: 7, expires_months: 6, currency: "NOK", enabled: true });
+    expect(Number((await one<{ n: string }>("select count(*) as n from commerce.bonus_entries where store_id = $1", [copy])).n)).toBe(0);
+    await settings();
+  });
+
+  it("pins the credits' currency to the store's main currency", async () => {
+    expect((await one<{ c: string }>("select commerce.bonus_currency($1) as c", [shop])).c).toBe("NOK");
+    // A store with no settings yet uses its own country's currency.
+    const fresh = await createStore("bonus-fresh", ["SE", "NO"]);
+    await db.query("update commerce.stores set country = 'SE' where id = $1", [fresh]);
+    expect((await one<{ c: string }>("select commerce.bonus_currency($1) as c", [fresh])).c).toBe("SEK");
+  });
+});

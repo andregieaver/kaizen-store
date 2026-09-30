@@ -1814,6 +1814,12 @@ export const carts = commerce.table(
     /** The company the shopper buys for (B2B), entered in the cart and copied to the order. */
     companyName: text("company_name"),
     organisationNumber: text("organisation_number"),
+    /**
+     * The bonus credits the signed-in shopper asked to use (D130), in the currency shown (`bonus_request_currency`);
+     * checkout clamps it to what they may use, so it is only ever a request.
+     */
+    bonusRequestMinor: bigint("bonus_request_minor", { mode: "number" }).notNull().default(0),
+    bonusRequestCurrency: char("bonus_request_currency", { length: 3 }),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1821,6 +1827,7 @@ export const carts = commerce.table(
   },
   (t) => [
     unique("carts_store_id_key").on(t.storeId, t.id),
+    check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
     marketCountryRef("carts_market_fk", t),
     customerRef("carts_customer_fk", t),
     index("carts_market_idx").on(t.storeId, t.marketCode, t.currency),
@@ -1895,6 +1902,17 @@ export const orders = commerce.table(
     /** The part of the discount that campaigns gave (D114), and their names as sold; the rest is the code's and the group's. */
     campaignDiscountMinor: money("campaign_discount_minor").default(0),
     campaignLabel: text("campaign_label"),
+    /**
+     * The bonus credits used on the order (D130), in the order's currency: a part of the discount (so the total adds
+     * up), taken off goods last and spread over the lines as `order_lines.bonus_discount_minor`.
+     */
+    creditMinor: money("credit_minor").default(0),
+    /**
+     * What the order earned when it was paid (D130), in the order's currency before it is converted into the credits'
+     * currency, and when those credits can be used. Null until paid, and for a guest or an order that earns nothing.
+     */
+    bonusEarnedMinor: bigint("bonus_earned_minor", { mode: "number" }),
+    bonusAvailableAt: timestamp("bonus_available_at", { withTimezone: true }),
     /** VAT contained in the total. Prices are VAT-inclusive. */
     taxMinor: money("tax_minor"),
     totalMinor: money("total_minor"),
@@ -1937,6 +1955,7 @@ export const orders = commerce.table(
   (t) => [
     uniqueIndex("orders_copied_from_key").on(t.storeId, t.copiedFrom).where(sql`${t.copiedFrom} is not null`),
     check("orders_copied_number", sql`${t.copiedFrom} is null or ${t.number} like 'C-%'`),
+    check("orders_credit", sql`${t.creditMinor} between 0 and ${t.discountMinor}`),
     foreignKey({
       name: "orders_host_fk",
       columns: [t.storeId, t.hostId],
@@ -2036,6 +2055,8 @@ export const orderLines = commerce.table(
     memberDiscountMinor: money("member_discount_minor").default(0),
     /** The part a campaign gave (D114), and which; a gift line is the whole line, at its list price. */
     campaignDiscountMinor: money("campaign_discount_minor").default(0),
+    /** The part that bonus credits paid (D130), taken off last; the credits' share of the line, so VAT and refunds agree. */
+    bonusDiscountMinor: money("bonus_discount_minor").default(0),
     campaignId: uuid("campaign_id"),
     /** Every campaign that gave something on this line: `[{ id, name, minor }]`, the first being `campaign_id`. */
     campaignParts: jsonb("campaign_parts").notNull().default([]),
@@ -2073,6 +2094,7 @@ export const orderLines = commerce.table(
     ),
     check("order_lines_member_discount", sql`${t.memberDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_campaign_discount", sql`${t.campaignDiscountMinor} between 0 and ${t.discountMinor}`),
+    check("order_lines_bonus_discount", sql`${t.bonusDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
   ],
 );
@@ -5373,4 +5395,134 @@ export const storeCopyFiles = commerce.table(
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.copyId, t.sourceUrl] })],
+);
+
+/**
+ * A store's bonus program (D130, `src/lib/bonus.ts`, `docs/bonus.md`): off until the owner turns it on. The credits are
+ * money in `currency`, pinned when the program is first saved (the store's main currency then), so a balance never
+ * changes currency under a customer. A store without a row has the defaults and the program off.
+ */
+export const bonusSettings = commerce.table(
+  "bonus_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    enabled: boolean("enabled").notNull().default(false),
+    /** Credits earned per 100 paid, in basis points: 500 is 5 %. */
+    earnBps: integer("earn_bps").notNull().default(500),
+    /** Days after an order is paid before its credits can be used (the return period). */
+    pendingDays: integer("pending_days").notNull().default(14),
+    /** The most of an order's goods credits may pay for, in percent. */
+    maxRedeemPercent: integer("max_redeem_percent").notNull().default(50),
+    /** The least a customer can use at once, in minor units of `currency`. */
+    minRedeemMinor: bigint("min_redeem_minor", { mode: "number" }).notNull().default(0),
+    /** Months after which unused credits expire, counted from when they become usable; null for never. */
+    expiresMonths: integer("expires_months"),
+    /** The credits' currency: what the ledger's amounts are in. */
+    currency: char("currency", { length: 3 }).notNull(),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("bonus_settings_updated_by_idx").on(t.updatedBy),
+    check("bonus_settings_earn", sql`${t.earnBps} between 0 and 5000`),
+    check("bonus_settings_pending", sql`${t.pendingDays} between 0 and 90`),
+    check("bonus_settings_max_redeem", sql`${t.maxRedeemPercent} between 1 and 90`),
+    check("bonus_settings_min_redeem", sql`${t.minRedeemMinor} between 0 and 1000000`),
+    check("bonus_settings_expiry", sql`${t.expiresMonths} is null or ${t.expiresMonths} between 1 and 60`),
+  ],
+);
+
+/**
+ * The bonus ledger (D130): every grant and use of a customer's credits, append-only (a trigger refuses any change, and
+ * any delete but the customer's own deletion). Amounts are signed minor units in the program's credits currency. A
+ * positive entry is a *lot* (`earn`, `restore`, a positive `adjust`): credits usable from `available_at` until
+ * `expires_at`; a negative one (`redeem`, `reverse`, `expire`, a negative `adjust`) is paid out of lots through
+ * `bonus_allocations`, oldest expiry first, so what is left of a lot is always worked out from the ledger and a balance
+ * can never go below zero. `idempotency_key` makes every grant, use, return and expiry happen once. Everything that
+ * writes here is a `commerce.bonus_*` function holding the customer's row lock.
+ */
+export const bonusEntries = commerce.table(
+  "bonus_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    customerId: uuid("customer_id").notNull(),
+    /** `earn`, `redeem`, `restore`, `reverse`, `expire` or `adjust` (`BonusEntryKind`). */
+    kind: text("kind").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    orderId: uuid("order_id"),
+    refundId: uuid("refund_id"),
+    /** For a lot: when it can be used. */
+    availableAt: timestamp("available_at", { withTimezone: true }),
+    /** For a lot: when what is left of it expires, if ever. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    note: text("note").notNull().default(""),
+    /** The staff member behind an adjustment. */
+    createdBy: uuid("created_by").references(() => accounts.id),
+    idempotencyKey: text("idempotency_key").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("bonus_entries_store_id_key").on(t.storeId, t.id),
+    unique("bonus_entries_idempotency_key").on(t.storeId, t.idempotencyKey),
+    foreignKey({
+      name: "bonus_entries_customer_fk",
+      columns: [t.storeId, t.customerId],
+      foreignColumns: [customers.storeId, customers.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "bonus_entries_order_fk",
+      columns: [t.storeId, t.orderId],
+      foreignColumns: [orders.storeId, orders.id],
+    }),
+    foreignKey({
+      name: "bonus_entries_refund_fk",
+      columns: [t.storeId, t.refundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }),
+    index("bonus_entries_customer_idx").on(t.storeId, t.customerId, t.createdAt),
+    index("bonus_entries_order_idx").on(t.storeId, t.orderId),
+    index("bonus_entries_refund_idx").on(t.storeId, t.refundId),
+    index("bonus_entries_created_by_idx").on(t.createdBy),
+    index("bonus_entries_expiry_idx")
+      .on(t.expiresAt)
+      .where(sql`${t.amountMinor} > 0 and ${t.expiresAt} is not null`),
+    check("bonus_entries_kind", sql`${t.kind} in ('earn', 'redeem', 'restore', 'reverse', 'expire', 'adjust')`),
+    check("bonus_entries_amount", sql`${t.amountMinor} <> 0`),
+    check(
+      "bonus_entries_sign",
+      sql`(${t.kind} in ('earn', 'restore') and ${t.amountMinor} > 0) or (${t.kind} in ('redeem', 'reverse', 'expire') and ${t.amountMinor} < 0) or ${t.kind} = 'adjust'`,
+    ),
+    check("bonus_entries_lot", sql`${t.amountMinor} < 0 or ${t.availableAt} is not null`),
+    check("bonus_entries_note", sql`length(${t.note}) <= 500`),
+  ],
+);
+
+/** What of a lot a negative entry took (D130): the lot's remaining credits are its amount less these. Append-only. */
+export const bonusAllocations = commerce.table(
+  "bonus_allocations",
+  {
+    storeId: storeId().references(() => stores.id),
+    /** The positive entry credits were taken from, and the negative entry that took them. */
+    lotId: uuid("lot_id").notNull(),
+    entryId: uuid("entry_id").notNull(),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.lotId, t.entryId] }),
+    foreignKey({
+      name: "bonus_allocations_lot_fk",
+      columns: [t.storeId, t.lotId],
+      foreignColumns: [bonusEntries.storeId, bonusEntries.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "bonus_allocations_entry_fk",
+      columns: [t.storeId, t.entryId],
+      foreignColumns: [bonusEntries.storeId, bonusEntries.id],
+    }).onDelete("cascade"),
+    index("bonus_allocations_entry_idx").on(t.storeId, t.entryId),
+    check("bonus_allocations_amount", sql`${t.amountMinor} > 0`),
+  ],
 );

@@ -37,6 +37,19 @@ import { getSetupProgress } from "./setup";
 import { deliveryRounds } from "./standing-orders";
 import { listSubscriptions } from "./subscriptions";
 import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
+import { BONUS_DEFAULTS, bonusSettingsInput, type BonusSettings } from "@/lib/bonus";
+import {
+  BONUS_ACCOUNTING_NOTE,
+  BONUS_EXPLANATION,
+  bpsToPercentText,
+  moneyIn,
+  overviewRows,
+  percentTextToBps,
+  readAdjustment,
+  rulesSummary,
+} from "@/lib/bonus-admin";
+import { mainCurrency } from "@/lib/markets";
+import { adjustBonus, bonusOverview, customerBonus, getBonusSettings, saveBonusSettings } from "./bonus";
 import { catalogTag } from "./catalog";
 import { campaignsTag } from "./campaign-notices";
 import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
@@ -759,6 +772,115 @@ async function setCampaignActiveTool(ctx: OwnerToolContext, { campaign, active }
   return { done: `The campaign ${String(rows[0].name)} is ${active ? "on" : "off"}.` };
 }
 
+// The bonus program (D130) --------------------------------------------------------------------
+
+/** A customer with an account by email or id, the store's only: credits belong to the account, never to a guest. */
+async function findBonusCustomer(store: Store, ref: string): Promise<{ id: string; email: string }> {
+  const byId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
+  const [row] = await db().execute<Row>(sql`
+    select id, email from commerce.customers
+    where store_id = ${store.id}::uuid and ${byId ? sql`id = ${ref}::uuid` : sql`lower(email) = lower(${ref})`}
+  `);
+  return row ? { id: String(row.id), email: String(row.email) } : fail(`No customer with an account called "${ref}" in this store. Only customers with an account have credits; list_customers shows who does.`);
+}
+
+async function getBonusProgramTool({ store }: OwnerToolContext, { customer }: OwnerToolInput<"get_bonus_program">) {
+  const currency = mainCurrency(store);
+  const locale = mainLocale(store);
+  const format = moneyIn(currency, locale);
+  const [settings, overview] = await Promise.all([getBonusSettings(store.id), bonusOverview(store.id)]);
+  const who = customer ? await findBonusCustomer(store, customer) : null;
+  const credits = who ? await customerBonus(store.id, who.id) : null;
+  return {
+    on: settings.enabled,
+    credits_are_in: currency,
+    how_it_works: BONUS_EXPLANATION,
+    percent_back: bpsToPercentText(settings.earnBps),
+    wait_days: settings.pendingDays,
+    most_percent_of_order_goods: settings.maxRedeemPercent,
+    least_to_use: settings.minRedeemMinor > 0 ? format(settings.minRedeemMinor) : "no minimum",
+    expires_after_months: settings.expiresMonths ?? "never",
+    rules_for_shoppers: rulesSummary(settings, format, currency),
+    store_owes: Object.fromEntries(overviewRows(overview, format).map((row) => [row.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), row.value])),
+    accounting: BONUS_ACCOUNTING_NOTE,
+    ...(who && credits && {
+      customer: {
+        email: who.email,
+        available: moneyIn(credits.balance.currency, locale)(credits.balance.availableMinor),
+        pending: moneyIn(credits.balance.currency, locale)(credits.balance.pendingMinor),
+        next_to_expire: credits.balance.expiringSoon
+          ? { amount: moneyIn(credits.balance.currency, locale)(credits.balance.expiringSoon.amountMinor), on: credits.balance.expiringSoon.at }
+          : null,
+        latest: [...credits.entries]
+          .sort((a, b) => b.at.localeCompare(a.at))
+          .slice(0, 10)
+          .map((e) => ({ when: e.at, what: e.kind, amount: moneyIn(credits.balance.currency, locale)(e.amountMinor), order: e.orderNumber, note: e.note || undefined })),
+      },
+    }),
+    page: adminLink(store, "/bonus"),
+  };
+}
+
+/** The settings a change would make: what the store has now, with what was given put over it. Problems are said for the model. */
+async function bonusSettingsFor(store: Store, input: OwnerToolInput<"set_bonus_program">): Promise<BonusSettings> {
+  if (Object.values(input).every((v) => v === undefined)) return fail("Say what to change: switch it on or off, credits back, the wait, the most of an order, the least to use or expiry.");
+  const current = await getBonusSettings(store.id);
+  const next: BonusSettings = { ...BONUS_DEFAULTS, ...current };
+  if (input.enabled !== undefined) next.enabled = input.enabled;
+  if (input.percent_back !== undefined) {
+    const bps = percentTextToBps(String(input.percent_back));
+    if (bps === null) return fail("Credits back is a percentage with at most two decimals, such as 5 or 2.5.");
+    next.earnBps = bps;
+  }
+  if (input.wait_days !== undefined) next.pendingDays = input.wait_days;
+  if (input.max_percent_of_order !== undefined) next.maxRedeemPercent = input.max_percent_of_order;
+  if (input.min_credits_to_use !== undefined) {
+    const minor = /^0+([.,]0+)?$/.test(input.min_credits_to_use.trim()) ? 0 : parsePrice(input.min_credits_to_use, mainCurrency(store));
+    if (minor === null) return fail(`The least to use is an amount in ${mainCurrency(store)}, such as 50 or 49,50, or 0 for no minimum.`);
+    next.minRedeemMinor = minor;
+  }
+  if (input.expires_after_months !== undefined) next.expiresMonths = input.expires_after_months;
+  return next;
+}
+
+async function setBonusProgramTool(ctx: OwnerToolContext, input: OwnerToolInput<"set_bonus_program">) {
+  const { store } = ctx;
+  const settings = await bonusSettingsFor(store, input);
+  const result = await saveBonusSettings(ctx.account, store.id, settings);
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(storeTag(store.slug));
+  ctx.invalidate(catalogTag(store.id));
+  const currency = mainCurrency(store);
+  return {
+    done: settings.enabled ? "The bonus program is on with these rules." : "The bonus program is off. Balances are kept.",
+    rules_for_shoppers: rulesSummary(settings, moneyIn(currency, mainLocale(store)), currency),
+    admin: adminLink(store, "/bonus"),
+  };
+}
+
+/** What an adjustment asks, with the customer found and the amount read, or the reason it cannot be done. */
+async function adjustmentFor(store: Store, input: OwnerToolInput<"adjust_customer_credits">) {
+  const who = await findBonusCustomer(store, input.customer);
+  const read = readAdjustment(input.amount, input.reason, mainCurrency(store));
+  if (!read.ok) return fail(read.problem);
+  return { who, ...read };
+}
+
+async function adjustCustomerCreditsTool(ctx: OwnerToolContext, input: OwnerToolInput<"adjust_customer_credits">) {
+  const { store } = ctx;
+  const { who, amountMinor, note } = await adjustmentFor(store, input);
+  const result = await adjustBonus(ctx.account, store.id, who.id, amountMinor, note);
+  if (!result.ok) return fail(result.problems.join(" "));
+  const { balance } = await customerBonus(store.id, who.id);
+  const format = moneyIn(balance.currency, mainLocale(store));
+  return {
+    done: `${amountMinor > 0 ? `Added ${format(amountMinor)} in credits to` : `Took ${format(-amountMinor)} in credits from`} ${who.email}.`,
+    available_now: format(balance.availableMinor),
+    pending: format(balance.pendingMinor),
+    admin: adminLink(store, `/customers/${who.id}`),
+  };
+}
+
 // Reaching customers, the team and the stock (D104) -------------------------------------------
 
 async function listIntegrationsTool({ store }: OwnerToolContext) {
@@ -1071,10 +1193,21 @@ async function createFieldGroupTool(ctx: OwnerToolContext, input: OwnerToolInput
  * `OwnerToolError` with the reason for the model.
  */
 export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<void> {
-  if (name !== "set_fields" && name !== "create_field_group") return;
+  if (name !== "set_fields" && name !== "create_field_group" && name !== "set_bonus_program" && name !== "adjust_customer_credits") return;
   const tool = OWNER_TOOLS_BY_NAME[name];
   const input = tool ? readToolInput(tool, raw) : null;
   if (!input?.ok) return fail(`The arguments could not be read: ${input?.problem ?? "unknown tool"}`);
+  // A bonus change that could not be made is refused now, never kept for a yes.
+  if (name === "set_bonus_program") {
+    const settings = await bonusSettingsFor(ctx.store, input.input as OwnerToolInput<"set_bonus_program">);
+    const checked = bonusSettingsInput.safeParse(settings);
+    if (!checked.success) return fail(checked.error.issues.map((i) => i.message).join(" "));
+    return;
+  }
+  if (name === "adjust_customer_credits") {
+    await adjustmentFor(ctx.store, input.input as OwnerToolInput<"adjust_customer_credits">);
+    return;
+  }
   if (name === "set_fields") await prepareSetFields(ctx, input.input as OwnerToolInput<"set_fields">);
   else claimsFail(claimsIn(...groupTexts(input.input as OwnerToolInput<"create_field_group">)));
 }
@@ -1115,6 +1248,9 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_discount_active: setDiscountActiveTool,
   create_campaign: createCampaignTool,
   set_campaign_active: setCampaignActiveTool,
+  get_bonus_program: getBonusProgramTool,
+  set_bonus_program: setBonusProgramTool,
+  adjust_customer_credits: adjustCustomerCreditsTool,
   customer_insights: customerInsights,
   product_performance: productPerformance,
   sales_trend: salesTrend,

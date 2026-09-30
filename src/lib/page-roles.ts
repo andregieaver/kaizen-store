@@ -181,7 +181,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
     case "cart":
       return page(m.cart, [
         row(heading(m.cart)),
-        columns("right-sidebar", [part("cart_lines")], [part("cart_summary"), part("cart_code"), part("cart_checkout")]),
+        columns("right-sidebar", [part("cart_lines")], [part("cart_summary"), part("cart_code"), part("cart_credits"), part("cart_checkout")]),
       ]);
     case "checkout":
       return page(m.checkoutTitle, [
@@ -189,7 +189,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
         columns(
           "right-sidebar",
           [part("checkout_payment"), part("checkout_back")],
-          [part("checkout_items"), part("checkout_code"), part("checkout_totals")],
+          [part("checkout_items"), part("checkout_code"), part("checkout_credits"), part("checkout_totals")],
         ),
       ]);
     case "sign_in":

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
 import { LineThumbnail } from "@/components/line-thumbnail";
+import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
@@ -24,6 +26,9 @@ import { perRequest } from "@/server/request-memo";
 import { platformPublishableKey } from "@/server/stripe";
 import type { Store } from "@/server/stores";
 
+import { readCartBonus } from "../cart/bonus";
+import { checkoutCreditsAction } from "./actions";
+
 type CheckoutView = NonNullable<Awaited<ReturnType<typeof loadCheckoutView>>>;
 
 /** The order waiting for payment and what its pieces need of it, read once for a request whichever pieces a page holds (D117). */
@@ -38,7 +43,8 @@ async function loadCheckoutView(store: Store, market: Market) {
   const open = cartId ? await getOpenCheckout(store.id, cartId) : null;
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!cartId || !open || !order) return null;
-  return { m, base, cartId, open, order };
+  const bonus = await readCartBonus(store, market, cartId);
+  return { m, base, cartId, open, order, bonus };
 }
 
 /** The checkout's view, or back to the cart when no order is waiting for payment. */
@@ -63,6 +69,7 @@ const moneyOf = (view: CheckoutView, market: Market) => (minor: number) =>
 export async function Checkout({ store, market }: { store: Store; market: Market }) {
   const view = await requireCheckout(store, market);
   const { m, base } = view;
+  const credits = creditsBlock(store, market, view);
   return (
     <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] md:items-start">
       <section aria-labelledby="summary-heading" className="rounded-lg border border-border p-4 md:sticky md:top-4">
@@ -73,6 +80,7 @@ export async function Checkout({ store, market }: { store: Store; market: Market
         <div className="mt-3 border-t border-border pt-3">
           {codeForm(store, market, view, await cartCodeOf(store, market))}
         </div>
+        {credits && <div className="mt-3 border-t border-border pt-3">{credits}</div>}
         <div className="mt-3 border-t border-border pt-3">{totalsList(view, market)}</div>
       </section>
       <div className="flex flex-col gap-6 md:order-first">
@@ -96,6 +104,11 @@ export async function CheckoutItems({ store, market }: { store: Store; market: M
 export async function CheckoutCode({ store, market }: { store: Store; market: Market }) {
   const [view, code] = await Promise.all([requireCheckout(store, market), cartCodeOf(store, market)]);
   return codeForm(store, market, view, code);
+}
+
+/** The bonus credits at the checkout (D130, D117): use them, or what this order earns; nothing in a store without the program. */
+export async function CheckoutCredits({ store, market }: { store: Store; market: Market }) {
+  return creditsBlock(store, market, await requireCheckout(store, market));
 }
 
 /** The order's subtotal, shipping, discounts and total, with the company and a subscription's terms (D117). */
@@ -170,6 +183,20 @@ function codeForm(store: Store, market: Market, view: CheckoutView, cartCode: st
   );
 }
 
+function creditsBlock(store: Store, market: Market, view: CheckoutView) {
+  if (!view.bonus) return null;
+  return (
+    <BonusCredits
+      bonus={view.bonus}
+      m={view.m}
+      currency={market.currency}
+      locale={market.locale}
+      signInHref={marketPath(store.slug, market.slug, "/account")}
+      action={checkoutCreditsAction.bind(null, store.slug, market.slug)}
+    />
+  );
+}
+
 function totalsList(view: CheckoutView, market: Market) {
   const { m, order, open } = view;
   const money = moneyOf(view, market);
@@ -187,7 +214,15 @@ function totalsList(view: CheckoutView, market: Market) {
     0,
   );
   const shippingNet = withoutVat(order.shippingMinor, order.shippingVatRate);
-  const discountNet = linesNet + shippingNet - (order.totalMinor - order.taxMinor);
+  const bonusMinor = order.bonus?.usedMinor ?? 0;
+  // Bonus credits (D130) are a line of their own, so a business's discount, worked out from the total, leaves them out.
+  const bonusNet = business
+    ? creditsNet(
+        bonusMinor,
+        order.lines.filter((line) => !line.gift).map((line) => ({ minor: line.unitPriceMinor * line.quantity, rate: line.taxRate })),
+      )
+    : bonusMinor;
+  const discountNet = linesNet + shippingNet - (order.totalMinor - order.taxMinor) - (business ? bonusNet : 0);
   return (
     <>
       <dl className="flex flex-col gap-1 text-sm">
@@ -208,6 +243,12 @@ function totalsList(view: CheckoutView, market: Market) {
               {discountNote(order) && <span className="text-sm text-muted"> ({discountNote(order)})</span>}
             </dt>
             <dd>−{money(business ? discountNet : order.discountMinor)}</dd>
+          </div>
+        )}
+        {bonusMinor > 0 && (
+          <div className="flex justify-between">
+            <dt>{m.bonus.discountRow}</dt>
+            <dd>−{money(bonusNet)}</dd>
           </div>
         )}
         {business ? (

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
+import type { CreditsState } from "@/lib/bonus-shopper";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import { changeLine, readCartId, setCartCompany } from "@/server/cart";
@@ -15,6 +16,8 @@ import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveShop } from "@/server/shop";
+
+import { applyCreditsForm } from "./bonus";
 
 const lineInput = z
   .object({
@@ -180,4 +183,19 @@ export async function removeCodeAction(storeSlug: string, marketSlug: string): P
   if (!shop) return;
   await setCartCode({ storeId: shop.store.id, market: shop.market }, null);
   refresh();
+}
+
+/**
+ * Uses bonus credits on the cart, or takes them off (D130): the amount typed, all that can be used, or none. The
+ * cart page shows the new totals; the result is said next to the form.
+ */
+export async function setCartCreditsAction(
+  storeSlug: string,
+  marketSlug: string,
+  _state: CreditsState,
+  form: FormData,
+): Promise<CreditsState> {
+  const outcome = await applyCreditsForm(storeSlug, marketSlug, form);
+  if (outcome.changed) refresh();
+  return outcome.state;
 }

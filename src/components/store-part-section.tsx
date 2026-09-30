@@ -6,6 +6,7 @@ import {
   CartCode,
   CartContents,
   CartContinue,
+  CartCredits,
   CartLines,
   CartSummary,
 } from "@/app/s/[store]/[market]/cart/cart-contents";
@@ -13,6 +14,7 @@ import {
   Checkout,
   CheckoutBack,
   CheckoutCode,
+  CheckoutCredits,
   CheckoutItems,
   CheckoutPayment,
   CheckoutTotals,
@@ -81,6 +83,8 @@ async function Part({
       return <CartSummary store={store} market={market} m={m} />;
     case "cart_code":
       return <CartCode store={store} market={market} m={m} />;
+    case "cart_credits":
+      return <CartCredits store={store} market={market} m={m} />;
     case "cart_checkout":
       return <CartCheckout store={store} market={market} m={m} />;
     case "cart_continue":
@@ -89,6 +93,8 @@ async function Part({
       return <CheckoutItems store={store} market={market} />;
     case "checkout_code":
       return <CheckoutCode store={store} market={market} />;
+    case "checkout_credits":
+      return <CheckoutCredits store={store} market={market} />;
     case "checkout_totals":
       return <CheckoutTotals store={store} market={market} />;
     case "checkout_payment":

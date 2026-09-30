@@ -5,6 +5,7 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 
+import type { OrderBonus } from "@/lib/bonus-shopper";
 import { shown, type Market } from "@/lib/markets";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
@@ -38,7 +39,10 @@ export type OrderView = {
   placedAt: string;
   subtotalMinor: number;
   shippingMinor: number;
-  /** What a discount code took off, and the code (D31). */
+  /**
+   * What discount codes, groups and campaigns took off, and the code (D31): not the bonus credits used, which are
+   * `creditMinor` (the database keeps both in the order's discount, so subtotal + shipping − discount − credits = total).
+   */
   discountMinor: number;
   discountCode: string | null;
   /** The part of the discount that is the buyer's group or company discount (D108), its name and the percent given. */
@@ -48,6 +52,13 @@ export type OrderView = {
   /** The part campaigns gave (D114), by name. */
   campaignDiscountMinor: number;
   campaignLabel: string | null;
+  /** The bonus credits used on the order (D130), in the order's currency, taken off goods last. */
+  creditMinor: number;
+  /**
+   * Its bonus credits (D130), all in the ORDER's currency: what was used, what it earned once paid (before any
+   * conversion into the credits' currency) and when those can be used. Null when it used and earned none.
+   */
+  bonus: OrderBonus | null;
   taxMinor: number;
   totalMinor: number;
   /** Still to be paid at the venue (D66); 0 once staff mark it paid. */
@@ -126,6 +137,18 @@ export type OrderDownload = {
   gone: boolean;
 };
 
+/** An order's credits from its row: null when it used none and earned none. */
+export function orderBonus(row: Row): OrderBonus | null {
+  const used = Number(row.credit_minor ?? 0);
+  const earned = Number(row.bonus_earned_minor ?? 0);
+  if (used <= 0 && earned <= 0) return null;
+  return {
+    usedMinor: used,
+    earnedMinor: earned,
+    availableAt: row.bonus_available_at ? new Date(String(row.bonus_available_at)).toISOString() : null,
+  };
+}
+
 const toOrder = (row: Row, lines: Row[]): OrderView => ({
   id: String(row.id),
   number: String(row.number),
@@ -137,13 +160,15 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   placedAt: new Date(String(row.placed_at)).toISOString(),
   subtotalMinor: Number(row.subtotal_minor),
   shippingMinor: Number(row.shipping_minor),
-  discountMinor: Number(row.discount_minor ?? 0),
+  discountMinor: Number(row.discount_minor ?? 0) - Number(row.credit_minor ?? 0),
   discountCode: row.discount_code ? String(row.discount_code) : null,
   memberDiscountMinor: Number(row.member_discount_minor ?? 0),
   memberLabel: row.member_label ? String(row.member_label) : null,
   memberPercent: row.member_percent === null || row.member_percent === undefined ? null : Number(row.member_percent),
   campaignDiscountMinor: Number(row.campaign_discount_minor ?? 0),
   campaignLabel: row.campaign_label ? String(row.campaign_label) : null,
+  creditMinor: Number(row.credit_minor ?? 0),
+  bonus: orderBonus(row),
   taxMinor: Number(row.tax_minor),
   totalMinor: Number(row.total_minor),
   balanceMinor: Number(row.balance_minor ?? 0),
@@ -375,6 +400,8 @@ export type OrderListRow = {
   totalMinor: number;
   currency: string;
   items: number;
+  /** Its bonus credits (D130), in the order's currency. */
+  bonus: OrderBonus | null;
 };
 
 /** The store's orders, newest first. Unpaid checkouts are left out unless asked for. */
@@ -387,6 +414,7 @@ export async function listOrders(
   const rows = await db().execute<Row>(sql`
     select o.id, o.number, o.status, o.email, o.shipping_address ->> 'name' as name,
            o.placed_at, o.total_minor, o.currency, o.copied_from is not null as copied,
+           o.credit_minor, o.bonus_earned_minor, o.bonus_available_at,
            (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items
     from commerce.orders o
     where o.store_id = ${storeId}::uuid
@@ -412,6 +440,7 @@ export async function listOrders(
     totalMinor: Number(row.total_minor),
     currency: String(row.currency),
     items: Number(row.items),
+    bonus: orderBonus(row),
   }));
 }
 

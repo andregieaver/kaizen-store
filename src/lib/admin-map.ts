@@ -259,8 +259,12 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   }),
   store("campaign.new", "/campaigns/new", "New campaign", "Sales", "Creates a campaign: what it gives, what it applies to, and when it runs."),
   store("campaign", "/campaigns/[campaignId]", "Campaign", "Sales", "One campaign: what it gives, what it applies to, when it runs, and switching it off or deleting it."),
+  store("bonus", "/bonus", "Bonus credits", "Sales", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {
+    tasks: ["Turn the bonus program on or off", "Change how much customers earn back", "Set when credits expire", "See the credits the store owes"],
+    keywords: ["bonus", "credits", "loyalty", "points", "rewards", "reward customers", "returning customers", "repeat customers", "cashback", "store credit", "earn", "redeem", "reward program"],
+  }),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"] }),
-  store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails and their customer group."),
+  store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason)."),
   store("customer-groups", "/customer-groups", "Customer groups", "Sales", "Discount groups such as Wholesale: a fixed percentage off for the customers in them.", {
     keywords: ["wholesale", "b2b", "tier", "price list", "trade discount", "fixed discount", "customer roles"],
     tasks: ["Make a group with a fixed discount", "Put customers in a group"],

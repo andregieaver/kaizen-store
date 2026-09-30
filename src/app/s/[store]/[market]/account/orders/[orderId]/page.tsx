@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { OwnBookings } from "@/components/own-bookings";
+import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
@@ -52,6 +53,13 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" });
   const address = order.shippingAddress;
+  // Bonus credits (D130): what this order earned and from when they can be used.
+  const earned = earnedText(order.bonus, {
+    money,
+    date,
+    line: m.bonus.earnedLine,
+    ready: m.bonus.earnedNow,
+  });
 
   return (
     <>
@@ -125,6 +133,12 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
               <dd>−{money(order.discountMinor)}</dd>
             </div>
           )}
+          {order.bonus && order.bonus.usedMinor > 0 && (
+            <div className="flex justify-between">
+              <dt>{m.bonus.usedRow}</dt>
+              <dd>−{money(order.bonus.usedMinor)}</dd>
+            </div>
+          )}
           <div className="flex justify-between font-semibold">
             <dt>{m.total}</dt>
             <dd>{money(order.totalMinor)}</dd>
@@ -162,6 +176,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
             </div>
           )}
         </dl>
+        {earned && <p className="mt-3 text-sm">{earned}</p>}
       </section>
 
       {downloads.length > 0 && (

@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
 import { discountNote } from "@/lib/customer-tiers";
 import { companyRequired, withoutVat } from "@/lib/b2b";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
+import { creditsNet } from "@/lib/bonus-shopper";
 import { campaignLabel } from "@/lib/campaigns";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { checkoutLabels } from "@/lib/checkout-labels";
@@ -20,7 +22,8 @@ import { cartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
 import type { Store } from "@/server/stores";
 
-import { updateCartLine } from "./actions";
+import { setCartCreditsAction, updateCartLine } from "./actions";
+import { readCartBonus } from "./bonus";
 
 type CartView = Awaited<ReturnType<typeof loadCartView>>;
 type Filled = Extract<CartView, { empty: false }>;
@@ -35,7 +38,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   const home = marketPath(store.slug, market.slug);
   if (cart.lines.length === 0) return { empty: true as const, home };
 
-  const summary = await cartSummary({ storeId: store.id, market }, cart);
+  const [summary, bonus] = await Promise.all([cartSummary({ storeId: store.id, market }, cart), readCartBonus(store, market)]);
   const { plan, checkout, renewal } = summary;
   const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
   // Businesses see amounts without VAT, and the VAT on its own line (B2B); they pay the total with it.
@@ -70,6 +73,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     home,
     cart,
     summary,
+    bonus,
     every,
     business,
     money,
@@ -124,6 +128,7 @@ export async function CartContents({
       >
         {summaryList(draw)}
         {codeForm(draw)}
+        {creditsForm(draw)}
         {checkoutAction(draw)}
       </aside>
     </div>
@@ -148,6 +153,12 @@ export async function CartSummary({ store, market, m }: { store: Store; market: 
 export async function CartCode({ store, market, m }: { store: Store; market: Market; m: Messages }) {
   const view = await cartView(store, market, m);
   return view.empty ? null : codeForm({ store, market, m, view });
+}
+
+/** The cart's bonus credits (D130, D117): use them, or what this order earns; nothing for an empty cart or a store without the program. */
+export async function CartCredits({ store, market, m }: { store: Store; market: Market; m: Messages }) {
+  const view = await cartView(store, market, m);
+  return view.empty ? null : creditsForm({ store, market, m, view });
 }
 
 /** The cart's checkout button and what it asks first (D117); nothing for an empty cart. */
@@ -346,6 +357,7 @@ function summaryList({ m, view }: Draw) {
     total,
     vat,
     balance,
+    bonusMinor,
   } = summary;
   const { terms } = view;
   return (
@@ -404,6 +416,17 @@ function summaryList({ m, view }: Draw) {
                 })),
                 { minor: applied?.shippingMinor ?? 0, rate: checkout.vatRate },
               ])}
+            </dd>
+          </div>
+        )}
+        {bonusMinor > 0 && (
+          <div className="flex justify-between gap-4">
+            <dt>{m.bonus.discountRow}</dt>
+            <dd>
+              −
+              {business
+                ? money(creditsNet(bonusMinor, payable.map((line) => ({ minor: today(line), rate: line.vatRate }))))
+                : money(bonusMinor)}
             </dd>
           </div>
         )}
@@ -468,6 +491,21 @@ function codeForm({ store, market, m, view }: Draw) {
         remove: m.removeCode,
         applying: m.savingChange,
       }}
+    />
+  );
+}
+
+/** The bonus credits (D130): null for a store without the program. */
+function creditsForm({ store, market, m, view }: Draw) {
+  if (!view.bonus) return null;
+  return (
+    <BonusCredits
+      bonus={view.bonus}
+      m={m}
+      currency={market.currency}
+      locale={market.locale}
+      signInHref={marketPath(store.slug, market.slug, "/account")}
+      action={setCartCreditsAction.bind(null, store.slug, market.slug)}
     />
   );
 }

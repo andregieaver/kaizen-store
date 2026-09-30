@@ -8,7 +8,8 @@ import { basketShipping, planPrice } from "@/lib/subscriptions";
 
 import { db } from "@/db/client";
 
-import type { Cart, CartLine, Shop } from "./cart";
+import { bonusProgram, cartBonusOf, creditState, planFor } from "./bonus";
+import { readCartId, type Cart, type CartLine, type Shop } from "./cart";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { getCustomer } from "./customers";
@@ -21,7 +22,12 @@ import { getCheckoutInfo } from "./orders";
  * now and at the venue (D66), worked out as `placeOrder()` will. Kept apart
  * from the page so tests can hold it against the order checkout places.
  */
-export async function cartSummary(shop: Shop, cart: Cart) {
+export async function cartSummary(
+  shop: Shop,
+  cart: Cart,
+  /** The buyer and the cart whose credits count, when the caller knows them; else the signed-in customer and the cookie's cart. */
+  who: { customerId?: string | null; cartId?: string | null } = {},
+) {
   const { storeId, market } = shop;
   const payable = cart.lines.filter(
     (line): line is CartLine & { unitPriceMinor: number } =>
@@ -57,8 +63,8 @@ export async function cartSummary(shop: Shop, cart: Cart) {
   );
   const shipping = !ships ? 0 : checkout.shipping ? basket.first : null;
   // The buyer's group or company discount (D108), off what is bought once, before any code, as checkout takes it.
-  const customer = await getCustomer(storeId);
-  const member = await memberDiscountFor(db(), storeId, customer?.id ?? null);
+  const customerId = who.customerId !== undefined ? who.customerId : ((await getCustomer(storeId))?.id ?? null);
+  const member = await memberDiscountFor(db(), storeId, customerId);
   // Campaigns (D114) come first: reductions on goods bought once, and the free products the basket has earned.
   const campaigns = await evaluateCampaigns(
     db(),
@@ -71,7 +77,7 @@ export async function cartSummary(shop: Shop, cart: Cart) {
       discountable: !line.plan && !line.booking && line.unitPriceMinor > 0,
       valueMinor: today(line),
     })),
-    { ships, customerId: customer?.id ?? null },
+    { ships, customerId },
   );
   const campaignOff = payable.map((_, i) => campaigns.result.lineOff[String(i)] ?? 0);
   const campaignDiscountMinor = campaignOff.reduce((sum, off) => sum + off, 0);
@@ -121,13 +127,27 @@ export async function cartSummary(shop: Shop, cart: Cart) {
   const memberLine = (i: number) => memberOff[i] ?? 0;
   const campaignLine = (i: number) => campaignOff[i] ?? 0;
   const lineDiscount = (i: number) => codeLine(i) + memberLine(i) + campaignLine(i);
-  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor;
+  // Appointments paid at the venue, or the rest after a deposit (D66), as checkout will work it out.
+  const venueOf = payable.map((line, i) => venuePart(today(line) - lineDiscount(i), line.payment));
+  const balance = venueOf.reduce((sum, part) => sum + part, 0);
+  // Bonus credits (D130) come last, off goods bought once that are still to pay online: after campaigns, the group's
+  // discount and codes, and never off a subscription, the part left for a venue, sign-up fees or shipping.
+  const program = await bonusProgram(db(), storeId);
+  const sellerIsHost = payable.some((line) => line.hostId);
+  const credits = sellerIsHost ? null : await creditState(db(), shop, customerId, who.cartId !== undefined ? who.cartId : await readCartId(shop), program);
+  const eligible = payable.map((line, i) => (line.plan || line.unitPriceMinor <= 0 ? 0 : Math.max(0, today(line) - lineDiscount(i) - venueOf[i])));
+  const dueBeforeCredits = subtotal + feeMinor + (shipping ?? 0) - discountMinor - balance;
+  const creditPlan = planFor(credits, eligible, dueBeforeCredits);
+  const bonusMinor = creditPlan.usingMinor;
+  const bonusLine = (i: number) => creditPlan.lines[i] ?? 0;
+  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor - bonusMinor;
   const vat =
-    payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i), line.vatRate), 0) +
+    payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineDiscount(i) - bonusLine(i), line.vatRate), 0) +
     fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
     vatIncluded((shipping ?? 0) - (applied?.shippingMinor ?? 0), checkout.vatRate);
-  // Appointments paid at the venue, or the rest after a deposit (D66), as checkout will work it out.
-  const balance = payable.reduce((sum, line, i) => sum + venuePart(today(line) - lineDiscount(i), line.payment), 0);
+  // What this order will earn: what is paid online for goods and fees once credits are off, as the database counts it.
+  const paidOnlineGoods = payable.reduce((sum, line, i) => sum + today(line) - lineDiscount(i) - bonusLine(i) - venueOf[i], 0) + feeMinor;
+  const bonus = cartBonusOf(shop.market, program, credits, creditPlan, customerId !== null, paidOnlineGoods, !sellerIsHost);
   // Nothing to pay online: the shopper tells who books instead of Stripe asking.
   const atVenueOnly = balance > 0 && balance === total;
   return {
@@ -160,6 +180,10 @@ export async function cartSummary(shop: Shop, cart: Cart) {
     lineDiscount,
     codeLine,
     memberLine,
+    /** Bonus credits used (D130), in the currency shown: off the goods last, part of the order's discount; `discountMinor` leaves them out. */
+    bonusMinor,
+    bonusLine,
+    bonus,
     total,
     vat,
     balance,

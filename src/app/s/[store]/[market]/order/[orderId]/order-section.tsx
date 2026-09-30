@@ -7,6 +7,7 @@ import { OwnBookings } from "@/components/own-bookings";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
+import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { t, type Messages } from "@/lib/i18n";
@@ -68,7 +69,10 @@ export async function OrderDetails(shop: Shop) {
       {bookingsBlock(view)}
       <section aria-label={m.cart} className={FRAME}>
         {linesList(view)}
-        <div className="mt-3 border-t border-border pt-3">{totalsList(view)}</div>
+        <div className="mt-3 border-t border-border pt-3">
+          {totalsList(view)}
+          {earnedNote(view)}
+        </div>
       </section>
       {subscription && <div className={FRAME}>{subscription}</div>}
       {downloads && <div className={FRAME}>{downloads}</div>}
@@ -100,7 +104,13 @@ export async function OrderLines(shop: Shop) {
 
 /** The order's shipping, discounts, total and VAT (D117). */
 export async function OrderTotals(shop: Shop) {
-  return totalsList(await orderView(shop));
+  const view = await orderView(shop);
+  return (
+    <>
+      {totalsList(view)}
+      {earnedNote(view)}
+    </>
+  );
 }
 
 /** The subscription the order started (D117); nothing for an order without one. */
@@ -206,6 +216,13 @@ function totalsList({ order, m, money }: OrderView) {
           <dd>−{money(order.discountMinor)}</dd>
         </div>
       )}
+      {order.bonus && order.bonus.usedMinor > 0 && (
+        // Bonus credits used (D130).
+        <div className="flex justify-between">
+          <dt>{m.bonus.usedRow}</dt>
+          <dd>−{money(order.bonus.usedMinor)}</dd>
+        </div>
+      )}
       <div className="flex justify-between font-semibold">
         <dt>{m.total}</dt>
         <dd>{money(order.totalMinor)}</dd>
@@ -238,6 +255,17 @@ function totalsList({ order, m, money }: OrderView) {
       )}
     </dl>
   );
+}
+
+/** What the order earned in bonus credits (D130) and from when they can be used; nothing for an order that earned none. */
+function earnedNote({ market, order, m, money }: OrderView) {
+  const earned = earnedText(order.bonus, {
+    money,
+    date: (iso) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" }),
+    line: m.bonus.earnedLine,
+    ready: m.bonus.earnedNow,
+  });
+  return earned && <p className="mt-3 text-sm">{earned}</p>;
 }
 
 function subscriptionBlock({ store, market, m, subscription }: OrderView) {

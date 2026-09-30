@@ -2,6 +2,7 @@
  * The words in Kaizen's emails to shoppers (D26), by language. English is
  * the fallback, as for the storefront.
  */
+import { earnedText, type OrderBonus } from "./bonus-shopper";
 import { registeredEmail } from "./ui-registry";
 
 const text = {
@@ -110,6 +111,19 @@ const text = {
       endedHeading: "Firmarabatten din er avsluttet",
       endedIntro: (company: string, store: string) =>
         `Du er ikke lenger knyttet til ${company} hos ${store}, så firmarabatten gjelder ikke lenger. Kontoen din og bestillingene dine er som før.`,
+    },
+    /** The bonus program (D130): the credits on an order confirmation, and the reminder before credits expire. */
+    bonus: {
+      usedRow: "Bonuskreditt brukt",
+      earnedLine: (amount: string, date: string) => `Du tjente ${amount} i bonuskreditt, som kan brukes fra ${date}.`,
+      earnedNow: (amount: string) => `Du tjente ${amount} i bonuskreditt, som du kan bruke nå.`,
+      expirySubject: (store: string, date: string) => `Bonuskreditten din hos ${store} utløper ${date}`,
+      expiryHeading: "Bonuskreditten din utløper snart",
+      expiryGreeting: (name: string) => `Hei, ${name}!`,
+      expiryGreetingAnon: "Hei!",
+      expiryIntro: (amount: string, date: string) => `${amount} av bonuskreditten din utløper ${date}.`,
+      expiryHow: "Bruk den på neste bestilling: kreditten trekkes fra prisen på varer i kassen.",
+      expiryButton: "Se bonuskreditten min",
     },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
@@ -257,6 +271,19 @@ const text = {
       endedIntro: (company: string, store: string) =>
         `Du är inte längre kopplad till ${company} hos ${store}, så företagsrabatten gäller inte längre. Ditt konto och dina beställningar är som förut.`,
     },
+    /** The bonus program (D130): the credits on an order confirmation, and the reminder before credits expire. */
+    bonus: {
+      usedRow: "Bonuskredit använd",
+      earnedLine: (amount: string, date: string) => `Du tjänade ${amount} i bonuskredit, som kan användas från ${date}.`,
+      earnedNow: (amount: string) => `Du tjänade ${amount} i bonuskredit, som du kan använda nu.`,
+      expirySubject: (store: string, date: string) => `Din bonuskredit hos ${store} går ut ${date}`,
+      expiryHeading: "Din bonuskredit går snart ut",
+      expiryGreeting: (name: string) => `Hej, ${name}!`,
+      expiryGreetingAnon: "Hej!",
+      expiryIntro: (amount: string, date: string) => `${amount} av din bonuskredit går ut ${date}.`,
+      expiryHow: "Använd den på nästa beställning: krediten dras av från priset på varor i kassan.",
+      expiryButton: "Se min bonuskredit",
+    },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
       invoiceSubject: (store: string, number: string) => `Faktura ${number} från ${store}`,
@@ -402,6 +429,19 @@ const text = {
       endedHeading: "Din virksomhedsrabat er ophørt",
       endedIntro: (company: string, store: string) =>
         `Du er ikke længere knyttet til ${company} hos ${store}, så virksomhedsrabatten gælder ikke længere. Din konto og dine ordrer er som før.`,
+    },
+    /** The bonus program (D130): the credits on an order confirmation, and the reminder before credits expire. */
+    bonus: {
+      usedRow: "Bonuskredit brugt",
+      earnedLine: (amount: string, date: string) => `Du optjente ${amount} i bonuskredit, som kan bruges fra ${date}.`,
+      earnedNow: (amount: string) => `Du optjente ${amount} i bonuskredit, som du kan bruge nu.`,
+      expirySubject: (store: string, date: string) => `Din bonuskredit hos ${store} udløber ${date}`,
+      expiryHeading: "Din bonuskredit udløber snart",
+      expiryGreeting: (name: string) => `Hej, ${name}!`,
+      expiryGreetingAnon: "Hej!",
+      expiryIntro: (amount: string, date: string) => `${amount} af din bonuskredit udløber ${date}.`,
+      expiryHow: "Brug den på din næste ordre: krediten trækkes fra prisen på varer i kassen.",
+      expiryButton: "Se min bonuskredit",
     },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
@@ -549,6 +589,19 @@ const text = {
       endedIntro: (company: string, store: string) =>
         `You are no longer linked to ${company} at ${store}, so the company discount no longer applies. Your account and orders are as before.`,
     },
+    /** The bonus program (D130): the credits on an order confirmation, and the reminder before credits expire. */
+    bonus: {
+      usedRow: "Bonus credits used",
+      earnedLine: (amount: string, date: string) => `You earned ${amount} in bonus credits, usable from ${date}.`,
+      earnedNow: (amount: string) => `You earned ${amount} in bonus credits, ready to use.`,
+      expirySubject: (store: string, date: string) => `Your bonus credits at ${store} expire on ${date}`,
+      expiryHeading: "Your bonus credits are about to expire",
+      expiryGreeting: (name: string) => `Hello, ${name}!`,
+      expiryGreetingAnon: "Hello!",
+      expiryIntro: (amount: string, date: string) => `${amount} of your bonus credits expires on ${date}.`,
+      expiryHow: "Use them on your next order: they come off the price of goods at checkout.",
+      expiryButton: "See my bonus credits",
+    },
     /** Work invoices (docs/work.md 4.7): the invoice, credit note and payment reminder emails. */
     work: {
       invoiceSubject: (store: string, number: string) => `Invoice ${number} from ${store}`,
@@ -597,4 +650,61 @@ export function emailText(lang: string): EmailText {
   if (lang in text) return text[lang as keyof typeof text];
   // A language translated by AI and kept as data (D111), English for what it lacks.
   return (registeredEmail(lang) as EmailText | undefined) ?? text.en;
+}
+
+// ---------------------------------------------------------------------------
+// The bonus program (D130)
+// ---------------------------------------------------------------------------
+
+/**
+ * The credits on an order confirmation: the row for what was used, among the totals. `money` formats the order's
+ * currency; nothing when no credits were used.
+ */
+export function orderBonusRows(
+  text: EmailText,
+  bonus: OrderBonus | null | undefined,
+  money: (minor: number) => string,
+): { label: string; value: string; muted: boolean }[] {
+  return bonus && bonus.usedMinor > 0 ? [{ label: text.bonus.usedRow, value: `−${money(bonus.usedMinor)}`, muted: true }] : [];
+}
+
+/** The friendly line under an order confirmation's totals about the credits it earned, or null. `date` formats a day. */
+export function orderBonusEarned(
+  text: EmailText,
+  bonus: OrderBonus | null | undefined,
+  money: (minor: number) => string,
+  date: (iso: string) => string,
+  now?: Date,
+): string | null {
+  return earnedText(bonus, { money, date, line: text.bonus.earnedLine, ready: text.bonus.earnedNow }, now);
+}
+
+/**
+ * What the reminder before credits expire needs, all as the shopper reads it: the amounts and dates are formatted by
+ * the sender in the customer's own market (`formatMoney`, the locale's date), `url` is the full address of My account's
+ * bonus credits page (`storeSiteUrl()` + `marketPath(…, "/account/bonus")`).
+ */
+export type BonusExpiryData = {
+  store: string;
+  /** The customer's name; empty when there is none. */
+  customerName: string;
+  /** The amount that expires, formatted. */
+  amount: string;
+  /** The day it expires, formatted. */
+  expiresOn: string;
+  url: string;
+};
+
+/** The words of the expiry reminder: subject, greeting and paragraphs, and the button to the account page. */
+export function bonusExpiryText(text: EmailText, data: BonusExpiryData) {
+  const b = text.bonus;
+  const name = data.customerName.trim().split(/\s+/)[0] ?? "";
+  const intro = b.expiryIntro(data.amount, data.expiresOn);
+  return {
+    subject: b.expirySubject(data.store, data.expiresOn),
+    preview: intro,
+    heading: b.expiryHeading,
+    paragraphs: [name ? b.expiryGreeting(name) : b.expiryGreetingAnon, intro, b.expiryHow],
+    button: { text: b.expiryButton, url: data.url },
+  };
 }

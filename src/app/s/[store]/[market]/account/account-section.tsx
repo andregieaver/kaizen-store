@@ -4,6 +4,7 @@ import { DeleteAccountButton, DetailsForm, PasswordForm, SignOutButton } from "@
 import { AccountAccess } from "@/components/account-sign-in";
 import { Avatar } from "@/components/avatar";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { BonusCard } from "@/components/bonus-account-view";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
@@ -18,6 +19,7 @@ import {
   listCustomerOrders,
   listCustomerSubscriptions,
 } from "@/server/customers";
+import { shopperBonus } from "@/server/bonus";
 import { companyOf } from "@/server/companies";
 import type { Store } from "@/server/stores";
 
@@ -50,11 +52,12 @@ async function Account({ store, market, query }: { store: Store; market: Market;
     );
   }
 
-  const [orders, subscriptions, lastAddress, mine] = await Promise.all([
+  const [orders, subscriptions, lastAddress, mine, bonus] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
     listCustomerSubscriptions(store.id, customer.id),
     customer.address.line1 ? Promise.resolve(null) : lastShippingAddress(store.id, customer.id),
     companyOf(store.id, customer.id),
+    shopperBonus({ storeId: store.id, market }, customer.id),
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "medium" });
   const base = marketPath(store.slug, market.slug);
@@ -105,6 +108,8 @@ async function Account({ store, market, query }: { store: Store; market: Market;
           <span aria-hidden="true">→</span>
         </Link>
       )}
+
+      <BonusCard bonus={bonus} m={m} locale={market.locale} base={base} />
 
       <section aria-labelledby="orders-heading" className="flex flex-col gap-3">
         <h2 id="orders-heading" className="text-xl font-heading">{a.orders}</h2>

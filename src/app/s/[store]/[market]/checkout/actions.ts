@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import type { CreditsState } from "@/lib/bonus-shopper";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -15,6 +16,8 @@ import { getOpenCheckout, startCheckout } from "@/server/checkout";
 import { getCustomer } from "@/server/customers";
 import { checkCodeForOrder, setCartCode } from "@/server/discounts";
 import { resolveShop } from "@/server/shop";
+
+import { applyCreditsForm } from "../cart/bonus";
 
 const email = z.email().max(254);
 
@@ -113,6 +116,40 @@ export async function checkoutCodeAction(
     cartId,
     header ? new URL(header).origin : siteUrl(),
     m.shipping,
+    { digital: open.digital, subscription: false },
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null },
+  );
+  // On a problem (stock ran out meanwhile, ...) the cart says what.
+  redirect(result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart"));
+}
+
+/**
+ * Bonus credits used or taken off at checkout (D130). The credits are checked and set on the cart as in the cart
+ * page; when they changed, the order is placed again at the new price, with the consent to downloads the shopper
+ * already gave, as a discount code does (`checkoutCodeAction`). An order that starts a subscription is placed again
+ * only once the shopper agrees to its renewal price, so there the page only shows that the order changed.
+ */
+export async function checkoutCreditsAction(
+  storeSlug: string,
+  marketSlug: string,
+  _state: CreditsState,
+  form: FormData,
+): Promise<CreditsState> {
+  const outcome = await applyCreditsForm(storeSlug, marketSlug, form);
+  if (!outcome.changed || !outcome.shop || !outcome.cartId) return outcome.state;
+  const { shop, cartId } = outcome;
+  const open = await getOpenCheckout(shop.store.id, cartId);
+  if (!open || open.subscription) {
+    refresh();
+    return outcome.state;
+  }
+
+  const header = (await headers()).get("origin");
+  const result = await startCheckout(
+    { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
+    cartId,
+    header ? new URL(header).origin : siteUrl(),
+    t(shop.market.lang).shipping,
     { digital: open.digital, subscription: false },
     { customerId: (await getCustomer(shop.store.id))?.id ?? null },
   );

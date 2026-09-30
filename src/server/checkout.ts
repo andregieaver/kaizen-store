@@ -31,6 +31,7 @@ import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
+import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
 import { commissionOf, hostCheckoutAccount } from "./host-payments";
 import { getCheckoutAccount } from "./settings";
@@ -70,6 +71,8 @@ export type PlacedOrder = {
   /** Shipping before any discount code, and what the code takes off it (D31). */
   shippingMinor: number;
   shippingDiscountMinor: number;
+  /** The bonus credits used on it (D130), in the order's currency: part of the discount Stripe is sent as a coupon. */
+  creditMinor: number;
   /** The VAT included in the total. */
   taxMinor: number;
   totalMinor: number;
@@ -167,7 +170,8 @@ export async function placeOrder(
   const { storeId, market } = shop;
   return inTransaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
-      select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience, s.time_zone
+      select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience, s.time_zone,
+        c.bonus_request_minor
       from commerce.carts c
       join commerce.stores s on s.id = c.store_id
       where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.market_code = ${market.code}
@@ -175,6 +179,10 @@ export async function placeOrder(
       for update of c
     `);
     if (!cart) return { ok: false, problem: "empty" };
+    // Bonus credits (D130) are taken under the customer's lock, so two checkouts cannot both spend the same credits.
+    if (customerId && Number(cart.bonus_request_minor) > 0) {
+      await tx.execute(sql`select id from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid for update`);
+    }
 
     const cartLines = await orderLineRows(
       tx,
@@ -286,6 +294,8 @@ export async function placeOrder(
         discount: 0,
         /** The part of the discount that is the buyer's group or company discount (D108). */
         member: 0,
+        /** The part of the discount that is bonus credits (D130), taken off last. */
+        bonus: 0,
         /** What a campaign took off (D114), which one, and whether the line is a free product it gave. */
         campaign: 0,
         campaignId: null as string | null,
@@ -488,11 +498,31 @@ export async function placeOrder(
     const balance = venue.reduce((sum, part) => sum + part, 0);
     // A subscription is paid by Stripe Billing in full, so it is ordered apart from them.
     if (rhythm && balance > 0) return { ok: false, problem: "pay_later_mix" };
+    // Bonus credits (D130) come last, off goods bought once that are still to pay online: after campaigns, the group's
+    // discount and codes, and not off a subscription, the part left for a venue, fees or shipping. Worked out under the
+    // customer's lock from the same rules as the cart page (`cartSummary()`), and brought down to what they still have.
+    const program = await bonusProgram(tx, storeId);
+    const credits = hostId ? null : await creditState(tx, { storeId, market }, customerId, cartId, program);
+    const creditPlan = planFor(
+      credits,
+      priced.map((p, i) => (p.recurring || p.gift || p.unit <= 0 ? 0 : Math.max(0, p.total - venue[i]))),
+      subtotal + shipping - discountTotal - balance,
+    );
+    const creditDebit = credits ? debitFor(credits, market, creditPlan.usingMinor) : 0;
+    if (creditPlan.usingMinor > 0 && creditDebit > 0) {
+      priced.forEach((p, i) => {
+        p.bonus = creditPlan.lines[i] ?? 0;
+        p.discount += p.bonus;
+        p.total -= p.bonus;
+      });
+    }
+    const creditTotal = priced.reduce((sum, p) => sum + p.bonus, 0);
+    const discountAll = discountTotal + creditTotal;
     const tax =
       priced.reduce((sum, p) => sum + vatIncluded(p.total, p.rate), 0) +
       fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
       vatIncluded(shipping - shippingDiscount, vatRate);
-    const total = subtotal + shipping - discountTotal;
+    const total = subtotal + shipping - discountAll;
 
     const [numbered] = await tx.execute<Row>(sql`
       select s.prefix || commerce.next_document_number(${storeId}::uuid, 'order')::text as number
@@ -505,15 +535,15 @@ export async function placeOrder(
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
         company_name, organisation_number, balance_minor, host_id,
-        member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label
+        member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
-        ${subtotal}, ${shipping}, ${discountTotal}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
+        ${subtotal}, ${shipping}, ${discountAll}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
         ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
         ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
         ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null},
-        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}
+        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}
       )
       returning id
     `);
@@ -525,7 +555,7 @@ export async function placeOrder(
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
-          campaign_discount_minor, campaign_id, campaign_parts, gift
+          campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${vatIncluded(p.total, p.rate)},
@@ -535,7 +565,7 @@ export async function placeOrder(
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
           ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
           ${p.range && p.startsAt ? p.count : null},
-          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}
+          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}
         )
         returning id
       `);
@@ -582,12 +612,12 @@ export async function placeOrder(
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.subscriptions (
           store_id, number, market_code, currency, locale, interval, interval_count, min_cycles,
-          subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token
+          subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token, customer_id
         ) values (
           ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
           ${rhythm.interval}, ${rhythm.intervalCount}, ${minCycles}, ${renewalSubtotal}, ${basket.renewal},
           ${renewalSubtotal + basket.renewal}, ${renewalTax}, ${orderId}::uuid,
-          replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')
+          replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), ${customerId}::uuid
         )
         returning id
       `);
@@ -615,6 +645,19 @@ export async function placeOrder(
         insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, order_id, expires_at)
         values (${storeId}::uuid, ${a.variantId}::uuid, ${a.locationId}::uuid, ${a.quantity}, ${orderId}::uuid,
                 now() + make_interval(mins => ${CHECKOUT_MINUTES + 5}))
+      `);
+    }
+    // The credits are held against the order while it waits for payment: paying keeps them used, cancelling gives them back.
+    if (creditTotal > 0) {
+      await tx.execute(sql`
+        select commerce.bonus_redeem(${storeId}::uuid, ${customerId}::uuid, ${orderId}::uuid, ${creditDebit}, ${`redeem:${orderId}`})
+      `);
+    }
+    // The cart now asks for what the order used, so a change to it (and only a change) asks checkout to start again.
+    if (Number(cart.bonus_request_minor) > 0 || creditTotal > 0) {
+      await tx.execute(sql`
+        update commerce.carts set bonus_request_minor = ${creditTotal}, bonus_request_currency = ${market.currency}
+        where store_id = ${storeId}::uuid and id = ${cartId}::uuid
       `);
     }
     // The consent is kept with the order as evidence (D24).
@@ -654,6 +697,7 @@ export async function placeOrder(
         subscription,
         shippingMinor: shipping,
         shippingDiscountMinor: shippingDiscount,
+        creditMinor: creditTotal,
         taxMinor: tax,
         totalMinor: total,
         dueNowMinor: total - balance,
@@ -663,9 +707,16 @@ export async function placeOrder(
         // not already in a lowered subscriber's price. In a subscription,
         // shipping is a line, so free shipping is in the coupon too.
         discount:
-          discount || memberTotal > 0 || campaignTotal > 0
+          discount || memberTotal > 0 || campaignTotal > 0 || creditTotal > 0
             ? {
-                code: [discount?.code, memberTotal > 0 ? member!.label : null, campaignTotal > 0 ? campaignText : null].filter(Boolean).join(" + "),
+                code: [
+                  discount?.code,
+                  memberTotal > 0 ? member!.label : null,
+                  campaignTotal > 0 ? campaignText : null,
+                  creditTotal > 0 ? t(market.lang).bonus.discountRow : null,
+                ]
+                  .filter(Boolean)
+                  .join(" + "),
                 couponMinor:
                   priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount), 0) +
                   (rhythm ? shippingDiscount : 0),
@@ -1123,7 +1174,11 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
          where ol.store_id = o.store_id and ol.order_id = o.id and ol.variant_id is not null and not ol.gift)
       -- A code put on or taken off the cart changes the price too (D31).
       or (select c.discount_code from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
-         is distinct from o.discount_code as changed,
+         is distinct from o.discount_code
+      -- So does asking for other bonus credits (D130): the cart holds what the order used until it is changed.
+      or (select case when c.bonus_request_currency = o.currency then c.bonus_request_minor else 0 end
+            from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+         is distinct from o.credit_minor as changed,
       exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol

@@ -38,6 +38,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   booking_resources: settings(
     "Staff, rooms and rental items (a host's stay with the original; a calendar's secret address is made again).",
   ),
+  bonus_settings: settings("The bonus program's rules (D130): percentages, waits and expiry; balances are not copied."),
   booking_seasons: catalogue("A stay's or rental's seasonal prices; go with the product."),
   campaigns: settings(
     "Offers (D114); one for products that were not copied is switched off, a gift of a product not copied is left out.",
@@ -119,6 +120,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   abandoned_checkouts: never("Carts left behind by shoppers, with their emails."),
   abandoned_plan_checkouts: never("Plan checkouts of accounts."),
   access_requests: never("Sign-up requests belong to the platform."),
+  bonus_allocations: never("What each use of credits took from which grant: part of a customer's ledger (D130)."),
+  bonus_entries: never("Customers' bonus credits (D130) are their balance with the original store, like their orders' payments."),
   ai_providers: never("The owner's own AI keys are secrets."),
   ai_usage: never("A log of the original's AI use."),
   assistant_approvals: never("The AI manager's conversations belong to the account and the store they happened in."),

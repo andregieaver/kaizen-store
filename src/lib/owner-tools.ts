@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
+import { adjustmentPhrase } from "./bonus-admin";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 
 /**
@@ -305,6 +307,34 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "get_bonus_program",
+    "The store's bonus program (credits that signed-in customers earn on what they pay and use on a later order): whether it is on, how much customers earn back, the wait before credits can be used, the most of an order they can pay, the least to use, whether credits expire, the rules in plain words, and what the store owes (credits outstanding and pending, earned, used and expired in the last 30 days). With `customer` (an email) it also gives that customer's balance and latest history. Use it before set_bonus_program or adjust_customer_credits, and for any question about credits or loyalty; never work out a balance yourself.",
+    z.object({ customer: z.string().trim().min(3).max(200).optional().describe("A customer's email, to read their credits too.") }),
+  ),
+  tool(
+    "set_bonus_program",
+    "Changes the bonus program: switches it on or off and sets the rules. Give only what changes; everything else stays as it is. Customers must be signed in to earn or use credits; existing customers start at zero; turning it off keeps balances. This changes what shoppers are promised, so say the resulting rules back in plain words. Needs the owner's approval.",
+    z.object({
+      enabled: z.boolean().optional().describe("True turns the program on, false off."),
+      percent_back: z.number().min(0).max(50).optional().describe("Credits earned per 100 paid for goods online, in percent with at most two decimals: 5 is 5%. 0 to 50."),
+      wait_days: z.number().int().min(0).max(BONUS_PENDING_DAYS_MAX).optional().describe(`Days after an order is paid before its credits can be used (the return period), 0 to ${BONUS_PENDING_DAYS_MAX}.`),
+      max_percent_of_order: z.number().int().min(1).max(BONUS_REDEEM_PERCENT_MAX).optional().describe(`The most of an order's goods credits may pay, in percent, 1 to ${BONUS_REDEEM_PERCENT_MAX}.`),
+      min_credits_to_use: z.string().trim().max(30).optional().describe("The least credits a customer can use at once, as the owner writes it in the store's main currency (such as 50 or 49,50); 0 for no minimum."),
+      expires_after_months: z.number().int().min(1).max(BONUS_EXPIRY_MONTHS_MAX).nullable().optional().describe("Months after which unused credits expire (oldest first, with a reminder email); null so they never expire."),
+    }),
+    "public",
+  ),
+  tool(
+    "adjust_customer_credits",
+    "Adds bonus credits to one customer, or takes some away, with a reason that stays in their history: a goodwill gesture, a correction. Only customers with an account have credits. The amount is in the store's main currency, written as the owner writes it: 50 adds 50, -20 takes 20 away; credits never go below zero. Needs the owner's approval.",
+    z.object({
+      customer: z.string().trim().min(3).max(200).describe("The customer's email (from list_customers) or id."),
+      amount: z.string().trim().min(1).max(30).describe("What to add (50) or take away (-20), in the store's main currency."),
+      reason: z.string().trim().min(3).max(200).describe("Why, for the customer's history; staff see it."),
+    }),
+    "spend",
+  ),
+  tool(
     "create_field_group",
     "Makes a group of custom fields for products, pages, articles or the store itself, on every one of that kind: a name and its fields, each with a label, a type, and choices for select, radio, button group and checkbox types. Fields are private (only staff see them) unless you set access public because the owner wants them on the site; the site then shows them through the product layout's Custom fields component (the standard product page shows public groups after the description). Only plain types can be made here: pictures, files, links, things that point at products or pages, groups and repeaters are made in the admin editor. Needs the owner's approval.",
     z.object({
@@ -439,6 +469,20 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     }
     case "set_campaign_active":
       return `${input.active ? "Switch on" : "Switch off"} the campaign "${text("campaign")}".`;
+    case "set_bonus_program": {
+      const parts = [
+        input.enabled === true ? "switch the bonus program on" : input.enabled === false ? "switch the bonus program off" : "",
+        input.percent_back !== undefined ? `credits back ${text("percent_back")} %` : "",
+        input.wait_days !== undefined ? `wait ${text("wait_days")} days before credits can be used` : "",
+        input.max_percent_of_order !== undefined ? `credits can pay at most ${text("max_percent_of_order")} % of an order's goods` : "",
+        input.min_credits_to_use !== undefined ? `least to use ${text("min_credits_to_use")}` : "",
+        input.expires_after_months === null ? "credits never expire" : input.expires_after_months !== undefined ? `credits expire after ${text("expires_after_months")} months` : "",
+      ].filter(Boolean);
+      const sentence = parts.join("; ");
+      return `Change the bonus program: ${sentence || "no change"}.`;
+    }
+    case "adjust_customer_credits":
+      return `${adjustmentPhrase(text("amount"), text("customer"))} (${text("reason")}).`;
     case "create_field_group": {
       const fields = Array.isArray(input.fields) ? (input.fields as { label?: unknown; type?: unknown; access?: unknown }[]) : [];
       const list = fields.map((f) => `${String(f.label)} (${String(f.type ?? "text")}${f.access === "public" ? ", shown on the site" : ""})`).join(", ");

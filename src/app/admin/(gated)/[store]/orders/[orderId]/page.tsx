@@ -13,6 +13,7 @@ import {
   ResendButton,
   SendForm,
 } from "@/components/admin/order-actions";
+import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { bookingWhen } from "@/lib/booking-text";
@@ -75,6 +76,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   if (!order) notFound();
   const locale = store.markets[0]?.locale ?? order.locale;
   const money = (minor: number) => formatMoney(minor, order.currency, locale);
+  // Bonus credits on an order (D130) are in the order's own currency; null for an order with none and for copied history.
+  const bonusCurrency = order.currency;
+  const bonus = order.copied ? null : order.bonus;
   const when = (iso: string) =>
     new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
@@ -235,11 +239,13 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   <dd>−{money(order.discountMinor)}</dd>
                 </div>
               )}
+              <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
               <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
               <div className="flex justify-between text-muted"><dt>VAT included (standard rate)</dt><dd>{money(order.taxMinor)}</dd></div>
               {order.balanceMinor > 0 && (
                 <div className="flex justify-between"><dt>To pay at the appointment</dt><dd>{money(order.balanceMinor)}</dd></div>
               )}
+              <BonusEarnedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
               {order.company && (
                 <div className="flex justify-between text-muted"><dt>Total excl. VAT</dt><dd>{money(order.totalMinor - order.taxMinor)}</dd></div>
               )}
@@ -313,6 +319,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 customer&apos;s card or payment method through Stripe; Kaizen&apos;s fee on the refunded amount is
                 returned to you.
               </p>
+              <BonusRefundNote bonus={bonus} currency={bonusCurrency} locale={locale} refund={{ refundedMinor: order.refundedMinor, totalMinor: order.totalMinor }} />
               <RefundForm
                 {...ids}
                 refundable={typedAmount(order.refundableMinor)}

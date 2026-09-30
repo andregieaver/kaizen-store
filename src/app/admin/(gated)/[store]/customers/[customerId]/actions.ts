@@ -3,7 +3,9 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import type { BonusResult } from "@/lib/bonus";
 import { requireMember } from "@/server/auth";
+import { adjustBonus } from "@/server/bonus";
 import { saveStaffFields } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
 
@@ -16,6 +18,19 @@ export async function saveCustomerFieldsAction(storeSlug: string, customerId: st
   const member = await requireMember(storeSlug);
   if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
   const result = await saveStaffFields(member, "customer", customerId, changes);
+  if (result.ok) refresh();
+  return result;
+}
+
+/**
+ * Adds credits to a customer's bonus balance, or takes some away (negative), with a reason the history keeps (D130).
+ * Owners and admins both may; the server keeps the balance from going below zero and writes the audit log.
+ */
+export async function adjustBonusAction(storeSlug: string, customerId: string, amountMinor: number, note: string): Promise<BonusResult> {
+  const member = await requireMember(storeSlug);
+  if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
+  if (!Number.isSafeInteger(amountMinor) || amountMinor === 0) return { ok: false, problems: ["The amount must be a whole number of minor units, not 0."] };
+  const result = await adjustBonus(member.account, member.store.id, customerId, amountMinor, String(note ?? ""));
   if (result.ok) refresh();
   return result;
 }

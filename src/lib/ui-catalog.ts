@@ -45,6 +45,8 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
     prepare: ([n]) => ((n as number) % 365 === 0 ? ["y", (n as number) / 365] : ["d", n]),
   },
   "ui:downloadsLeft": { template: plural("# download left", "# downloads left") },
+  "ui:bonus.dayCount": { template: plural("# day", "# days") },
+  "ui:bonus.monthCount": { template: plural("# month", "# months") },
   "ui:planEvery": {
     template:
       "{0, select, week {{1, plural, one {Every week} other {Every # weeks}}} month {{1, plural, one {Every month} other {Every # months}}} other {{1, plural, one {Every year} other {Every # years}}}}",

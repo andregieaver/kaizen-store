@@ -72,6 +72,8 @@ export type CartLine = {
     | null;
   /** How an appointment is paid (D66): null for goods, which are paid now. */
   payment: AppointmentPayment | null;
+  /** The host whose listing it is (D71); bonus credits are the store's own, so they are not earned or used on a host's. */
+  hostId: string | null;
 };
 
 /** The time an appointment (or a stay, a rental) is booked for (D65, D67), and who or what with; null is whichever is free. */
@@ -113,7 +115,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
       commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
-      p.kind, aps.check_in_time, aps.check_out_time, v.rental_period,
+      p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
       c.company_name, c.organisation_number,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
@@ -248,6 +250,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
         payment: row.payment
           ? { mode: parsePaymentMode(row.payment), depositPercent: Number(row.deposit_percent) }
           : null,
+        hostId: row.host_id ? String(row.host_id) : null,
       };
     }),
   };

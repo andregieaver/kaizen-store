@@ -103,6 +103,21 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "set-up-bonus-program",
+    area: "store",
+    title: "Set up a bonus program",
+    when: "The owner wants to reward returning customers, asks about loyalty, credits, points or cashback, or wants to change or check the bonus program.",
+    steps: [
+      "Call get_bonus_program to see whether it is on and how it is set. It answers from the store's own data: never guess a percentage or a balance.",
+      "Explain in two sentences: signed-in customers earn credits on what they pay online for goods, and use them as a price reduction on a later order. Guests earn nothing; existing customers start at zero; turning it off keeps balances.",
+      "Ask what they want: how much to give back (a typical start is 3-5%, and every percent is a cost on each order), how long before credits can be used (the return period, 14 days by default), the most of an order credits may pay (50% by default, never 100%), a minimum to use, and whether credits should expire (they never do unless chosen; an expiry sends a reminder email).",
+      "Say the rules back in plain words, then call set_bonus_program with only what changes (kept for their approval). Do not turn it on until they have said yes to the rules.",
+      "Tell them what they promise shoppers: credits are a price reduction when used, so the outstanding credits in get_bonus_program are what the store still owes; their accountant knows how to book unused credits.",
+      "To reward one customer or correct a balance, use adjust_customer_credits with their email and a reason (kept for approval; it stays in the customer's history). get_bonus_program with `customer` shows their balance first.",
+      "Open the page (bonus) for the settings and the overview; the customer page (customer) shows one customer's credits. Tell shoppers with a page or menu link (run-a-sale has the ideas).",
+    ],
+  },
+  {
     id: "improve-search",
     area: "store",
     title: "Help shoppers find things",
