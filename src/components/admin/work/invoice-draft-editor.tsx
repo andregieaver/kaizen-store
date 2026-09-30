@@ -1,8 +1,16 @@
 "use client";
 
+import { ChevronDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import {
   deleteDraftInvoiceAction,
@@ -12,7 +20,11 @@ import {
 } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions";
 import { Modal } from "@/components/admin/modal";
 import { AutosaveQueue, type SaveState } from "@/lib/work-autosave";
-import { ROUND_UP_STEPS_MINUTES, roundUpHours, type RoundUpStep } from "@/lib/work-calc";
+import {
+  ROUND_UP_STEPS_MINUTES,
+  roundUpHours,
+  type RoundUpStep,
+} from "@/lib/work-calc";
 import { dueOn, formatDay } from "@/lib/work-dates";
 import {
   blankRow,
@@ -107,20 +119,31 @@ export function DraftEditor(props: DraftEditorProps) {
       clientBusiness: client.business,
       standardRateBp: vat.standardRateBp,
     }),
-    [vat.sellerVatRegistered, vat.standardRateBp, client.vatTreatment, client.business],
+    [
+      vat.sellerVatRegistered,
+      vat.standardRateBp,
+      client.vatTreatment,
+      client.business,
+    ],
   );
 
   // --- What is on screen, in state (to draw) and refs (for the autosave to read when it runs) -------------
   const [initial] = useState(() => {
     const startHeader = headerFromInvoice(invoice);
-    const startRows = detail.lines.map((line) => rowFromLine(line, invoice.currency));
+    const startRows = detail.lines.map((line) =>
+      rowFromLine(line, invoice.currency),
+    );
     const read = readDraft({
       clientId: client.id,
       assignmentId: invoice.assignmentId,
       header: startHeader,
       rows: startRows,
     });
-    return { header: startHeader, rows: startRows, key: read.ok ? read.key : null };
+    return {
+      header: startHeader,
+      rows: startRows,
+      key: read.ok ? read.key : null,
+    };
   });
   const [header, setHeaderState] = useState<DraftHeaderValues>(initial.header);
   const [rows, setRowsState] = useState<LineRow[]>(initial.rows);
@@ -130,7 +153,9 @@ export function DraftEditor(props: DraftEditorProps) {
   const baseRef = useRef(initial.rows);
   const keyCounter = useRef(0);
 
-  const [save, setSave] = useState<{ state: SaveState; message?: string }>({ state: "idle" });
+  const [save, setSave] = useState<{ state: SaveState; message?: string }>({
+    state: "idle",
+  });
   const [saveCount, setSaveCount] = useState(0);
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const clearFocus = useCallback(() => setFocusKey(null), []);
@@ -142,7 +167,9 @@ export function DraftEditor(props: DraftEditorProps) {
       header: headerRef.current,
       rows: rowsRef.current,
     });
-    return read.ok ? { value: { input: read.input, rows: rowsRef.current }, key: read.key } : null;
+    return read.ok
+      ? { value: { input: read.input, rows: rowsRef.current }, key: read.key }
+      : null;
   }, [client.id, invoice.assignmentId]);
 
   // The queue calls `readNow` and the save from timers and event handlers only, never while rendering.
@@ -155,10 +182,17 @@ export function DraftEditor(props: DraftEditorProps) {
         read: readNow,
         onState: (state, message) => setSave({ state, message }),
         save: async ({ input, rows: snapshot }) => {
-          const result = await saveDraftInvoiceAction(storeSlug, invoice.id, input);
-          if (!result.ok) return { ok: false, message: result.problems.join(" ") };
+          const result = await saveDraftInvoiceAction(
+            storeSlug,
+            invoice.id,
+            input,
+          );
+          if (!result.ok)
+            return { ok: false, message: result.problems.join(" ") };
           // New lines got their ids (and tasks): take them in, so the next save updates them and never adds them again.
-          const saved = new Map(snapshot.map((row, index) => [row.key, result.lines[index]]));
+          const saved = new Map(
+            snapshot.map((row, index) => [row.key, result.lines[index]]),
+          );
           const adopt = (row: LineRow): LineRow => {
             const hit = saved.get(row.key);
             return hit ? { ...row, id: hit.id, taskId: hit.taskId } : row;
@@ -196,12 +230,18 @@ export function DraftEditor(props: DraftEditorProps) {
   useEffect(() => {
     if (serverKey === syncedKey.current) return;
     syncedKey.current = serverKey;
-    const merged = mergeServerRows(rowsRef.current, baseRef.current, serverRows, headerRef.current.currency);
+    const merged = mergeServerRows(
+      rowsRef.current,
+      baseRef.current,
+      serverRows,
+      headerRef.current.currency,
+    );
     baseRef.current = serverRows;
     rowsRef.current = merged;
     setRowsState(merged);
     const now = readNow();
-    if (now && sameRows(merged, serverRows, headerRef.current.currency)) queue.markSaved(now.key);
+    if (now && sameRows(merged, serverRows, headerRef.current.currency))
+      queue.markSaved(now.key);
     else queue.touch();
   }, [serverKey, serverRows, queue, readNow]);
 
@@ -212,7 +252,10 @@ export function DraftEditor(props: DraftEditorProps) {
     };
   }, [queue]);
   const unsaved =
-    save.state === "pending" || save.state === "saving" || save.state === "error" || save.state === "invalid";
+    save.state === "pending" ||
+    save.state === "saving" ||
+    save.state === "error" ||
+    save.state === "invalid";
   useEffect(() => {
     if (!unsaved) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -223,15 +266,28 @@ export function DraftEditor(props: DraftEditorProps) {
   // --- What the person reads ------------------------------------------------------------------------------
   const currency = header.currency;
   const read = useMemo(
-    () => readDraft({ clientId: client.id, assignmentId: invoice.assignmentId, header, rows }),
+    () =>
+      readDraft({
+        clientId: client.id,
+        assignmentId: invoice.assignmentId,
+        header,
+        rows,
+      }),
     [client.id, invoice.assignmentId, header, rows],
   );
   const problems = read.ok ? null : read.problems;
-  const fixedFee = useMemo(() => new Set(props.fixedFeeAssignmentIds), [props.fixedFeeAssignmentIds]);
+  const fixedFee = useMemo(
+    () => new Set(props.fixedFeeAssignmentIds),
+    [props.fixedFeeAssignmentIds],
+  );
   const extra = timer
     ? liveExtra(
         rows,
-        (assignmentId, taskId) => liveMinutes(timer.timer, timer.pendingEntry, timer.now, { assignmentId, taskId }),
+        (assignmentId, taskId) =>
+          liveMinutes(timer.timer, timer.pendingEntry, timer.now, {
+            assignmentId,
+            taskId,
+          }),
         fixedFee,
       )
     : new Map<string, number>();
@@ -240,7 +296,9 @@ export function DraftEditor(props: DraftEditorProps) {
   const ticking = extra.size > 0;
 
   // --- The checklist: read again after each save and when the exchange rate changes ---------------------
-  const [readiness, setReadiness] = useState<InvoiceReadiness | null>(detail.readiness);
+  const [readiness, setReadiness] = useState<InvoiceReadiness | null>(
+    detail.readiness,
+  );
   const [checking, setChecking] = useState(false);
   const [fxRate, setFxRate] = useState("");
   const checkRequest = useRef(0);
@@ -248,8 +306,13 @@ export function DraftEditor(props: DraftEditorProps) {
     const request = (checkRequest.current += 1);
     setChecking(true);
     try {
-      const result = await invoiceReadinessAction(storeSlug, invoice.id, fxRate.trim() || null);
-      if (request === checkRequest.current && result.ok && result.readiness) setReadiness(result.readiness);
+      const result = await invoiceReadinessAction(
+        storeSlug,
+        invoice.id,
+        fxRate.trim() || null,
+      );
+      if (request === checkRequest.current && result.ok && result.readiness)
+        setReadiness(result.readiness);
     } catch {
       /* the list stays as it was; the server checks again when issuing */
     } finally {
@@ -274,6 +337,8 @@ export function DraftEditor(props: DraftEditorProps) {
   const [busy, startBusy] = useTransition();
   const [deleteProblems, setDeleteProblems] = useState<string[]>([]);
   const [roundStep, setRoundStep] = useState<RoundUpStep>(15);
+  // The details are closed until asked for, to keep the lines near the top; a mistake in them opens them.
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const makeRow = useCallback(() => {
     keyCounter.current += 1;
@@ -291,7 +356,9 @@ export function DraftEditor(props: DraftEditorProps) {
     startBusy(async () => {
       const saved = await queue.flush();
       if (!saved) {
-        setActionProblems(["The invoice has changes that could not be saved yet. Fix what is marked and try again."]);
+        setActionProblems([
+          "The invoice has changes that could not be saved yet. Fix what is marked and try again.",
+        ]);
         return;
       }
       void checkReadiness();
@@ -303,14 +370,18 @@ export function DraftEditor(props: DraftEditorProps) {
     setActionProblems([]);
     startBusy(async () => {
       if (!(await queue.flush())) {
-        setActionProblems(["Fix what is marked on the invoice first, so its changes can be saved."]);
+        setActionProblems([
+          "Fix what is marked on the invoice first, so its changes can be saved.",
+        ]);
         return;
       }
       try {
         const result = await releaseTimeFromInvoiceAction(storeSlug, entryIds);
         if (!result.ok) setActionProblems(result.problems);
       } catch {
-        setActionProblems(["The time could not be released. Check your connection and try again."]);
+        setActionProblems([
+          "The time could not be released. Check your connection and try again.",
+        ]);
       }
     });
   };
@@ -318,10 +389,13 @@ export function DraftEditor(props: DraftEditorProps) {
   const roundUp = () => {
     setRows(
       rows.map((row) => {
-        const quantity = row.unit === "hour" ? readQuantity(row.quantity, "hour") : null;
+        const quantity =
+          row.unit === "hour" ? readQuantity(row.quantity, "hour") : null;
         if (quantity === null || quantity === 0) return row;
         const rounded = roundUpHours(quantity, roundStep);
-        return rounded === quantity ? row : { ...row, quantity: quantityField(rounded), quantityManual: true };
+        return rounded === quantity
+          ? row
+          : { ...row, quantity: quantityField(rounded), quantityManual: true };
       }),
     );
   };
@@ -336,7 +410,9 @@ export function DraftEditor(props: DraftEditorProps) {
           router.push(list);
         } else setDeleteProblems(result.problems);
       } catch {
-        setDeleteProblems(["The draft could not be deleted. Check your connection and try again."]);
+        setDeleteProblems([
+          "The draft could not be deleted. Check your connection and try again.",
+        ]);
       }
     });
   };
@@ -350,9 +426,15 @@ export function DraftEditor(props: DraftEditorProps) {
           ? "The last save failed. Try saving again first."
           : null;
 
-  const inherited = invoice.paymentDays === null ? invoice.effectivePaymentDays : null;
-  const typedDays = /^\d+$/.test(header.paymentDays.trim()) ? Number(header.paymentDays.trim()) : null;
-  const dueDays = typedDays !== null && typedDays >= 1 && typedDays <= 90 ? typedDays : invoice.effectivePaymentDays;
+  const inherited =
+    invoice.paymentDays === null ? invoice.effectivePaymentDays : null;
+  const typedDays = /^\d+$/.test(header.paymentDays.trim())
+    ? Number(header.paymentDays.trim())
+    : null;
+  const dueDays =
+    typedDays !== null && typedDays >= 1 && typedDays <= 90
+      ? typedDays
+      : invoice.effectivePaymentDays;
   const currencies = OFFERABLE_CURRENCIES.includes(currency)
     ? OFFERABLE_CURRENCIES
     : [currency, ...OFFERABLE_CURRENCIES];
@@ -361,6 +443,7 @@ export function DraftEditor(props: DraftEditorProps) {
     ? VAT_TREATMENT_LABELS[client.vatTreatment].label
     : "Domestic VAT (a private customer)";
   const headerErrors = problems?.header ?? {};
+  const detailsShown = detailsOpen || Object.keys(headerErrors).length > 0;
   const summary =
     problems && problemCount(problems) > 0
       ? [
@@ -380,19 +463,35 @@ export function DraftEditor(props: DraftEditorProps) {
                 : SAVE_TEXT[save.state]}
           </p>
           {save.state === "error" && (
-            <button type="button" onClick={() => void queue.retry()} className={`${smallButton} self-start`}>
+            <button
+              type="button"
+              onClick={() => void queue.retry()}
+              className={`${smallButton} self-start`}
+            >
               Try saving again
             </button>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={`${list}/${invoice.id}/print`} className={secondaryButton}>
+          <Link
+            href={`${list}/${invoice.id}/print`}
+            className={secondaryButton}
+          >
             Preview document
           </Link>
-          <button type="button" onClick={() => setDeleteOpen(true)} className={secondaryButton}>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className={secondaryButton}
+          >
             Delete draft
           </button>
-          <button type="button" onClick={openIssue} disabled={busy} className={primaryButton}>
+          <button
+            type="button"
+            onClick={openIssue}
+            disabled={busy}
+            className={primaryButton}
+          >
             Issue invoice …
           </button>
         </div>
@@ -400,172 +499,236 @@ export function DraftEditor(props: DraftEditorProps) {
       <Problems messages={actionProblems} />
 
       <section aria-labelledby="details-heading" className={card}>
-        <h2 id="details-heading" className="mb-4 font-medium">
-          Details
-        </h2>
-        <dl className="mb-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted">Client</dt>
-            <dd>
-              <Link href={`${workBase(storeSlug)}/clients/${client.id}`} className="underline">
-                {client.name}
-              </Link>
-            </dd>
-          </div>
-          {assignment && (
-            <div>
-              <dt className="text-muted">Assignment</dt>
-              <dd>{assignment.name}</dd>
-            </div>
-          )}
-          <div>
-            <dt className="text-muted">Language of the document</dt>
-            <dd>{languageName(invoice.locale)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">VAT treatment</dt>
-            <dd>
-              {vat.sellerVatRegistered ? treatment : "No VAT: your business is not registered for VAT"}
-              <span className={`block ${hintText}`}>
-                Set on the{" "}
-                <Link href={`${workBase(storeSlug)}/clients/${client.id}`} className="underline">
-                  client
-                </Link>{" "}
-                and in{" "}
-                <Link href={`${workBase(storeSlug)}/settings`} className="underline">
-                  Work settings
-                </Link>
-                .
+        <h2 id="details-heading" className="font-medium">
+          <button
+            type="button"
+            onClick={() => setDetailsOpen(!detailsShown)}
+            aria-expanded={detailsShown}
+            aria-controls="invoice-details"
+            className="flex w-full items-center gap-2 text-left"
+          >
+            {detailsShown ? (
+              <ChevronDown aria-hidden className="size-4 shrink-0" />
+            ) : (
+              <ChevronRight aria-hidden className="size-4 shrink-0" />
+            )}
+            Details
+            {!detailsShown && (
+              <span className="min-w-0 truncate text-sm font-normal text-muted">
+                {[
+                  client.name,
+                  assignment?.name,
+                  currency,
+                  `${dueDays} days to pay`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
-            </dd>
-          </div>
-        </dl>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Currency" error={headerErrors.currency}>
-            {(fieldProps) => (
-              <select
-                {...fieldProps}
-                value={currency}
-                onChange={(event) => setHeader({ currency: event.target.value })}
-                className={control}
-              >
-                {currencies.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
             )}
-          </Field>
-          <Field
-            label="Days to pay"
-            error={headerErrors.paymentDays}
-            hint={`${inherited !== null && header.paymentDays.trim() === "" ? `Follows the client and your settings: ${inherited} days. ` : ""}If issued today it is due ${formatDay(dueOn(detail.today, dueDays), locale)}.`}
-          >
-            {(fieldProps) => (
-              <input
-                {...fieldProps}
-                value={header.paymentDays}
-                onChange={(event) => setHeader({ paymentDays: event.target.value })}
-                inputMode="numeric"
-                placeholder={String(inherited ?? invoice.effectivePaymentDays)}
-                autoComplete="off"
-                className={control}
-              />
+          </button>
+        </h2>
+        <div id="invoice-details" hidden={!detailsShown} className="mt-4">
+          <dl className="mb-5 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Client</dt>
+              <dd>
+                <Link
+                  href={`${workBase(storeSlug)}/clients/${client.id}`}
+                  className="underline"
+                >
+                  {client.name}
+                </Link>
+              </dd>
+            </div>
+            {assignment && (
+              <div>
+                <dt className="text-muted">Assignment</dt>
+                <dd>{assignment.name}</dd>
+              </div>
             )}
-          </Field>
-          <Field
-            label="Your reference"
-            error={headerErrors.reference}
-            hint="The client's own reference, such as an order number. Printed on the invoice."
-          >
-            {(fieldProps) => (
-              <input
-                {...fieldProps}
-                value={header.reference}
-                onChange={(event) => setHeader({ reference: event.target.value })}
-                maxLength={120}
-                autoComplete="off"
-                className={control}
-              />
-            )}
-          </Field>
-          <Field
-            label="Period from"
-            error={headerErrors.serviceFrom}
-            hint="When the work was done, if different from the issue date. Empty takes it from the time on the lines."
-          >
-            {(fieldProps) => (
-              <input
-                {...fieldProps}
-                type="date"
-                value={header.serviceFrom}
-                onChange={(event) => setHeader({ serviceFrom: event.target.value })}
-                className={control}
-              />
-            )}
-          </Field>
-          <Field label="Period to" error={headerErrors.serviceTo}>
-            {(fieldProps) => (
-              <input
-                {...fieldProps}
-                type="date"
-                value={header.serviceTo}
-                onChange={(event) => setHeader({ serviceTo: event.target.value })}
-                className={control}
-              />
-            )}
-          </Field>
-          {readiness?.needsFxRate && (
-            <Field
-              label={`Exchange rate: 1 ${currency} in ${readiness.homeCurrency ?? "your currency"}`}
-              hint={`The VAT is also stated in ${readiness.homeCurrency ?? "your currency"}. Used when you issue; not saved before.`}
-            >
+            <div>
+              <dt className="text-muted">Language of the document</dt>
+              <dd>{languageName(invoice.locale)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">VAT treatment</dt>
+              <dd>
+                {vat.sellerVatRegistered
+                  ? treatment
+                  : "No VAT: your business is not registered for VAT"}
+                <span className={`block ${hintText}`}>
+                  Set on the{" "}
+                  <Link
+                    href={`${workBase(storeSlug)}/clients/${client.id}`}
+                    className="underline"
+                  >
+                    client
+                  </Link>{" "}
+                  and in{" "}
+                  <Link
+                    href={`${workBase(storeSlug)}/settings`}
+                    className="underline"
+                  >
+                    Work settings
+                  </Link>
+                  .
+                </span>
+              </dd>
+            </div>
+          </dl>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Field label="Currency" error={headerErrors.currency}>
               {(fieldProps) => (
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    {...fieldProps}
-                    value={fxRate}
-                    onChange={(event) => setFxRate(event.target.value)}
-                    inputMode="decimal"
-                    autoComplete="off"
-                    className={`${control} max-w-36`}
-                  />
-                  {props.fxSuggestions[currency] && (
-                    <button
-                      type="button"
-                      onClick={() => setFxRate(props.fxSuggestions[currency])}
-                      className={smallButton}
-                    >
-                      Use {props.fxSuggestions[currency]}
-                    </button>
-                  )}
-                </div>
+                <select
+                  {...fieldProps}
+                  value={currency}
+                  onChange={(event) =>
+                    setHeader({ currency: event.target.value })
+                  }
+                  className={control}
+                >
+                  {currencies.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
               )}
             </Field>
-          )}
+            <Field
+              label="Days to pay"
+              error={headerErrors.paymentDays}
+              hint={`${inherited !== null && header.paymentDays.trim() === "" ? `Follows the client and your settings: ${inherited} days. ` : ""}If issued today it is due ${formatDay(dueOn(detail.today, dueDays), locale)}.`}
+            >
+              {(fieldProps) => (
+                <input
+                  {...fieldProps}
+                  value={header.paymentDays}
+                  onChange={(event) =>
+                    setHeader({ paymentDays: event.target.value })
+                  }
+                  inputMode="numeric"
+                  placeholder={String(
+                    inherited ?? invoice.effectivePaymentDays,
+                  )}
+                  autoComplete="off"
+                  className={control}
+                />
+              )}
+            </Field>
+            <Field
+              label="Your reference"
+              error={headerErrors.reference}
+              hint="The client's own reference, such as an order number. Printed on the invoice."
+            >
+              {(fieldProps) => (
+                <input
+                  {...fieldProps}
+                  value={header.reference}
+                  onChange={(event) =>
+                    setHeader({ reference: event.target.value })
+                  }
+                  maxLength={120}
+                  autoComplete="off"
+                  className={control}
+                />
+              )}
+            </Field>
+            <Field
+              label="Period from"
+              error={headerErrors.serviceFrom}
+              hint="When the work was done, if different from the issue date. Empty takes it from the time on the lines."
+            >
+              {(fieldProps) => (
+                <input
+                  {...fieldProps}
+                  type="date"
+                  value={header.serviceFrom}
+                  onChange={(event) =>
+                    setHeader({ serviceFrom: event.target.value })
+                  }
+                  className={control}
+                />
+              )}
+            </Field>
+            <Field label="Period to" error={headerErrors.serviceTo}>
+              {(fieldProps) => (
+                <input
+                  {...fieldProps}
+                  type="date"
+                  value={header.serviceTo}
+                  onChange={(event) =>
+                    setHeader({ serviceTo: event.target.value })
+                  }
+                  className={control}
+                />
+              )}
+            </Field>
+            {readiness?.needsFxRate && (
+              <Field
+                label={`Exchange rate: 1 ${currency} in ${readiness.homeCurrency ?? "your currency"}`}
+                hint={`The VAT is also stated in ${readiness.homeCurrency ?? "your currency"}. Used when you issue; not saved before.`}
+              >
+                {(fieldProps) => (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      {...fieldProps}
+                      value={fxRate}
+                      onChange={(event) => setFxRate(event.target.value)}
+                      inputMode="decimal"
+                      autoComplete="off"
+                      className={`${control} max-w-36`}
+                    />
+                    {props.fxSuggestions[currency] && (
+                      <button
+                        type="button"
+                        onClick={() => setFxRate(props.fxSuggestions[currency])}
+                        className={smallButton}
+                      >
+                        Use {props.fxSuggestions[currency]}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </Field>
+            )}
+          </div>
+          <Field
+            label="Notes for the client"
+            error={headerErrors.notes}
+            className="mt-4"
+            hint="Printed on the invoice."
+          >
+            {(fieldProps) => (
+              <textarea
+                {...fieldProps}
+                value={header.notes}
+                onChange={(event) => setHeader({ notes: event.target.value })}
+                rows={3}
+                maxLength={4100}
+                className={`${control} py-2`}
+              />
+            )}
+          </Field>
         </div>
-        <Field label="Notes for the client" error={headerErrors.notes} className="mt-4" hint="Printed on the invoice.">
-          {(fieldProps) => (
-            <textarea
-              {...fieldProps}
-              value={header.notes}
-              onChange={(event) => setHeader({ notes: event.target.value })}
-              rows={3}
-              maxLength={4100}
-              className={`${control} py-2`}
-            />
-          )}
-        </Field>
       </section>
 
-      <section id="invoice-lines" aria-labelledby="lines-heading" className={card}>
+      <section
+        id="invoice-lines"
+        aria-labelledby="lines-heading"
+        className={card}
+      >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 id="lines-heading" className="font-medium">
             Lines
           </h2>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setUnbilledOpen(true)} disabled={busy} className={smallButton}>
+            <button
+              type="button"
+              onClick={() => setUnbilledOpen(true)}
+              disabled={busy}
+              className={smallButton}
+            >
               Add unbilled time
             </button>
             {hoursRows && (
@@ -576,7 +739,9 @@ export function DraftEditor(props: DraftEditorProps) {
                 <select
                   id="round-step"
                   value={roundStep}
-                  onChange={(event) => setRoundStep(Number(event.target.value) as RoundUpStep)}
+                  onChange={(event) =>
+                    setRoundStep(Number(event.target.value) as RoundUpStep)
+                  }
                   className={smallControl}
                 >
                   {ROUND_UP_STEPS_MINUTES.map((step) => (
@@ -593,8 +758,9 @@ export function DraftEditor(props: DraftEditorProps) {
           </div>
         </div>
         <p className={`mb-4 ${hintText}`}>
-          Prices are without VAT. Hours from logged time are rounded to two decimals (20 minutes is 0.33 h). An hour you
-          type yourself is kept as you typed it.
+          Prices are without VAT. Hours from logged time are rounded to two
+          decimals (20 minutes is 0.33 h). An hour you type yourself is kept as
+          you typed it.
         </p>
         <InvoiceLinesEditor
           rows={rows}
@@ -621,7 +787,8 @@ export function DraftEditor(props: DraftEditorProps) {
             />
           ) : (
             <p role="alert" className="text-sm text-red-700 dark:text-red-400">
-              These amounts are too large to add up. Check the quantities and prices.
+              These amounts are too large to add up. Check the quantities and
+              prices.
             </p>
           )}
         </div>
@@ -633,7 +800,12 @@ export function DraftEditor(props: DraftEditorProps) {
           Before you issue
         </h2>
         {readiness ? (
-          <ReadinessList readiness={readiness} storeSlug={storeSlug} clientId={client.id} checking={checking} />
+          <ReadinessList
+            readiness={readiness}
+            storeSlug={storeSlug}
+            clientId={client.id}
+            checking={checking}
+          />
         ) : (
           <p className="text-sm text-muted">Checking …</p>
         )}
@@ -655,7 +827,10 @@ export function DraftEditor(props: DraftEditorProps) {
         fxSuggestion={props.fxSuggestions[currency] ?? null}
         fxRate={fxRate}
         onFxRate={setFxRate}
-        blocked={blocked ?? (settled === null ? "The amounts are too large to add up." : null)}
+        blocked={
+          blocked ??
+          (settled === null ? "The amounts are too large to add up." : null)
+        }
         onNotReady={() => void checkReadiness()}
       />
       <UnbilledTimeDialog
@@ -670,11 +845,16 @@ export function DraftEditor(props: DraftEditorProps) {
         locale={locale}
         beforeAdd={() => queue.flush()}
       />
-      <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete this draft?">
+      <Modal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Delete this draft?"
+      >
         <div className="flex flex-col gap-4">
           <p className="text-sm">
-            The draft and its {rows.length} {rows.length === 1 ? "line" : "lines"} are deleted. No invoice number is
-            used.
+            The draft and its {rows.length}{" "}
+            {rows.length === 1 ? "line" : "lines"} are deleted. No invoice
+            number is used.
             {assignment
               ? ` The assignment "${assignment.name}", its tasks and your logged time stay.`
               : " Your assignments, tasks and logged time stay."}{" "}
@@ -682,10 +862,19 @@ export function DraftEditor(props: DraftEditorProps) {
           </p>
           <Problems messages={deleteProblems} />
           <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={() => setDeleteOpen(false)} className={secondaryButton}>
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(false)}
+              className={secondaryButton}
+            >
               Keep the draft
             </button>
-            <button type="button" onClick={remove} disabled={busy} className={primaryButton}>
+            <button
+              type="button"
+              onClick={remove}
+              disabled={busy}
+              className={primaryButton}
+            >
               {busy ? "Deleting …" : "Delete draft"}
             </button>
           </div>

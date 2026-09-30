@@ -95,22 +95,29 @@ describe("the draft invoice editor", () => {
     for (const [, id] of html.matchAll(/for="([^"]+)"/g)) expect(html).toContain(`id="${id}"`);
   });
 
-  it("lets a line be moved, removed and dragged with the keyboard as well as the mouse", () => {
+  it("lets a line be removed with an icon and reordered by its drag handle, without move buttons", () => {
     const html = render();
-    expect(html).toContain('aria-label="Move line 1 up"');
-    expect(html).toContain('aria-label="Move line 2 down"');
     expect(html).toContain('aria-label="Remove line 1"');
     expect(html).toContain('aria-label="Drag line 1 to reorder"');
-    // The first cannot go up and the last cannot go down.
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Move line 1 up"/);
-    expect(html).toMatch(/<button[^>]*disabled=""[^>]*aria-label="Move line 2 down"/);
-    expect(html).not.toMatch(/<button[^>]*disabled=""[^>]*aria-label="Move line 1 down"/);
+    expect(html).not.toContain("Move line 1 up");
+    expect(html).not.toContain("Move line 2 down");
+    // The remove button shows an icon only: no text between its tags.
+    expect(html).toMatch(/<button[^>]*aria-label="Remove line 1"[^>]*><svg[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/svg><\/button>/);
+    // It is the last cell of the line's grid, after the amounts.
+    expect(html.indexOf('aria-label="Remove line 1"')).toBeGreaterThan(html.indexOf("With VAT"));
     expect(html).toContain(">Add line<");
+  });
+
+  it("keeps the details closed until asked for, with a summary in their place", () => {
+    const html = render();
+    expect(html).toMatch(/aria-expanded="false"[^>]*aria-controls="invoice-details"/);
+    expect(html).toMatch(/<div id="invoice-details" hidden=""/);
+    expect(html).toContain(" days to pay");
   });
 
   it("stacks on a phone and becomes a table-like grid from the medium size", () => {
     const html = render();
-    expect(html).toContain("md:grid-cols-[minmax(11rem,1fr)_9rem_6.5rem_4.5rem_10rem_6rem_6rem]");
+    expect(html).toContain("md:grid-cols-[minmax(11rem,1fr)_9rem_6.5rem_4.5rem_10rem_6rem_6rem_2.25rem]");
     expect(html).toContain("md:sr-only");
     expect(html).toContain('aria-label="Invoice lines"');
   });
