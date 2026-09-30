@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 
 import { createClientAction, updateClientAction } from "@/app/admin/(gated)/(owner)/account/work/s/[store]/actions";
+import { clientPrefill, formatOrganisationNumber, type BrregCompany } from "@/lib/brreg";
 import { documentLanguage, DOCUMENT_LANGUAGES } from "@/lib/work-invoice-text";
 import { VAT_TREATMENTS, VAT_TREATMENT_LABELS, suggestTreatment, type VatTreatment } from "@/lib/work-vat";
 import { NO_PROBLEMS, clientPayload, moneyField, type ClientFormValues, type FormProblems } from "@/lib/work-ui";
 import type { WorkClient } from "@/server/work";
 
+import { BrregLookup } from "./brreg-lookup";
 import { Field, Problems, control, hintText, primaryButton, secondaryButton } from "./work-parts";
 
 const LANGUAGE_NAMES: Record<(typeof DOCUMENT_LANGUAGES)[number], string> = {
@@ -65,6 +67,16 @@ export function ClientForm({
   const [treatment, setTreatment] = useState<VatTreatment>(client?.vatTreatment ?? "domestic");
   const [country, setCountry] = useState(client?.country ?? sellerCountry ?? "");
   const [vatNumber, setVatNumber] = useState(client?.vatNumber ?? "");
+  // What the company register can fill in is held here so a lookup can write it; the rest of the form is read on save.
+  const [name, setName] = useState(client?.name ?? "");
+  const [legalName, setLegalName] = useState(client?.legalName ?? "");
+  const [organisationNumber, setOrganisationNumber] = useState(client?.organisationNumber ?? "");
+  const [line1, setLine1] = useState(client?.billingAddress.line1 ?? "");
+  const [line2, setLine2] = useState(client?.billingAddress.line2 ?? "");
+  const [postalCode, setPostalCode] = useState(client?.billingAddress.postalCode ?? "");
+  const [city, setCity] = useState(client?.billingAddress.city ?? "");
+  const [locale, setLocale] = useState<string>(startLocale);
+  const [fromRegister, setFromRegister] = useState<BrregCompany | null>(null);
   const [problems, setProblems] = useState<FormProblems>(NO_PROBLEMS);
   const [attempt, setAttempt] = useState(0);
   const [pending, start] = useTransition();
@@ -75,9 +87,31 @@ export function ClientForm({
     if (attempt > 0) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [attempt]);
 
+  // A company picked in the register: its details go into the form. The name the person gave is kept if there is one.
+  const fill = (company: BrregCompany) => {
+    const fields = clientPrefill(company);
+    if (name.trim() === "") setName(fields.name);
+    setLegalName(fields.legalName);
+    setOrganisationNumber(formatOrganisationNumber(fields.organisationNumber));
+    setLine1(fields.line1);
+    setLine2(fields.line2);
+    setPostalCode(fields.postalCode);
+    setCity(fields.city);
+    setCountry(fields.country);
+    setBusiness(true);
+    if (fields.vatNumber) setVatNumber(fields.vatNumber);
+    if (localeOptions.includes(fields.locale)) setLocale(fields.locale);
+    setFromRegister(company);
+  };
+
   const suggested =
     business && sellerCountry
-      ? suggestTreatment({ sellerCountry, clientCountry: country || null, business, clientVatNumber: vatNumber })
+      ? suggestTreatment({
+          sellerCountry,
+          clientCountry: country || null,
+          business,
+          clientVatNumber: vatNumber,
+        })
       : "domestic";
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -127,7 +161,10 @@ export function ClientForm({
           else onDone?.(result.id);
         }
       } catch {
-        setProblems({ fields: {}, general: ["The client could not be saved. Check your connection and try again."] });
+        setProblems({
+          fields: {},
+          general: ["The client could not be saved. Check your connection and try again."],
+        });
       }
     });
   };
@@ -141,6 +178,30 @@ export function ClientForm({
 
   return (
     <form ref={formRef} onSubmit={submit} noValidate aria-busy={pending} className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <BrregLookup storeSlug={storeSlug} onPick={fill} />
+        {fromRegister && (
+          <div role="status" className="rounded-md border border-border px-3 py-2 text-sm">
+            <p>
+              Filled in from the register: {fromRegister.legalName},{" "}
+              {formatOrganisationNumber(fromRegister.organisationNumber)}
+              {fromRegister.organisationFormName ? ` (${fromRegister.organisationFormName})` : ""}. Check the details
+              below before you save.
+            </p>
+            {!fromRegister.vatRegistered && (
+              <p className={hintText}>Not in the VAT register, so no VAT number was filled in.</p>
+            )}
+            {!fromRegister.address && (
+              <p className={hintText}>The register has no address for this company: fill it in yourself.</p>
+            )}
+            {fromRegister.warnings.map((warning) => (
+              <p key={warning} className="font-medium text-red-700 dark:text-red-400">
+                {warning}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-1 font-medium">Client</legend>
         <Field label="Name" error={err("name")} hint="What you call them. Shown in lists and on time reports.">
@@ -150,7 +211,8 @@ export function ClientForm({
               name="name"
               required
               maxLength={120}
-              defaultValue={client?.name}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
               className={control}
               autoComplete="off"
             />
@@ -210,7 +272,8 @@ export function ClientForm({
                 {...props}
                 name="legalName"
                 maxLength={200}
-                defaultValue={client?.legalName ?? ""}
+                value={legalName}
+                onChange={(event) => setLegalName(event.target.value)}
                 className={control}
                 autoComplete="off"
               />
@@ -222,7 +285,8 @@ export function ClientForm({
                 {...props}
                 name="organisationNumber"
                 maxLength={40}
-                defaultValue={client?.organisationNumber ?? ""}
+                value={organisationNumber}
+                onChange={(event) => setOrganisationNumber(event.target.value)}
                 className={control}
                 autoComplete="off"
               />
@@ -235,7 +299,8 @@ export function ClientForm({
               {...props}
               name="line1"
               maxLength={200}
-              defaultValue={client?.billingAddress.line1 ?? ""}
+              value={line1}
+              onChange={(event) => setLine1(event.target.value)}
               className={control}
               autoComplete="off"
             />
@@ -247,7 +312,8 @@ export function ClientForm({
               {...props}
               name="line2"
               maxLength={200}
-              defaultValue={client?.billingAddress.line2 ?? ""}
+              value={line2}
+              onChange={(event) => setLine2(event.target.value)}
               className={control}
               autoComplete="off"
             />
@@ -260,7 +326,8 @@ export function ClientForm({
                 {...props}
                 name="postalCode"
                 maxLength={20}
-                defaultValue={client?.billingAddress.postalCode ?? ""}
+                value={postalCode}
+                onChange={(event) => setPostalCode(event.target.value)}
                 className={control}
                 autoComplete="off"
               />
@@ -272,7 +339,8 @@ export function ClientForm({
                 {...props}
                 name="city"
                 maxLength={100}
-                defaultValue={client?.billingAddress.city ?? ""}
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
                 className={control}
                 autoComplete="off"
               />
@@ -368,7 +436,13 @@ export function ClientForm({
           hint="Invoices and emails to this client are written in it. Other languages are sent in English."
         >
           {(props) => (
-            <select {...props} name="locale" defaultValue={startLocale} className={control}>
+            <select
+              {...props}
+              name="locale"
+              value={locale}
+              onChange={(event) => setLocale(event.target.value)}
+              className={control}
+            >
               {localeOptions.map((code) => (
                 <option key={code} value={code}>
                   {LANGUAGE_NAMES[code as keyof typeof LANGUAGE_NAMES] ?? code}

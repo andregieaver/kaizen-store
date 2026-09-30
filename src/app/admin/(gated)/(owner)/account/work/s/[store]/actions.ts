@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 
 import type { assignmentInput, clientInput, taskInput, timeEntryInput, timeEntryNoteInput } from "@/lib/work-input";
 import { requireAccount, requireMember, type Membership } from "@/server/auth";
+import { lookupCompany, searchCompanies, type BrregLookup, type BrregSearch } from "@/server/brreg";
 import {
   createAssignment,
   createClient,
@@ -199,4 +200,20 @@ export async function discardTimerAction(storeSlug: string): Promise<WorkResult<
 export async function runningTimerAction(): Promise<RunningTimer | null> {
   const account = await requireAccount();
   return getRunningTimer(account.id);
+}
+
+/**
+ * A Norwegian company from the register (Brønnøysundregistrene) by organisation number, to fill in a client's
+ * details (`src/server/brreg.ts`). Only members of a store with Work on may ask, so this is not an open proxy;
+ * only the number goes to the registry.
+ */
+export async function lookupCompanyAction(storeSlug: string, input: string): Promise<BrregLookup> {
+  if (!(await workMember(storeSlug))) return { ok: false, reason: "unavailable" };
+  return lookupCompany(String(input).slice(0, 60));
+}
+
+/** The same by name: up to eight companies to choose from. */
+export async function searchCompaniesAction(storeSlug: string, input: string): Promise<BrregSearch> {
+  if (!(await workMember(storeSlug))) return { ok: false, reason: "unavailable" };
+  return searchCompanies(String(input).slice(0, 120));
 }

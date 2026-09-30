@@ -21,13 +21,7 @@ import { useEffect, useId, useRef } from "react";
 
 import { formatMoney } from "@/lib/money";
 import { bpToPercent } from "@/lib/work-calc";
-import {
-  VAT_CATEGORY_LABELS,
-  dropRow,
-  type DraftPreview,
-  type LineErrors,
-  type LineRow,
-} from "@/lib/work-invoice-ui";
+import { VAT_CATEGORY_LABELS, dropRow, type DraftPreview, type LineErrors, type LineRow } from "@/lib/work-invoice-ui";
 import { formatDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 import { VAT_LINE_CATEGORIES, type VatLineCategory } from "@/lib/work-vat";
@@ -70,8 +64,7 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
   );
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (over && active.id !== over.id)
-      onRows(dropRow(rows, String(active.id), String(over.id)));
+    if (over && active.id !== over.id) onRows(dropRow(rows, String(active.id), String(over.id)));
   };
   const patch = (key: string, change: Partial<LineRow>) =>
     onRows(rows.map((row) => (row.key === key ? { ...row, ...change } : row)));
@@ -80,8 +73,7 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
     <div className="flex flex-col gap-3">
       {rows.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted">
-          No lines yet. Add a line, or add the time you have logged and not yet
-          billed.
+          No lines yet. Add a line, or add the time you have logged and not yet billed.
         </p>
       ) : (
         <div>
@@ -98,19 +90,9 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
             <span className="text-right">With VAT</span>
             <span />
           </div>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={onDragEnd}
-          >
-            <SortableContext
-              items={rows.map((row) => row.key)}
-              strategy={verticalListSortingStrategy}
-            >
-              <ol
-                className="flex flex-col gap-3 md:gap-0"
-                aria-label="Invoice lines"
-              >
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+            <SortableContext items={rows.map((row) => row.key)} strategy={verticalListSortingStrategy}>
+              <ol className="flex flex-col gap-3 md:gap-0" aria-label="Invoice lines">
                 {rows.map((row, index) => (
                   <LineItem
                     key={row.key}
@@ -125,9 +107,7 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
                     focus={props.focusKey === row.key}
                     onFocused={props.onFocused}
                     onPatch={(change) => patch(row.key, change)}
-                    onRemove={() =>
-                      onRows(rows.filter((r) => r.key !== row.key))
-                    }
+                    onRemove={() => onRows(rows.filter((r) => r.key !== row.key))}
                     onEnter={() => onRows([...rows, makeRow()])}
                     onRelease={props.onRelease}
                   />
@@ -138,11 +118,7 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
         </div>
       )}
       <div>
-        <button
-          type="button"
-          onClick={() => onRows([...rows, makeRow()])}
-          className={smallButton}
-        >
+        <button type="button" onClick={() => onRows([...rows, makeRow()])} className={smallButton}>
           Add line
         </button>
       </div>
@@ -184,14 +160,7 @@ function LineItem({
   const id = useId();
   const number = index + 1;
   const descriptionRef = useRef<HTMLInputElement>(null);
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: row.key });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.key });
 
   useEffect(() => {
     if (focus) {
@@ -246,11 +215,7 @@ function LineItem({
               value={row.description}
               onChange={(event) => onPatch({ description: event.target.value })}
               onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" &&
-                  row.description.trim() !== "" &&
-                  !event.nativeEvent.isComposing
-                ) {
+                if (event.key === "Enter" && row.description.trim() !== "" && !event.nativeEvent.isComposing) {
                   event.preventDefault();
                   onEnter();
                 }
@@ -273,9 +238,7 @@ function LineItem({
             <input
               id={`${id}-quantity`}
               value={row.quantity}
-              onChange={(event) =>
-                onPatch({ quantity: event.target.value, quantityManual: true })
-              }
+              onChange={(event) => onPatch({ quantity: event.target.value, quantityManual: true })}
               inputMode="decimal"
               autoComplete="off"
               className={`${smallControl} w-full min-w-0 text-right tabular-nums`}
@@ -284,9 +247,7 @@ function LineItem({
             <select
               aria-label={`Line ${number} unit`}
               value={row.unit}
-              onChange={(event) =>
-                onPatch({ unit: event.target.value as "hour" | "unit" })
-              }
+              onChange={(event) => onPatch({ unit: event.target.value as "hour" | "unit" })}
               className={`${smallControl} w-[4.75rem] shrink-0`}
             >
               <option value="hour">hours</option>
@@ -335,9 +296,7 @@ function LineItem({
           <select
             id={`${id}-vat`}
             value={row.vatCategory}
-            onChange={(event) =>
-              onPatch({ vatCategory: event.target.value as VatLineCategory })
-            }
+            onChange={(event) => onPatch({ vatCategory: event.target.value as VatLineCategory })}
             className={`${smallControl} w-full`}
           >
             {VAT_LINE_CATEGORIES.map((category) => (
@@ -348,9 +307,7 @@ function LineItem({
           </select>
           {priced && (
             <p className="text-xs text-muted">
-              {priced.vatBp > 0
-                ? `${bpToPercent(priced.vatBp)} % VAT`
-                : "No VAT on this line"}
+              {priced.vatBp > 0 ? `${bpToPercent(priced.vatBp)} % VAT` : "No VAT on this line"}
             </p>
           )}
         </div>
@@ -360,9 +317,7 @@ function LineItem({
           <span>{priced && !unreadable ? money(priced.exclMinor) : "–"}</span>
         </p>
         <p className="flex items-baseline justify-between gap-2 text-sm font-medium tabular-nums md:block md:pt-2 md:text-right">
-          <span className="text-xs font-normal text-muted md:sr-only">
-            With VAT
-          </span>
+          <span className="text-xs font-normal text-muted md:sr-only">With VAT</span>
           <span>{priced && !unreadable ? money(priced.inclMinor) : "–"}</span>
         </p>
         <button
@@ -386,8 +341,7 @@ function LineItem({
       {time.length > 0 && (
         <details className="text-sm">
           <summary className="cursor-pointer text-muted">
-            Logged time on line {number} ({time.length}{" "}
-            {time.length === 1 ? "entry" : "entries"})
+            Logged time on line {number} ({time.length} {time.length === 1 ? "entry" : "entries"})
           </summary>
           <ul className="mt-2 flex flex-col gap-2">
             {time.map((entry) => (
@@ -396,11 +350,8 @@ function LineItem({
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface px-3 py-2"
               >
                 <span>
-                  {formatDay(entry.workDate, locale)},{" "}
-                  {formatDuration(entry.minutes)}, {entry.person}
-                  {entry.note ? (
-                    <span className="text-muted">: {entry.note}</span>
-                  ) : null}
+                  {formatDay(entry.workDate, locale)}, {formatDuration(entry.minutes)}, {entry.person}
+                  {entry.note ? <span className="text-muted">: {entry.note}</span> : null}
                 </span>
                 <button
                   type="button"

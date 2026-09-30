@@ -33,6 +33,8 @@ vi.mock("@/app/admin/(gated)/(owner)/account/work/s/[store]/actions", () => {
     stopTimerAction: action(),
     discardTimerAction: action(),
     runningTimerAction: vi.fn(async () => null),
+    lookupCompanyAction: vi.fn(async () => ({ ok: false, reason: "unavailable" })),
+    searchCompaniesAction: vi.fn(async () => ({ ok: false, reason: "unavailable" })),
   };
 });
 // The invoice screens' places (`invoice-slots`) read invoices with server code and call its actions.
@@ -374,6 +376,16 @@ const formShared = {
 } satisfies Partial<ComponentProps<typeof ClientForm>>;
 
 describe("the client form", () => {
+  it("offers to fill the client in from the company register, and keeps the details it fills in editable", () => {
+    const out = html(createElement(ClientForm, formShared));
+    expect(out).toContain("Fill in from the company register");
+    expect(out).toContain('placeholder="923 609 016 or a company name"');
+    expect(out).toContain(">Look up<");
+    // The billing fields stay ordinary inputs the person can change.
+    expect(out).toMatch(/<input[^>]*name="organisationNumber"/);
+    expect(out).toMatch(/<input[^>]*name="line1"/);
+  });
+
   it("draws a new client with every field labelled and the store's defaults", () => {
     const out = html(createElement(ClientForm, formShared));
     for (const label of [
