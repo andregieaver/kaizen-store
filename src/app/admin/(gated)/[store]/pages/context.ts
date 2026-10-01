@@ -81,6 +81,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     plans: null,
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
     // Templates shared between stores and the marketplace (D125), bound to the store.
+    experimentsHref: type === "page" ? `/admin/${store.slug}/experiments/new` : null,
     templates: {
       list: bind(templatesListAction),
       setActive: bind(setTemplateActiveAction),

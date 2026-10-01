@@ -435,3 +435,121 @@ describe("ending a test (D148)", () => {
     expect(decodeAssignments(value)?.versions).toEqual({ "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": "b" });
   });
 });
+
+/** The published content of the about page and of a version, for the part tests. */
+async function publishedOf(pageId: string): Promise<PageContent> {
+  const [row] = await db().execute<Row>(sql`select published from commerce.pages where id = ${pageId}::uuid`);
+  return row.published as PageContent;
+}
+
+async function editVersion(testId: string, key: string, change: (content: PageContent) => PageContent) {
+  const test = (await admin.getExperiment(storeId, testId))!;
+  const pageId = test.variants.find((v) => v.key === key)!.pageId!;
+  const next = JSON.stringify(change(await publishedOf(pageId)));
+  await db().execute(sql`update commerce.pages set draft = ${next}::jsonb, published = ${next}::jsonb where id = ${pageId}::uuid`);
+}
+
+const withBlock = (content: PageContent, id: string, change: (b: Record<string, unknown>) => Record<string, unknown>): PageContent => ({
+  ...content,
+  rows: content.rows.map((r) => ({ ...r, columns: r.columns.map((c) => ({ ...c, blocks: c.blocks.map((b) => (b.id === id ? (change(b as never) as never) : b)) })) })),
+});
+
+describe("tests of a part of a page (D148, phase 2)", () => {
+  it("makes a test of one block, accepts a version that changes only it, and applies only that part to the page as it is then", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Heading only", pageId: aboutId, goal: "cart", part: { kind: "block", id: "heading-about" } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const draft = (await admin.getExperiment(storeId, made.id))!;
+    expect(draft.part).toMatchObject({ id: "heading-about", kind: "block" });
+    expect(draft.part!.label).toMatch(/^Heading “/);
+    expect(draft.variants.find((v) => v.key === "b")!.scope).toBe("ok");
+    // Unchanged: nothing to find.
+    expect(await admin.startExperiment(account, storeId, made.id)).toMatchObject({ ok: false, problems: [expect.stringMatching(/still the same/)] });
+    // Changing something outside the part is refused, in words.
+    await editVersion(made.id, "b", (c) => withBlock(c, "text-about", (b) => ({ ...b, htmlId: "changed" })));
+    expect((await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")!.scope).toBe("outside");
+    const refused = await admin.startExperiment(account, storeId, made.id);
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.problems.join(" ")).toMatch(/changes more than Heading/);
+    // Only the part: it starts.
+    await editVersion(made.id, "b", (c) => withBlock(withBlock(c, "text-about", (b) => ({ ...b, htmlId: undefined })), "heading-about", (b) => ({ ...b, text: "A part-only winner" })));
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    // After the stop the page was edited elsewhere: the winner brings its part and keeps that edit.
+    await db().execute(sql`
+      update commerce.pages set published = jsonb_set(published, '{rows,0,columns,0,blocks,1,htmlId}', '"edited-after"'), draft = jsonb_set(draft, '{rows,0,columns,0,blocks,1,htmlId}', '"edited-after"') where id = ${aboutId}::uuid
+    `);
+    expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
+    const after = await publishedOf(aboutId);
+    const block = (id: string) => after.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks)).find((b) => b.id === id) as unknown as Record<string, unknown>;
+    expect(block("heading-about").text).toBe("A part-only winner");
+    expect(block("text-about").htmlId).toBe("edited-after");
+    expect(after.slug).toBe("om-oss");
+    const [audited] = await db().execute<Row>(sql`select details from commerce.audit_log where store_id = ${storeId}::uuid and action = 'experiment.applied' order by created_at desc limit 1`);
+    expect(JSON.stringify(audited.details)).toContain("heading-about");
+    // Tidy: the next tests start from a page with no leftover id.
+    await db().execute(sql`
+      update commerce.pages set published = published #- '{rows,0,columns,0,blocks,1,htmlId}', draft = draft #- '{rows,0,columns,0,blocks,1,htmlId}' where id = ${aboutId}::uuid
+    `);
+  });
+
+  it("refuses a part the published page does not have, a click goal on a button outside the part, and a version that lost the part", async () => {
+    expect(await admin.createExperiment(account, storeId, { name: "x", pageId: aboutId, goal: "orders", part: { kind: "block", id: "nope" } })).toMatchObject({ ok: false });
+    expect(await admin.createExperiment(account, storeId, { name: "x", pageId: aboutId, goal: "orders", part: { kind: "row", id: "heading-about" } })).toMatchObject({ ok: false });
+    expect(await admin.createExperiment(account, storeId, { name: "x", pageId: aboutId, goal: "click", goalBlock: "heading-about", part: { kind: "block", id: "heading-about" } })).toMatchObject({
+      ok: false,
+      problems: ["That button is not in the part you are testing."],
+    });
+    const made = await admin.createExperiment(account, storeId, { name: "Row", pageId: aboutId, goal: "orders", part: { kind: "row", id: "row-about" } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await editVersion(made.id, "b", (c) => ({ ...c, rows: [] }));
+    expect((await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")!.scope).toBe("missing");
+    await admin.deleteDraft(account, storeId, made.id);
+  });
+});
+
+describe("a test that starts at a time (D148, phase 2)", () => {
+  it("is scheduled in the future, can move or go back to a draft, and starts by itself when its time has come", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Later", pageId: aboutId, goal: "orders" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await changeVariant(made.id, "b");
+    const soon = new Date(Date.now() + 3_600_000);
+    expect(await admin.scheduleExperiment(account, storeId, made.id, new Date(Date.now() - 1000))).toMatchObject({ ok: false, problems: ["Choose a time in the future."] });
+    expect(await admin.scheduleExperiment(account, storeId, made.id, new Date(Date.now() + 200 * 86_400_000))).toMatchObject({ ok: false });
+    expect(await admin.scheduleExperiment(account, storeId, made.id, soon)).toEqual({ ok: true });
+    expect(await admin.getExperiment(storeId, made.id)).toMatchObject({ status: "scheduled", scheduledStart: soon.toISOString() });
+    // Not running yet: nobody is served it, and its page is still free to edit.
+    expect((await engine.runningExperiments(storeId)).some((t) => t.id === made.id)).toBe(false);
+    expect(await admin.runningTestOf(storeId, aboutId)).toBeNull();
+    // Another time, then back to a draft with a reason, then scheduled again.
+    const later = new Date(Date.now() + 2 * 3_600_000);
+    expect(await admin.scheduleExperiment(account, storeId, made.id, later)).toEqual({ ok: true });
+    expect(await admin.unscheduleExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    expect((await admin.getExperiment(storeId, made.id))!.status).toBe("draft");
+    expect(await admin.scheduleExperiment(account, storeId, made.id, soon)).toEqual({ ok: true });
+    // Before its time the job leaves it; after, it starts.
+    expect((await jobs.runExperimentJobs(new Date())).started).toBe(0);
+    const result = await jobs.runExperimentJobs(new Date(soon.getTime() + 60_000));
+    expect(result.started).toBe(1);
+    engine.forgetRunning(storeId);
+    expect(await admin.getExperiment(storeId, made.id)).toMatchObject({ status: "running", scheduleProblem: null });
+    expect((await engine.runningExperiments(storeId)).some((t) => t.id === made.id)).toBe(true);
+    await admin.stopExperiment(account, storeId, made.id);
+  });
+
+  it("goes back to a draft with the reason when it can no longer start", async () => {
+    const made = await admin.createExperiment(account, storeId, { name: "Too late", pageId: aboutId, goal: "orders" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await changeVariant(made.id, "b");
+    const at = new Date(Date.now() + 3_600_000);
+    expect(await admin.scheduleExperiment(account, storeId, made.id, at)).toEqual({ ok: true });
+    // The version is put back as the original while it waits.
+    const original = await publishedOf(aboutId);
+    await editVersion(made.id, "b", () => original);
+    const result = await jobs.runExperimentJobs(new Date(at.getTime() + 60_000));
+    expect(result.started).toBe(0);
+    const test = (await admin.getExperiment(storeId, made.id))!;
+    expect(test.status).toBe("draft");
+    expect(test.scheduleProblem).toMatch(/scheduled start did not happen.*still the same as the original/);
+    await admin.deleteDraft(account, storeId, made.id);
+  });
+});

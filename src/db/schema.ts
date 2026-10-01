@@ -6175,8 +6175,14 @@ export const experiments = commerce.table(
     hypothesis: text("hypothesis").notNull().default(""),
     /** The page under test: a published page of the store. */
     targetPageId: uuid("target_page_id").notNull(),
-    /** `draft`, `running`, `stopped`, then `applied` (a variant became the page) or `discarded`. */
+    /** A part of the page under test (D148, phase 2): its id and its kind (`row`, `column` or `block`). Both null: the whole page. */
+    targetPart: text("target_part"),
+    targetPartKind: text("target_part_kind"),
+    /** `draft`, `scheduled` (starts at `scheduled_start`), `running`, `stopped`, then `applied` (a variant became the page) or `discarded`. */
     status: text("status").notNull().default("draft"),
+    scheduledStart: timestamp("scheduled_start", { withTimezone: true }),
+    /** Why a scheduled start did not happen: said to the owner, who finds the test a draft again. */
+    scheduleProblem: text("schedule_problem"),
     /** The share of eligible visitors who are enrolled; the rest see the original and are not counted. */
     trafficShare: numeric("traffic_share", { precision: 4, scale: 3 }).notNull().default("1"),
     /** Narrowing of who is enrolled: `markets`, `devices`, `returning`. Empty: everyone who is eligible. */
@@ -6206,7 +6212,12 @@ export const experiments = commerce.table(
     index("experiments_target_idx").on(t.storeId, t.targetPageId),
     index("experiments_created_by_idx").on(t.createdBy),
     index("experiments_updated_by_idx").on(t.updatedBy),
-    check("experiments_status", sql`${t.status} in ('draft', 'running', 'stopped', 'applied', 'discarded')`),
+    check("experiments_status", sql`${t.status} in ('draft', 'scheduled', 'running', 'stopped', 'applied', 'discarded')`),
+    check(
+      "experiments_part",
+      sql`(${t.targetPart} is null and ${t.targetPartKind} is null) or (${t.targetPart} is not null and length(${t.targetPart}) between 1 and 64 and coalesce(${t.targetPartKind} in ('row', 'column', 'block'), false))`,
+    ),
+    check("experiments_scheduled", sql`${t.status} <> 'scheduled' or ${t.scheduledStart} is not null`),
     check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click')`),
     check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
     check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),

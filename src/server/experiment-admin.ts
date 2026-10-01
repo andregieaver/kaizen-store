@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { updateTag } from "next/cache";
 
 import { db } from "@/db/client";
+import { applyPart, buttonsWithin, describePart, findPart, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 import {
   evenSplit,
@@ -34,7 +35,16 @@ type Row = Record<string, unknown>;
  * checks here say what is wrong in words before it asks.
  */
 
-export type VariantInfo = { key: string; name: string; share: number; pageId: string | null; published: boolean; changed: boolean };
+export type VariantInfo = {
+  key: string;
+  name: string;
+  share: number;
+  pageId: string | null;
+  published: boolean;
+  changed: boolean;
+  /** For a part test: whether the version differs from the original in the part only (see `partChanges()`). */
+  scope: "ok" | "outside" | "missing" | null;
+};
 
 export type ExperimentInfo = {
   id: string;
@@ -53,11 +63,24 @@ export type ExperimentInfo = {
   stopReason: string | null;
   appliedVariant: string | null;
   createdAt: string;
+  scheduledStart: string | null;
+  scheduleProblem: string | null;
   page: { id: string; slug: string; title: string; published: boolean };
+  /** The part under test (D148, phase 2), by its id, kind and a name for it; null for a test of the whole page. */
+  part: { id: string; kind: PartKind; label: string } | null;
   variants: VariantInfo[];
 };
 
 const iso = (value: unknown) => (value ? new Date(String(value)).toISOString() : null);
+
+/** The part a test is about, named from the page as it is published (or as it was drafted, if the part is not in the published page). */
+function partOfRow(row: Row): ExperimentInfo["part"] {
+  if (!row.target_part) return null;
+  const target = { id: String(row.target_part), kind: row.target_part_kind as PartKind };
+  const content = parsePageContent(row.page_published) ?? parsePageContent(row.page_draft);
+  const info = content ? describePart(content, target) : null;
+  return { ...target, label: info?.label ?? "the part under test" };
+}
 
 const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   id: String(row.id),
@@ -76,6 +99,9 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
   stopReason: row.stop_reason ? String(row.stop_reason) : null,
   appliedVariant: row.applied_variant ? String(row.applied_variant) : null,
   createdAt: iso(row.created_at)!,
+  scheduledStart: iso(row.scheduled_start),
+  scheduleProblem: row.schedule_problem ? String(row.schedule_problem) : null,
+  part: partOfRow(row),
   page: {
     id: String(row.target_page_id),
     slug: String(row.page_slug),
@@ -88,12 +114,13 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
 /** The rows of a page's content that a visitor sees, to tell whether a version still equals the original. */
 const sameRows = (a: unknown, b: unknown) => JSON.stringify((a as { rows?: unknown })?.rows ?? null) === JSON.stringify((b as { rows?: unknown })?.rows ?? null);
 
-async function variantsOf(experimentId: string, originalPublished: unknown): Promise<VariantInfo[]> {
+async function variantsOf(experimentId: string, originalPublished: unknown, part: { id: string; kind: PartKind } | null): Promise<VariantInfo[]> {
   const rows = await db().execute<Row>(sql`
     select v.key, v.name, v.share::float8 as share, v.page_id, p.published_at is not null as published, p.draft, p.published
     from commerce.experiment_variants v left join commerce.pages p on p.id = v.page_id and p.store_id = v.store_id
     where v.experiment_id = ${experimentId}::uuid order by v.key
   `);
+  const original = part ? parsePageContent(originalPublished) : null;
   return rows.map((r) => ({
     key: String(r.key),
     name: String(r.name),
@@ -101,8 +128,19 @@ async function variantsOf(experimentId: string, originalPublished: unknown): Pro
     pageId: r.page_id ? String(r.page_id) : null,
     published: r.key === "a" ? true : Boolean(r.published),
     changed: r.key === "a" ? false : !sameRows(r.published ?? r.draft, originalPublished),
+    scope: scopeOf(r, original, part),
   }));
 }
+
+/** A part test's check of one version against the original; null for the original and for a test of the whole page. */
+function scopeOf(row: Row, original: PageContent | null, part: { id: string; kind: PartKind } | null): VariantInfo["scope"] {
+  if (!part || !original || row.key === "a") return null;
+  const version = parsePageContent(row.published ?? row.draft);
+  return version ? partChanges(original, version, part) : "missing";
+}
+
+/** The part a row of `experiments` is about, for `variantsOf()`. */
+const partOfExperimentRow = (row: Row) => (row.target_part ? { id: String(row.target_part), kind: row.target_part_kind as PartKind } : null);
 
 const SELECT = sql`
   select e.*, p.slug as page_slug, p.draft as page_draft, p.published as page_published, p.published_at as page_published_at
@@ -113,17 +151,29 @@ export async function listExperiments(storeId: string): Promise<(ExperimentInfo 
   const rows = await db().execute<Row>(sql`
     ${SELECT}
     where e.store_id = ${storeId}::uuid
-    order by case e.status when 'running' then 0 when 'draft' then 1 when 'stopped' then 2 else 3 end, e.created_at desc
+    order by case e.status when 'running' then 0 when 'scheduled' then 1 when 'draft' then 2 when 'stopped' then 3 else 4 end, e.created_at desc
   `);
   const exposed = await db().execute<Row>(sql`select experiment_id, count(*)::int as n from commerce.experiment_exposures where store_id = ${storeId}::uuid group by experiment_id`);
   const counts = new Map(exposed.map((r) => [String(r.experiment_id), Number(r.n)]));
-  return Promise.all(rows.map(async (r) => ({ ...infoOf(r, await variantsOf(String(r.id), r.page_published)), exposed: counts.get(String(r.id)) ?? 0 })));
+  return Promise.all(rows.map(async (r) => ({ ...infoOf(r, await variantsOf(String(r.id), r.page_published, partOfExperimentRow(r))), exposed: counts.get(String(r.id)) ?? 0 })));
 }
 
 export async function getExperiment(storeId: string, id: string): Promise<ExperimentInfo | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const [row] = await db().execute<Row>(sql`${SELECT} where e.store_id = ${storeId}::uuid and e.id = ${id}::uuid`);
-  return row ? infoOf(row, await variantsOf(id, row.page_published)) : null;
+  return row ? infoOf(row, await variantsOf(id, row.page_published, partOfExperimentRow(row))) : null;
+}
+
+/** The test a version's page belongs to, for the banner in the builder: its name, which version this is, and what it is a test of. */
+export async function testOfVersionPage(storeId: string, pageId: string): Promise<{ id: string; name: string; status: ExperimentStatus; key: string; pageId: string; part: string | null } | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(pageId)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select v.experiment_id from commerce.experiment_variants v where v.store_id = ${storeId}::uuid and v.page_id = ${pageId}::uuid
+  `);
+  if (!row) return null;
+  const test = await getExperiment(storeId, String(row.experiment_id));
+  const version = test?.variants.find((v) => v.pageId === pageId);
+  return test && version ? { id: test.id, name: test.name, status: test.status, key: version.key, pageId: test.page.id, part: test.part?.label ?? null } : null;
 }
 
 /** The pages a store can test: published pages with an address of their own, not the front page, the All products page or a page chosen for a place; not already in a running test. */
@@ -149,6 +199,8 @@ export function buttonsOf(content: PageContent | null): { id: string; label: str
 }
 
 export type NewExperiment = {
+  /** A part of the page to test instead of the whole page: its kind and id (the builder's "Test this"). */
+  part?: { kind: PartKind; id: string } | null;
   name: string;
   hypothesis?: string;
   pageId: string;
@@ -183,12 +235,16 @@ export async function createExperiment(account: Account, storeId: string, input:
   if (!page) return { ok: false, problems: ["Choose one of the store's pages."] };
   const original = parsePageContent(page.published);
   if (!original) return { ok: false, problems: ["Publish the page before testing it: a test shows it to real visitors."] };
-  const buttons = buttonsOf(original);
-  if (input.goal === "click" && !buttons.some((b) => b.id === input.goalBlock)) return { ok: false, problems: ["That button is not on the page."] };
+  const part = input.part ?? null;
+  if (part) {
+    if (!testablePart(original, part)) return { ok: false, problems: ["That part of the page cannot be tested: choose a row, a column or a component with something to see, in the published page. Publish your changes first if you just added it."] };
+  }
+  const buttons = part ? buttonsWithin(part.kind, findPart(original.rows, part.id)!.node) : buttonsOf(original);
+  if (input.goal === "click" && !buttons.some((b) => b.id === input.goalBlock)) return { ok: false, problems: [part ? "That button is not in the part you are testing." : "That button is not on the page."] };
 
   const [made] = await db().execute<Row>(sql`
-    insert into commerce.experiments (store_id, name, hypothesis, target_page_id, primary_goal, goal_params, traffic_share, audience, min_days, min_visitors, created_by, updated_by)
-    values (${storeId}::uuid, ${name}, ${(input.hypothesis ?? "").slice(0, 500)}, ${input.pageId}::uuid, ${input.goal},
+    insert into commerce.experiments (store_id, name, hypothesis, target_page_id, target_part, target_part_kind, primary_goal, goal_params, traffic_share, audience, min_days, min_visitors, created_by, updated_by)
+    values (${storeId}::uuid, ${name}, ${(input.hypothesis ?? "").slice(0, 500)}, ${input.pageId}::uuid, ${part?.id ?? null}, ${part?.kind ?? null}, ${input.goal},
       ${JSON.stringify(input.goal === "click" ? { block: input.goalBlock } : {})}::jsonb, ${traffic}, ${JSON.stringify(parseAudience(input.audience ?? {}))}::jsonb,
       ${Math.min(90, Math.max(1, Math.round(input.minDays ?? MIN_DAYS)))}, ${Math.max(0, Math.round(input.minVisitors ?? 0))}, ${account.id}::uuid, ${account.id}::uuid)
     returning id
@@ -204,7 +260,7 @@ export async function createExperiment(account: Account, storeId: string, input:
     insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share)
     values (${storeId}::uuid, ${id}::uuid, 'a', 'Original', null, ${a}), (${storeId}::uuid, ${id}::uuid, 'b', 'Version B', ${copy.id}::uuid, ${b})
   `);
-  await audit(account.id, storeId, "experiment.created", { experiment: id, page: input.pageId, goal: input.goal });
+  await audit(account.id, storeId, "experiment.created", { experiment: id, page: input.pageId, goal: input.goal, ...(part && { part: part.id, partKind: part.kind }) });
   return { ok: true, id };
 }
 
@@ -307,15 +363,12 @@ export async function renameExperiment(account: Account, storeId: string, id: st
   return { ok: true };
 }
 
-/** Starts a test: checked in words first, then by the database, which refuses anything the checks missed. */
-export async function startExperiment(account: Account, storeId: string, id: string): Promise<Outcome> {
-  const test = await getExperiment(storeId, id);
-  if (!test) return { ok: false, problems: ["This test no longer exists."] };
-  if (test.status !== "draft") return { ok: false, problems: ["This test has already started."] };
+/** What is wrong with a test about to start or be scheduled, in words; empty when it can. */
+async function checkStart(storeId: string, test: ExperimentInfo): Promise<string[]> {
   const [special] = await db().execute<Row>(sql`
     select (s.front_page_id = ${test.page.id}::uuid or s.products_page_id = ${test.page.id}::uuid
       or exists (select 1 from commerce.page_roles r where r.store_id = s.id and r.page_id = ${test.page.id}::uuid)) as special,
-      (select count(*) from commerce.experiments e where e.store_id = s.id and e.status = 'running')::int as running
+      (select count(*) from commerce.experiments e where e.store_id = s.id and e.status = 'running' and e.id <> ${test.id}::uuid)::int as running
     from commerce.stores s where s.id = ${storeId}::uuid
   `);
   const problems = startProblems({
@@ -323,21 +376,77 @@ export async function startExperiment(account: Account, storeId: string, id: str
     goal: test.goal,
     goalBlock: test.goalBlock,
     trafficShare: test.trafficShare,
-    variants: test.variants.map((v) => ({ key: v.key, name: v.name, share: v.share, published: v.published })),
+    variants: test.variants.map((v) => ({ key: v.key, name: v.name, share: v.share, published: v.published, scope: v.scope })),
     pagePublished: test.page.published,
     runningInStore: Number(special?.running ?? 0),
     pageIsSpecial: Boolean(special?.special),
+    partLabel: test.part?.label ?? null,
   });
   for (const v of test.variants) if (v.key !== "a" && !v.changed) problems.push(`Version ${v.key.toUpperCase()} is still the same as the original: change it first, or the test has nothing to find.`);
+  return problems;
+}
+
+/**
+ * Starts a test (from a draft, or a scheduled one that is due or started by hand): checked in words first, then by the
+ * database, which refuses anything the checks missed. `account` is null when the scheduler starts it.
+ */
+export async function startExperiment(account: Account | null, storeId: string, id: string): Promise<Outcome> {
+  const test = await getExperiment(storeId, id);
+  if (!test) return { ok: false, problems: ["This test no longer exists."] };
+  if (test.status !== "draft" && test.status !== "scheduled") return { ok: false, problems: ["This test has already started."] };
+  const problems = await checkStart(storeId, test);
   if (problems.length > 0) return { ok: false, problems };
   try {
-    await db().execute(sql`update commerce.experiments set status = 'running', updated_by = ${account.id}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.experiments set status = 'running', updated_by = ${account?.id ?? null}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);
   } catch (error) {
     return { ok: false, problems: [databaseProblem(error) ?? "The test could not be started."] };
   }
   forgetRunning(storeId);
   updateTag(experimentsTag(storeId));
-  await audit(account.id, storeId, "experiment.started", { experiment: id, page: test.page.id, goal: test.goal });
+  await audit(account?.id ?? null, storeId, test.status === "scheduled" ? "experiment.started_scheduled" : "experiment.started", {
+    experiment: id,
+    page: test.page.id,
+    goal: test.goal,
+    ...(test.part && { part: test.part.id }),
+  });
+  return { ok: true };
+}
+
+/** Lets a test that is ready start by itself at a time (in the future): the same checks as a start, made now and again then. */
+export async function scheduleExperiment(account: Account, storeId: string, id: string, at: Date): Promise<Outcome> {
+  const test = await getExperiment(storeId, id);
+  if (!test) return { ok: false, problems: ["This test no longer exists."] };
+  if (test.status !== "draft" && test.status !== "scheduled") return { ok: false, problems: ["This test has already started."] };
+  if (Number.isNaN(at.getTime()) || at.getTime() <= Date.now() + 60_000) return { ok: false, problems: ["Choose a time in the future."] };
+  if (at.getTime() > Date.now() + 90 * 86_400_000) return { ok: false, problems: ["A test can be scheduled at most 90 days ahead."] };
+  const problems = await checkStart(storeId, test);
+  if (problems.length > 0) return { ok: false, problems };
+  try {
+    if (test.status === "scheduled") {
+      await db().execute(sql`update commerce.experiments set scheduled_start = ${at.toISOString()}::timestamptz, updated_by = ${account.id}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);
+    } else {
+      await db().execute(sql`
+        update commerce.experiments set status = 'scheduled', scheduled_start = ${at.toISOString()}::timestamptz, schedule_problem = null, updated_by = ${account.id}::uuid, updated_at = now()
+        where id = ${id}::uuid and store_id = ${storeId}::uuid
+      `);
+    }
+  } catch (error) {
+    return { ok: false, problems: [databaseProblem(error) ?? "The test could not be scheduled."] };
+  }
+  await audit(account.id, storeId, "experiment.scheduled", { experiment: id, at: at.toISOString() });
+  return { ok: true };
+}
+
+/** Takes a scheduled test back to a draft, to be changed or started by hand. `problem` says why a scheduled start did not happen. */
+export async function unscheduleExperiment(account: Account | null, storeId: string, id: string, problem: string | null = null): Promise<Outcome> {
+  const test = await getExperiment(storeId, id);
+  if (!test) return { ok: false, problems: ["This test no longer exists."] };
+  if (test.status !== "scheduled") return { ok: false, problems: ["This test is not scheduled."] };
+  await db().execute(sql`
+    update commerce.experiments set status = 'draft', schedule_problem = ${problem}, updated_by = ${account?.id ?? null}::uuid, updated_at = now()
+    where id = ${id}::uuid and store_id = ${storeId}::uuid and status = 'scheduled'
+  `);
+  await audit(account?.id ?? null, storeId, "experiment.unscheduled", { experiment: id, ...(problem && { problem }) });
   return { ok: true };
 }
 
@@ -370,18 +479,34 @@ export async function applyVariant(account: Account, storeId: string, id: string
     const [from] = await tx.execute<Row>(sql`select draft, published from commerce.pages where id = ${chosen.pageId}::uuid and store_id = ${storeId}::uuid and type = 'variant' for update`);
     const content = parsePageContent(from?.published ?? from?.draft);
     if (!content) return false;
-    const next = JSON.stringify({ ...content, slug: test.page.slug });
-    await tx.execute(sql`
-      update commerce.pages set draft = ${next}::jsonb, published = ${next}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid
-      where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = 'page'
-    `);
+    if (test.part) {
+      // A test of a part changes that part only, in the page as it is now: what was edited elsewhere since is kept.
+      const [now] = await tx.execute<Row>(sql`select draft, published from commerce.pages where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = 'page' for update`);
+      const published = parsePageContent(now?.published);
+      const draft = parsePageContent(now?.draft);
+      const target = { id: test.part.id, kind: test.part.kind };
+      const merged = published ? applyPart(published, content, target) : null;
+      if (!merged) return false;
+      // The draft keeps its unpublished edits when it still has the part; otherwise it is the published page.
+      const mergedDraft = (draft ? applyPart(draft, content, target) : null) ?? merged;
+      await tx.execute(sql`
+        update commerce.pages set draft = ${JSON.stringify(mergedDraft)}::jsonb, published = ${JSON.stringify(merged)}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid
+        where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = 'page'
+      `);
+    } else {
+      const next = JSON.stringify({ ...content, slug: test.page.slug });
+      await tx.execute(sql`
+        update commerce.pages set draft = ${next}::jsonb, published = ${next}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid
+        where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = 'page'
+      `);
+    }
     await tx.execute(sql`update commerce.experiments set status = 'applied', applied_variant = ${key}, updated_by = ${account.id}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);
     return true;
   });
-  if (!done) return { ok: false, problems: ["That version could not be read."] };
+  if (!done) return { ok: false, problems: [test.part ? `That version could not be applied: the page no longer has ${test.part.label}, or the version could not be read.` : "That version could not be read."] };
   updateTag(pagesTag(storeId));
   updateTag(experimentsTag(storeId));
-  await audit(account.id, storeId, "experiment.applied", { experiment: id, variant: key, page: test.page.id });
+  await audit(account.id, storeId, "experiment.applied", { experiment: id, variant: key, page: test.page.id, ...(test.part && { part: test.part.id }) });
   return { ok: true };
 }
 

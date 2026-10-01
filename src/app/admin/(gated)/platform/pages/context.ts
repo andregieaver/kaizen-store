@@ -56,6 +56,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     plans: planChoices(plans),
     theme: null,
     templates: null,
+    experimentsHref: null,
     fields: null,
     siteCss: chrome.customCss,
     actions: {

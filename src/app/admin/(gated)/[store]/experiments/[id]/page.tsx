@@ -21,7 +21,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
   if (!test) notFound();
   const base = `/admin/${store.slug}/experiments`;
   const goal = GOAL_WORDS[test.goal];
-  const results = test.status === "draft" ? null : await experimentResults(store, test);
+  const results = test.status === "draft" || test.status === "scheduled" ? null : await experimentResults(store, test);
   const seen = new Set<string>();
   const markets = store.markets.flatMap((m) => (seen.has(m.code) ? [] : (seen.add(m.code), [{ code: m.code.toLowerCase(), name: m.name }])));
 
@@ -33,7 +33,8 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
         </Link>
         <h1 className="text-2xl font-semibold">{test.name}</h1>
         <p className="text-sm text-muted">
-          {STATUS_WORDS[test.status]} · /{test.page.slug} · {goal.label}
+          {STATUS_WORDS[test.status]} · /{test.page.slug}
+          {test.part && ` · testing ${test.part.label}`} · {goal.label}
           {test.startedAt && ` · started ${date.format(new Date(test.startedAt))}`}
           {test.stoppedAt && ` · stopped ${date.format(new Date(test.stoppedAt))}`}
         </p>

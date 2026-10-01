@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ExperimentForm } from "@/components/admin/experiment-form";
 import { requireMember } from "@/server/auth";
+import { describePart, testablePart, type PartKind } from "@/lib/experiment-parts";
 import { buttonsOf, testablePages } from "@/server/experiment-admin";
 import { findPublishedPage } from "@/server/pages";
 
@@ -10,9 +11,14 @@ import { createExperimentAction } from "../actions";
 
 export const metadata: Metadata = { title: "New A/B test" };
 
-export default async function NewExperimentPage({ params }: PageProps<"/admin/[store]/experiments/new">) {
+export default async function NewExperimentPage({ params, searchParams }: PageProps<"/admin/[store]/experiments/new">) {
   const { store } = await requireMember((await params).store);
-  const pages = await testablePages(store.id);
+  const query = await searchParams;
+  const asked = (key: string) => (typeof query[key] === "string" ? (query[key] as string) : "");
+  let pages = await testablePages(store.id);
+  // From the builder's "A/B test this" (D148): one page, and a part of it.
+  const partTarget = asked("part") ? { id: asked("part"), kind: asked("kind") as PartKind } : null;
+  if (asked("page")) pages = pages.filter((p) => p.id === asked("page"));
   // The buttons of each page, for a test that counts clicks.
   const withButtons = await Promise.all(
     pages.map(async (p) => {
@@ -20,6 +26,12 @@ export default async function NewExperimentPage({ params }: PageProps<"/admin/[s
       return { ...p, buttons: buttonsOf(found && "page" in found ? found.page.content : null) };
     }),
   );
+  let part = null;
+  if (partTarget && withButtons[0]) {
+    const found = await findPublishedPage(store.id, withButtons[0].slug);
+    const content = found && "page" in found ? found.page.content : null;
+    part = content && testablePart(content, partTarget) ? describePart(content, partTarget) : null;
+  }
   const seen = new Set<string>();
   const markets = store.markets.flatMap((m) => (seen.has(m.code) ? [] : (seen.add(m.code), [{ code: m.code.toLowerCase(), name: m.name }])));
   const base = `/admin/${store.slug}/experiments`;
@@ -31,7 +43,19 @@ export default async function NewExperimentPage({ params }: PageProps<"/admin/[s
         </Link>
         <h1 className="text-2xl font-semibold">New A/B test</h1>
       </div>
-      <ExperimentForm pages={withButtons} markets={markets} create={createExperimentAction.bind(null, store.slug)} base={base} />
+      {asked("page") && pages.length === 0 ? (
+        <p role="alert" className="rounded-lg border border-border bg-background p-5 text-sm">
+          This page cannot be tested now: it is in a running test, it is not published, or it is the front page, the All products page or a page with a place of
+          its own (the cart, the blog …).
+        </p>
+      ) : partTarget && !part ? (
+        <p role="alert" className="rounded-lg border border-border bg-background p-5 text-sm">
+          That part of the page cannot be tested: it is not in the published page (publish your changes first), or it is a working part of the shop. Go back to
+          the page and choose another.
+        </p>
+      ) : (
+        <ExperimentForm pages={withButtons} markets={markets} create={createExperimentAction.bind(null, store.slug)} base={base} part={part} />
+      )}
     </div>
   );
 }

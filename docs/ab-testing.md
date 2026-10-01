@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phase 1 built** (D148): the engine and tests of whole store pages, end to end; see "What phase 1 built, and where it differs" below. Parts, other page kinds, the AI manager and the platform's own pages are later phases. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 and 2 built** (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts; see "What phase 1 built" and "What phase 2 built" below. Other page kinds, the AI manager and the platform's own pages are later phases. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -68,13 +68,52 @@ Where it differs from the design above:
   engine, not in the form.
 - **Gating**: a store sees the feature unless the platform adds a switch; the plan comparison has the row ("A/B tests of
   pages", in no plan yet) and nothing in code reads it, as for every other feature there (D132).
-- **Not yet**: the guardrail's email, a scheduled start, preview links for owners to share, CSV export, the platform's own
-  admin (Kaizen's pages), tests of parts, the AI manager's tools.
+- **Not yet** (phase 1; the first two are phase 2's, below): a scheduled start, tests of parts; still not: the guardrail's email, preview links
+  for owners to share, CSV export, the platform's own admin (Kaizen's pages), the AI manager's tools.
 - The runtime estimate before launch is the owner's own guess of visitors and rate (the form works it out in the browser);
   Kaizen has no page-view numbers to base it on yet.
 
 Still open from phase 0: the Vercel preview run of `scripts/ab-ttfb.mjs` and where the Node proxy runs (the residency
 decision, D5), a test through a store's own host, and the legal check before a first live test.
+
+## What phase 2 built: tests of a part, and scheduled starts
+
+A test can be about one **row, column or component** instead of the whole page. In the page builder every part's tools have
+an **A/B test this** button (a flask) on a published store page; it opens the new-test form for that part, which fixes the
+page, names the part ("Heading “Welcome” in row 1") and offers, for a click goal, only the buttons inside it. Nothing in
+serving, counting or results changed: a version of a part test is still a page of type `variant`, a full copy of the page.
+What a part test adds is one rule and one change:
+
+- **The version may differ in the part only.** `partChanges()` (`src/lib/experiment-parts.ts`, pure) replaces the part in the
+  version with the original's and compares the whole of what is left, and the other languages' texts of every other part
+  (`block.{id}.…`, `column.{id}.…`); the page's own title, address and search texts are left out, as they differ by design.
+  The result (`ok`, `outside`, `missing`) is on each version (`VariantInfo.scope`), shown in the setup screen in words, and
+  `startProblems()` refuses a start while a version changes more than the part ("Version B changes more than Heading …: put
+  everything else back as it was, or test the whole page instead") or has lost it.
+- **Applying changes the part only.** `applyPart()` puts the winner's part, with its texts in other languages, into the page *as it
+  is now* (published, and the draft too where it still has the part), so anything edited elsewhere while the test ran or
+  after it stopped stays. A page that has lost the part refuses, in words. Audited with the part's id.
+
+Where it is kept: `experiments.target_part` and `target_part_kind` (both set or both null, locked once the test leaves draft),
+the one-running-test-per-page rule is unchanged (a part test and a page test of the same page exclude each other). The
+builder's "Testing: Version B against the original" banner (`testOfVersionPage()`) says which part may be changed and links to
+the original and back to the test. Rows that are modals, and parts that hold the shop's working components, a site component
+or a product component, are not offered (`testablePart()`).
+
+**Scheduled start.** A draft that passes the start checks can be scheduled (`scheduleExperiment()`, a time between a minute and
+ninety days ahead): the status `scheduled` locks it like a running test except for the time, which can move; it goes back to a draft
+(`unscheduleExperiment()`) to be changed. The five-minute job (`runExperimentJobs()`) starts a due one with the same checks as a
+start by hand; one that can no longer start (the page was unpublished, a version put back as the original) goes back to a draft with
+the reason in `schedule_problem`, shown to the owner. While scheduled nothing is served and the pages stay free to edit.
+
+**The estimate** of how long a test takes is on the new-test form and the setup screen (`RuntimeEstimate`), from the owner's own
+guess of daily visitors and today's rate; Kaizen has no page-view numbers yet. **Preview** is the admin's preview of each version
+(signed in, never counted); a shareable link that forces a version on the live site is not built.
+
+What phase 2 did not do: the five steps as separate screens with a summary rail (the flow is two screens: the form, then the setup
+page), the moderated check with two owners that phase 2's "done when" asks for, and an end-to-end test of the builder button (the
+e2e suite has no signed-in owner yet; the button and the screens are covered by rendering tests, the rules by database, unit and
+integration tests).
 
 ## Principles (kept from `measurement.md`)
 
@@ -380,7 +419,7 @@ reports (D106, D145).
 |---|---|---|
 | **0** | Spike (done locally, see above; **Vercel preview run and region check pending**), legal check, `plan_features` row, final stats choice | The preview numbers meet the criteria; the legal note is written; this file is updated |
 | **1** (built) | Engine and **page** tests for store pages: tables and rules, assignment, `/api/ab/assign`, exposure beacon, order attribution, daily rollup job, split check, results page (verdict sentence, charts), start/stop/apply, audit, tests incl. an end-to-end test with two variants | A test runs on the demo store from creation to applied, in the browser, with consented and unconsented visitors |
-| **2** | **Part** tests in the builder (click a part, "Test this"), the five-step flow, estimates, preview links, scheduled start | A person who has never seen it creates a test in a few minutes (a moderated check with two owners) |
+| **2** (built, minus the moderated check) | **Part** tests in the builder (click a part, "Test this"), the five-step flow, estimates, preview links, scheduled start | A person who has never seen it creates a test in a few minutes (a moderated check with two owners) |
 | **3** | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
 | **4** | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
 | **5** | Move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |

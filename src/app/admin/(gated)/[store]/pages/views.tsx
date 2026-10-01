@@ -12,6 +12,7 @@ import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, type PageRole } from "@/lib/page-roles";
 import type { Term } from "@/lib/taxonomy";
 import { requireMember } from "@/server/auth";
+import { testOfVersionPage } from "@/server/experiment-admin";
 import { getPageForEdit, listPages, type PageSummary } from "@/server/pages";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
 import { listSavedParts } from "@/server/saved-parts";
@@ -242,9 +243,28 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
   const context = await storePageContext(store, type, account.name ?? "");
   // What is entered in the page's or article's custom fields (D118).
   const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
+  // A version made for an A/B test (D148) says which test it is in, and what may be changed in it.
+  const test = type === "variant" ? await testOfVersionPage(store.id, page.id) : null;
   return (
     <>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
+      {test && (
+        <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-foreground px-4 py-3 text-sm text-background">
+          <span>
+            Testing: <strong>Version {test.key.toUpperCase()}</strong> against the original, in &ldquo;{test.name}&rdquo;.{" "}
+            {test.part ? `Change ${test.part} only: the rest of the page has to stay as it is.` : "Change what you want to try, and publish it."}
+            {test.status !== "draft" && " The test has started, so a change here is not published until it stops."}
+          </span>
+          <span className="flex gap-4">
+            <Link href={`/admin/${store.slug}/pages/${test.pageId}/preview`} className="font-medium underline">
+              Look at the original
+            </Link>
+            <Link href={`/admin/${store.slug}/experiments/${test.id}`} className="font-medium underline">
+              Back to the test
+            </Link>
+          </span>
+        </p>
+      )}
       <PageEditor
         key={page.id}
         page={page}

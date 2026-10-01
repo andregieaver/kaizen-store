@@ -13,8 +13,10 @@ import {
   discardExperiment,
   removeVariant,
   renameExperiment,
+  scheduleExperiment,
   startExperiment,
   stopExperiment,
+  unscheduleExperiment,
   updateDraft,
   type DraftChanges,
   type NewExperiment,
@@ -30,6 +32,7 @@ const isId = (id: string) => z.uuid().safeParse(id).success;
 const unknown: Outcome = { ok: false, problems: ["Unknown test."] };
 
 const newExperiment = z.object({
+  part: z.object({ kind: z.enum(["row", "column", "block"]), id: z.string().min(1).max(64) }).nullable().optional(),
   name: z.string().max(200),
   hypothesis: z.string().max(1000).optional(),
   pageId: z.uuid(),
@@ -107,6 +110,24 @@ export async function startExperimentAction(storeSlug: string, id: string): Prom
   const member = await requireMember(storeSlug);
   if (!isId(id)) return unknown;
   const result = await startExperiment(member.account, member.store.id, id);
+  if (result.ok) refresh();
+  return result;
+}
+
+/** Lets a test that is ready start by itself at a time (an ISO instant; the browser works it out from the owner's own clock). */
+export async function scheduleExperimentAction(storeSlug: string, id: string, at: string): Promise<Outcome> {
+  const member = await requireMember(storeSlug);
+  if (!isId(id)) return unknown;
+  const result = await scheduleExperiment(member.account, member.store.id, id, new Date(at));
+  if (result.ok) refresh();
+  return result;
+}
+
+/** Takes a scheduled test back to a draft. */
+export async function unscheduleExperimentAction(storeSlug: string, id: string): Promise<Outcome> {
+  const member = await requireMember(storeSlug);
+  if (!isId(id)) return unknown;
+  const result = await unscheduleExperiment(member.account, member.store.id, id);
   if (result.ok) refresh();
   return result;
 }

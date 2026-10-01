@@ -432,6 +432,8 @@ type Actions = {
   globalName: (id: string) => string;
   /** Whether the canvas plays the parts' motion (D128); off, it draws none of it. */
   motionPreview: boolean;
+  /** Starts an A/B test of a row, column or component (D148); undefined where the page cannot be tested. */
+  onTest?: (target: { kind: "row" | "column" | "block"; id: string }) => void;
 };
 
 /** The site's own fonts for the canvas, and installing a family a block chooses (D59). */
@@ -465,7 +467,10 @@ export function PageBuilder({
   shopParts = false,
   fieldGroups = null,
   lang,
+  onTestPart,
 }: {
+  /** Offers "A/B test this" on a row, column or component (D148); undefined where the page cannot be tested (not a published store page). */
+  onTestPart?: (target: { kind: "row" | "column" | "block"; id: string }) => void;
   /** The language the page is shown in (its main one, or the one it is translated into). */
   lang?: string;
   rows: PageRow[];
@@ -758,6 +763,7 @@ export function PageBuilder({
     lang,
     globalName: (id) => parts.find((p) => p.id === id)?.name ?? "Global",
     motionPreview: motionOn,
+    onTest: translate === null ? onTestPart : undefined,
   };
 
   // What a block that takes its content from a custom field (D118) can take: the product's in a layout, the page's or article's
@@ -1881,6 +1887,7 @@ function Tools({
   duplicateDisabled = false,
   onDelete,
   deleteDisabled = false,
+  onTest,
   mark,
   tag,
   motion = false,
@@ -1900,6 +1907,8 @@ function Tools({
   duplicateDisabled?: boolean;
   onDelete?: () => void;
   deleteDisabled?: boolean;
+  /** Starts an A/B test of this part (D148). */
+  onTest?: () => void;
 }) {
   const tool = toolClass;
   const lower = label.toLowerCase();
@@ -1924,6 +1933,11 @@ function Tools({
           className={tool}
         >
           <Icon name="copy" />
+        </button>
+      )}
+      {onTest && (
+        <button type="button" onClick={onTest} aria-label={`A/B test ${lower}`} title="A/B test this" className={tool}>
+          <Icon name="flask" />
         </button>
       )}
       {onDelete && (
@@ -2024,6 +2038,7 @@ function RowItem({
         onEdit={() => actions.open({ kind: "edit-row", rowId: row.id, columnId: null })}
         editLabel="Settings"
         onDuplicate={() => actions.onRows((rows) => duplicateRow(rows, row.id, newId))}
+        onTest={actions.onTest && !row.modal ? () => actions.onTest!({ kind: "row", id: row.id }) : undefined}
         onDelete={() => (rowHasText(row) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and everything in it`, run: remove }) : remove())}
       />
       )}
@@ -2138,6 +2153,7 @@ function ColumnItem({
         editLabel="Settings"
         onDuplicate={() => actions.onRows((rows) => duplicateColumn(rows, column.id, newId))}
         duplicateDisabled={count >= 6}
+        onTest={actions.onTest ? () => actions.onTest!({ kind: "column", id: column.id }) : undefined}
         onDelete={() =>
           columnHasText(column) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and its text`, run: remove }) : remove()
         }
@@ -2266,6 +2282,7 @@ function BlockItem({
         onEdit={edit}
         editLabel="Edit"
         onDuplicate={() => actions.onRows((rows) => duplicateBlock(rows, block.id, newId))}
+        onTest={actions.onTest ? () => actions.onTest!({ kind: "block", id: block.id }) : undefined}
         onDelete={() =>
           blockHasText(block)
             ? actions.open({ kind: "delete", what: blockThis[block.type], run: remove })
@@ -5283,6 +5300,7 @@ const ICONS = {
       <path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3" />
     </>
   ),
+  flask: <path d="M9 3h6M10 3v6L4.5 18.2A1.6 1.6 0 0 0 5.9 20.6h12.2a1.6 1.6 0 0 0 1.4-2.4L14 9V3M7.5 15h9" />,
   trash: <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />,
 };
 

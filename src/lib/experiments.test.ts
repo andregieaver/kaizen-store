@@ -174,8 +174,19 @@ describe("starting a test", () => {
     expect(startProblems({ ...ok, trafficShare: 0 })[0]).toMatch(/more than 0/);
   });
 
+  it("says when a version of a part test changes more than the part, or lost it", () => {
+    const b = ok.variants[1];
+    const test = (scope: "ok" | "outside" | "missing") => ({ ...ok, partLabel: "the heading", variants: [ok.variants[0], { ...b, scope }] });
+    expect(startProblems(test("ok"))).toEqual([]);
+    expect(startProblems(test("outside"))[0]).toMatch(/Version B changes more than the heading/);
+    expect(startProblems(test("missing"))[0]).toMatch(/no longer has the heading/);
+    // A whole-page test has no scope to check.
+    expect(startProblems({ ...ok, variants: [ok.variants[0], { ...b, scope: null }] })).toEqual([]);
+  });
+
   it("moves forward only", () => {
-    expect(NEXT_STATUSES.draft).toEqual(["running", "discarded"]);
+    expect(NEXT_STATUSES.draft).toEqual(["scheduled", "running", "discarded"]);
+    expect(NEXT_STATUSES.scheduled).toEqual(["draft", "running", "discarded"]);
     expect(NEXT_STATUSES.running).toEqual(["stopped"]);
     expect(NEXT_STATUSES.stopped).toEqual(["applied", "discarded"]);
     expect(NEXT_STATUSES.applied).toEqual([]);

@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
-import { DEVICES, GOALS, GOAL_WORDS, MIN_DAYS, type Device, type Goal } from "@/lib/experiments";
-import { estimateRuntime } from "@/lib/experiment-results";
+import { DEVICES, GOALS, GOAL_WORDS, type Device, type Goal } from "@/lib/experiments";
+import type { PartInfo } from "@/lib/experiment-parts";
+
+import { RuntimeEstimate } from "./runtime-estimate";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -32,7 +34,10 @@ export function ExperimentForm({
   markets,
   create,
   base,
+  part = null,
 }: {
+  /** A part of the page chosen in the builder (D148): the test is of it, on the one page offered. */
+  part?: PartInfo | null;
   pages: TestablePage[];
   markets: { code: string; name: string }[];
   create: (input: unknown) => Promise<Outcome>;
@@ -50,18 +55,9 @@ export function ExperimentForm({
   const [share, setShare] = useState(1);
   const [devices, setDevices] = useState<Device[]>([...DEVICES]);
   const [chosenMarkets, setChosenMarkets] = useState<string[]>([]);
-  const [perDay, setPerDay] = useState("");
-  const [rate, setRate] = useState("");
-  const [change, setChange] = useState("20");
 
-  const buttons = page?.buttons ?? [];
-  const versions = 2;
-  const estimate = useMemo(() => {
-    const visitors = Number(perDay);
-    const baseline = Number(rate.replace(",", ".")) / 100;
-    if (!(visitors > 0) || !(baseline > 0 && baseline < 1)) return null;
-    return estimateRuntime({ baseline, relativeChange: Number(change) / 100, versions, eligiblePerDay: visitors, trafficShare: share, minDays: MIN_DAYS });
-  }, [perDay, rate, change, share]);
+  // A part's buttons are the ones inside it; a page's, all of its own.
+  const buttons = part ? part.buttons : (page?.buttons ?? []);
 
   const toggle = <T extends string>(list: T[], value: T, set: (next: T[]) => void) =>
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -71,7 +67,8 @@ export function ExperimentForm({
     setProblems([]);
     start(async () => {
       const result = await create({
-        name: name.trim() || `Test of ${page?.title ?? "a page"}`,
+        part: part ? { kind: part.kind, id: part.id } : null,
+        name: name.trim() || (part ? `Test of ${part.label}` : `Test of ${page?.title ?? "a page"}`),
         hypothesis: hypothesis.trim(),
         pageId,
         goal,
@@ -99,7 +96,16 @@ export function ExperimentForm({
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-6" aria-busy={pending}>
       <section className={card} aria-labelledby="ab-page">
-        <h2 id="ab-page" className="text-lg font-semibold">1. Which page?</h2>
+        <h2 id="ab-page" className="text-lg font-semibold">{part ? "1. What you are testing" : "1. Which page?"}</h2>
+        {part ? (
+          <p className="text-sm">
+            <span className="font-medium">{part.label}</span> on the page <span className="font-medium">{page?.title}</span> (/{page?.slug}).
+            <span className={`${hint} block`}>
+              A copy of the page is made as your first new version. You change this part in it; the rest of the page must stay as it is, so the test is
+              about this part only. The page itself stays as it is until you choose a winner.
+            </span>
+          </p>
+        ) : (
         <label className={label}>
           Page to test
           <select value={pageId} onChange={(e) => setPageId(e.target.value)} className={input}>
@@ -111,6 +117,7 @@ export function ExperimentForm({
           </select>
           <span className={hint}>A copy of the page is made as your first new version, for you to change. The page itself stays as it is until you choose a winner.</span>
         </label>
+        )}
       </section>
 
       <section className={card} aria-labelledby="ab-goal">
@@ -131,7 +138,7 @@ export function ExperimentForm({
           <label className={label}>
             Which button?
             {buttons.length === 0 ? (
-              <span className={hint}>This page has no button with a text yet. Add one in the page builder first, or choose another goal.</span>
+              <span className={hint}>{part ? "There is no button with a text in this part." : "This page has no button with a text yet."} Add one in the page builder first, or choose another goal.</span>
             ) : (
               <select value={button} onChange={(e) => setButton(e.target.value)} className={input} required>
                 <option value="">Choose a button</option>
@@ -150,7 +157,7 @@ export function ExperimentForm({
         <h2 id="ab-name" className="text-lg font-semibold">3. Name and idea</h2>
         <label className={label}>
           Name
-          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder={`Test of ${page?.title ?? "the page"}`} className={input} />
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder={part ? `Test of ${part.label}` : `Test of ${page?.title ?? "the page"}`} className={input} />
         </label>
         <label className={label}>
           What do you think will happen? (optional)
@@ -203,34 +210,7 @@ export function ExperimentForm({
 
       <section className={card} aria-labelledby="ab-time">
         <h2 id="ab-time" className="text-lg font-semibold">How long will it take? (optional)</h2>
-        <p className={hint}>
-          A test needs enough visitors before it can say anything. Tell us roughly how many visitors a day see this page and accept cookies, and how many of
-          them do the thing you want today.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <label className={label}>
-            Visitors a day
-            <input inputMode="numeric" value={perDay} onChange={(e) => setPerDay(e.target.value)} placeholder="200" className={input} />
-          </label>
-          <label className={label}>
-            Who do it today (%)
-            <input inputMode="decimal" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="3" className={input} />
-          </label>
-          <label className={label}>
-            Change worth finding
-            <select value={change} onChange={(e) => setChange(e.target.value)} className={input}>
-              <option value="10">10 % more</option>
-              <option value="20">20 % more</option>
-              <option value="30">30 % more</option>
-              <option value="50">50 % more</option>
-            </select>
-          </label>
-        </div>
-        {estimate && (
-          <p role="status" className={`rounded-md border p-3 text-sm ${estimate.tooLong ? "border-amber-500" : "border-border"}`}>
-            {estimate.sentence}
-          </p>
-        )}
+        <RuntimeEstimate share={share} versions={2} />
       </section>
 
       {problems.length > 0 && (

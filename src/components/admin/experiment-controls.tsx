@@ -11,12 +11,16 @@ import {
   discardExperimentAction,
   removeVariantAction,
   renameExperimentAction,
+  scheduleExperimentAction,
   startExperimentAction,
   stopExperimentAction,
+  unscheduleExperimentAction,
   updateDraftAction,
 } from "@/app/admin/(gated)/[store]/experiments/actions";
 import { DEVICES, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
+
+import { RuntimeEstimate } from "./runtime-estimate";
 
 type Outcome = { ok: true } | { ok: false; problems: string[] };
 
@@ -68,6 +72,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
   const [chosen, setChosen] = useState<string[]>(test.audience.markets ?? []);
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [at, setAt] = useState("");
   const toggle = <T extends string>(list: T[], value: T, set: (next: T[]) => void) => set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
   const save = () =>
@@ -98,8 +103,9 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
           )}
         </div>
         <p className="text-sm text-muted">
-          The original is your page as it is. Each other version starts as a copy of it: open it in the page builder, change the thing you want to try (a
-          heading, a picture, a button), and publish it there. Change one thing at a time, so you know what made the difference.
+          {test.part
+            ? `The original is your page as it is. Each other version starts as a copy of it: open it in the page builder and change ${test.part.label}, then publish it there. Everything else on the page has to stay as it is, so the test is about that part only.`
+            : "The original is your page as it is. Each other version starts as a copy of it: open it in the page builder, change the thing you want to try (a heading, a picture, a button), and publish it there. Change one thing at a time, so you know what made the difference."}
         </p>
         <ul className="flex flex-col gap-2">
           {test.variants.map((v) => (
@@ -110,6 +116,16 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
                   {Math.round(v.share * 100)} % of the visitors in the test
                   {v.key !== "a" && (v.changed ? " · changed" : " · not changed yet")}
                 </span>
+                {v.scope === "outside" && (
+                  <span role="alert" className="block text-xs text-red-800 dark:text-red-300">
+                    Changes more than {test.part?.label}: put everything else back as it was.
+                  </span>
+                )}
+                {v.scope === "missing" && (
+                  <span role="alert" className="block text-xs text-red-800 dark:text-red-300">
+                    No longer has {test.part?.label}.
+                  </span>
+                )}
               </span>
               <span className="flex flex-wrap gap-3">
                 {v.pageId && (
@@ -183,6 +199,12 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
             ))}
           </fieldset>
         )}
+        <details className="text-sm">
+          <summary className="cursor-pointer font-medium">How long will it take?</summary>
+          <div className="mt-3">
+            <RuntimeEstimate share={share} versions={test.variants.length} minDays={minDays} />
+          </div>
+        </details>
         <div className="flex items-center gap-3">
           <button type="button" disabled={pending} onClick={save} className={button}>
             Save settings
@@ -198,10 +220,29 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
           Visitors who have accepted statistics cookies will be shown the versions from the next page view. The test runs for at least {test.minDays} days and
           you can stop it at any time. The page itself does not change until you choose a winner.
         </p>
-        <div className="flex flex-wrap gap-3">
+        {test.scheduleProblem && (
+          <p role="alert" className="rounded-md border border-amber-500 p-3 text-sm">
+            {test.scheduleProblem}
+          </p>
+        )}
+        <div className="flex flex-wrap items-end gap-3">
           <button type="button" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))} className={primary}>
-            Start the test
+            Start the test now
           </button>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Or start it at
+            <input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal" />
+          </label>
+          <button
+            type="button"
+            disabled={pending || at === ""}
+            onClick={() => run(() => scheduleExperimentAction(store, test.id, new Date(at).toISOString()))}
+            className={button}
+          >
+            Schedule the start
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-3">
           {confirmDelete ? (
             <span className="flex items-center gap-2 text-sm">
               Delete this draft and its versions?
@@ -233,6 +274,25 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
   return (
     <div className="flex flex-col gap-4">
       <Problems problems={problems} />
+      {test.status === "scheduled" && test.scheduledStart && (
+        <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby="ab-scheduled">
+          <h2 id="ab-scheduled" className="text-lg font-semibold">
+            Starts {new Date(test.scheduledStart).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
+          </h2>
+          <p className="text-sm text-muted">
+            The test starts by itself then, if everything is still in order; if not, it goes back to a draft and says why. Until then visitors see your page as it
+            is, and the versions are locked. To change anything, take it back to a draft.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))} className={primary}>
+              Start now
+            </button>
+            <button type="button" disabled={pending} onClick={() => run(() => unscheduleExperimentAction(store, test.id))} className={button}>
+              Back to a draft
+            </button>
+          </div>
+        </section>
+      )}
       {test.status === "running" && (
         <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby="ab-stop">
           <h2 id="ab-stop" className="text-lg font-semibold">Running</h2>
@@ -263,8 +323,10 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby="ab-decide">
           <h2 id="ab-decide" className="text-lg font-semibold">Decide</h2>
           <p className="text-sm text-muted">
-            The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original. A version replaces the page&apos;s
-            content at once; the address stays.
+            The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}
+            {test.part
+              ? `A version replaces ${test.part.label} in the page at once, and nothing else: anything you changed on the page since stays.`
+              : "A version replaces the page's content at once; the address stays."}
             {test.stopReason === "guardrail" && " Kaizen stopped it because a version was clearly selling less."}
             {test.stopReason === "planned_end" && " It stopped itself at its planned end."}
           </p>
@@ -274,7 +336,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
               .map((v) =>
                 confirm === `apply-${v.key}` ? (
                   <span key={v.key} className="flex flex-wrap items-center gap-2 text-sm">
-                    Replace the page with {v.name}?
+                    {test.part ? `Replace ${test.part.label} with the one in ${v.name}?` : `Replace the page with ${v.name}?`}
                     <button type="button" disabled={pending} onClick={() => run(() => applyVariantAction(store, test.id, v.key), () => setConfirm(null))} className="min-h-10 rounded-md bg-foreground px-4 text-background disabled:opacity-50">
                       Yes, use {v.name}
                     </button>

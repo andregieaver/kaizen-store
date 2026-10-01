@@ -4,12 +4,13 @@
  * `ab_experiments`).
  */
 
-export const EXPERIMENT_STATUSES = ["draft", "running", "stopped", "applied", "discarded"] as const;
+export const EXPERIMENT_STATUSES = ["draft", "scheduled", "running", "stopped", "applied", "discarded"] as const;
 export type ExperimentStatus = (typeof EXPERIMENT_STATUSES)[number];
 
 /** Where a test can go from where it is (the database refuses anything else). */
 export const NEXT_STATUSES: Record<ExperimentStatus, readonly ExperimentStatus[]> = {
-  draft: ["running", "discarded"],
+  draft: ["scheduled", "running", "discarded"],
+  scheduled: ["draft", "running", "discarded"],
   running: ["stopped"],
   stopped: ["applied", "discarded"],
   applied: [],
@@ -18,6 +19,7 @@ export const NEXT_STATUSES: Record<ExperimentStatus, readonly ExperimentStatus[]
 
 export const STATUS_WORDS: Record<ExperimentStatus, string> = {
   draft: "Draft",
+  scheduled: "Scheduled",
   running: "Running",
   stopped: "Stopped",
   applied: "Winner applied",
@@ -140,7 +142,8 @@ export const pageMarker = (experimentId: string, variant: string) => `${experime
 // Checking a test
 // ---------------------------------------------------------------------------
 
-export type VariantDraft = { key: string; name: string; share: number; published: boolean };
+/** `scope` is a part test's check of the version (see `partChanges()`); null for a test of the whole page. */
+export type VariantDraft = { key: string; name: string; share: number; published: boolean; scope?: "ok" | "outside" | "missing" | null };
 
 /** What is wrong with a test about to start, in words an owner can act on; empty when it can start. */
 export function startProblems(test: {
@@ -152,6 +155,8 @@ export function startProblems(test: {
   pagePublished: boolean;
   runningInStore: number;
   pageIsSpecial: boolean;
+  /** The part under test, in words, for a part test. */
+  partLabel?: string | null;
 }): string[] {
   const problems: string[] = [];
   if (test.name.trim() === "") problems.push("Give the test a name.");
@@ -166,6 +171,11 @@ export function startProblems(test: {
   const total = test.variants.reduce((sum, v) => sum + v.share, 0);
   if (Math.abs(total - 1) > 0.0005) problems.push("The shares of the versions must add up to 100 %.");
   for (const v of others) if (!v.published) problems.push(`Publish version ${v.key.toUpperCase()} before starting: it is what visitors will see.`);
+  const part = test.partLabel ?? "the part under test";
+  for (const v of others) {
+    if (v.scope === "outside") problems.push(`Version ${v.key.toUpperCase()} changes more than ${part}. Put everything else back as it was, or test the whole page instead.`);
+    if (v.scope === "missing") problems.push(`Version ${v.key.toUpperCase()} no longer has ${part}: a test needs the part in every version.`);
+  }
   if (test.runningInStore >= MAX_RUNNING_PER_STORE) problems.push(`A store can run ${MAX_RUNNING_PER_STORE} tests at a time. Stop one first.`);
   return problems;
 }

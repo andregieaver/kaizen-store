@@ -397,6 +397,47 @@ describe("A/B tests of pages (D148)", () => {
     await expect(set(t.experiment, "name = 'Too late'")).rejects.toThrow(/finished test cannot be changed/);
   });
 
+  it("can wait for a start time, and goes back to a draft to be changed", async () => {
+    const t = await ready();
+    const later = "now() + interval '1 day'";
+    await expect(set(t.experiment, "status = 'scheduled'")).rejects.toThrow(/experiments_scheduled|experiments\.schedule/);
+    await expect(set(t.experiment, "status = 'scheduled', scheduled_start = now() - interval '1 hour'")).rejects.toThrow(/experiments\.schedule/);
+    await set(t.experiment, `status = 'scheduled', scheduled_start = ${later}`);
+    // Waiting, nothing it measures changes, and its versions are locked.
+    await expect(set(t.experiment, "primary_goal = 'cart'")).rejects.toThrow(/experiments\.locked/);
+    await expect(db.query("update commerce.experiment_variants set share = 0.7 where experiment_id = $1 and key = 'b'", [t.experiment])).rejects.toThrow(/experiment_variants\.locked/);
+    await expect(set(t.experiment, "status = 'stopped'")).rejects.toThrow(/cannot go from scheduled to stopped/);
+    // It can move its start, go back to a draft to be changed, and be scheduled again.
+    await set(t.experiment, "scheduled_start = now() + interval '2 days'");
+    await set(t.experiment, "status = 'draft', schedule_problem = 'The page was not published'");
+    await set(t.experiment, "primary_goal = 'cart'");
+    await set(t.experiment, `status = 'scheduled', scheduled_start = ${later}`);
+    // The start checks are made when it is scheduled, and again when it starts.
+    await db.query("update commerce.pages set published = null, published_at = null where id = $1", [t.target]);
+    await expect(start(t.experiment)).rejects.toThrow(/page under test must be published/);
+    await db.query("update commerce.pages set published = '{}', published_at = now() where id = $1", [t.target]);
+    await start(t.experiment);
+    const row = await one<{ status: string; started_at: string | null; schedule_problem: string | null }>("select status, started_at, schedule_problem from commerce.experiments where id = $1", [t.experiment]);
+    expect(row.status).toBe("running");
+    expect(row.started_at).not.toBeNull();
+    expect(row.schedule_problem).toBeNull();
+    // A draft that would not start cannot be scheduled either.
+    const bad = await made();
+    await bad.variant("a", null, 1);
+    await expect(set(bad.experiment, `status = 'scheduled', scheduled_start = ${later}`)).rejects.toThrow(/experiments\.variants/);
+  });
+
+  it("tests a part of a page: its id and kind go together, and they are locked with the test", async () => {
+    const t = await ready();
+    await expect(set(t.experiment, "target_part = 'row-1'")).rejects.toThrow(/experiments_part/);
+    await expect(set(t.experiment, "target_part = 'row-1', target_part_kind = 'page'")).rejects.toThrow(/experiments_part/);
+    await expect(set(t.experiment, "target_part = '', target_part_kind = 'row'")).rejects.toThrow(/experiments_part/);
+    await set(t.experiment, "target_part = 'row-1', target_part_kind = 'row'");
+    await start(t.experiment);
+    await expect(set(t.experiment, "target_part = 'row-2'")).rejects.toThrow(/experiments\.locked/);
+    await expect(set(t.experiment, "target_part = null, target_part_kind = null")).rejects.toThrow(/experiments\.locked/);
+  });
+
   it("locks the versions once the test has started, and only a made-for-the-test page can be one", async () => {
     const t = await made();
     const ordinary = await t.page("vanlig");

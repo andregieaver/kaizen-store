@@ -11,6 +11,7 @@ const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "
 
 const BADGE: Record<ExperimentStatus, string> = {
   draft: "border border-border text-muted",
+  scheduled: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200",
   running: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
   stopped: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
   applied: "bg-foreground text-background",
@@ -62,11 +63,16 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
                     <Link href={`${base}/${t.id}`} className="font-medium underline-offset-2 hover:underline">
                       {t.name}
                     </Link>
-                    <span className="block text-xs text-muted">{t.variants.length} versions</span>
+                    <span className="block text-xs text-muted">
+                      {t.part ? `${t.part.label} · ` : ""}
+                      {t.variants.length} versions
+                    </span>
                   </td>
                   <td className="hidden px-4 py-2 sm:table-cell">/{t.page.slug}</td>
                   <td className="hidden px-4 py-2 md:table-cell">{GOAL_WORDS[t.goal].label}</td>
-                  <td className="hidden px-4 py-2 md:table-cell">{t.startedAt ? date.format(new Date(t.startedAt)) : "—"}</td>
+                  <td className="hidden px-4 py-2 md:table-cell">
+                    {t.startedAt ? date.format(new Date(t.startedAt)) : t.scheduledStart ? `Starts ${date.format(new Date(t.scheduledStart))}` : "—"}
+                  </td>
                   <td className="hidden px-4 py-2 sm:table-cell">{t.exposed.toLocaleString("en-GB")}</td>
                   <td className="px-4 py-2">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[t.status]}`}>

@@ -351,6 +351,16 @@ export function PageEditor({
   const liveSlug = saved?.published ? saved.slug : null;
   const moving = liveSlug !== null && content.slug !== liveSlug && pageSlugProblem(content.slug, reserved) === null;
   const excerpt = pageExcerpt(view);
+  // "A/B test this" (D148): a test is of the page as it is published, so changes not yet published come first. The new-test form takes the part.
+  const testPart = (target: { kind: "row" | "column" | "block"; id: string }) => {
+    if (!saved || !context.experimentsHref) return;
+    if (dirty || saved.state === "changed") {
+      setProblems(["Publish your changes first: an A/B test starts from the page as it is published."]);
+      return;
+    }
+    router.push(`${context.experimentsHref}?page=${saved.id}&kind=${target.kind}&part=${encodeURIComponent(target.id)}`);
+  };
+
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
   return (
@@ -373,6 +383,7 @@ export function PageEditor({
         onPageCss={(css) => changeCss(css ?? "")}
         productParts={context.type === "product_layout"}
         fieldGroups={context.fields?.groups ?? null}
+        onTestPart={context.experimentsHref && saved?.published ? testPart : undefined}
         shopParts={context.type === "page" && context.owner !== null}
         siteParts={context.type === "header" || context.type === "footer" ? sitePartsFor(context.owner) : null}
         upload={upload}
