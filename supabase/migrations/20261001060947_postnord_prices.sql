@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."shipping_carriers" ADD COLUMN "checkout_prices" jsonb DEFAULT '{}'::jsonb NOT NULL;

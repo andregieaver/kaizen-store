@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import type { PickupPoint, ShippingAddress, ShippingOption } from "@/lib/shipping-carriers";
+import type { CarrierId, PickupPoint, ShippingAddress, ShippingOption } from "@/lib/shipping-carriers";
 
 import { audit } from "./auth";
 import { adapterFor } from "./carriers";
@@ -175,21 +175,24 @@ export async function bringTracking(storeId: string, trackingNumber: string) {
   }
 }
 
-/** Asks Bring whether the store's agreement works and keeps the answer, for the carrier's page. */
-export async function checkBring(accountId: string, storeId: string): Promise<{ ok: true } | { ok: false; problem: string }> {
-  const context = await carrierContext(storeId, "bring");
-  const adapter = adapterFor("bring");
+/** Asks a carrier whether the store's agreement works and keeps the answer, for the carrier's page (D134, D136). */
+export async function checkCarrier(accountId: string, storeId: string, carrier: CarrierId): Promise<{ ok: true } | { ok: false; problem: string }> {
+  const context = await carrierContext(storeId, carrier);
+  const adapter = adapterFor(carrier);
   if (!context || !adapter) return { ok: false, problem: "Save all your agreement details first." };
   let result: { ok: true } | { ok: false; problem: string };
   try {
     result = await adapter.check(context);
   } catch (error) {
-    result = { ok: false, problem: error instanceof Error ? error.message : "Bring did not answer." };
+    result = { ok: false, problem: error instanceof Error ? error.message : "The carrier did not answer." };
   }
   await db().execute(sql`
     update commerce.shipping_carriers set checked_at = now(), check_ok = ${result.ok}, check_message = ${result.ok ? null : result.problem}
-    where store_id = ${storeId}::uuid and carrier = 'bring'
+    where store_id = ${storeId}::uuid and carrier = ${carrier}
   `);
-  await audit(accountId, storeId, "shipping.carrier_checked", { carrier: "bring", ok: result.ok });
+  await audit(accountId, storeId, "shipping.carrier_checked", { carrier, ok: result.ok });
   return result;
 }
+
+/** Asks Bring whether the store's agreement works. */
+export const checkBring = (accountId: string, storeId: string) => checkCarrier(accountId, storeId, "bring");

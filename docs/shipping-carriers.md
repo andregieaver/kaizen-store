@@ -100,3 +100,32 @@ the order-side logic is `src/server/bring-shipping.ts`.
 **To verify with real credentials** (nothing here has met Bring's servers yet): the `X-Bring-Test-Indicator` behaviour, the
 booking request's `parties.pickupPoint` shape for service 5800, the label link being fetchable with the same headers, and
 that the customer number is accepted for the three services.
+
+
+## PostNord (D136)
+
+`src/lib/postnord.ts` (pure: addresses, `parseServicePoints()`, `parseTracking()`, `postnordProblem()`),
+`src/server/carriers/postnord.ts` (`createPostnordAdapter()`), and the checkout side in `src/server/delivery-options.ts`.
+Every call carries the store's own API key as `apikey`; in the store's test environment the calls go to PostNord's sandbox
+(`atapi2.postnord.com`), live to `api2.postnord.com`.
+
+**Works now**
+- **Check connection**: a service point search near a postal code in Stockholm; a refused key is told plainly.
+- **Service points** for the shopper at checkout (Business Location v5, nearest by address, up to five).
+- **Tracking**: the latest event under a shipment on the order page (Track and Trace v5), for a shipment whose carrier name
+  staff gave as "PostNord" (or booked with it, later) while PostNord is connected.
+- **Services at checkout**, in SE, DK, NO and FI: MyPack Collect (17, with a service point), MyPack Home (19) and Parcel
+  (18), **at prices the store enters**. PostNord has no price API: what a service costs is in the store's agreement, so on
+  the carrier's page the owner enters, per country (in its currency) and service, the price **with VAT, as the shopper
+  pays**, and what the basket is free above (`shipping_carriers.checkout_prices`, `{ NO: { freeOverMinor, services } }`). A
+  service with no price in a country is not offered there; no markup applies. Both carriers can be on in a country:
+  the services are listed together, cheapest first after the flat rate, each named for its carrier
+  ("Posten / Bring: …"). A carrier that does not answer leaves the others, and the flat rate stays the fallback.
+
+**Not yet**: booking and labels (PostNord's EDI API) and PostNord's own delivery estimates. The EDI specification is behind
+PostNord's developer login, so the request is not built from guesses; orders go out with *Send the order* as before.
+
+**To verify with real credentials** (nothing here has met PostNord's servers yet, and its documentation pages are not
+publicly readable): the service point search's answer shape (`servicePointInformationResponse.servicePoints`), that
+`atapi2` accepts a sandbox key for it, Track and Trace v5's answer shape (`TrackingInformationResponse.shipments[].items[].events[]`),
+and that service codes 17, 19 and 18 are the ones in the store's agreement in each country.

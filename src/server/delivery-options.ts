@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   CHECKOUT_COUNTRIES,
+  CHECKOUT_PRICING,
   DEFAULT_CHECKOUT_SETTINGS,
   MAX_OPTIONS,
   MAX_PICKUP_POINTS,
@@ -19,8 +20,9 @@ import {
   type QuotedPickupPoint,
 } from "@/lib/delivery-options";
 import { shown, type Market } from "@/lib/markets";
-import type { CarrierContext, CarrierId, PickupPoint, ShippingAddress, ShippingOption } from "@/lib/shipping-carriers";
+import { carrierInfo, type CarrierContext, type CarrierId, type PickupPoint, type ShippingAddress, type ShippingOption } from "@/lib/shipping-carriers";
 import { BRING_PRODUCTS } from "@/lib/bring";
+import { POSTNORD_SERVICES } from "@/lib/postnord";
 
 import { audit } from "./auth";
 import { adapterFor } from "./carriers";
@@ -40,6 +42,7 @@ type Runner = Pick<ReturnType<typeof db>, "execute">;
 /** The services of a carrier a store may offer at checkout, by its own ids. */
 export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: string; needsPickupPoint: boolean }[]>> = {
   bring: BRING_PRODUCTS,
+  postnord: POSTNORD_SERVICES,
 };
 
 /** The carriers that have checkout services built. */
@@ -51,7 +54,7 @@ export const CHECKOUT_CARRIERS = Object.keys(CHECKOUT_SERVICES) as CarrierId[];
 
 export async function getCheckoutSettings(runner: Runner, storeId: string, carrier: CarrierId): Promise<CheckoutSettings> {
   const [row] = await runner.execute<Row>(sql`
-    select checkout_enabled, checkout_services, markup_percent, markup_minor, free_over_minor, default_weight_grams
+    select checkout_enabled, checkout_services, markup_percent, markup_minor, free_over_minor, default_weight_grams, checkout_prices
     from commerce.shipping_carriers where store_id = ${storeId}::uuid and carrier = ${carrier}
   `);
   if (!row) return DEFAULT_CHECKOUT_SETTINGS;
@@ -61,6 +64,7 @@ export async function getCheckoutSettings(runner: Runner, storeId: string, carri
     markup: { percent: Number(row.markup_percent), minor: Number(row.markup_minor) },
     freeOverMinor: row.free_over_minor === null ? null : Number(row.free_over_minor),
     defaultWeightGrams: Number(row.default_weight_grams),
+    prices: (row.checkout_prices ?? {}) as CheckoutSettings["prices"],
   };
 }
 
@@ -79,6 +83,7 @@ export async function saveCheckoutSettings(
       checkout_enabled = ${settings.enabled}, checkout_services = ARRAY[${sql.join(settings.services.map((s) => sql`${s}`), sql`, `)}]::text[],
       markup_percent = ${settings.markup.percent}, markup_minor = ${settings.markup.minor},
       free_over_minor = ${settings.freeOverMinor}, default_weight_grams = ${settings.defaultWeightGrams},
+      checkout_prices = ${JSON.stringify(settings.prices)}::jsonb,
       updated_at = now(), updated_by = ${accountId}::uuid
     where store_id = ${storeId}::uuid and carrier = ${carrier} and (complete or not ${settings.enabled})
     returning carrier
@@ -88,26 +93,33 @@ export async function saveCheckoutSettings(
   return { ok: true };
 }
 
-/** The carrier whose services this market offers at checkout, with its settings; none when none is on, complete and for the country. */
-async function activeCarrier(runner: Runner, storeId: string, country: string): Promise<{ carrier: CarrierId; settings: CheckoutSettings } | null> {
+type ActiveCarrier = { carrier: CarrierId; settings: CheckoutSettings };
+
+/**
+ * The carriers whose services this country offers at checkout, with their settings: on, complete, ticked for the country
+ * and covering it, with a service to offer (for a carrier whose prices the store enters, one with a price here).
+ */
+async function activeCarriers(runner: Runner, storeId: string, country: string): Promise<ActiveCarrier[]> {
   const rows = await runner.execute<Row>(sql`
     select carrier, countries from commerce.shipping_carriers
     where store_id = ${storeId}::uuid and checkout_enabled and complete and carrier in (${sql.join(CHECKOUT_CARRIERS.map((c) => sql`${c}`), sql`, `)})
     order by carrier
   `);
+  const active: ActiveCarrier[] = [];
   for (const row of rows) {
     const carrier = row.carrier as CarrierId;
     const offered = (row.countries ?? []) as string[];
     if (!offered.includes(country) || !(CHECKOUT_COUNTRIES[carrier] ?? []).includes(country)) continue;
     const settings = await getCheckoutSettings(runner, storeId, carrier);
-    if (settings.services.length > 0) return { carrier, settings };
+    const priced = CHECKOUT_PRICING[carrier] === "store" ? settings.services.filter((id) => id in (settings.prices[country]?.services ?? {})) : settings.services;
+    if (priced.length > 0) active.push({ carrier, settings });
   }
-  return null;
+  return active;
 }
 
 /** Whether a carrier's services are offered at checkout in this country: the page shows the choice only then. */
 export async function deliveryChoiceOn(storeId: string, country: string): Promise<boolean> {
-  return (await activeCarrier(db(), storeId, country)) !== null;
+  return (await activeCarriers(db(), storeId, country)).length > 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,10 +158,88 @@ const quotedPoint = (p: PickupPoint): QuotedPickupPoint => ({
 
 export type QuoteResult = { ok: true } | { ok: false; problem: "postal_code" | "unavailable" | "none" };
 
+/** One service a carrier offers for this cart, priced as the shopper would pay for it, with the pickup points it needs. */
+type Offer = {
+  carrier: CarrierId;
+  serviceId: string;
+  name: string;
+  amountMinor: number;
+  freeOverMinor: number | null;
+  estimate: { minDays: number; maxDays: number } | null;
+  needsPickupPoint: boolean;
+  points: QuotedPickupPoint[];
+};
+
 /**
- * Asks the store's carrier for its services to this postal code and keeps what it offers with the cart: the services the
- * store switched on, at the price the shopper would pay (the carrier's price with VAT and the store's markup), and the
- * nearest pickup points for a service that needs one. The earlier answers for the cart go, except the one chosen.
+ * What one carrier offers for this cart and postal code: from its price service for the parcel (priced with VAT and the
+ * store's markup), or from the prices the store entered for the country. Null when the carrier cannot be asked.
+ */
+async function offersFrom(
+  active: ActiveCarrier,
+  shop: { storeId: string; market: Pick<Market, "code" | "nativeCurrency"> },
+  cartId: string,
+  postalCode: string,
+  vatRate: number,
+): Promise<Offer[] | null> {
+  const { storeId, market } = shop;
+  const adapter = adapterFor(active.carrier);
+  const context = await carrierContext(storeId, active.carrier);
+  if (!adapter || !context) return null;
+  const to: ShippingAddress = { name: "", street: "", postalCode, city: "", country: market.code };
+  const known = CHECKOUT_SERVICES[active.carrier] ?? [];
+  let found: Omit<Offer, "points">[];
+  if (CHECKOUT_PRICING[active.carrier] === "store") {
+    const prices = active.settings.prices[market.code];
+    found = active.settings.services
+      .filter((id) => prices && id in prices.services)
+      .map((id) => ({
+        carrier: active.carrier,
+        serviceId: id,
+        name: known.find((s) => s.id === id)?.name ?? id,
+        amountMinor: prices!.services[id],
+        freeOverMinor: prices!.freeOverMinor,
+        estimate: null,
+        needsPickupPoint: Boolean(known.find((s) => s.id === id)?.needsPickupPoint),
+      }));
+  } else {
+    if (!adapter.rates) return null;
+    const weight = await cartWeightGrams(storeId, cartId, active.settings.defaultWeightGrams);
+    let offered: ShippingOption[];
+    try {
+      offered = await adapter.rates(context, { from: senderOf(context), to, parcels: [{ weightGrams: weight }], currency: market.nativeCurrency });
+    } catch {
+      return null;
+    }
+    // Only what the store switched on and what is priced in the country's own currency.
+    found = offered
+      .filter((o) => active.settings.services.includes(o.serviceId) && o.currency === market.nativeCurrency)
+      .map((o) => ({
+        carrier: active.carrier,
+        serviceId: o.serviceId,
+        name: o.name,
+        amountMinor: shopperPrice(o.priceMinor, vatRate, active.settings.markup),
+        freeOverMinor: active.settings.freeOverMinor,
+        estimate: o.estimate && "minDays" in o.estimate ? o.estimate : null,
+        needsPickupPoint: Boolean(o.needsPickupPoint),
+      }));
+  }
+  let points: QuotedPickupPoint[] = [];
+  if (found.some((o) => o.needsPickupPoint) && adapter.pickupPoints) {
+    try {
+      points = (await adapter.pickupPoints(context, to)).slice(0, MAX_PICKUP_POINTS).map(quotedPoint);
+    } catch {
+      // Without pickup points, the services that need one are left out rather than half offered.
+      points = [];
+    }
+  }
+  return found.filter((o) => !o.needsPickupPoint || points.length > 0).map((o) => ({ ...o, points: o.needsPickupPoint ? points : [] }));
+}
+
+/**
+ * Asks the store's carriers for their services to this postal code and keeps what they offer with the cart: the services
+ * the store switched on, at the price the shopper would pay, and the nearest pickup points for a service that needs one.
+ * With more than one carrier the services are listed together, cheapest first, each named for its carrier. The earlier
+ * answers for the cart go, except the one chosen.
  */
 export async function quoteDelivery(
   shop: { storeId: string; market: Pick<Market, "code" | "nativeCurrency"> },
@@ -159,44 +249,26 @@ export async function quoteDelivery(
   const { storeId, market } = shop;
   const postalCode = cleanPostalCode(market.code, typedPostalCode);
   if (!postalCode) return { ok: false, problem: "postal_code" };
-  const active = await activeCarrier(db(), storeId, market.code);
-  const adapter = active ? adapterFor(active.carrier) : null;
-  const context = active ? await carrierContext(storeId, active.carrier) : null;
-  if (!active || !adapter?.rates || !context) return { ok: false, problem: "unavailable" };
+  const active = await activeCarriers(db(), storeId, market.code);
+  if (active.length === 0) return { ok: false, problem: "unavailable" };
 
   const [cart] = await db().execute<Row>(sql`
     select 1 from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' and market_code = ${market.code}
   `);
   if (!cart) return { ok: false, problem: "unavailable" };
-  const weight = await cartWeightGrams(storeId, cartId, active.settings.defaultWeightGrams);
   const [country] = await db().execute<Row>(sql`select standard_vat_rate from commerce.countries where code = ${market.code}`);
   const vatRate = Number(country?.standard_vat_rate ?? 0);
 
-  const to: ShippingAddress = { name: "", street: "", postalCode, city: "", country: market.code };
-  let offered: ShippingOption[];
-  try {
-    offered = await adapter.rates(context, { from: senderOf(context), to, parcels: [{ weightGrams: weight }], currency: market.nativeCurrency });
-  } catch {
-    return { ok: false, problem: "unavailable" };
-  }
-  // Only what the store switched on and what is priced in the country's own currency, cheapest first.
-  const services = offered
-    .filter((o) => active.settings.services.includes(o.serviceId) && o.currency === market.nativeCurrency)
-    .sort((a, b) => a.priceMinor - b.priceMinor)
-    .slice(0, MAX_OPTIONS);
-  if (services.length === 0) return { ok: false, problem: "none" };
-
-  let points: QuotedPickupPoint[] = [];
-  if (services.some((s) => s.needsPickupPoint) && adapter.pickupPoints) {
-    try {
-      points = (await adapter.pickupPoints(context, to)).slice(0, MAX_PICKUP_POINTS).map(quotedPoint);
-    } catch {
-      // Without pickup points, the services that need one are left out rather than half offered.
-      points = [];
-    }
-  }
-  const usable = services.filter((s) => !s.needsPickupPoint || points.length > 0);
-  if (usable.length === 0) return { ok: false, problem: "none" };
+  const answers = await Promise.all(active.map((a) => offersFrom(a, shop, cartId, postalCode, vatRate)));
+  const offers = answers.flatMap((answer) => answer ?? []);
+  // A carrier that cannot be asked leaves the others; when none can be, the flat rate is all there is.
+  if (offers.length === 0) return { ok: false, problem: answers.every((answer) => answer === null) ? "unavailable" : "none" };
+  const several = active.length > 1;
+  const named = (o: Offer) => {
+    const brand = carrierInfo(o.carrier)?.name ?? o.carrier;
+    return several && !o.name.toLowerCase().includes(o.carrier) ? `${brand}: ${o.name}` : o.name;
+  };
+  const usable = offers.sort((a, b) => a.amountMinor - b.amountMinor).slice(0, MAX_OPTIONS);
 
   await db().transaction(async (tx) => {
     // Answers that ran out a day ago go, whichever cart they were for.
@@ -206,17 +278,17 @@ export async function quoteDelivery(
       where q.store_id = ${storeId}::uuid and q.cart_id = ${cartId}::uuid
         and q.id is distinct from (select delivery_quote_id from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid)
     `);
-    for (const service of usable) {
+    for (const o of usable) {
       await tx.execute(sql`
         insert into commerce.delivery_quotes (
           store_id, cart_id, carrier, service_id, label, amount_minor, free_over_minor, currency, country, postal_code,
           estimate, needs_pickup_point, pickup_points, expires_at
         ) values (
-          ${storeId}::uuid, ${cartId}::uuid, ${active.carrier}, ${service.serviceId}, ${service.name.slice(0, 120)},
-          ${shopperPrice(service.priceMinor, vatRate, active.settings.markup)}, ${active.settings.freeOverMinor},
+          ${storeId}::uuid, ${cartId}::uuid, ${o.carrier}, ${o.serviceId}, ${named(o).slice(0, 120)},
+          ${o.amountMinor}, ${o.freeOverMinor},
           ${market.nativeCurrency}, ${market.code}, ${postalCode},
-          ${service.estimate && "minDays" in service.estimate ? JSON.stringify(service.estimate) : null}::jsonb,
-          ${Boolean(service.needsPickupPoint)}, ${JSON.stringify(service.needsPickupPoint ? points : [])}::jsonb,
+          ${o.estimate ? JSON.stringify(o.estimate) : null}::jsonb,
+          ${o.needsPickupPoint}, ${JSON.stringify(o.points)}::jsonb,
           now() + make_interval(mins => ${QUOTE_MINUTES})
         )
       `);

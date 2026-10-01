@@ -36,6 +36,13 @@ const bring = vi.hoisted(() => {
     calls.push({ url: String(url), body: body as (typeof calls)[number]["body"] });
     const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
     if (state.down) return json({}, 503);
+    if (String(url).includes("/businesslocation/")) {
+      return json({
+        servicePointInformationResponse: {
+          servicePoints: [{ servicePointId: "PN-1", name: "PostNord Ombud", routeDistance: 450, visitingAddress: { streetName: "Ombudsgata", streetNumber: "3", postalCode: "0150", city: "OSLO", countryCode: "NO" } }],
+        },
+      });
+    }
     if (String(url).includes("/pickuppoint/")) {
       return json({
         pickupPoint: state.noPickupPoints
@@ -69,7 +76,9 @@ const bring = vi.hoisted(() => {
 
 vi.mock("./carriers", async () => {
   const { createBringAdapter } = await import("./carriers/bring");
-  return { adapterFor: (id: string) => (id === "bring" ? createBringAdapter(bring.fetcher as unknown as typeof fetch) : null) };
+  const { createPostnordAdapter } = await import("./carriers/postnord");
+  const fetcher = bring.fetcher as unknown as typeof fetch;
+  return { adapterFor: (id: string) => (id === "bring" ? createBringAdapter(fetcher) : id === "postnord" ? createPostnordAdapter(fetcher) : null) };
 });
 
 const { changeLine, getCart } = await import("./cart");
@@ -86,7 +95,7 @@ const shop = () => ({ storeId, market: no });
 const cartId = () => jar.get(`cart_${storeId}_${no.slug}`)!;
 
 const details = { customerNumber: "12345", apiUid: "me@shop.no", apiKey: "secret-key-0001", senderName: "Shop AS", senderStreet: "Lagerveien 2", senderPostalCode: "0150", senderCity: "Oslo" };
-const settings = { enabled: true, services: ["5800", "5600"], markup: { percent: 10, minor: 500 }, freeOverMinor: null, defaultWeightGrams: 1000 };
+const settings = { enabled: true, services: ["5800", "5600"], markup: { percent: 10, minor: 500 }, freeOverMinor: null, defaultWeightGrams: 1000, prices: {} };
 
 const latestGuideBody = () => bring.calls.filter((c) => c.url.includes("/shippingguide/")).at(-1)!.body;
 const flat = { label: "Frakt", rate: { amountMinor: 9900, freeOverMinor: null } };
@@ -240,5 +249,79 @@ describe("choosing", () => {
     await quoteDelivery(shop(), cart, "0150");
     const [row] = await db().execute<Row>(sql`select count(*)::int as n from commerce.delivery_quotes where cart_id = ${cart}::uuid and expires_at < now()`);
     expect(Number(row.n)).toBe(0);
+  });
+});
+
+describe("PostNord's services, at prices the store enters (D136)", () => {
+  const postnord = {
+    enabled: true,
+    services: ["17", "19"],
+    markup: { percent: 0, minor: 0 },
+    freeOverMinor: null,
+    defaultWeightGrams: 1000,
+    prices: { NO: { freeOverMinor: 50_000, services: { "17": 4_900, "19": 9_900 } }, SE: { freeOverMinor: null, services: { "19": 8_900 } } },
+  };
+  const bringOff = () => db().execute(sql`update commerce.shipping_carriers set checkout_enabled = false where store_id = ${storeId}::uuid and carrier = 'bring'`);
+  const bringOn = () => db().execute(sql`update commerce.shipping_carriers set checkout_enabled = true where store_id = ${storeId}::uuid and carrier = 'bring'`);
+
+  beforeAll(async () => {
+    expect(await saveCarrier(accountId, storeId, "postnord", { environment: "test", countries: ["NO"], fields: { customerNumber: "999", apiKey: "pn-key-0001" } })).toEqual({ ok: true });
+    expect(await saveCheckoutSettings(accountId, storeId, "postnord", postnord)).toEqual({ ok: true });
+  });
+
+  it("are offered as entered, without asking PostNord for a price, with its service points", async () => {
+    await bringOff();
+    const calls = bring.calls.length;
+    const cart = await newCart();
+    expect(await quoteDelivery(shop(), cart, "0150")).toEqual({ ok: true });
+    // Only the service point search went out: no price service.
+    expect(bring.calls.slice(calls).map((c) => c.url.includes("/businesslocation/"))).toEqual([true]);
+    const listed = await deliveryOptionsFor(shop(), cart, flat, priceAs);
+    expect(listed.options.map((o) => [o.label, o.priceMinor, o.freeOverMinor])).toEqual([
+      ["Frakt", 9900, null],
+      ["PostNord MyPack Collect", 4900, 50_000],
+      ["PostNord MyPack Home", 9900, 50_000],
+    ]);
+    expect(listed.options[1]).toMatchObject({ carrier: "postnord", needsPickupPoint: true, estimate: null });
+    expect(listed.options[1].pickupPoints).toEqual([{ id: "PN-1", name: "PostNord Ombud", street: "Ombudsgata 3", postalCode: "0150", city: "OSLO", distanceMeters: 450 }]);
+    // Chosen with its service point, it is the cart's shipping at the price entered.
+    expect(await chooseDelivery(shop(), cart, listed.options[1].id, "PN-1")).toEqual({ ok: true });
+    expect(await chosenDelivery(db(), storeId, cart, no)).toMatchObject({ rate: { amountMinor: 4900, freeOverMinor: 50_000 }, delivery: { carrier: "postnord", serviceId: "17", pickupPoint: { id: "PN-1" } } });
+    expect((await cartSummary(shop(), await getCart(shop()))).shipping).toBe(4900);
+    await bringOn();
+  });
+
+  it("are not offered in a country where the store entered no price", async () => {
+    await bringOff();
+    // Only Sweden has a price for the service the store ticked there: Norway has both, so switch Norway's off.
+    await saveCheckoutSettings(accountId, storeId, "postnord", { ...postnord, prices: { SE: postnord.prices.SE } });
+    expect(await deliveryChoiceOn(storeId, "NO")).toBe(false);
+    const cart = await newCart();
+    expect(await quoteDelivery(shop(), cart, "0150")).toEqual({ ok: false, problem: "unavailable" });
+    await saveCheckoutSettings(accountId, storeId, "postnord", postnord);
+    expect(await deliveryChoiceOn(storeId, "NO")).toBe(true);
+    await bringOn();
+  });
+
+  it("are listed with Bring's when both are on, each named for its carrier, cheapest first after the flat rate", async () => {
+    const cart = await newCart();
+    expect(await quoteDelivery(shop(), cart, "0150")).toEqual({ ok: true });
+    const listed = await deliveryOptionsFor(shop(), cart, flat, priceAs);
+    expect(listed.options.map((o) => [o.label, o.priceMinor])).toEqual([
+      ["Frakt", 9900],
+      ["PostNord MyPack Collect", 4900],
+      ["PostNord MyPack Home", 9900],
+      ["Posten / Bring: Pakke til hentested", 11363],
+      ["Posten / Bring: Pakke levert hjem", 14113],
+    ]);
+  });
+
+  it("leave the other carrier's when one does not answer", async () => {
+    const cart = await newCart();
+    bring.state.down = true;
+    // Bring is down (and so is the service point search here): PostNord's service that needs no point is still offered.
+    expect(await quoteDelivery(shop(), cart, "0150")).toEqual({ ok: true });
+    expect((await deliveryOptionsFor(shop(), cart, flat, priceAs)).options.map((o) => o.label)).toEqual(["Frakt", "PostNord MyPack Home"]);
+    bring.state.down = false;
   });
 });

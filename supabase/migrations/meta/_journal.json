@@ -1492,6 +1492,13 @@
       "when": 1790812455385,
       "tag": "20260930235415_delivery_options_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 213,
+      "version": "7",
+      "when": 1790834987243,
+      "tag": "20261001060947_postnord_prices",
+      "breakpoints": true
     }
   ]
 }

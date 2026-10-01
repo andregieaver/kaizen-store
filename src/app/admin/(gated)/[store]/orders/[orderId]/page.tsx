@@ -17,6 +17,7 @@ import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/or
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
 import { pickupPointLine } from "@/lib/delivery-options";
+import type { CarrierId } from "@/lib/shipping-carriers";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { bookingWhen } from "@/lib/booking-text";
@@ -27,7 +28,8 @@ import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { formatDeliveryDate } from "@/lib/standing-orders";
 import { orderAttribution } from "@/server/affiliates";
 import { requireMember } from "@/server/auth";
-import { bringTracking, estimateWeightGrams } from "@/server/bring-shipping";
+import { estimateWeightGrams } from "@/server/bring-shipping";
+import { carrierTracking, trackedCarrier } from "@/server/carrier-tracking";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
@@ -314,9 +316,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                           </a>
                         </>
                       )}
-                      {s.carrierId === "bring" && s.trackingNumber && (
+                      {trackedCarrier(s) && s.trackingNumber && (
                         <Suspense fallback={null}>
-                          <BringStatus storeId={store.id} trackingNumber={s.trackingNumber} />
+                          <CarrierStatus storeId={store.id} carrier={trackedCarrier(s)!} trackingNumber={s.trackingNumber} />
                         </Suspense>
                       )}
                     </li>
@@ -553,9 +555,9 @@ function AddressBlock({ address }: { address: Address }) {
   );
 }
 
-/** Where a parcel booked with Bring is now, from Bring's tracking; nothing when Bring does not answer. */
-async function BringStatus({ storeId, trackingNumber }: { storeId: string; trackingNumber: string }) {
-  const [latest] = await bringTracking(storeId, trackingNumber);
+/** Where a parcel is now, from its carrier's tracking (Posten / Bring, PostNord); nothing when the carrier is not connected or does not answer. */
+async function CarrierStatus({ storeId, carrier, trackingNumber }: { storeId: string; carrier: CarrierId; trackingNumber: string }) {
+  const [latest] = await carrierTracking(storeId, carrier, trackingNumber);
   return latest ? (
     <span className="block text-muted">
       {latest.description || latest.status}

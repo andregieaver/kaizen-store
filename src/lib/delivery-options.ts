@@ -11,8 +11,15 @@ import type { CarrierId } from "./shipping-carriers";
  * the server, which checks everything again.
  */
 
-/** The countries a carrier's checkout services cover, now: Posten / Bring's are for parcels within Norway (D134). */
-export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = { bring: ["NO"] };
+/** The countries a carrier's checkout services cover, now: Posten / Bring's are for parcels within Norway (D134), PostNord's for its four countries. */
+export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = { bring: ["NO"], postnord: ["SE", "DK", "NO", "FI"] };
+
+/**
+ * Where a carrier's prices come from: its own price service for this parcel (`carrier`, Bring's Shipping Guide: the price
+ * without VAT, to which the store's markup is added), or what the store enters from its agreement (`store`, PostNord has
+ * no price API): per country and service, with VAT, as the shopper pays.
+ */
+export const CHECKOUT_PRICING: Partial<Record<CarrierId, "carrier" | "store">> = { bring: "carrier", postnord: "store" };
 
 /** How long a quote holds: the time a shopper may take from seeing the prices to paying. */
 export const QUOTE_MINUTES = 120;
@@ -135,6 +142,9 @@ export const pickupPointLine = (p: { name: string; street: string; postalCode: s
 // The store's settings for a carrier at checkout
 // ---------------------------------------------------------------------------
 
+/** What a store charges for a carrier's services in one country (pricing `store`): free above `freeOverMinor`, a price per service id. */
+export type CountryPrices = { freeOverMinor: number | null; services: Record<string, number> };
+
 export type CheckoutSettings = {
   enabled: boolean;
   /** The carrier's own service ids the store offers. */
@@ -144,6 +154,8 @@ export type CheckoutSettings = {
   freeOverMinor: number | null;
   /** The weight of a parcel when what is bought has no weight, in grams. */
   defaultWeightGrams: number;
+  /** Prices the store enters itself, by country (pricing `store`); empty for a carrier that prices the parcel. */
+  prices: Record<string, CountryPrices>;
 };
 
 export const DEFAULT_CHECKOUT_SETTINGS: CheckoutSettings = {
@@ -152,6 +164,7 @@ export const DEFAULT_CHECKOUT_SETTINGS: CheckoutSettings = {
   markup: { percent: 0, minor: 0 },
   freeOverMinor: null,
   defaultWeightGrams: 1000,
+  prices: {},
 };
 
 const wholeNumber = (label: string, min: number, max: number) =>
@@ -172,15 +185,48 @@ function minorOf(value: string, label: string): { ok: true; minor: number | null
   return minor > 100_000_000 ? { ok: false, problem: `${label}: that is too much.` } : { ok: true, minor };
 }
 
-/** What the owner's form sends, checked: the services only from `known`, the amounts in major units of the country's currency. */
+/** The prices a store enters per country and service (`price:NO:19`) and what it is free above (`freeOver:NO`), in major units. */
+function parsePrices(form: FormData, known: string[], countries: string[], problems: string[]): Record<string, CountryPrices> {
+  const prices: Record<string, CountryPrices> = {};
+  for (const country of countries) {
+    const services: Record<string, number> = {};
+    for (const id of known) {
+      const typed = minorOf(String(form.get(`price:${country}:${id}`) ?? ""), `Price of ${id} in ${country}`);
+      if (!typed.ok) problems.push(typed.problem);
+      else if (typed.minor !== null) services[id] = typed.minor;
+    }
+    const free = minorOf(String(form.get(`freeOver:${country}`) ?? ""), `Free above in ${country}`);
+    if (!free.ok) problems.push(free.problem);
+    else if (free.minor !== null && free.minor <= 0) problems.push(`Free above in ${country}: enter an amount above zero, or leave it empty.`);
+    if (Object.keys(services).length > 0) prices[country] = { freeOverMinor: free.ok ? free.minor : null, services };
+  }
+  return prices;
+}
+
+/**
+ * What the owner's form sends, checked: the services only from `known`, the amounts in major units of the country's
+ * currency. For a carrier whose prices the store enters (`pricing: "store"`) the prices come per country in `countries`.
+ */
 export function parseCheckoutSettings(
   form: FormData,
   known: string[],
+  options: { pricing: "carrier" | "store"; countries?: string[] } = { pricing: "carrier" },
 ): { ok: true; settings: CheckoutSettings } | { ok: false; problems: string[] } {
   const problems: string[] = [];
   const services = [...new Set(form.getAll("service").map(String))].filter((id) => known.includes(id));
   const enabled = form.get("enabled") === "on";
   if (enabled && services.length === 0) problems.push("Choose at least one service to offer.");
+  if (options.pricing === "store") {
+    const prices = parsePrices(form, services, options.countries ?? [], problems);
+    if (enabled && problems.length === 0 && Object.keys(prices).length === 0) problems.push("Enter a price for at least one service in one country.");
+    const weight = wholeNumber("Parcel weight", 1, 35_000).safeParse(String(form.get("defaultWeight") ?? "1000") || "1000");
+    if (!weight.success) problems.push(weight.error.issues[0].message);
+    if (problems.length > 0 || !weight.success) return { ok: false, problems };
+    return {
+      ok: true,
+      settings: { enabled, services, markup: { percent: 0, minor: 0 }, freeOverMinor: null, defaultWeightGrams: Math.round(weight.data), prices },
+    };
+  }
 
   const percent = wholeNumber("Percentage added", 0, 100).safeParse(String(form.get("markupPercent") ?? "0") || "0");
   if (!percent.success) problems.push(percent.error.issues[0].message);
@@ -200,6 +246,7 @@ export function parseCheckoutSettings(
       markup: { percent: Math.round(percent.data), minor: fixed.minor ?? 0 },
       freeOverMinor: freeOver.minor,
       defaultWeightGrams: Math.round(weight.data),
+      prices: {},
     },
   };
 }

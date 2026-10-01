@@ -92,7 +92,7 @@ describe("the store's checkout settings", () => {
     );
     expect(parsed).toEqual({
       ok: true,
-      settings: { enabled: true, services: ["5800", "5600"], markup: { percent: 10, minor: 550 }, freeOverMinor: 99_900, defaultWeightGrams: 800 },
+      settings: { enabled: true, services: ["5800", "5600"], markup: { percent: 10, minor: 550 }, freeOverMinor: 99_900, defaultWeightGrams: 800, prices: {} },
     });
   });
 
@@ -110,5 +110,38 @@ describe("the store's checkout settings", () => {
     );
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.problems).toHaveLength(4);
+  });
+});
+
+describe("settings for a carrier whose prices the store enters", () => {
+  const options = { pricing: "store" as const, countries: ["NO", "SE"] };
+  const known = ["17", "19", "18"];
+
+  it("reads a price per country and service, and what is free above, in major units", () => {
+    const parsed = parseCheckoutSettings(
+      form({ enabled: "on", service: ["17", "19"], "price:NO:17": "49", "price:NO:19": "99,50", "freeOver:NO": "500", "price:SE:19": "89", "price:SE:18": "10", defaultWeight: "1000" }),
+      known,
+      options,
+    );
+    // A price for a service that is not ticked (18) is ignored; a country with no price is left out.
+    expect(parsed).toEqual({
+      ok: true,
+      settings: {
+        enabled: true,
+        services: ["17", "19"],
+        markup: { percent: 0, minor: 0 },
+        freeOverMinor: null,
+        defaultWeightGrams: 1000,
+        prices: { NO: { freeOverMinor: 50_000, services: { "17": 4_900, "19": 9_950 } }, SE: { freeOverMinor: null, services: { "19": 8_900 } } },
+      },
+    });
+  });
+
+  it("needs a price somewhere when it is on, and refuses what is not an amount", () => {
+    expect(parseCheckoutSettings(form({ enabled: "on", service: "17", defaultWeight: "1000" }), known, options)).toMatchObject({ ok: false });
+    expect(parseCheckoutSettings(form({ service: "17", defaultWeight: "1000" }), known, options)).toMatchObject({ ok: true, settings: { enabled: false, prices: {} } });
+    const bad = parseCheckoutSettings(form({ enabled: "on", service: "17", "price:NO:17": "free", "freeOver:NO": "0", defaultWeight: "1000" }), known, options);
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.problems).toHaveLength(2);
   });
 });

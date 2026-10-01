@@ -5919,6 +5919,8 @@ export const shippingCarriers = commerce.table(
     markupMinor: integer("markup_minor").notNull().default(0),
     freeOverMinor: integer("free_over_minor"),
     defaultWeightGrams: integer("default_weight_grams").notNull().default(1000),
+    /** What the store charges for the services of a carrier that has no price service (D136, PostNord), by country: `{ NO: { freeOverMinor, services: { "19": 9900 } } }`, with VAT, in the country's own currency. */
+    checkoutPrices: jsonb("checkout_prices").notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),

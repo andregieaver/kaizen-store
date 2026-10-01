@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { IntegrationMark } from "@/components/admin/integration-mark";
+import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING } from "@/lib/delivery-options";
 import { CARRIER_FEATURE_LABELS, carrierInfo } from "@/lib/shipping-carriers";
 import { requireMember } from "@/server/auth";
 import { CHECKOUT_SERVICES, getCheckoutSettings } from "@/server/delivery-options";
@@ -39,7 +40,10 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const checkout = services && saved?.complete ? await getCheckoutSettings(db(), store.id, info.id) : null;
   const flatRates = checkout ? await getShippingSettings(store) : [];
   const missingFlat = checkout ? flatRates.filter((r) => chosen.has(r.marketCode.toUpperCase()) && r.amountMinor === null).map((r) => r.marketCode) : [];
-  const currencyOf = store.markets.find((m) => m.code === "NO")?.nativeCurrency ?? "NOK";
+  const storePriced = CHECKOUT_PRICING[info.id] === "store";
+  const pricedCountries = [...chosen].filter((code) => (CHECKOUT_COUNTRIES[info.id] ?? []).includes(code) && marketCountries.includes(code));
+  const currencyFor = (code: string) => store.markets.find((m) => m.code.toUpperCase() === code)?.nativeCurrency ?? "NOK";
+  const currencyOf = currencyFor("NO");
   const majorUnits = (minor: number | null) => (minor === null ? "" : (minor / 100).toFixed(2).replace(/\.00$/, "").replace(".", ","));
   const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 
@@ -68,9 +72,11 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
 
       {live ? (
         <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
-          The connection to {info.name} is ready. You can book shipments with labels and follow their tracking from each order
-          {info.available.includes("rates") ? "; shoppers can choose its services at checkout once you switch them on below" : info.features.includes("rates") ? "; delivery options at checkout come next" : ""}. In the test
-          environment {info.name} books test shipments: nothing is shipped and orders are not marked as sent.
+          The connection to {info.name} is ready. It can: {info.available.map((f) => CARRIER_FEATURE_LABELS[f].toLowerCase()).join("; ")}.
+          {info.features.some((f) => !info.available.includes(f)) &&
+            ` Still to come: ${info.features.filter((f) => !info.available.includes(f)).map((f) => CARRIER_FEATURE_LABELS[f].toLowerCase()).join("; ")}.`}
+          {info.available.includes("labels") &&
+            ` In the test environment ${info.name} books test shipments: nothing is shipped and orders are not marked as sent.`}
         </p>
       ) : (
         <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
@@ -181,7 +187,10 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
           </h2>
           <p className="mb-4 text-sm text-muted">
             Shoppers give their postal code at checkout and choose between your standard shipping and the services you switch on here,
-            with the price {info.name} gives you plus VAT and what you add. Posten / Bring&apos;s services are for parcels to Norway. If{" "}
+            {storePriced
+              ? ` at the prices you enter below (with VAT, as the shopper pays; ${info.name} has no price service, so use the prices in your agreement).`
+              : ` with the price ${info.name} gives you plus VAT and what you add. Posten / Bring's services are for parcels to Norway.`}{" "}
+            If{" "}
             {info.name} does not answer, your standard shipping is used, so keep it set up under{" "}
             <Link href={`/admin/${store.slug}/settings/shipping`} className="underline">
               Shipping
@@ -210,7 +219,37 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
                 ))}
                 <p className="text-sm text-muted">A service is shown only when {info.name} offers it for the parcel and the postal code.</p>
               </fieldset>
+              {storePriced && pricedCountries.length === 0 && (
+                <p className="text-sm text-muted">Tick a country above and save the details first: prices are entered per country.</p>
+              )}
+              {storePriced &&
+                pricedCountries.map((code) => (
+                  <fieldset key={code} className="flex flex-col gap-2 rounded-md border border-border p-3">
+                    <legend className="px-1 text-sm font-medium">
+                      {store.markets.find((m) => m.code.toUpperCase() === code)?.name ?? code} ({currencyFor(code)})
+                    </legend>
+                    {services.map((service) => (
+                      <label key={service.id} className="flex items-center justify-between gap-3 text-sm">
+                        <span>{service.name}</span>
+                        <input
+                          name={`price:${code}:${service.id}`}
+                          inputMode="decimal"
+                          defaultValue={majorUnits(checkout.prices[code]?.services[service.id] ?? null)}
+                          placeholder="Not offered"
+                          aria-label={`${service.name} price in ${code}`}
+                          className={`${control} w-36`}
+                        />
+                      </label>
+                    ))}
+                    <label className="flex items-center justify-between gap-3 text-sm">
+                      <span>Free when the basket is worth at least</span>
+                      <input name={`freeOver:${code}`} inputMode="decimal" defaultValue={majorUnits(checkout.prices[code]?.freeOverMinor ?? null)} placeholder="Never free" className={`${control} w-36`} />
+                    </label>
+                  </fieldset>
+                ))}
               <div className="grid gap-4 sm:grid-cols-2">
+                {!storePriced && (
+                  <>
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   Percentage added to the price with VAT
                   <input name="markupPercent" inputMode="numeric" defaultValue={String(checkout.markup.percent)} className={control} />
@@ -223,6 +262,8 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
                   Free when the basket is worth at least ({currencyOf})
                   <input name="freeOver" inputMode="decimal" defaultValue={majorUnits(checkout.freeOverMinor)} placeholder="Never free" className={control} />
                 </label>
+                  </>
+                )}
                 <label className="flex flex-col gap-1 text-sm font-medium">
                   Parcel weight when the goods have none (grams)
                   <input name="defaultWeight" inputMode="numeric" defaultValue={String(checkout.defaultWeightGrams)} className={control} />
@@ -244,7 +285,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             Check connection
           </h2>
           <p className="mb-3 text-sm text-muted">
-            Asks {info.name} whether it accepts your user, key and customer number. Nothing is booked.
+            Asks {info.name} whether it accepts your details. Nothing is booked.
             {saved.check && (
               <>
                 {" "}

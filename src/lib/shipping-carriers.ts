@@ -88,7 +88,7 @@ export const CARRIERS: CarrierInfo[] = [
     summary: "Parcels and letters in Sweden, Denmark, Norway and Finland, with pickup points and tracking.",
     countries: ["SE", "DK", "NO", "FI"],
     features: ["rates", "pickup_points", "labels", "tracking"],
-    available: [],
+    available: ["rates", "pickup_points", "tracking"],
     fields: [
       { key: "customerNumber", label: "Customer number", secret: false, required: true, help: "Your number in your agreement with PostNord." },
       { key: "apiKey", label: "API key", secret: true, required: true },
@@ -98,6 +98,7 @@ export const CARRIERS: CarrierInfo[] = [
       "Have a customer agreement with PostNord.",
       "At PostNord's developer portal, make an application and get an API key for it.",
       "Copy the customer number and the API key to the form.",
+      "PostNord does not give prices through its API: you enter what you charge for each service from your agreement.",
     ],
   },
   {

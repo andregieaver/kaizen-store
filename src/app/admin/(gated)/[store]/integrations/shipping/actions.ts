@@ -4,12 +4,12 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
-import { parseCheckoutSettings } from "@/lib/delivery-options";
+import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING, parseCheckoutSettings } from "@/lib/delivery-options";
 import { CARRIERS, isCarrierId } from "@/lib/shipping-carriers";
 import { requireMember } from "@/server/auth";
-import { checkBring } from "@/server/bring-shipping";
+import { checkCarrier } from "@/server/bring-shipping";
 import { CHECKOUT_SERVICES, saveCheckoutSettings } from "@/server/delivery-options";
-import { removeCarrier, saveCarrier } from "@/server/shipping-carriers";
+import { getCarrier, removeCarrier, saveCarrier } from "@/server/shipping-carriers";
 
 /** A carrier's agreement holds the store's own keys, so only an owner saves or forgets it (D133). */
 export async function saveCarrierAction(storeSlug: string, carrier: string, _state: FormState, formData: FormData): Promise<FormState> {
@@ -34,15 +34,16 @@ export async function removeCarrierAction(storeSlug: string, carrier: string): P
   redirect(`/admin/${store.slug}/integrations`);
 }
 
-/** Asks the carrier whether the store's agreement works (D134). Only Posten / Bring has a connection so far. */
+/** Asks the carrier whether the store's agreement works (D134, D136). Posten / Bring and PostNord have connections so far. */
 export async function checkCarrierAction(storeSlug: string, carrier: string): Promise<FormState> {
   const { store, role, account } = await requireMember(storeSlug);
   if (role !== "owner") return { status: "error", messages: ["Only an owner can check a shipping carrier."] };
-  if (carrier !== "bring") return { status: "error", messages: ["This carrier's connection is not built yet."] };
-  const result = await checkBring(account.id, store.id);
+  const info = CARRIERS.find((c) => c.id === carrier);
+  if (!info || info.available.length === 0) return { status: "error", messages: ["This carrier's connection is not built yet."] };
+  const result = await checkCarrier(account.id, store.id, info.id);
   refresh();
   return result.ok
-    ? { status: "ok", messages: ["Bring accepted your agreement."] }
+    ? { status: "ok", messages: [`${info.name} accepted your agreement.`] }
     : { status: "error", messages: [result.problem] };
 }
 
@@ -54,10 +55,15 @@ export async function saveCheckoutSettingsAction(storeSlug: string, carrier: str
   const { store, role, account } = await requireMember(storeSlug);
   if (role !== "owner") return { status: "error", messages: ["Only an owner can change what is offered at checkout."] };
   if (!isCarrierId(carrier) || !CHECKOUT_SERVICES[carrier]) return { status: "error", messages: ["This carrier has no services at checkout yet."] };
-  const parsed = parseCheckoutSettings(formData, CHECKOUT_SERVICES[carrier].map((s) => s.id));
+  const saved = await getCarrier(store.id, carrier);
+  const parsed = parseCheckoutSettings(formData, CHECKOUT_SERVICES[carrier].map((s) => s.id), {
+    pricing: CHECKOUT_PRICING[carrier] ?? "carrier",
+    // The countries the store ships to with it that it covers: prices are entered for these.
+    countries: (saved?.countries ?? []).filter((c) => (CHECKOUT_COUNTRIES[carrier] ?? []).includes(c)),
+  });
   if (!parsed.ok) return { status: "error", messages: parsed.problems };
-  const saved = await saveCheckoutSettings(account.id, store.id, carrier, parsed.settings);
-  if (!saved.ok) return { status: "error", messages: saved.problems };
+  const result = await saveCheckoutSettings(account.id, store.id, carrier, parsed.settings);
+  if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
   return { status: "ok", messages: [parsed.settings.enabled ? "Saved. Shoppers in the chosen countries can now choose these services at checkout." : "Saved. The services are off at checkout."] };
 }
