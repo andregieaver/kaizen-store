@@ -7,6 +7,7 @@ import { db, readDb } from "@/db/client";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
+import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
 import { withPageAlts } from "./media-alts";
 import { pagesTag } from "./pages";
 
@@ -41,6 +42,27 @@ export async function siteLayoutFor(storeId: string | null, type: SiteLayoutType
   if (!row || !content) return null;
   const [layout] = await withPageAlts([{ id: String(row.id), content }]);
   return layout;
+}
+
+/**
+ * The header or footer a store's visitor sees (D148, phase 3): the chosen one, or, while a test of it runs and the address carries
+ * the visitor's other version of it (`ab`, from `resolveShop()`), that version's page. `test` is the running test of it, if any,
+ * with the version drawn (`a` for the original), for the marker that reports the exposure.
+ */
+export async function siteLayoutForVisitor(
+  storeId: string,
+  type: SiteLayoutType,
+  ab: Record<string, string>,
+): Promise<{ layout: SiteLayout | null; test: SiteTest | null; version: string }> {
+  const layout = await siteLayoutFor(storeId, type);
+  if (!layout) return { layout, test: null, version: "a" };
+  const test = (await siteTests(storeId)).find((t) => t.kind === type && t.targetPageId === layout.id) ?? null;
+  const key = test ? ab[test.token] : undefined;
+  if (test && key && key !== "a") {
+    const version = await siteVersionContent(storeId, test.id, key);
+    if (version) return { layout: version, test, version: key };
+  }
+  return { layout, test, version: "a" };
 }
 
 /** Which header and footer a site has chosen (D80), published or not, for the admin. */

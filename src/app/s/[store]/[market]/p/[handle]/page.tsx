@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AbMarker } from "@/components/ab/ab-marker";
 import { pageRoomClass } from "@/components/page-article";
 import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from "@/components/product-parts";
 import { RecommendTracker } from "@/components/recommend-tracker";
@@ -17,7 +18,7 @@ import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
 import { campaignNotices } from "@/server/campaign-notices";
 import { productsPageOf } from "@/server/pages";
-import { productLayoutFor } from "@/server/product-layouts";
+import { productLayoutForVisitor } from "@/server/product-layouts";
 import { getRecommendSettings } from "@/server/recommend-settings";
 import { siteLayoutFor } from "@/server/site-layouts";
 import { listIndexedProducts, storeShareImage, storeShareTags } from "@/server/seo";
@@ -49,9 +50,9 @@ async function load(params: Props["params"]) {
   const { store: storeSlug, market: marketSlug, handle } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return null;
-  const { store, market } = shop;
+  const { store, market, ab } = shop;
   const product = await getProduct(store.id, market, handle);
-  return product ? { store, market, product } : null;
+  return product ? { store, market, product, ab } : null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -105,18 +106,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const loaded = await load(params);
   if (!loaded) notFound();
-  const { store, market, product } = loaded;
+  const { store, market, product, ab } = loaded;
   // The back link returns to the store's All products page (D83), by its title in the market's language.
   const productsPage = await productsPageOf(store);
   const back = productsPage
     ? { href: marketPath(store.slug, market.slug, "/products"), title: localizePage(productsPage.content, market.locale).title }
     : null;
-  const [layout, header, campaigns, recommendations] = await Promise.all([
-    productLayoutFor(store.id, product.id).then((own) => own ?? DEFAULT_PRODUCT_LAYOUT),
+  const [chosen, header, campaigns, recommendations] = await Promise.all([
+    productLayoutForVisitor(store.id, product.id, ab),
     siteLayoutFor(store.id, "header"),
     campaignNotices(store.id, market),
     getRecommendSettings(store.id),
   ]);
+  // The layout the product uses, or the built-in one; the visitor's version of it while it is under an A/B test (D148).
+  const layout = chosen?.content ?? DEFAULT_PRODUCT_LAYOUT;
   const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns };
   // A header over every page (D80) lies over a product page whose layout starts with a background.
   const over = headerOverlays(header?.content.overlay, { front: false, categories: [], tags: [], rows: layout.rows });
@@ -127,6 +130,16 @@ export default async function ProductPage({ params }: Props) {
       {/* The tab remembers this product for the store's recommendations (D139). */}
       {recommendations.enabled && <RecommendTracker productId={product.id} />}
       <ProductLayoutView layout={layout} ctx={ctx} />
+      {chosen?.test && (
+        <AbMarker
+          storeId={store.id}
+          store={store.slug}
+          market={market.slug}
+          experiment={chosen.test.id}
+          variant={chosen.version}
+          goalBlock={chosen.test.goalBlock}
+        />
+      )}
       <Suspense fallback={null}>
         <ProductJsonLdSection store={store} market={market} product={product} />
       </Suspense>

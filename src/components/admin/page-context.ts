@@ -81,6 +81,8 @@ export type PageOwnerContext = {
   theme: { css: string; attributes: Record<string, string> } | null;
   /** Templates shared between stores and the marketplace (D125); null on Kaizen's own pages. */
   templates: TemplateActions | null;
+  /** For a version made for an A/B test (D148): the kind of page it is a version of, so the builder offers what that kind holds; null otherwise. */
+  variantOf: PageType | null;
   /** Where a store's A/B tests are made (D148), for the builder's "A/B test this"; null for Kaizen's pages and for anything but a store's page. */
   experimentsHref: string | null;
   actions: {

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { DraftPanel, RunPanel } from "@/components/admin/experiment-controls";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
+import { targetLabel } from "@/lib/ab-site";
 import { GOAL_WORDS, STATUS_WORDS } from "@/lib/experiments";
 import { requireMember } from "@/server/auth";
 import { getExperiment } from "@/server/experiment-admin";
@@ -33,7 +34,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
         </Link>
         <h1 className="text-2xl font-semibold">{test.name}</h1>
         <p className="text-sm text-muted">
-          {STATUS_WORDS[test.status]} · /{test.page.slug}
+          {STATUS_WORDS[test.status]} · {targetLabel(test.page.kind, test.page.slug, test.page.title)}
           {test.part && ` · testing ${test.part.label}`} · {goal.label}
           {test.startedAt && ` · started ${date.format(new Date(test.startedAt))}`}
           {test.stoppedAt && ` · stopped ${date.format(new Date(test.stoppedAt))}`}

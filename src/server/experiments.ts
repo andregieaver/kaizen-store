@@ -5,7 +5,9 @@ import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 
 import { db, readDb } from "@/db/client";
+import { targetKindOf, testToken, type TargetKind } from "@/lib/ab-site";
 import { decodeConsent, consentCookieName } from "@/lib/cookie-consent";
+import { parsePageContent, type PageContent } from "@/lib/page-content";
 import {
   dataCookieName,
   decodeAssignments,
@@ -17,6 +19,8 @@ import {
   type Device,
   type Goal,
 } from "@/lib/experiments";
+
+import { withPageAlts } from "./media-alts";
 
 type Row = Record<string, unknown>;
 
@@ -36,6 +40,8 @@ export type RunningVariant = { key: string; share: number; pageId: string | null
 export type RunningExperiment = {
   id: string;
   storeId: string;
+  /** What is tested: a page, the product layout, the header or the footer (D148, phase 3). */
+  kind: TargetKind;
   targetPageId: string;
   /** The address of the page under test, as it is now. */
   slug: string;
@@ -73,7 +79,7 @@ export function forgetRunning(storeId: string): void {
 export function runningExperiments(storeId: string): Promise<RunningExperiment[]> {
   return remembered(`running:${storeId}`, MEMO_MS, async () => {
     const rows = await db().execute<Row>(sql`
-      select e.id, e.target_page_id, p.slug, e.traffic_share::float8 as traffic_share, e.audience, e.primary_goal, e.goal_params,
+      select e.id, e.target_page_id, p.slug, p.type as target_type, e.traffic_share::float8 as traffic_share, e.audience, e.primary_goal, e.goal_params,
         (select jsonb_agg(jsonb_build_object('key', v.key, 'share', v.share::float8, 'pageId', v.page_id) order by v.key)
          from commerce.experiment_variants v where v.experiment_id = e.id) as variants
       from commerce.experiments e
@@ -84,6 +90,7 @@ export function runningExperiments(storeId: string): Promise<RunningExperiment[]
       (r): RunningExperiment => ({
         id: String(r.id),
         storeId,
+        kind: targetKindOf(String(r.target_type)) ?? "page",
         targetPageId: String(r.target_page_id),
         slug: String(r.slug),
         trafficShare: Number(r.traffic_share),
@@ -143,6 +150,70 @@ export async function storeHasExperiments(storeId: string): Promise<boolean> {
   cacheTag(experimentsTag(storeId));
   const [row] = await readDb().execute<Row>(sql`select 1 as one from commerce.experiments where store_id = ${storeId}::uuid and status = 'running' limit 1`);
   return Boolean(row);
+}
+
+/** A running test of something every page shows (the header, the footer, or the product layout), as the pages that draw it need it. */
+export type SiteTest = {
+  id: string;
+  /** The test's short name in an address (`testToken()`). */
+  token: string;
+  kind: Exclude<TargetKind, "page">;
+  targetPageId: string;
+  goalBlock: string | null;
+  /** The version pages, by letter. */
+  versions: { key: string; pageId: string }[];
+};
+
+/** The store's running tests of its header, footer or product layout. Cached with the tests: a store without one draws its pages as it always did. */
+export async function siteTests(storeId: string): Promise<SiteTest[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(experimentsTag(storeId));
+  const rows = await readDb().execute<Row>(sql`
+    select e.id, e.target_page_id, p.type as target_type, e.goal_params,
+      (select jsonb_agg(jsonb_build_object('key', v.key, 'pageId', v.page_id) order by v.key) from commerce.experiment_variants v where v.experiment_id = e.id and v.page_id is not null) as versions
+    from commerce.experiments e join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
+    where e.store_id = ${storeId}::uuid and e.status = 'running' and p.type in ('header', 'footer', 'product_layout')
+    order by e.id
+  `);
+  return rows.flatMap((r): SiteTest[] => {
+    const kind = targetKindOf(String(r.target_type));
+    if (!kind || kind === "page") return [];
+    return [
+      {
+        id: String(r.id),
+        token: testToken(String(r.id)),
+        kind,
+        targetPageId: String(r.target_page_id),
+        goalBlock: typeof (r.goal_params as { block?: unknown })?.block === "string" ? String((r.goal_params as { block: string }).block) : null,
+        versions: ((r.versions ?? []) as { key: string; pageId: string }[]).map((v) => ({ key: v.key, pageId: v.pageId })),
+      },
+    ];
+  });
+}
+
+/**
+ * The content of a version of the header, footer or product layout under test, as last published, with the original's
+ * header overlay (the pages decide how to lie under a header from the original's, so a version keeps its look). Null while
+ * the version is not published. Cached with the pages and the tests.
+ */
+export async function siteVersionContent(storeId: string, testId: string, key: string): Promise<{ id: string; content: PageContent } | null> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(experimentsTag(storeId), `pages:${storeId}`);
+  const [row] = await readDb().execute<Row>(sql`
+    select v.page_id, vp.published as version, tp.published as original
+    from commerce.experiment_variants v
+    join commerce.experiments e on e.id = v.experiment_id and e.store_id = v.store_id
+    join commerce.pages vp on vp.id = v.page_id and vp.store_id = v.store_id and vp.type = 'variant' and vp.published_at is not null
+    join commerce.pages tp on tp.id = e.target_page_id and tp.store_id = e.store_id
+    where v.store_id = ${storeId}::uuid and v.experiment_id = ${testId}::uuid and v.key = ${key} and e.status = 'running'
+  `);
+  const content = row ? parsePageContent(row.version) : null;
+  if (!row || !content) return null;
+  const original = parsePageContent(row.original);
+  const [layout] = await withPageAlts([{ id: String(row.page_id), content: original?.overlay ? { ...content, overlay: original.overlay } : { ...content, overlay: undefined } }]);
+  return layout;
 }
 
 /** The ids of a store's running tests, for the browser to know when it lacks an answer. Cached with the tests. */

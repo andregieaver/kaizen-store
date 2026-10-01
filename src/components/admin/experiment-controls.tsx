@@ -20,6 +20,7 @@ import {
 import { DEVICES, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
 
+import { PAGE_TYPE_COPY } from "./page-type-copy";
 import { RuntimeEstimate } from "./runtime-estimate";
 
 type Outcome = { ok: true } | { ok: false; problems: string[] };
@@ -139,7 +140,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
                   </>
                 )}
                 {v.key === "a" && (
-                  <Link href={`/admin/${store}/pages/${test.page.id}/preview`} className="underline">
+                  <Link href={`/admin/${store}/${PAGE_TYPE_COPY[test.page.type].segment}/${test.page.id}/preview`} className="underline">
                     Preview
                   </Link>
                 )}

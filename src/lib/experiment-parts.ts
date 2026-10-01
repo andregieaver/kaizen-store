@@ -1,3 +1,4 @@
+import type { TargetKind } from "./ab-site";
 import { blockText, type PageBlock, type PageColumn, type PageContent, type PageRow, type PageTranslation } from "./page-content";
 
 /**
@@ -153,11 +154,17 @@ export function applyPart(current: PageContent, version: PageContent, target: Pa
   return { ...current, rows, ...(locales.size > 0 && { translations }) };
 }
 
-/** Whether a part can be tested: a row, column or block with something to see (a shop page's working components are not). */
-export function testablePart(content: Pick<PageContent, "rows">, target: PartTarget): boolean {
+/**
+ * Whether a part can be tested: a row, column or block with something to see. A shop page's working components never are; a
+ * header's or footer's site components and a product layout's product components are, in their own kind of page.
+ */
+export function testablePart(content: Pick<PageContent, "rows">, target: PartTarget, kind: TargetKind = "page"): boolean {
   const found = findPart(content.rows, target.id);
   if (!found || found.kind !== target.kind) return false;
   const blocks = blocksWithin(found.kind, found.node);
-  return blocks.length > 0 && !blocks.some((b) => b.type === "storePart" || b.type === "site" || b.type === "product");
+  return (
+    blocks.length > 0 &&
+    !blocks.some((b) => b.type === "storePart" || (b.type === "site" && kind !== "header" && kind !== "footer") || (b.type === "product" && kind !== "layout"))
+  );
 }
 

@@ -427,6 +427,45 @@ describe("A/B tests of pages (D148)", () => {
     await expect(set(bad.experiment, `status = 'scheduled', scheduled_start = ${later}`)).rejects.toThrow(/experiments\.variants/);
   });
 
+  it("tests the header, the footer or a product layout where they are used, and keeps the header from being swapped under a test", async () => {
+    const t = await made();
+    const target = async (type: string) => {
+      const name = type.replace("_", "-");
+      const page = await t.page(`${name}-1`, type);
+      const experiment = (await one<{ id: string }>("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'orders') returning id", [t.store, page])).id;
+      const b = await t.page(`ab-${name}-b`, "variant");
+      await db.query("insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share) values ($1, $2, 'a', 'A', null, 0.5), ($1, $2, 'b', 'B', $3, 0.5)", [t.store, experiment, b]);
+      return { page, experiment };
+    };
+    // A page, a product layout, a header and a footer can be targets; an article cannot.
+    const article = await t.page("nytt", "article");
+    await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'orders')", [t.store, article])).rejects.toThrow(/experiments\.target/);
+
+    const header = await target("header");
+    await expect(start(header.experiment)).rejects.toThrow(/only the header the store uses/);
+    await db.query("update commerce.stores set header_id = $2 where id = $1", [t.store, header.page]);
+    await start(header.experiment);
+    // While it runs the store keeps that header, and the test cannot be started on another as the footer.
+    const other = await t.page("header-2", "header");
+    await expect(db.query("update commerce.stores set header_id = $2 where id = $1", [t.store, other])).rejects.toThrow(/stores\.experiment/);
+    await expect(db.query("update commerce.stores set header_id = null where id = $1", [t.store])).rejects.toThrow(/stores\.experiment/);
+    await set(header.experiment, "status = 'stopped'");
+    await db.query("update commerce.stores set header_id = $2 where id = $1", [t.store, other]);
+
+    const footer = await target("footer");
+    await expect(start(footer.experiment)).rejects.toThrow(/only the footer the store uses/);
+    await db.query("update commerce.stores set footer_id = $2 where id = $1", [t.store, footer.page]);
+    await start(footer.experiment);
+
+    const layout = await target("product_layout");
+    await expect(start(layout.experiment)).rejects.toThrow(/no product uses this layout/);
+    await db.query("update commerce.stores set product_layout_id = $2 where id = $1", [t.store, layout.page]);
+    await start(layout.experiment);
+    // Three tests at once on one store: each has its own target.
+    const running = await one<{ n: number }>("select count(*)::int as n from commerce.experiments where store_id = $1 and status = 'running'", [t.store]);
+    expect(running.n).toBe(2);
+  });
+
   it("tests a part of a page: its id and kind go together, and they are locked with the test", async () => {
     const t = await ready();
     await expect(set(t.experiment, "target_part = 'row-1'")).rejects.toThrow(/experiments_part/);

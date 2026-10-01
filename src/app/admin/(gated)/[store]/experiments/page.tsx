@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { targetLabel } from "@/lib/ab-site";
 import { GOAL_WORDS, STATUS_WORDS, type ExperimentStatus } from "@/lib/experiments";
 import { requireMember } from "@/server/auth";
 import { listExperiments } from "@/server/experiment-admin";
@@ -30,8 +31,8 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
         <div>
           <h1 className="text-2xl font-semibold">A/B tests</h1>
           <p className="max-w-2xl text-sm text-muted">
-            Try two versions of a page on real visitors and keep the one that works better. Half of the visitors see your page as it is, the other half a
-            version you change; Kaizen counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have
+            Try two versions of a page, a row or component of it, your header or footer, or a product layout on real visitors and keep the one that works better.
+            Half of the visitors see it as it is, the other half a version you change; Kaizen counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have
             accepted statistics cookies take part; everyone else sees the page as it is.
           </p>
         </div>
@@ -68,7 +69,7 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
                       {t.variants.length} versions
                     </span>
                   </td>
-                  <td className="hidden px-4 py-2 sm:table-cell">/{t.page.slug}</td>
+                  <td className="hidden px-4 py-2 sm:table-cell">{targetLabel(t.page.kind, t.page.slug, t.page.title)}</td>
                   <td className="hidden px-4 py-2 md:table-cell">{GOAL_WORDS[t.goal].label}</td>
                   <td className="hidden px-4 py-2 md:table-cell">
                     {t.startedAt ? date.format(new Date(t.startedAt)) : t.scheduledStart ? `Starts ${date.format(new Date(t.scheduledStart))}` : "—"}

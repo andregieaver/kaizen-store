@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { BuyerQuestion } from "@/components/buyer";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { AbMarker } from "@/components/ab/ab-marker";
 import { StoreExperiments } from "@/components/ab/store-experiments";
 import { StoreAffiliate } from "@/components/store-affiliate";
 import { StoreChat } from "@/components/site-chat";
@@ -24,7 +25,7 @@ import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
-import { siteLayoutFor } from "@/server/site-layouts";
+import { siteLayoutForVisitor } from "@/server/site-layouts";
 import { uiTextsFor } from "@/server/ui-text";
 
 import "../../../globals.css";
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return {};
-  const { store, market } = shop;
+  const { store, market, ab } = shop;
   const title = store.seo.title[market.locale] || store.name;
   const description =
     store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
@@ -51,7 +52,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: { default: title, template: `%s · ${store.name}` },
     description,
     // A store is not for search engines until its owner opens it, or while they hide it.
-    ...(!(store.setupCompletedAt || store.isTemplate) || store.seo.hidden ? { robots: { index: false } } : {}),
+    // A version of the header, footer or product layout under an A/B test (D148) is never a page of its own for search engines.
+    ...(!(store.setupCompletedAt || store.isTemplate) || store.seo.hidden || Object.keys(ab).length > 0 ? { robots: { index: false } } : {}),
     alternates: {
       canonical,
       languages: {
@@ -84,10 +86,12 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) notFound();
-  const { store, market } = shop;
+  const { store, market, ab } = shop;
   const m = t(market.lang);
-  // The store's own header and footer built in the page builder (D80), else the standard ones.
-  const [headerLayout, footerLayout] = await Promise.all([siteLayoutFor(store.id, "header"), siteLayoutFor(store.id, "footer")]);
+  // The store's own header and footer built in the page builder (D80), else the standard ones; the visitor's version of them while one is under an A/B test (D148).
+  const [header, footer] = await Promise.all([siteLayoutForVisitor(store.id, "header", ab), siteLayoutForVisitor(store.id, "footer", ab)]);
+  const headerLayout = header.layout;
+  const footerLayout = footer.layout;
   const uiTexts = uiTextsFor(market.lang);
   const notice =
     [
@@ -167,6 +171,21 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         <Suspense fallback={null}>
           <StoreAffiliate store={store} base={marketPath(store.slug, market.slug)} />
         </Suspense>
+        {/* A test of the header or the footer (D148): which version this page has, for the exposure. */}
+        {[header, footer].map(
+          (drawn, index) =>
+            drawn.test && (
+              <AbMarker
+                key={index}
+                storeId={store.id}
+                store={store.slug}
+                market={market.slug}
+                experiment={drawn.test.id}
+                variant={drawn.version}
+                goalBlock={drawn.test.goalBlock}
+              />
+            ),
+        )}
         {/* A/B tests of the store's pages (D148): a visitor's versions, once they have accepted statistics cookies. */}
         <Suspense fallback={null}>
           <StoreExperiments storeId={store.id} store={store.slug} market={market.slug} />

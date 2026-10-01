@@ -59,6 +59,18 @@ describe("finding and naming a part", () => {
     const rows = insertBlock(insertRow(p.content.rows, shop, 2), shop.columns[0].id, newBlock("storePart", id), 0);
     expect(testablePart({ rows }, { kind: "row", id: shop.id })).toBe(false);
     expect(testablePart({ rows: insertRow([], newRow("1", id), 0) }, { kind: "row", id: "x" })).toBe(false);
+    // A header's site components and a product layout's product components can be tested in their own kind of page only.
+    const chrome = newRow("1", id);
+    const site = insertBlock(insertRow([], chrome, 0), chrome.columns[0].id, newBlock("site", id, "logo"), 0);
+    expect(testablePart({ rows: site }, { kind: "row", id: chrome.id })).toBe(false);
+    expect(testablePart({ rows: site }, { kind: "row", id: chrome.id }, "header")).toBe(true);
+    expect(testablePart({ rows: site }, { kind: "row", id: chrome.id }, "footer")).toBe(true);
+    expect(testablePart({ rows: site }, { kind: "row", id: chrome.id }, "layout")).toBe(false);
+    const buy = newRow("1", id);
+    const product = insertBlock(insertRow([], buy, 0), buy.columns[0].id, newBlock("product", id, "title"), 0);
+    expect(testablePart({ rows: product }, { kind: "row", id: buy.id })).toBe(false);
+    expect(testablePart({ rows: product }, { kind: "row", id: buy.id }, "layout")).toBe(true);
+    expect(testablePart({ rows: product }, { kind: "row", id: buy.id }, "header")).toBe(false);
     const empty = newRow("1", id);
     expect(testablePart({ rows: [empty] }, { kind: "row", id: empty.id })).toBe(false);
   });

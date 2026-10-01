@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ExperimentForm } from "@/components/admin/experiment-form";
 import { requireMember } from "@/server/auth";
 import { describePart, testablePart, type PartKind } from "@/lib/experiment-parts";
-import { buttonsOf, testablePages } from "@/server/experiment-admin";
-import { findPublishedPage } from "@/server/pages";
+import { buttonsOf, publishedContentOf, testablePages } from "@/server/experiment-admin";
 
 import { createExperimentAction } from "../actions";
 
@@ -21,16 +20,12 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
   if (asked("page")) pages = pages.filter((p) => p.id === asked("page"));
   // The buttons of each page, for a test that counts clicks.
   const withButtons = await Promise.all(
-    pages.map(async (p) => {
-      const found = await findPublishedPage(store.id, p.slug);
-      return { ...p, buttons: buttonsOf(found && "page" in found ? found.page.content : null) };
-    }),
+    pages.map(async (p) => ({ ...p, buttons: buttonsOf(await publishedContentOf(store.id, p.id)) })),
   );
   let part = null;
   if (partTarget && withButtons[0]) {
-    const found = await findPublishedPage(store.id, withButtons[0].slug);
-    const content = found && "page" in found ? found.page.content : null;
-    part = content && testablePart(content, partTarget) ? describePart(content, partTarget) : null;
+    const content = await publishedContentOf(store.id, withButtons[0].id);
+    part = content && testablePart(content, partTarget, withButtons[0].kind) ? describePart(content, partTarget) : null;
   }
   const seen = new Set<string>();
   const markets = store.markets.flatMap((m) => (seen.has(m.code) ? [] : (seen.add(m.code), [{ code: m.code.toLowerCase(), name: m.name }])));

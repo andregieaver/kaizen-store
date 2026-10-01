@@ -1,5 +1,6 @@
 import "server-only";
 
+import { splitSiteVersions } from "@/lib/ab-site";
 import { conversionFor } from "@/lib/localization";
 import { findMarket, type Market } from "@/lib/markets";
 
@@ -23,12 +24,16 @@ export function marketIn(store: Store, ref: string | null | undefined): Market |
 /**
  * An open store and one of its active markets, from URL params, or null. The
  * market is the country shown in the language and currency its address
- * names (D109): `no`, `no-en`, `no-eur`, `no-en-eur`.
+ * names (D109): `no`, `no-en`, `no-eur`, `no-en-eur`; `ab` is the versions of site-wide A/B tests the address carries
+ * (test token → version), empty for everyone but a visitor in another version of such a test.
  */
 export async function resolveShop(
   storeSlug: string,
-  marketSlug: string,
-): Promise<{ store: Store; market: Market } | null> {
+  marketParam: string,
+): Promise<{ store: Store; market: Market; ab: Record<string, string> } | null> {
+  // A visitor in another version of a test of the header, footer or product layout (D148) is served the market's pages under
+  // an address with the versions after it: they are taken off here, so the market, and every link made from it, is the real one.
+  const { market: marketSlug, versions: ab } = splitSiteVersions(marketParam);
   const store = await getOpenStore(storeSlug);
   const market = store
     ? findMarket(store.markets, marketSlug, {
@@ -36,7 +41,7 @@ export async function resolveShop(
         conversion: (native, currency) => conversionFor(store.localization, native, currency),
       })
     : null;
-  return store && market ? { store, market } : null;
+  return store && market ? { store, market, ab } : null;
 }
 
 /**

@@ -47,7 +47,7 @@ export const storePagesBase = (store: Pick<Store, "slug">, type: PageType = "pag
  * Kaizen's, with the store's actions (bound to it), its first market for
  * addresses and previews, and its own reserved addresses.
  */
-export async function storePageContext(store: Store, type: PageType = "page", author = ""): Promise<PageOwnerContext> {
+export async function storePageContext(store: Store, type: PageType = "page", author = "", variantOf: PageType | null = null): Promise<PageOwnerContext> {
   const market = store.markets[0];
   const menus = await storeMenuPreviews(store, market?.locale ?? "nb-NO", market?.lang ?? "nb");
   const fieldGroups = await allActiveFieldGroups(store.id);
@@ -81,7 +81,9 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     plans: null,
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
     // Templates shared between stores and the marketplace (D125), bound to the store.
-    experimentsHref: type === "page" ? `/admin/${store.slug}/experiments/new` : null,
+    variantOf,
+    // Tests of a page, a product layout, a header or a footer, and of their parts (D148).
+    experimentsHref: type === "page" || type === "product_layout" || type === "header" || type === "footer" ? `/admin/${store.slug}/experiments/new` : null,
     templates: {
       list: bind(templatesListAction),
       setActive: bind(setTemplateActiveAction),

@@ -136,6 +136,8 @@ export function PageEditor({
   const layout = LAYOUT_TYPES.includes(context.type);
   // A version made for an A/B test (D148) is made and removed with its test, never duplicated, unpublished or deleted on its own.
   const isVersion = context.type === "variant";
+  // What a version stands in for (D148): a page, a product layout, a header or a footer, which decides what the builder offers for it.
+  const shape: PageType = context.variantOf ?? context.type;
   // The owner's saved parts, and its globals (D98) as this editor knows them: what the page's uses are compared with.
   const [parts, setParts] = useState<SavedPart[]>(savedParts);
   const known = useRef<Map<string, GlobalPart>>(globalsOf(savedParts));
@@ -381,11 +383,11 @@ export function PageEditor({
         motionRequest={motionRequest}
         pageCss={content.css ?? ""}
         onPageCss={(css) => changeCss(css ?? "")}
-        productParts={context.type === "product_layout"}
+        productParts={shape === "product_layout"}
         fieldGroups={context.fields?.groups ?? null}
         onTestPart={context.experimentsHref && saved?.published ? testPart : undefined}
-        shopParts={context.type === "page" && context.owner !== null}
-        siteParts={context.type === "header" || context.type === "footer" ? sitePartsFor(context.owner) : null}
+        shopParts={shape === "page" && context.owner !== null}
+        siteParts={shape === "header" || shape === "footer" ? sitePartsFor(context.owner) : null}
         upload={upload}
         startVideo={context.startVideo}
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
@@ -454,7 +456,7 @@ export function PageEditor({
                   {context.type === "product_layout"
                     ? "Only for you: shoppers see the product it is used for."
                     : context.type === "variant"
-                      ? "A version of a page for an A/B test: visitors in the test see it at the page's own address. Publish your changes to put them in the test, before it starts."
+                      ? `A version of ${shape === "product_layout" ? "a product layout" : shape === "header" || shape === "footer" ? `the ${shape}` : "a page"} for an A/B test: visitors in the test see it where they would have seen the original. Publish your changes to put them in the test, before it starts.`
                       : `Only for you: once chosen, visitors see the ${context.type} on every page.`}
                 </p>
               ) : translating ? (

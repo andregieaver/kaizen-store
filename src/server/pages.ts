@@ -186,14 +186,16 @@ export async function savePage(
   owner: PageOwner,
   id: string | null,
   input: unknown,
-  { publish, type = "page" }: { publish: boolean; type?: PageType },
+  { publish, type = "page", variantOf = null }: { publish: boolean; type?: PageType; /** For a version made for an A/B test (D148): the kind of page it is a version of, which decides what it may hold. */ variantOf?: PageType | null },
 ): Promise<PageResult> {
+  // What a page is shaped like: its own type, or the one a version of it stands in for.
+  const shape: PageType = type === "variant" ? (variantOf ?? "page") : type;
   const edits = globalEditsOf(input);
   const parsed = pageInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const slugProblem = pageSlugProblem(parsed.data.slug, reservedPageSlugs(owner, type));
   if (slugProblem) return { ok: false, problems: [slugProblem] };
-  const ruleProblem = pageRulesProblem(owner, type, parsed.data);
+  const ruleProblem = pageRulesProblem(owner, type, parsed.data, variantOf);
   if (ruleProblem) return { ok: false, problems: [ruleProblem] };
   // Blocks' own fonts (D59) come from Google Fonts and must be on Kaizen before the page shows them.
   const families = pageFonts(parsed.data);
@@ -212,7 +214,7 @@ export async function savePage(
     categories: await scopedTermIds(scope, "category", parsed.data.categories),
     tags: await scopedTermIds(scope, "tag", parsed.data.tags),
     // A header's place over the page (D80), with only the owner's page categories and tags.
-    ...(type === "header" && parsed.data.overlay
+    ...(shape === "header" && parsed.data.overlay
       ? {
           overlay: {
             ...parsed.data.overlay,
@@ -253,7 +255,7 @@ export async function savePage(
       content = refreshUses(content, spread.globals, (globalId) => !spread.globals.has(globalId));
       const again = pageInput.safeParse(content);
       const problem = again.success
-        ? pageRulesProblem(owner, type, again.data)
+        ? pageRulesProblem(owner, type, again.data, variantOf)
         : [...new Set(again.error.issues.map((i) => i.message))].join(" ");
       if (problem) throw new GlobalsRefused([problem]);
       const json = JSON.stringify(content);

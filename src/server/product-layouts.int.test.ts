@@ -45,7 +45,7 @@ const id = async (table: "products" | "terms", slug: string) => {
 /** The heading of the layout a product's page uses, or null for the built-in one. */
 const usedFor = async (handle: string) => {
   const layout = await layouts.productLayoutFor(storeId, await id("products", handle));
-  const block = layout?.rows[0]?.columns[0]?.blocks[0];
+  const block = layout?.content.rows[0]?.columns[0]?.blocks[0];
   return block?.type === "product" ? (block.heading ?? null) : layout ? "?" : null;
 };
 

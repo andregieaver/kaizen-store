@@ -553,3 +553,110 @@ describe("a test that starts at a time (D148, phase 2)", () => {
     await admin.deleteDraft(account, storeId, made.id);
   });
 });
+
+const layoutsMod = await import("./site-layouts");
+const productLayouts = await import("./product-layouts");
+const abSite = await import("@/lib/ab-site");
+
+/** A published page of this type in the store, with the about page's content under a heading of its own, used as the header, footer or product layout. */
+async function chromePage(type: "header" | "footer" | "product_layout", heading: string): Promise<string> {
+  const content = await publishedOf(aboutId);
+  const text = JSON.stringify({ ...content, title: `Test ${type}`, slug: `ab-${type.replace("_", "-")}-${run}`, rows: withBlock(content, "heading-about", (b) => ({ ...b, text: heading })).rows });
+  const [row] = await db().execute<Row>(sql`
+    insert into commerce.pages (store_id, slug, type, draft, published, published_at) values (${storeId}::uuid, ${`ab-${type.replace("_", "-")}-${run}`}, ${type}, ${text}::jsonb, ${text}::jsonb, now()) returning id
+  `);
+  return String(row.id);
+}
+
+describe("tests of the header, the footer and the product layout (D148, phase 3)", () => {
+  it("lists them as things to test only where they are used, and makes a test whose version stands in for the header", async () => {
+    const header = await chromePage("header", "Header A");
+    const footer = await chromePage("footer", "Footer A");
+    const before = (await admin.testablePages(storeId)).filter((t) => t.kind !== "page");
+    expect(before.some((t) => t.id === header || t.id === footer)).toBe(false);
+    await db().execute(sql`update commerce.stores set header_id = ${header}::uuid, footer_id = ${footer}::uuid where id = ${storeId}::uuid`);
+    const after = await admin.testablePages(storeId);
+    expect(after.find((t) => t.id === header)).toMatchObject({ kind: "header" });
+    expect(after.find((t) => t.id === footer)).toMatchObject({ kind: "footer" });
+
+    const made = await admin.createExperiment(account, storeId, { name: "Header", pageId: header, goal: "cart" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const test = (await admin.getExperiment(storeId, made.id))!;
+    expect(test.page).toMatchObject({ type: "header", kind: "header" });
+    expect(await admin.testOfVersionPage(storeId, test.variants[1].pageId!)).toMatchObject({ targetType: "header", key: "b" });
+    // The version is a copy to change; unchanged, it cannot start.
+    expect(await admin.startExperiment(account, storeId, made.id)).toMatchObject({ ok: false });
+    await editVersion(made.id, "b", (c) => withBlock(c, "heading-about", (b) => ({ ...b, text: "Header B" })));
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+
+    // The running test is read by the pages that draw the header, and its version stands in for the header for a visitor in it.
+    const token = abSite.testToken(made.id);
+    const [site] = await engine.siteTests(storeId);
+    expect(site).toMatchObject({ id: made.id, token, kind: "header", targetPageId: header });
+    const headingOf = (layout: { content: PageContent } | null) => JSON.stringify(layout?.content.rows ?? []);
+    const original = await layoutsMod.siteLayoutForVisitor(storeId, "header", {});
+    expect(original).toMatchObject({ version: "a", test: { id: made.id } });
+    expect(headingOf(original.layout)).toContain("Header A");
+    const mine = await layoutsMod.siteLayoutForVisitor(storeId, "header", { [token]: "b" });
+    expect(mine.version).toBe("b");
+    expect(headingOf(mine.layout)).toContain("Header B");
+    expect(mine.layout?.id).not.toBe(header);
+    // A version that does not exist, or the original, shows the original; the footer is not the test's.
+    expect((await layoutsMod.siteLayoutForVisitor(storeId, "header", { [token]: "d" })).version).toBe("a");
+    expect((await layoutsMod.siteLayoutForVisitor(storeId, "header", { [token]: "a" })).version).toBe("a");
+    const foot = await layoutsMod.siteLayoutForVisitor(storeId, "footer", { [token]: "b" });
+    expect(foot).toMatchObject({ test: null, version: "a" });
+    expect(headingOf(foot.layout)).toContain("Footer A");
+
+    // The proxy sees it as a test of every page.
+    const [running] = (await engine.runningExperiments(storeId)).filter((t) => t.id === made.id);
+    expect(running.kind).toBe("header");
+
+    // After it stops the header is the header again, and a winner becomes it, keeping its place.
+    expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    expect(await engine.siteTests(storeId)).toEqual([]);
+    expect(headingOf((await layoutsMod.siteLayoutForVisitor(storeId, "header", { [token]: "b" })).layout)).toContain("Header A");
+    expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
+    expect(headingOf(await layoutsMod.siteLayoutFor(storeId, "header"))).toContain("Header B");
+    expect((await layoutsMod.siteLayoutChoice(storeId)).header).toBe(header);
+    await db().execute(sql`update commerce.stores set header_id = null, footer_id = null where id = ${storeId}::uuid`);
+  });
+
+  it("serves the product layout's version to a visitor in it, on the products that use the layout", async () => {
+    const layout = await chromePage("product_layout", "Layout A");
+    const [product] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid and status = 'active' limit 1`);
+    const productId = String(product.id);
+    expect((await admin.testablePages(storeId)).some((t) => t.id === layout)).toBe(false);
+    await db().execute(sql`update commerce.products set product_layout_id = ${layout}::uuid where id = ${productId}::uuid`);
+    expect((await admin.testablePages(storeId)).find((t) => t.id === layout)).toMatchObject({ kind: "layout" });
+
+    const made = await admin.createExperiment(account, storeId, { name: "Layout", pageId: layout, goal: "orders" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await editVersion(made.id, "b", (c) => withBlock(c, "heading-about", (b) => ({ ...b, text: "Layout B" })));
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    const token = abSite.testToken(made.id);
+    const text = (drawn: { content: PageContent } | null) => JSON.stringify(drawn?.content.rows ?? []);
+
+    const own = await productLayouts.productLayoutForVisitor(storeId, productId, {});
+    expect(own).toMatchObject({ version: "a", test: { id: made.id } });
+    expect(text(own)).toContain("Layout A");
+    const mine = await productLayouts.productLayoutForVisitor(storeId, productId, { [token]: "b" });
+    expect(mine?.version).toBe("b");
+    expect(text(mine)).toContain("Layout B");
+    // A product on another layout, or on the built-in one, is not part of the test.
+    const [other] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid and id <> ${productId}::uuid limit 1`);
+    const elsewhere = await productLayouts.productLayoutForVisitor(storeId, String(other.id), { [token]: "b" });
+    expect(elsewhere?.test ?? null).toBeNull();
+
+    // A visitor's exposure to a test of a layout or header counts like any other, from the cookie's own answer.
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" });
+    const r = await results.experimentResults(store, (await admin.getExperiment(storeId, made.id))!);
+    expect(r.figures.find((f) => f.key === "b")).toMatchObject({ visitors: 1 });
+
+    await admin.stopExperiment(account, storeId, made.id);
+    await db().execute(sql`update commerce.products set product_layout_id = null where id = ${productId}::uuid`);
+  });
+});

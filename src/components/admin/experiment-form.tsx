@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { DEVICES, GOALS, GOAL_WORDS, type Device, type Goal } from "@/lib/experiments";
+import { KIND_WORDS, type TargetKind } from "@/lib/ab-site";
 import type { PartInfo } from "@/lib/experiment-parts";
 
 import { RuntimeEstimate } from "./runtime-estimate";
@@ -13,7 +14,7 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
 const hint = "text-xs font-normal text-muted";
 
-export type TestablePage = { id: string; slug: string; title: string; buttons: { id: string; label: string }[] };
+export type TestablePage = { id: string; slug: string; title: string; kind: TargetKind; buttons: { id: string; label: string }[] };
 type Outcome = { ok: true; id: string } | { ok: false; problems: string[] };
 
 const SHARES = [
@@ -96,10 +97,12 @@ export function ExperimentForm({
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-6" aria-busy={pending}>
       <section className={card} aria-labelledby="ab-page">
-        <h2 id="ab-page" className="text-lg font-semibold">{part ? "1. What you are testing" : "1. Which page?"}</h2>
+        <h2 id="ab-page" className="text-lg font-semibold">{part ? "1. What you are testing" : "1. What do you want to test?"}</h2>
         {part ? (
           <p className="text-sm">
-            <span className="font-medium">{part.label}</span> on the page <span className="font-medium">{page?.title}</span> (/{page?.slug}).
+            <span className="font-medium">{part.label}</span> in {page && page.kind !== "page" ? `the ${KIND_WORDS[page.kind].name.toLowerCase()} ` : "the page "}
+            <span className="font-medium">{page?.title}</span>
+            {page?.kind === "page" && ` (/${page.slug})`}.
             <span className={`${hint} block`}>
               A copy of the page is made as your first new version. You change this part in it; the rest of the page must stay as it is, so the test is
               about this part only. The page itself stays as it is until you choose a winner.
@@ -107,15 +110,18 @@ export function ExperimentForm({
           </p>
         ) : (
         <label className={label}>
-          Page to test
+          What to test
           <select value={pageId} onChange={(e) => setPageId(e.target.value)} className={input}>
             {pages.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.title} (/{p.slug})
+                {p.kind === "page" ? `${p.title} (/${p.slug})` : `${KIND_WORDS[p.kind].name}: ${p.title}`}
               </option>
             ))}
           </select>
-          <span className={hint}>A copy of the page is made as your first new version, for you to change. The page itself stays as it is until you choose a winner.</span>
+          <span className={hint}>
+            A copy is made as your first new version, for you to change. The original stays as it is until you choose a winner.
+            {page && page.kind !== "page" && ` Visitors in the test see their version ${KIND_WORDS[page.kind].where}.`}
+          </span>
         </label>
         )}
       </section>

@@ -8,6 +8,7 @@ import { parsePageContent, type PageContent } from "@/lib/page-content";
 
 import { audit, type Account } from "./auth";
 import { CATALOG_TAG, catalogTag } from "./catalog";
+import { siteTests, siteVersionContent, type SiteTest } from "./experiments";
 import { withPageAlts } from "./media-alts";
 import { pagesTag } from "./pages";
 import { termsTag } from "./taxonomy";
@@ -22,7 +23,7 @@ type Row = Record<string, unknown>;
  * Only published layouts count, as they were last published; null leaves
  * the built-in layout.
  */
-export async function productLayoutFor(storeId: string, productId: string): Promise<PageContent | null> {
+export async function productLayoutFor(storeId: string, productId: string): Promise<{ id: string; content: PageContent } | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId), pagesTag(storeId), termsTag({ storeId, contentType: "product" }));
@@ -41,7 +42,7 @@ export async function productLayoutFor(storeId: string, productId: string): Prom
       select id from commerce.pages
       where store_id = ${storeId}::uuid and type = 'product_layout' and published_at is not null
     )
-    select p.published
+    select p.id, p.published
     from commerce.pages p
     where p.id = coalesce(
       (select product_layout_id from commerce.products
@@ -57,7 +58,28 @@ export async function productLayoutFor(storeId: string, productId: string): Prom
   const content = row ? parsePageContent(row.published) : null;
   if (!content) return null;
   const [layout] = await withPageAlts([{ content }]);
-  return layout.content;
+  return { id: String(row.id), content: layout.content };
+}
+
+/**
+ * The layout a visitor's product page is drawn with (D148, phase 3): the layout the product uses, or, while a test of that layout
+ * runs and the address carries the visitor's other version of it (`ab`), that version's page. `test` is the running test of the
+ * layout, with the version drawn, for the marker that reports the exposure. Null for a product on the built-in layout.
+ */
+export async function productLayoutForVisitor(
+  storeId: string,
+  productId: string,
+  ab: Record<string, string>,
+): Promise<{ content: PageContent; test: SiteTest | null; version: string } | null> {
+  const own = await productLayoutFor(storeId, productId);
+  if (!own) return null;
+  const test = (await siteTests(storeId)).find((t) => t.kind === "layout" && t.targetPageId === own.id) ?? null;
+  const key = test ? ab[test.token] : undefined;
+  if (test && key && key !== "a") {
+    const version = await siteVersionContent(storeId, test.id, key);
+    if (version) return { content: version.content, test, version: key };
+  }
+  return { content: own.content, test, version: "a" };
 }
 
 /** Where a layout is used (D79): as the store's standard, for categories and tags, and for single products. */

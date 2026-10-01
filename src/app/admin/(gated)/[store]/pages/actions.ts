@@ -20,7 +20,7 @@ import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
 import { createRolePage } from "@/server/page-roles";
-import { runningTestOf } from "@/server/experiment-admin";
+import { runningTestOf, testOfVersionPage } from "@/server/experiment-admin";
 import { isPageRole, ROLE_COPY } from "@/lib/page-roles";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { PART_SHARING, TEMPLATE_SOURCES, type PartSharing, type TemplateItem, type TemplateResult, type TemplateSource } from "@/lib/templates";
@@ -62,11 +62,13 @@ export async function saveStorePageAction(
     return { status: "error", problems: ["The page could not be read. Reload and try again."] };
   }
   // A page in a running A/B test (D148), the original or a version, keeps what visitors are compared on until the test stops.
-  if (publish === true && id !== null && (type === "page" || type === "variant")) {
+  if (publish === true && id !== null && type !== "article") {
     const test = await runningTestOf(member.store.id, id);
     if (test) return { status: "error", problems: [`This page is in the running A/B test "${test.name}". Publishing a change now would spoil its results: save it as a draft, or stop the test first.`] };
   }
-  const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type });
+  // A version made for an A/B test (D148) holds what the page it is a version of may hold.
+  const variantOf = type === "variant" && id !== null ? ((await testOfVersionPage(member.store.id, id))?.targetType ?? null) : null;
+  const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type, variantOf });
   if (!result.ok) return { status: "error", problems: result.problems };
   // Custom fields (D118) come along with the page's JSON; the page is saved, and its fields are checked against the store's groups.
   const fields = typeof json === "object" && json !== null ? (json as { fields?: unknown }).fields : undefined;

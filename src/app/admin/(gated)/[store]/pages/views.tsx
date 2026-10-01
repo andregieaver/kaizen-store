@@ -240,11 +240,11 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
     bothTerms(store.id),
   ]);
   if (!page) notFound();
-  const context = await storePageContext(store, type, account.name ?? "");
+  // A version made for an A/B test (D148) says which test it is in, what it is a version of, and what may be changed in it.
+  const test = type === "variant" ? await testOfVersionPage(store.id, page.id) : null;
+  const context = await storePageContext(store, type, account.name ?? "", test?.targetType ?? null);
   // What is entered in the page's or article's custom fields (D118).
   const fieldData = type === "page" || type === "article" ? await getFieldData(store.id, type, page.id) : undefined;
-  // A version made for an A/B test (D148) says which test it is in, and what may be changed in it.
-  const test = type === "variant" ? await testOfVersionPage(store.id, page.id) : null;
   return (
     <>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
@@ -256,7 +256,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
             {test.status !== "draft" && " The test has started, so a change here is not published until it stops."}
           </span>
           <span className="flex gap-4">
-            <Link href={`/admin/${store.slug}/pages/${test.pageId}/preview`} className="font-medium underline">
+            <Link href={`/admin/${store.slug}/${PAGE_TYPE_COPY[test.targetType].segment}/${test.pageId}/preview`} className="font-medium underline">
               Look at the original
             </Link>
             <Link href={`/admin/${store.slug}/experiments/${test.id}`} className="font-medium underline">
@@ -304,6 +304,8 @@ export async function StorePreviewPageView({
   const page = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;
   if (!page) notFound();
   const copy = PAGE_TYPE_COPY[type];
+  // A version made for an A/B test (D148) is drawn as the kind of page it stands in for.
+  const drawnAs: PageType = type === "variant" ? ((await testOfVersionPage(store.id, page.id))?.targetType ?? "page") : type;
   return (
     <div className="flex flex-col gap-6">
       <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-foreground px-4 py-3 text-sm text-background">
@@ -321,7 +323,7 @@ export async function StorePreviewPageView({
       </p>
       <PageDrawing
         store={store}
-        type={type}
+        type={drawnAs}
         id={page.id}
         content={page.draft}
         publishedAt={page.publishedAt}

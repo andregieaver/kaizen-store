@@ -52,7 +52,7 @@ const test = (over: Partial<ExperimentInfo> = {}): ExperimentInfo => ({
   createdAt: "2026-10-01T10:00:00.000Z",
   scheduledStart: null,
   scheduleProblem: null,
-  page: { id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", published: true },
+  page: { id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", published: true, type: "page", kind: "page" },
   part: null,
   variants: [
     { key: "a", name: "Original", share: 0.5, pageId: null, published: true, changed: false, scope: null },
@@ -65,7 +65,7 @@ const part = { kind: "block" as const, id: "heading-1", label: "Heading “Welco
 
 describe("making a test of a part", () => {
   const create = async () => ({ ok: true as const, id: "x" });
-  const pages = [{ id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", buttons: [{ id: "b1", label: "Buy now" }] }];
+  const pages = [{ id: "22222222-2222-4222-8222-222222222222", slug: "om-oss", title: "Om oss", kind: "page" as const, buttons: [{ id: "b1", label: "Buy now" }] }];
 
   it("names the part, offers no other page, and fills in a name from it", () => {
     const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments", part: { ...part, buttons: [] } }));
@@ -73,13 +73,13 @@ describe("making a test of a part", () => {
     expect(out).toContain("Heading “Welcome” in row 1");
     expect(out).toContain("about this part only");
     expect(out).toContain('placeholder="Test of Heading “Welcome” in row 1"');
-    expect(out).not.toContain("Page to test");
+    expect(out).not.toContain("What to test");
   });
 
   it("asks which page when no part was chosen", () => {
     const out = html(createElement(ExperimentForm, { pages, markets: [], create, base: "/admin/demo/experiments" }));
-    expect(out).toContain("1. Which page?");
-    expect(out).toContain("Page to test");
+    expect(out).toContain("1. What do you want to test?");
+    expect(out).toContain("What to test");
   });
 });
 

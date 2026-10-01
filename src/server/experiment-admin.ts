@@ -4,8 +4,9 @@ import { sql } from "drizzle-orm";
 import { updateTag } from "next/cache";
 
 import { db } from "@/db/client";
+import { targetKindOf, type TargetKind } from "@/lib/ab-site";
 import { applyPart, buttonsWithin, describePart, findPart, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
-import { parsePageContent, type PageContent } from "@/lib/page-content";
+import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import {
   evenSplit,
   GOAL_WORDS,
@@ -65,7 +66,7 @@ export type ExperimentInfo = {
   createdAt: string;
   scheduledStart: string | null;
   scheduleProblem: string | null;
-  page: { id: string; slug: string; title: string; published: boolean };
+  page: { id: string; slug: string; title: string; published: boolean; /** What it is: a page, a product layout, a header or a footer. */ type: PageType; kind: TargetKind };
   /** The part under test (D148, phase 2), by its id, kind and a name for it; null for a test of the whole page. */
   part: { id: string; kind: PartKind; label: string } | null;
   variants: VariantInfo[];
@@ -107,6 +108,8 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
     slug: String(row.page_slug),
     title: String((row.page_draft as { title?: unknown } | null)?.title ?? row.page_slug),
     published: row.page_published_at !== null,
+    type: String(row.page_type) as PageType,
+    kind: targetKindOf(String(row.page_type)) ?? "page",
   },
   variants,
 });
@@ -143,7 +146,7 @@ function scopeOf(row: Row, original: PageContent | null, part: { id: string; kin
 const partOfExperimentRow = (row: Row) => (row.target_part ? { id: String(row.target_part), kind: row.target_part_kind as PartKind } : null);
 
 const SELECT = sql`
-  select e.*, p.slug as page_slug, p.draft as page_draft, p.published as page_published, p.published_at as page_published_at
+  select e.*, p.slug as page_slug, p.type as page_type, p.draft as page_draft, p.published as page_published, p.published_at as page_published_at
   from commerce.experiments e join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
 `;
 
@@ -165,7 +168,7 @@ export async function getExperiment(storeId: string, id: string): Promise<Experi
 }
 
 /** The test a version's page belongs to, for the banner in the builder: its name, which version this is, and what it is a test of. */
-export async function testOfVersionPage(storeId: string, pageId: string): Promise<{ id: string; name: string; status: ExperimentStatus; key: string; pageId: string; part: string | null } | null> {
+export async function testOfVersionPage(storeId: string, pageId: string): Promise<{ id: string; name: string; status: ExperimentStatus; key: string; pageId: string; targetType: PageType; part: string | null } | null> {
   if (!/^[0-9a-f-]{36}$/i.test(pageId)) return null;
   const [row] = await db().execute<Row>(sql`
     select v.experiment_id from commerce.experiment_variants v where v.store_id = ${storeId}::uuid and v.page_id = ${pageId}::uuid
@@ -173,21 +176,42 @@ export async function testOfVersionPage(storeId: string, pageId: string): Promis
   if (!row) return null;
   const test = await getExperiment(storeId, String(row.experiment_id));
   const version = test?.variants.find((v) => v.pageId === pageId);
-  return test && version ? { id: test.id, name: test.name, status: test.status, key: version.key, pageId: test.page.id, part: test.part?.label ?? null } : null;
+  return test && version ? { id: test.id, name: test.name, status: test.status, key: version.key, pageId: test.page.id, targetType: test.page.type, part: test.part?.label ?? null } : null;
 }
 
-/** The pages a store can test: published pages with an address of their own, not the front page, the All products page or a page chosen for a place; not already in a running test. */
-export async function testablePages(storeId: string): Promise<{ id: string; slug: string; title: string }[]> {
+export type TestableTarget = { id: string; slug: string; title: string; kind: TargetKind };
+
+/**
+ * What a store can test: its published pages with an address of their own (not the front page, the All products page or a page
+ * chosen for a place), the header and footer it uses, and its product layouts that something uses; none already in a running test.
+ */
+export async function testablePages(storeId: string): Promise<TestableTarget[]> {
   const rows = await db().execute<Row>(sql`
-    select p.id, p.slug, p.published ->> 'title' as title from commerce.pages p
-    where p.store_id = ${storeId}::uuid and p.type = 'page' and p.published_at is not null
-      and p.id not in (select coalesce(s.front_page_id, '00000000-0000-0000-0000-000000000000') from commerce.stores s where s.id = p.store_id)
-      and p.id not in (select coalesce(s.products_page_id, '00000000-0000-0000-0000-000000000000') from commerce.stores s where s.id = p.store_id)
-      and p.id not in (select r.page_id from commerce.page_roles r where r.store_id = p.store_id)
+    select p.id, p.slug, p.type, p.published ->> 'title' as title from commerce.pages p
+    where p.store_id = ${storeId}::uuid and p.published_at is not null
       and p.id not in (select e.target_page_id from commerce.experiments e where e.store_id = p.store_id and e.status = 'running')
-    order by p.slug
+      and (
+        (p.type = 'page'
+          and p.id not in (select coalesce(s.front_page_id, '00000000-0000-0000-0000-000000000000') from commerce.stores s where s.id = p.store_id)
+          and p.id not in (select coalesce(s.products_page_id, '00000000-0000-0000-0000-000000000000') from commerce.stores s where s.id = p.store_id)
+          and p.id not in (select r.page_id from commerce.page_roles r where r.store_id = p.store_id))
+        or (p.type = 'header' and p.id in (select s.header_id from commerce.stores s where s.id = p.store_id))
+        or (p.type = 'footer' and p.id in (select s.footer_id from commerce.stores s where s.id = p.store_id))
+        or (p.type = 'product_layout' and (
+          p.id in (select s.product_layout_id from commerce.stores s where s.id = p.store_id)
+          or exists (select 1 from commerce.terms t where t.store_id = p.store_id and t.product_layout_id = p.id)
+          or exists (select 1 from commerce.products pr where pr.store_id = p.store_id and pr.product_layout_id = p.id)))
+      )
+    order by case p.type when 'page' then 0 when 'header' then 1 when 'footer' then 2 else 3 end, p.slug
   `);
-  return rows.map((r) => ({ id: String(r.id), slug: String(r.slug), title: String(r.title ?? r.slug) }));
+  return rows.map((r) => ({ id: String(r.id), slug: String(r.slug), title: String(r.title ?? r.slug), kind: targetKindOf(String(r.type)) ?? "page" }));
+}
+
+/** A store's page, header, footer or layout as last published, by its id: what a test of it starts from. Null when it is not published. */
+export async function publishedContentOf(storeId: string, pageId: string): Promise<PageContent | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(pageId)) return null;
+  const [row] = await db().execute<Row>(sql`select published from commerce.pages where id = ${pageId}::uuid and store_id = ${storeId}::uuid`);
+  return parsePageContent(row?.published);
 }
 
 /** The buttons of a page, for a test that counts clicks: each block's id and its text. */
@@ -215,9 +239,9 @@ export type NewExperiment = {
 export type Outcome<T = object> = ({ ok: true } & T) | { ok: false; problems: string[] };
 
 /** A copy of the page's published content as a version of it: a page of type `variant`, published at once, so a test of it can start; it is the owner's to change. */
-async function makeVersionPage(account: Account, storeId: string, original: PageContent, experimentId: string, key: string, title: string) {
+async function makeVersionPage(account: Account, storeId: string, original: PageContent, experimentId: string, key: string, title: string, of: PageType) {
   const slug = variantSlug(experimentId, key);
-  return savePage(account, storeId, null, { ...original, slug, title }, { publish: true, type: "variant" });
+  return savePage(account, storeId, null, { ...original, slug, title }, { publish: true, type: "variant", variantOf: of });
 }
 
 /** Makes a test as a draft: the original and a first version, a copy of the page to change. */
@@ -229,15 +253,17 @@ export async function createExperiment(account: Account, storeId: string, input:
   const traffic = input.trafficShare ?? 1;
   if (!(traffic > 0 && traffic <= 1)) return { ok: false, problems: ["The share of visitors in the test is more than 0 and at most 100 %."] };
   const [page] = await db().execute<Row>(sql`
-    select id, slug, published, published_at from commerce.pages
-    where id = ${input.pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
+    select id, slug, type, published, published_at from commerce.pages
+    where id = ${input.pageId}::uuid and store_id = ${storeId}::uuid and type in ('page', 'product_layout', 'header', 'footer')
   `);
-  if (!page) return { ok: false, problems: ["Choose one of the store's pages."] };
+  if (!page) return { ok: false, problems: ["Choose one of the store's pages, its header or footer, or one of its product layouts."] };
+  const targetType = String(page.type) as PageType;
+  const kind = targetKindOf(targetType) ?? "page";
   const original = parsePageContent(page.published);
   if (!original) return { ok: false, problems: ["Publish the page before testing it: a test shows it to real visitors."] };
   const part = input.part ?? null;
   if (part) {
-    if (!testablePart(original, part)) return { ok: false, problems: ["That part of the page cannot be tested: choose a row, a column or a component with something to see, in the published page. Publish your changes first if you just added it."] };
+    if (!testablePart(original, part, kind)) return { ok: false, problems: ["That part of the page cannot be tested: choose a row, a column or a component with something to see, in the published page. Publish your changes first if you just added it."] };
   }
   const buttons = part ? buttonsWithin(part.kind, findPart(original.rows, part.id)!.node) : buttonsOf(original);
   if (input.goal === "click" && !buttons.some((b) => b.id === input.goalBlock)) return { ok: false, problems: [part ? "That button is not in the part you are testing." : "That button is not on the page."] };
@@ -250,7 +276,7 @@ export async function createExperiment(account: Account, storeId: string, input:
     returning id
   `);
   const id = String(made.id);
-  const copy = await makeVersionPage(account, storeId, original, id, "b", `${original.title} (B)`);
+  const copy = await makeVersionPage(account, storeId, original, id, "b", `${original.title} (B)`, targetType);
   if (!copy.ok) {
     await db().execute(sql`delete from commerce.experiments where id = ${id}::uuid`);
     return copy;
@@ -275,7 +301,7 @@ export async function addVariant(account: Account, storeId: string, id: string):
   const [page] = await db().execute<Row>(sql`select published from commerce.pages where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid`);
   const original = parsePageContent(page?.published);
   if (!original) return { ok: false, problems: ["The page under test is no longer published."] };
-  const copy = await makeVersionPage(account, storeId, original, id, key, `${original.title} (${key.toUpperCase()})`);
+  const copy = await makeVersionPage(account, storeId, original, id, key, `${original.title} (${key.toUpperCase()})`, test.page.type);
   if (!copy.ok) return copy;
   const shares = evenSplit(test.variants.length + 1);
   const keys = [...test.variants.map((v) => v.key), key].sort();
@@ -481,7 +507,7 @@ export async function applyVariant(account: Account, storeId: string, id: string
     if (!content) return false;
     if (test.part) {
       // A test of a part changes that part only, in the page as it is now: what was edited elsewhere since is kept.
-      const [now] = await tx.execute<Row>(sql`select draft, published from commerce.pages where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = 'page' for update`);
+      const [now] = await tx.execute<Row>(sql`select draft, published from commerce.pages where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type} for update`);
       const published = parsePageContent(now?.published);
       const draft = parsePageContent(now?.draft);
       const target = { id: test.part.id, kind: test.part.kind };
@@ -491,13 +517,13 @@ export async function applyVariant(account: Account, storeId: string, id: string
       const mergedDraft = (draft ? applyPart(draft, content, target) : null) ?? merged;
       await tx.execute(sql`
         update commerce.pages set draft = ${JSON.stringify(mergedDraft)}::jsonb, published = ${JSON.stringify(merged)}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid
-        where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = 'page'
+        where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type}
       `);
     } else {
       const next = JSON.stringify({ ...content, slug: test.page.slug });
       await tx.execute(sql`
         update commerce.pages set draft = ${next}::jsonb, published = ${next}::jsonb, published_at = now(), updated_at = now(), updated_by = ${account.id}::uuid
-        where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = 'page'
+        where id = ${test.page.id}::uuid and store_id = ${storeId}::uuid and type = ${test.page.type}
       `);
     }
     await tx.execute(sql`update commerce.experiments set status = 'applied', applied_variant = ${key}, updated_by = ${account.id}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);

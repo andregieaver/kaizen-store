@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 and 2 built** (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts; see "What phase 1 built" and "What phase 2 built" below. Other page kinds, the AI manager and the platform's own pages are later phases. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 3 built** (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. Modals, the surrounding rows of working pages, the AI manager and the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -114,6 +114,45 @@ What phase 2 did not do: the five steps as separate screens with a summary rail 
 page), the moderated check with two owners that phase 2's "done when" asks for, and an end-to-end test of the builder button (the
 e2e suite has no signed-in owner yet; the button and the screens are covered by rendering tests, the rules by database, unit and
 integration tests).
+
+## What phase 3 built: the header, the footer and the product layouts
+
+A store can test **its header, its footer, or one of its product layouts** (and a row, column or component of them: the builder's
+"A/B test this" is in those editors too). These are not pages with an address a request can be rewritten to, and the header is on every
+page, so the serving is different from a page test's:
+
+- **The visitor's versions travel in the market part of the address the proxy rewrites to.** A visitor in another version of a test of
+  the header or footer is served every page of the store (the front page, product pages, the cart, the checkout, the account) under
+  `/s/{store}/no~3fa9c1d2b/…`, one token per site-wide test (the test's first eight characters and the version's letter, `src/lib/ab-site.ts`);
+  a test of a product layout does the same for product pages (`p/{handle}`) only. The route is the same route: `resolveShop()` takes the
+  tokens off and returns them as `ab`, so the market is the real one, every link made from it is the real address, the visitor's browser
+  never sees the rewritten one, and the page and its caches are one more prerender of the same page. A visitor in the original gets no suffix,
+  so they, and everyone else, are served from the pages as they were. The proxy rewrites every method (a server action is a POST to the
+  address the visitor is on), so a cart action keeps the visitor's header. A rewritten page says `noindex` and names the real address as its
+  canonical one. A page test and a site test on the same request compose (`/s/{store}/no~…/{slug}/ab/b`).
+- **Rendering.** The market layout draws the header and footer through `siteLayoutForVisitor()`, which returns the chosen one, or, while a
+  test of it runs and the address carries the visitor's other version, that version's page (`siteVersionContent()`, cached with the tests
+  and the pages, carrying the original's header overlay so a page lies under it as it did). The product page does the same with
+  `productLayoutForVisitor()`. Both return the running test and the version drawn, for the marker (`AbMarker`, as a page test's): the
+  header and footer's marker is in the market layout (the first page a visitor sees counts), the layout's on the product page, and only
+  on a product that uses the layout.
+- **Targets and rules.** A test's target is now a page, a product layout, a header or a footer (`targetKindOf()`); the database lets a
+  header or footer be tested only while it is the one the store uses, a layout only while the store, a category, a tag or a product uses
+  it, and keeps the store from choosing another header or footer while a test of it runs (`stores.experiment`). A version is still a page
+  of type `variant`, a copy; what it may hold is what its target may hold (`savePage(…, { variantOf })`, so a header version can hold site
+  components and a layout version product components, and the builder offers them: `PageOwnerContext.variantOf`). Publishing a change
+  to the header, footer or layout in a running test is refused like a page's, and so is unpublishing or deleting it. Applying a winner
+  replaces the target's content (the part's, for a part test) and keeps its place.
+- **What is counted** is the same: exposure at the first page view in the version (any page for a header or footer), carts, checkouts and
+  paid orders from then on, a click on a chosen button inside the header, footer or layout.
+
+Tested end to end in a browser (`e2e/ab-site-tests.spec.ts`): a header version on a full load, after a click on a footer link and after adding to
+the cart; the original and the unenrolled; accepting statistics; a product layout's version on product pages only.
+
+Not done: the same for **modals** and the surrounding rows of working pages, Kaizen's own pages (the platform's header, footer and
+plans page), a store on its own host (the proxy knows the address form, and the host rewrite in `next.config.ts` has not been checked
+with the market suffix), and the Vercel check of the caching of rewritten pages, which phase 0 left open and which now matters more:
+every page of an enrolled visitor in another version of a header test is a rewrite.
 
 ## Principles (kept from `measurement.md`)
 
@@ -420,7 +459,7 @@ reports (D106, D145).
 | **0** | Spike (done locally, see above; **Vercel preview run and region check pending**), legal check, `plan_features` row, final stats choice | The preview numbers meet the criteria; the legal note is written; this file is updated |
 | **1** (built) | Engine and **page** tests for store pages: tables and rules, assignment, `/api/ab/assign`, exposure beacon, order attribution, daily rollup job, split check, results page (verdict sentence, charts), start/stop/apply, audit, tests incl. an end-to-end test with two variants | A test runs on the demo store from creation to applied, in the browser, with consented and unconsented visitors |
 | **2** (built, minus the moderated check) | **Part** tests in the builder (click a part, "Test this"), the five-step flow, estimates, preview links, scheduled start | A person who has never seen it creates a test in a few minutes (a moderated check with two owners) |
-| **3** | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
+| **3** (header, footer and product layouts built) | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
 | **4** | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
 | **5** | Move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |
 
