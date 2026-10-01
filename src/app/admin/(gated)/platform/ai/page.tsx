@@ -28,7 +28,7 @@ export default async function PlatformAiPage() {
     : "Not set up: stores have keyword search only, unless they bring their own AI.";
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">AI</h1>
         <p className="text-sm text-muted">{status}</p>

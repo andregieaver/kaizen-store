@@ -38,6 +38,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/stripe", "Stripe", "Kaizen's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
   item("/ai", "AI", "Kaizen's default AI provider and models.", true),
   item("/ai/usage", "AI usage", "What every store, owner and Kaizen itself used of the AI."),
+  item("/ai/prices", "AI prices", "What each model costs per million tokens, so the usage pages can show cost."),
   item("/chat", "Chat agent", "Kaizen's public site chat agent and its knowledge base."),
   item("/emails", "Emails", "Every email Kaizen and the stores sent, and email setup."),
   item("/languages", "Languages", "The languages stores can offer, and where each one's interface text stands."),

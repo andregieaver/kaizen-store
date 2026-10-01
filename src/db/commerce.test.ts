@@ -276,6 +276,27 @@ describe("Kaizen's pages with a place of their own (D143)", () => {
   });
 });
 
+describe("AI model prices (D145)", () => {
+  const price = (provider: string, model: string, input: number, output: number, from = "now()") =>
+    db.query(`insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, effective_from) values ($1, $2, $3, $4, ${from})`, [provider, model, input, output]);
+
+  it("keeps a price per model and start, never negative, with names of a sensible length", async () => {
+    await price("p143", "m", 0.25, 2, "'2026-01-01'");
+    await price("p143", "m", 0.5, 4, "'2026-06-01'");
+    await expect(price("p143", "m", 1, 1, "'2026-06-01'")).rejects.toThrow(/ai_model_prices_key|duplicate/);
+    await expect(price("p143", "neg", -1, 1)).rejects.toThrow(/ai_model_prices_amounts/);
+    await expect(price("p143", "neg", 1, -1)).rejects.toThrow(/ai_model_prices_amounts/);
+    await expect(price("", "m2", 1, 1)).rejects.toThrow(/ai_model_prices_names/);
+    await expect(price("p143", "x".repeat(201), 1, 1)).rejects.toThrow(/ai_model_prices_names/);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.ai_model_prices where provider = 'p143'")).n).toBe(2);
+  });
+
+  it("comes with the prices of the models the platform already used", async () => {
+    const seeded = await db.query<{ model: string }>("select model from commerce.ai_model_prices where provider = 'openai' order by model");
+    expect(seeded.rows.map((r) => r.model)).toEqual(expect.arrayContaining(["gpt-4.1-mini", "gpt-5-mini", "text-embedding-3-small"]));
+  });
+});
+
 describe("stores", () => {
   it("start with invoice series and test payments on (no setup needed)", async () => {
     const { rows: series } = await db.query<{ series: string }>(

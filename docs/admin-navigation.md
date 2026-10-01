@@ -64,7 +64,7 @@ own, or none:
 | Customers (people) | None |
 | Plans (credit card) | Editor · Features · Reminders · Discounts · Referrals |
 | Requests (bell, with the number waiting) | None |
-| Settings (cog) | Header and footer · Search · SEO · Cookies · Google reviews · Stripe · AI · AI usage · Chat agent · Emails · Languages |
+| Settings (cog) | Header and footer · Search · SEO · Cookies · Google reviews · Stripe · AI · AI usage · AI prices · Chat agent · Emails · Languages |
 
 Website and Settings open on a page of cards, one for each page in the sidebar. The AI manager is opened from the
 header's button, not a tab. The sections, their items and what each does are in `src/lib/platform-nav.ts`, which the

@@ -92,6 +92,24 @@ const owned = (accountId: string | null) =>
     ? sql`and u.store_id in (select m.store_id from commerce.store_members m where m.account_id = ${accountId}::uuid and m.role = 'owner' and m.disabled_at is null)`
     : sql``;
 
+/**
+ * The price in force for a call (D145): the provider's price for the model (exactly, or as the start of a dated
+ * version's name before a dash) that had begun when the call was made, the most specific model first and the latest start.
+ * `matchPrice()` in `src/lib/ai-cost.ts` reads prices the same way. Joined as `p` after `commerce.ai_usage u`.
+ */
+const priceFor = sql`
+  left join lateral (
+    select pr.id, pr.input_per_million, pr.output_per_million
+    from commerce.ai_model_prices pr
+    where pr.provider = u.provider and (pr.model = u.model or left(u.model, length(pr.model) + 1) = pr.model || '-') and pr.effective_from <= u.created_at
+    order by length(pr.model) desc, pr.effective_from desc
+    limit 1
+  ) p on true
+`;
+
+/** A call's cost in millionths of a dollar: dollars per million tokens is the same number as millionths per token. */
+const costMicrosSql = sql`round(u.input_tokens * p.input_per_million + u.output_tokens * p.output_per_million)`;
+
 export type UsageQuery = {
   /** Days back from now; the period's start is midnight UTC that many days ago. */
   days: number;
@@ -114,8 +132,11 @@ export async function usageRows({ days, ownedBy = null, storeId = null }: UsageQ
       sum(u.requests)::bigint as requests, sum(u.failed)::bigint as failed,
       sum(u.input_tokens)::bigint as input_tokens, sum(u.output_tokens)::bigint as output_tokens,
       sum(u.characters)::bigint as characters, sum(u.audio_seconds)::bigint as audio_seconds, sum(u.images)::bigint as images,
-      sum(case when u.estimated then u.requests else 0 end)::bigint as estimated_requests
+      sum(case when u.estimated then u.requests else 0 end)::bigint as estimated_requests,
+      coalesce(sum(${costMicrosSql}), 0)::bigint as cost_micros,
+      sum(case when p.id is null and u.input_tokens + u.output_tokens > 0 then u.requests else 0 end)::bigint as unpriced_requests
     from commerce.ai_usage u
+    ${priceFor}
     left join commerce.accounts o on o.id = u.owner_account_id
     left join commerce.stores s on s.id = u.store_id
     where u.created_at >= date_trunc('day', now() at time zone 'utc') at time zone 'utc' - make_interval(days => ${Math.max(1, Math.round(days)) - 1})
@@ -143,16 +164,19 @@ export async function usageRows({ days, ownedBy = null, storeId = null }: UsageQ
     audioSeconds: Number(r.audio_seconds),
     images: Number(r.images),
     estimatedRequests: Number(r.estimated_requests),
+    costMicros: Number(r.cost_micros),
+    unpricedRequests: Number(r.unpriced_requests),
   }));
 }
 
-export type DailyUsage = { day: string; requests: number; tokens: number };
+export type DailyUsage = { day: string; requests: number; tokens: number; costMicros: number };
 
 /** Requests and tokens per day over the period, for the chart. */
 export async function usageByDay({ days, ownedBy = null, storeId = null }: UsageQuery): Promise<DailyUsage[]> {
   const rows = await db().execute<Row>(sql`
     select to_char(d.day, 'YYYY-MM-DD') as day, coalesce(sum(u.requests), 0)::bigint as requests,
-      coalesce(sum(u.input_tokens + u.output_tokens), 0)::bigint as tokens
+      coalesce(sum(u.input_tokens + u.output_tokens), 0)::bigint as tokens,
+      coalesce(sum(${costMicrosSql}), 0)::bigint as cost_micros
     from generate_series(
       date_trunc('day', now() at time zone 'utc') - make_interval(days => ${Math.max(1, Math.round(days)) - 1}),
       date_trunc('day', now() at time zone 'utc'),
@@ -161,9 +185,10 @@ export async function usageByDay({ days, ownedBy = null, storeId = null }: Usage
     left join commerce.ai_usage u on date_trunc('day', u.created_at at time zone 'utc') = d.day
       ${owned(ownedBy)}
       ${storeId ? sql`and u.store_id = ${storeId}::uuid` : sql``}
+    ${priceFor}
     group by d.day order by d.day
   `);
-  return rows.map((r) => ({ day: String(r.day), requests: Number(r.requests), tokens: Number(r.tokens) }));
+  return rows.map((r) => ({ day: String(r.day), requests: Number(r.requests), tokens: Number(r.tokens), costMicros: Number(r.cost_micros) }));
 }
 
 /** The stores an account owns (not closed), by name: what an owner's usage report covers. */

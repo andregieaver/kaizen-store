@@ -24,7 +24,7 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
   if (!discount) notFound();
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href="/admin/platform/discounts" className="text-sm underline">
           Discounts

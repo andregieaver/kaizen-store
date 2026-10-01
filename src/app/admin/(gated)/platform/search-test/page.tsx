@@ -36,7 +36,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
   const results = shown ? await experimentResults(shown) : null;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Search test</h1>
         <p className="text-sm text-muted">

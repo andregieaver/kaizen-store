@@ -495,7 +495,7 @@ of running `playwright install`.
   call is wrapped in `metered()` with the provider's own token figures
   (`tokensOrEstimate()`). Reports: `/admin/platform/ai/usage` and
   `/admin/account/usage` (`UsageReport`); sums are worked out in
-  `src/lib/ai-usage.ts`. Money is never shown.
+  `src/lib/ai-usage.ts`. Cost (D145, `src/lib/ai-cost.ts`, `src/server/ai-prices.ts`, `commerce.ai_model_prices`, `/admin/platform/ai/prices`): prices per model are data the platform's admin keeps, a call is priced by the price in force when it was made (`priceFor` in SQL, `matchPrice()` in code), tokens only; any new page that shows tokens shows `costWords()` beside them, and a model with no price shows as such, never as free. Never a price in code.
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
   `KAIZEN_LIFE_SSO=on`) goes through `/auth/callback?via=kaizen-life` and

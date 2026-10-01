@@ -3247,6 +3247,35 @@ export const pageRoles = commerce.table(
 );
 
 /**
+ * What a model costs per million tokens, in US dollars (D145), so the usage pages can show cost beside tokens. A price
+ * never changes in place: a new price is a new row that counts from its `effective_from`, and a call is priced by the
+ * row that was in force when it was made. `model` matches a call's model exactly, or as the start of its name before a
+ * dash (a dated version of the model). Never a model in code: the platform's admin keeps these at `/admin/platform/ai/prices`.
+ */
+export const aiModelPrices = commerce.table(
+  "ai_model_prices",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    /** US dollars per million input tokens. */
+    inputPerMillion: numeric("input_per_million", { precision: 14, scale: 6 }).notNull(),
+    /** US dollars per million output tokens. */
+    outputPerMillion: numeric("output_per_million", { precision: 14, scale: 6 }).notNull(),
+    effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
+    note: text("note").notNull().default(""),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    unique("ai_model_prices_key").on(t.provider, t.model, t.effectiveFrom),
+    index("ai_model_prices_created_by_idx").on(t.createdBy),
+    check("ai_model_prices_amounts", sql`${t.inputPerMillion} >= 0 and ${t.outputPerMillion} >= 0`),
+    check("ai_model_prices_names", sql`length(${t.provider}) between 1 and 60 and length(${t.model}) between 1 and 200`),
+  ],
+);
+
+/**
  * Which of Kaizen's own pages has a place of its own on its site (D143), as a store's front page and special
  * pages do (D54, D112): its front page (`/`), its blog (`/blog`) and the page shown for an address that is not
  * found. Without one the site's standard page shows. A page holds at most one place, only a page of Kaizen's

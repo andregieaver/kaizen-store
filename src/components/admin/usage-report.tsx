@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import {
+  costWords,
   groupUsage,
   KIND_WORDS,
   SOURCE_WORDS,
@@ -14,6 +15,7 @@ import {
   type UsageRow,
   type UsageSums,
 } from "@/lib/ai-usage";
+import { formatUsd } from "@/lib/ai-cost";
 import type { DailyUsage } from "@/server/ai-usage";
 
 const number = new Intl.NumberFormat("en-GB");
@@ -54,6 +56,9 @@ function Head({ first }: { first: string }) {
         <th scope="col" className={thRight}>
           Output tokens
         </th>
+        <th scope="col" className={thRight}>
+          Cost
+        </th>
         <th scope="col" className={th}>
           Also
         </th>
@@ -69,6 +74,7 @@ function Cells({ sums }: { sums: UsageSums }) {
       <td className={tdRight}>{sums.failed > 0 ? n(sums.failed) : "–"}</td>
       <td className={tdRight}>{sums.inputTokens > 0 ? n(sums.inputTokens) : "–"}</td>
       <td className={tdRight}>{sums.outputTokens > 0 ? n(sums.outputTokens) : "–"}</td>
+      <td className={tdRight}>{sums.inputTokens + sums.outputTokens === 0 ? "–" : sums.costMicros === 0 && sums.unpricedRequests > 0 ? <span className="text-muted">No price</span> : costWords(sums)}</td>
       <td className={td}>{otherUse(sums) || "–"}</td>
     </>
   );
@@ -87,7 +93,7 @@ function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; 
   if (groups.length === 0) return <p className="text-sm text-muted">Nothing used in this period.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] text-sm">
+      <table className="w-full min-w-[46rem] text-sm">
         <Head first={first} />
         <tbody>
           {groups.map((g) => (
@@ -128,7 +134,7 @@ function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
               </span>
               <span className="tabular-nums">{n(g.sums.requests)} requests</span>
               <span className="tabular-nums text-muted">
-                {n(g.sums.inputTokens + g.sums.outputTokens)} tokens
+                {n(g.sums.inputTokens + g.sums.outputTokens)} tokens · {costWords(g.sums)}
                 {g.sums.failed > 0 ? ` · ${n(g.sums.failed)} failed` : ""}
               </span>
             </summary>
@@ -161,7 +167,7 @@ function DailyBars({ days }: { days: DailyUsage[] }) {
         {days.map((d) => (
           <div
             key={d.day}
-            title={`${d.day}: ${n(d.tokens)} tokens, ${n(d.requests)} requests`}
+            title={`${d.day}: ${n(d.tokens)} tokens, ${formatUsd(d.costMicros)}, ${n(d.requests)} requests`}
             className="min-w-px flex-1 rounded-t-sm bg-foreground/70"
             style={{ height: `${Math.max(d.tokens > 0 ? 3 : 0, Math.round((d.tokens / most) * 100))}%` }}
           />
@@ -169,7 +175,7 @@ function DailyBars({ days }: { days: DailyUsage[] }) {
       </div>
       <figcaption className="flex justify-between text-xs text-muted">
         <span>{days[0]?.day}</span>
-        <span>Tokens per day</span>
+        <span>Tokens per day · {formatUsd(days.reduce((sum, d) => sum + d.costMicros, 0))} in all</span>
         <span>{days.at(-1)?.day}</span>
       </figcaption>
     </figure>
@@ -223,10 +229,21 @@ export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: Dai
   const anyEstimated = total.estimatedRequests > 0;
   return (
     <div className="flex flex-col gap-6">
-      <section aria-label="Totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="Totals" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Tile label="Requests" value={n(total.requests)} note={total.failed > 0 ? `${n(total.failed)} failed` : undefined} />
         <Tile label="Input tokens" value={n(total.inputTokens)} />
         <Tile label="Output tokens" value={n(total.outputTokens)} />
+        <Tile
+          label="Estimated cost"
+          value={costWords(total)}
+          note={
+            total.unpricedRequests > 0
+              ? `${n(total.unpricedRequests)} requests have no price yet`
+              : onOwn.costMicros > 0
+                ? `${formatUsd(onKaizen.costMicros)} on Kaizen's key, ${formatUsd(onOwn.costMicros)} on stores' own`
+                : undefined
+          }
+        />
         <Tile
           label={scope === "platform" ? "On Kaizen's key" : "On Kaizen's AI"}
           value={n(onKaizen.inputTokens + onKaizen.outputTokens)}
@@ -268,7 +285,13 @@ export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: Dai
       <p className="text-sm text-muted">
         Counted from each call to a model as it is made. {anyEstimated && `${n(total.estimatedRequests)} requests are counted by Kaizen (about four characters a token) because the provider did not report tokens. `}
         Live voice calls are counted as one request with their length; the provider bills their tokens itself.
-        Amounts of money are not shown: prices differ by provider and change, so multiply by your provider&apos;s current price.
+        Cost is an estimate in US dollars: each call&apos;s tokens at the price set for its model on the day it was made
+        {scope === "platform" ? (
+          <>
+            {" "}(<Link href="/admin/platform/ai/prices" className="underline">AI prices</Link>)
+          </>
+        ) : null}
+        ; a &quot;+&quot; means some usage has no price, so the real cost is higher. Pictures, speech and live calls are not priced.
         Usage is kept for 400 days.
       </p>
     </div>

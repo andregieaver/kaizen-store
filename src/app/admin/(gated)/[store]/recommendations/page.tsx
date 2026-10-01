@@ -8,7 +8,8 @@ import { requireMember } from "@/server/auth";
 import { aiFor } from "@/server/ai";
 import { recommendationReport } from "@/server/recommend-events";
 import { REPLAY_ORDERS, replayOnOrders } from "@/server/recommend-eval";
-import { getRecommendSettingsFresh, listRules, ruleProducts, tokensUsedThisMonth, type RuleKind } from "@/server/recommend-settings";
+import { costWords } from "@/lib/ai-usage";
+import { getRecommendSettingsFresh, listRules, ruleProducts, usedThisMonth, type RuleKind } from "@/server/recommend-settings";
 
 import { addRuleAction, removeRuleAction, saveRecommendSettingsAction } from "./actions";
 
@@ -32,7 +33,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
   const replay = query.replay === "1" && replayMarket ? await replayOnOrders(store, replayMarket, REPLAY_ORDERS) : null;
   const [settings, used, report, rules, products, ai] = await Promise.all([
     getRecommendSettingsFresh(store.id),
-    tokensUsedThisMonth(store.id),
+    usedThisMonth(store.id),
     recommendationReport(store.id, days),
     listRules(store.id),
     ruleProducts(store.id),
@@ -88,8 +89,8 @@ export default async function RecommendationsPage({ params, searchParams }: Page
               Monthly AI cap, thousands of tokens
               <input name="monthlyTokenCap" type="number" min={0} step={1} defaultValue={settings.monthlyTokenCap === null ? "" : settings.monthlyTokenCap / 1000} placeholder="No cap" disabled={!canEdit} className={control} />
               <span className="text-xs font-normal text-muted">
-                Used this month: {Math.round(used / 1000).toLocaleString(locale)} thousand
-                {settings.monthlyTokenCap === null ? "" : ` of ${(settings.monthlyTokenCap / 1000).toLocaleString(locale)} thousand`}. At the cap the plain ranking is shown. The store&apos;s own AI key is used when one is set.
+                Used this month: {Math.round(used.tokens / 1000).toLocaleString(locale)} thousand
+                {settings.monthlyTokenCap === null ? "" : ` of ${(settings.monthlyTokenCap / 1000).toLocaleString(locale)} thousand`} tokens, an estimated {costWords({ costMicros: used.costMicros, unpricedRequests: used.unpriced ? 1 : 0 })}. At the cap the plain ranking is shown. The store&apos;s own AI key is used when one is set.
               </span>
             </label>
           </div>

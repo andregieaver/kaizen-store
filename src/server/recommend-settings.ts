@@ -71,12 +71,29 @@ export async function saveRecommendSettingsValues(account: Account, storeId: str
 
 /** Tokens the store's recommendations have used of the AI this calendar month (UTC): what the cap is counted against. */
 export async function tokensUsedThisMonth(storeId: string): Promise<number> {
+  return (await usedThisMonth(storeId)).tokens;
+}
+
+/**
+ * The same with what the tokens cost (D145), in millionths of a US dollar at the prices in force when each call was made,
+ * and whether some of the calls had no price (so the cost is more than shown).
+ */
+export async function usedThisMonth(storeId: string): Promise<{ tokens: number; costMicros: number; unpriced: boolean }> {
   const [row] = await db().execute<Row>(sql`
-    select coalesce(sum(input_tokens + output_tokens), 0)::bigint as used
-    from commerce.ai_usage
-    where store_id = ${storeId}::uuid and feature = 'recommendations' and created_at >= date_trunc('month', now())
+    select coalesce(sum(u.input_tokens + u.output_tokens), 0)::bigint as used,
+      coalesce(sum(round(u.input_tokens * p.input_per_million + u.output_tokens * p.output_per_million)), 0)::bigint as cost_micros,
+      coalesce(bool_or(p.id is null and u.input_tokens + u.output_tokens > 0), false) as unpriced
+    from commerce.ai_usage u
+    left join lateral (
+      select pr.id, pr.input_per_million, pr.output_per_million
+      from commerce.ai_model_prices pr
+      where pr.provider = u.provider and (pr.model = u.model or left(u.model, length(pr.model) + 1) = pr.model || '-') and pr.effective_from <= u.created_at
+      order by length(pr.model) desc, pr.effective_from desc
+      limit 1
+    ) p on true
+    where u.store_id = ${storeId}::uuid and u.feature = 'recommendations' and u.created_at >= date_trunc('month', now())
   `);
-  return Number(row?.used ?? 0);
+  return { tokens: Number(row?.used ?? 0), costMicros: Number(row?.cost_micros ?? 0), unpriced: Boolean(row?.unpriced) };
 }
 
 // ---------------------------------------------------------------------------

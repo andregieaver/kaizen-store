@@ -68,7 +68,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
   const href = (g: string, f: Filter) => `/admin/platform/languages/${lang}?group=${encodeURIComponent(g)}&show=${f}`;
 
   return (
-    <div className="flex max-w-6xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href="/admin/platform/languages" className="text-sm underline">← Languages</Link>
         <h1 className="text-2xl font-semibold">{language.name} <span className="text-base font-normal text-muted">· {nativeName(lang)}</span></h1>

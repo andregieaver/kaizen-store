@@ -24,7 +24,7 @@ export default async function PlatformTemplatesPage() {
   const hidden = templates.filter((t) => t.hidden).length;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Templates</h1>
         <p className="max-w-3xl text-sm text-muted">

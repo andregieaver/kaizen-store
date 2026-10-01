@@ -31,7 +31,7 @@ export default async function LanguagesPage() {
   const total = fullCatalog().length;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-8">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold">Languages</h1>
         <p className="max-w-3xl text-sm text-muted">

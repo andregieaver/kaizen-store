@@ -185,7 +185,7 @@ describe("AI usage (D106)", () => {
     const own = (await tools.runOwnerTool({ account, store, invalidate: () => {} }, "ai_usage", { days: 30 })) as Answer;
     expect(own.covers).toBe("duo");
     expect(own.total).toMatchObject({ requests: 2, failed: 1 });
-    expect(own.on_kaizens_key).toEqual({ requests: 0, tokens: 0 });
+    expect(own.on_kaizens_key).toEqual({ requests: 0, tokens: 0, estimated_cost_usd: 0 });
     expect(own.by_provider_and_model.map((m: { model: string }) => m.model).sort()).toEqual(["text-a", "text-b"]);
     // Not another owner's store.
     const other = { ...account, id: one.owner };

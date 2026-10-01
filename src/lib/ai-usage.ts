@@ -5,6 +5,8 @@
  * reports from these too.
  */
 
+import { formatUsd } from "./ai-cost";
+
 export const AI_KINDS = ["text", "embedding", "transcription", "speech", "image", "live"] as const;
 export type AiKind = (typeof AI_KINDS)[number];
 
@@ -105,11 +107,29 @@ export type UsageRow = {
   audioSeconds: number;
   images: number;
   estimatedRequests: number;
+  /** What the tokens cost at the prices in force when they were used, in millionths of a US dollar (D145). */
+  costMicros: number;
+  /** Requests that used tokens of a model with no price (yet): their cost is not in `costMicros`. */
+  unpricedRequests: number;
 };
 
-export type UsageSums = Pick<UsageRow, "requests" | "failed" | "inputTokens" | "outputTokens" | "characters" | "audioSeconds" | "images" | "estimatedRequests">;
+export type UsageSums = Pick<
+  UsageRow,
+  "requests" | "failed" | "inputTokens" | "outputTokens" | "characters" | "audioSeconds" | "images" | "estimatedRequests" | "costMicros" | "unpricedRequests"
+>;
 
-export const emptySums = (): UsageSums => ({ requests: 0, failed: 0, inputTokens: 0, outputTokens: 0, characters: 0, audioSeconds: 0, images: 0, estimatedRequests: 0 });
+export const emptySums = (): UsageSums => ({
+  requests: 0,
+  failed: 0,
+  inputTokens: 0,
+  outputTokens: 0,
+  characters: 0,
+  audioSeconds: 0,
+  images: 0,
+  estimatedRequests: 0,
+  costMicros: 0,
+  unpricedRequests: 0,
+});
 
 export function addSums(into: UsageSums, row: UsageSums): UsageSums {
   into.requests += row.requests;
@@ -120,8 +140,13 @@ export function addSums(into: UsageSums, row: UsageSums): UsageSums {
   into.audioSeconds += row.audioSeconds;
   into.images += row.images;
   into.estimatedRequests += row.estimatedRequests;
+  into.costMicros += row.costMicros;
+  into.unpricedRequests += row.unpricedRequests;
   return into;
 }
+
+/** The cost as a person reads it: "$0.42", with "+" where some of the usage has no price so the real cost is higher. */
+export const costWords = (sums: Pick<UsageSums, "costMicros" | "unpricedRequests">) => `${formatUsd(sums.costMicros)}${sums.unpricedRequests > 0 ? "+" : ""}`;
 
 /** A group of rows: its key, label and sums, and the rows it holds. */
 export type UsageGroup = { key: string; label: string; sub?: string; sums: UsageSums; rows: UsageRow[] };
@@ -153,6 +178,9 @@ const sumsForModel = (sums: UsageSums) => ({
   failed: sums.failed,
   input_tokens: sums.inputTokens,
   output_tokens: sums.outputTokens,
+  // Worked out in code from the prices in force when each call was made (D145); the model repeats it, never computes it.
+  estimated_cost_usd: Math.round(sums.costMicros / 100) / 10_000,
+  ...(sums.unpricedRequests > 0 && { requests_without_a_price: sums.unpricedRequests }),
   ...(sums.characters > 0 && { characters_spoken: sums.characters }),
   ...(sums.audioSeconds > 0 && { audio_minutes: Math.round(sums.audioSeconds / 60) }),
   ...(sums.images > 0 && { pictures: sums.images }),
@@ -169,11 +197,11 @@ export function summarizeUsage(rows: UsageRow[], limit = 12) {
   const onKaizen = totalOf(rows.filter((r) => r.source === "platform"));
   return {
     total: sumsForModel(total),
-    on_kaizens_key: { requests: onKaizen.requests, tokens: onKaizen.inputTokens + onKaizen.outputTokens },
+    on_kaizens_key: { requests: onKaizen.requests, tokens: onKaizen.inputTokens + onKaizen.outputTokens, estimated_cost_usd: Math.round(onKaizen.costMicros / 100) / 10_000 },
     requests_with_counted_tokens: total.estimatedRequests,
     by_provider_and_model: models(rows),
     by_store: named(groupUsage(rows, withStore)),
     by_feature: groupUsage(rows, withFeature).slice(0, limit).map((g) => ({ feature: g.label, ...sumsForModel(g.sums) })),
-    note: "Tokens are as the providers reported, or counted by Kaizen (about four characters a token) where they did not. Money is not shown: prices differ by provider.",
+    note: "Tokens are as the providers reported, or counted by Kaizen (about four characters a token) where they did not. Cost is an estimate in US dollars from the platform's price list for each model at the time of the call; requests_without_a_price used a model with no price, so the real cost is higher. Pictures, speech and live calls are not priced.",
   };
 }

@@ -20,7 +20,7 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
   const chosen = usagePeriod(typeof period === "string" ? period : undefined);
   const [rows, days] = await Promise.all([usageRows({ days: chosen.days }), usageByDay({ days: chosen.days })]);
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div>
           <h1 className="text-2xl font-semibold">AI usage</h1>
