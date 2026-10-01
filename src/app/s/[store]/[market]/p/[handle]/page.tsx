@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { pageRoomClass } from "@/components/page-article";
 import { ProductJsonLdSection, ProductLayoutView, type ProductPageContext } from "@/components/product-parts";
+import { RecommendTracker } from "@/components/recommend-tracker";
 import { HeaderOverlayMark } from "@/components/store-chrome";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -17,6 +18,7 @@ import { getProduct, listProducts } from "@/server/catalog";
 import { campaignNotices } from "@/server/campaign-notices";
 import { productsPageOf } from "@/server/pages";
 import { productLayoutFor } from "@/server/product-layouts";
+import { getRecommendSettings } from "@/server/recommend-settings";
 import { siteLayoutFor } from "@/server/site-layouts";
 import { listIndexedProducts, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
@@ -109,10 +111,11 @@ export default async function ProductPage({ params }: Props) {
   const back = productsPage
     ? { href: marketPath(store.slug, market.slug, "/products"), title: localizePage(productsPage.content, market.locale).title }
     : null;
-  const [layout, header, campaigns] = await Promise.all([
+  const [layout, header, campaigns, recommendations] = await Promise.all([
     productLayoutFor(store.id, product.id).then((own) => own ?? DEFAULT_PRODUCT_LAYOUT),
     siteLayoutFor(store.id, "header"),
     campaignNotices(store.id, market),
+    getRecommendSettings(store.id),
   ]);
   const ctx: ProductPageContext = { store, market, product, m: t(market.lang), back, campaigns };
   // A header over every page (D80) lies over a product page whose layout starts with a background.
@@ -121,6 +124,8 @@ export default async function ProductPage({ params }: Props) {
   return (
     <div className={`store-page ${pageRoomClass(layout, "pt-8", "pb-8")}`} data-header-overlay={over ? "" : undefined}>
       {over && <HeaderOverlayMark />}
+      {/* The tab remembers this product for the store's recommendations (D139). */}
+      {recommendations.enabled && <RecommendTracker productId={product.id} />}
       <ProductLayoutView layout={layout} ctx={ctx} />
       <Suspense fallback={null}>
         <ProductJsonLdSection store={store} market={market} product={product} />

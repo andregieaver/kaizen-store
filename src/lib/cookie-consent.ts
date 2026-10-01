@@ -139,6 +139,8 @@ export type KnownCookie = {
   referrals?: boolean;
   /** Set only in stores whose referral program (the affiliate program, D131) is on. */
   affiliate?: boolean;
+  /** Set only in stores whose product recommendations are on (D139). */
+  recommendations?: boolean;
 };
 
 /**
@@ -192,6 +194,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker samtalen din med chatassistenten mens du går mellom sidene; forsvinner når du lukker fanen.",
       sv: "Kommer ihåg ditt samtal med chattassistenten medan du går mellan sidorna; försvinner när du stänger fliken.",
       da: "Husker din samtale med chatassistenten, mens du går mellem siderne; forsvinder, når du lukker fanen.",
+    },
+  },
+  {
+    // In the tab's session storage, not a cookie: only on a store whose recommendations are on, and only what the visitor does in this tab (D139).
+    name: "kaizen_rec",
+    pattern: /^kaizen_rec$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "store",
+    recommendations: true,
+    purpose: {
+      en: "Remembers in this tab which products you looked at, what you searched for and which recommended products you opened, so the store can suggest products that suit you; gone when you close the tab, never joined to who you are.",
+      nb: "Husker i denne fanen hvilke produkter du så på, hva du søkte etter og hvilke anbefalte produkter du åpnet, slik at butikken kan foreslå produkter som passer deg; forsvinner når du lukker fanen og kobles aldri til hvem du er.",
+      sv: "Kommer ihåg i den här fliken vilka produkter du tittade på, vad du sökte efter och vilka rekommenderade produkter du öppnade, så att butiken kan föreslå produkter som passar dig; försvinner när du stänger fliken och kopplas aldrig till vem du är.",
+      da: "Husker i denne fane, hvilke produkter du så på, hvad du søgte efter, og hvilke anbefalede produkter du åbnede, så butikken kan foreslå produkter, der passer til dig; forsvinder, når du lukker fanen, og knyttes aldrig til, hvem du er.",
     },
   },
   {
@@ -471,7 +489,8 @@ export function declaredCookies(
     modals = false,
     referrals = false,
     affiliate = false,
-  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean } = {},
+    recommendations = false,
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -481,6 +500,7 @@ export function declaredCookies(
       (!cookie.colorMode || colorMode) &&
       (!cookie.modals || modals) &&
       (!cookie.affiliate || affiliate) &&
+      (!cookie.recommendations || recommendations) &&
       (!cookie.referrals || referrals) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );

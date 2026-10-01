@@ -71,6 +71,9 @@ function ownerGridProblem(owner: PageOwner, rows: PageContent["rows"]): string |
     if (owner === null && (!block.source.storeId || !block.source.market)) {
       return "Choose the store and market for each content grid of products.";
     }
+    if (owner === null && block.source.recommend) {
+      return "Recommendations work on a store's own pages, not on Kaizen's.";
+    }
     if (owner !== null && block.source.storeId && block.source.storeId !== owner) {
       return "A content grid on a store's page shows that store's own products.";
     }

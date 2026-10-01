@@ -2,6 +2,7 @@ import {
   blockHasContent,
   BLOCKS_MAX,
   ROWS_MAX,
+  ownProducts,
   pageBlocks,
   type PageBlock,
   type PageColumn,
@@ -34,7 +35,7 @@ const forStoreBlock = (block: PageBlock): PageBlock =>
   block.type === "contentGrid"
     ? {
         ...block,
-        source: block.source.type === "products" ? { type: "products" } : block.source,
+        source: ownProducts(block.source),
         categories: [],
         tags: [],
       }

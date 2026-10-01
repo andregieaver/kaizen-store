@@ -864,7 +864,7 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
   return (
     <PageArticle
       content={{ ...content, title: product.title }}
-      place={{ pageId: null, owner: store.id, market: market.slug }}
+      place={{ pageId: null, owner: store.id, market: market.slug, product: product.id }}
       inAdmin={inAdmin}
       renderBlock={(block) =>
         block.type === "product" && productPartShows(block, product, ctx.campaigns) ? <ProductPartView block={block} ctx={ctx} /> : null

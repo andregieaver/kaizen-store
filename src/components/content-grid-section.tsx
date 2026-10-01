@@ -9,11 +9,13 @@ import { tileFieldIds } from "@/lib/tile-fields";
 import { getBuyer } from "@/server/b2b";
 import { campaignNoticesAt } from "@/server/campaign-notices";
 import { gridData, gridScope, productItem, storeAndMarket, withTileFields, type GridPlace, type ListingPlace } from "@/server/content-grid";
+import { recommendBlockOf, recommendingGrid, recommendPlaceOf, recommends } from "@/server/recommend-grid";
 import { listingFacets, listingProducts } from "@/server/listing";
 import { siteTerms } from "@/server/taxonomy";
 
 import { ContentGridView } from "./content-grid";
 import { ListingControls } from "./product-listing";
+import { RecommendedGrid } from "./recommended-grid";
 
 /**
  * A content grid on the site (D51): its items looked up (and cached) on the
@@ -22,6 +24,8 @@ import { ListingControls } from "./product-listing";
  * per request; its grid as set is the prerendered stand-in meanwhile.
  */
 export async function ContentGridSection({ block, place }: { block: ContentGridBlock; place: GridPlace }) {
+  // A grid that recommends (D139) is built with the recommendations for everyone, then follows the shopper's own.
+  if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} />;
   const data = await gridData(block, place);
   const { listing } = place;
   const notices = block.source.type === "products" && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
@@ -94,5 +98,31 @@ async function FilterableGrid({
         <ContentGridView block={block} data={{ ...data, items }} notices={notices} />
       )}
     </div>
+  );
+}
+
+/**
+ * A product grid that recommends (D139): the recommendations for the page for everyone are its prerendered stand-in, kept
+ * with the catalogue; in the browser the shopper's own replace them (`RecommendedGrid`).
+ */
+async function RecommendingGrid({ block, place, owner }: { block: ContentGridBlock; place: GridPlace; owner: string }) {
+  const where = recommendPlaceOf(place);
+  const [grid, notices] = await Promise.all([recommendingGrid(owner, place.market ?? null, block, where), campaignNoticesAt(owner, place.market ?? null)]);
+  if (!grid) return null;
+  const fallback = <ContentGridView block={block} data={grid.data} notices={notices} />;
+  // While the store's recommendations are off there is nothing to ask for: the grid is as built (empty, or its own text).
+  if (!grid.enabled) return fallback;
+  return (
+    <Suspense fallback={fallback}>
+      <RecommendedGrid
+        block={block}
+        initial={grid.data}
+        notices={notices}
+        store={grid.store}
+        market={grid.market}
+        place={where}
+        ask={recommendBlockOf(block)}
+      />
+    </Suspense>
   );
 }

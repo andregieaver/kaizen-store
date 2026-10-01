@@ -15,7 +15,7 @@ type Row = Record<string, unknown>;
  * server instance serves the next one. Failures are never kept.
  */
 
-export type CacheKind = "vector" | "filters";
+export type CacheKind = "vector" | "filters" | "rerank";
 
 /** Days an answer is kept; searches can hold personal data. */
 export const SEARCH_CACHE_DAYS = 30;

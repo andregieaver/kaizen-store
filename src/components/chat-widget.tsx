@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { HISTORY_MAX, MESSAGE_MAX, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
+import { readSession, signalsOf } from "@/lib/recommend-session";
 
 import { Icon } from "./icons";
 import { VatAmount } from "./price";
@@ -48,6 +49,15 @@ type Message = {
   /** A notice from the widget (a limit, an error): shown, never sent to the agent. */
   notice?: boolean;
 };
+
+/** What the tab remembers of the products looked at and the searches made (D139), for the agent's recommendations; none without it. */
+function tabSignals() {
+  try {
+    return signalsOf(readSession(window.sessionStorage));
+  } catch {
+    return { views: [], searches: [] };
+  }
+}
 
 /** The conversation is kept in the tab only (`kaizen_chat`, D58), for the site it was held on. */
 const STORAGE = "kaizen_chat";
@@ -156,7 +166,7 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...site, path: window.location.pathname, messages: history(next) }),
+        body: JSON.stringify({ ...site, path: window.location.pathname, signals: tabSignals(), messages: history(next) }),
       });
       const body = (await response.json().catch(() => ({}))) as Partial<ChatReply> & { error?: string };
       if (!response.ok || typeof body.reply !== "string") notice(body.error ?? labels.sorry);
@@ -173,7 +183,7 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
     try {
       const form = new FormData();
       form.set("audio", audio, "message");
-      form.set("request", JSON.stringify({ ...site, path: window.location.pathname, messages: history(messages) }));
+      form.set("request", JSON.stringify({ ...site, path: window.location.pathname, signals: tabSignals(), messages: history(messages) }));
       const response = await fetch("/api/chat/voice", { method: "POST", body: form });
       const body = (await response.json().catch(() => ({}))) as Partial<ChatReply> & { error?: string; transcript?: string; audio?: string | null };
       if (!response.ok || typeof body.reply !== "string") {

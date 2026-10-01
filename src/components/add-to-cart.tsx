@@ -6,6 +6,7 @@ import { useActionState } from "react";
 import { addToCart, type AddToCartState } from "@/app/s/[store]/[market]/cart/actions";
 
 import { AffiliateField } from "./affiliate-field";
+import { RecommendField } from "./recommend-field";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { useChosenPlan } from "./purchase-options";
 
@@ -64,6 +65,7 @@ export function AddToCart({
       <input type="hidden" name="variantId" value={variantId} />
       <input type="hidden" name="quantity" value="1" />
       <AffiliateField store={store} />
+      <RecommendField />
       {plan && <input type="hidden" name="sellingPlanId" value={plan.id} />}
       <button
         type="submit"

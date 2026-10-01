@@ -7,6 +7,8 @@ type Row = Record<string, unknown>;
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {} }));
+// The recommendation tool reads the visitor's cookies (cart, wishlist, account): this visitor has none.
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, getAll: () => [], set: () => {}, delete: () => {} }) }));
 // Stock is read per request; a test has no request to wait for.
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
 
@@ -137,7 +139,7 @@ describe("the agent", () => {
     const reply = await chat.runChat(
       { kind: "store", store, market },
       { storeId, enabled: true, name: "Ingrid", occupation: "Kundeservice", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
-      { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Har dere lamper?" }] },
+      { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Har dere lamper?" }], signals: { views: [], searches: [] } },
       connection,
     );
     expect(reply.reply).toBe("Her er bordlampen. Jeg har åpnet siden for deg.");
@@ -171,7 +173,7 @@ describe("the agent", () => {
     const reply = await chat.runChat(
       { kind: "store", store, market },
       { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
-      { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Er det noe tilbud på lamper?" }] },
+      { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Er det noe tilbud på lamper?" }], signals: { views: [], searches: [] } },
       connection,
     );
     // Two offers at most on a card, never a gift, never the group's.
@@ -187,6 +189,42 @@ describe("the agent", () => {
     await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
   });
 
+  it("recommends through the store's recommendation engine, which it uses only while the store has it on (D139)", async () => {
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
+    const ask = (steps: Row[]) => {
+      const sent = fakeModel(steps);
+      return {
+        sent,
+        reply: chat.runChat(
+          { kind: "store", store, market },
+          agent,
+          { market: market.slug, path: `/s/${slug}/no/p/demo-bordlampe`, messages: [{ role: "user", content: "Hva passer til lampen?" }], signals: { views: [], searches: [] } },
+          connection,
+        ),
+      };
+    };
+    // Off: the agent is told to search instead.
+    let asked = ask([{ content: null, tool_calls: [call("1", "recommend_products", {})] }, { content: "Jeg søker i stedet." }]);
+    await asked.reply;
+    expect(String((asked.sent[1].messages as Row[]).filter((m) => m.role === "tool")[0].content)).toContain("recommendations are off");
+
+    // On: the page the visitor is on names the product; the engine's picks come back as cards and facts for the model.
+    await db().execute(sql`insert into commerce.recommendation_settings (store_id, enabled, ai) values (${storeId}::uuid, true, false)`);
+    try {
+      asked = ask([{ content: null, tool_calls: [call("1", "recommend_products", {})] }, { content: "Disse passer godt til lampen." }]);
+      const reply = await asked.reply;
+      const result = JSON.parse(String((asked.sent[1].messages as Row[]).filter((m) => m.role === "tool")[0].content)) as { products: { handle: string; relation: string }[]; note: string };
+      expect(result.products.length).toBeGreaterThan(0);
+      expect(result.products.map((p) => p.handle)).not.toContain("demo-bordlampe");
+      expect(result.note).toContain("Do not add other products");
+      expect(reply.products.map((p) => p.handle)).toEqual(result.products.map((p) => p.handle));
+      expect((asked.sent[0].tools as Row[]).map((tool) => (tool.function as Row).name)).toContain("recommend_products");
+    } finally {
+      await db().execute(sql`delete from commerce.recommendation_settings where store_id = ${storeId}::uuid`);
+    }
+  });
+
   it("opens only the store's own pages", async () => {
     const market = store.markets.find((m) => m.code === "NO")!;
     const sent = fakeModel([
@@ -196,7 +234,7 @@ describe("the agent", () => {
     const reply = await chat.runChat(
       { kind: "store", store, market },
       { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
-      { messages: [{ role: "user", content: "Vis meg noe" }] },
+      { messages: [{ role: "user", content: "Vis meg noe" }], signals: { views: [], searches: [] } },
       connection,
     );
     expect(reply.actions).toEqual([]);
@@ -212,7 +250,7 @@ describe("the agent", () => {
     const reply = await chat.runChat(
       { kind: "store", store, market },
       { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
-      { messages: [{ role: "user", content: "Hva heter dere?" }] },
+      { messages: [{ role: "user", content: "Hva heter dere?" }], signals: { views: [], searches: [] } },
       connection,
     );
     expect(reply.reply).toBe("Butikken heter Chat test.");

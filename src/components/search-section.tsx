@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { Suspense } from "react";
 
 import { ProductListing } from "@/components/product-listing";
+import { RecommendTracker } from "@/components/recommend-tracker";
 import { SearchBox } from "@/components/search-box";
 import { t, type Messages } from "@/lib/i18n";
 import { parseListingParams } from "@/lib/listing-filters";
@@ -14,6 +15,7 @@ import { byName, type Term } from "@/lib/taxonomy";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 import { understandQuery } from "@/server/query-understanding";
 import { queryVector } from "@/server/query-vector";
+import { getRecommendSettings } from "@/server/recommend-settings";
 import { drawArm, runningExperiment } from "@/server/search-experiment";
 import { logSearch, searchProducts } from "@/server/search";
 import { siteTerms } from "@/server/taxonomy";
@@ -75,9 +77,12 @@ async function Search({ place, results }: { place: GridPlace; results: boolean }
   const terms = query && (products.length === 0 || found?.filters) ? await siteTerms(store.id, "product") : [];
   const categories = products.length === 0 ? terms.filter((term) => term.kind === "category" && !term.parentId).sort(byName) : [];
   const understood = found?.filters ? describeFilters(found.filters, terms, m, market) : [];
+  // The tab remembers the search for the store's recommendations (D139).
+  const remember = query ? (await getRecommendSettings(store.id)).enabled : false;
 
   return (
     <div className="flex flex-col gap-6">
+      {remember && <RecommendTracker query={typed} />}
       <SearchBox store={store.slug} market={market.slug} base={base} defaultValue={typed} autoFocus={!query} labels={labels} />
       {!query ? (
         <p className="text-muted">{m.search.start}</p>

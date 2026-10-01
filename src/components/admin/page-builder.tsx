@@ -97,6 +97,8 @@ import {
   isLinkAddress,
   gridImageShape,
   pageBlocks,
+  DEFAULT_GRID_RECOMMEND,
+  ownProducts,
   pageParts,
   richTextPlain,
   ALT_MAX,
@@ -1422,7 +1424,7 @@ function SavedLayoutItem({
 function forStore(part: PlainPart): PlainPart {
   const block = (b: PageBlock): PageBlock =>
     b.type === "contentGrid"
-      ? { ...b, source: b.source.type === "products" ? { type: "products" } : b.source, categories: [], tags: [] }
+      ? { ...b, source: ownProducts(b.source), categories: [], tags: [] }
       : b;
   const column = (c: PageColumn): PageColumn => ({ ...c, blocks: c.blocks.map(block) });
   if (part.kind === "block") return { ...part, content: block(part.content) };
@@ -4489,6 +4491,7 @@ function ContentGridFields({
           : [];
   const store = source.type === "products" ? grid.stores.find((s) => s.id === source.storeId) : undefined;
   const products = source.type === "products";
+  const recommend = source.type === "products" ? source.recommend : undefined;
   const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRICE_SORTS.includes(sort));
   const productsOf = (s: GridStore | undefined): GridSource => ({
     type: "products",
@@ -4567,6 +4570,7 @@ function ContentGridFields({
         <TermChecks terms={terms} value={{ categories: block.categories, tags: block.tags }} onChange={(ids) => onChange(ids)} />
       </div>
       <div className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
+        {!recommend && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-sort`} className="text-sm font-medium">
             Order
@@ -4584,6 +4588,7 @@ function ContentGridFields({
             ))}
           </select>
         </div>
+        )}
         <NumberField
           label="How many"
           hint={`at most ${GRID_LIMIT_MAX}`}
@@ -4592,7 +4597,43 @@ function ContentGridFields({
           onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
         />
       </div>
-      {products && own && (
+      {products && own && source.type === "products" && (
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <Check
+            label="Recommend products for each shopper"
+            checked={Boolean(recommend)}
+            onChange={(on) =>
+              onChange(
+                on
+                  ? { source: { ...source, recommend: DEFAULT_GRID_RECOMMEND }, filters: undefined }
+                  : { source: { type: "products", ...(source.storeId && { storeId: source.storeId }), ...(source.market && { market: source.market }) } },
+              )
+            }
+          />
+          <p className="text-xs text-muted">
+            Picks what suits the shopper from the store&apos;s products, by what the page is about (a product, an article, the
+            archive or any page), what they have looked at, searched for, saved or put in the cart, never what they have already
+            bought. Needs recommendations switched on under Sales, Recommendations; the &ldquo;Only these&rdquo; categories and
+            tags above keep it to those products. The builder shows what everyone is shown.
+          </p>
+          {recommend && (
+            <>
+              <fieldset className="flex flex-wrap gap-x-6 gap-y-2">
+                <legend className="mb-1 w-full text-sm font-medium">Mix</legend>
+                <Check label="Upsells (a step up)" checked={recommend.mix.upsell} onChange={(upsell) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, upsell } } } })} />
+                <Check label="Cross-sells (related products)" checked={recommend.mix.crossSell} onChange={(crossSell) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, crossSell } } } })} />
+                <Check label="Complements (accessories, add-ons)" checked={recommend.mix.complement} onChange={(complement) => onChange({ source: { ...source, recommend: { ...recommend, mix: { ...recommend.mix, complement } } } })} />
+              </fieldset>
+              <Check
+                label="Say why under each product"
+                checked={recommend.explain}
+                onChange={(explain) => onChange({ source: { ...source, recommend: { ...recommend, explain } } })}
+              />
+            </>
+          )}
+        </div>
+      )}
+      {products && own && !recommend && (
         <label className="flex items-start gap-2 border-t border-border pt-4 text-sm">
           <input
             type="checkbox"

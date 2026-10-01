@@ -45,6 +45,10 @@ export const COPY_RULES: Record<string, CopyRule> = {
     "Offers (D114); one for products that were not copied is switched off, a gift of a product not copied is left out.",
   ),
   cart_reminder_steps: settings("The cart reminder mails' steps (their discount code is the copy of it)."),
+  recommendation_settings: never("A new store starts with recommendations off (D139); the owner switches them on and sets the cap."),
+  recommendation_rules: never("Goes-with, never-with and hidden products (D139) name the original's products; the new store's owner sets its own."),
+  recommendation_events: never("A log of what the original's shoppers did with recommendations (D139)."),
+  recommendation_adds: never("Recommended products put in the original's carts (D139)."),
   chat_agents: settings(
     "The chat agent's setup (its AI provider is not copied, so it stays off until the site has one).",
   ),

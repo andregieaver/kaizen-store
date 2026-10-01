@@ -172,6 +172,18 @@ const messages = {
       pickupAt: (place: string) => `Hentes hos ${place}`,
       windowLine: (when: string) => `Leveres ${when}`,
     },
+    /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    recommend: {
+      heading: "Anbefalt for deg",
+      viewed: (title: string) => `Fordi du så på ${title}`,
+      pairs: (title: string) => `Passer godt til ${title}`,
+      stepUp: (title: string) => `Et steg opp fra ${title}`,
+      cart: (title: string) => `Passer til ${title} i handlekurven`,
+      wishlist: (title: string) => `Likner ${title} på ønskelisten din`,
+      search: "Passer til søket ditt",
+      page: "Passer til denne siden",
+      popular: "Populært i butikken",
+    },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
       title: "Tips en venn",
@@ -1057,6 +1069,18 @@ const messages = {
       pickupAt: (place: string) => `Hämtas hos ${place}`,
       windowLine: (when: string) => `Levereras ${when}`,
     },
+    /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    recommend: {
+      heading: "Rekommenderas för dig",
+      viewed: (title: string) => `Eftersom du tittade på ${title}`,
+      pairs: (title: string) => `Passar bra till ${title}`,
+      stepUp: (title: string) => `Ett steg upp från ${title}`,
+      cart: (title: string) => `Passar till ${title} i varukorgen`,
+      wishlist: (title: string) => `Liknar ${title} på din önskelista`,
+      search: "Passar din sökning",
+      page: "Passar den här sidan",
+      popular: "Populärt i butiken",
+    },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
       title: "Tipsa en vän",
@@ -1941,6 +1965,18 @@ const messages = {
       pickupAt: (place: string) => `Afhentes hos ${place}`,
       windowLine: (when: string) => `Leveres ${when}`,
     },
+    /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    recommend: {
+      heading: "Anbefalet til dig",
+      viewed: (title: string) => `Fordi du så på ${title}`,
+      pairs: (title: string) => `Passer godt til ${title}`,
+      stepUp: (title: string) => `Et skridt op fra ${title}`,
+      cart: (title: string) => `Passer til ${title} i indkøbskurven`,
+      wishlist: (title: string) => `Ligner ${title} på din ønskeliste`,
+      search: "Passer til din søgning",
+      page: "Passer til denne side",
+      popular: "Populært i butikken",
+    },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
       title: "Anbefal en ven",
@@ -2822,6 +2858,18 @@ const messages = {
       deliveryLine: (label: string) => `Delivery: ${label}`,
       pickupAt: (place: string) => `Pick up at ${place}`,
       windowLine: (when: string) => `Delivered ${when}`,
+    },
+    /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    recommend: {
+      heading: "Recommended for you",
+      viewed: (title: string) => `Because you viewed ${title}`,
+      pairs: (title: string) => `Pairs well with ${title}`,
+      stepUp: (title: string) => `A step up from ${title}`,
+      cart: (title: string) => `Goes with ${title} in your cart`,
+      wishlist: (title: string) => `Like ${title} on your wishlist`,
+      search: "Matches your search",
+      page: "Related to this page",
+      popular: "Popular in the store",
     },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {

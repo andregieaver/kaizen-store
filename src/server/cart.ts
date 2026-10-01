@@ -87,6 +87,15 @@ export type CartCompany = { name: string; number: string };
 
 export type Cart = { lines: CartLine[]; currency: string; company: CartCompany | null };
 
+/** The ids of this browser's carts in a store, in every market: what orders placed from this device are found by (D139). */
+export async function deviceCartIds(storeId: string): Promise<string[]> {
+  const prefix = `cart_${storeId}_`;
+  return (await cookies())
+    .getAll()
+    .filter((cookie) => cookie.name.startsWith(prefix) && UUID.test(cookie.value))
+    .map((cookie) => cookie.value);
+}
+
 /** The shopper's cart id for this store and market, from the cookie. */
 export async function readCartId(shop: Shop): Promise<string | null> {
   const value = (await cookies()).get(cookieName(shop))?.value;

@@ -9,6 +9,7 @@ import { addDays, type SlotWeek } from "@/lib/booking-slots";
 import type { ChangeOutcome } from "@/server/booking-changes";
 
 import { AffiliateField } from "./affiliate-field";
+import { RecommendField } from "./recommend-field";
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { Dropdown } from "./dropdown";
@@ -248,6 +249,7 @@ export function AppointmentPicker({
         <input type="hidden" name="variantId" value={variantId} />
         <input type="hidden" name="quantity" value="1" />
         <AffiliateField store={store} />
+        <RecommendField />
         {startsAt && <input type="hidden" name="startsAt" value={startsAt} />}
         {resourceId && <input type="hidden" name="resourceId" value={resourceId} />}
         <button

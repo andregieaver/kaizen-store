@@ -60,6 +60,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
       {data.items.map((item) => (
         <li
           key={item.id}
+          data-item-id={item.id}
           style={tileStyle}
           className={`flex min-w-0 flex-col gap-3 ${tile?.radius ? "overflow-hidden" : ""} ${themed && !tile ? "product-card relative" : ""} ${
             item.audience ? audienceClass(item.audience) : ""
@@ -91,6 +92,10 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
                 {item.title}
               </a>
             </Heading>
+          )}
+          {item.note && (
+            // A recommendation's reason (D139), a fixed sentence with a title of the store's.
+            <p className="text-xs text-muted">{item.note}</p>
           )}
           {item.fields && item.fields.length > 0 && (
             // Custom fields chosen for the tiles (D120): one line each, plain words.

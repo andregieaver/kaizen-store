@@ -15,7 +15,7 @@ import { AiError, aiFor } from "@/server/ai";
 import { db } from "@/db/client";
 import { requireMember, type Membership } from "@/server/auth";
 import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
-import { gridData } from "@/server/content-grid";
+import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
 import { createRolePage } from "@/server/page-roles";
@@ -280,7 +280,8 @@ export async function storeGridPreviewAction(
   if (!parsed.success || parsed.data.type !== "contentGrid") {
     return { problem: parsed.success ? "Not a content grid." : parsed.error.issues[0].message };
   }
-  return gridData(parsed.data, {
+  // A grid that recommends (D139) previews what the page shows everyone before a shopper's own session.
+  return recommendedGridData(parsed.data, {
     pageId: pageId !== null && isId(pageId) ? pageId : null,
     owner: member.store.id,
     market: member.store.markets[0]?.code,

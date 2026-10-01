@@ -19,6 +19,7 @@ import { codeCategories, customCodeInput, type CustomCode } from "@/lib/custom-c
 
 import { affiliateSite } from "./affiliates";
 import { audit, type Account } from "./auth";
+import { getRecommendSettings } from "./recommend-settings";
 import { getChatAgent } from "./chat-agent";
 import { usesRememberedModals } from "./page-modals";
 import { referralPublicSettings } from "./referrals";
@@ -87,7 +88,9 @@ export async function siteCookies(
   // A store with a referral program keeps the link a visitor opened, as marketing, once they allow it (D131).
   const site = storeId === null ? null : await affiliateSite(storeId);
   const affiliate = site?.on ?? false;
-  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate })
+  // A store with recommendations on keeps what a visitor did in this tab, to suggest products (D139).
+  const recommendations = storeId === null ? false : (await getRecommendSettings(storeId)).enabled;
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.cookieDays } : cookie))
     .forEach(list);

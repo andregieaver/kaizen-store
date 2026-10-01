@@ -1010,7 +1010,7 @@ export const searchCache = commerce.table(
   "search_cache",
   {
     storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
-    /** `vector` or `filters`. */
+    /** `vector`, `filters` or `rerank` (a recommendation's order, D139). */
     kind: text("kind").notNull(),
     /** md5 of everything the answer depends on. */
     key: char("key", { length: 32 }).notNull(),
@@ -1020,7 +1020,7 @@ export const searchCache = commerce.table(
   (t) => [
     primaryKey({ columns: [t.storeId, t.kind, t.key] }),
     index("search_cache_created_idx").on(t.createdAt),
-    check("search_cache_kind", sql`${t.kind} in ('vector', 'filters')`),
+    check("search_cache_kind", sql`${t.kind} in ('vector', 'filters', 'rerank')`),
   ],
 );
 
@@ -5976,5 +5976,123 @@ export const deliveryQuotes = commerce.table(
     cartRef("delivery_quotes_cart_fk", t).onDelete("cascade"),
     index("delivery_quotes_cart_idx").on(t.storeId, t.cartId),
     index("delivery_quotes_expires_idx").on(t.expiresAt),
+  ],
+);
+
+/**
+ * A store's product recommendations (D139): whether they are on, whether the store's AI may re-rank them, the share of
+ * visitors who get the plain ranking so the two can be compared, how much dearer than the product an upsell may be, and
+ * a monthly cap on the AI's tokens (null for none). Off until the owner switches it on.
+ */
+export const recommendationSettings = commerce.table(
+  "recommendation_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull().default(false),
+    /** Whether the store's text model may re-rank candidates; the ranking without it is always the fallback. */
+    ai: boolean("ai").notNull().default(true),
+    /** The share of visitors (by tab) who get the plain ranking, so the AI's can be measured against it. */
+    holdoutPercent: integer("holdout_percent").notNull().default(10),
+    /** An upsell costs at most this much more than the product it is an upsell of, in percent. */
+    upsellCeilingPercent: integer("upsell_ceiling_percent").notNull().default(50),
+    /** The most tokens the recommendations may use of the AI in a calendar month; null for no cap. */
+    monthlyTokenCap: bigint("monthly_token_cap", { mode: "number" }).default(1_000_000),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("recommendation_settings_updated_by_idx").on(t.updatedBy),
+    check("recommendation_settings_holdout", sql`${t.holdoutPercent} between 0 and 50`),
+    check("recommendation_settings_ceiling", sql`${t.upsellCeilingPercent} between 0 and 500`),
+    check("recommendation_settings_cap", sql`${t.monthlyTokenCap} is null or ${t.monthlyTokenCap} >= 0`),
+  ],
+);
+
+/**
+ * What the owner decides about the recommendations (D139): `goes_with` (product → other: the other is offered with the
+ * product, ahead of what the engine finds), `never_with` (the other is never offered with the product) and `hide` (the
+ * product is never recommended anywhere; no other).
+ */
+export const recommendationRules = commerce.table(
+  "recommendation_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    productId: uuid("product_id").notNull(),
+    otherProductId: uuid("other_product_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("recommendation_rules_store_id_key").on(t.storeId, t.id),
+    check("recommendation_rules_kind", sql`${t.kind} in ('goes_with', 'never_with', 'hide')`),
+    check("recommendation_rules_other", sql`(${t.kind} = 'hide') = (${t.otherProductId} is null)`),
+    check("recommendation_rules_not_self", sql`${t.otherProductId} is null or ${t.otherProductId} <> ${t.productId}`),
+    productRef("recommendation_rules_product_fk", t),
+    foreignKey({
+      name: "recommendation_rules_other_fk",
+      columns: [t.storeId, t.otherProductId],
+      foreignColumns: [products.storeId, products.id],
+    }).onDelete("cascade"),
+    uniqueIndex("recommendation_rules_pair_key")
+      .on(t.storeId, t.kind, t.productId, t.otherProductId)
+      .where(sql`${t.otherProductId} is not null`),
+    uniqueIndex("recommendation_rules_hide_key").on(t.storeId, t.productId).where(sql`${t.kind} = 'hide'`),
+    index("recommendation_rules_product_idx").on(t.storeId, t.productId),
+  ],
+);
+
+/**
+ * What shoppers did with recommendations (D139), for measuring them: a product shown or clicked in a placement, by a
+ * random id the shopper's tab made (kept in the tab only, never linked to a person) and the arm it was in (`ai` or the
+ * `baseline` ranking). Kept 90 days.
+ */
+export const recommendationEvents = commerce.table(
+  "recommendation_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    session: text("session").notNull(),
+    arm: text("arm").notNull(),
+    /** Where it was shown: `product`, `listing`, `article`, `page` or `other`. */
+    placement: text("placement").notNull(),
+    productId: uuid("product_id").notNull(),
+    event: text("event").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("recommendation_events_store_idx").on(t.storeId, t.createdAt),
+    index("recommendation_events_created_idx").on(t.createdAt),
+    check("recommendation_events_arm", sql`${t.arm} in ('ai', 'baseline')`),
+    check("recommendation_events_placement", sql`${t.placement} in ('product', 'listing', 'article', 'page', 'other')`),
+    check("recommendation_events_event", sql`${t.event} in ('impression', 'click')`),
+  ],
+);
+
+/**
+ * A recommended product put in a cart (D139): the cart and product, the tab's id, the arm and the placement. An order of
+ * that cart that holds the product, placed within the attribution window, counts towards the recommendation's revenue.
+ * Not tied to the cart row, so it outlives the cart's own expiry; kept 90 days.
+ */
+export const recommendationAdds = commerce.table(
+  "recommendation_adds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    cartId: uuid("cart_id").notNull(),
+    productId: uuid("product_id").notNull(),
+    session: text("session").notNull(),
+    arm: text("arm").notNull(),
+    placement: text("placement").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("recommendation_adds_cart_product_key").on(t.storeId, t.cartId, t.productId),
+    index("recommendation_adds_store_idx").on(t.storeId, t.createdAt),
+    index("recommendation_adds_created_idx").on(t.createdAt),
+    check("recommendation_adds_arm", sql`${t.arm} in ('ai', 'baseline')`),
+    check("recommendation_adds_placement", sql`${t.placement} in ('product', 'listing', 'article', 'page', 'other')`),
   ],
 );

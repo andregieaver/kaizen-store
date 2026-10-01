@@ -1,7 +1,7 @@
 import { cssProblem } from "./custom-css";
 import { withoutRecipients } from "./forms";
 import { withoutUses } from "./global-parts";
-import type { BlockType, PageBlock, PageColumn, PageRow, RichTextDoc } from "./page-content";
+import { ownProducts, type BlockType, type PageBlock, type PageColumn, type PageRow, type RichTextDoc } from "./page-content";
 import { layoutBlocks, type PageLayout } from "./page-layout";
 import type { SavedPartKind } from "./saved-parts";
 import { summaryText } from "./templates";
@@ -206,7 +206,7 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
     case "contentGrid":
       return {
         ...without(block, ["tileFields"]),
-        source: block.source.type === "products" ? { type: "products" } : block.source,
+        source: ownProducts(block.source),
         categories: [],
         tags: [],
       };

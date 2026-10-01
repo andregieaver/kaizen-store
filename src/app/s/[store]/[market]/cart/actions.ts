@@ -15,6 +15,8 @@ import { rememberAffiliate } from "@/server/affiliates";
 import { changeLine, readCartId, setCartCompany } from "@/server/cart";
 import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
+import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
+import { attributionOf, parseAttribution } from "@/lib/recommendations";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveShop } from "@/server/shop";
 
@@ -85,6 +87,13 @@ export async function addToCart(
     const cartId = await readCartId(input.shop);
     const ref = formData.get("ref");
     if (cartId) await rememberAffiliate(input.shop, cartId, typeof ref === "string" ? ref.slice(0, 32) : null);
+    // A product opened from a recommendation (D139) is remembered with the cart, so the order that follows counts towards it.
+    const attribution = parseAttribution(formData.get("rec"));
+    if (cartId && attribution) {
+      const productId = await productOfVariant(input.shop.storeId, input.variantId);
+      const credited = productId ? attributionOf(attribution, productId) : null;
+      if (productId && credited) await recordRecommendedAdd(input.shop.storeId, cartId, productId, credited);
+    }
   }
   refresh();
   return result.outcome === "removed"

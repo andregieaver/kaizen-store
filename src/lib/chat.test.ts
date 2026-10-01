@@ -38,7 +38,7 @@ describe("the chat agent's settings", () => {
 
 describe("the tools", () => {
   it("gives stores products and Kaizen none", () => {
-    expect(storeTools().map((tool) => tool.name)).toEqual(["search_products", "get_product", "search_content", "store_info", "navigate"]);
+    expect(storeTools().map((tool) => tool.name)).toEqual(["search_products", "recommend_products", "get_product", "search_content", "store_info", "navigate"]);
     const kaizen = kaizenTools().map((tool) => tool.name);
     expect(kaizen).toEqual(["search_content", "site_info", "navigate"]);
     expect(kaizenTools()[0].description).toContain("Kaizen");

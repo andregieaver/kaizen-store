@@ -34,6 +34,7 @@ import { searchKnowledge } from "./knowledge";
 import { publishedPageNames } from "./pages";
 import { getPlatformChrome } from "./platform-navigation";
 import { queryVector } from "./query-vector";
+import { recommendForChat } from "./recommend";
 import { searchProducts } from "./search";
 import { getShippingFacts } from "./seo";
 import type { Store } from "./stores";
@@ -224,7 +225,7 @@ const json = (value: unknown) => JSON.stringify(value).slice(0, 6000);
 
 type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct[] };
 
-async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: string, args: Record<string, unknown>): Promise<ToolOutcome> {
+async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: string, args: Record<string, unknown>, request: ChatRequest): Promise<ToolOutcome> {
   const { store, market } = site;
   const text = (key: string) => (typeof args[key] === "string" ? String(args[key]).trim().slice(0, 200) : "");
   switch (name) {
@@ -243,6 +244,35 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
           ...(found.products.length === 0 ? { note: "Nothing found. Try other words, or say so." } : {}),
         }),
         products,
+      };
+    }
+    case "recommend_products": {
+      // The store's recommendation engine (D139): the same rules as its pages, for this visitor; the model only words them.
+      const handle = text("handle") || /^\/(?:[^/]+\/){0,3}p\/([a-z0-9-]+)/.exec(request.path ?? "")?.[1] || "";
+      const looking = handle ? await getProduct(store.id, market, handle) : null;
+      const query = text("query");
+      const signals = { ...request.signals, searches: query ? [query, ...request.signals.searches].slice(0, 5) : request.signals.searches };
+      const { on, picked } = await recommendForChat(store, market, { productId: looking?.id ?? null, signals });
+      if (!on) return { result: json({ note: "The store's recommendations are off. Use search_products to find products instead." }) };
+      if (picked.length === 0) return { result: json({ products: [], note: "Nothing to recommend right now. Say so, or search for what the visitor wants." }) };
+      const notices = await campaignNotices(store.id, market);
+      const offers = new Map(picked.map(({ product }) => [product.id, offersOn(site, notices, product.id, { gifts: false })] as const));
+      return {
+        result: json({
+          products: picked.map(({ product, kind, note }) => {
+            const told = offers.get(product.id)?.told ?? [];
+            return {
+              handle: product.handle,
+              title: product.title,
+              price: priceText(product.price, market.locale, market.lang, product.priceVaries),
+              relation: kind === "upsell" ? "a step up from what they are looking at" : kind === "complement" ? "an accessory or add-on that goes with it" : kind === "cross_sell" ? "a related product" : "similar to what they have shown interest in",
+              ...(note ? { why: note } : {}),
+              ...(told.length > 0 && { offers: told }),
+            };
+          }),
+          note: "Present these, briefly, in this order. Do not add other products.",
+        }),
+        products: picked.map(({ product }) => card(site, product, product.priceVaries, offers.get(product.id)?.card)),
       };
     }
     case "get_product": {
@@ -429,7 +459,7 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
       }
       let outcome: ToolOutcome;
       try {
-        outcome = site.kind === "store" ? await storeTool(site, call.function.name, args) : await kaizenTool(call.function.name, args);
+        outcome = site.kind === "store" ? await storeTool(site, call.function.name, args, request) : await kaizenTool(call.function.name, args);
       } catch (error) {
         if (error instanceof AiError) throw error;
         console.warn(`[chat] tool ${call.function.name} failed: ${error instanceof Error ? error.message : String(error)}`);

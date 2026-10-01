@@ -22,6 +22,7 @@ export const AI_FEATURES = {
   ai_manager: "AI manager",
   chat_agent: "Chat agent",
   search: "Search",
+  recommendations: "Recommendations",
   embeddings: "Catalogue vectors",
   knowledge: "Chat knowledge",
   media: "Media library",

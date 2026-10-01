@@ -22,6 +22,8 @@ export type GridItem = {
   date?: string;
   /** The custom fields the grid's tiles show under the title (D120), as label and words. */
   fields?: TileField[];
+  /** A recommendation's reason (D139), in the shopper's language: "Pairs well with …", shown under the title. */
+  note?: string;
 };
 
 export type GridData = { items: GridItem[]; lang: string; locale: string };

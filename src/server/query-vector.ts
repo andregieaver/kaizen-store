@@ -15,9 +15,9 @@ const QUERY_TIMEOUT_MS = 10_000;
  * the key, so a changed model never gets an old vector; a failure is not
  * kept.
  */
-export async function queryVector(storeId: string, space: string, text: string): Promise<number[]> {
+export async function queryVector(storeId: string, space: string, text: string, feature: "search" | "recommendations" = "search"): Promise<number[]> {
   return cached(storeId, "vector", cacheKey(space, text), async () => {
-    const ai = await aiFor(storeId, { feature: "search" });
+    const ai = await aiFor(storeId, { feature });
     if (!ai || ai.space !== space) throw new AiError("The store's search model changed.");
     const { vectors } = await embedTexts(ai, [text], QUERY_TIMEOUT_MS);
     return vectors[0];

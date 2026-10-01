@@ -12,6 +12,7 @@ import { minorUnitDigits } from "@/lib/money";
 import type { PriceVat } from "@/lib/pricing";
 
 import { AffiliateField } from "./affiliate-field";
+import { RecommendField } from "./recommend-field";
 import type { AddToCartLabels } from "./add-to-cart";
 import { useOpenCartAfterAdd } from "./cart-drawer";
 import { Dropdown } from "./dropdown";
@@ -365,6 +366,7 @@ export function RangePicker({
         <input type="hidden" name="variantId" value={variantId} />
         <input type="hidden" name="quantity" value={Math.max(1, count)} />
         <AffiliateField store={store} />
+        <RecommendField />
         {startsAt && <input type="hidden" name="startsAt" value={startsAt} />}
         <div className="flex flex-wrap gap-2">
           <button

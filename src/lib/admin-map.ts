@@ -257,6 +257,10 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
     tasks: ["Start a sale", "Set up 3 for 2", "Give a free product over an amount", "Schedule a campaign", "Switch a campaign off"],
     keywords: ["sale", "offer", "promotion", "3 for 2", "bundle", "free gift", "discount", "black friday", "time-limited"],
   }),
+  store("recommendations", "/recommendations", "Recommendations", "Sales", "Product recommendations: upsells, cross-sells and complements picked for each shopper from what they look at, search for, save and put in the cart, never what they already bought, shown in a product grid that recommends (on a product page, an article, the All products page or any page) and used by the chat assistant. Switch them on, let the store's AI re-rank the best candidates, set how much dearer than a product an upsell may be, cap the AI's monthly tokens, choose which products go together, are never shown together or are never recommended, and see clicks, add-to-cart rate and revenue per visitor with and without the AI.", {
+    tasks: ["Turn recommendations on or off", "Cap the AI's monthly use for recommendations", "Say which products go together", "Hide a product from recommendations", "See what recommendations earn"],
+    keywords: ["recommendations", "recommended", "upsell", "cross-sell", "cross sell", "complementary", "you may also like", "related products", "personalised", "personalized", "ai recommendations", "suggestions", "frequently bought together"],
+  }),
   store("campaign.new", "/campaigns/new", "New campaign", "Sales", "Creates a campaign: what it gives, what it applies to, and when it runs."),
   store("campaign", "/campaigns/[campaignId]", "Campaign", "Sales", "One campaign: what it gives, what it applies to, when it runs, and switching it off or deleting it."),
   store("bonus", "/bonus", "Bonus credits", "Sales", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {

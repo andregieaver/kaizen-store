@@ -498,7 +498,20 @@ export type GridContent = keyof typeof GRID_CONTENT;
  * products. On Kaizen's pages a store and market are named; on a store's
  * own pages (D53) they are the store's products in the shopper's market.
  */
-export type GridSource = { type: "pages" } | { type: "articles" } | { type: "products"; storeId?: string; market?: string };
+export type GridSource =
+  | { type: "pages" }
+  | { type: "articles" }
+  | { type: "products"; storeId?: string; market?: string; /** Products picked for each shopper by the store's recommendations (D139), on a store's own pages. */ recommend?: GridRecommend };
+
+/**
+ * A product grid that recommends (D139): which of upsells, cross-sells and complements it mixes, and whether a line says why
+ * each product is shown. The grid's categories and tags keep it to those products, its limit says how many.
+ */
+export type GridRecommend = { mix: { upsell: boolean; crossSell: boolean; complement: boolean }; explain: boolean };
+export const DEFAULT_GRID_RECOMMEND: GridRecommend = { mix: { upsell: true, crossSell: true, complement: true }, explain: true };
+/** A grid's source with only what moves between stores: no store or market, the recommendation options kept. */
+export const ownProducts = (source: GridSource): GridSource =>
+  source.type === "products" ? { type: "products", ...(source.recommend && { recommend: source.recommend }) } : source;
 export const GRID_SORTS = {
   newest: "Newest first",
   oldest: "Oldest first",
@@ -1849,6 +1862,12 @@ const contentGridBlock = z.object({
         type: z.literal("products"),
         storeId: z.uuid("Choose the store whose products the grid shows.").optional(),
         market: z.string().regex(/^[A-Z]{2}$/, "Choose the market whose prices the grid shows.").optional(),
+        recommend: z
+          .object({
+            mix: z.object({ upsell: z.boolean(), crossSell: z.boolean(), complement: z.boolean() }),
+            explain: z.boolean(),
+          })
+          .optional(),
       }),
     ],
     "A content grid shows an unknown kind of content.",

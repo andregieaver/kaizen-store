@@ -71,7 +71,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
       <>
         <StorePageArticle
           content={localizePage(page.content, market.locale)}
-          place={{ pageId: page.id, owner: store.id, market: market.slug, listing: { query: searchParams, path } }}
+          place={{ pageId: page.id, owner: store.id, market: market.slug, archive: true, listing: { query: searchParams, path } }}
         />
         <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
       </>

@@ -50,6 +50,10 @@ export type GridPlace = {
   pageType?: "page" | "article";
   /** On a store's working page (D113), the route it stands in for: the components for its cart, checkout and so on draw only there. */
   route?: StoreRoute;
+  /** In a product layout (D79), the product the page is for: a grid that recommends (D139) recommends around it. */
+  product?: string;
+  /** On the store's All products page (D83): a product archive, which a grid that recommends reads the chosen filters of. */
+  archive?: boolean;
 };
 
 /** Where a filterable grid reads its choices, and the address they go to. */
