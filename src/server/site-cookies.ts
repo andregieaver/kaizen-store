@@ -19,6 +19,7 @@ import { codeCategories, customCodeInput, type CustomCode } from "@/lib/custom-c
 
 import { affiliateSite } from "./affiliates";
 import { audit, type Account } from "./auth";
+import { storeHasExperiments } from "./experiments";
 import { getRecommendSettings } from "./recommend-settings";
 import { getChatAgent } from "./chat-agent";
 import { usesRememberedModals } from "./page-modals";
@@ -90,7 +91,9 @@ export async function siteCookies(
   const affiliate = site?.on ?? false;
   // A store with recommendations on keeps what a visitor did in this tab, to suggest products (D139).
   const recommendations = storeId === null ? false : (await getRecommendSettings(storeId)).enabled;
-  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations })
+  // A store with a running A/B test remembers a visitor's version, as statistics, once they allow it (D148): the banner asks for it.
+  const experiments = storeId === null ? false : await storeHasExperiments(storeId);
+  declaredCookies(storeId === null ? "platform" : "store", tracking, { ...options, chat, modals, referrals: referral?.enabled ?? false, affiliate, recommendations, experiments })
     .map((cookie) => (cookie.referrals && referral ? { ...cookie, days: referral.cookieDays } : cookie))
     .map((cookie) => (cookie.affiliate && site ? { ...cookie, days: site.cookieDays } : cookie))
     .forEach(list);

@@ -11,7 +11,9 @@ type PageOwner = string | null;
  * What a page of a type may hold, beyond `pageInput`: checked when a page
  * is saved, and when a global part (D98) changes the pages that use it.
  */
-export function pageRulesProblem(owner: PageOwner, type: PageType, content: PageContent): string | null {
+export function pageRulesProblem(owner: PageOwner, kind: PageType, content: PageContent): string | null {
+  // A version of a page made for an A/B test (D148) holds what the page may hold.
+  const type: PageType = kind === "variant" ? "page" : kind;
   return (
     ownerGridProblem(owner, content.rows) ??
     productLayoutProblem(owner, type, content) ??

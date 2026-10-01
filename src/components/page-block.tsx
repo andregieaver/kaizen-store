@@ -202,6 +202,8 @@ function Button({ block }: { block: ButtonBlock }) {
   return (
     <a
       href={block.href}
+      // An A/B test counts clicks on a button by its block (D148).
+      data-block-id={block.id}
       {...(block.newTab && { target: "_blank", rel: "noopener noreferrer" })}
       // A border, corners and shadow chosen for the button win over its style's own.
       style={{ ...look.style, ...frameStyle(block) }}

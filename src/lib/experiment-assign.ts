@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { audienceAllows, OUTSIDE, type Assignments, type Audience, type VisitContext } from "./experiments";
+
 /**
  * Who sees which version of a tested page (D148): a random but fixed draw from the visitor's id and the test's id, so the
  * same visitor always gets the same answer and two tests never share their draw. Node only: the proxy and the server use
@@ -29,4 +31,31 @@ export function assign(visitor: string, experimentId: string, trafficShare: numb
   }
   // Rounding left a sliver at the top: the last version takes it.
   return split.length > 0 ? split[split.length - 1].key : null;
+}
+
+export type RunningForAssign = { id: string; trafficShare: number; audience: Audience; variants: Split };
+
+/**
+ * A visitor's answers for the tests running now: what they already have stays (a visitor never changes version), a new
+ * test is drawn for them (or `OUTSIDE` when the traffic share or the audience leaves them out), and answers for tests
+ * that are no longer running are dropped so the cookie stays small. Not changed when nothing is new.
+ */
+export function assignAll(
+  running: RunningForAssign[],
+  existing: Assignments | null,
+  visit: VisitContext,
+  newVisitor: () => string,
+): { assignments: Assignments; changed: boolean } {
+  const visitor = existing?.visitor ?? newVisitor();
+  const versions: Record<string, string> = {};
+  for (const test of running) {
+    const known = existing?.versions[test.id];
+    versions[test.id] = known ?? (audienceAllows(test.audience, visit) ? (assign(visitor, test.id, test.trafficShare, test.variants) ?? OUTSIDE) : OUTSIDE);
+  }
+  const before = existing?.versions ?? {};
+  const changed =
+    existing === null ||
+    Object.keys(versions).length !== Object.keys(before).length ||
+    Object.entries(versions).some(([id, key]) => before[id] !== key);
+  return { assignments: { visitor, versions }, changed };
 }

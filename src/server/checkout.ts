@@ -25,6 +25,7 @@ import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 
 import { holdAppointment } from "./appointments";
 import { holdRange, linePrice, rangePricing } from "./ranges";
+import { recordExperimentCart } from "./experiments";
 import { storeFeeBps } from "./billing";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
 import { bookable } from "./cart";
@@ -955,6 +956,8 @@ export async function startCheckout(
   const placed = await placeOrder(shop, cartId, consent, { customerId });
   if (!placed.ok) return placed;
   const { order } = placed;
+  // A checkout of an enrolled visitor (D148): counted in the tests they were shown; never fails the checkout.
+  await recordExperimentCart(shop.storeId, cartId, "checkout");
   // Everything is paid at the venue (D66): no payment now, the booking is confirmed at once.
   if (order.dueNowMinor === 0 && order.balanceMinor > 0) {
     if (!contact) {

@@ -10,6 +10,7 @@ import { catalogTag } from "@/server/catalog";
 import { pruneChatUsage } from "@/server/chat-agent";
 import { cronAuthorised } from "@/server/cron-auth";
 import { refreshEmbeddings } from "@/server/embeddings";
+import { runExperimentJobs } from "@/server/experiment-jobs";
 import { pruneFormSubmissions } from "@/server/forms";
 import { pruneRecommendEvents } from "@/server/recommend-events";
 import { pruneSearchCache } from "@/server/search-cache";
@@ -44,12 +45,13 @@ import { prepareDueRecurringWork } from "@/server/work-recurring";
  * past their expiry written off, a reminder to those whose credits expire
  * soon, and credits held by unpaid orders given back; and the referral program's emails (D131, never throws): the
  * customers whose friends' orders earned them credits are told, once per order; and recommendation events older than 90 days
- * forgotten (D139).
+ * forgotten (D139); and A/B tests' upkeep (D148, never throws): tests past their end stopped, guardrails looked at, old
+ * carts' visitors forgotten.
  */
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -69,13 +71,14 @@ async function run(request: Request) {
     runBonusJobs(),
     runAffiliateJobs(),
     pruneRecommendEvents(),
+    runExperimentJobs(),
   ]);
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

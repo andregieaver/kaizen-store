@@ -105,12 +105,16 @@ export const COOKIE_DAYS = 90;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export const isUuid = (value: unknown): value is string => typeof value === "string" && UUID.test(value);
 
+/** A visitor's answer for a test they are not in (the traffic share, the audience): they see the original and are never counted. */
+export const OUTSIDE = "0";
+const isVersion = (value: unknown): value is string => value === OUTSIDE || (VARIANT_KEYS as readonly string[]).includes(value as string);
+
 export type Assignments = { visitor: string; versions: Record<string, string> };
 
 /** `1.{visitor}.{experiment}={variant},…`: the browser's own random id for this store, and the version it has for each test. */
 export function encodeAssignments({ visitor, versions }: Assignments): string {
   const pairs = Object.entries(versions)
-    .filter(([id, variant]) => isUuid(id) && (VARIANT_KEYS as readonly string[]).includes(variant))
+    .filter(([id, variant]) => isUuid(id) && isVersion(variant))
     .slice(0, 12)
     .map(([id, variant]) => `${id}=${variant}`)
     .join(",");
@@ -123,7 +127,7 @@ export function decodeAssignments(value: string | undefined | null): Assignments
   const versions: Record<string, string> = {};
   for (const pair of match[2].split(",")) {
     const [id, variant] = pair.split("=");
-    if (isUuid(id) && (VARIANT_KEYS as readonly string[]).includes(variant)) versions[id] = variant;
+    if (isUuid(id) && isVersion(variant)) versions[id] = variant;
   }
   return { visitor: match[1], versions };
 }

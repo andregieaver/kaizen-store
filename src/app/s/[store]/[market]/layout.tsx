@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { BuyerQuestion } from "@/components/buyer";
 import { SiteConsent } from "@/components/consent/site-consent";
+import { StoreExperiments } from "@/components/ab/store-experiments";
 import { StoreAffiliate } from "@/components/store-affiliate";
 import { StoreChat } from "@/components/site-chat";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
@@ -165,6 +166,10 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         {/* A friend's referral link (D131): read in the browser, kept in memory and, once allowed, in a cookie. */}
         <Suspense fallback={null}>
           <StoreAffiliate store={store} base={marketPath(store.slug, market.slug)} />
+        </Suspense>
+        {/* A/B tests of the store's pages (D148): a visitor's versions, once they have accepted statistics cookies. */}
+        <Suspense fallback={null}>
+          <StoreExperiments storeId={store.id} store={store.slug} market={market.slug} />
         </Suspense>
         {/* Asks about the store's optional tools and code, if it has any, in the market's language (D58, D61). */}
         <Suspense fallback={null}>

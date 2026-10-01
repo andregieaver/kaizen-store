@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assign, unitDraw } from "./experiment-assign";
+import { assign, assignAll, unitDraw } from "./experiment-assign";
 import {
   audienceAllows,
   dataCookieName,
@@ -72,6 +72,40 @@ describe("who is given which version", () => {
     const agree = both.filter(([x, y]) => x === y).length / both.length;
     expect(agree).toBeGreaterThan(0.42);
     expect(agree).toBeLessThan(0.58);
+  });
+});
+
+describe("a visitor's answers for the tests running", () => {
+  const visit = { market: "no", device: "desktop" as const, returning: false };
+  const test = (id: string, over: object = {}) => ({ id, trafficShare: 1, audience: {}, variants: [{ key: "a", share: 0.5 }, { key: "b", share: 0.5 }], ...over });
+
+  it("gives a new visitor an id and an answer for every test running", () => {
+    const { assignments, changed } = assignAll([test(E1), test(E2)], null, visit, () => A);
+    expect(changed).toBe(true);
+    expect(assignments.visitor).toBe(A);
+    expect(Object.keys(assignments.versions).sort()).toEqual([E1, E2]);
+    expect(["a", "b"]).toContain(assignments.versions[E1]);
+  });
+
+  it("never changes what a visitor already has, adds only new tests, and drops tests that ended", () => {
+    const existing = { visitor: A, versions: { [E1]: "b", ["cccccccc-cccc-4ccc-8ccc-cccccccccccc"]: "a" } };
+    const same = assignAll([test(E1)], { visitor: A, versions: { [E1]: "b" } }, visit, () => "x");
+    expect(same.changed).toBe(false);
+    expect(same.assignments.versions[E1]).toBe("b");
+    const grown = assignAll([test(E1), test(E2)], existing, visit, () => "x");
+    expect(grown.changed).toBe(true);
+    expect(grown.assignments.versions[E1]).toBe("b");
+    expect(Object.keys(grown.assignments.versions).sort()).toEqual([E1, E2]);
+    expect(grown.assignments.visitor).toBe(A);
+  });
+
+  it("leaves a visitor outside a test their audience or the traffic share does not include, and remembers it", () => {
+    const mobileOnly = assignAll([test(E1, { audience: { devices: ["mobile"] } })], null, visit, () => A);
+    expect(mobileOnly.assignments.versions[E1]).toBe("0");
+    const nobody = assignAll([test(E1, { trafficShare: 0.000001 })], null, visit, () => A);
+    expect(nobody.assignments.versions[E1]).toBe("0");
+    // The next call has the answer, so nothing is asked again.
+    expect(assignAll([test(E1, { audience: { devices: ["mobile"] } })], mobileOnly.assignments, visit, () => "x").changed).toBe(false);
   });
 });
 

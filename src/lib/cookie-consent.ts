@@ -141,6 +141,8 @@ export type KnownCookie = {
   affiliate?: boolean;
   /** Set only in stores whose product recommendations are on (D139). */
   recommendations?: boolean;
+  /** Set only in stores with a running A/B test (D148). */
+  experiments?: boolean;
 };
 
 /**
@@ -210,6 +212,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
       nb: "Husker i denne fanen hvilke produkter du så på, hva du søkte etter og hvilke anbefalte produkter du åpnet, slik at butikken kan foreslå produkter som passer deg; forsvinner når du lukker fanen og kobles aldri til hvem du er.",
       sv: "Kommer ihåg i den här fliken vilka produkter du tittade på, vad du sökte efter och vilka rekommenderade produkter du öppnade, så att butiken kan föreslå produkter som passar dig; försvinner när du stänger fliken och kopplas aldrig till vem du är.",
       da: "Husker i denne fane, hvilke produkter du så på, hvad du søgte efter, og hvilke anbefalede produkter du åbnede, så butikken kan foreslå produkter, der passer til dig; forsvinder, når du lukker fanen, og knyttes aldrig til, hvem du er.",
+    },
+  },
+  {
+    // Two cookies and one item of session storage, only in a store with a running A/B test (D148) and only once a visitor has allowed statistics.
+    name: "kaizen_ab_…",
+    pattern: /^kaizen_ab(_[0-9a-f-]{36}|_reload)?$/,
+    provider: "Kaizen",
+    category: "statistics",
+    days: 90,
+    on: "store",
+    experiments: true,
+    purpose: {
+      en: "Remembers which version of a page the store is trying on you (an A/B test), by a random number that belongs to this store only, so you see the same version each time and the store can learn which works better; never joined to who you are.",
+      nb: "Husker hvilken versjon av en side butikken prøver ut på deg (en A/B-test), med et tilfeldig tall som bare hører til denne butikken, slik at du ser samme versjon hver gang og butikken kan lære hva som fungerer best; kobles aldri til hvem du er.",
+      sv: "Kommer ihåg vilken version av en sida butiken testar på dig (ett A/B-test), med ett slumptal som bara hör till den här butiken, så att du ser samma version varje gång och butiken kan lära sig vad som fungerar bäst; kopplas aldrig till vem du är.",
+      da: "Husker, hvilken version af en side butikken afprøver på dig (en A/B-test), med et tilfældigt tal, der kun hører til denne butik, så du ser den samme version hver gang, og butikken kan lære, hvad der virker bedst; knyttes aldrig til, hvem du er.",
     },
   },
   {
@@ -490,7 +508,8 @@ export function declaredCookies(
     referrals = false,
     affiliate = false,
     recommendations = false,
-  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean } = {},
+    experiments = false,
+  }: { buyers?: boolean; chat?: boolean; colorMode?: boolean; modals?: boolean; referrals?: boolean; affiliate?: boolean; recommendations?: boolean; experiments?: boolean } = {},
 ): KnownCookie[] {
   return KNOWN_COOKIES.filter(
     (cookie) =>
@@ -501,6 +520,7 @@ export function declaredCookies(
       (!cookie.modals || modals) &&
       (!cookie.affiliate || affiliate) &&
       (!cookie.recommendations || recommendations) &&
+      (!cookie.experiments || experiments) &&
       (!cookie.referrals || referrals) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );

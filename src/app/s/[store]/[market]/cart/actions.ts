@@ -15,6 +15,7 @@ import { rememberAffiliate } from "@/server/affiliates";
 import { changeLine, readCartId, setCartCompany } from "@/server/cart";
 import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
+import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf, parseAttribution } from "@/lib/recommendations";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
@@ -87,6 +88,8 @@ export async function addToCart(
     const cartId = await readCartId(input.shop);
     const ref = formData.get("ref");
     if (cartId) await rememberAffiliate(input.shop, cartId, typeof ref === "string" ? ref.slice(0, 32) : null);
+    // An enrolled visitor's cart (D148): tied to them so the order that follows counts in the test they were shown.
+    if (cartId) await recordExperimentCart(input.shop.storeId, cartId, "cart");
     // A product opened from a recommendation (D139) is remembered with the cart, so the order that follows counts towards it.
     const attribution = parseAttribution(formData.get("rec"));
     if (cartId && attribution) {
