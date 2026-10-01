@@ -55,6 +55,26 @@ export function flagsOf(test: TestLine, now: Date): Flag[] {
   return flags;
 }
 
+/**
+ * What a platform admin can usefully do about a test, in words, from its status and what it said: never to change it (the store's owner
+ * does that), only to know when to say something to the owner. Used by the platform assistant (phase 8).
+ */
+export function adviceFor(input: { status: ExperimentStatus; verdict: string | null; guardrail: boolean; version?: string | null }): string[] {
+  const { status, verdict } = input;
+  const owner = "You cannot change a store's test: tell the owner, who can in the store's admin.";
+  if (status === "draft" || status === "scheduled") return ["Not started: nothing to say about results. The owner starts it."];
+  if (status === "applied" || status === "discarded") return ["Decided: nothing to do."];
+  if (status === "stopped") {
+    return input.guardrail
+      ? ["The guardrail stopped it because a version was clearly selling less, and the store's owners were emailed. It waits for the owner to discard it or choose a version.", owner]
+      : ["It is stopped and waits for the owner to choose a version or keep the original.", owner];
+  }
+  if (verdict === "broken") return ["The visitors are not divided as promised, so the figures cannot be trusted: the owner should stop it and start a new one.", owner];
+  if (verdict === "few" || verdict === "early" || verdict === null) return ["Nothing to do: it cannot say anything before its minimum visitors and days. Do not read anything into the figures yet."];
+  if (verdict === "better") return [`A version${input.version ? ` (${input.version})` : ""} is clearly better: the owner can stop the test and apply it.`, owner];
+  return ["The original is as good or better: the owner can stop the test and keep it, or run it longer or try a bolder change.", owner];
+}
+
 /** Tests that need a look first, then running ones, then the rest, newest first within each. */
 export function attentionOrder<T extends { status: ExperimentStatus; flags: Flag[]; startedAt: Date | null; createdAt: Date }>(tests: T[]): T[] {
   const rank = (t: T) => (t.flags.length > 0 ? 0 : t.status === "running" ? 1 : t.status === "scheduled" ? 2 : t.status === "stopped" ? 3 : t.status === "draft" ? 4 : 5);

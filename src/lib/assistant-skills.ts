@@ -336,6 +336,19 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "ab-tests-platform",
+    area: "platform",
+    title: "Watch the stores' A/B tests",
+    when: "The platform admin asks about the stores' A/B tests, which tests are running, stuck or hurting sales, or how the search test or a store's recommendations test is going.",
+    steps: [
+      "Call list_ab_tests (needs_attention: true to see only the trouble, or store for one store). Start with what needs a look, each with its store and the sentence the tool gives.",
+      "Call explain_ab_test with a test's id for its figures and verdict. Repeat the verdict and its reasons; never call a winner it does not and never give a verdict of your own. Say too early when it says so: a test says nothing before its minimum visitors and days.",
+      "You cannot start, stop or change a store's test: the owner does that. For a test that needs a look, say what to tell the owner (the tool's what_next) and offer to open the stores' tests page (experiments).",
+      "A version selling clearly less is stopped by the hourly check and the owners are emailed: say so rather than offering to stop it.",
+      "The search test and a store's held-out recommendations count searches and tabs, not visitors who accepted cookies: say what was counted. Never add amounts across currencies.",
+    ],
+  },
+  {
     id: "referral-program",
     area: "platform",
     title: "Run the referral program",

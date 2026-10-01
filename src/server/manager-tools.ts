@@ -33,6 +33,7 @@ import { ensureBillingEvents } from "./referral-billing";
 import { getReferralSettings, listReferrers, referralTotals, referrerOverview, REFERRALS_TAG, saveReferralSettings } from "./referrals";
 import { approveAccessRequest, declineAccessRequest, listAccessRequests } from "./platform";
 import { getPlatformCustomer, listPlatformCustomers } from "./platform-customers";
+import { explainAbTest, listAbTests } from "./platform-experiment-tools";
 import { getStore, type Store } from "./stores";
 import { platformModes } from "./stripe";
 
@@ -440,6 +441,8 @@ async function setReferralProgram(ctx: ManagerContext, input: PlatformToolInput<
 }
 
 const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
+  list_ab_tests: (_ctx: ManagerContext, input: PlatformToolInput<"list_ab_tests">) => listAbTests(input),
+  explain_ab_test: (ctx: ManagerContext, input: PlatformToolInput<"explain_ab_test">) => explainAbTest(ctx.account, input),
   get_referral_program: getReferralProgram,
   set_referral_program: setReferralProgram,
   platform_overview: platformOverview,

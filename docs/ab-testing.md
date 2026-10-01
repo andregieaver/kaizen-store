@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 4 built** (4: the AI manager's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals, the surrounding rows of working pages, the platform's own pages and its cross-store view are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 8 built** (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals, the surrounding rows of working pages, the platform's own pages and its cross-store view are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -248,7 +248,30 @@ in the platform's view. What "onto the engine" means here, and what it does not:
   "Too early to say") with its counts, and flagged when the split is uneven or nobody is counted. The recommendations rows also get the
   engine's split check against the store's held-out share, a new reading shown only here: the stores' own report is unchanged.
 
-Not done: a guardrail for the search or recommendations tests (they do not stop themselves), and platform-assistant tools.
+Not done: a guardrail for the search or recommendations tests (they do not stop themselves).
+
+## What phase 8 built: the platform assistant's A/B tools
+
+The platform's AI manager (D103) reads every store's tests, with two tools in `PLATFORM_TOOLS` (`src/lib/manager-tools.ts`; handlers in
+`src/server/platform-experiment-tools.ts`). Both are read-only and ungated, and there is no tool to start, stop, apply or draft: a platform
+admin cannot edit a store's test (the design's rule), so the assistant says what to tell the owner and never offers a button it does not have.
+
+- **`list_ab_tests`** (`store`, `status` active or all, `needs_attention`, `limit`): the platform's view in words (`platformExperiments()`,
+  `platformUnitTests()`): totals, then each test with its store, what it tests, its age, visitors per version, the verdict sentence and what
+  needs a look (`flagsOf()`), what stopped it and the winner of a decided one; plus the search test and each store's held-out recommendations.
+  A store's list includes the search test, which runs in every store.
+- **`explain_ab_test`** (`test`: an id from the list): a page test is the owner's own account (`explainResultsTool()`: the same figures, split
+  check and verdict), with `what_next` replaced by `adviceFor()`'s sentences for the platform (nothing to do yet; tell the owner the split is
+  broken; a version is clearly better; the guardrail stopped it and the owners were emailed) and the links into the store's own admin left out;
+  a test not yet started says so; the search test and `recommendations:{store}` are read as the platform view reads them, with a second
+  measure beside the first (searches finding nothing; tabs putting a recommended product in the cart).
+- **The playbook** `ab-tests-platform` (platform area): what needs a look first, the verdict repeated and never made, what the platform
+  cannot do, and what the hourly check already does.
+- The reads are not owner tools, so the store's MCP server (Kaizen Life) and a store's assistant do not have them: they show every store's tests.
+
+Not done: nothing is planned for the A/B tools; the open items are the ones listed before (modals and working pages, Kaizen's own pages, the
+moderated usability check, signed-in customers, the shareable preview link and the three pre-launch checks).
+
 
 ## Principles (kept from `measurement.md`)
 
@@ -560,6 +583,7 @@ reports (D106, D145).
 | **5** (the platform's view built) | The platform's cross-store view of tests | Flags tested on every kind of trouble |
 | **6** (the guardrail's email built) | Guardrail emails to owners | Sent once to the right people, never on a person's stop |
 | **7** (built) | Move search and recommendations tests onto the engine's arithmetic, and into the platform's view | Old and new give the same numbers on the same data |
+| **8** (built) | The platform assistant's tools: read every store's tests, say what needs a look | Read-only, no tool that changes a store's test |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the
 new page, a migration applied to production with the advisors checked and its version recorded in `decisions.md`,

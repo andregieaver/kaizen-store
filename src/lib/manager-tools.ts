@@ -140,6 +140,21 @@ export const PLATFORM_TOOLS = [
     "public",
   ),
   tool(
+    "list_ab_tests",
+    "Every store's A/B tests, read-only: what is running, scheduled or stopped and waiting for the owner's decision, with each one's store, what it tests, its visitors and verdict sentence, and what needs a look (a version selling less, visitors divided unevenly, a test nobody sees, one past its end or forgotten, a scheduled start that did not happen). Also the tests that run on their own: the search test (keyword against hybrid) and each store's held-out recommendations. You cannot start, stop or change a store's test: the owner does; tell them what needs a look.",
+    z.object({
+      store: slug.optional().describe("A store's address (slug) to look only at its tests."),
+      status: z.enum(["active", "all"]).default("active").describe("`active`: running, scheduled and waiting for a decision. `all` adds drafts and decided tests."),
+      needs_attention: z.boolean().default(false).describe("True to list only what needs a look."),
+      limit: z.number().int().min(1).max(50).default(20),
+    }),
+  ),
+  tool(
+    "explain_ab_test",
+    "One A/B test in full, by its id from list_ab_tests: a store's page test (its versions, who did what, the verdict the store worked out, whether visitors were divided as promised, and what to tell the owner), the search test, or a store's held-out recommendations. Repeat the verdict it gives and its reasons; never call a winner it does not, and say too early when it says so. Read-only.",
+    z.object({ test: z.string().trim().min(8).max(80).describe("The test's id from list_ab_tests.") }),
+  ),
+  tool(
     "platform_ai_usage",
     "How much of the AI every store and Kaizen itself used in a period: requests and tokens in total, per provider and model, per store, per feature, and how much ran on Kaizen's own key. Ask for one store or store owner account to see theirs, per provider and model.",
     z.object({
@@ -241,6 +256,8 @@ export const TOOL_WORDS: Record<string, string> = {
   get_owner: "Reading the owner",
   plan_reminder_stats: "Looking at plan reminders",
   list_platform_emails: "Looking at emails",
+  list_ab_tests: "Looking at the stores' A/B tests",
+  explain_ab_test: "Reading the test's results",
   platform_ai_usage: "Looking at AI usage",
   get_referral_program: "Looking at referrals",
   set_referral_program: "Preparing the referral change",
