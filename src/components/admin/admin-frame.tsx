@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
 
 import { AdminMain } from "./admin-main";
-import { StoreSidebar, StoreTabs, type NavGroup, type NavItem } from "./store-admin-nav";
+import { AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
 
 /**
  * The shell every level of the admin is drawn in (D107, docs/admin-navigation.md):
@@ -19,6 +19,8 @@ export function AdminFrame({
   account,
   tabs,
   groups,
+  areas,
+  wide = false,
   tabsLabel,
   menuTitle,
   menuFooter,
@@ -33,7 +35,12 @@ export function AdminFrame({
   /** The account menu (`AccountMenu`). */
   account: ReactNode;
   tabs: NavItem[];
+  /** The sidebar, the same on every page of the level. */
   groups: NavGroup[];
+  /** Instead, a sidebar for each section of the level, or none for a section that has none (D144); `groups` are for pages in no area. */
+  areas?: NavArea[];
+  /** The header and the main area use the whole width of the screen instead of the content width (D144). */
+  wide?: boolean;
   tabsLabel: string;
   /** The slide-out menu's title on phones. */
   menuTitle: ReactNode;
@@ -45,13 +52,14 @@ export function AdminFrame({
   before?: ReactNode;
   children: ReactNode;
 }) {
-  const hasMenu = tabs.length > 0 || groups.length > 0 || Boolean(menuFooter);
+  const hasMenu = tabs.length > 0 || groups.length > 0 || (areas?.length ?? 0) > 0 || Boolean(menuFooter);
+  const bar = wide ? "" : "max-w-7xl";
   return (
     <>
       {before}
       <HidingHeader>
         <header className="border-b border-border bg-background">
-          <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4">
+          <div className={`mx-auto flex h-14 items-center gap-2 px-4 ${bar}`}>
             {/* The slide-out menu (below) opens on any `data-open-menu` button. */}
             {hasMenu && (
             <button
@@ -73,7 +81,7 @@ export function AdminFrame({
             </div>
           </div>
           {tabs.length > 0 && (
-            <div className="mx-auto max-w-7xl px-1 sm:px-3">
+            <div className={`mx-auto px-1 sm:px-3 ${bar}`}>
               <StoreTabs items={tabs} label={tabsLabel} />
             </div>
           )}
@@ -82,8 +90,11 @@ export function AdminFrame({
 
       <AdminMain
         fullWidth={fullWidth}
+        wide={wide}
         sidebar={
-          groups.length > 0 ? (
+          areas ? (
+            <AreaSidebar areas={areas} fallback={groups} label="More" />
+          ) : groups.length > 0 ? (
             <aside className="hidden w-52 shrink-0 py-8 lg:block">
               <div className="sticky top-32">
                 <StoreSidebar groups={groups} label="More" />
@@ -97,8 +108,20 @@ export function AdminFrame({
 
       {hasMenu && (
       <MobileMenu title={menuTitle} labels={{ close: "Close menu", menu: "Menu" }}>
-        <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: "Sections", items: tabs }] : []), ...groups]} label="All pages" />
-        {menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
+        {areas ? (
+          <AreaMenu
+            tabs={tabs}
+            areas={areas}
+            fallback={groups}
+            label="All pages"
+            footer={menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
+          />
+        ) : (
+          <>
+            <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: "Sections", items: tabs }] : []), ...groups]} label="All pages" />
+            {menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
+          </>
+        )}
       </MobileMenu>
       )}
     </>

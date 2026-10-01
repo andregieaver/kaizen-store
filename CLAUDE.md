@@ -248,7 +248,7 @@ of running `playwright install`.
   (`LevelSwitcher`, `AdminAccountMenu`), the level's daily sections as `tabs`,
   the rest as sidebar `groups`. A level's layout supplies only those; a new
   page goes in exactly one level's tabs or groups and in `ADMIN_PAGES`. The
-  owner's overview is `controlCenter()` (`src/server/control-center.ts`, pure
+  platform's sections (D144) and their sidebars are `src/lib/platform-nav.ts` (a new platform page goes in one section's items, or in a section with no sidebar, and in `ADMIN_PAGES`; a test fails otherwise) and the shell takes them as `areas` (`NavArea`) with `wide`. The owner's overview is `controlCenter()` (`src/server/control-center.ts`, pure
   parts in `src/lib/control-center.ts`); the platform's is `platformOverview()`.
   Owner pages go under `/admin/account/…`, never a new `/admin/{word}`, which
   would take a store address. A layout's auth check does not stop its page

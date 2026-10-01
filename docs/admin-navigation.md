@@ -53,11 +53,26 @@ is one click from the control center.
 
 ## Platform
 
-| Tabs | Sidebar groups |
-|---|---|
-| Overview · Requests · Customers · Stores · Plans · AI manager | **Website** (Pages, Blog, Media, Menus, Header and footer, Headers, Footers, Fonts, Search, Cookies, Google reviews) · **Billing** (Discounts, Plan reminders, Referrals, Stripe) · **AI** (AI, AI usage, Chat agent, Search test) · **Communication** (Emails) |
+The platform (D144) uses the whole width of the screen. Its tabs carry an icon and each section has a sidebar of its
+own, or none:
 
-The overview is the operator's first look: requests waiting, stores by state,
+| Tab | Sidebar |
+|---|---|
+| Home (house) | None: the operator's first look |
+| Website (monitor) | Pages · Blog · Media · Templates · Menus · Header · Footer · Fonts |
+| Stores (shopping bag) | None |
+| Customers (people) | None |
+| Plans (credit card) | Editor · Features · Reminders · Discounts · Referrals |
+| Requests (bell, with the number waiting) | None |
+| Settings (cog) | Header and footer · Search · SEO · Cookies · Google reviews · Stripe · AI · AI usage · Chat agent · Emails · Languages |
+
+Website and Settings open on a page of cards, one for each page in the sidebar. The AI manager is opened from the
+header's button, not a tab. The sections, their items and what each does are in `src/lib/platform-nav.ts`, which the
+layout, the hub pages and a test (every platform page is in a section, every sidebar item is in the admin map) share.
+A section's tab is marked for every page inside it (`NavItem.also`); the sidebar is chosen by the page's address
+(`NavArea`, `AreaSidebar`), and the phone's menu shows the tabs and the sidebar of the section being viewed.
+
+The home page is the operator's first look: requests waiting, stores by state,
 plans, emails that failed, AI use, each with the page to act on.
 
 ## Control center

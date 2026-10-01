@@ -6,7 +6,7 @@ import { Attention, Section, Stat, StatGrid, type AttentionItem } from "@/compon
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformOverview } from "@/server/platform-overview";
 
-export const metadata: Metadata = { title: "Platform overview" };
+export const metadata: Metadata = { title: "Platform home" };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -35,7 +35,7 @@ export default async function PlatformOverviewPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Overview</h1>
+        <h1 className="text-2xl font-semibold">Home</h1>
         <p className="text-sm text-muted">How Kaizen is doing, and what needs the team.</p>
       </div>
 

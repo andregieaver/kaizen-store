@@ -392,7 +392,9 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
   }),
 
   // Platform ---------------------------------------------------------------------------------
-  platform("overview", "", "Overview", "Platform", "The operator's first look: requests waiting, stores by state, plans, failed emails and AI use.", {
+  platform("website", "/website", "Website", "Kaizen site", "Kaizen's own website: pages, blog, media, templates, menus, header, footer and fonts, each a card.", { keywords: ["site"] }),
+  platform("settings", "/settings", "Settings", "Platform", "Kaizen's own settings: header and footer, search, SEO, cookies, Google reviews, Stripe, AI, chat agent, emails and languages, each a card.", { keywords: ["configuration"] }),
+  platform("overview", "", "Home", "Platform", "The operator's first look: requests waiting, stores by state, plans, failed emails and AI use.", {
     keywords: ["dashboard", "home", "attention", "status"],
   }),
   platform("requests", "/requests", "Access requests", "Platform", "People asking to open a store: approving creates it and emails a sign-in link.", {
