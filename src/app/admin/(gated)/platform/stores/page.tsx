@@ -28,6 +28,7 @@ export default async function PlatformStoresPage() {
           <thead>
             <tr className="border-b border-border text-muted">
               <th scope="col" className="px-4 py-2 font-normal">Store</th>
+              <th scope="col" className="px-4 py-2 font-normal">Owner</th>
               <th scope="col" className="px-4 py-2 font-normal">Plan</th>
               <th scope="col" className="px-4 py-2 font-normal">Status</th>
               <th scope="col" className="px-4 py-2 font-normal">Next invoice</th>
@@ -41,7 +42,17 @@ export default async function PlatformStoresPage() {
                   <Link href={`/admin/platform/stores/${store.slug}`} className="font-medium underline">
                     {store.name}
                   </Link>
-                  <span className="block text-muted">{store.ownerEmail ?? store.slug}</span>
+                  <span className="block text-muted">{store.slug}</span>
+                </td>
+                <td className="px-4 py-2">
+                  {store.ownerEmail ? (
+                    <>
+                      {store.ownerName && <span className="block">{store.ownerName}</span>}
+                      <span className={store.ownerName ? "block text-muted" : undefined}>{store.ownerEmail}</span>
+                    </>
+                  ) : (
+                    <span className="text-muted">No owner yet</span>
+                  )}
                 </td>
                 <td className="px-4 py-2">
                   {store.planName ?? <span className="text-muted">No plan</span>}

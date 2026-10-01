@@ -352,7 +352,12 @@ describe("issuing", () => {
     expect(draft).toMatchObject({ status: "draft", documentNumber: null });
     await recurring.prepareDueRecurringWork({ storeId: f.storeId, now: at("2026-10-05") });
     expect(emailMock).not.toHaveBeenCalled();
-    expect((await recurring.listRecurring(f.storeId, client)).templates[0].open.map((o) => o.period)).toEqual(["2026-09-01"]);
+    // Nothing was issued, however late the job ran: every period it made is still a draft. (`listRecurring` reads the real
+    // date, so which later periods are due depends on the day the test runs.)
+    expect((await instances((made as { id: string }).id)).map((i) => [i.status, i.documentNumber])).toEqual(
+      (await instances((made as { id: string }).id)).map(() => ["draft", null]),
+    );
+    expect((await recurring.listRecurring(f.storeId, client)).templates[0].open.map((o) => o.period)).toContain("2026-09-01");
   });
 
   it("issues and emails what is made, once, when the template issues by itself", async () => {

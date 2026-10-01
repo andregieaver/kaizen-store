@@ -509,6 +509,8 @@ describe("owners choosing their own plan", () => {
     expect(params).not.toHaveProperty("discounts");
     // Nothing is recorded until the owner has paid.
     expect((await billing.getStoreBilling(ownerStore))?.status).toBeNull();
+    // The stores list names each store's owner.
+    expect((await billing.listStoreBilling()).find((s) => s.storeId === ownerStore)).toMatchObject({ ownerEmail: owner.email, ownerName: "Owner" });
     const [kept] = await db().execute<Row>(sql`
       select email, price_id, amount_minor from commerce.abandoned_plan_checkouts where store_id = ${ownerStore}::uuid
     `);

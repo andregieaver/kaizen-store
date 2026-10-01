@@ -358,6 +358,8 @@ export type StoreBilling = {
   /** Kaizen's fee on the store's sales right now. */
   feeBps: number;
   ownerEmail: string | null;
+  /** The owner's name, when they have given one. */
+  ownerName: string | null;
   /**
    * Kaizen's discount code on the plan (D31): applied (Stripe gives it on
    * the invoices), or waiting for the plan to be chosen.
@@ -376,14 +378,17 @@ const billingQuery = (where: ReturnType<typeof sql>) => sql`
          case when d.id is null then null else jsonb_build_object(
            'id', d.id, 'code', d.code, 'kind', d.kind, 'percent', d.percent, 'amounts', d.amounts,
            'duration', d.duration, 'durationMonths', d.duration_months) end as discount,
-         (select a.email from commerce.store_members m join commerce.accounts a on a.id = m.account_id
-           where m.store_id = s.id and m.role = 'owner' and m.disabled_at is null
-           order by m.created_at limit 1) as owner_email
+         o.email as owner_email, o.name as owner_name
   from commerce.stores s
   left join commerce.store_billing b on b.store_id = s.id
   left join commerce.plans p on p.id = b.plan_id
   left join commerce.plan_prices pp on pp.id = b.price_id
   left join commerce.platform_discount_codes d on d.id = b.platform_discount_id
+  left join lateral (
+    select a.email, a.name from commerce.store_members m join commerce.accounts a on a.id = m.account_id
+    where m.store_id = s.id and m.role = 'owner' and m.disabled_at is null
+    order by m.created_at limit 1
+  ) o on true
   where ${where}
   order by s.is_template desc, lower(s.name)
 `;
@@ -415,6 +420,7 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
     saleFeeBpsOverride: override,
     feeBps: effectiveFeeBps({ overrideBps: override, planFeeBps: planFee, status, defaultBps }),
     ownerEmail: row.owner_email ? String(row.owner_email) : null,
+    ownerName: row.owner_name ? String(row.owner_name) : null,
     discount: row.discount
       ? {
           ...(row.discount as Omit<NonNullable<StoreBilling["discount"]>, "appliedAt">),
