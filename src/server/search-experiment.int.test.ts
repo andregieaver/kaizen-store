@@ -115,4 +115,60 @@ describe("search test (S5, D77)", () => {
     expect(results.weeks).toHaveLength(1);
     expect(results.weeks[0].arms.hybrid.searches).toBe(10);
   });
+
+  it("gives the numbers the old test gave on the same searches, and reads them in the platform's view (D148, phase 7)", async () => {
+    await experiments.stopExperiment(accountId);
+    await experiments.startExperiment(accountId, 0.4);
+    const running = (await experiments.runningExperiment())!;
+    // 1,200 keyword and 1,800 hybrid searches (the split asked for), with a different share finding nothing and being opened in each.
+    const bulk = async (arm: "keyword" | "hybrid", total: number, zero: number, opened: number) => {
+      const id = (n: unknown) => sql`md5(${`${run}-${arm}-`} || ${n}::text)::uuid`;
+      await db().execute(sql`
+        insert into commerce.search_queries (id, store_id, market_code, query, results, semantic_best, meaning_results, filters, experiment_id, arm)
+        select ${id(sql`n`)}, ${storeId}::uuid, ${no.code}, 'søk ' || n, case when n <= ${zero}::int then 0 else 4 end, null, 0, '{}'::jsonb, ${running.id}::uuid, ${arm}
+        from generate_series(1, ${total}::int) n
+      `);
+      // The first `opened` searches with results were opened.
+      await db().execute(sql`
+        insert into commerce.search_clicks (store_id, search_id, product_id, position)
+        select ${storeId}::uuid, ${id(sql`n`)}, (select id from commerce.products where store_id = ${storeId}::uuid limit 1), 2
+        from generate_series(${zero}::int + 1, ${zero}::int + ${opened}::int) n
+      `);
+    };
+    await bulk("keyword", 1200, 360, 230);
+    await bulk("hybrid", 1800, 270, 560);
+    for (const table of ["search_queries", "search_clicks"]) await db().execute(sql.raw(`analyze commerce.${table}`));
+
+    const results = await experiments.experimentResults(running);
+    expect(results.arms.keyword).toMatchObject({ searches: 1200, zero: 360, opened: 230, withResults: 840 });
+    expect(results.arms.hybrid).toMatchObject({ searches: 1800, zero: 270, opened: 560, withResults: 1530 });
+
+    // The old formulas, on the same counts.
+    const { legacyDifference, legacySampleRatioP, legacySearchVerdict } = await import("@/lib/experiment-legacy");
+    const k = results.arms.keyword;
+    const h = results.arms.hybrid;
+    expect(Math.abs(results.srmP - legacySampleRatioP(k.searches, h.searches, 0.4))).toBeLessThan(1e-6);
+    for (const [comparison, a, b, lower] of [
+      [results.openRate, { hits: k.opened, of: k.withResults }, { hits: h.opened, of: h.withResults }, false],
+      [results.zeroRate, { hits: k.zero, of: k.searches }, { hits: h.zero, of: h.searches }, true],
+    ] as const) {
+      const old = legacyDifference(a, b)!;
+      expect(comparison.diff?.diff).toBeCloseTo(old.diff, 12);
+      expect(comparison.diff?.low).toBeCloseTo(old.low, 12);
+      expect(comparison.diff?.high).toBeCloseTo(old.high, 12);
+      expect(comparison.verdict).toBe(legacySearchVerdict(a, b, legacySampleRatioP(k.searches, h.searches, 0.4), lower));
+    }
+    // These searches are decisive: hybrid opens more and finds nothing less often.
+    expect(results.openRate.verdict).toBe("better");
+    expect(results.zeroRate.verdict).toBe("better");
+
+    // In the platform's view, in the engine's words.
+    const view = await import("./platform-unit-tests");
+    const row = (await view.platformUnitTests()).find((r) => r.kind === "search")!;
+    expect(row).toMatchObject({ status: "running", call: "better", headline: "Hybrid search is better than Keyword search.", unit: "search" });
+    expect(row.control.units).toBe(1200);
+    expect(row.treatment.units).toBe(1800);
+    expect(row.detail).toContain("1,200 searches for Keyword search and 1,800 for Hybrid search");
+    expect(row.flags).toEqual([]);
+  }, 60_000);
 });

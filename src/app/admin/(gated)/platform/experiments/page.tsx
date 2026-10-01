@@ -6,6 +6,7 @@ import { GOAL_WORDS, STATUS_WORDS, type ExperimentStatus } from "@/lib/experimen
 import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
+import { platformUnitTests } from "@/server/platform-unit-tests";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
@@ -31,7 +32,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   await requirePlatformAdmin();
   const { show } = await searchParams;
   const everything = show === "all";
-  const { tests, overview, truncated } = await platformExperiments(everything);
+  const [{ tests, overview, truncated }, own] = await Promise.all([platformExperiments(everything), platformUnitTests()]);
   const now = new Date();
 
   return (
@@ -132,6 +133,55 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
         </div>
       )}
       {truncated && <p className="text-sm text-muted">Only the newest 300 tests are shown.</p>}
+
+      <section aria-labelledby="own" className="flex flex-col gap-3">
+        <div>
+          <h2 id="own" className="text-lg font-semibold">
+            Tests that run on their own
+          </h2>
+          <p className="max-w-2xl text-sm text-muted">
+            The search test and each store&apos;s held-out recommendations. They count searches and tabs, not visitors who accepted cookies, and keep no id of
+            anyone; they are read here by the same arithmetic as a page test.
+          </p>
+        </div>
+        {own.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border bg-background p-6 text-center text-sm text-muted">
+            No search test is running, and no store has recommendations with a held-out ranking and tabs to count.
+          </p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-background">
+            {own.map((t) => (
+              <li key={t.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="font-medium">
+                    {t.name}
+                    {t.store && (
+                      <>
+                        {" · "}
+                        <Link href={`/admin/platform/stores/${t.store.slug}`} className="underline-offset-2 hover:underline">
+                          {t.store.name}
+                        </Link>
+                      </>
+                    )}
+                  </span>
+                  <span className="text-xs text-muted">
+                    {t.kind === "search" ? (t.status === "running" ? `Running since ${date.format(t.startedAt ?? now)} · every store` : "Ended") : "Running all the time · last 30 days"}
+                  </span>
+                </div>
+                <span>{t.headline}</span>
+                <span className="text-xs text-muted">{t.detail}</span>
+                {t.flags.length > 0 && (
+                  <ul className="list-disc pl-4 text-xs text-red-700 dark:text-red-300">
+                    {t.flags.map((f) => (
+                      <li key={f.kind}>{f.words}</li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

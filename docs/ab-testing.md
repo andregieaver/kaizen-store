@@ -210,8 +210,6 @@ tests and tells the owner; nothing here starts, stops or changes one.
   scheduled, stopped and the rest, newest first.
 - Totals at the top: running (and in how many stores), scheduled, stopped, and how many need a look.
 
-Still later: platform-assistant tools, and moving the search and recommendations tests onto the engine.
-
 ## What phase 6 built: the guardrail's email
 
 When the hourly check stops a test because a version clearly lowers orders, Kaizen emails the store's owners and whoever made the test
@@ -226,8 +224,31 @@ When the hourly check stops a test because a version clearly lowers orders, Kaiz
   given a version and that everyone sees the page as before, and that the owner can read the results, discard or apply another version. It does not say
   why the version did worse, promises nothing and applies nothing. The figures are `experimentResults()`'s, the same as the results page.
 
-Still later: platform-assistant tools, and moving the search and recommendations tests onto the engine. (The table's phase numbers: 6 is this email;
-moving the old tests is now phase 7.)
+## What phase 7 built: the search and recommendations tests on the engine's arithmetic
+
+The search test (D77) and the recommendations held-out ranking (D140) now count with the engine's own code, and are read beside page tests
+in the platform's view. What "onto the engine" means here, and what it does not:
+
+- **Shared:** the comparison of two rates and its 95 % interval (`compareToOriginal()`), the split check (`splitCheckP()`), the normal curve
+  and the rule for calling a difference, in `src/lib/experiment-units.ts` (`callRates()`, `splitP()`, `sayCall()`). There are two rules, each
+  fixed before any result was in and unchanged: the engine's interval (the search test) and the two-proportion test with p under 0.05 (the
+  recommendations test). `experiment-stats.ts` keeps only the primitives (`erfc`, `rate`, the floor) and `recommend-eval.ts` no longer has a
+  normal curve of its own; `compareShares()` and the search results call `callRates()`.
+- **Kept, on purpose:** the units (a search, a tab) and their logs (`search_queries`, `search_clicks`, `recommendation_events`,
+  `recommendation_adds`); no experiment row, no cookie, no new storage, no migration. A page test counts visitors who accepted statistics;
+  these two count units nobody is ever identified by, so putting them in the visitor tables would have made them store what they were built
+  not to. Their life cycles stay what they were: the search test is started and stopped on its page, the held-out share is a setting.
+- **Same numbers on the same data:** `experiment-parity.test.ts` runs the old formulas, kept word for word in `experiment-legacy.ts`
+  (tests only), and the engine's on a grid of counts and four thousand seeded random ones, and they agree on every call, interval, share and
+  split verdict (p-values to the third decimal, as shown). Two normal-curve approximations differ by under 1e-6, which could move a rounded p-value
+  by 0.001 at a boundary and nothing else.
+- **In the platform's view** (`/admin/platform/experiments`, "Tests that run on their own"; `src/lib/platform-unit-tests.ts`,
+  `src/server/platform-unit-tests.ts`): the running search test (or the one that ended within 30 days) and every store with recommendations
+  on, a held-out share and tabs in the last 30 days, each as a sentence in the engine's words ("Hybrid search is better than Keyword search",
+  "Too early to say") with its counts, and flagged when the split is uneven or nobody is counted. The recommendations rows also get the
+  engine's split check against the store's held-out share, a new reading shown only here: the stores' own report is unchanged.
+
+Not done: a guardrail for the search or recommendations tests (they do not stop themselves), and platform-assistant tools.
 
 ## Principles (kept from `measurement.md`)
 
@@ -501,9 +522,9 @@ reports (D106, D145).
   `context.ts`, as `PageOwnerContext` is.
 - **Cross-store view** for the platform: a table of every running test, store, age and verdict (read-only), to spot
   stuck or harmful tests; platform admins cannot edit a store's test.
-- **Existing tests** (search D77, recommendations D140) keep working. In phase 5 they move onto the engine's goals
-  and statistics, with their per-search and per-tab units kept (the engine supports a "unit" other than the
-  visitor, for tests that need no storage at all).
+- **Existing tests** (search D77, recommendations D140) keep working. In phase 7 they moved onto the engine's statistics and
+  words, with their per-search and per-tab units and their own logs kept (a unit other than the visitor, for tests that need
+  no storage about anyone); see "What phase 7 built".
 
 ## Permissions, audit and limits
 
@@ -538,7 +559,7 @@ reports (D106, D145).
 | **4** (the AI manager's tools built) | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
 | **5** (the platform's view built) | The platform's cross-store view of tests | Flags tested on every kind of trouble |
 | **6** (the guardrail's email built) | Guardrail emails to owners | Sent once to the right people, never on a person's stop |
-| **7** | Move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |
+| **7** (built) | Move search and recommendations tests onto the engine's arithmetic, and into the platform's view | Old and new give the same numbers on the same data |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the
 new page, a migration applied to production with the advisors checked and its version recorded in `decisions.md`,

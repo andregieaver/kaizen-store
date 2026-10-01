@@ -1,6 +1,10 @@
+import { normalCdf } from "./experiment-results";
+import { callRates, UNITS } from "./experiment-units";
+
 /**
  * Judging recommendations (D140), the pure parts: the check against past orders (where in the engine's list a product a
  * shopper really bought would have come) and the comparison of the AI's ranking with the plain one on what shoppers did.
+ * The comparison is counted by the engine's arithmetic (D148, phase 7); the unit stays the tab.
  */
 
 /** The 1-based place of a product in a list, or null when it is not there. */
@@ -30,13 +34,8 @@ export function summariseRanks(ranks: readonly (number | null)[]): RankSummary {
   };
 }
 
-/** The standard normal distribution's cumulative probability (Abramowitz and Stegun 7.1.26). */
-export function normalCdf(z: number): number {
-  const t = 1 / (1 + 0.2316419 * Math.abs(z));
-  const d = 0.3989423 * Math.exp((-z * z) / 2);
-  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-  return z > 0 ? 1 - p : p;
-}
+/** The standard normal distribution's cumulative probability: the engine's (D148, phase 7), not a curve of its own. */
+export { normalCdf };
 
 export type Share = { success: number; n: number };
 
@@ -51,14 +50,13 @@ export type Comparison = {
   verdict: "a_better" | "b_better" | "no_clear_difference" | "too_few";
 };
 
-/** Fewer visitors than this in either ranking and the comparison is not made. */
-export const MIN_PER_ARM = 100;
-/** The p-value under which a difference is called clear. */
-export const CLEAR = 0.05;
+/** Fewer tabs than this in either ranking and the comparison is not made. */
+export const MIN_PER_ARM = UNITS.tab.floor;
 
 /**
- * Whether two shares of visitors differ beyond chance: a two-proportion z-test on tabs (each tab one independent visitor),
- * called only with enough of them in both rankings. A clear difference is `a_better` or `b_better`; otherwise there is none yet.
+ * Whether two shares of visitors differ beyond chance: the engine's two-proportion rule on tabs (each tab one independent visitor,
+ * `callRates()` with the pooled rule), called only with enough of them in both rankings. The plain ranking is the control and the
+ * AI's the treatment; a clear difference is `a_better` (the AI) or `b_better` (the plain one); otherwise there is none yet.
  */
 export function compareShares(a: Share, b: Share): Comparison {
   const rate = (s: Share) => (s.n > 0 ? s.success / s.n : null);
@@ -66,14 +64,10 @@ export function compareShares(a: Share, b: Share): Comparison {
   const rb = rate(b);
   const pct = (r: number | null) => (r === null ? null : Math.round(r * 1000) / 10);
   const base = { a: pct(ra), b: pct(rb), diff: ra === null || rb === null ? null : Math.round((ra - rb) * 1000) / 10 };
-  if (ra === null || rb === null || a.n < MIN_PER_ARM || b.n < MIN_PER_ARM) return { ...base, p: null, verdict: "too_few" };
-  const pooled = (a.success + b.success) / (a.n + b.n);
-  const se = Math.sqrt(pooled * (1 - pooled) * (1 / a.n + 1 / b.n));
-  if (se === 0) return { ...base, p: null, verdict: "no_clear_difference" };
-  const z = (ra - rb) / se;
-  const p = Math.min(1, 2 * (1 - normalCdf(Math.abs(z))));
-  const rounded = Math.round(p * 1000) / 1000;
-  return { ...base, p: rounded, verdict: p < CLEAR ? (ra > rb ? "a_better" : "b_better") : "no_clear_difference" };
+  const called = callRates({ hits: b.success, of: b.n }, { hits: a.success, of: a.n }, { rule: "pooled", floor: MIN_PER_ARM });
+  if (called.call === "few") return { ...base, p: null, verdict: "too_few" };
+  const p = called.p === null ? null : Math.round(called.p * 1000) / 1000;
+  return { ...base, p, verdict: called.call === "better" ? "a_better" : called.call === "worse" ? "b_better" : "no_clear_difference" };
 }
 
 export type ArmShares = { visitors: number; clickers: number; adders: number };

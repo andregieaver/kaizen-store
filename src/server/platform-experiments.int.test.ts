@@ -108,6 +108,50 @@ describe("the platform's view of every store's tests (D148, phase 5)", () => {
     expect(all["A draft"].status).toBe("draft");
   }, 30_000);
 
+  it("lists a store's held-out recommendations by tabs, in the engine's words, with the same figures as its own report (phase 7)", async () => {
+    const units = await import("./platform-unit-tests");
+    const events = await import("./recommend-events");
+    const rowOf = async () => (await units.platformUnitTests()).find((r) => r.store?.slug === `pv-${run}`);
+    // Not enabled, or nothing counted yet: not listed.
+    expect(await rowOf()).toBeUndefined();
+    await db().execute(sql`
+      insert into commerce.recommendation_settings (store_id, enabled, holdout_percent) values (${storeId}::uuid, true, 20)
+      on conflict (store_id) do update set enabled = true, holdout_percent = 20
+    `);
+    expect(await rowOf()).toBeUndefined();
+
+    // 1,600 tabs got the AI's order and 400 the plain one (the 20 % asked for); 15 % and 8 % of them clicked.
+    const [product] = await db().execute<Row>(sql`select id from commerce.products where store_id = ${storeId}::uuid limit 1`);
+    const tabs = async (arm: "ai" | "baseline", total: number, clickers: number) => {
+      const session = sql`md5(${`${run}-${arm}-`} || n::text)::uuid::text`;
+      await db().execute(sql`
+        insert into commerce.recommendation_events (store_id, session, arm, placement, product_id, event)
+        select ${storeId}::uuid, ${session}, ${arm}, 'product', ${String(product.id)}::uuid, 'impression' from generate_series(1, ${total}::int) n
+      `);
+      await db().execute(sql`
+        insert into commerce.recommendation_events (store_id, session, arm, placement, product_id, event)
+        select ${storeId}::uuid, ${session}, ${arm}, 'product', ${String(product.id)}::uuid, 'click' from generate_series(1, ${clickers}::int) n
+      `);
+    };
+    await tabs("ai", 1600, 240);
+    await tabs("baseline", 400, 32);
+
+    const report = await events.recommendationReport(storeId, 30);
+    const row = (await rowOf())!;
+    expect(row).toMatchObject({ kind: "recommendations", unit: "tab", status: "running", call: "better", headline: "The AI's order is better than The plain order." });
+    expect(row.control.units).toBe(report.arms.find((a) => a.arm === "baseline")!.visitors);
+    expect(row.treatment.units).toBe(report.arms.find((a) => a.arm === "ai")!.visitors);
+    expect(row.detail).toContain("The AI's order: 15 % of tabs clicked a recommendation; The plain order: 8 %.");
+    // The same call the store's own report makes, since both count with the engine's arithmetic.
+    expect(report.comparison.clicked.verdict).toBe("a_better");
+    expect(row.flags).toEqual([]);
+
+    // A split far from the 20 % asked for is flagged (here the held-out share is set to 5 %).
+    await db().execute(sql`update commerce.recommendation_settings set holdout_percent = 5 where store_id = ${storeId}::uuid`);
+    expect((await rowOf())!.flags.map((f) => f.kind)).toEqual(["broken"]);
+    await db().execute(sql`delete from commerce.recommendation_settings where store_id = ${storeId}::uuid`);
+  }, 30_000);
+
   it("flags a scheduled start that went back to a draft, and counts what it shows", async () => {
     const made = await admin.createExperiment(account, storeId, { name: "Scheduled", pageId: aboutId, goal: "orders" });
     if (!made.ok) throw new Error("not made");

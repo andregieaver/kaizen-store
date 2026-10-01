@@ -3,8 +3,8 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
-import { MIN_PER_ARM, rate, type Verdict } from "@/lib/experiment-stats";
-import { experimentResults, listExperiments, type Comparison, type ExperimentResults } from "@/server/search-experiment";
+import { MIN_PER_ARM, rate } from "@/lib/experiment-stats";
+import { experimentResults, listExperiments, type Comparison, type ExperimentResults, type Verdict } from "@/server/search-experiment";
 
 import { startSearchTestAction, stopSearchTestAction } from "./actions";
 

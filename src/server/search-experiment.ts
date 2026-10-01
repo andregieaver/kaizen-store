@@ -3,7 +3,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db, readDb } from "@/db/client";
-import { difference, keywordArm, rate, sampleRatioP, verdict, type Rate, type Verdict } from "@/lib/experiment-stats";
+import { keywordArm, rate, type Rate } from "@/lib/experiment-stats";
+import { callRates, splitP, UNITS, type Call } from "@/lib/experiment-units";
 
 import { audit } from "./auth";
 
@@ -97,6 +98,9 @@ export type ArmResult = {
   firstPosition: number | null;
 };
 
+/** The same five calls the engine makes for a page test, by its arithmetic (D148, phase 7): the unit is still the search. */
+export type Verdict = Call;
+
 export type Comparison = { keyword: Rate; hybrid: Rate; diff: { diff: number; low: number; high: number } | null; verdict: Verdict };
 
 export type ExperimentResults = {
@@ -151,13 +155,17 @@ export async function experimentResults(experiment: Experiment): Promise<Experim
       firstPosition: row.first_position === null ? null : Number(row.first_position),
     };
   }
-  const srmP = sampleRatioP(arms.keyword.searches, arms.hybrid.searches, experiment.keywordShare);
-  const compare = (keyword: Rate, hybrid: Rate, lowerIsBetter: boolean): Comparison => ({
-    keyword,
-    hybrid,
-    diff: difference(keyword, hybrid),
-    verdict: verdict(keyword, hybrid, srmP, lowerIsBetter),
-  });
+  const srmP = splitP(arms.keyword.searches, arms.hybrid.searches, experiment.keywordShare);
+  // Keyword search is the control and hybrid the treatment, as in the old test; the numbers and the call are the engine's.
+  const compare = (keyword: Rate, hybrid: Rate, lowerIsBetter: boolean): Comparison => {
+    const called = callRates(keyword, hybrid, { rule: "interval", floor: UNITS.search.floor, splitChance: srmP, lowerIsBetter });
+    return {
+      keyword,
+      hybrid,
+      diff: called.diff === null || called.low === null || called.high === null ? null : { diff: called.diff, low: called.low, high: called.high },
+      verdict: called.call,
+    };
+  };
   const weeks = new Map<string, ExperimentResults["weeks"][number]>();
   for (const row of weekRows) {
     const key = String(row.week);

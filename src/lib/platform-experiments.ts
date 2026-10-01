@@ -26,6 +26,9 @@ export type TestLine = {
 
 export type Flag = { kind: "harmed" | "broken" | "quiet" | "overdue" | "schedule" | "undecided"; words: string };
 
+/** An uneven split, for a test of any unit (visitors, searches or tabs). */
+export const brokenFlag: Flag = { kind: "broken", words: "The visitors are not divided as planned, so its results cannot be trusted." };
+
 const DAY = 86_400_000;
 export const daysBetween = (from: Date, to: Date): number => Math.max(0, Math.floor((to.getTime() - from.getTime()) / DAY));
 const dayWord = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
@@ -36,7 +39,7 @@ export function flagsOf(test: TestLine, now: Date): Flag[] {
   if (test.status === "running" && test.startedAt) {
     const age = daysBetween(test.startedAt, now);
     if (test.harmed) flags.push({ kind: "harmed", words: `Version ${test.harmed.toUpperCase()} clearly lowers orders: the hourly check stops the test.` });
-    if (test.verdict === "broken") flags.push({ kind: "broken", words: "The visitors are not divided as planned, so its results cannot be trusted." });
+    if (test.verdict === "broken") flags.push(brokenFlag);
     if (test.exposed === 0 && age >= QUIET_AFTER_DAYS) flags.push({ kind: "quiet", words: `Nobody has seen it in ${dayWord(age)}.` });
     if (test.plannedEnd && now.getTime() >= test.plannedEnd.getTime()) {
       const stops = Math.min(test.plannedEnd.getTime() + AFTER_PLANNED_END_DAYS * DAY, test.startedAt.getTime() + MAX_RUN_DAYS * DAY);
