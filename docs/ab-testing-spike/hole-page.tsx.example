@@ -1,0 +1,39 @@
+import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+
+import { StorePageArticle } from "@/components/store-page-article";
+import { localizePage } from "@/lib/page-translation";
+import { marketPath } from "@/lib/paths";
+import { findPublishedPage } from "@/server/pages";
+import { resolveShop } from "@/server/shop";
+
+type Props = { params: Promise<{ store: string; market: string; slug: string }> };
+
+export async function generateStaticParams() {
+  return [{ slug: "om-oss" }];
+}
+
+async function Article({ store, market, slug }: { store: string; market: string; slug: string }) {
+  const shop = await resolveShop(store, market);
+  if (!shop) notFound();
+  const found = await findPublishedPage(shop.store.id, slug);
+  if (!found || "redirect" in found) notFound();
+  const c = localizePage(found.page.content, shop.market.locale);
+  const home = marketPath(shop.store.slug, shop.market.slug);
+  return <StorePageArticle content={c} place={{ pageId: found.page.id, owner: shop.store.id, market: shop.market.slug, listing: { query: Promise.resolve({}), path: `${home}/${found.page.slug}` } }} />;
+}
+
+async function Chosen({ store, market, slug }: { store: string; market: string; slug: string }) {
+  const ab = (await cookies()).get("kaizen_ab")?.value ?? "";
+  return <Article store={store} market={market} slug={ab.endsWith(".b") ? `${slug}-b` : slug} />;
+}
+
+export default async function Page({ params }: Props) {
+  const { store, market, slug } = await params;
+  return (
+    <Suspense fallback={<Article store={store} market={market} slug={slug} />}>
+      <Chosen store={store} market={market} slug={slug} />
+    </Suspense>
+  );
+}

@@ -1,0 +1,22 @@
+import { NextResponse, type NextRequest } from "next/server";
+
+/**
+ * SPIKE (A/B phase 0): runs only for requests that carry the `kaizen_ab` cookie, so visitors without it are served from
+ * the cache without any function call. A running-experiments map stands in for the cached database read.
+ */
+export const config = {
+  matcher: [{ source: "/s/:store/:market/:slug", has: [{ type: "cookie", key: "kaizen_ab" }] }],
+};
+
+const RUNNING: Record<string, { experiment: string }> = { "demo/no/om-oss": { experiment: "exp1" } };
+
+export function proxy(request: NextRequest) {
+  const [, , store, market, slug] = request.nextUrl.pathname.split("/");
+  const running = RUNNING[`${store}/${market}/${slug}`];
+  const cookie = request.cookies.get("kaizen_ab")?.value ?? "";
+  const variant = running ? new RegExp(`${running.experiment}\\.([a-z])`).exec(cookie)?.[1] : undefined;
+  if (!variant || variant === "a") return NextResponse.next();
+  const url = request.nextUrl.clone();
+  url.pathname = `${request.nextUrl.pathname}/ab/${variant}`;
+  return NextResponse.rewrite(url);
+}

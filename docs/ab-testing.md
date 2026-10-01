@@ -30,7 +30,9 @@ one check in `requireMember()`'s caller.
 - One chosen goal per test, decided before it starts, and the decision rule is fixed in advance.
 - Guardrails can stop a winner. A split that is not the split we asked for means broken data, not a result.
 - Run whole weeks, at least two, and show each week apart.
-- Assignment is on the server and deterministic; no routing middleware (it runs outside the EU).
+- Assignment is on the server. Visitors who are not enrolled never reach any code of ours on the way to the page. The
+  proxy (Next.js 16, Node runtime) is used only for enrolled visitors, and only after its region is confirmed (see below);
+  `measurement.md`'s older note that middleware runs outside the EU was written for the Edge runtime.
 - Money is minor units plus a currency, never added across currencies.
 - No names, emails or free text in anything an experiment records.
 
@@ -109,33 +111,80 @@ Store pages are prerendered and cached (D54). A test must not turn them into slo
 shift layout, and must show crawlers the original. The constraint that makes it hard: the first time a consenting
 visitor arrives they have no assignment yet.
 
-**The design to prove in a spike (phase 0):**
+### Design (after the phase 0 spike, below)
 
 1. **First view: the original, for everyone.** The cached page is sent as today. After consent, a small script asks
-   `POST /api/ab/assign`, which draws the assignment (random, or the hash for signed-in customers), sets `kaizen_ab`,
-   and returns it. Nothing is logged yet, and nothing changes on screen.
-2. **Next views: the assigned version, from cache.** The page is prerendered once per variant (a variant is a page
-   with its own address segment, `/s/{store}/{market}/{slug}/~{variantId}`, not indexed, canonical to the
-   original), and a rewrite in `next.config.ts` chooses between them from the `kaizen_ab` cookie (`has` condition
-   on the cookie, from a generated list of running experiments the way `store-hosts.ts` is generated: a change to a
-   running experiment deploys again, like a domain change, P8). No request-time compute for the page itself.
-3. **Exposure is counted when a variant is actually shown after assignment** (a tiny beacon on the variant's page),
-   so first views count for no arm. This is the same in every arm, so it leaves the comparison fair; it only
-   makes each visitor start counting from their second page view.
-4. **For a part**, the page is rendered with the part's variants prerendered the same way (page variants where only
-   that part differs), so a part test is a page test whose copies differ in one place; the builder hides the plumbing.
-5. **Signed-in customers**: their pages are already dynamic (the session is read), so the variant is chosen on the
-   server from the account's key, with no beacon delay. Spike confirms this is allowed without the cookie.
+   `POST /api/ab/assign`, which draws the assignment (random), sets `kaizen_ab`, and returns it. Nothing is logged yet
+   and nothing changes on screen.
+2. **Next views: the assigned version, from cache.** A variant of a page is a page of its own at
+   `/s/{store}/{market}/{slug}/ab/{variant}` (not indexed, canonical to the original), prerendered or rendered on
+   its first request and cached after that, like any store page. A **`src/proxy.ts`** with
+   `matcher: [{ source: ..., has: [{ type: "cookie", key: "kaizen_ab" }] }]` runs only for requests carrying the
+   cookie, looks up the running experiments for that page (a short in-memory cache of one database read), and rewrites
+   to the variant's route. Visitors without the cookie, and crawlers, never reach the proxy and are served from the
+   cache as today.
+3. **The page says which version it is.** Every page that is the target of a running test (the original too) renders
+   a small marker (`data-ab="{experiment}.{variant}"`) with a client component that compares it with the cookie.
+   - Equal: it sends the **exposure** beacon (first time only; idempotent on the server).
+   - Different (the visitor's browser still holds the original from before they were assigned): it reloads once
+     with a hard navigation, and the exposure is counted by the page that follows.
+   - So exposure is counted only for what was shown, and first views and stale views count for no arm. This is the
+     same in every arm, so it leaves the comparison fair; it only makes each visitor start counting from their
+     second page view.
+4. **For a part**, the variant is a page copy that differs in that part only, so the plumbing is the same.
+5. **Signed-in customers** are matched by a second matcher entry on the session cookie; the proxy (Node runtime)
+   derives the assignment from the account, so their first view is already the assigned one.
+6. **Starting and stopping a test changes a row**, then `updateTag()`s the page's tags and the proxy's cached list.
+   No deploy, no routing change, no vendor API.
 
-**Alternatives if the spike fails**, in order: (a) render the varied part in a dynamic hole (`<Suspense>`) that reads
-the cookie, the original as its fallback (flicker for variant visitors only, and a measured cost in time to first
-byte); (b) the Flags SDK's precompute approach, if it can run in the EU. Rejected: client-side swapping of hidden
-copies (layout shift, doubled HTML, crawlers see both).
+### What the spike found (phase 0, run on a local production build against a seeded database)
 
-**Spike pass criteria**: time to first byte of an enrolled view within 20 ms of an unenrolled one; no layout shift
-caused by the swap; Lighthouse performance unchanged; crawlers and no-cookie requests get byte-identical HTML to
-today; build time for a store with 10 running experiments stays within a minute of today's. If it fails, we use the
-fallback and say what it costs before building more.
+| Question | Result |
+|---|---|
+| Can a cookie choose a prerendered variant from the cache with no function call for others? | **Yes.** A cookie-conditioned rewrite served the variant's prerendered HTML (`x-nextjs-prerender: 1`), the original unchanged for visitors without the cookie, canonical to the original, `noindex`. A proxy with a cookie-conditioned matcher does the same and is the chosen mechanism. |
+| Time to first byte (300 requests, median / 95th percentile, ms) | Original, no cookie: **4.1 to 4.8 / 7.0 to 8.8**. Variant by cookie-conditioned rewrite: 4.6 to 4.7 / 7.4 to 8.8. Variant by proxy: **5.0 to 5.6 / 8.3 to 8.7**. The proxy adds about **0.5 to 0.9 ms** for visitors with the cookie and nothing for others. |
+| Does it survive client-side navigation? | **Yes.** From the front page with the cookie, a link click showed the variant, URL unchanged, no console errors or hydration warnings. |
+| Is a page the browser already holds stale after assignment? | **Yes, a real hazard.** After visiting the original (no cookie), getting the cookie and clicking the link again, the browser's cache showed the *original* (about five minutes of stale time) until a reload. Hence the marker and reload guard (step 3 above). |
+| Does a variant created while the site is running need a deploy? | **No.** A variant page that was not in the build was rendered on its first request (154 ms) and cached after that (4 to 11 ms). Only the *routing* would have needed a deploy with config rewrites, which the proxy avoids. |
+| Does a wildcard variant in the cookie 404? | A rewrite that matches any letter sent `exp1.a` to a variant route that does not exist (404). The proxy names the exact experiment and treats `a` (the control) and unknown experiments as no rewrite. |
+| Alternative: dynamic hole (the varied part in a `<Suspense>` that reads the cookie) | Same speed (TTFB 4.2 to 4.4 ms), but the original paints first and is replaced 170 to 200 ms later on a fast connection: **a visible flicker.** Rejected for tests the visitor can see above the fold. Usable as a last-resort fallback for parts below the fold. |
+| Does the build slow down? | **Not established.** The build with a variant route and one prerendered variant took 5 min 32 s; there is no build without the spike to compare it with. A variant is an ordinary route (one prerender per market), and variants made while the site runs are not built at all, so the effect is expected to be small. Open until measured against a clean build. |
+
+Measurements are from `scripts/ab-ttfb.mjs` (sequential requests over one connection, 20 warm-up requests).
+
+### What the spike could not answer, and what to do about it
+
+- **Vercel's own network.** Local numbers show the cost of our code, not of a function call in front of the CDN. The
+  Vercel account connected to this session holds a different project (`kia-configurator`), not Kaizen's, so the
+  proxy could not be tried against the real deployment from here. **Action for the owner:** deploy the spike branch
+  to a Vercel preview of Kaizen's project (the spike code is in `docs/ab-testing-spike/`) and run
+  `node scripts/ab-ttfb.mjs <preview-url> /s/demo/no/om-oss "kaizen_ab=exp1.b"` against the original, with and
+  without the cookie. Pass: median within 20 ms of the original, 95th percentile within 50 ms, and the
+  cookie-less response identical.
+- **Where the proxy runs.** Next.js 16's proxy runs on the Node.js runtime; whether Vercel runs it in the function
+  region (Dublin, `vercel.json`) or elsewhere decides whether this fits the data-residency rule (D5). What it sees is a
+  random id and a path, but it still has to be confirmed in the Vercel docs for our plan, and on the preview (the
+  `x-vercel-id` header names the regions a request touched).
+- **Stores on their own hosts** (P7/P8). The proxy runs before the host rewrites, so on `{store}.{domain}` it sees
+  `/om-oss`, not `/s/{store}/{market}/om-oss`. It must resolve the store from the host with the same logic as
+  `src/lib/store-hosts.ts`. Not tried; a phase 1 task with its own test.
+- **Signed-in customers' session cookie** and the second matcher entry: designed, not tried.
+
+### Alternatives, in the order we would fall back to them
+
+1. Config rewrites with a cookie condition (no proxy, no function call at all). Rejected as the main design: they are
+   fixed at build time, so every test start or stop would need a deploy (5 to 6 minutes here).
+2. Vercel's project-level routing rules, changed through its API without a deploy. Possible, but adds a platform
+   credential and a vendor API to every test start, with unknown limits for many stores; not tried.
+3. The dynamic hole, for parts below the fold only.
+
+Rejected: client-side swapping of hidden copies (layout shift, doubled HTML, crawlers see both).
+
+**Pass criteria for the spike** (from the first version of this file) and the result: time to first byte of an enrolled
+view within 20 ms of an unenrolled one (**met locally, 0.5 to 0.9 ms; to be confirmed on Vercel**); no layout shift from
+the swap (**met**: no swap happens); Lighthouse unchanged (not run; nothing is added to the page but a marker);
+crawlers and no-cookie requests byte-identical to today (**met**: they never reach the proxy); build time unchanged
+(**open**, see above).
 
 ## Data
 
@@ -276,7 +325,7 @@ reports (D106, D145).
 
 | Phase | What | Done when |
 |---|---|---|
-| **0** | Spike (variant serving, signed-in path), legal check, `plan_features` row, final stats choice | The spike meets its pass criteria; the legal note is written; this file is updated |
+| **0** | Spike (done locally, see above; **Vercel preview run and region check pending**), legal check, `plan_features` row, final stats choice | The preview numbers meet the criteria; the legal note is written; this file is updated |
 | **1** | Engine and **page** tests for store pages: tables and rules, assignment, `/api/ab/assign`, exposure beacon, order attribution, daily rollup job, split check, results page (verdict sentence, charts), start/stop/apply, audit, tests incl. an end-to-end test with two variants | A test runs on the demo store from creation to applied, in the browser, with consented and unconsented visitors |
 | **2** | **Part** tests in the builder (click a part, "Test this"), the five-step flow, estimates, preview links, scheduled start | A person who has never seen it creates a test in a few minutes (a moderated check with two owners) |
 | **3** | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
@@ -294,7 +343,7 @@ and in `ADMIN_PAGES`.
 |---|---|---|
 | Too little traffic | Most stores cannot detect a conversion lift; owners act on noise | The up-front estimate, a verdict only after the minimum, "too early" wording |
 | Consent skews the sample | Consenting visitors differ | Said on the results page; later, compare to non-consenting traffic on the original |
-| Variant serving costs speed | We built fast pages | The spike's criteria, run before anything else; the fallbacks are named |
+| Variant serving costs speed | We built fast pages | Only enrolled visitors pass the proxy; spike numbers (local) and the Vercel preview check; the fallbacks are named |
 | A bad variant hurts sales | Real revenue at stake | Guardrail auto-stop, preview/QA step, small traffic share option |
 | Editing a running test | Invalidates results | Variants are locked once running |
 | Two tests collide | Effects mix | One running test per target, database-enforced |
@@ -304,6 +353,7 @@ and in `ADMIN_PAGES`.
 ## Open questions
 
 1. The signed-in path: consent or legitimate interest, per country (phase 0).
+   (Technical side: the session-cookie matcher, see the spike.)
 2. Whether the plan feature has tiers (a limit on running tests per plan) or is on/off.
 3. Whether owners can export results (CSV through `toCsv()`) in version 1.
 4. Whether a variant of a *translated* page tests the translation alone (variants per language) or all languages.
