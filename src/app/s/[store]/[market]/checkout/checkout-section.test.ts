@@ -22,12 +22,15 @@ vi.mock("@/components/checkout-button", () => ({ CheckoutButton: () => null }));
 vi.mock("@/components/checkout-code-form", () => ({ CheckoutCodeForm: () => null }));
 vi.mock("@/components/checkout-form", () => ({ CheckoutForm: () => null }));
 vi.mock("@/components/line-thumbnail", () => ({ LineThumbnail: () => null }));
+const deliveryNow = vi.hoisted(() => ({ options: null as null | { postalCode: string | null; options: unknown[] } }));
+vi.mock("@/server/delivery-choice", () => ({ deliveryView: async () => deliveryNow.options }));
+vi.mock("@/components/delivery-choice", () => ({ DeliveryChoice: () => "DELIVERY-CHOICE" }));
 
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { Checkout, CheckoutCredits, CheckoutTotals } from "./checkout-section";
+import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutTotals } from "./checkout-section";
 
 let bonusNow: CartBonus | null = null;
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
@@ -177,5 +180,36 @@ describe("the checkout's credits piece", () => {
     expect(page).not.toContain("Use bonus credits");
     bonusNow = bonus();
     expect(words(renderToString(await Checkout({ store, market })))).toContain(t("en").bonus.useHeading);
+  });
+});
+
+describe("the checkout's delivery piece (D135)", () => {
+  beforeEach(() => {
+    deliveryNow.options = null;
+    getOrder.mockResolvedValue(order({ ships: true, shippingMinor: 9900 }));
+  });
+
+  it("draws nothing when no carrier's services are on, in the piece and in the whole checkout", async () => {
+    expect(renderToString((await CheckoutDelivery({ store, market })) ?? null)).toBe("");
+    expect(renderToString(await Checkout({ store, market }))).not.toContain("DELIVERY-CHOICE");
+  });
+
+  it("draws the choice when there is something to choose from, before the payment", async () => {
+    deliveryNow.options = { postalCode: null, options: [{ id: "flat" }] };
+    expect(renderToString((await CheckoutDelivery({ store, market })) ?? null)).toContain("DELIVERY-CHOICE");
+    expect(renderToString(await Checkout({ store, market }))).toContain("DELIVERY-CHOICE");
+  });
+
+  it("names the chosen service and its pickup point in the totals", async () => {
+    getOrder.mockResolvedValue(
+      order({
+        ships: true,
+        shippingMinor: 14113,
+        delivery: { carrier: "bring", serviceId: "5800", label: "Pakke til hentested", postalCode: "0150", pickupPoint: { id: "PP1", name: "Kiwi", street: "Storgata 9", postalCode: "0155", city: "Oslo" } },
+      }),
+    );
+    const markup = renderToString(await CheckoutTotals({ store, market }));
+    expect(markup).toContain("Pakke til hentested");
+    expect(markup).toContain("Kiwi, Storgata 9, 0155 Oslo");
   });
 });

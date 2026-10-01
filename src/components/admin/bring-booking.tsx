@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { bringBookAction, bringOptionsAction, type BringBookState } from "@/app/admin/(gated)/[store]/orders/bring-actions";
+import type { OrderDelivery } from "@/lib/delivery-options";
 import type { BringOptions } from "@/server/bring-shipping";
 
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -21,12 +22,15 @@ export function BringBooking({
   estimatedGrams,
   test,
   hasEmail,
+  chosen: shopperChoice = null,
 }: {
   storeSlug: string;
   orderId: string;
   estimatedGrams: number;
   test: boolean;
   hasEmail: boolean;
+  /** The service the shopper chose at checkout (D135), used unless the store picks another. */
+  chosen?: OrderDelivery | null;
 }) {
   const [weight, setWeight] = useState(estimatedGrams > 0 ? (estimatedGrams / 1000).toString().replace(".", ",") : "");
   const [dims, setDims] = useState({ l: "", w: "", h: "" });
@@ -56,8 +60,10 @@ export function BringBooking({
         return;
       }
       setOptions(answer);
-      setService(answer.options[0]?.serviceId ?? "");
-      setPoint(answer.pickupPoints[0]?.id ?? "");
+      // What the shopper chose is selected to begin with, when Bring still offers it.
+      const wanted = shopperChoice && answer.options.some((o) => o.serviceId === shopperChoice.serviceId) ? shopperChoice : null;
+      setService(wanted?.serviceId ?? answer.options[0]?.serviceId ?? "");
+      setPoint(wanted?.pickupPoint?.id ?? answer.pickupPoints[0]?.id ?? "");
     });
 
   const book = () =>
@@ -87,6 +93,12 @@ export function BringBooking({
           </label>
         ))}
       </div>
+      {shopperChoice && (
+        <p className="text-sm">
+          The shopper chose <strong>{shopperChoice.label}</strong>
+          {shopperChoice.pickupPoint && <> with pickup at {shopperChoice.pickupPoint.name}, {shopperChoice.pickupPoint.street}, {shopperChoice.pickupPoint.city}</>}.
+        </p>
+      )}
       {estimatedGrams === 0 && <p className="text-sm text-muted">No weight is set on these products, so enter the parcel&apos;s weight.</p>}
       <div>
         <button type="button" onClick={load} disabled={busy || !weight.trim()} className="min-h-10 rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50">
@@ -114,6 +126,11 @@ export function BringBooking({
             <span className="font-normal text-muted">Bring found no pickup point near the recipient. Choose another service.</span>
           ) : (
             <select value={point} onChange={(e) => setPoint(e.target.value)} className={input}>
+              {shopperChoice?.pickupPoint && !options.pickupPoints.some((p) => p.id === shopperChoice.pickupPoint!.id) && (
+                <option value={shopperChoice.pickupPoint.id}>
+                  {shopperChoice.pickupPoint.name}, {shopperChoice.pickupPoint.street}, {shopperChoice.pickupPoint.city} (chosen by the shopper)
+                </option>
+              )}
               {options.pickupPoints.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}, {p.address.street}, {p.address.city}

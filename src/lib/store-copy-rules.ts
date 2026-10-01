@@ -140,6 +140,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   calendar_feeds: never("Other sites' iCal addresses hold secrets and would be synced twice."),
   cart_lines: never("Shoppers' carts."),
   carts: never("Shoppers' carts."),
+  delivery_quotes: never("What a carrier offered a shopper's cart."),
   chat_usage: never("Rate-limit counters."),
   checkout_accounts: never("Passwords chosen at checkout."),
   company_invites: never("Invitations hold tokens for the original."),

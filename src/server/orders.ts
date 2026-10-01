@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import type { OrderBonus } from "@/lib/bonus-shopper";
+import { readOrderDelivery, type OrderDelivery } from "@/lib/delivery-options";
 import { shown, type Market } from "@/lib/markets";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
@@ -39,6 +40,8 @@ export type OrderView = {
   placedAt: string;
   subtotalMinor: number;
   shippingMinor: number;
+  /** The carrier's service the shopper chose (D135), with its pickup point; null for the market's flat rate. */
+  delivery: OrderDelivery | null;
   /**
    * What discount codes, groups and campaigns took off, and the code (D31): not the bonus credits used, which are
    * `creditMinor`, nor the friend's welcome discount (D131), which is `referralDiscountMinor` (the database keeps all in the
@@ -163,6 +166,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   placedAt: new Date(String(row.placed_at)).toISOString(),
   subtotalMinor: Number(row.subtotal_minor),
   shippingMinor: Number(row.shipping_minor),
+  delivery: readOrderDelivery(row.delivery),
   discountMinor: Number(row.discount_minor ?? 0) - Number(row.credit_minor ?? 0) - Number(row.referral_discount_minor ?? 0),
   discountCode: row.discount_code ? String(row.discount_code) : null,
   memberDiscountMinor: Number(row.member_discount_minor ?? 0),

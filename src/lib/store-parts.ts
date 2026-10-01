@@ -108,6 +108,11 @@ export const STORE_PIECES = {
     name: "Checkout bonus credits",
     hint: "Where a signed-in shopper uses their bonus credits at the checkout, or sees what the order earns. Nothing in a store without a bonus program.",
   },
+  checkout_delivery: {
+    route: "checkout",
+    name: "Checkout delivery",
+    hint: "How the order is delivered: the flat rate and, once the shopper gives a postal code, the carrier's services and pickup points. Nothing in a store without a carrier's services switched on.",
+  },
   checkout_totals: {
     route: "checkout",
     name: "Checkout totals",

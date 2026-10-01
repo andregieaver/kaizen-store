@@ -5,9 +5,11 @@ import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
+import { DeliveryChoice } from "@/components/delivery-choice";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
+import { pickupPointLine } from "@/lib/delivery-options";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
@@ -20,6 +22,7 @@ import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
 import { getCustomer } from "@/server/customers";
+import { deliveryView } from "@/server/delivery-choice";
 import { getCartCode } from "@/server/discounts";
 import { getOrder } from "@/server/orders";
 import { perRequest } from "@/server/request-memo";
@@ -84,6 +87,7 @@ export async function Checkout({ store, market }: { store: Store; market: Market
         <div className="mt-3 border-t border-border pt-3">{totalsList(view, market)}</div>
       </section>
       <div className="flex flex-col gap-6 md:order-first">
+        {await deliveryBlock(store, market, view)}
         {await paymentForm(store, market, view)}
         <Link href={`${base}/cart`} className="text-sm underline">
           {m.backToCart}
@@ -109,6 +113,11 @@ export async function CheckoutCode({ store, market }: { store: Store; market: Ma
 /** The bonus credits at the checkout (D130, D117): use them, or what this order earns; nothing in a store without the program. */
 export async function CheckoutCredits({ store, market }: { store: Store; market: Market }) {
   return creditsBlock(store, market, await requireCheckout(store, market));
+}
+
+/** How the order is delivered (D135, D117): the flat rate and a carrier's services to choose from. Nothing when there is nothing to choose. */
+export async function CheckoutDelivery({ store, market }: { store: Store; market: Market }) {
+  return deliveryBlock(store, market, await requireCheckout(store, market));
 }
 
 /** The order's subtotal, shipping, discounts and total, with the company and a subscription's terms (D117). */
@@ -240,9 +249,12 @@ function totalsList(view: CheckoutView, market: Market) {
         </div>
         {order.ships && (
           <div className="flex justify-between">
-            <dt>{m.shipping}</dt>
+            <dt>{order.delivery?.label ?? m.shipping}</dt>
             <dd>{order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor, order.shippingVatRate)}</dd>
           </div>
+        )}
+        {order.ships && order.delivery?.pickupPoint && (
+          <p className="text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
         )}
         {order.discountMinor > 0 && (
           <div className="flex justify-between">
@@ -315,6 +327,39 @@ function totalsList(view: CheckoutView, market: Market) {
       )}
       {renewal && <p className="mt-3 border-t border-border pt-3 text-sm">{renewal}</p>}
     </>
+  );
+}
+
+async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
+  const { m, cartId, open, order } = view;
+  // Not while the checkout is over and starts again: there is no order to change.
+  if (open.expired || open.changed || open.subscription) return null;
+  const options = await deliveryView({ storeId: store.id, market }, cartId, m.shipping);
+  if (!options) return null;
+  const d = m.deliveryChoice;
+  return (
+    <DeliveryChoice
+      store={store.slug}
+      market={market.slug}
+      initial={options}
+      currency={order.currency}
+      locale={market.locale}
+      business={order.company !== null}
+      vatRate={order.shippingVatRate}
+      labels={{
+        heading: d.heading,
+        postalCode: d.postalCode,
+        lookUp: d.lookUp,
+        looking: d.looking,
+        intro: d.intro,
+        problems: d.problems,
+        free: m.freeShipping,
+        workingDays: d.workingDays("{range}"),
+        pickupHeading: d.pickupHeading,
+        choose: d.choose,
+        choosing: d.choosing,
+      }}
+    />
   );
 }
 

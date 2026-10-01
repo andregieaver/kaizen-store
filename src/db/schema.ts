@@ -1832,6 +1832,11 @@ export const carts = commerce.table(
     bonusRequestCurrency: char("bonus_request_currency", { length: 3 }),
     /** The affiliate code the shopper arrived with (D131), kept from the consented cookie; checked again at checkout. */
     affiliateCode: text("affiliate_code"),
+    /**
+     * The delivery option the shopper chose at checkout (D135): one of the cart's `delivery_quotes`. None means the
+     * market's flat rate. No foreign key (the quotes point back at the cart); a quote that is gone or has run out is none.
+     */
+    deliveryQuoteId: uuid("delivery_quote_id"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1931,6 +1936,11 @@ export const orders = commerce.table(
      * spread over the lines as `order_lines.referral_discount_minor`.
      */
     referralDiscountMinor: money("referral_discount_minor").default(0),
+    /**
+     * The delivery the shopper chose (D135) when it was a carrier's service rather than the flat rate: `carrier`,
+     * `serviceId`, `label`, the `postalCode` it was priced for and the chosen `pickupPoint`. Kept as it was bought.
+     */
+    delivery: jsonb("delivery"),
     /** VAT contained in the total. Prices are VAT-inclusive. */
     taxMinor: money("tax_minor"),
     totalMinor: money("total_minor"),
@@ -5898,14 +5908,67 @@ export const shippingCarriers = commerce.table(
     checkedAt: timestamp("checked_at", { withTimezone: true }),
     checkOk: boolean("check_ok"),
     checkMessage: text("check_message"),
+    /**
+     * Its services offered to shoppers at checkout (D135): on or off, which services, what is added to the carrier's price
+     * (a percentage of the price with VAT and a fixed amount, in the country's currency), the basket value over which
+     * it is free, and the weight of a parcel when what is bought has none.
+     */
+    checkoutEnabled: boolean("checkout_enabled").notNull().default(false),
+    checkoutServices: text("checkout_services").array().notNull().default(sql`'{}'::text[]`),
+    markupPercent: integer("markup_percent").notNull().default(0),
+    markupMinor: integer("markup_minor").notNull().default(0),
+    freeOverMinor: integer("free_over_minor"),
+    defaultWeightGrams: integer("default_weight_grams").notNull().default(1000),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.carrier] }),
+    check("shipping_carriers_markup", sql`${t.markupPercent} between 0 and 100 and ${t.markupMinor} >= 0`),
+    check("shipping_carriers_free_over", sql`${t.freeOverMinor} is null or ${t.freeOverMinor} > 0`),
+    check("shipping_carriers_default_weight", sql`${t.defaultWeightGrams} between 1 and 35000`),
     index("shipping_carriers_updated_by_idx").on(t.updatedBy),
     check("shipping_carriers_carrier", sql`${t.carrier} in ('bring', 'postnord', 'porterbuddy', 'helthjem')`),
     check("shipping_carriers_environment", sql`${t.environment} in ('test', 'live')`),
+  ],
+);
+
+/**
+ * What a carrier offered a cart at checkout (D135), one row per service shown, kept so the shopper's choice is priced
+ * as it was shown and `cartSummary()` and `placeOrder()` read the same price without calling the carrier again. Amounts
+ * are in the country's own currency, with VAT, after the store's markup; the order is in the currency shown.
+ */
+export const deliveryQuotes = commerce.table(
+  "delivery_quotes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    cartId: uuid("cart_id").notNull(),
+    carrier: text("carrier").notNull(),
+    serviceId: text("service_id").notNull(),
+    label: text("label").notNull(),
+    amountMinor: money("amount_minor").notNull(),
+    freeOverMinor: bigint("free_over_minor", { mode: "number" }),
+    currency: char("currency", { length: 3 }).notNull(),
+    country: char("country", { length: 2 }).notNull(),
+    postalCode: text("postal_code").notNull(),
+    /** Days, as `{ minDays, maxDays }`, when the carrier said. */
+    estimate: jsonb("estimate"),
+    /** Whether the shopper must choose one of `pickup_points`. */
+    needsPickupPoint: boolean("needs_pickup_point").notNull().default(false),
+    /** Near the postal code, as the carrier gave them: `{ id, name, street, postalCode, city, distanceMeters }`. */
+    pickupPoints: jsonb("pickup_points").notNull().default([]),
+    /** The one the shopper chose, from `pickup_points`. */
+    pickupPointId: text("pickup_point_id"),
+    createdAt: createdAt(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    unique("delivery_quotes_store_id_key").on(t.storeId, t.id),
+    check("delivery_quotes_amount", sql`${t.amountMinor} >= 0`),
+    cartRef("delivery_quotes_cart_fk", t).onDelete("cascade"),
+    index("delivery_quotes_cart_idx").on(t.storeId, t.cartId),
+    index("delivery_quotes_expires_idx").on(t.expiresAt),
   ],
 );

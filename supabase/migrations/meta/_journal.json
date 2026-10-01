@@ -1478,6 +1478,20 @@
       "when": 1790809488908,
       "tag": "20260930230448_bring_connection",
       "breakpoints": true
+    },
+    {
+      "idx": 211,
+      "version": "7",
+      "when": 1790811481545,
+      "tag": "20260930233801_delivery_options",
+      "breakpoints": true
+    },
+    {
+      "idx": 212,
+      "version": "7",
+      "when": 1790812455385,
+      "tag": "20260930235415_delivery_options_rules",
+      "breakpoints": true
     }
   ]
 }

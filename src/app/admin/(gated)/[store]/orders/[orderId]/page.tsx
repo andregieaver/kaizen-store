@@ -16,6 +16,7 @@ import {
 import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
+import { pickupPointLine } from "@/lib/delivery-options";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { bookingWhen } from "@/lib/booking-text";
@@ -218,7 +219,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </div>
             <dl className="mt-3 flex flex-col gap-1 text-sm">
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{money(order.subtotalMinor)}</dd></div>
-              {order.ships && <div className="flex justify-between"><dt>Shipping</dt><dd>{money(order.shippingMinor)}</dd></div>}
+              {order.ships && <div className="flex justify-between"><dt>Shipping{order.delivery && <span className="text-muted"> ({order.delivery.label})</span>}</dt><dd>{money(order.shippingMinor)}</dd></div>}
               {order.discountMinor > 0 && (
                 <div className="flex justify-between">
                   <dt>
@@ -332,6 +333,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       estimatedGrams={estimatedGrams}
                       test={bring.environment === "test"}
                       hasEmail={Boolean(order.email)}
+                      chosen={order.delivery?.carrier === "bring" ? order.delivery : null}
                     />
                   </div>
                 </details>
@@ -440,6 +442,17 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <>
                 <h3 className="mt-3 mb-1 font-medium">Ship to</h3>
                 <AddressBlock address={address} />
+                {order.delivery && (
+                  <p className="mt-2">
+                    <span className="text-muted">Chosen delivery:</span> {order.delivery.label}
+                    {order.delivery.pickupPoint && <span className="block">Pickup at {pickupPointLine(order.delivery.pickupPoint)}</span>}
+                    {address.postalCode && order.delivery.postalCode && address.postalCode.replace(/\s/g, "") !== order.delivery.postalCode && (
+                      <span role="note" className="mt-1 block rounded-md bg-amber-100 px-3 py-2 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                        The price was quoted for postal code {order.delivery.postalCode}, but the delivery address has {address.postalCode}. Check the price and the service before booking.
+                      </span>
+                    )}
+                  </p>
+                )}
               </>
             )}
             {order.status !== "pending_payment" && (

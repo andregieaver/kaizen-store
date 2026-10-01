@@ -188,7 +188,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
         row(heading(m.checkoutTitle)),
         columns(
           "right-sidebar",
-          [part("checkout_payment"), part("checkout_back")],
+          [part("checkout_delivery"), part("checkout_payment"), part("checkout_back")],
           [part("checkout_items"), part("checkout_code"), part("checkout_credits"), part("checkout_totals")],
         ),
       ]);

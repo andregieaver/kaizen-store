@@ -31,6 +31,7 @@ import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
+import { chosenDelivery } from "./delivery-options";
 import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
@@ -72,6 +73,8 @@ export type PlacedOrder = {
   /** Shipping before any discount code, and what the code takes off it (D31). */
   shippingMinor: number;
   shippingDiscountMinor: number;
+  /** What Stripe calls the shipping when it is a carrier's service the shopper chose (D135); null for the market's flat rate. */
+  deliveryLabel: string | null;
   /** The bonus credits used on it (D130), in the order's currency: part of the discount Stripe is sent as a coupon. */
   creditMinor: number;
   /** The friend's welcome discount (D131), in the order's currency: part of the same coupon. */
@@ -240,7 +243,10 @@ export async function placeOrder(
       where store_id = ${storeId}::uuid and market_code = ${market.code}
     `);
     const ships = physical.length > 0;
-    if (ships && !rate) return { ok: false, problem: "no_shipping" };
+    // The delivery the shopper chose at checkout (D135) is the shipping rate instead of the market's flat rate, as the
+    // cart page has it (`cartSummary()`); a subscription pays the flat rate on each delivery (D25).
+    const chosen = ships && !rhythm ? await chosenDelivery(tx, storeId, cartId, market) : null;
+    if (ships && !rate && !chosen) return { ok: false, problem: "no_shipping" };
     const [country] = await tx.execute<Row>(sql`
       select standard_vat_rate from commerce.countries where code = ${market.code}
     `);
@@ -419,7 +425,9 @@ export async function placeOrder(
     const feeTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
     // Before any discount code: what the items and fees come to.
     const subtotal = priced.reduce((sum, p) => sum + p.unit * p.quantity, 0) + feeTotal;
-    const shippingRate = rate
+    const shippingRate = chosen
+      ? chosen.rate
+      : rate
       ? {
           amountMinor: shown(market, Number(rate.amount_minor)),
           freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)),
@@ -557,7 +565,7 @@ export async function placeOrder(
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
         company_name, organisation_number, balance_minor, host_id,
         member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor,
-        referral_discount_minor
+        referral_discount_minor, delivery
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
@@ -565,7 +573,8 @@ export async function placeOrder(
         ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
         ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
         ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null},
-        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}, ${referralTotal}
+        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}, ${referralTotal},
+        ${chosen ? JSON.stringify(chosen.delivery) : null}::jsonb
       )
       returning id
     `);
@@ -726,6 +735,7 @@ export async function placeOrder(
         subscription,
         shippingMinor: shipping,
         shippingDiscountMinor: shippingDiscount,
+        deliveryLabel: chosen ? chosen.delivery.label : null,
         creditMinor: creditTotal,
         referralMinor: referralTotal,
         taxMinor: tax,
@@ -1090,7 +1100,7 @@ export async function startCheckout(
               {
                 shipping_rate_data: {
                   type: "fixed_amount",
-                  display_name: shippingLabel,
+                  display_name: order.deliveryLabel ?? shippingLabel,
                   fixed_amount: { amount: order.shippingMinor - order.shippingDiscountMinor, currency },
                 },
               },

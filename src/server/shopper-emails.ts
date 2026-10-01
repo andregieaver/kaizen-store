@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { discountNote } from "@/lib/customer-tiers";
+import { pickupPointLine } from "@/lib/delivery-options";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, orderBonusEarned, orderBonusRows, orderReferralRows, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
@@ -139,7 +140,7 @@ function orderLines(
         image: line.image ? absoluteUrl(line.image, origin) : null,
       })),
       { label: text.subtotal, value: money(order.subtotalMinor), muted: true },
-      ...(order.ships ? [{ label: text.shipping, value: money(order.shippingMinor), muted: true }] : []),
+      ...(order.ships ? [{ label: order.delivery?.label ?? text.shipping, value: money(order.shippingMinor), muted: true }] : []),
       ...(order.discountMinor > 0
         ? [
             {
@@ -209,10 +210,13 @@ function companyText(order: OrderView, m: Messages): string | null {
   return order.company ? `${order.company.name}\n${m.company.number}: ${order.company.number}` : null;
 }
 
-function addressText(order: OrderView): string | null {
+function addressText(order: OrderView, m?: Messages): string | null {
   const a = order.shippingAddress;
   if (!order.ships || !a.line1) return null;
-  return [a.name, a.line1, a.line2, `${a.postalCode ?? ""} ${a.city ?? ""}`.trim()].filter(Boolean).join("\n");
+  const point = order.delivery?.pickupPoint;
+  return [a.name, a.line1, a.line2, `${a.postalCode ?? ""} ${a.city ?? ""}`.trim(), point && m ? m.deliveryChoice.pickupAt(pickupPointLine(point)) : null]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** The confirmation for a paid order: a new one, or a subscription's renewal. Once per order. */
@@ -231,7 +235,7 @@ export async function sendOrderConfirmation(
   const subscription = order.subscriptionId ? await getSubscriptionForOrder(storeId, orderId) : null;
   const renewal = subscription !== null && subscription.number !== order.number;
   const url = await orderUrl(storeId, store, market, orderId);
-  const address = addressText(order);
+  const address = addressText(order, m);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const booked = bookedLines(order);
 
@@ -348,8 +352,8 @@ export function sendShipped(
 ) {
   // Sent again on request: a key of its own, so the first sending does not stop it.
   const key = resend ? `order-sent:${shipment.id}:again:${crypto.randomUUID()}` : `order-sent:${shipment.id}`;
-  return orderNotice(storeId, orderId, "order.sent", key, ({ order, text, store }) => {
-    const address = addressText(order);
+  return orderNotice(storeId, orderId, "order.sent", key, ({ order, text, store, m }) => {
+    const address = addressText(order, m);
     return {
       subject: text.shippedSubject(store.name, order.number),
       heading: text.shippedHeading,

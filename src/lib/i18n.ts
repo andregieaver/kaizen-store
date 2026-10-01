@@ -148,6 +148,29 @@ const messages = {
       entryUsableFrom: (date: string) => `kan brukes fra ${date}`,
       entryExpires: (date: string) => `utløper ${date}`,
     },
+    /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
+    deliveryChoice: {
+      heading: "Leveringsmåte",
+      postalCode: "Postnummer",
+      lookUp: "Vis leveringsalternativer",
+      looking: "Henter leveringsalternativer …",
+      intro: "Skriv inn postnummeret ditt for å se leveringsalternativer og priser.",
+      problems: {
+        postal_code: "Skriv inn et gyldig postnummer.",
+        unavailable: "Vi fikk ikke hentet leveringsalternativer akkurat nå. Du kan fortsette med vanlig frakt.",
+        none: "Fant ingen flere leveringsalternativer for dette postnummeret.",
+        gone: "Alternativet er ikke lenger tilgjengelig. Hent leveringsalternativene på nytt.",
+        pickup_point: "Velg hvor du vil hente pakken.",
+      } as Record<string, string>,
+      free: "Gratis",
+      workingDays: (range: string) => `Virkedager: ${range}`,
+      pickupHeading: "Hent pakken hos",
+      choose: "Bruk denne leveringen",
+      choosing: "Oppdaterer bestillingen …",
+      standard: "Vanlig frakt",
+      deliveryLine: (label: string) => `Levering: ${label}`,
+      pickupAt: (place: string) => `Hentes hos ${place}`,
+    },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
       title: "Tips en venn",
@@ -1009,6 +1032,29 @@ const messages = {
       entryUsableFrom: (date: string) => `kan användas från ${date}`,
       entryExpires: (date: string) => `går ut ${date}`,
     },
+    /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
+    deliveryChoice: {
+      heading: "Leveranssätt",
+      postalCode: "Postnummer",
+      lookUp: "Visa leveransalternativ",
+      looking: "Hämtar leveransalternativ …",
+      intro: "Ange ditt postnummer för att se leveransalternativ och priser.",
+      problems: {
+        postal_code: "Ange ett giltigt postnummer.",
+        unavailable: "Vi kunde inte hämta leveransalternativ just nu. Du kan fortsätta med vanlig frakt.",
+        none: "Det finns inga fler leveransalternativ för det här postnumret.",
+        gone: "Alternativet är inte längre tillgängligt. Hämta leveransalternativen igen.",
+        pickup_point: "Välj var du vill hämta paketet.",
+      } as Record<string, string>,
+      free: "Gratis",
+      workingDays: (range: string) => `Arbetsdagar: ${range}`,
+      pickupHeading: "Hämta paketet hos",
+      choose: "Använd den här leveransen",
+      choosing: "Uppdaterar beställningen …",
+      standard: "Vanlig frakt",
+      deliveryLine: (label: string) => `Leverans: ${label}`,
+      pickupAt: (place: string) => `Hämtas hos ${place}`,
+    },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
       title: "Tipsa en vän",
@@ -1869,6 +1915,29 @@ const messages = {
       entryUsableFrom: (date: string) => `kan bruges fra ${date}`,
       entryExpires: (date: string) => `udløber ${date}`,
     },
+    /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
+    deliveryChoice: {
+      heading: "Leveringsmåde",
+      postalCode: "Postnummer",
+      lookUp: "Vis leveringsmuligheder",
+      looking: "Henter leveringsmuligheder …",
+      intro: "Skriv dit postnummer for at se leveringsmuligheder og priser.",
+      problems: {
+        postal_code: "Skriv et gyldigt postnummer.",
+        unavailable: "Vi kunne ikke hente leveringsmuligheder lige nu. Du kan fortsætte med almindelig fragt.",
+        none: "Der er ikke flere leveringsmuligheder til dette postnummer.",
+        gone: "Muligheden er ikke længere tilgængelig. Hent leveringsmulighederne igen.",
+        pickup_point: "Vælg, hvor du vil hente pakken.",
+      } as Record<string, string>,
+      free: "Gratis",
+      workingDays: (range: string) => `Hverdage: ${range}`,
+      pickupHeading: "Hent pakken hos",
+      choose: "Brug denne levering",
+      choosing: "Opdaterer bestillingen …",
+      standard: "Almindelig fragt",
+      deliveryLine: (label: string) => `Levering: ${label}`,
+      pickupAt: (place: string) => `Afhentes hos ${place}`,
+    },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
       title: "Anbefal en ven",
@@ -2726,6 +2795,29 @@ const messages = {
       kinds: { earn: "Earned", redeem: "Used", restore: "Returned", reverse: "Taken back", expire: "Expired", adjust: "Adjusted by the store", referral: "Referral reward" },
       entryUsableFrom: (date: string) => `usable from ${date}`,
       entryExpires: (date: string) => `expires ${date}`,
+    },
+    /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
+    deliveryChoice: {
+      heading: "Delivery method",
+      postalCode: "Postal code",
+      lookUp: "Show delivery options",
+      looking: "Looking up delivery options …",
+      intro: "Enter your postal code to see delivery options and prices.",
+      problems: {
+        postal_code: "Enter a valid postal code.",
+        unavailable: "We could not fetch delivery options right now. You can carry on with standard shipping.",
+        none: "There are no other delivery options for this postal code.",
+        gone: "That option is no longer available. Look up the delivery options again.",
+        pickup_point: "Choose where to pick up your parcel.",
+      } as Record<string, string>,
+      free: "Free",
+      workingDays: (range: string) => `Working days: ${range}`,
+      pickupHeading: "Pick up at",
+      choose: "Use this delivery",
+      choosing: "Updating your order …",
+      standard: "Standard shipping",
+      deliveryLine: (label: string) => `Delivery: ${label}`,
+      pickupAt: (place: string) => `Pick up at ${place}`,
     },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {

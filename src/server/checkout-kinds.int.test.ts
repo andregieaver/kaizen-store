@@ -69,6 +69,32 @@ vi.mock("./connect", async (importOriginal) => ({
   getCheckoutUi: async () => "custom",
 }));
 
+// Posten / Bring's services and pickup points at checkout (D135), faked: the store's agreement is not real here.
+vi.mock("./carriers", () => ({
+  adapterFor: () => ({
+    id: "bring",
+    check: async () => ({ ok: true }),
+    rates: async () => [
+      { serviceId: "5800", carrier: "bring", name: "Pickup point", priceMinor: 6_900, currency: "NOK", estimate: { minDays: 2, maxDays: 3 }, needsPickupPoint: true },
+      { serviceId: "5600", carrier: "bring", name: "Home delivery", priceMinor: 11_900, currency: "NOK", estimate: { minDays: 1, maxDays: 2 } },
+      { serviceId: "3584", carrier: "bring", name: "Mailbox parcel", priceMinor: 4_000, currency: "NOK" },
+    ],
+    pickupPoints: async () => [
+      { id: "pp-1", name: "Kiosken", address: { name: "Kiosken", street: "Storgata 1", postalCode: "0150", city: "Oslo", country: "NO" }, distanceMeters: 300 },
+      { id: "pp-2", name: "Butikken", address: { name: "Butikken", street: "Lilleveien 4", postalCode: "0151", city: "Oslo", country: "NO" }, distanceMeters: 900 },
+    ],
+  }),
+}));
+vi.mock("./shipping-carriers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./shipping-carriers")>()),
+  carrierContext: async (storeId: string) => ({
+    storeId,
+    environment: "test",
+    details: { senderName: "Kaizen Test", senderStreet: "Gate 1", senderPostalCode: "0150", senderCity: "Oslo" },
+    secrets: {},
+  }),
+}));
+
 vi.mock("./stripe", () => ({
   platformStripe: () => fake.client,
   platformPublishableKey: () => "pk_test_kinds",
@@ -88,6 +114,7 @@ const { bonusOverview, customerBonus, getBonusSettings, setCartCredits, shopperB
 const { cancelOrder, refundOrder } = await import("./order-admin");
 const { setCartCompany } = await import("./cart");
 const { attachReferral, rememberAffiliate } = await import("./affiliates");
+const { chooseDelivery, deliveryOptionsFor, quoteDelivery } = await import("./delivery-options");
 
 const run = Date.now().toString(36);
 const slug = `kinds-${run}`;
@@ -119,6 +146,11 @@ beforeAll(async () => {
   await db().execute(sql`
     insert into commerce.store_currencies (store_id, currency, rate, round_to, position)
     values (${storeId}::uuid, 'NOK', 11.5, 1, 0), (${storeId}::uuid, 'EUR', 1, 1, 1)
+  `);
+  // Posten / Bring's services at checkout (D135): the pickup point and home delivery, 10 % on top of the price with VAT.
+  await db().execute(sql`
+    insert into commerce.shipping_carriers (store_id, carrier, complete, countries, checkout_enabled, checkout_services, markup_percent, free_over_minor)
+    values (${storeId}::uuid, 'bring', true, array['NO'], true, array['5800', '5600'], 10, 250000)
   `);
   // The demo lamp as a download (D24), as the demo has none of its own.
   await db().execute(sql`
@@ -225,6 +257,8 @@ type Scenario = {
   gifts?: number;
   /** Lines with a time, confirmed once paid. */
   bookings: number;
+  /** A carrier's service chosen at checkout (D135), instead of the flat rate: a pickup point, or home delivery. */
+  delivery?: "pickup" | "home";
 };
 
 const scenarios: Scenario[] = [
@@ -385,6 +419,22 @@ const euroScenarios: Scenario[] = [
   { name: "a bike for three hours, shown in euro", fill: () => addRental("DEMO-SYKKEL-TIME", "hour", 3), euro: true, bookings: 1 },
 ];
 
+/** Posten / Bring's services chosen at checkout (D135): the price the shopper saw is the price of the order and of Stripe's charge. */
+const deliveryScenarios: Scenario[] = [
+  { name: "goods delivered to a pickup point", fill: () => add("DEMO-MUG-WHITE", 2), delivery: "pickup", bookings: 0 },
+  { name: "goods delivered home, free above the store's limit", fill: () => add("DEMO-MUG-WHITE", 20), delivery: "home", bookings: 0 },
+  { name: "goods delivered home, shown in euro", fill: () => add("DEMO-MUG-WHITE", 2), delivery: "home", euro: true, bookings: 0 },
+  {
+    name: "goods delivered to a pickup point with a discount code, for a group member, shown in euro",
+    fill: () => add("DEMO-MUG-WHITE", 3),
+    delivery: "pickup",
+    code: `TI${run}`.toUpperCase(),
+    buyer: "group",
+    euro: true,
+    bookings: 0,
+  },
+];
+
 /** A signed-in customer, in a 10 % group or an employee of a company whose employees get half of it. */
 async function signInBuyer(kind: "group" | "company"): Promise<string> {
   const customerId = await preRegisterCustomer(storeId, `${kind}-${Date.now()}-${run}@example.com`);
@@ -416,7 +466,7 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each([...scenarios, ...euroScenarios, ...campaignScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
     view = scenario.euro ? noInEuro : no;
     // Campaigns run only in the scenarios that make them (D114).
@@ -434,6 +484,23 @@ describe("checkout for every kind of product", () => {
     const buyerId = scenario.buyer ? await signInBuyer(scenario.buyer) : null;
     await scenario.fill();
     if (scenario.code) expect(await setCartCode(shop(), scenario.code)).toBe(true);
+    // The shopper asked for Bring's services for a postal code and chose one (D135).
+    let chosenLabel: string | null = null;
+    if (scenario.delivery) {
+      expect(await quoteDelivery(shop(), cartId(), "0150")).toEqual({ ok: true });
+      const listed = await deliveryOptionsFor(shop(), cartId(), { label: "Frakt", rate: null }, () => 0);
+      expect(listed.postalCode).toBe("0150");
+      // Only the services the store switched on, cheapest first; the mailbox parcel is not one.
+      expect(listed.options.map((o) => o.label)).toEqual(["Pickup point", "Home delivery"]);
+      const option = listed.options.find((o) => o.needsPickupPoint === (scenario.delivery === "pickup"))!;
+      chosenLabel = option.label;
+      // A service that needs a pickup point is not chosen without one, or with one that was not offered.
+      if (option.needsPickupPoint) {
+        expect(await chooseDelivery(shop(), cartId(), option.id)).toEqual({ ok: false, problem: "pickup_point" });
+        expect(await chooseDelivery(shop(), cartId(), option.id, "elsewhere")).toEqual({ ok: false, problem: "pickup_point" });
+      }
+      expect(await chooseDelivery(shop(), cartId(), option.id, option.needsPickupPoint ? "pp-2" : undefined)).toEqual({ ok: true });
+    }
 
     // The cart page (and the slide-out cart) show every line as fine, and what it all costs.
     const cart = await getCart(shop());
@@ -446,6 +513,14 @@ describe("checkout for every kind of product", () => {
     expect(cart.currency).toBe(scenario.euro ? "EUR" : "NOK");
     if (scenario.buyer) expect(summary.member).toMatchObject({ percent: scenario.buyer === "group" ? 10 : 5 });
     else expect(summary.member).toBeNull();
+
+    if (scenario.delivery) {
+      expect(summary.delivery?.delivery).toMatchObject({ carrier: "bring", label: chosenLabel, postalCode: "0150" });
+      // The price with VAT and the store's 10 %: 69 kr -> 86.25 -> 94.88 (pickup), 119 kr -> 148.75 -> 163.63 (home); in euro at 11.5.
+      const base = scenario.delivery === "pickup" ? 9_488 : 16_363;
+      const free = summary.subtotal >= (scenario.euro ? Math.round(250_000 / 11.5) : 250_000);
+      expect(summary.shipping).toBe(free ? 0 : scenario.euro ? Math.round(base / 11.5) : base);
+    }
 
     // "Til kassen": Kaizen's checkout page, with Stripe's form.
     const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", scenario.consent ?? {}, { customerId: buyerId });
@@ -466,6 +541,20 @@ describe("checkout for every kind of product", () => {
     });
     // The free products are lines of the order, at no cost, and they are what the cart showed.
     expect(order?.lines.filter((l) => l.gift).map((l) => [l.variantId, l.quantity, l.totalMinor])).toEqual(summary.gifts.map((g) => [g.variantId, g.quantity, 0]));
+    // The order keeps the delivery as it was chosen, and the shipping Stripe is told of carries its name.
+    if (scenario.delivery) {
+      expect(order?.shippingMinor).toBe(summary.shipping);
+      expect(order?.delivery).toMatchObject({
+        carrier: "bring",
+        label: chosenLabel,
+        postalCode: "0150",
+        pickupPoint: scenario.delivery === "pickup" ? { id: "pp-2", name: "Butikken" } : null,
+      });
+      const named = (fake.created.at(-1)!.params.shipping_options as { shipping_rate_data: { display_name: string } }[] | undefined)?.[0];
+      if (summary.shipping) expect(named?.shipping_rate_data.display_name).toBe(chosenLabel);
+    } else {
+      expect(order?.delivery).toBeNull();
+    }
     // Stripe is asked for what is due now, no more and no less.
     const { params } = fake.created.at(-1)!;
     expect(chargedNow(params)).toBe(summary.dueNowMinor);

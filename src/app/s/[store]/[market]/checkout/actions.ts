@@ -6,6 +6,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { CreditsState } from "@/lib/bonus-shopper";
+import type { DeliveryOptions } from "@/lib/delivery-options";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -14,6 +15,8 @@ import { readCartId } from "@/server/cart";
 import { captureCheckout, setCheckoutOptOut } from "@/server/cart-reminders";
 import { getOpenCheckout, startCheckout } from "@/server/checkout";
 import { getCustomer } from "@/server/customers";
+import { deliveryView } from "@/server/delivery-choice";
+import { chooseDelivery, quoteDelivery } from "@/server/delivery-options";
 import { checkCodeForOrder, setCartCode } from "@/server/discounts";
 import { resolveShop } from "@/server/shop";
 
@@ -143,6 +146,61 @@ export async function checkoutCreditsAction(
     refresh();
     return outcome.state;
   }
+
+  const header = (await headers()).get("origin");
+  const result = await startCheckout(
+    { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
+    cartId,
+    header ? new URL(header).origin : siteUrl(),
+    t(shop.market.lang).shipping,
+    { digital: open.digital, subscription: false },
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null },
+  );
+  // On a problem (stock ran out meanwhile, ...) the cart says what.
+  redirect(result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart"));
+}
+
+/** What the delivery choice shows after a look-up: the options, or why there are none (a key of `m.deliveryChoice.problems`). */
+export type DeliveryLookup = { options: DeliveryOptions | null; problem: string | null };
+
+/**
+ * The shopper gave a postal code at checkout (D135): the store's carrier is asked for its services and what they cost,
+ * and the answer is kept with the cart. Nothing about the order changes until a service is chosen; when the carrier does
+ * not answer, the flat rate stays and the shopper is told so.
+ */
+export async function lookUpDeliveryAction(storeSlug: string, marketSlug: string, postalCode: string): Promise<DeliveryLookup> {
+  const found = await openCheckout(storeSlug, marketSlug);
+  if (!found) return { options: null, problem: "gone" };
+  const { shop, cartId } = found;
+  const quoted = await quoteDelivery({ storeId: shop.store.id, market: shop.market }, cartId, postalCode.slice(0, 20));
+  const options = await deliveryView({ storeId: shop.store.id, market: shop.market }, cartId, t(shop.market.lang).shipping);
+  return { options, problem: quoted.ok ? null : quoted.problem };
+}
+
+/**
+ * The shopper chose how the order is delivered (D135): one of the services asked for (with its pickup point), or the flat
+ * rate. The order is placed again at that price, with the consent to downloads already given, as a discount code does.
+ */
+export async function chooseDeliveryAction(
+  storeSlug: string,
+  marketSlug: string,
+  _state: { problem: string | null },
+  form: FormData,
+): Promise<{ problem: string | null }> {
+  const found = await openCheckout(storeSlug, marketSlug);
+  if (!found) {
+    refresh();
+    return { problem: null };
+  }
+  const { shop, cartId } = found;
+  const open = await getOpenCheckout(shop.store.id, cartId);
+  if (!open || open.subscription) {
+    refresh();
+    return { problem: null };
+  }
+  const pickup = String(form.get("pickup") ?? "").slice(0, 80);
+  const chosen = await chooseDelivery({ storeId: shop.store.id, market: shop.market }, cartId, String(form.get("option") ?? ""), pickup || undefined);
+  if (!chosen.ok) return { problem: chosen.problem };
 
   const header = (await headers()).get("origin");
   const result = await startCheckout(

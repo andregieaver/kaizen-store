@@ -9,6 +9,7 @@ import { LineThumbnail } from "@/components/line-thumbnail";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
+import { pickupPointLine } from "@/lib/delivery-options";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -203,9 +204,12 @@ function totalsList({ order, m, money }: OrderView) {
     <dl className="flex flex-col gap-1">
       {order.ships && (
         <div className="flex justify-between">
-          <dt>{m.shipping}</dt>
+          <dt>{order.delivery?.label ?? m.shipping}</dt>
           <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
         </div>
+      )}
+      {order.ships && order.delivery?.pickupPoint && (
+        <p className="text-sm text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
       )}
       {order.discountMinor > 0 && (
         <div className="flex justify-between">

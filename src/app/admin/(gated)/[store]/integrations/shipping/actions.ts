@@ -4,9 +4,11 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
-import { CARRIERS } from "@/lib/shipping-carriers";
+import { parseCheckoutSettings } from "@/lib/delivery-options";
+import { CARRIERS, isCarrierId } from "@/lib/shipping-carriers";
 import { requireMember } from "@/server/auth";
 import { checkBring } from "@/server/bring-shipping";
+import { CHECKOUT_SERVICES, saveCheckoutSettings } from "@/server/delivery-options";
 import { removeCarrier, saveCarrier } from "@/server/shipping-carriers";
 
 /** A carrier's agreement holds the store's own keys, so only an owner saves or forgets it (D133). */
@@ -42,4 +44,20 @@ export async function checkCarrierAction(storeSlug: string, carrier: string): Pr
   return result.ok
     ? { status: "ok", messages: ["Bring accepted your agreement."] }
     : { status: "error", messages: [result.problem] };
+}
+
+/**
+ * What the store offers at checkout with a carrier (D135): on or off, which services, what is added to the carrier's
+ * price, the basket value over which they are free and the weight of a parcel when the goods have none. Owners only.
+ */
+export async function saveCheckoutSettingsAction(storeSlug: string, carrier: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const { store, role, account } = await requireMember(storeSlug);
+  if (role !== "owner") return { status: "error", messages: ["Only an owner can change what is offered at checkout."] };
+  if (!isCarrierId(carrier) || !CHECKOUT_SERVICES[carrier]) return { status: "error", messages: ["This carrier has no services at checkout yet."] };
+  const parsed = parseCheckoutSettings(formData, CHECKOUT_SERVICES[carrier].map((s) => s.id));
+  if (!parsed.ok) return { status: "error", messages: parsed.problems };
+  const saved = await saveCheckoutSettings(account.id, store.id, carrier, parsed.settings);
+  if (!saved.ok) return { status: "error", messages: saved.problems };
+  refresh();
+  return { status: "ok", messages: [parsed.settings.enabled ? "Saved. Shoppers in the chosen countries can now choose these services at checkout." : "Saved. The services are off at checkout."] };
 }

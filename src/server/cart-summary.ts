@@ -14,6 +14,7 @@ import { bonusProgram, cartBonusOf, creditState, planFor } from "./bonus";
 import { readCartId, type Cart, type CartLine, type Shop } from "./cart";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
+import { chosenDelivery } from "./delivery-options";
 import { getCustomer } from "./customers";
 import { previewCartDiscount } from "./discounts";
 import { getCheckoutInfo } from "./orders";
@@ -54,16 +55,20 @@ export async function cartSummary(
   // Downloads alone need no shipping (D24); a subscription pays it per delivery (D25).
   const ships = cart.lines.some((line) => line.delivery === "physical");
   const digital = cart.lines.some((line) => line.delivery === "digital");
-  const basket = basketShipping(
-    payable.map((line) => ({
-      totalMinor: line.unitPriceMinor * line.quantity,
-      delivery: line.delivery,
-      recurring: line.plan !== null,
-    })),
-    checkout.shipping,
-    { trial },
-  );
-  const shipping = !ships ? 0 : checkout.shipping ? basket.first : null;
+  // The delivery the shopper chose at checkout (D135) is the basket's shipping rate instead of the market's flat rate;
+  // a subscription pays the flat rate on each delivery (D25), so there it counts for nothing.
+  const cartId = who.cartId !== undefined ? who.cartId : await readCartId(shop);
+  const chosen = ships && !plan && cartId ? await chosenDelivery(db(), storeId, cartId, market) : null;
+  const rate = chosen?.rate ?? checkout.shipping;
+  const basketLines = payable.map((line) => ({
+    totalMinor: line.unitPriceMinor * line.quantity,
+    delivery: line.delivery,
+    recurring: line.plan !== null,
+  }));
+  const basket = basketShipping(basketLines, rate, { trial });
+  /** What shipping would cost this basket at another rate (a delivery option to choose), free above its threshold. */
+  const shippingAt = (other: { amountMinor: number; freeOverMinor: number | null }) => basketShipping(basketLines, other, { trial }).first;
+  const shipping = !ships ? 0 : rate ? basket.first : null;
   // The buyer's group or company discount (D108), off what is bought once, before any code, as checkout takes it.
   const customerId = who.customerId !== undefined ? who.customerId : ((await getCustomer(storeId))?.id ?? null);
   const member = await memberDiscountFor(db(), storeId, customerId);
@@ -91,7 +96,6 @@ export async function cartSummary(
   // before any code and the credits; only a signed-in friend's first order, and never a host's.
   const program = await bonusProgram(db(), storeId);
   const sellerIsHost = payable.some((line) => line.hostId);
-  const cartId = who.cartId !== undefined ? who.cartId : await readCartId(shop);
   const friend = sellerIsHost ? null : await friendState(db(), storeId, customerId, await codeInPlay(db(), storeId, cartId), program);
   const welcome = friend
     ? welcomeFor(
@@ -135,7 +139,7 @@ export async function cartSummary(
             delivery: line.delivery,
             recurring: line.plan !== null,
           })),
-          checkout.shipping,
+          rate,
           { trial },
         ).renewal
       : basket.renewal;
@@ -183,6 +187,9 @@ export async function cartSummary(
     digital,
     basket,
     shipping,
+    /** The delivery chosen at checkout (D135), its order record, or null for the flat rate; `shippingAt()` prices another rate. */
+    delivery: chosen,
+    shippingAt,
     code,
     applied,
     discountMinor,

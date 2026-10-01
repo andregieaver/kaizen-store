@@ -7,6 +7,7 @@ import { z } from "zod";
 import { OwnBookings } from "@/components/own-bookings";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
+import { pickupPointLine } from "@/lib/delivery-options";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
@@ -120,9 +121,12 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
           {order.ships && (
             <div className="flex justify-between">
-              <dt>{m.shipping}</dt>
+              <dt>{order.delivery?.label ?? m.shipping}</dt>
               <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
             </div>
+          )}
+          {order.ships && order.delivery?.pickupPoint && (
+            <p className="text-sm text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
           )}
           {order.discountMinor > 0 && (
             <div className="flex justify-between">

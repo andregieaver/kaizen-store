@@ -6,9 +6,12 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { CARRIER_FEATURE_LABELS, carrierInfo } from "@/lib/shipping-carriers";
 import { requireMember } from "@/server/auth";
+import { CHECKOUT_SERVICES, getCheckoutSettings } from "@/server/delivery-options";
+import { getShippingSettings } from "@/server/settings";
+import { db } from "@/db/client";
 import { getCarrier } from "@/server/shipping-carriers";
 
-import { checkCarrierAction, removeCarrierAction, saveCarrierAction } from "../actions";
+import { checkCarrierAction, removeCarrierAction, saveCarrierAction, saveCheckoutSettingsAction } from "../actions";
 
 export const metadata: Metadata = { title: "Shipping carrier" };
 
@@ -31,6 +34,13 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   // Markets the store sells to, the carrier's first: the carrier can only deliver where it delivers.
   const offered = marketCountries.filter((code) => info.countries.includes(code));
   const chosen = new Set(saved?.countries ?? offered);
+  // Delivery options at checkout (D135): what the store offers, next to its flat rate.
+  const services = CHECKOUT_SERVICES[info.id];
+  const checkout = services && saved?.complete ? await getCheckoutSettings(db(), store.id, info.id) : null;
+  const flatRates = checkout ? await getShippingSettings(store) : [];
+  const missingFlat = checkout ? flatRates.filter((r) => chosen.has(r.marketCode.toUpperCase()) && r.amountMinor === null).map((r) => r.marketCode) : [];
+  const currencyOf = store.markets.find((m) => m.code === "NO")?.nativeCurrency ?? "NOK";
+  const majorUnits = (minor: number | null) => (minor === null ? "" : (minor / 100).toFixed(2).replace(/\.00$/, "").replace(".", ","));
   const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 
   return (
@@ -59,7 +69,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       {live ? (
         <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
           The connection to {info.name} is ready. You can book shipments with labels and follow their tracking from each order
-          {info.features.includes("rates") && !info.available.includes("rates") ? "; delivery options at checkout come next" : ""}. In the test
+          {info.available.includes("rates") ? "; shoppers can choose its services at checkout once you switch them on below" : info.features.includes("rates") ? "; delivery options at checkout come next" : ""}. In the test
           environment {info.name} books test shipments: nothing is shipped and orders are not marked as sent.
         </p>
       ) : (
@@ -163,6 +173,70 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
           </fieldset>
         </ActionForm>
       </section>
+
+      {checkout && services && (
+        <section aria-labelledby="checkout" className={card}>
+          <h2 id="checkout" className="mb-1 font-medium">
+            Delivery options at checkout
+          </h2>
+          <p className="mb-4 text-sm text-muted">
+            Shoppers give their postal code at checkout and choose between your standard shipping and the services you switch on here,
+            with the price {info.name} gives you plus VAT and what you add. Posten / Bring&apos;s services are for parcels to Norway. If{" "}
+            {info.name} does not answer, your standard shipping is used, so keep it set up under{" "}
+            <Link href={`/admin/${store.slug}/settings/shipping`} className="underline">
+              Shipping
+            </Link>
+            .
+          </p>
+          {missingFlat.length > 0 && (
+            <p role="status" className="mb-4 rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              No standard shipping price is set for {missingFlat.join(", ")}. Set one under Shipping: it is what the order starts with until the shopper chooses.
+            </p>
+          )}
+          <ActionForm action={saveCheckoutSettingsAction.bind(null, store.slug, info.id)} className="flex flex-col gap-4">
+            <fieldset disabled={!owner} className="flex flex-col gap-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" name="enabled" defaultChecked={checkout.enabled} className="size-4" />
+                Offer {info.name} at checkout in the countries chosen above
+              </label>
+              <fieldset className="flex flex-col gap-1">
+                <legend className="mb-1 text-sm font-medium">Services to offer</legend>
+                {services.map((service) => (
+                  <label key={service.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="service" value={service.id} defaultChecked={checkout.services.includes(service.id)} className="size-4" />
+                    {service.name}
+                    {service.needsPickupPoint && <span className="text-muted">(the shopper chooses a pickup point)</span>}
+                  </label>
+                ))}
+                <p className="text-sm text-muted">A service is shown only when {info.name} offers it for the parcel and the postal code.</p>
+              </fieldset>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Percentage added to the price with VAT
+                  <input name="markupPercent" inputMode="numeric" defaultValue={String(checkout.markup.percent)} className={control} />
+                </label>
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Amount added ({currencyOf})
+                  <input name="markupAmount" inputMode="decimal" defaultValue={majorUnits(checkout.markup.minor || null)} placeholder="0" className={control} />
+                </label>
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Free when the basket is worth at least ({currencyOf})
+                  <input name="freeOver" inputMode="decimal" defaultValue={majorUnits(checkout.freeOverMinor)} placeholder="Never free" className={control} />
+                </label>
+                <label className="flex flex-col gap-1 text-sm font-medium">
+                  Parcel weight when the goods have none (grams)
+                  <input name="defaultWeight" inputMode="numeric" defaultValue={String(checkout.defaultWeightGrams)} className={control} />
+                </label>
+              </div>
+              {owner && (
+                <div>
+                  <SubmitButton>Save checkout options</SubmitButton>
+                </div>
+              )}
+            </fieldset>
+          </ActionForm>
+        </section>
+      )}
 
       {live && owner && saved?.complete && (
         <section aria-labelledby="check" className={card}>

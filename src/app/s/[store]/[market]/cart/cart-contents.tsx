@@ -385,7 +385,7 @@ function summaryList({ store, market, m, view }: Draw) {
         {shipping !== null && ships && (
           <div className="flex justify-between gap-4">
             <dt>
-              {m.shipping}
+              {summary.delivery?.delivery.label ?? m.shipping}
               {basket.renewal > 0 && <span className="text-sm text-muted"> {m.perDelivery}</span>}
             </dt>
             <dd>{shipping === 0 ? m.freeShipping : net(shipping)}</dd>

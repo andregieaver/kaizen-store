@@ -15,6 +15,7 @@ import {
   CheckoutBack,
   CheckoutCode,
   CheckoutCredits,
+  CheckoutDelivery,
   CheckoutItems,
   CheckoutPayment,
   CheckoutTotals,
@@ -95,6 +96,8 @@ async function Part({
       return <CheckoutCode store={store} market={market} />;
     case "checkout_credits":
       return <CheckoutCredits store={store} market={market} />;
+    case "checkout_delivery":
+      return <CheckoutDelivery store={store} market={market} />;
     case "checkout_totals":
       return <CheckoutTotals store={store} market={market} />;
     case "checkout_payment":

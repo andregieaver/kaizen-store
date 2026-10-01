@@ -1,0 +1,370 @@
+import "server-only";
+
+import { sql } from "drizzle-orm";
+
+import { db } from "@/db/client";
+import {
+  CHECKOUT_COUNTRIES,
+  DEFAULT_CHECKOUT_SETTINGS,
+  MAX_OPTIONS,
+  MAX_PICKUP_POINTS,
+  QUOTE_MINUTES,
+  cleanPostalCode,
+  estimateDays,
+  shopperPrice,
+  type CheckoutSettings,
+  type DeliveryOption,
+  type DeliveryOptions,
+  type OrderDelivery,
+  type QuotedPickupPoint,
+} from "@/lib/delivery-options";
+import { shown, type Market } from "@/lib/markets";
+import type { CarrierContext, CarrierId, PickupPoint, ShippingAddress, ShippingOption } from "@/lib/shipping-carriers";
+import { BRING_PRODUCTS } from "@/lib/bring";
+
+import { audit } from "./auth";
+import { adapterFor } from "./carriers";
+import { carrierContext } from "./shipping-carriers";
+
+type Row = Record<string, unknown>;
+type Runner = Pick<ReturnType<typeof db>, "execute">;
+
+/**
+ * Delivery options at checkout (D135, `src/lib/delivery-options.ts`): a carrier's services shown to the shopper next to
+ * the market's flat rate. `quoteDelivery()` asks the store's carrier agreement for the services and prices for a postal
+ * code and keeps each answer as a `delivery_quotes` row; `chooseDelivery()` puts one on the cart, and `chosenDelivery()`
+ * is what `cartSummary()` and `placeOrder()` both read, so the price is the one shown and no carrier is called while an
+ * order is placed. A carrier that does not answer leaves the flat rate, never an empty checkout.
+ */
+
+/** The services of a carrier a store may offer at checkout, by its own ids. */
+export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: string; needsPickupPoint: boolean }[]>> = {
+  bring: BRING_PRODUCTS,
+};
+
+/** The carriers that have checkout services built. */
+export const CHECKOUT_CARRIERS = Object.keys(CHECKOUT_SERVICES) as CarrierId[];
+
+// ---------------------------------------------------------------------------
+// The store's settings
+// ---------------------------------------------------------------------------
+
+export async function getCheckoutSettings(runner: Runner, storeId: string, carrier: CarrierId): Promise<CheckoutSettings> {
+  const [row] = await runner.execute<Row>(sql`
+    select checkout_enabled, checkout_services, markup_percent, markup_minor, free_over_minor, default_weight_grams
+    from commerce.shipping_carriers where store_id = ${storeId}::uuid and carrier = ${carrier}
+  `);
+  if (!row) return DEFAULT_CHECKOUT_SETTINGS;
+  return {
+    enabled: Boolean(row.checkout_enabled),
+    services: (row.checkout_services ?? []) as string[],
+    markup: { percent: Number(row.markup_percent), minor: Number(row.markup_minor) },
+    freeOverMinor: row.free_over_minor === null ? null : Number(row.free_over_minor),
+    defaultWeightGrams: Number(row.default_weight_grams),
+  };
+}
+
+/** Saves what the store offers at checkout. The carrier's agreement must be saved and complete first. */
+export async function saveCheckoutSettings(
+  accountId: string,
+  storeId: string,
+  carrier: CarrierId,
+  settings: CheckoutSettings,
+): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const known = (CHECKOUT_SERVICES[carrier] ?? []).map((s) => s.id);
+  if (known.length === 0) return { ok: false, problems: ["This carrier has no services at checkout yet."] };
+  if (settings.services.some((id) => !known.includes(id))) return { ok: false, problems: ["One of the services is not one this carrier offers."] };
+  const rows = await db().execute<Row>(sql`
+    update commerce.shipping_carriers set
+      checkout_enabled = ${settings.enabled}, checkout_services = ARRAY[${sql.join(settings.services.map((s) => sql`${s}`), sql`, `)}]::text[],
+      markup_percent = ${settings.markup.percent}, markup_minor = ${settings.markup.minor},
+      free_over_minor = ${settings.freeOverMinor}, default_weight_grams = ${settings.defaultWeightGrams},
+      updated_at = now(), updated_by = ${accountId}::uuid
+    where store_id = ${storeId}::uuid and carrier = ${carrier} and (complete or not ${settings.enabled})
+    returning carrier
+  `);
+  if (rows.length === 0) return { ok: false, problems: ["Save all the agreement details first, then switch the services on."] };
+  await audit(accountId, storeId, "shipping.checkout_saved", { carrier, enabled: settings.enabled, services: settings.services.length });
+  return { ok: true };
+}
+
+/** The carrier whose services this market offers at checkout, with its settings; none when none is on, complete and for the country. */
+async function activeCarrier(runner: Runner, storeId: string, country: string): Promise<{ carrier: CarrierId; settings: CheckoutSettings } | null> {
+  const rows = await runner.execute<Row>(sql`
+    select carrier, countries from commerce.shipping_carriers
+    where store_id = ${storeId}::uuid and checkout_enabled and complete and carrier in (${sql.join(CHECKOUT_CARRIERS.map((c) => sql`${c}`), sql`, `)})
+    order by carrier
+  `);
+  for (const row of rows) {
+    const carrier = row.carrier as CarrierId;
+    const offered = (row.countries ?? []) as string[];
+    if (!offered.includes(country) || !(CHECKOUT_COUNTRIES[carrier] ?? []).includes(country)) continue;
+    const settings = await getCheckoutSettings(runner, storeId, carrier);
+    if (settings.services.length > 0) return { carrier, settings };
+  }
+  return null;
+}
+
+/** Whether a carrier's services are offered at checkout in this country: the page shows the choice only then. */
+export async function deliveryChoiceOn(storeId: string, country: string): Promise<boolean> {
+  return (await activeCarrier(db(), storeId, country)) !== null;
+}
+
+// ---------------------------------------------------------------------------
+// Quotes
+// ---------------------------------------------------------------------------
+
+/** The weight of what the cart ships, in grams: the variants' own, and the store's default once for goods that have none. */
+async function cartWeightGrams(storeId: string, cartId: string, defaultGrams: number): Promise<number> {
+  const [row] = await db().execute<Row>(sql`
+    select coalesce(sum(cl.quantity * v.weight_grams) filter (where v.weight_grams is not null), 0)::bigint as known,
+      bool_or(v.weight_grams is null) as unknown
+    from commerce.cart_lines cl
+    join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
+    where cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid and v.delivery = 'physical'
+  `);
+  const total = Number(row?.known ?? 0) + (row?.unknown ? defaultGrams : 0);
+  return Math.min(35_000, Math.max(total, 1));
+}
+
+const senderOf = (context: CarrierContext): ShippingAddress => ({
+  name: context.details.senderName ?? "",
+  street: context.details.senderStreet ?? "",
+  postalCode: context.details.senderPostalCode ?? "",
+  city: context.details.senderCity ?? "",
+  country: "NO",
+});
+
+const quotedPoint = (p: PickupPoint): QuotedPickupPoint => ({
+  id: p.id,
+  name: p.name,
+  street: p.address.street,
+  postalCode: p.address.postalCode,
+  city: p.address.city,
+  distanceMeters: p.distanceMeters ?? null,
+});
+
+export type QuoteResult = { ok: true } | { ok: false; problem: "postal_code" | "unavailable" | "none" };
+
+/**
+ * Asks the store's carrier for its services to this postal code and keeps what it offers with the cart: the services the
+ * store switched on, at the price the shopper would pay (the carrier's price with VAT and the store's markup), and the
+ * nearest pickup points for a service that needs one. The earlier answers for the cart go, except the one chosen.
+ */
+export async function quoteDelivery(
+  shop: { storeId: string; market: Pick<Market, "code" | "nativeCurrency"> },
+  cartId: string,
+  typedPostalCode: string,
+): Promise<QuoteResult> {
+  const { storeId, market } = shop;
+  const postalCode = cleanPostalCode(market.code, typedPostalCode);
+  if (!postalCode) return { ok: false, problem: "postal_code" };
+  const active = await activeCarrier(db(), storeId, market.code);
+  const adapter = active ? adapterFor(active.carrier) : null;
+  const context = active ? await carrierContext(storeId, active.carrier) : null;
+  if (!active || !adapter?.rates || !context) return { ok: false, problem: "unavailable" };
+
+  const [cart] = await db().execute<Row>(sql`
+    select 1 from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' and market_code = ${market.code}
+  `);
+  if (!cart) return { ok: false, problem: "unavailable" };
+  const weight = await cartWeightGrams(storeId, cartId, active.settings.defaultWeightGrams);
+  const [country] = await db().execute<Row>(sql`select standard_vat_rate from commerce.countries where code = ${market.code}`);
+  const vatRate = Number(country?.standard_vat_rate ?? 0);
+
+  const to: ShippingAddress = { name: "", street: "", postalCode, city: "", country: market.code };
+  let offered: ShippingOption[];
+  try {
+    offered = await adapter.rates(context, { from: senderOf(context), to, parcels: [{ weightGrams: weight }], currency: market.nativeCurrency });
+  } catch {
+    return { ok: false, problem: "unavailable" };
+  }
+  // Only what the store switched on and what is priced in the country's own currency, cheapest first.
+  const services = offered
+    .filter((o) => active.settings.services.includes(o.serviceId) && o.currency === market.nativeCurrency)
+    .sort((a, b) => a.priceMinor - b.priceMinor)
+    .slice(0, MAX_OPTIONS);
+  if (services.length === 0) return { ok: false, problem: "none" };
+
+  let points: QuotedPickupPoint[] = [];
+  if (services.some((s) => s.needsPickupPoint) && adapter.pickupPoints) {
+    try {
+      points = (await adapter.pickupPoints(context, to)).slice(0, MAX_PICKUP_POINTS).map(quotedPoint);
+    } catch {
+      // Without pickup points, the services that need one are left out rather than half offered.
+      points = [];
+    }
+  }
+  const usable = services.filter((s) => !s.needsPickupPoint || points.length > 0);
+  if (usable.length === 0) return { ok: false, problem: "none" };
+
+  await db().transaction(async (tx) => {
+    // Answers that ran out a day ago go, whichever cart they were for.
+    await tx.execute(sql`delete from commerce.delivery_quotes where store_id = ${storeId}::uuid and expires_at < now() - interval '1 day'`);
+    await tx.execute(sql`
+      delete from commerce.delivery_quotes q
+      where q.store_id = ${storeId}::uuid and q.cart_id = ${cartId}::uuid
+        and q.id is distinct from (select delivery_quote_id from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid)
+    `);
+    for (const service of usable) {
+      await tx.execute(sql`
+        insert into commerce.delivery_quotes (
+          store_id, cart_id, carrier, service_id, label, amount_minor, free_over_minor, currency, country, postal_code,
+          estimate, needs_pickup_point, pickup_points, expires_at
+        ) values (
+          ${storeId}::uuid, ${cartId}::uuid, ${active.carrier}, ${service.serviceId}, ${service.name.slice(0, 120)},
+          ${shopperPrice(service.priceMinor, vatRate, active.settings.markup)}, ${active.settings.freeOverMinor},
+          ${market.nativeCurrency}, ${market.code}, ${postalCode},
+          ${service.estimate && "minDays" in service.estimate ? JSON.stringify(service.estimate) : null}::jsonb,
+          ${Boolean(service.needsPickupPoint)}, ${JSON.stringify(service.needsPickupPoint ? points : [])}::jsonb,
+          now() + make_interval(mins => ${QUOTE_MINUTES})
+        )
+      `);
+    }
+  });
+  return { ok: true };
+}
+
+/** What the cart's chosen delivery costs, as the basket's shipping rate (in the currency shown), and what to keep of it on the order. */
+export type ChosenDelivery = {
+  quoteId: string;
+  rate: { amountMinor: number; freeOverMinor: number | null };
+  delivery: OrderDelivery;
+};
+
+/**
+ * The delivery the shopper chose for this cart, or null for the flat rate: a quote of the cart that has not run out, for
+ * this country, with its pickup point chosen when it needs one. Read by `cartSummary()` and, inside its transaction, by
+ * `placeOrder()`, so both charge the same.
+ */
+export async function chosenDelivery(
+  runner: Runner,
+  storeId: string,
+  cartId: string,
+  market: Pick<Market, "code" | "conversion">,
+): Promise<ChosenDelivery | null> {
+  const [row] = await runner.execute<Row>(sql`
+    select q.id, q.carrier, q.service_id, q.label, q.amount_minor, q.free_over_minor, q.postal_code, q.needs_pickup_point,
+      q.pickup_points, q.pickup_point_id
+    from commerce.carts c
+    join commerce.delivery_quotes q on q.store_id = c.store_id and q.id = c.delivery_quote_id and q.cart_id = c.id
+    where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.status = 'open'
+      and q.expires_at > now() and q.country = ${market.code} and c.market_code = ${market.code}
+  `);
+  if (!row) return null;
+  const points = (row.pickup_points ?? []) as QuotedPickupPoint[];
+  const point = row.needs_pickup_point ? (points.find((p) => p.id === row.pickup_point_id) ?? null) : null;
+  if (row.needs_pickup_point && !point) return null;
+  return {
+    quoteId: String(row.id),
+    rate: {
+      amountMinor: shown(market, Number(row.amount_minor)),
+      freeOverMinor: row.free_over_minor === null ? null : shown(market, Number(row.free_over_minor)),
+    },
+    delivery: {
+      carrier: row.carrier as CarrierId,
+      serviceId: String(row.service_id),
+      label: String(row.label),
+      postalCode: String(row.postal_code),
+      pickupPoint: point ? { id: point.id, name: point.name, street: point.street, postalCode: point.postalCode, city: point.city } : null,
+    },
+  };
+}
+
+/**
+ * The options the page shows: the flat rate and the cart's quotes that are still good, each priced for this basket by
+ * `priceFor` (the rate's price with free shipping taken off). The chosen one is marked; none chosen is the flat rate.
+ */
+export async function deliveryOptionsFor(
+  shop: { storeId: string; market: Pick<Market, "code" | "conversion"> },
+  cartId: string,
+  flat: { label: string; rate: { amountMinor: number; freeOverMinor: number | null } | null },
+  priceFor: (rate: { amountMinor: number; freeOverMinor: number | null }) => number,
+): Promise<DeliveryOptions> {
+  const { storeId, market } = shop;
+  const chosen = await chosenDelivery(db(), storeId, cartId, market);
+  const rows = await db().execute<Row>(sql`
+    select id, carrier, label, amount_minor, free_over_minor, postal_code, estimate, needs_pickup_point, pickup_points, pickup_point_id
+    from commerce.delivery_quotes
+    where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid and expires_at > now() and country = ${market.code}
+    order by amount_minor, label
+  `);
+  const options: DeliveryOption[] = [];
+  if (flat.rate) {
+    options.push({
+      id: "flat",
+      carrier: "flat",
+      label: flat.label,
+      priceMinor: priceFor(flat.rate),
+      freeOverMinor: flat.rate.freeOverMinor,
+      estimate: null,
+      needsPickupPoint: false,
+      pickupPoints: [],
+      pickupPointId: null,
+      selected: chosen === null,
+    });
+  }
+  for (const row of rows) {
+    const rate = {
+      amountMinor: shown(market, Number(row.amount_minor)),
+      freeOverMinor: row.free_over_minor === null ? null : shown(market, Number(row.free_over_minor)),
+    };
+    options.push({
+      id: String(row.id),
+      carrier: row.carrier as CarrierId,
+      label: String(row.label),
+      priceMinor: priceFor(rate),
+      freeOverMinor: rate.freeOverMinor,
+      estimate: estimateDays(row.estimate),
+      needsPickupPoint: Boolean(row.needs_pickup_point),
+      pickupPoints: (row.pickup_points ?? []) as QuotedPickupPoint[],
+      pickupPointId: row.pickup_point_id ? String(row.pickup_point_id) : null,
+      selected: chosen?.quoteId === String(row.id),
+    });
+  }
+  const postal = rows[0] ? String(rows[0].postal_code) : (chosen?.delivery.postalCode ?? null);
+  return { postalCode: postal, options };
+}
+
+export type ChooseResult = { ok: true } | { ok: false; problem: "gone" | "pickup_point" };
+
+/**
+ * The shopper's choice: a service from the last answer (with the pickup point it needs), or the flat rate. The order is
+ * placed again afterwards (the caller), at the price this sets.
+ */
+export async function chooseDelivery(
+  shop: { storeId: string; market: Pick<Market, "code"> },
+  cartId: string,
+  optionId: string,
+  pickupPointId?: string,
+): Promise<ChooseResult> {
+  const { storeId, market } = shop;
+  if (optionId === "flat") {
+    await db().execute(sql`
+      update commerce.carts set delivery_quote_id = null, updated_at = now()
+      where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open'
+    `);
+    return { ok: true };
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(optionId)) return { ok: false, problem: "gone" };
+  return db().transaction(async (tx): Promise<ChooseResult> => {
+    const [quote] = await tx.execute<Row>(sql`
+      select id, needs_pickup_point, pickup_points from commerce.delivery_quotes
+      where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid and id = ${optionId}::uuid and expires_at > now() and country = ${market.code}
+      for update
+    `);
+    if (!quote) return { ok: false, problem: "gone" };
+    let point: string | null = null;
+    if (quote.needs_pickup_point) {
+      const points = (quote.pickup_points ?? []) as QuotedPickupPoint[];
+      if (!pickupPointId || !points.some((p) => p.id === pickupPointId)) return { ok: false, problem: "pickup_point" };
+      point = pickupPointId;
+    }
+    await tx.execute(sql`update commerce.delivery_quotes set pickup_point_id = ${point} where store_id = ${storeId}::uuid and id = ${optionId}::uuid`);
+    const done = await tx.execute<Row>(sql`
+      update commerce.carts set delivery_quote_id = ${optionId}::uuid, updated_at = now()
+      where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' returning id
+    `);
+    return done.length > 0 ? { ok: true } : { ok: false, problem: "gone" };
+  });
+}

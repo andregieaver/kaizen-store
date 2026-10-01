@@ -64,7 +64,7 @@ export const CARRIERS: CarrierInfo[] = [
     summary: "Norway's postal service and Bring's parcels across the Nordics: home delivery, pickup points and the mailbox.",
     countries: ["NO", "SE", "DK", "FI"],
     features: ["rates", "pickup_points", "labels", "tracking"],
-    available: ["pickup_points", "labels", "tracking"],
+    available: ["rates", "pickup_points", "labels", "tracking"],
     fields: [
       { key: "customerNumber", label: "Customer number", secret: false, required: true, help: "Your number in your agreement with Posten / Bring." },
       { key: "apiUid", label: "Mybring API user", secret: false, required: true, help: "The user (email) of your Mybring API access." },
