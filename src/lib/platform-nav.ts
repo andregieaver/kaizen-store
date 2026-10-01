@@ -31,6 +31,7 @@ export const PLAN_ITEMS: SectionItem[] = [
 
 export const SETTINGS_ITEMS: SectionItem[] = [
   item("/navigation", "Header and footer", "Kaizen's logos, icon, business details and which menus its standard header and footer show."),
+  item("/experiments", "A/B tests", "Every store's A/B tests: what is running, what needs a look and what waits for a decision."),
   item("/search-test", "Search", "The search experiment: keyword against hybrid search."),
   item("/seo", "SEO", "How search engines and AI crawlers see Kaizen's site."),
   item("/cookies", "Cookies", "Kaizen's cookies, tracking tools and consents."),

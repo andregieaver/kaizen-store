@@ -88,6 +88,7 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/platform/requests",
     "/admin/platform/website",
     "/admin/platform/settings",
+    "/admin/platform/experiments",
     "/admin/demo/customer-groups",
     "/admin/demo/companies",
   ];
@@ -113,6 +114,7 @@ test("admin pages send nothing of theirs to a visitor without a session, before 
     "/admin/platform/stripe",
     "/admin/platform/seo",
     "/admin/platform/ai/usage",
+    "/admin/platform/experiments",
     "/admin/account/usage",
     "/admin/account/billing",
     "/admin/platform/requests",

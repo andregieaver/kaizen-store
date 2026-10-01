@@ -484,6 +484,9 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("chat", "/chat", "Chat agent", "Kaizen site", "Kaizen's public site chat agent and its knowledge base."),
   platform("google-reviews", "/google-reviews", "Google reviews", "Kaizen site", "Kaizen's own Google reviews for testimonials."),
+  platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
+    keywords: ["experiment", "a/b", "test", "split", "guardrail"],
+  }),
   platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),
   platform("assistant", "/assistant", "AI manager", "Platform", "The platform's AI manager: conversations and what it has learned about you.", {
     keywords: ["assistant", "ai", "memory"],

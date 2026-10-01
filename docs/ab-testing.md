@@ -191,8 +191,27 @@ A fix on the way: the admin functions called `updateTag`, which only a server ac
 are not one, so a stop, a scheduled start or a choice made there changed the database and then threw before refreshing the caches.
 They now refresh through `refreshTag()` (`updateTag`, else `revalidateTag`).
 
-Not done in phase 4: the platform's cross-store view of running tests, guardrail emails to the owner, and tools for the platform's
-assistant (a platform admin cannot edit a store's test).
+Not done in phase 4: guardrail emails to the owner, and tools for the platform's assistant (a platform admin cannot edit a store's test).
+
+## What phase 5 built: the platform's view of every store's tests
+
+`/admin/platform/experiments` (Settings → A/B tests, `ADMIN_PAGES` id `experiments`) is read-only: a platform admin sees every store's
+tests and tells the owner; nothing here starts, stops or changes one.
+
+- **The read** (`src/server/platform-experiments.ts`, `platformExperiments()`): by default the tests that are running, scheduled or
+  stopped and waiting for a decision, and drafts a scheduled start sent back; "Everything" adds the other drafts and the applied and
+  discarded ones. At most the newest 300. For each running test it reads the results the store's owner sees (`experimentResults()`,
+  four tests at a time), so the verdict sentence, the visitors per version and the guardrail's figure are the same numbers, never
+  a second calculation.
+- **What needs a look** (`src/lib/platform-experiments.ts`, `flagsOf()`, pure and tested): a version that clearly lowers orders (the
+  hourly check stops it), visitors divided unevenly (a broken split), a running test nobody has seen in three days (the page, the consent
+  banner or the proxy is not doing its part), a test past its planned end (and when it stops counting), a scheduled start that went back
+  to a draft, a test the guardrail stopped, and one stopped for fourteen days without a decision. Those come first, then running,
+  scheduled, stopped and the rest, newest first.
+- Totals at the top: running (and in how many stores), scheduled, stopped, and how many need a look.
+
+Still later: emails to the owner when the guardrail stops a test, platform-assistant tools, and moving the search and recommendations tests
+onto the engine.
 
 ## Principles (kept from `measurement.md`)
 
@@ -501,7 +520,8 @@ reports (D106, D145).
 | **2** (built, minus the moderated check) | **Part** tests in the builder (click a part, "Test this"), the five-step flow, estimates, preview links, scheduled start | A person who has never seen it creates a test in a few minutes (a moderated check with two owners) |
 | **3** (header, footer and product layouts built) | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
 | **4** (the AI manager's tools built) | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
-| **5** | Move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |
+| **5** (the platform's view built) | The platform's cross-store view of tests | Flags tested on every kind of trouble |
+| **6** | Guardrail emails to owners; move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the
 new page, a migration applied to production with the advisors checked and its version recorded in `decisions.md`,
