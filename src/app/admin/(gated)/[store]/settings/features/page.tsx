@@ -16,7 +16,7 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
   const owner = role === "owner";
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Features</h1>
         <p className="text-sm text-muted">What your store does besides selling goods.</p>

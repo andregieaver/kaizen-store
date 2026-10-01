@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "New campaign" };
 export default async function NewCampaignPage({ params }: PageProps<"/admin/[store]/campaigns/new">) {
   const { store } = await requireMember((await params).store);
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/campaigns`} className="text-sm underline">
           Campaigns

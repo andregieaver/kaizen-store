@@ -5,6 +5,8 @@
  * page goes here too.
  */
 
+import { sectionOf } from "./store-nav";
+
 export type AdminArea = "store" | "platform" | "account";
 
 /** What must be on for a page to be offered. */
@@ -71,9 +73,9 @@ const work = (id: string, path: string, title: string, what: string, extra: Part
   ...extra,
 });
 
-export const ADMIN_PAGES: readonly AdminPage[] = [
+const PAGES: readonly AdminPage[] = [
   // Store: main sections --------------------------------------------------------------
-  store("overview", "", "Overview", "Main", "The store's start page: the setup checklist until the store is ready, then its state at a glance.", {
+  store("overview", "", "Home", "Home", "The store's start page: the setup checklist until the store is ready, then its state at a glance.", {
     tasks: ["See what is left before launch", "Jump to the next setup step"],
     keywords: ["home", "dashboard", "start", "checklist"],
   }),
@@ -299,6 +301,13 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
     keywords: ["stripe", "card", "go live", "payouts"],
   }),
 
+  store("website", "/website", "Website", "Website", "The store's website at a glance: a card for each of its pages, blog, media, menus, headers, footers, design and translations.", {
+    keywords: ["site", "storefront", "content"],
+  }),
+  store("settings", "/settings", "Settings", "Settings", "The store's settings at a glance: a card for each page, under Store, Selling, Site, Tools and Account.", {
+    keywords: ["configure", "setup", "options"],
+  }),
+
   // Store: store settings --------------------------------------------------------------------
   store("localization", "/settings/localization", "Languages and currencies", "Store", "The languages and currencies the store offers, each country's language, and the rates amounts are converted at.", {
     keywords: ["translate", "euro", "exchange rate", "multilingual", "language", "currency", "ECB"],
@@ -471,6 +480,12 @@ export const ADMIN_PAGES: readonly AdminPage[] = [
     keywords: ["assistant", "ai", "memory"],
   }),
 ];
+
+/**
+ * The pages with the store's navigation sections as their groups (D147): where a page sits is the section its address is in
+ * (`src/lib/store-nav.ts`), so the AI manager's guidance follows the tabs people see.
+ */
+export const ADMIN_PAGES: readonly AdminPage[] = PAGES.map((page) => (page.area === "store" ? { ...page, group: sectionOf(page.path)?.label ?? "Home" } : page));
 
 export const ADMIN_PAGES_BY_ID: Record<string, AdminPage> = Object.fromEntries(ADMIN_PAGES.map((page) => [`${page.area}:${page.id}`, page]));
 

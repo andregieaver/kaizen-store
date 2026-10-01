@@ -48,7 +48,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
   const when = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">
           Integrations

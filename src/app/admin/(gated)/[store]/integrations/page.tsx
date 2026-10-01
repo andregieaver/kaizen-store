@@ -17,7 +17,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
   const base = `/admin/${store.slug}/integrations`;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Integrations</h1>
         <p className="text-sm text-muted">Connect Kaizen to the services you already use. Orders, customers and subscriptions go there as they happen.</p>

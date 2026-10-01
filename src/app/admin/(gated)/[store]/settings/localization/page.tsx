@@ -41,7 +41,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
   });
 
   return (
-    <div className="flex max-w-3xl flex-col gap-10">
+    <div className="flex flex-col gap-10">
       <div>
         <h1 className="text-2xl font-semibold">Languages and currencies</h1>
         <p className="text-sm text-muted">

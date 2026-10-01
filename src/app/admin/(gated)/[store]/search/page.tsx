@@ -22,7 +22,7 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
   const meaningOn = Boolean(ai?.space);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Search</h1>
         <p className="text-sm text-muted">

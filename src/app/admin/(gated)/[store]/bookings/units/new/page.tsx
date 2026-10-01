@@ -13,7 +13,7 @@ export default async function NewUnitPage({ params, searchParams }: PageProps<"/
   const { store } = await requireMember((await params).store);
   const kind = (await searchParams).kind === "item" ? "item" : "unit";
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/bookings/units`} className="text-sm underline">
           Rooms and rental items

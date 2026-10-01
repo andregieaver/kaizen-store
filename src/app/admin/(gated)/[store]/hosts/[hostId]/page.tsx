@@ -39,7 +39,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
   for (const e of earnings) netByCurrency.set(e.currency, (netByCurrency.get(e.currency) ?? 0) + e.netMinor);
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/hosts`} className="text-sm underline">
           Hosts

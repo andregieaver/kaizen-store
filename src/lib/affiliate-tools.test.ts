@@ -99,7 +99,7 @@ describe("the referral program's tools in the owner assistant's catalogue (D131)
 describe("the referral program in the assistant's map and playbooks", () => {
   it("lists the page, where it sits and how it is found", () => {
     const page = ADMIN_PAGES.find((p) => p.area === "store" && p.id === "affiliates");
-    expect(page).toMatchObject({ path: "/affiliates", group: "Sales", title: "Referral program" });
+    expect(page).toMatchObject({ path: "/affiliates", group: "Marketing", title: "Referral program" });
     expect(pageHref(page!, {}, "kaffe")).toBe("/admin/kaffe/affiliates");
     expect(matchPath("/admin/kaffe/affiliates")?.page.id).toBe("affiliates");
     for (const ask of ["refer a friend", "affiliate program", "welcome discount for friends", "referral link"])

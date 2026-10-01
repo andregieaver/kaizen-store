@@ -23,7 +23,7 @@ export default async function CampaignPage({ params }: PageProps<"/admin/[store]
   if (!campaign) notFound();
   const orders = (await listCampaigns(store.id)).find((c) => c.id === campaign.id)?.orders ?? 0;
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/campaigns`} className="text-sm underline">
           Campaigns

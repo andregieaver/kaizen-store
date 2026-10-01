@@ -37,7 +37,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
   const currencyOf = (schedule: ScheduleView) => schedule.currency;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Subscription boxes</h1>
         <p className="text-sm text-muted">

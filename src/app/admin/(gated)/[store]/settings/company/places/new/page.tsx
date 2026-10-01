@@ -23,7 +23,7 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
   const what = kind === "shop" ? "store" : "pickup point";
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/settings/company`} className="text-sm underline">
           Company

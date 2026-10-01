@@ -23,7 +23,7 @@ export default async function StoreFieldsPage({ params }: PageProps<"/admin/[sto
   const base = `/admin/${store.slug}/fields`;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={base} className="text-sm underline">
           Custom fields

@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Add staff" };
 export default async function NewStaffPage({ params }: PageProps<"/admin/[store]/bookings/staff/new">) {
   const { store } = await requireMember((await params).store);
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/bookings/staff`} className="text-sm underline">
           Staff and hours

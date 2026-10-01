@@ -48,7 +48,7 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
   const subtitle = [client.contactName, client.billingEmail].filter(Boolean).join(" · ");
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`${base}/clients`} className="text-sm underline">
           Clients

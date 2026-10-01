@@ -114,7 +114,7 @@ describe("the bonus program's tools in the owner assistant's catalogue (D130)", 
 describe("the bonus program in the assistant's map and playbooks", () => {
   it("lists the settings page, where it sits and how it is found", () => {
     const page = ADMIN_PAGES.find((p) => p.area === "store" && p.id === "bonus");
-    expect(page).toMatchObject({ path: "/bonus", group: "Sales", title: "Bonus credits" });
+    expect(page).toMatchObject({ path: "/bonus", group: "Marketing", title: "Bonus credits" });
     expect(pageHref(page!, {}, "kaffe")).toBe("/admin/kaffe/bonus");
     expect(matchPath("/admin/kaffe/bonus")?.page.id).toBe("bonus");
     for (const ask of ["loyalty credits", "reward returning customers", "cashback", "store credit"])

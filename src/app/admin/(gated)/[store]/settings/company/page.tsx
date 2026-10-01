@@ -29,7 +29,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   const homeCountry = store.details.country ?? "NO";
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Company</h1>
         <p className="text-sm text-muted">Who you are and where to find you: the business that sells, your office and any stores or pickup points.</p>

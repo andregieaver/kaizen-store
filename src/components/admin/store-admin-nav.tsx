@@ -20,7 +20,7 @@ export type NavItem = {
   badge?: number;
   /** An icon before the label (D144). */
   icon?: NavIconName;
-  /** Other addresses that are inside this section (a tab whose pages live at addresses of their own). */
+  /** Other addresses that are inside this section (a tab whose pages live at addresses of their own); an `exact` one is marked on these too, but not below its own address. */
   also?: string[];
 };
 export type NavGroup = { heading: string; items: NavItem[] };
@@ -30,7 +30,8 @@ const inside = (pathname: string, prefix: string) => pathname === prefix || path
 
 function useIsCurrent() {
   const pathname = usePathname();
-  return (item: NavItem) => (item.exact ? pathname === item.href : [item.href, ...(item.also ?? [])].some((prefix) => inside(pathname, prefix)));
+  return (item: NavItem) =>
+    item.exact ? pathname === item.href || (item.also ?? []).some((prefix) => inside(pathname, prefix)) : [item.href, ...(item.also ?? [])].some((prefix) => inside(pathname, prefix));
 }
 
 /**

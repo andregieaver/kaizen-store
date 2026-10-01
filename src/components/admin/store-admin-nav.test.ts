@@ -74,6 +74,21 @@ describe("the tabs", () => {
     expect(current(render())).toEqual(["Website"]);
   });
 
+  it("marks an exact tab on its own address and on the addresses listed as its own, but not below its address (D147)", () => {
+    const exact: NavItem[] = [
+      { href: "/admin/s/settings", label: "Settings", exact: true, also: ["/admin/s/settings/company"] },
+      { href: "/admin/s/website", label: "Website", also: ["/admin/s/settings/design"] },
+    ];
+    const marked = (at: string) => {
+      path.current = at;
+      return current(html(createElement(StoreTabs, { items: exact, label: "Sections" })));
+    };
+    expect(marked("/admin/s/settings")).toEqual(["Settings"]);
+    expect(marked("/admin/s/settings/company/places/new")).toEqual(["Settings"]);
+    // Design is inside the settings address but listed under Website.
+    expect(marked("/admin/s/settings/design")).toEqual(["Website"]);
+  });
+
   it("shows the count beside a tab", () => {
     expect(render()).toContain("3 waiting");
   });

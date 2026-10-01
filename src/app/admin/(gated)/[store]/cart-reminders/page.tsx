@@ -60,7 +60,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
       </div>
 
       <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-background p-5">
-        <div className="flex max-w-2xl flex-col gap-2 text-sm">
+        <div className="flex flex-col gap-2 text-sm">
           <h2 id="switch-heading" className="text-base font-medium">
             {settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}
           </h2>

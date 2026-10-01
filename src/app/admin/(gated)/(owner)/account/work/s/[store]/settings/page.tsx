@@ -35,7 +35,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
   const where = (place: string) => (place === "company" ? `${base}/settings/company` : "#vat-heading");
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Work settings</h1>
         <p className="text-sm text-muted">

@@ -31,7 +31,7 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "Business details (company) and countries come first; then a shipping price for every country (shipping); then Stripe (payments), which Stripe itself guides.",
       "Products: suggest replacing the demo products with their own (product.new). Offer the add-product skill.",
       "A Kaizen plan (billing) is needed to open.",
-      "When everything is done, say so and point to the Overview, where they open the store.",
+      "When everything is done, say so and point to Home, where they open the store.",
       "Remember what they sell and who to, if they tell you (remember, kind fact).",
     ],
   },

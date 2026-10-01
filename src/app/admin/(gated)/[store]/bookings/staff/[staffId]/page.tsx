@@ -22,7 +22,7 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
   if (!staff || staff.kind !== "staff") notFound();
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/bookings/staff`} className="text-sm underline">
           Staff and hours

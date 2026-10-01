@@ -6,8 +6,9 @@ import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
-import type { NavGroup, NavItem } from "@/components/admin/store-admin-nav";
+import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
+import { storeAreas, storeTabs } from "@/lib/store-nav";
 import { requireMember } from "@/server/auth";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 
@@ -20,14 +21,15 @@ import {
   startAssistantAction,
 } from "./assistant/actions";
 
-/** The page editor (a page's own address, or a new page) uses the whole width, without the settings sidebar (D53). */
+/** The page editor (a page's own address, or a new page) uses the whole width, without the section's sidebar (D53). */
 const FULL_WIDTH = String.raw`^/admin/[^/]+/(pages|articles|product-layouts|headers|footers)/(new|[0-9a-f-]{36})$`;
 
 /**
- * A store's admin (D39, D107): the shared admin shell, with the store's
- * main sections as tabs and its settings grouped in a sidebar (the slide-out
- * menu on phones). The level switcher takes the person to any other store, the
- * control center or the platform.
+ * A store's admin (D39, D107, D147): the shared admin shell, with the store's
+ * sections as tabs with icons, each section's own pages in its sidebar (the
+ * slide-out menu on phones) and the whole width of the screen to work in, as
+ * the platform's (D144). The level switcher takes the person to any other
+ * store, the control center or the platform.
  */
 export default async function StoreAdminLayout({ children, params }: LayoutProps<"/admin/[store]">) {
   const { account, store, role } = await requireMember((await params).store);
@@ -42,83 +44,9 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const stores = await storesOf(account);
 
   const base = `/admin/${store.slug}`;
-  const tabs: NavItem[] = [
-    { href: base, label: "Overview", exact: true },
-    // The AI manager (D94, D103), for owners.
-    ...(role === "owner" ? [{ href: `${base}/assistant`, label: "AI manager" }] : []),
-    { href: `${base}/orders`, label: "Orders" },
-    { href: `${base}/subscriptions`, label: "Subscriptions" },
-    { href: `${base}/products`, label: "Products" },
-    { href: `${base}/product-layouts`, label: "Product layouts" },
-    { href: `${base}/fields`, label: "Custom fields" },
-    { href: `${base}/pages`, label: "Pages" },
-    { href: `${base}/articles`, label: "Blog" },
-    { href: `${base}/media`, label: "Media" },
-    { href: `${base}/discounts`, label: "Coupons" },
-    { href: `${base}/wishlists`, label: "Wishlists" },
-  ];
-  const groups: NavGroup[] = [
-    // Appointments (D65), once the store has switched bookings on.
-    ...(store.bookingsOn
-      ? [
-          {
-            heading: "Bookings",
-            items: [
-              { href: `${base}/bookings`, label: "Calendar", exact: true },
-              { href: `${base}/bookings/staff`, label: "Staff and hours" },
-              { href: `${base}/bookings/stays`, label: "Stays and rentals" },
-              { href: `${base}/bookings/units`, label: "Rooms and items" },
-              { href: `${base}/hosts`, label: "Hosts" },
-            ],
-          },
-        ]
-      : []),
-    {
-      heading: "Sales",
-      items: [
-        { href: `${base}/campaigns`, label: "Campaigns" },
-        { href: `${base}/recommendations`, label: "Recommendations" },
-        { href: `${base}/bonus`, label: "Bonus credits" },
-        { href: `${base}/affiliates`, label: "Referral program" },
-        { href: `${base}/customers`, label: "Customers" },
-        { href: `${base}/customer-groups`, label: "Customer groups" },
-        { href: `${base}/companies`, label: "Companies" },
-        // Weekly deliveries (D102), once switched on.
-        ...(store.deliveriesOn ? [{ href: `${base}/deliveries`, label: "Subscription boxes" }] : []),
-        { href: `${base}/cart-reminders`, label: "Cart reminders" },
-        { href: `${base}/settings/shipping`, label: "Shipping" },
-        { href: `${base}/settings/payments`, label: "Payments" },
-      ],
-    },
-    {
-      heading: "Store",
-      items: [
-        { href: `${base}/search`, label: "Search" },
-        { href: `${base}/chat`, label: "Chat agent" },
-        { href: `${base}/settings/localization`, label: "Languages and currencies" },
-        { href: `${base}/translate`, label: "Translate the store" },
-        { href: `${base}/settings/seo`, label: "SEO & Reach" },
-        { href: `${base}/menus`, label: "Menus" },
-        { href: `${base}/settings/navigation`, label: "Header and footer" },
-        { href: `${base}/headers`, label: "Headers" },
-        { href: `${base}/footers`, label: "Footers" },
-        { href: `${base}/settings/design`, label: "Design" },
-        { href: `${base}/settings/domains`, label: "Domains" },
-        { href: `${base}/settings/company`, label: "Company" },
-        { href: `${base}/integrations`, label: "Integrations" },
-        { href: `${base}/settings/ai`, label: "AI" },
-        { href: `${base}/settings/features`, label: "Features" },
-        { href: `${base}/settings/cookies`, label: "Cookies and tracking" },
-      ],
-    },
-    {
-      heading: "Account",
-      items: [
-        { href: `${base}/billing`, label: "Billing" },
-        { href: `${base}/staff`, label: "Team" },
-      ],
-    },
-  ];
+  // The store's sections (D147): a tab each with its own sidebar, none for Home. The AI manager is in the header.
+  const tabs: NavItem[] = storeTabs(base, store);
+  const areas: NavArea[] = storeAreas(base, store);
   return (
     <AdminFrame
       before={<AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />}
@@ -157,7 +85,9 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       }
       account={<AdminAccountMenu account={account} role={role} />}
       tabs={tabs}
-      groups={groups}
+      groups={[]}
+      areas={areas}
+      wide
       tabsLabel="Main sections"
       menuTitle={<span className="font-medium">{store.name}</span>}
       menuFooter={

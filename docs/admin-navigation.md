@@ -79,7 +79,7 @@ plans, emails that failed, AI use, each with the page to act on.
 
 | Tabs | Sidebar groups |
 |---|---|
-| Overview · Stores · Work · Billing · AI usage · Referrals · Account | None: the sections need no sidebar, so all of them are tabs (and the slide-out menu on phones) |
+| Home · Stores · Work · Account | Account only (D147): Your account · Billing · AI usage · Referrals. Home, Stores and Work need none |
 
 The overview is an operational bird's-eye view of every store the owner owns:
 
@@ -106,18 +106,39 @@ one list: what each costs, whether it is paid, when it renews, the fee on its
 sales, and a link to the store's own billing, where the plan is changed.
 Someone who only works in stores (staff) sees just Stores and Account.
 
+## Store owner
+
+The owner's level (D147) is the same shape: tabs with icons, the whole width, and `src/lib/owner-nav.ts` as its data.
+Home (owners), Stores, Work (owners, or where a store has it on; it has its own sub-navigation) have no sidebar. Account
+has one for owners: Your account · Billing · AI usage · Referrals, which were tabs of their own before. Staff see Stores,
+Work where it is on, and Account without the owners' pages.
+
 ## Store
 
-Tabs for the daily sections and a sidebar for settings, as before. New: the
-switcher in place of the plain "Kaizen / store" trail, an account menu in
-place of the loose email, colours and sign-out, a link back to the control
-center, and an overview that shows the store's own week (what needs attention,
-sales, orders to send, stock running out, latest orders) above the setup
-checklist, from the same `controlCenter()` for one store.
+The store (D147) is built like the platform: the whole width of the screen, tabs with an icon, and a sidebar for each
+section that has pages of its own. The AI manager is in the header (owners), not a tab. Sections and their pages are data
+in `src/lib/store-nav.ts`; the layout, the hub pages and the tests read from it.
+
+| Tab | Sidebar |
+|---|---|
+| Home (house) | None: the store's week and its setup checklist (also the setup steps and the AI manager's page) |
+| Orders (box) | Orders · Subscriptions · Subscription boxes (if on) · Emails |
+| Products (tag) | Products · Product layouts · Custom fields |
+| Customers (people) | Customers · Customer groups · Companies · Wishlists |
+| Marketing (megaphone) | Campaigns · Coupons · Recommendations · Cart reminders · Bonus credits · Referral program |
+| Website (monitor) | Pages · Blog · Media · Menus · Headers · Footers · Design · Translate the store |
+| Bookings (calendar, only when switched on) | Calendar · Staff and hours · Stays and rentals · Rooms and items · Hosts |
+| Settings (cog) | Store: Company, Domains, Languages and currencies, Features. Selling: Payments, Shipping, Integrations. Site: Header and footer, SEO & Reach, Cookies and tracking. Tools: Search, Chat agent, AI. Account: Billing, Team |
+
+Website and Settings open on a page of cards (`/admin/{store}/website`, `/admin/{store}/settings`, `SectionHub`); the
+others open on their main page. A page's address does not say its section: Design is `/settings/design` but the Website's,
+Shipping and Payments are `/settings/…` and Settings'. A tab with a page of cards marks only itself and the pages in its
+sidebar, so Design marks Website and not Settings. The admin map's `group` for a store page is its section
+(`sectionOf()`), so the AI manager guides by the tabs people see.
 
 ## Rules for changes
 
-- A new page goes in exactly one level's `groups` or `tabs`, and in
+- A new page goes in exactly one section of its level (`platform-nav.ts`, `store-nav.ts`, `owner-nav.ts`), and in
   `ADMIN_PAGES` (`src/lib/admin-map.ts`), so the AI manager can guide to it.
 - A level's own pages check who is asking themselves (`requirePlatformAdmin()`,
   `requireAccount()`, `requireMember()`): a layout's check redirects only

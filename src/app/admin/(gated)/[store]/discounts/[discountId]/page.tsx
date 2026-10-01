@@ -19,7 +19,7 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
   const discount = await getDiscount(store.id, discountId);
   if (!discount) notFound();
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/discounts`} className="text-sm underline">
           Coupons

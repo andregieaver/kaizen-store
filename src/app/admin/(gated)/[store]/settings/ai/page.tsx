@@ -38,7 +38,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
       : "No AI: search finds products by their words only.";
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">AI</h1>
         <p className="text-sm text-muted">{current}</p>

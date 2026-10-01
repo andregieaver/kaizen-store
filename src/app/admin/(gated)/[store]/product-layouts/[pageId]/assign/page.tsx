@@ -43,7 +43,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
   );
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <Link href={base} className="w-fit text-sm underline">
           Product layouts

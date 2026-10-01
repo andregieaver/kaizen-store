@@ -29,7 +29,7 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
   const working = settings.enabled && settings.bonusOn;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Referral program</h1>
         <p className="text-sm text-muted">

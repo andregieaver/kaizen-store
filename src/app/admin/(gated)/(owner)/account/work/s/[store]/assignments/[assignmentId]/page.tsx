@@ -73,7 +73,7 @@ export default async function WorkAssignmentPage({
   const STATUS_TEXT = { active: "Active", paused: "Paused", done: "Done" } as const;
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <nav aria-label="Breadcrumb" className="text-sm">
           <Link href={`${base}/clients`} className="underline">

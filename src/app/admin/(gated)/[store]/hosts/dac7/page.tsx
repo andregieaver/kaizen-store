@@ -29,7 +29,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
   const missingAddresses = report.properties.filter((p) => !p.address);
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={base} className="text-sm underline">
           Hosts

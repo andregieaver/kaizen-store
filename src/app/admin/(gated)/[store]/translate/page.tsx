@@ -18,7 +18,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
   const connection = languages.length > 1 ? await aiFor(store.id) : null;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold">Translate the store</h1>
         <p className="text-sm text-muted">

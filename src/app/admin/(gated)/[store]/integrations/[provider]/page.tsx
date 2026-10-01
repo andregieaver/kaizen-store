@@ -46,7 +46,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
   const eventLabel = (id: string) => (id === "test" ? "Test" : id === "assistant.message" ? "Message from the AI manager" : (EVENTS.find((e) => e.id === id)?.label ?? id));
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">
           Integrations

@@ -64,7 +64,7 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
   if (invoice.status !== "draft") {
     const homeCurrency = invoice.vatHomeMinor !== null ? await countryCurrency(detail.seller?.country ?? null) : null;
     return (
-      <div className="flex max-w-5xl flex-col gap-6">
+      <div className="flex flex-col gap-6">
         {header}
         <IssuedInvoiceView
           storeSlug={store.slug}
@@ -88,7 +88,7 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
   ]);
   const newLineRateMinor = (assignment?.summary.rateMinor || fullClient?.defaultHourlyRateMinor) ?? null;
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {header}
       <DraftEditor
         storeSlug={store.slug}
