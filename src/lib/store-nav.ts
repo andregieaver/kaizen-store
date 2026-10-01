@@ -100,6 +100,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/campaigns", "Campaigns", "Offers without a code, for a time: a percentage off, buy N pay for M, a free product."),
           item("/discounts", "Coupons", "Discount codes customers type at checkout."),
           item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works."),
+          item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better."),
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart."),
           item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction."),
           item("/affiliates", "Referral program", "Customers who refer their friends, and what both get."),

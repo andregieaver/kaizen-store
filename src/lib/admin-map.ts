@@ -263,6 +263,15 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Turn recommendations on or off", "Cap the AI's monthly use for recommendations", "Say which products go together", "Hide a product from recommendations", "See what recommendations earn"],
     keywords: ["recommendations", "recommended", "upsell", "cross-sell", "cross sell", "complementary", "you may also like", "related products", "personalised", "personalized", "ai recommendations", "suggestions", "frequently bought together"],
   }),
+  store("experiments", "/experiments", "A/B tests", "Sales", "A/B tests of pages: show two versions of a page to real visitors who have accepted statistics cookies, and keep the one that gets more orders, more revenue per visitor, more people adding to the cart or reaching checkout, or more clicks on a chosen button. The list shows what is running, waiting and decided.", {
+    tasks: ["Test two versions of a page", "See which version of a page sells more", "Stop a test", "Choose a winner", "Keep the original page"],
+    keywords: ["a/b test", "ab test", "split test", "experiment", "test a page", "conversion", "which version", "optimise", "optimize", "winner", "variant"],
+  }),
+  store("experiment.new", "/experiments/new", "New A/B test", "Sales", "Makes an A/B test of a page: which page, what it should improve, who takes part and a guess of how long it needs. The first version is a copy of the page."),
+  store("experiment", "/experiments/[id]", "A/B test", "Sales", "One test: change its versions, check its settings and start it; once running, see in plain words whether a version is better, stop it, choose a winner or keep the original."),
+  store("experiment.variants", "/experiments/variants", "Test versions", "Sales", "Goes back to the list of tests: a version is changed from its test."),
+  store("experiment.variant", "/experiments/variants/[pageId]", "A test version", "Sales", "Changes a version of a page made for an A/B test in the page builder."),
+  store("experiment.variant.preview", "/experiments/variants/[pageId]/preview", "Test version preview", "Sales", "Previews a version of a page made for an A/B test."),
   store("campaign.new", "/campaigns/new", "New campaign", "Sales", "Creates a campaign: what it gives, what it applies to, and when it runs."),
   store("campaign", "/campaigns/[campaignId]", "Campaign", "Sales", "One campaign: what it gives, what it applies to, when it runs, and switching it off or deleting it."),
   store("bonus", "/bonus", "Bonus credits", "Sales", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {

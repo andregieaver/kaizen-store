@@ -371,6 +371,16 @@ describe("ending a test (D148)", () => {
     expect(await admin.deleteDraft(account, storeId, id)).toMatchObject({ ok: false });
   });
 
+  it("says which running test holds a page, as the original or as a version, until it stops", async () => {
+    const id = await runningTest();
+    const test = (await admin.getExperiment(storeId, id))!;
+    expect(await admin.runningTestOf(storeId, aboutId)).toMatchObject({ id });
+    expect(await admin.runningTestOf(storeId, test.variants.find((v) => v.key === "b")!.pageId!)).toMatchObject({ id });
+    expect(await admin.runningTestOf(storeId, uuid())).toBeNull();
+    await admin.stopExperiment(account, storeId, id);
+    expect(await admin.runningTestOf(storeId, aboutId)).toBeNull();
+  });
+
   it("keeps the original: discarding a stopped test", async () => {
     const id = await runningTest();
     await admin.stopExperiment(account, storeId, id);

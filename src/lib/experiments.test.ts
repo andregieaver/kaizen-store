@@ -117,6 +117,8 @@ describe("narrowing the audience", () => {
     expect(audienceAllows(undefined, visit)).toBe(true);
     expect(audienceAllows({ markets: ["se"] }, visit)).toBe(false);
     expect(audienceAllows({ markets: ["se", "no"] }, visit)).toBe(true);
+    // A market is a country: the same country in another language or currency is the same market.
+    expect(audienceAllows({ markets: ["no"] }, { ...visit, market: "no-en-eur" })).toBe(true);
     expect(audienceAllows({ devices: ["desktop"] }, visit)).toBe(false);
     expect(audienceAllows({ returning: "returning" }, visit)).toBe(false);
     expect(audienceAllows({ returning: "new" }, visit)).toBe(true);

@@ -57,7 +57,8 @@ export type VisitContext = { market: string; device: Device; returning: boolean 
 
 export function audienceAllows(audience: Audience | null | undefined, visit: VisitContext): boolean {
   if (!audience) return true;
-  if (audience.markets && audience.markets.length > 0 && !audience.markets.includes(visit.market)) return false;
+  // Markets are chosen by country: the same visitor in `no` and `no-en` is in the same market.
+  if (audience.markets && audience.markets.length > 0 && !audience.markets.includes(visit.market.split("-")[0])) return false;
   if (audience.devices && audience.devices.length > 0 && !audience.devices.includes(visit.device)) return false;
   if (audience.returning === "new" && visit.returning) return false;
   if (audience.returning === "returning" && !visit.returning) return false;

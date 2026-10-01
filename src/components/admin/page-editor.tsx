@@ -123,9 +123,19 @@ export function PageEditor({
   const [saved, setSaved] = useState<EditablePage | null>(page);
   // What is being edited: a page, or an article in the blog (D57), which starts with its writer as author.
   const noun =
-    context.type === "product_layout" ? "layout" : context.type === "header" || context.type === "footer" ? context.type : context.type === "article" ? "article" : "page";
+    context.type === "product_layout"
+      ? "layout"
+      : context.type === "header" || context.type === "footer"
+        ? context.type
+        : context.type === "variant"
+          ? "version"
+          : context.type === "article"
+            ? "article"
+            : "page";
   // A product layout (D79), header or footer (D80) is only its name and its rows: no address, picture, search texts or categories.
   const layout = LAYOUT_TYPES.includes(context.type);
+  // A version made for an A/B test (D148) is made and removed with its test, never duplicated, unpublished or deleted on its own.
+  const isVersion = context.type === "variant";
   // The owner's saved parts, and its globals (D98) as this editor knows them: what the page's uses are compared with.
   const [parts, setParts] = useState<SavedPart[]>(savedParts);
   const known = useRef<Map<string, GlobalPart>>(globalsOf(savedParts));
@@ -432,7 +442,9 @@ export function PageEditor({
                 <p className={hint}>
                   {context.type === "product_layout"
                     ? "Only for you: shoppers see the product it is used for."
-                    : `Only for you: once chosen, visitors see the ${context.type} on every page.`}
+                    : context.type === "variant"
+                      ? "A version of a page for an A/B test: visitors in the test see it at the page's own address. Publish your changes to put them in the test, before it starts."
+                      : `Only for you: once chosen, visitors see the ${context.type} on every page.`}
                 </p>
               ) : translating ? (
                 <p className={hint}>
@@ -696,25 +708,28 @@ export function PageEditor({
                 View {noun}
               </a>
             )}
-            <button
-              type="button"
-              onClick={() => setTemplateOpen(true)}
-              aria-haspopup="dialog"
-              className="underline"
-            >
-              Save as template
-            </button>
-            {saved && (
+            {!isVersion && (
+              <button
+                type="button"
+                onClick={() => setTemplateOpen(true)}
+                aria-haspopup="dialog"
+                className="underline"
+              >
+                Save as template
+              </button>
+            )}
+            {saved && !isVersion && (
               <button type="button" onClick={duplicate} disabled={busy} className="underline disabled:opacity-50">
                 Duplicate
               </button>
             )}
-            {saved?.published && (
+            {saved?.published && !isVersion && (
               <button type="button" onClick={unpublish} disabled={busy} className="underline disabled:opacity-50">
                 Unpublish
               </button>
             )}
             {saved &&
+              !isVersion &&
               (confirmDelete ? (
                 <span className="flex items-center gap-2">
                   Delete for good?

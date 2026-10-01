@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { parseStoreRequest, storeOfHost, variantPath } from "@/lib/ab-routing";
-import { dataCookieName, MARKER_COOKIE } from "@/lib/experiments";
+import { dataCookieName } from "@/lib/experiments";
 import { storeDomain, storeHosts } from "@/lib/paths";
 import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
 
@@ -11,8 +11,9 @@ import { runningExperiments, storeIdOfSlug } from "@/server/experiments";
  * statistics cookies has, so everyone else, and every crawler, is served from the cache without a function call. What it
  * does is the pure decision in `variantPath()`; anything unexpected leaves the request alone.
  */
+// The cookie's name is written out: the matcher is read at build time and cannot use a constant (`MARKER_COOKIE`, tested to agree).
 export const config = {
-  matcher: [{ source: "/((?!_next/|api/|admin/|demo/|kaizen/|favicon.ico|.*\\..*).*)", has: [{ type: "cookie", key: MARKER_COOKIE }] }],
+  matcher: [{ source: "/((?!_next/|api/|admin/|demo/|kaizen/|favicon.ico|.*\\..*).*)", has: [{ type: "cookie", key: "kaizen_ab" }] }],
 };
 
 export async function proxy(request: NextRequest) {

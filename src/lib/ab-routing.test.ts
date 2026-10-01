@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { parseStoreRequest, storeOfHost, variantPath } from "./ab-routing";
-import { dataCookieName, encodeAssignments } from "./experiments";
+import { dataCookieName, encodeAssignments, MARKER_COOKIE } from "./experiments";
 
 const V = "11111111-1111-4111-8111-111111111111";
 const E = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -62,5 +65,12 @@ describe("where a visitor's request goes", () => {
 
   it("names a store's cookie by its id", () => {
     expect(dataCookieName("abc")).toBe("kaizen_ab_abc");
+  });
+});
+
+describe("the proxy's matcher", () => {
+  it("is written with the marker cookie's name, which the build needs as a literal", () => {
+    const source = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");
+    expect(source).toContain(`key: "${MARKER_COOKIE}"`);
   });
 });

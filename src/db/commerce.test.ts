@@ -418,6 +418,11 @@ describe("A/B tests of pages (D148)", () => {
     await expect(db.query("delete from commerce.pages where id = $1", [t.target])).rejects.toThrow(/experiments_target_fk|foreign key/);
     await expect(db.query("delete from commerce.pages where id = $1", [b])).rejects.toThrow(/experiment_variants_page_fk|foreign key/);
     await expect(db.query("update commerce.pages set type = 'article' where id = $1", [t.target])).rejects.toThrow(/pages\.experiment/);
+    // ... nor unpublished while the test runs, but free again once it has stopped.
+    await expect(db.query("update commerce.pages set published = null, published_at = null where id = $1", [t.target])).rejects.toThrow(/stays published/);
+    await expect(db.query("update commerce.pages set published = null, published_at = null where id = $1", [b])).rejects.toThrow(/stays published/);
+    await set(t.experiment, "status = 'stopped'");
+    await db.query("update commerce.pages set published = null, published_at = null where id = $1", [b]);
   });
 
   it("records who saw what once, never changes it, and only while the test runs", async () => {

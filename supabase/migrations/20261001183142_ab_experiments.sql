@@ -307,3 +307,26 @@ $$;
 --> statement-breakpoint
 CREATE TRIGGER pages_experiment_type_guard BEFORE UPDATE OF type ON commerce.pages
   FOR EACH ROW EXECUTE FUNCTION commerce.pages_experiment_type_guard();
+--> statement-breakpoint
+-- A page in a running test stays published: the original and each version are what visitors are being shown.
+CREATE FUNCTION commerce.pages_experiment_published_guard() RETURNS trigger
+LANGUAGE plpgsql SET search_path = '' AS $$
+BEGIN
+  IF NEW.published_at IS NULL AND OLD.published_at IS NOT NULL AND EXISTS (
+    SELECT 1 FROM commerce.experiments e
+    LEFT JOIN commerce.experiment_variants v ON v.experiment_id = e.id
+    WHERE e.status = 'running' AND (e.target_page_id = OLD.id OR v.page_id = OLD.id)
+  ) THEN
+    RAISE EXCEPTION 'pages.experiment: a page in a running test stays published' USING ERRCODE = 'restrict_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER pages_experiment_published_guard BEFORE UPDATE OF published_at ON commerce.pages
+  FOR EACH ROW EXECUTE FUNCTION commerce.pages_experiment_published_guard();
+--> statement-breakpoint
+-- The plan comparison (D132): the feature is listed, in no plan yet; the platform's admin ticks the plans that include it.
+INSERT INTO commerce.plan_features (category, name, description, position)
+SELECT 'Design and content', 'A/B tests of pages', 'Show two versions of a page to real visitors and keep the one that sells more.', 195
+WHERE NOT EXISTS (SELECT 1 FROM commerce.plan_features WHERE name = 'A/B tests of pages');

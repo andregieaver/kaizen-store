@@ -2,6 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
@@ -19,6 +20,7 @@ import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
 import { createRolePage } from "@/server/page-roles";
+import { runningTestOf } from "@/server/experiment-admin";
 import { isPageRole, ROLE_COPY } from "@/lib/page-roles";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { PART_SHARING, TEMPLATE_SOURCES, type PartSharing, type TemplateItem, type TemplateResult, type TemplateSource } from "@/lib/templates";
@@ -59,6 +61,11 @@ export async function saveStorePageAction(
   } catch {
     return { status: "error", problems: ["The page could not be read. Reload and try again."] };
   }
+  // A page in a running A/B test (D148), the original or a version, keeps what visitors are compared on until the test stops.
+  if (publish === true && id !== null && (type === "page" || type === "variant")) {
+    const test = await runningTestOf(member.store.id, id);
+    if (test) return { status: "error", problems: [`This page is in the running A/B test "${test.name}". Publishing a change now would spoil its results: save it as a draft, or stop the test first.`] };
+  }
   const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type });
   if (!result.ok) return { status: "error", problems: result.problems };
   // Custom fields (D118) come along with the page's JSON; the page is saved, and its fields are checked against the store's groups.
@@ -85,6 +92,8 @@ export async function saveStorePageAction(
 export async function unpublishStorePageAction(storeSlug: string, type: PageType, id: string): Promise<PageSaveState> {
   const member = await requireMember(storeSlug);
   if (!isType(type) || !isId(id)) return { status: "error", problems: ["Unknown page."] };
+  const test = await runningTestOf(member.store.id, id);
+  if (test) return { status: "error", problems: [`This page is in the running A/B test "${test.name}". Stop the test before unpublishing it.`] };
   await unpublishPage(member.account, member.store.id, id, type);
   pagesChanged(member);
   const page = await getPageForEdit(member.store.id, id, type);
@@ -96,6 +105,12 @@ export async function unpublishStorePageAction(storeSlug: string, type: PageType
 export async function deleteStorePageAction(storeSlug: string, type: PageType, id: string): Promise<{ problems: string[] } | void> {
   const member = await requireMember(storeSlug);
   if (!isType(type) || !isId(id)) return { problems: ["Unknown page."] };
+  // A page that is in an A/B test, running or not, is held by the test (D148): delete the test first.
+  const [tested] = await db().execute<Record<string, unknown>>(sql`
+    select 1 as one from commerce.experiments e where e.store_id = ${member.store.id}::uuid and e.target_page_id = ${id}::uuid
+    union all select 1 from commerce.experiment_variants v where v.store_id = ${member.store.id}::uuid and v.page_id = ${id}::uuid limit 1
+  `);
+  if (tested) return { problems: ["This page is part of an A/B test. Delete the test (a draft) or keep the page: a test that has run keeps its pages."] };
   await deletePage(member.account, member.store.id, id, type);
   pagesChanged(member);
   // A deleted front page (D54) gives the store its product list back.

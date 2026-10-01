@@ -410,6 +410,20 @@ export async function deleteDraft(account: Account, storeId: string, id: string)
   return { ok: true };
 }
 
+/**
+ * The running test a page is part of, as the original or as a version: its published content is what visitors are being
+ * compared on, so publishing a change to it waits until the test stops. Null when the page is free.
+ */
+export async function runningTestOf(storeId: string, pageId: string): Promise<{ id: string; name: string } | null> {
+  const [row] = await db().execute<Row>(sql`
+    select e.id, e.name from commerce.experiments e
+    where e.store_id = ${storeId}::uuid and e.status = 'running'
+      and (e.target_page_id = ${pageId}::uuid or exists (select 1 from commerce.experiment_variants v where v.experiment_id = e.id and v.page_id = ${pageId}::uuid))
+    limit 1
+  `);
+  return row ? { id: String(row.id), name: String(row.name) } : null;
+}
+
 /** A database refusal as the sentence the rule gave, or null. */
 function databaseProblem(error: unknown): string | null {
   for (let e = error, depth = 0; e && depth < 5; e = (e as { cause?: unknown }).cause, depth++) {

@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **design, nothing built** (D148). It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phase 1 built** (D148): the engine and tests of whole store pages, end to end; see "What phase 1 built, and where it differs" below. Parts, other page kinds, the AI manager and the platform's own pages are later phases. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -22,6 +22,59 @@ Settled with the owner before this was written:
 Assumption to confirm: question 3 was answered "yes" to "staff or only owners", read as *staff may start tests*.
 Applying a winner uses the same rule as publishing a page, so it is the same people. If owners only is wanted, it is
 one check in `requireMember()`'s caller.
+
+## What phase 1 built, and where it differs from the design
+
+Code: `src/lib/experiments.ts` (vocabulary, cookies, start checks), `experiment-assign.ts`, `experiment-results.ts` (statistics
+and the verdict sentences), `ab-routing.ts`; `src/server/experiments.ts` (serving, exposure, events), `experiment-admin.ts`
+(make, start, stop, apply), `experiment-results.ts`, `experiment-jobs.ts`; `src/proxy.ts`; `src/app/api/ab/*`;
+`src/components/ab/*` (the page marker and the assignment script); the admin at `/admin/{store}/experiments`
+(`experiment-form.tsx`, `experiment-controls.tsx`, `experiment-results-view.tsx`); migration `ab_experiments`; tests in
+`commerce.test.ts`, the `experiments*.test.ts` files, `experiments.int.test.ts` and `e2e/ab-tests.spec.ts`.
+
+How it works, as built:
+
+- A version is a page of the new type `variant` (no address, never listed, never in the sitemap), made as a copy of the
+  page's published content and changed in the page builder. The database enforces the whole life cycle: draft, running,
+  stopped, then applied or discarded; one running test per page, five per store; shares add up to one; the versions and
+  what is measured are locked once it runs; a page in a running test cannot be unpublished (the editor refuses a publish
+  of it too, so the results mean what was started).
+- A visitor who has accepted `statistics` gets `kaizen_ab_{storeId}` (their id and a version per test, `0` meaning
+  outside it) from `/api/ab/assign`, plus a marker cookie `kaizen_ab`, the only thing `src/proxy.ts` matches on, so no one
+  else (and no crawler) reaches the proxy. The proxy rewrites a tested page's request to the version's route
+  (`/s/{store}/{market}/{slug}/ab/{version}`, or the host-based form) and the version is drawn from the cache. A version's
+  page names the original as its canonical address and is never indexed.
+- The page's marker (`AbMarker`) reports the first sight of a version once per visitor and test (only with consent and a
+  cookie that matches), reloads once if the browser's cached copy was the wrong version, and reports clicks on the chosen
+  button. Carts and checkouts are tied to the visitor (`experiment_carts`), and an order counts when it is paid
+  (`paid`, `fulfilled`, `closed`; never a copied or a host's order) and was started after the first sight and before the stop.
+- Results are worked out in code on every look (no rollup table yet): the primary goal per version, a funnel (saw it, added
+  to the cart, started checkout, ordered, clicked), revenue per visitor without VAT (shipping included, in the store's
+  main currency at its rates, one very large order capped at the 99th percentile), a day-by-day and week-by-week view, a
+  check that visitors were split as promised, and a verdict in six plain kinds. Several versions are each compared with the
+  original at a stricter level. A job (`runExperimentJobs()`, in the five-minute cron) stops a test a week after its planned
+  end or at 90 days, and stops one that is clearly selling less once every version has 1,000 visitors.
+
+Where it differs from the design above:
+
+- **Goals**: orders, revenue per visitor, adding to the cart, reaching checkout and clicks on a chosen button. Visiting a
+  page and signing up are later.
+- **No `finished` status and no rollup table**: a stopped test is decided (apply a version or keep the original); the
+  numbers are read from the tables each time, which holds up at the traffic a store of this size sees. Add the daily
+  rollup when a look takes more than a moment.
+- **Signed-in customers** are not yet enrolled without the cookie (the legal reading is still open, and a signed
+  assignment needs its own design); only the cookie path exists.
+- **Audience**: devices and countries (a country, whatever its language or currency). New or returning visitors is in the
+  engine, not in the form.
+- **Gating**: a store sees the feature unless the platform adds a switch; the plan comparison has the row ("A/B tests of
+  pages", in no plan yet) and nothing in code reads it, as for every other feature there (D132).
+- **Not yet**: the guardrail's email, a scheduled start, preview links for owners to share, CSV export, the platform's own
+  admin (Kaizen's pages), tests of parts, the AI manager's tools.
+- The runtime estimate before launch is the owner's own guess of visitors and rate (the form works it out in the browser);
+  Kaizen has no page-view numbers to base it on yet.
+
+Still open from phase 0: the Vercel preview run of `scripts/ab-ttfb.mjs` and where the Node proxy runs (the residency
+decision, D5), a test through a store's own host, and the legal check before a first live test.
 
 ## Principles (kept from `measurement.md`)
 
@@ -326,7 +379,7 @@ reports (D106, D145).
 | Phase | What | Done when |
 |---|---|---|
 | **0** | Spike (done locally, see above; **Vercel preview run and region check pending**), legal check, `plan_features` row, final stats choice | The preview numbers meet the criteria; the legal note is written; this file is updated |
-| **1** | Engine and **page** tests for store pages: tables and rules, assignment, `/api/ab/assign`, exposure beacon, order attribution, daily rollup job, split check, results page (verdict sentence, charts), start/stop/apply, audit, tests incl. an end-to-end test with two variants | A test runs on the demo store from creation to applied, in the browser, with consented and unconsented visitors |
+| **1** (built) | Engine and **page** tests for store pages: tables and rules, assignment, `/api/ab/assign`, exposure beacon, order attribution, daily rollup job, split check, results page (verdict sentence, charts), start/stop/apply, audit, tests incl. an end-to-end test with two variants | A test runs on the demo store from creation to applied, in the browser, with consented and unconsented visitors |
 | **2** | **Part** tests in the builder (click a part, "Test this"), the five-step flow, estimates, preview links, scheduled start | A person who has never seen it creates a test in a few minutes (a moderated check with two owners) |
 | **3** | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
 | **4** | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
