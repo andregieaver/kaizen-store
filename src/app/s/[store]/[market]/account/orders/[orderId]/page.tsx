@@ -8,6 +8,7 @@ import { OwnBookings } from "@/components/own-bookings";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
@@ -127,6 +128,9 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
           )}
           {order.ships && order.delivery?.pickupPoint && (
             <p className="text-sm text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
+          )}
+          {order.ships && order.delivery?.window && (
+            <p className="text-sm text-muted">{m.deliveryChoice.windowLine(formatWindow(order.delivery.window, order.locale, store.timeZone))}</p>
           )}
           {order.discountMinor > 0 && (
             <div className="flex justify-between">

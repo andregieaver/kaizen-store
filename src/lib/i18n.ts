@@ -170,6 +170,7 @@ const messages = {
       standard: "Vanlig frakt",
       deliveryLine: (label: string) => `Levering: ${label}`,
       pickupAt: (place: string) => `Hentes hos ${place}`,
+      windowLine: (when: string) => `Leveres ${when}`,
     },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
@@ -1054,6 +1055,7 @@ const messages = {
       standard: "Vanlig frakt",
       deliveryLine: (label: string) => `Leverans: ${label}`,
       pickupAt: (place: string) => `Hämtas hos ${place}`,
+      windowLine: (when: string) => `Levereras ${when}`,
     },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
@@ -1937,6 +1939,7 @@ const messages = {
       standard: "Almindelig fragt",
       deliveryLine: (label: string) => `Levering: ${label}`,
       pickupAt: (place: string) => `Afhentes hos ${place}`,
+      windowLine: (when: string) => `Leveres ${when}`,
     },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {
@@ -2818,6 +2821,7 @@ const messages = {
       standard: "Standard shipping",
       deliveryLine: (label: string) => `Delivery: ${label}`,
       pickupAt: (place: string) => `Pick up at ${place}`,
+      windowLine: (when: string) => `Delivered ${when}`,
     },
     /** The referral program (D131): a friend's welcome discount in the cart, at checkout and on orders, and My account's Refer a friend. */
     affiliate: {

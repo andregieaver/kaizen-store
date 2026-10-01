@@ -66,7 +66,7 @@ describe("shipping carriers", () => {
   });
 
   it("gives no context for details that are not complete, and keeps each store's own", async () => {
-    await saveCarrier(accountId, storeId, "porterbuddy", form({ apiKey: "pb-key-0000" }));
+    await saveCarrier(accountId, storeId, "porterbuddy", form({ apiKey: "pb-key-0000", senderName: "Shop", senderStreet: "Keysers gate 3", senderPostalCode: "0165", senderCity: "Oslo", senderEmail: "a@b.no", senderPhone: "12345678" }));
     expect((await carrierContext(storeId, "porterbuddy"))!.secrets).toEqual({ apiKey: "pb-key-0000" });
     expect(await carrierContext(other, "porterbuddy")).toBeNull();
     expect(await listCarriers(other)).toEqual([]);

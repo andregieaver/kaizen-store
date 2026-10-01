@@ -10,6 +10,7 @@ import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -199,7 +200,7 @@ function linesList({ market, order, m, money }: OrderView) {
   );
 }
 
-function totalsList({ order, m, money }: OrderView) {
+function totalsList({ order, m, money, store }: OrderView) {
   return (
     <dl className="flex flex-col gap-1">
       {order.ships && (
@@ -210,6 +211,9 @@ function totalsList({ order, m, money }: OrderView) {
       )}
       {order.ships && order.delivery?.pickupPoint && (
         <p className="text-sm text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
+      )}
+      {order.ships && order.delivery?.window && (
+        <p className="text-sm text-muted">{m.deliveryChoice.windowLine(formatWindow(order.delivery.window, order.locale, store.timeZone))}</p>
       )}
       {order.discountMinor > 0 && (
         <div className="flex justify-between">

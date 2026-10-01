@@ -5957,6 +5957,9 @@ export const deliveryQuotes = commerce.table(
     postalCode: text("postal_code").notNull(),
     /** Days, as `{ minDays, maxDays }`, when the carrier said. */
     estimate: jsonb("estimate"),
+    /** The delivery window the shopper chose among (D137, Porterbuddy): the service is delivered within it. */
+    windowStart: timestamp("window_start", { withTimezone: true }),
+    windowEnd: timestamp("window_end", { withTimezone: true }),
     /** Whether the shopper must choose one of `pickup_points`. */
     needsPickupPoint: boolean("needs_pickup_point").notNull().default(false),
     /** Near the postal code, as the carrier gave them: `{ id, name, street, postalCode, city, distanceMeters }`. */
@@ -5969,6 +5972,7 @@ export const deliveryQuotes = commerce.table(
   (t) => [
     unique("delivery_quotes_store_id_key").on(t.storeId, t.id),
     check("delivery_quotes_amount", sql`${t.amountMinor} >= 0`),
+    check("delivery_quotes_window", sql`(${t.windowStart} is null) = (${t.windowEnd} is null) and (${t.windowStart} is null or ${t.windowEnd} > ${t.windowStart})`),
     cartRef("delivery_quotes_cart_fk", t).onDelete("cascade"),
     index("delivery_quotes_cart_idx").on(t.storeId, t.cartId),
     index("delivery_quotes_expires_idx").on(t.expiresAt),

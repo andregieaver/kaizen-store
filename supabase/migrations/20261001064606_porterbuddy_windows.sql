@@ -1,0 +1,3 @@
+ALTER TABLE "commerce"."delivery_quotes" ADD COLUMN "window_start" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."delivery_quotes" ADD COLUMN "window_end" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "commerce"."delivery_quotes" ADD CONSTRAINT "delivery_quotes_window" CHECK (("commerce"."delivery_quotes"."window_start" is null) = ("commerce"."delivery_quotes"."window_end" is null) and ("commerce"."delivery_quotes"."window_start" is null or "commerce"."delivery_quotes"."window_end" > "commerce"."delivery_quotes"."window_start"));

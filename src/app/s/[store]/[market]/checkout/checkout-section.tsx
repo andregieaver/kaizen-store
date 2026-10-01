@@ -10,6 +10,7 @@ import { LineThumbnail } from "@/components/line-thumbnail";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
@@ -47,7 +48,7 @@ async function loadCheckoutView(store: Store, market: Market) {
   const order = open ? await getOrder(store.id, open.orderId) : null;
   if (!cartId || !open || !order) return null;
   const bonus = await readCartBonus(store, market, cartId);
-  return { m, base, cartId, open, order, bonus };
+  return { m, base, cartId, open, order, bonus, timeZone: store.timeZone };
 }
 
 /** The checkout's view, or back to the cart when no order is waiting for payment. */
@@ -256,6 +257,9 @@ function totalsList(view: CheckoutView, market: Market) {
         {order.ships && order.delivery?.pickupPoint && (
           <p className="text-muted">{m.deliveryChoice.pickupAt(pickupPointLine(order.delivery.pickupPoint))}</p>
         )}
+        {order.ships && order.delivery?.window && (
+          <p className="text-muted">{m.deliveryChoice.windowLine(formatWindow(order.delivery.window, order.locale, view.timeZone))}</p>
+        )}
         {order.discountMinor > 0 && (
           <div className="flex justify-between">
             <dt>
@@ -346,6 +350,7 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
       locale={market.locale}
       business={order.company !== null}
       vatRate={order.shippingVatRate}
+      timeZone={store.timeZone}
       labels={{
         heading: d.heading,
         postalCode: d.postalCode,

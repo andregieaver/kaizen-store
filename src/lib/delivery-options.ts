@@ -12,20 +12,21 @@ import type { CarrierId } from "./shipping-carriers";
  */
 
 /** The countries a carrier's checkout services cover, now: Posten / Bring's are for parcels within Norway (D134), PostNord's for its four countries. */
-export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = { bring: ["NO"], postnord: ["SE", "DK", "NO", "FI"] };
+export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = { bring: ["NO"], postnord: ["SE", "DK", "NO", "FI"], porterbuddy: ["NO"] };
 
 /**
  * Where a carrier's prices come from: its own price service for this parcel (`carrier`, Bring's Shipping Guide: the price
  * without VAT, to which the store's markup is added), or what the store enters from its agreement (`store`, PostNord has
  * no price API): per country and service, with VAT, as the shopper pays.
  */
-export const CHECKOUT_PRICING: Partial<Record<CarrierId, "carrier" | "store">> = { bring: "carrier", postnord: "store" };
+export const CHECKOUT_PRICING: Partial<Record<CarrierId, "carrier" | "store">> = { bring: "carrier", postnord: "store", porterbuddy: "carrier" };
 
 /** How long a quote holds: the time a shopper may take from seeing the prices to paying. */
 export const QUOTE_MINUTES = 120;
 
-/** The most services and pickup points shown, so the page stays short. */
+/** The most services (and, apart, delivery windows) and pickup points shown, so the page stays short. */
 export const MAX_OPTIONS = 6;
+export const MAX_WINDOWS = 8;
 export const MAX_PICKUP_POINTS = 5;
 
 /** A postal code as the country writes it, or null when it is not one. */
@@ -86,6 +87,8 @@ export type DeliveryOption = {
   freeOverMinor: number | null;
   estimate: { min: number; max: number } | null;
   needsPickupPoint: boolean;
+  /** The time window it is delivered in, for a carrier that offers windows (Porterbuddy). */
+  window: { start: string; end: string } | null;
   pickupPoints: QuotedPickupPoint[];
   /** The one chosen, for a service that needs one. */
   pickupPointId: string | null;
@@ -105,6 +108,8 @@ export type OrderDelivery = {
   label: string;
   postalCode: string;
   pickupPoint: { id: string; name: string; street: string; postalCode: string; city: string } | null;
+  /** The window it is delivered in, when it was a window that was chosen. */
+  window: { start: string; end: string } | null;
 };
 
 const text = (value: unknown, max = 200) => (typeof value === "string" ? value.slice(0, max) : "");
@@ -116,7 +121,9 @@ export function readOrderDelivery(value: unknown): OrderDelivery | null {
   const carrier = text(v.carrier, 20);
   if (!carrier || !text(v.serviceId) || !text(v.label)) return null;
   const point = v.pickupPoint && typeof v.pickupPoint === "object" ? (v.pickupPoint as Record<string, unknown>) : null;
+  const win = v.window && typeof v.window === "object" ? (v.window as Record<string, unknown>) : null;
   return {
+    window: win && text(win.start, 40) && text(win.end, 40) ? { start: text(win.start, 40), end: text(win.end, 40) } : null,
     carrier: carrier as CarrierId,
     serviceId: text(v.serviceId, 40),
     label: text(v.label),

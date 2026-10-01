@@ -10,6 +10,7 @@ import {
 import { withoutVat } from "@/lib/b2b";
 import type { DeliveryOption, DeliveryOptions } from "@/lib/delivery-options";
 import { formatMoney } from "@/lib/money";
+import { formatWindow } from "@/lib/porterbuddy";
 
 export type DeliveryChoiceLabels = {
   heading: string;
@@ -44,6 +45,7 @@ export function DeliveryChoice({
   locale,
   business,
   vatRate,
+  timeZone,
   labels,
 }: {
   store: string;
@@ -51,6 +53,8 @@ export function DeliveryChoice({
   initial: DeliveryOptions;
   currency: string;
   locale: string;
+  /** The store's time zone, in which delivery windows are written. */
+  timeZone: string;
   /** A business sees prices without VAT (B2B). */
   business: boolean;
   vatRate: number;
@@ -102,6 +106,7 @@ export function DeliveryChoice({
         locale={locale}
         business={business}
         vatRate={vatRate}
+        timeZone={timeZone}
         labels={labels}
       />
     </section>
@@ -116,6 +121,7 @@ function Choice({
   locale,
   business,
   vatRate,
+  timeZone,
   labels,
 }: {
   store: string;
@@ -123,6 +129,7 @@ function Choice({
   options: DeliveryOption[];
   currency: string;
   locale: string;
+  timeZone: string;
   business: boolean;
   vatRate: number;
   labels: DeliveryChoiceLabels;
@@ -162,6 +169,7 @@ function Choice({
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium">{o.label}</span>
+                  {o.window && <span className="block text-sm">{formatWindow(o.window, locale, timeZone)}</span>}
                   {days && <span className="block text-sm text-muted">{labels.workingDays.replace("{range}", days)}</span>}
                 </span>
                 <span className="whitespace-nowrap font-medium">{money(o.priceMinor)}</span>

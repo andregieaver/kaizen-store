@@ -42,7 +42,7 @@ export async function estimateWeightGrams(storeId: string, orderId: string): Pro
   return Number(row?.grams ?? 0);
 }
 
-const toParty = (address: Address, email: string): ShippingAddress | null => {
+export const toParty = (address: Address, email: string): ShippingAddress | null => {
   const name = address.name?.trim();
   const street = [address.line1, address.line2].filter(Boolean).join(", ").trim();
   const postalCode = address.postalCode?.trim();

@@ -7,6 +7,7 @@ import { formatBookingTime } from "@/lib/booking-slots";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { formatWindow } from "@/lib/porterbuddy";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { emailText, orderBonusEarned, orderBonusRows, orderReferralRows, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
@@ -210,11 +211,19 @@ function companyText(order: OrderView, m: Messages): string | null {
   return order.company ? `${order.company.name}\n${m.company.number}: ${order.company.number}` : null;
 }
 
-function addressText(order: OrderView, m?: Messages): string | null {
+function addressText(order: OrderView, m?: Messages, timeZone = "Europe/Oslo"): string | null {
   const a = order.shippingAddress;
   if (!order.ships || !a.line1) return null;
   const point = order.delivery?.pickupPoint;
-  return [a.name, a.line1, a.line2, `${a.postalCode ?? ""} ${a.city ?? ""}`.trim(), point && m ? m.deliveryChoice.pickupAt(pickupPointLine(point)) : null]
+  const window = order.delivery?.window;
+  return [
+    a.name,
+    a.line1,
+    a.line2,
+    `${a.postalCode ?? ""} ${a.city ?? ""}`.trim(),
+    point && m ? m.deliveryChoice.pickupAt(pickupPointLine(point)) : null,
+    window && m ? m.deliveryChoice.windowLine(formatWindow(window, order.locale, timeZone)) : null,
+  ]
     .filter(Boolean)
     .join("\n");
 }

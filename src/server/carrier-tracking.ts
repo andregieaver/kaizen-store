@@ -10,9 +10,10 @@ import { carrierContext } from "./shipping-carriers";
  * gave it when marking the order as sent ("PostNord", "Posten / Bring"). Null for any other carrier.
  */
 export function trackedCarrier(shipment: { carrierId: string | null; carrier: string }): CarrierId | null {
-  if (shipment.carrierId === "bring" || shipment.carrierId === "postnord") return shipment.carrierId;
+  if (shipment.carrierId === "bring" || shipment.carrierId === "postnord" || shipment.carrierId === "porterbuddy") return shipment.carrierId;
   const name = shipment.carrier.toLowerCase();
   if (name.includes("postnord")) return "postnord";
+  if (name.includes("porterbuddy")) return "porterbuddy";
   if (name.includes("bring")) return "bring";
   return null;
 }

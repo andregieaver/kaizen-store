@@ -129,3 +129,43 @@ PostNord's developer login, so the request is not built from guesses; orders go 
 publicly readable): the service point search's answer shape (`servicePointInformationResponse.servicePoints`), that
 `atapi2` accepts a sandbox key for it, Track and Trace v5's answer shape (`TrackingInformationResponse.shipments[].items[].events[]`),
 and that service codes 17, 19 and 18 are the ones in the store's agreement in each country.
+
+
+## Porterbuddy (D137)
+
+`src/lib/porterbuddy.ts` (pure: addresses and phone numbers, pick-up windows, the availability and order requests, `parseAvailability()`,
+`parseOrder()`, `formatWindow()`), `src/server/carriers/porterbuddy.ts` (`createPorterbuddyAdapter()`, `fetchPorterbuddyLabel()`),
+`src/server/porterbuddy-shipping.ts` (booking), and the checkout side in `src/server/delivery-options.ts`. Built against
+Porterbuddy's public API reference (developer.porterbuddy.com): `POST /availability`, `POST /order`, `GET /order/{id}/label`,
+`GET /order/{id}/status`, every call with the store's API key in `x-api-key`; the test environment is
+`api.porterbuddy-test.com` (nothing is delivered), live is `api.porterbuddy.com`.
+
+**How it differs**: Porterbuddy sells a *time window*, not a service. At checkout the shopper's postal code is sent in an
+availability request (the parcel's weight, and the windows in which the store has the goods ready) and Porterbuddy answers with
+the windows it can deliver in, each with a price, a hold time (`expiresAt`) and a token.
+
+**Works now** (Norway)
+- **Windows at checkout**: each window is a quote (`delivery_quotes.window_start/window_end`, held until Porterbuddy's `expiresAt`
+  or two hours, whichever is first) listed by date after the services, the earliest first, up to eight, with products `delivery`
+  and `large` as the owner switches them on. The price is Porterbuddy's price without VAT plus VAT plus the owner's markup; a
+  `displayPrice` (a price Porterbuddy made for shoppers to see) already has VAT and only gets the markup. The order keeps the
+  window (`orders.delivery.window`) and the pages, emails and admin show it ("Delivered Thu 13 Feb, 17:30–19:30").
+- **When the goods are ready** is on the carrier's page (the store's pickup address, phone and email, opening hours `10:00-17:00`
+  and the days it hands over parcels `1-5`): windows are asked for after those, in the store's time zone, starting no earlier than
+  half an hour from now.
+- **Booking** (order page → *Book with Porterbuddy*, only for an order whose customer chose a window): the window is asked for
+  again just before it is booked and booked with the *fresh* token (the shopper's has usually expired); if Porterbuddy no longer
+  offers it nothing is booked and the owner is told to ask the customer for another time. The order reference is the order
+  number and the idempotency key, so a retry never orders twice. A real booking marks the order as sent with Porterbuddy's order
+  number as the tracking number and its tracking page; in the test environment the order is **not** marked as sent.
+- **Labels** are fetched when printed (the label info, which holds short-lived addresses, then the PDF) and never kept; only
+  `api.porterbuddy.com` and `api.porterbuddy-test.com` addresses are fetched (`carrierLabel()`, `isPorterbuddyUrl()`).
+- **Status**: the order's status shows under the shipment (Porterbuddy gives a status, not a trail).
+
+**Not yet**: consolidated delivery (*Samlevert*), pin-code or ID checks (the order is contactless), the status webhook, changing
+a booked order, and any country but Norway.
+
+**To verify with real credentials** (nothing here has met Porterbuddy's servers): whether `price` is with or without VAT for the
+store's agreement (it is treated as without, as Porterbuddy invoices, and a `displayPrice` as with; compare the checkout with the
+portal in the test environment and use the markup to adjust), that availability accepts a postal code without a street for the
+destination, and that the pick-up windows match the store's agreement.

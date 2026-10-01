@@ -9,6 +9,7 @@ import {
   DEFAULT_CHECKOUT_SETTINGS,
   MAX_OPTIONS,
   MAX_PICKUP_POINTS,
+  MAX_WINDOWS,
   QUOTE_MINUTES,
   cleanPostalCode,
   estimateDays,
@@ -23,6 +24,7 @@ import { shown, type Market } from "@/lib/markets";
 import { carrierInfo, type CarrierContext, type CarrierId, type PickupPoint, type ShippingAddress, type ShippingOption } from "@/lib/shipping-carriers";
 import { BRING_PRODUCTS } from "@/lib/bring";
 import { POSTNORD_SERVICES } from "@/lib/postnord";
+import { PORTERBUDDY_PRODUCTS } from "@/lib/porterbuddy";
 
 import { audit } from "./auth";
 import { adapterFor } from "./carriers";
@@ -43,6 +45,7 @@ type Runner = Pick<ReturnType<typeof db>, "execute">;
 export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: string; needsPickupPoint: boolean }[]>> = {
   bring: BRING_PRODUCTS,
   postnord: POSTNORD_SERVICES,
+  porterbuddy: PORTERBUDDY_PRODUCTS,
 };
 
 /** The carriers that have checkout services built. */
@@ -167,6 +170,8 @@ type Offer = {
   freeOverMinor: number | null;
   estimate: { minDays: number; maxDays: number } | null;
   needsPickupPoint: boolean;
+  /** A delivery window (Porterbuddy): when it is delivered, and until when the carrier holds it. */
+  window: { start: string; end: string; expiresAt: string } | null;
   points: QuotedPickupPoint[];
 };
 
@@ -199,6 +204,7 @@ async function offersFrom(
         amountMinor: prices!.services[id],
         freeOverMinor: prices!.freeOverMinor,
         estimate: null,
+        window: null,
         needsPickupPoint: Boolean(known.find((s) => s.id === id)?.needsPickupPoint),
       }));
   } else {
@@ -206,7 +212,13 @@ async function offersFrom(
     const weight = await cartWeightGrams(storeId, cartId, active.settings.defaultWeightGrams);
     let offered: ShippingOption[];
     try {
-      offered = await adapter.rates(context, { from: senderOf(context), to, parcels: [{ weightGrams: weight }], currency: market.nativeCurrency });
+      offered = await adapter.rates(context, {
+        from: senderOf(context),
+        to,
+        parcels: [{ weightGrams: weight }],
+        currency: market.nativeCurrency,
+        products: active.settings.services,
+      });
     } catch {
       return null;
     }
@@ -217,8 +229,10 @@ async function offersFrom(
         carrier: active.carrier,
         serviceId: o.serviceId,
         name: o.name,
-        amountMinor: shopperPrice(o.priceMinor, vatRate, active.settings.markup),
+        // A price made for the shopper to see already holds VAT (D137).
+        amountMinor: shopperPrice(o.priceMinor, o.includesVat ? 0 : vatRate, active.settings.markup),
         freeOverMinor: active.settings.freeOverMinor,
+        window: o.window ? { start: o.window.start, end: o.window.end, expiresAt: o.window.expiresAt } : null,
         estimate: o.estimate && "minDays" in o.estimate ? o.estimate : null,
         needsPickupPoint: Boolean(o.needsPickupPoint),
       }));
@@ -268,7 +282,11 @@ export async function quoteDelivery(
     const brand = carrierInfo(o.carrier)?.name ?? o.carrier;
     return several && !o.name.toLowerCase().includes(o.carrier) ? `${brand}: ${o.name}` : o.name;
   };
-  const usable = offers.sort((a, b) => a.amountMinor - b.amountMinor).slice(0, MAX_OPTIONS);
+  // Services cheapest first; delivery windows apart, the earliest first.
+  const usable = [
+    ...offers.filter((o) => !o.window).sort((a, b) => a.amountMinor - b.amountMinor).slice(0, MAX_OPTIONS),
+    ...offers.filter((o) => o.window).sort((a, b) => a.window!.start.localeCompare(b.window!.start)).slice(0, MAX_WINDOWS),
+  ];
 
   await db().transaction(async (tx) => {
     // Answers that ran out a day ago go, whichever cart they were for.
@@ -282,14 +300,15 @@ export async function quoteDelivery(
       await tx.execute(sql`
         insert into commerce.delivery_quotes (
           store_id, cart_id, carrier, service_id, label, amount_minor, free_over_minor, currency, country, postal_code,
-          estimate, needs_pickup_point, pickup_points, expires_at
+          estimate, needs_pickup_point, pickup_points, window_start, window_end, expires_at
         ) values (
           ${storeId}::uuid, ${cartId}::uuid, ${o.carrier}, ${o.serviceId}, ${named(o).slice(0, 120)},
           ${o.amountMinor}, ${o.freeOverMinor},
           ${market.nativeCurrency}, ${market.code}, ${postalCode},
           ${o.estimate ? JSON.stringify(o.estimate) : null}::jsonb,
           ${o.needsPickupPoint}, ${JSON.stringify(o.points)}::jsonb,
-          now() + make_interval(mins => ${QUOTE_MINUTES})
+          ${o.window?.start ?? null}::timestamptz, ${o.window?.end ?? null}::timestamptz,
+          least(now() + make_interval(mins => ${QUOTE_MINUTES}), ${o.window?.expiresAt ?? null}::timestamptz)
         )
       `);
     }
@@ -317,7 +336,7 @@ export async function chosenDelivery(
 ): Promise<ChosenDelivery | null> {
   const [row] = await runner.execute<Row>(sql`
     select q.id, q.carrier, q.service_id, q.label, q.amount_minor, q.free_over_minor, q.postal_code, q.needs_pickup_point,
-      q.pickup_points, q.pickup_point_id
+      q.pickup_points, q.pickup_point_id, q.window_start, q.window_end
     from commerce.carts c
     join commerce.delivery_quotes q on q.store_id = c.store_id and q.id = c.delivery_quote_id and q.cart_id = c.id
     where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.status = 'open'
@@ -339,6 +358,7 @@ export async function chosenDelivery(
       label: String(row.label),
       postalCode: String(row.postal_code),
       pickupPoint: point ? { id: point.id, name: point.name, street: point.street, postalCode: point.postalCode, city: point.city } : null,
+      window: row.window_start && row.window_end ? { start: new Date(String(row.window_start)).toISOString(), end: new Date(String(row.window_end)).toISOString() } : null,
     },
   };
 }
@@ -356,10 +376,11 @@ export async function deliveryOptionsFor(
   const { storeId, market } = shop;
   const chosen = await chosenDelivery(db(), storeId, cartId, market);
   const rows = await db().execute<Row>(sql`
-    select id, carrier, label, amount_minor, free_over_minor, postal_code, estimate, needs_pickup_point, pickup_points, pickup_point_id
+    select id, carrier, label, amount_minor, free_over_minor, postal_code, estimate, needs_pickup_point, pickup_points, pickup_point_id,
+      window_start, window_end
     from commerce.delivery_quotes
     where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid and expires_at > now() and country = ${market.code}
-    order by amount_minor, label
+    order by (window_start is not null), window_start, amount_minor, label
   `);
   const options: DeliveryOption[] = [];
   if (flat.rate) {
@@ -371,6 +392,7 @@ export async function deliveryOptionsFor(
       freeOverMinor: flat.rate.freeOverMinor,
       estimate: null,
       needsPickupPoint: false,
+      window: null,
       pickupPoints: [],
       pickupPointId: null,
       selected: chosen === null,
@@ -388,6 +410,7 @@ export async function deliveryOptionsFor(
       priceMinor: priceFor(rate),
       freeOverMinor: rate.freeOverMinor,
       estimate: estimateDays(row.estimate),
+      window: row.window_start && row.window_end ? { start: new Date(String(row.window_start)).toISOString(), end: new Date(String(row.window_end)).toISOString() } : null,
       needsPickupPoint: Boolean(row.needs_pickup_point),
       pickupPoints: (row.pickup_points ?? []) as QuotedPickupPoint[],
       pickupPointId: row.pickup_point_id ? String(row.pickup_point_id) : null,

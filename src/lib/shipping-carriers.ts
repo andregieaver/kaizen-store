@@ -107,16 +107,24 @@ export const CARRIERS: CarrierInfo[] = [
     summary: "Fast home delivery in a time window your shopper chooses, including the same day.",
     countries: ["NO"],
     features: ["rates", "labels", "tracking", "time_windows", "same_day"],
-    available: [],
+    available: ["rates", "labels", "tracking", "time_windows", "same_day"],
     fields: [
-      { key: "apiKey", label: "API key", secret: true, required: true },
-      { key: "apiSecret", label: "API secret", secret: true, required: false, help: "If your agreement has one." },
+      { key: "apiKey", label: "API key", secret: true, required: true, help: "From your profile in Porterbuddy's partner portal." },
+      { key: "senderName", label: "Name for the pickup", secret: false, required: true, help: "Printed on the label and given to the courier: your shop's name." },
+      { key: "senderStreet", label: "Pickup street and number", secret: false, required: true, help: "Where the courier collects the parcels, with the number: Keysers gate 3.", placeholder: "Keysers gate 3" },
+      { key: "senderPostalCode", label: "Pickup postal code", secret: false, required: true },
+      { key: "senderCity", label: "Pickup city", secret: false, required: true },
+      { key: "senderEmail", label: "Pickup email", secret: false, required: true, help: "Porterbuddy sends the pickup notices here." },
+      { key: "senderPhone", label: "Pickup phone", secret: false, required: true, help: "Who the courier can call, with the country code if it is not Norway." },
+      { key: "pickupHours", label: "Parcels are ready between", secret: false, required: false, help: "Your opening hours, written 10:00-17:00. Porterbuddy offers delivery windows after these.", placeholder: "10:00-17:00" },
+      { key: "pickupDays", label: "Days you hand over parcels", secret: false, required: false, help: "Weekdays as numbers, 1 is Monday and 7 Sunday: 1-5, or 1,2,3,4,6.", placeholder: "1-5" },
     ],
-    docs: "https://docs.porterbuddy.com",
+    docs: "https://developer.porterbuddy.com",
     steps: [
-      "Have an agreement with Porterbuddy and ask them for API access.",
-      "Copy the API key (and the secret, if you were given one) to the form.",
-      "Use the test environment until Porterbuddy has approved your setup.",
+      "Have an agreement with Porterbuddy: register at porterbuddy.com/business (accounts are by invitation).",
+      "In their partner portal, open your profile and copy the API key. Use the test portal's key for the test environment.",
+      "Give the address and hours where the courier collects your parcels, so the delivery windows match when they are ready.",
+      "Use the test environment until Porterbuddy has approved your setup. Test orders deliver nothing.",
     ],
   },
   {
@@ -225,7 +233,19 @@ export type ShippingAddress = {
 
 export type ParcelSpec = { weightGrams: number; lengthMm?: number; widthMm?: number; heightMm?: number };
 
-export type RateRequest = { from: ShippingAddress; to: ShippingAddress; parcels: ParcelSpec[]; currency: string };
+export type RateRequest = {
+  from: ShippingAddress;
+  to: ShippingAddress;
+  parcels: ParcelSpec[];
+  currency: string;
+  /** When the goods can be collected (ISO times), for a carrier that offers delivery in time windows (D137). */
+  pickupWindows?: { start: string; end: string }[];
+  /** The carrier's own product ids to ask for, when it has several. */
+  products?: string[];
+};
+
+/** A delivery window a carrier offered and holds for a time (D137): the shopper's choice is booked with its token. */
+export type DeliveryWindow = { start: string; end: string; token: string; expiresAt: string };
 
 export type ShippingOption = {
   /** The carrier's own id for the service, kept to book it. */
@@ -239,11 +259,25 @@ export type ShippingOption = {
   estimate?: { minDays: number; maxDays: number } | { from: string; to: string };
   /** Set when the shopper must choose a pickup point. */
   needsPickupPoint?: boolean;
+  /** Set when this is a window to be delivered in rather than a service (Porterbuddy). */
+  window?: DeliveryWindow;
+  /** The price already contains VAT (a price made for the shopper to see), so none is added. */
+  includesVat?: boolean;
 };
 
 export type PickupPoint = { id: string; name: string; address: ShippingAddress; openingHours?: string; distanceMeters?: number };
 
-export type BookingRequest = { orderReference: string; serviceId: string; from: ShippingAddress; to: ShippingAddress; parcels: ParcelSpec[]; pickupPointId?: string };
+export type BookingRequest = {
+  orderReference: string;
+  serviceId: string;
+  from: ShippingAddress;
+  to: ShippingAddress;
+  parcels: ParcelSpec[];
+  pickupPointId?: string;
+  /** The window the shopper chose, with the token the carrier gave for it (D137). */
+  window?: DeliveryWindow;
+  courierInstructions?: string;
+};
 export type BookingResult = {
   trackingNumber: string;
   trackingUrl: string | null;

@@ -144,6 +144,7 @@ async function event(storeId: string, orderId: string, type: string, data: Recor
 export const CARRIERS: { id: string; name: string; url: ((n: string) => string) | null }[] = [
   { id: "posten", name: "Posten", url: (n) => `https://sporing.posten.no/sporing/${encodeURIComponent(n)}` },
   { id: "bring", name: "Bring", url: (n) => `https://sporing.bring.no/sporing/${encodeURIComponent(n)}` },
+  { id: "porterbuddy", name: "Porterbuddy", url: null },
   { id: "postnord", name: "PostNord", url: (n) => `https://tracking.postnord.com/tracking?id=${encodeURIComponent(n)}` },
   { id: "dhl", name: "DHL", url: (n) => `https://www.dhl.com/global-en/home/tracking.html?tracking-id=${encodeURIComponent(n)}` },
   { id: "ups", name: "UPS", url: (n) => `https://www.ups.com/track?tracknum=${encodeURIComponent(n)}` },

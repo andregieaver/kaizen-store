@@ -71,7 +71,11 @@ describe("the delivery an order keeps", () => {
       label: "Pickup point",
       postalCode: "0150",
       pickupPoint: { id: "p1", name: "Kiosk", street: "Storgata 1", postalCode: "0150", city: "Oslo" },
+      window: null,
     });
+    // A delivery window is kept when it has both ends.
+    expect(readOrderDelivery({ ...kept, window: { start: "2025-02-13T16:30:00Z", end: "2025-02-13T18:30:00Z", token: "x" } })?.window).toEqual({ start: "2025-02-13T16:30:00Z", end: "2025-02-13T18:30:00Z" });
+    expect(readOrderDelivery({ ...kept, window: { start: "2025-02-13T16:30:00Z" } })?.window).toBeNull();
     expect(readOrderDelivery(null)).toBeNull();
     expect(readOrderDelivery({ carrier: "bring" })).toBeNull();
     expect(readOrderDelivery({ ...kept, pickupPoint: null })?.pickupPoint).toBeNull();

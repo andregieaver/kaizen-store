@@ -66,8 +66,12 @@ describe("carrierComplete and secretHint", () => {
     expect(carrierComplete(bring, { customerNumber: "1", apiUid: "u", senderName: "S", senderStreet: "x", senderPostalCode: "0150", senderCity: "Oslo" }, ["apiKey"])).toBe(true);
     expect(carrierComplete(bring, { customerNumber: "1" }, ["apiKey"])).toBe(false);
     expect(carrierComplete(bring, { customerNumber: "1", apiUid: "u" }, [])).toBe(false);
-    // Porterbuddy's secret is optional.
-    expect(carrierComplete(carrierInfo("porterbuddy")!, {}, ["apiKey"])).toBe(true);
+    // Porterbuddy needs its key and where the courier collects the parcels; the hours and days are optional.
+    const porterbuddy = carrierInfo("porterbuddy")!;
+    const pickup = { senderName: "S", senderStreet: "Keysers gate 3", senderPostalCode: "0165", senderCity: "Oslo", senderEmail: "a@b.no", senderPhone: "12345678" };
+    expect(carrierComplete(porterbuddy, pickup, ["apiKey"])).toBe(true);
+    expect(carrierComplete(porterbuddy, {}, ["apiKey"])).toBe(false);
+    expect(carrierComplete(porterbuddy, pickup, [])).toBe(false);
   });
 
   it("shows only the last four characters of a long secret", () => {

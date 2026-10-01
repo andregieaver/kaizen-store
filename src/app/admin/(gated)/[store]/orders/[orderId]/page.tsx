@@ -16,7 +16,9 @@ import {
 import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
+import { PorterbuddyBooking } from "@/components/admin/porterbuddy-booking";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { formatWindow } from "@/lib/porterbuddy";
 import type { CarrierId } from "@/lib/shipping-carriers";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
@@ -85,7 +87,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   ]);
   if (!order) notFound();
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
-  const [bring, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), estimateWeightGrams(store.id, order.id)]);
+  const [bring, porterbuddy, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), estimateWeightGrams(store.id, order.id)]);
   const locale = store.markets[0]?.locale ?? order.locale;
   const money = (minor: number) => formatMoney(minor, order.currency, locale);
   // Bonus credits on an order (D130) are in the order's own currency; null for an order with none and for copied history.
@@ -340,6 +342,21 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   </div>
                 </details>
               )}
+              {porterbuddy?.complete && order.delivery?.carrier === "porterbuddy" && order.delivery.window && order.status !== "pending_payment" && !order.copied && (
+                <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
+                  <summary className="cursor-pointer text-sm font-medium">Book with Porterbuddy</summary>
+                  <div className="mt-3">
+                    <PorterbuddyBooking
+                      storeSlug={store.slug}
+                      orderId={order.id}
+                      windowText={formatWindow(order.delivery.window, "en-GB", store.timeZone)}
+                      estimatedGrams={estimatedGrams}
+                      test={porterbuddy.environment === "test"}
+                      hasEmail={Boolean(order.email)}
+                    />
+                  </div>
+                </details>
+              )}
               {order.shipments.length > 0 ? (
                 <details>
                   <summary className="cursor-pointer text-sm underline">Add another parcel</summary>
@@ -448,6 +465,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   <p className="mt-2">
                     <span className="text-muted">Chosen delivery:</span> {order.delivery.label}
                     {order.delivery.pickupPoint && <span className="block">Pickup at {pickupPointLine(order.delivery.pickupPoint)}</span>}
+                    {order.delivery.window && <span className="block">Delivery window {formatWindow(order.delivery.window, "en-GB", store.timeZone)}</span>}
                     {address.postalCode && order.delivery.postalCode && address.postalCode.replace(/\s/g, "") !== order.delivery.postalCode && (
                       <span role="note" className="mt-1 block rounded-md bg-amber-100 px-3 py-2 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
                         The price was quoted for postal code {order.delivery.postalCode}, but the delivery address has {address.postalCode}. Check the price and the service before booking.

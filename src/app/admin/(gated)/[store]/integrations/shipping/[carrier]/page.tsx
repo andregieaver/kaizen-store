@@ -189,7 +189,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             Shoppers give their postal code at checkout and choose between your standard shipping and the services you switch on here,
             {storePriced
               ? ` at the prices you enter below (with VAT, as the shopper pays; ${info.name} has no price service, so use the prices in your agreement).`
-              : ` with the price ${info.name} gives you plus VAT and what you add. Posten / Bring's services are for parcels to Norway.`}{" "}
+              : ` with the price ${info.name} gives you plus VAT and what you add${info.id === "porterbuddy" ? ". Porterbuddy's windows are listed by date and time, each with its own price, for deliveries in Norway; a price Porterbuddy has made for shoppers to see already has VAT, so only your markup is added" : ". Posten / Bring's services are for parcels to Norway"}.`}{" "}
             If{" "}
             {info.name} does not answer, your standard shipping is used, so keep it set up under{" "}
             <Link href={`/admin/${store.slug}/settings/shipping`} className="underline">
