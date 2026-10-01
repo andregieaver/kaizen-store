@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AFFILIATE_COOKIE_DAYS_MAX, AFFILIATE_FRIEND_PERCENT_MAX } from "./affiliates";
 import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_MAX } from "./bonus";
 import { adjustmentPhrase } from "./bonus-admin";
+import { GOALS } from "./experiments";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 
 /**
@@ -476,6 +477,62 @@ export const OWNER_TOOLS = [
     "send",
   ),
   tool(
+    "list_experiments",
+    "The store's A/B tests (the same thing shown to visitors in two versions, to see which works better): name, status (draft, scheduled, running, stopped, winner applied, discarded), what is tested (a page, a row or component of it, the header, the footer or a product layout), what it should improve, versions, visitors counted and, for a test that has run, the verdict in words worked out by the store. Use it before explain_results, start_experiment, stop_experiment or apply_winner, to find a test by its name.",
+    z.object({ limit: limit(30, 15) }),
+  ),
+  tool(
+    "explain_results",
+    "What one A/B test found, worked out by the store in code: its verdict in plain words (too few visitors, too early, one version is better, the original is better, no clear difference, or something wrong with the split), each version's visitors and rate or revenue per visitor against the original with the chance it is better, the steps visitors took, revenue without VAT, how many days it has run, and what can be done next. Explain it in the owner's words and language; never give a verdict of your own or call a winner the verdict does not.",
+    z.object({ experiment: z.string().trim().min(1).max(200).describe("The test's name or id, from list_experiments.") }),
+  ),
+  tool(
+    "suggest_experiments",
+    "Facts for choosing what to A/B test, all counted by the store: the pages, header, footer and product layouts that can be tested with what is on each (the headings, buttons and texts and their block ids), what was tested on them before and how it came out, how much of the store's visitors accepted statistics cookies (only they take part), orders and the way from cart to paid order over the last 30 days, and how many tests are running of the five allowed. Pick at most three things worth testing, say why in the owner's words, and say that nothing is started without their yes. Optionally give visitors a day and the share who do the thing now to get how long a test would take, worked out by the store; Kaizen does not count page views, so never guess these.",
+    z.object({
+      visitors_per_day: z.number().int().min(1).max(10_000_000).optional().describe("Roughly how many visitors a day see the page and accept cookies, if the owner knows."),
+      current_rate_percent: z.number().min(0.01).max(99).optional().describe("The share (%) of those who do the thing the test should improve today, if the owner knows."),
+      change_percent: z.number().int().min(5).max(200).default(20).describe("The relative change worth finding, in %."),
+    }),
+  ),
+  tool(
+    "draft_experiment",
+    "Makes a DRAFT A/B test: a copy of a page, the header, the footer or a product layout as version B, with the words you give put into its headings, buttons or texts. Nothing is shown to visitors until it is started (start_experiment, which needs the owner's approval). Give the new words for blocks listed by suggest_experiments (block ids); one changed block makes a test of that block only, several a test of the whole page; no changes makes an unchanged copy the owner edits in the page builder. Write words the store can stand behind: no prices, stock, urgency, 'best' or green claims; they are checked. Choose one thing to improve.",
+    z.object({
+      target: z.string().trim().min(1).max(200).describe("What to test: a page's address (slug) or id, `header`, `footer`, or a product layout's title, as listed by suggest_experiments."),
+      goal: z.enum(GOALS).describe("What should get better: orders, revenue (per visitor), cart (added to the cart), checkout (reached checkout) or click (on a button, named in `button`)."),
+      button: z.string().trim().max(100).optional().describe("For the goal click: the text of the button whose clicks count (as it is now)."),
+      changes: z
+        .array(z.object({ block: z.string().trim().min(1).max(64).describe("The block's id from suggest_experiments."), text: z.string().trim().min(1).max(2000).describe("The new words: one line for a heading or button, paragraphs for a text.") }))
+        .max(6)
+        .default([]),
+      name: z.string().trim().max(120).optional(),
+      hypothesis: z.string().trim().max(500).optional().describe("What you expect and why, in a sentence."),
+      traffic_percent: z.number().int().min(1).max(100).default(100).describe("The share of visitors in the test."),
+    }),
+  ),
+  tool(
+    "start_experiment",
+    "Starts a draft A/B test, now: visitors who accepted statistics cookies are split between the versions from their next page view. The store checks it can start (a version that is still the original, an unpublished page and the like are refused with the reason). It runs at least 14 days before it says anything, and can be stopped at any time. Needs the owner's approval.",
+    z.object({ experiment: z.string().trim().min(1).max(200).describe("The test's name or id, from list_experiments.") }),
+    "public",
+  ),
+  tool(
+    "stop_experiment",
+    "Stops a running A/B test: everyone sees the original again, and what was counted is kept. Needs the owner's approval.",
+    z.object({ experiment: z.string().trim().min(1).max(200).describe("The test's name or id, from list_experiments.") }),
+    "public",
+  ),
+  tool(
+    "apply_winner",
+    "Ends an A/B test by choosing: a version replaces the page (or the part, header, footer or layout) at once, with the address kept, or `original` keeps what is there. A running test is stopped first. Only after the owner has seen the results (explain_results); never choose a version the verdict does not support unless they say so. Needs the owner's approval.",
+    z.object({
+      experiment: z.string().trim().min(1).max(200).describe("The test's name or id, from list_experiments."),
+      version: z.enum(["b", "c", "d", "original"]).describe("The version to use, or `original` to keep what is there."),
+    }),
+    "public",
+  ),
+  tool(
     "unpublish_page",
     "Takes a published page or article off the site; its draft is kept. Needs the owner's approval.",
     z.object({ page: z.uuid("A page is given by its id, from list_pages."), type: z.enum(["page", "article"]).default("page") }),
@@ -601,6 +658,12 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       const show = (v: unknown) => (v === null ? "cleared" : Array.isArray(v) ? `"${v.join(", ")}"` : typeof v === "string" ? `"${v.length > 200 ? `${v.slice(0, 199)}…` : v}"` : String(v));
       return `Set the custom fields of ${input.entity === "store" ? "the store" : `the ${text("entity") || "product"} "${text("item")}"`}: ${values.map(([name, v]) => `${name} ${v === null ? "" : "= "}${show(v)}`).join("; ")}.`;
     }
+    case "start_experiment":
+      return `Start the A/B test "${text("experiment")}": visitors who accepted statistics cookies are shown the versions from their next page view.`;
+    case "stop_experiment":
+      return `Stop the A/B test "${text("experiment")}": everyone sees the original again.`;
+    case "apply_winner":
+      return input.version === "original" ? `End the A/B test "${text("experiment")}" and keep the original.` : `End the A/B test "${text("experiment")}" and make version ${text("version").toUpperCase()} the page, the part or the layout under test.`;
     case "email_customer":
       return `Email ${text("to")}: "${text("subject")}"\n\n${text("message")}`;
     case "resend_order_email":

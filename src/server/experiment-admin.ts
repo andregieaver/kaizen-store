@@ -1,7 +1,7 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
-import { updateTag } from "next/cache";
+import { revalidateTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
 import { targetKindOf, type TargetKind } from "@/lib/ab-site";
@@ -28,6 +28,19 @@ import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
 import { pagesTag, savePage } from "./pages";
 
 type Row = Record<string, unknown>;
+
+/**
+ * Refreshes a cache tag after a change. A server action may `updateTag` (the owner sees it at once); anywhere else (the
+ * five-minute job, the AI manager's route) that throws, and the tag is revalidated instead, so a stop, a scheduled start or an
+ * apply made outside an action still reaches the pages that draw the test.
+ */
+function refreshTag(tag: string): void {
+  try {
+    updateTag(tag);
+  } catch {
+    revalidateTag(tag, "max");
+  }
+}
 
 /**
  * Making, starting, stopping and applying A/B tests of pages (D148, docs/ab-testing.md): what the admin's actions call
@@ -412,6 +425,14 @@ async function checkStart(storeId: string, test: ExperimentInfo): Promise<string
   return problems;
 }
 
+/** What would stop a test from starting, in words (empty when it can): the owner is never asked to approve what could not be done. */
+export async function startProblemsOf(storeId: string, id: string): Promise<string[]> {
+  const test = await getExperiment(storeId, id);
+  if (!test) return ["This test no longer exists."];
+  if (test.status !== "draft" && test.status !== "scheduled") return ["This test has already started."];
+  return checkStart(storeId, test);
+}
+
 /**
  * Starts a test (from a draft, or a scheduled one that is due or started by hand): checked in words first, then by the
  * database, which refuses anything the checks missed. `account` is null when the scheduler starts it.
@@ -428,7 +449,7 @@ export async function startExperiment(account: Account | null, storeId: string, 
     return { ok: false, problems: [databaseProblem(error) ?? "The test could not be started."] };
   }
   forgetRunning(storeId);
-  updateTag(experimentsTag(storeId));
+  refreshTag(experimentsTag(storeId));
   await audit(account?.id ?? null, storeId, test.status === "scheduled" ? "experiment.started_scheduled" : "experiment.started", {
     experiment: id,
     page: test.page.id,
@@ -486,7 +507,7 @@ export async function stopExperiment(account: Account | null, storeId: string, i
     where id = ${id}::uuid and store_id = ${storeId}::uuid and status = 'running'
   `);
   forgetRunning(storeId);
-  updateTag(experimentsTag(storeId));
+  refreshTag(experimentsTag(storeId));
   await audit(account?.id ?? null, storeId, "experiment.stopped", { experiment: id, reason });
   return { ok: true };
 }
@@ -530,8 +551,8 @@ export async function applyVariant(account: Account, storeId: string, id: string
     return true;
   });
   if (!done) return { ok: false, problems: [test.part ? `That version could not be applied: the page no longer has ${test.part.label}, or the version could not be read.` : "That version could not be read."] };
-  updateTag(pagesTag(storeId));
-  updateTag(experimentsTag(storeId));
+  refreshTag(pagesTag(storeId));
+  refreshTag(experimentsTag(storeId));
   await audit(account.id, storeId, "experiment.applied", { experiment: id, variant: key, page: test.page.id, ...(test.part && { part: test.part.id }) });
   return { ok: true };
 }
@@ -542,7 +563,7 @@ export async function discardExperiment(account: Account, storeId: string, id: s
   if (!test) return { ok: false, problems: ["This test no longer exists."] };
   if (!NEXT_STATUSES[test.status].includes("discarded")) return { ok: false, problems: ["This test cannot be discarded now."] };
   await db().execute(sql`update commerce.experiments set status = 'discarded', updated_by = ${account.id}::uuid, updated_at = now() where id = ${id}::uuid and store_id = ${storeId}::uuid`);
-  updateTag(experimentsTag(storeId));
+  refreshTag(experimentsTag(storeId));
   await audit(account.id, storeId, "experiment.discarded", { experiment: id });
   return { ok: true };
 }

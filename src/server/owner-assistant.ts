@@ -13,6 +13,7 @@ import { learnFromTurn, memoriesFor, type Memory } from "./assistant-memory";
 import type { Account, Membership, Role } from "./auth";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
+import { experimentApprovalSummary } from "./experiment-tools";
 import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import type { Store } from "./stores";
 
@@ -572,6 +573,10 @@ export async function keepForApproval(
       select published ->> 'title' as title from commerce.pages where store_id = ${store.id}::uuid and id = ${String(args.page)}::uuid
     `);
     if (page?.title) summary = `Take "${page.title}" off the site, keeping its draft.`;
+  }
+  // An A/B test's call is described from the test itself: its name, what it tests and what it should improve.
+  if (store && (tool === "start_experiment" || tool === "stop_experiment" || tool === "apply_winner")) {
+    summary = (await experimentApprovalSummary(store, tool, args)) ?? summary;
   }
   const [row] = await db().execute<Row>(sql`
     insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category)

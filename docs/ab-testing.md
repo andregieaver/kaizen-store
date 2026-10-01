@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 3 built** (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. Modals, the surrounding rows of working pages, the AI manager and the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 4 built** (4: the AI manager's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals, the surrounding rows of working pages, the platform's own pages and its cross-store view are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -153,6 +153,46 @@ Not done: the same for **modals** and the surrounding rows of working pages, Kai
 plans page), a store on its own host (the proxy knows the address form, and the host rewrite in `next.config.ts` has not been checked
 with the market suffix), and the Vercel check of the caching of rewritten pages, which phase 0 left open and which now matters more:
 every page of an enrolled visitor in another version of a header test is a rewrite.
+
+## What phase 4 built: the AI manager's tools
+
+Seven tools in the AI manager's catalogue (`OWNER_TOOLS`, so Kaizen Life's assistant has them through the store's MCP server too), in
+`src/lib/owner-tools.ts` (definitions, approval summaries), `src/lib/experiment-tools.ts` (the pure part) and `src/server/experiment-tools.ts`
+(the handlers). The model suggests, words and drafts; the store counts, checks and decides what is true.
+
+| Tool | What it does | Gate |
+|---|---|---|
+| `list_experiments` | The store's tests with status, what is tested, visitors counted and, for a running or just stopped test, the verdict's headline | none |
+| `explain_results` | One test's results from `experimentResults()`: the verdict (kind, headline, detail), each version's visitors and rate or revenue per visitor against the original with the chance it is better, the steps visitors took, revenue without VAT, the split check, the guardrail, what can be done next. For a draft: what is left before it can start | none |
+| `suggest_experiments` | Facts for choosing: what can be tested (pages, header, footer, product layouts) with each block's id and words, earlier tests on it, the share of cookie choices that accepted statistics, paid orders and the cart-to-order figures over 30 days, room for more tests; with `visitors_per_day` and `current_rate_percent` how long a test takes, from `estimateRuntime()` | none |
+| `draft_experiment` | A draft test: a copy as version B with the model's words put into named headings, buttons or texts. One changed block makes a part test of it, several a test of the page; no change an unchanged copy to edit in the builder | none: nothing is live |
+| `start_experiment` | Starts a draft, now | `public` |
+| `stop_experiment` | Stops a running test | `public` |
+| `apply_winner` | A version (or `original`) ends the test; a running test is stopped first, in the same yes | `public` |
+
+How it holds the line the design set:
+
+- **The model never states a number or a verdict.** `explain_results` returns the verdict the code reached and tells the model not to
+  call a winner it does not; `suggest_experiments` returns counts and, for how long, only what `estimateRuntime()` works out from
+  numbers the owner gave, and says so when they have not.
+- **Every word it writes is checked** before anything is made: the claims filter (`findClaims()`: generic green claims, urgency, best
+  price, money, stock), the lengths, and that the block is a heading, button or text on the page (`applyChanges()`); text goes in as plain
+  text nodes, never markup.
+- **Deciding is kept for a yes, and checked first.** `preflightExperimentTool()` refuses a start that could not start (a version still
+  the original, an unpublished page, the limit), a stop of what is not running and a choice of a version that is not there, so no one is
+  asked to approve it. The approval's text is written from the test itself (`experimentApprovalSummary()`: its name, what it tests, the
+  goal, the versions, the share), not from the model's arguments.
+- A draft is not gated, unlike the design's `draft_variant`: it makes a version page and a draft test, never anything visitors see; it is
+  audited (`experiment.drafted_by_assistant`) and the owner still has to look at it and say yes to start it. No model call is made by
+  the tools themselves, so nothing is metered under a feature of its own (`AI_FEATURES` unchanged): the manager's turns are `ai_manager`.
+- A playbook (`ab-test` in `ASSISTANT_SKILLS`) walks it through suggest, draft, the owner's look and yes, the 14-day wait and the verdict.
+
+A fix on the way: the admin functions called `updateTag`, which only a server action may; the five-minute job and the assistant's route
+are not one, so a stop, a scheduled start or a choice made there changed the database and then threw before refreshing the caches.
+They now refresh through `refreshTag()` (`updateTag`, else `revalidateTag`).
+
+Not done in phase 4: the platform's cross-store view of running tests, guardrail emails to the owner, and tools for the platform's
+assistant (a platform admin cannot edit a store's test).
 
 ## Principles (kept from `measurement.md`)
 
@@ -460,7 +500,7 @@ reports (D106, D145).
 | **1** (built) | Engine and **page** tests for store pages: tables and rules, assignment, `/api/ab/assign`, exposure beacon, order attribution, daily rollup job, split check, results page (verdict sentence, charts), start/stop/apply, audit, tests incl. an end-to-end test with two variants | A test runs on the demo store from creation to applied, in the browser, with consented and unconsented visitors |
 | **2** (built, minus the moderated check) | **Part** tests in the builder (click a part, "Test this"), the five-step flow, estimates, preview links, scheduled start | A person who has never seen it creates a test in a few minutes (a moderated check with two owners) |
 | **3** (header, footer and product layouts built) | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
-| **4** | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
+| **4** (the AI manager's tools built) | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
 | **5** | Move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the

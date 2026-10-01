@@ -11,6 +11,17 @@ import { marketPath, storeHref } from "@/lib/paths";
 import { parsePrice } from "@/lib/product-input";
 
 import { audit, type Account } from "./auth";
+import { OwnerToolError } from "./owner-tool-error";
+import {
+  applyWinnerTool,
+  draftExperimentTool,
+  explainResultsTool,
+  listExperimentsTool,
+  preflightExperimentTool,
+  startExperimentTool,
+  stopExperimentTool,
+  suggestExperimentsTool,
+} from "./experiment-tools";
 import { cancelBooking, listBookings } from "./bookings";
 import { cartReminderStats } from "./cart-reminders";
 import { findCustomer, getCustomerDetail, listCustomers } from "./customer-admin";
@@ -103,7 +114,7 @@ export type OwnerToolContext = {
   invalidate: (tag: string) => void;
 };
 
-export class OwnerToolError extends Error {}
+export { OwnerToolError };
 
 const fail = (message: string): never => {
   throw new OwnerToolError(message);
@@ -1443,6 +1454,13 @@ async function createFieldGroupTool(ctx: OwnerToolContext, input: OwnerToolInput
  * `OwnerToolError` with the reason for the model.
  */
 export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<void> {
+  // A test that could not be started, stopped or decided is refused now, never kept for a yes (D148).
+  if (name === "start_experiment" || name === "stop_experiment" || name === "apply_winner") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightExperimentTool(ctx, name, input.input as Record<string, unknown>);
+  }
   if (name !== "set_recommendations" && name !== "add_recommendation_rule" && name !== "remove_recommendation_rule" && name !== "set_fields" && name !== "create_field_group" && name !== "set_bonus_program" && name !== "adjust_customer_credits" && name !== "set_affiliate_program" && name !== "block_affiliate") return;
   const tool = OWNER_TOOLS_BY_NAME[name];
   const input = tool ? readToolInput(tool, raw) : null;
@@ -1542,6 +1560,13 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_stock: setStockTool,
   ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,
+  list_experiments: listExperimentsTool,
+  explain_results: explainResultsTool,
+  suggest_experiments: suggestExperimentsTool,
+  draft_experiment: draftExperimentTool,
+  start_experiment: startExperimentTool,
+  stop_experiment: stopExperimentTool,
+  apply_winner: applyWinnerTool,
 };
 
 /**

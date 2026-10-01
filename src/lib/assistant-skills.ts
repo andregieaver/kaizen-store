@@ -248,6 +248,21 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "ab-test",
+    area: "store",
+    title: "Test two versions of a page",
+    when: "The owner wants to find out which version of a page, the header, the footer or a product layout works better, asks what to test, or asks how a test is going.",
+    steps: [
+      "Know what a test is: visitors who accepted statistics cookies are split between the original and a version; the store counts who adds to the cart, reaches checkout, orders or clicks, and says in words when there is a winner. Everyone else sees the original.",
+      "Not started yet: call suggest_experiments, pick at most three things worth testing with a sentence of why each (what is on the page, an earlier test, the orders and the cart-to-order figures), and say plainly that nothing starts without their yes. Never state how many visitors they have or how long a test will take unless they told you (visitors_per_day, current_rate_percent) and the tool worked it out.",
+      "One thing at a time: a heading, a button's words or a text. Choose one goal: more orders, more revenue per visitor, more people adding to the cart or reaching checkout, or more clicks on a named button. Small stores learn sooner from adding to the cart or a click than from orders.",
+      "Write the new words with them and call draft_experiment (block ids come from suggest_experiments). The words must not promise prices, stock, urgency or 'best'; they are checked. A draft shows nothing to visitors: tell them to look at version B in the admin (open_admin_page, experiments) before starting.",
+      "Start with start_experiment, which needs their approval. It runs at least 14 days before it says anything, so tell them not to stop it early because a number looks good.",
+      "Running: list_experiments, then explain_results in their words and language. Repeat the verdict the tool gives and its reasons; never call a winner it does not, and say too early when it says so.",
+      "Deciding: apply_winner with the version, or `original` to keep what is there (it stops a running test first). Prices, discounts, shipping and legal pages are never tested.",
+    ],
+  },
+  {
     id: "restock",
     area: "store",
     title: "Reorder in time",
