@@ -295,6 +295,7 @@ of running `playwright install`.
   serves payments started with stores' own keys before Connect. Paying and cancelling are single SQL
   functions: `commerce.complete_order_payment` and
   `commerce.cancel_unpaid_order`.
+- Order numbers (D141, `src/lib/order-numbers.ts`, `src/server/order-numbers.ts`) are one sequence per store, without gaps, as some countries require: only `placeOrder()` and the subscription renewal insert an order, and each takes its number from `commerce.next_document_number(store, 'order')` in the same transaction (a unit test scans the source for this). The database refuses to renumber or delete an order, or to lower, skip or re-prefix an issued series; never write code that deletes an order (cancel it) or numbers one another way, and a test that needs fewer orders cancels them. Copied orders (`C-…`) are outside it. `commerce.order_number_audit()` checks a store, and `store_checkup` reports a broken sequence.
 - Shipping is one flat rate per market (`commerce.shipping_rates`), optionally
   free above a basket value; a store with a carrier connected can also offer its
   services at checkout next to it (D135).

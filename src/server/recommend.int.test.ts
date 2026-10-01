@@ -437,8 +437,8 @@ describe("the check against past orders (D140)", () => {
 
   it("leaves the order it replays out of what it learns from, so one order cannot vouch for itself", async () => {
     const mine = sql`select id from commerce.orders where store_id = ${storeId}::uuid and number like ${`${run}-%`} and copied_from is null`;
-    await db().execute(sql`delete from commerce.order_lines where order_id in (${mine})`);
-    await db().execute(sql`delete from commerce.orders where id in (${mine})`);
+    // Orders are never deleted (their numbers are the law's sequence); cancelled ones are not what a replay learns from.
+    await db().execute(sql`update commerce.orders set status = 'cancelled' where id in (${mine})`);
     // One pair, bought once: replayed with itself left out, nothing is known of it.
     await order(["demo-notatbok", "demo-keramikkopp"]);
     const result = await replay.replayOnOrders(store, market, 10);

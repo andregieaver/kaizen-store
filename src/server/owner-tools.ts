@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { summarizeUsage } from "@/lib/ai-usage";
 import { formatMoney } from "@/lib/money";
 import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerToolName } from "@/lib/owner-tools";
+import { auditProblems } from "@/lib/order-numbers";
 import { marketPath, storeHref } from "@/lib/paths";
 import { parsePrice } from "@/lib/product-input";
 
@@ -78,6 +79,7 @@ import { campaignsTag } from "./campaign-notices";
 import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { listDiscounts, saveDiscount } from "./discounts";
+import { orderNumberAudit } from "./order-numbers";
 import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
 import { listOrders } from "./orders";
 import { listPages, pagesTag, unpublishPage } from "./pages";
@@ -528,7 +530,7 @@ async function setupProgressTool({ store }: OwnerToolContext) {
 
 async function storeCheckup(ctx: OwnerToolContext) {
   const { store } = ctx;
-  const [[counts], [low], progress, integrations, restock] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock, numbering] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
@@ -551,6 +553,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
     getSetupProgress(store),
     listIntegrations(store.id),
     restockSuggestions({ store }, { days: 30, cover_days: 30, lead_days: 7 }),
+    orderNumberAudit(store.id),
   ]);
   const findings: { what: string; page: string }[] = [];
   const add = (when: boolean, what: string, page: string) => when && findings.push({ what, page: adminLink(store, page) });
@@ -561,6 +564,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
   add(restock.urgent > 0, `${restock.urgent} variant(s) will run out within a week at the current pace: restock_suggestions says how many to order.`, "/products");
   add(Number(counts.searches_missed) > 0, `${counts.searches_missed} different search(es) found nothing this week.`, "/search");
   add(Number(counts.approvals) > 0, `${counts.approvals} change(s) you asked me for are waiting for your approval.`, "/assistant");
+  for (const problem of auditProblems(numbering)) add(true, `Order numbering is not in sequence: ${problem}`, "/orders");
   add(Number(counts.drafts) > 0, `${counts.drafts} product(s) are drafts, not on the site.`, "/products");
   add(store.paymentsTest && store.paymentsOn, "Payments are in test mode: shoppers cannot really pay yet.", "/settings/payments");
   for (const i of integrations) add(i.enabled && i.recentFailures > 0, `${i.provider} failed ${i.recentFailures} send(s) this week.`, `/integrations/${i.provider}`);

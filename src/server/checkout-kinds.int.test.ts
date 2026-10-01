@@ -115,6 +115,7 @@ const { cancelOrder, refundOrder } = await import("./order-admin");
 const { setCartCompany } = await import("./cart");
 const { attachReferral, rememberAffiliate } = await import("./affiliates");
 const { chooseDelivery, deliveryOptionsFor, quoteDelivery } = await import("./delivery-options");
+const { orderNumberAudit } = await import("./order-numbers");
 
 const run = Date.now().toString(36);
 const slug = `kinds-${run}`;
@@ -1733,5 +1734,21 @@ describe("checkout with a friend's welcome discount (D131)", () => {
     expect(order).toMatchObject({ referralDiscountMinor: 4_980, discountMinor: 0, creditMinor: 0, totalMinor: 49_800 + 9_900 - 4_980 });
     const shopper = await getShopperOrder(storeId, placed.open!.orderId, placed.open!.sessionId);
     expect(shopper).toMatchObject({ referralDiscountMinor: 4_980 });
+  });
+});
+
+describe("order numbering (D141)", () => {
+  it("runs in one sequence after every kind of checkout, with the cancelled ones included", async () => {
+    const audit = await orderNumberAudit(storeId);
+    expect(audit.orders).toBeGreaterThan(20);
+    expect(audit).toMatchObject({ firstNumber: 1001, missing: 0, firstMissing: null, offFormat: 0, ok: true });
+    expect(audit.lastNumber).toBe(1000 + audit.orders);
+    expect(audit.nextNumber).toBe(audit.lastNumber! + 1);
+  });
+
+  it("is not changed by anyone going round the application", async () => {
+    const [order] = await db().execute<Row>(sql`select id from commerce.orders where store_id = ${storeId}::uuid order by number limit 1`);
+    await expect(db().execute(sql`update commerce.orders set number = '9999' where id = ${String(order.id)}::uuid`)).rejects.toMatchObject({ cause: { message: expect.stringMatching(/order_number\.changed/) } });
+    await expect(db().execute(sql`delete from commerce.orders where id = ${String(order.id)}::uuid`)).rejects.toMatchObject({ cause: { message: expect.stringMatching(/order_number\.deleted/) } });
   });
 });

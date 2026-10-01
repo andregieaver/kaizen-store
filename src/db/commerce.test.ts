@@ -146,6 +146,104 @@ describe("reference data", () => {
   });
 });
 
+describe("sequential order numbering", () => {
+  /** A store of its own, so its sequence starts at 1001. */
+  async function numberedStore(): Promise<string> {
+    return createStore(`num-${Math.random().toString(36).slice(2, 10)}`, ["DE"]);
+  }
+  const take = async (storeId: string) =>
+    (await one<{ number: string }>(
+      "select s.prefix || commerce.next_document_number($1, 'order')::text as number from commerce.document_series s where s.store_id = $1 and s.series = 'order'",
+      [storeId],
+    )).number;
+  const place = async (storeId: string, number: string) =>
+    one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address)
+       values ($1, $2, 'DE', 'EUR', 'de-DE', 'a@example.com', 1000, 0, 0, 0, 1000, '{}', '{}') returning id`,
+      [storeId, number],
+    );
+  const audit = async (storeId: string) =>
+    one<{ orders: number; first_number: number | null; last_number: number | null; missing: number; first_missing: number | null; off_format: number; next_number: number; ok: boolean }>(
+      "select orders::int, first_number::int, last_number::int, missing::int, first_missing::int, off_format::int, next_number::int, ok from commerce.order_number_audit($1)",
+      [storeId],
+    );
+
+  it("gives every store its own order series from 1001, and counts a store with no orders as in order", async () => {
+    const id = await numberedStore();
+    expect(await audit(id)).toMatchObject({ orders: 0, next_number: 1001, ok: true });
+    expect(await take(id)).toBe("1001");
+  });
+
+  it("numbers orders one after the other without gaps, and a rolled-back order gives its number back", async () => {
+    const id = await numberedStore();
+    await place(id, await take(id));
+    await place(id, await take(id));
+    await db.query("begin");
+    const lost = await take(id);
+    expect(lost).toBe("1003");
+    await db.query("rollback");
+    expect(await take(id)).toBe("1003");
+    expect(await audit(id)).toMatchObject({ orders: 2, first_number: 1001, last_number: 1002, missing: 0, off_format: 0, ok: false });
+    await place(id, "1003");
+    expect(await audit(id)).toEqual({ orders: 3, first_number: 1001, last_number: 1003, missing: 0, first_missing: null, off_format: 0, next_number: 1004, ok: true });
+  });
+
+  it("sees a gap, a number that is not the series', and a series ahead of its orders", async () => {
+    const id = await numberedStore();
+    await place(id, await take(id));
+    await take(id);
+    await place(id, await take(id));
+    expect(await audit(id)).toMatchObject({ orders: 2, missing: 1, first_missing: 1002, ok: false });
+    await place(id, "WEB-7");
+    expect(await audit(id)).toMatchObject({ orders: 3, off_format: 1, ok: false });
+  });
+
+  it("does not count history copied from another store, which can also be removed", async () => {
+    const id = await numberedStore();
+    await place(id, await take(id));
+    await db.query("begin");
+    await db.query("select set_config('commerce.copying', 'on', true)");
+    const copied = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor, billing_address, shipping_address, copied_from)
+       values ($1, 'C-77', 'DE', 'EUR', 'de-DE', 'a@example.com', 'paid', 1000, 0, 0, 0, 1000, '{}', '{}', gen_random_uuid()) returning id`,
+      [id],
+    );
+    await db.query("commit");
+    expect(await audit(id)).toMatchObject({ orders: 1, missing: 0, off_format: 0, ok: true });
+    await db.query("delete from commerce.orders where id = $1", [copied.id]);
+  });
+
+  it("never renumbers or deletes an order", async () => {
+    const id = await numberedStore();
+    const order = await place(id, await take(id));
+    await expect(db.query("update commerce.orders set number = '5000' where id = $1", [order.id])).rejects.toThrow(/order_number\.changed/);
+    await expect(db.query("delete from commerce.orders where id = $1", [order.id])).rejects.toThrow(/order_number\.deleted/);
+    // Anything else about an order may still change.
+    await db.query("update commerce.orders set status = 'cancelled' where id = $1", [order.id]);
+    expect((await audit(id)).ok).toBe(true);
+  });
+
+  it("holds the series: no lowering, skipping, new prefix or deleting once orders are numbered", async () => {
+    const id = await numberedStore();
+    await place(id, await take(id));
+    const change = (set: string) => db.query(`update commerce.document_series set ${set} where store_id = $1 and series = 'order'`, [id]);
+    await expect(change("next_number = 1")).rejects.toThrow(/document_series\.sequence/);
+    await expect(change("next_number = next_number + 5")).rejects.toThrow(/document_series\.sequence/);
+    await expect(change("prefix = 'X-'")).rejects.toThrow(/document_series\.prefix/);
+    await expect(db.query("delete from commerce.document_series where store_id = $1 and series = 'order'", [id])).rejects.toThrow(/document_series\.issued/);
+    // Taking the next number is the one move it allows.
+    await expect(take(id)).resolves.toBe("1002");
+  });
+
+  it("lets a store with no orders yet choose where its numbers start, then holds it", async () => {
+    const id = await numberedStore();
+    await db.query("update commerce.document_series set next_number = 5000, prefix = 'A-' where store_id = $1 and series = 'order'", [id]);
+    await place(id, await take(id));
+    expect((await audit(id))).toMatchObject({ first_number: 5000, ok: true });
+    await expect(db.query("update commerce.document_series set next_number = 4999 where store_id = $1 and series = 'order'", [id])).rejects.toThrow(/document_series\.sequence/);
+  });
+});
+
 describe("stores", () => {
   it("start with invoice series and test payments on (no setup needed)", async () => {
     const { rows: series } = await db.query<{ series: string }>(
@@ -2719,13 +2817,14 @@ describe("custom fields (D118)", () => {
     await expect(put("staff", customer)).rejects.toThrow(/field_values_entity/);
 
     await db.query("delete from commerce.customers where id = $1", [customer]);
-    await db.query("delete from commerce.orders where id = $1", [order]);
+    // An order is never deleted (its number would leave a gap), so its values stay with it.
+    await expect(db.query("delete from commerce.orders where id = $1", [order])).rejects.toThrow(/order_number\.deleted/);
     const { rows } = await db.query<{ entity: string }>(
-      "select entity from commerce.field_values where store_id = $1 and entity in ('store', 'customer', 'order')",
+      "select entity from commerce.field_values where store_id = $1 and entity in ('store', 'customer', 'order') order by entity",
       [store],
     );
     // The store's own stay: they belong to the store.
-    expect(rows.map((r) => r.entity)).toEqual(["store"]);
+    expect(rows.map((r) => r.entity)).toEqual(["order", "store"]);
   });
 
   it("copies the template's own store fields to a new store, never a customer's or an order's (D120)", async () => {
