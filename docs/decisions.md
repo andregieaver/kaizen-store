@@ -433,7 +433,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20261001150357_ai_unit_prices.sql` | `20261001150924` |
 | `20261001183142_ab_experiments.sql` | `20261001193047` |
 | `20261001193645_ab_part_tests.sql` | `20261001195855` |
-| `20261001200626_ab_site_tests.sql` | (pending) |
+| `20261001200626_ab_site_tests.sql` | `20261001203321` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.
