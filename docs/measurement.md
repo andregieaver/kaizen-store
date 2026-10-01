@@ -28,8 +28,8 @@ randomised holdouts").
 - The assignment key is the customer id when signed in, otherwise an id the
   store already needs, such as the cart id. The store sets no non-essential
   cookies (decision D14). Whether reusing the cart id for experiments still
-  counts as strictly necessary is a legal question to settle before the first
-  experiment; until then, experiments run only on signed-in customers.
+  counts as strictly necessary is a legal question; the answer for A/B tests (D148) is a
+  consent-gated `kaizen_ab` cookie, and signed-in customers, as in [`ab-testing.md`](ab-testing.md).
 - Assignment is a deterministic hash of experiment key and assignment key, so
   it needs no stored state and gives the same answer on every request.
 - Every exposure is logged as an `experiment_exposed` event the first time a
