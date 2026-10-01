@@ -118,6 +118,21 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "set-up-recommendations",
+    area: "store",
+    title: "Set up product recommendations",
+    when: "The owner wants shoppers to be shown upsells, cross-sells or related products, asks about recommendations or \"you may also like\", or wants to know whether they work or what the AI costs.",
+    steps: [
+      "Call get_recommendations to see whether they are on, how they are set, what the AI has used of its monthly cap and what shoppers did. It answers from the store's own data: never judge the comparison yourself, repeat its words.",
+      "Explain in two sentences: shoppers are shown products that suit what they look at, search for, save or have in the cart, never what they already bought; the store's AI may only reorder products the store itself picked, and a share of visitors always gets the plain ranking so the two can be compared.",
+      "Switch them on or change the ceiling for upsells, the plain-ranking share or the monthly AI cap with set_recommendations (kept for approval); say the resulting settings back in plain words. The AI's cap protects the store's spend, so ask before leaving it off.",
+      "Say which products go together or never should with add_recommendation_rule: goes_with (offered first), never_with, or hide (never recommended); remove_recommendation_rule undoes one (both kept for approval).",
+      "Recommendations show only where a content grid that recommends is placed: open the page builder (pages), a content grid of products, and tick Recommend products for each shopper, on a product layout, the All products page, an article, any page, or a category or tag page (choose a page for them under Page roles). The chat assistant uses them too.",
+      "To see if the engine finds what people really buy together, call check_recommendations (no AI, no cost). To see whether the AI's order beats the plain one, wait for visitors and call get_recommendations again: it says when there are too few.",
+      "Open the page (recommendations) for the settings, rules and figures.",
+    ],
+  },
+  {
     id: "refer-store-owners",
     area: "store",
     title: "Refer other store owners",

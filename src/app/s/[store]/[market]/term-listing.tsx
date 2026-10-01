@@ -5,14 +5,18 @@ import { Suspense } from "react";
 
 import { CustomFieldGroups } from "@/components/custom-fields-view";
 import { ProductGrid, ProductListingFor } from "@/components/product-listing";
+import { RolePage } from "@/components/role-page";
 import { groupsToShow } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
+import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
+import type { StoreQuery } from "@/lib/store-parts";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
 import { shownFieldsFor } from "@/server/custom-fields";
 import { resolveShop } from "@/server/shop";
+import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 
 /**
@@ -52,13 +56,29 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
 }
 
 /**
- * The term's products: prerendered as the page's own list, then sorted and
- * filtered as the address asks (D78), per request.
+ * The term's page: the store's page for its category pages or tag pages where one is chosen (D140: the Category products
+ * component draws the listing, so a content grid that recommends can sit around it), else the standard listing.
  */
 export async function TermProducts({ kind, params, searchParams }: { kind: TermKind; params: Params; searchParams: SearchParams }) {
   const loaded = await load(kind, params);
   if (!loaded) notFound();
-  const { store, market, terms, term } = loaded;
+  const { store, market, term } = loaded;
+  return (
+    <RolePage store={store} market={market} role={kind} route={{ part: kind, param: term.slug, query: searchParams }} place={{ term: { id: term.id, kind } }}>
+      <TermListing store={store} market={market} kind={kind} slug={term.slug} query={searchParams} />
+    </RolePage>
+  );
+}
+
+/**
+ * The term's products: prerendered as the page's own list, then sorted and
+ * filtered as the address asks (D78), per request. The standard category and
+ * tag page, and the component a page built for them draws.
+ */
+export async function TermListing({ store, market, kind, slug, query }: { store: Store; market: Market; kind: TermKind; slug: string; query: Promise<StoreQuery> }) {
+  const terms = await siteTerms(store.id, "product");
+  const term = terms.find((t) => t.kind === kind && t.slug === slug);
+  if (!term) return null;
   const m = t(market.lang);
   const scope = {
     categoryIds: kind === "category" ? withDescendants(terms, [term.id]) : [],
@@ -107,7 +127,7 @@ export async function TermProducts({ kind, params, searchParams }: { kind: TermK
           store={store}
           market={market}
           scope={scope}
-          searchParams={searchParams}
+          searchParams={query}
           base={base}
           path={`${base}/${kind}/${term.slug}`}
         />

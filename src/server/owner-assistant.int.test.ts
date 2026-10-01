@@ -156,6 +156,56 @@ describe("the owner assistant (D94)", () => {
     await expect(ownerTools.runOwnerTool(ctx, "set_campaign_active", { campaign: "Finnes ikke", active: true })).rejects.toThrow("No campaign");
   });
 
+  it("manages the store's recommendations by chat: kept for approval, checked before they are kept, and read back worked out by the store (D140)", async () => {
+    const tags: string[] = [];
+    const ctx = { account: member.account, store: member.store, invalidate: (tag: string) => void tags.push(tag) };
+    for (const name of ["set_recommendations", "add_recommendation_rule", "remove_recommendation_rule"]) expect(OWNER_TOOLS.find((t) => t.name === name)).toMatchObject({ gate: "public" });
+    for (const name of ["get_recommendations", "check_recommendations"]) expect(OWNER_TOOLS.find((t) => t.name === name)?.gate).toBeUndefined();
+    expect(approvalSummary("set_recommendations", { enabled: true, ai: false, upsell_ceiling_percent: 30, holdout_percent: 20, monthly_token_cap_thousands: null })).toBe(
+      "Change the recommendations: switch the recommendations on; keep the AI out of them; an upsell costs at most 30 % more than its product; 20 % of visitors get the plain ranking; no monthly cap on the AI.",
+    );
+    expect(approvalSummary("add_recommendation_rule", { kind: "goes_with", product: "Lampe", other_product: "Pære", both: true })).toBe('Offer "Pære" with "Lampe" and the other way round.');
+    expect(approvalSummary("add_recommendation_rule", { kind: "hide", product: "Lampe" })).toBe('Never recommend "Lampe".');
+    expect(approvalSummary("remove_recommendation_rule", { kind: "never_with", product: "A", other_product: "B" })).toBe('Take away the rule that "A" is never shown with "B".');
+
+    // Off until switched on; read back as the store sets it.
+    const first = (await ownerTools.runOwnerTool(ctx, "get_recommendations", {})) as Record<string, unknown>;
+    expect(first).toMatchObject({ on: false, ai_reranking: true, plain_ranking_share_percent: 10, upsell_ceiling_percent: 50, rules: [], period_days: 30 });
+    expect(String(first.comparison)).toContain("Too few visitors");
+
+    expect(await ownerTools.runOwnerTool(ctx, "set_recommendations", { enabled: true, upsell_ceiling_percent: 35, monthly_token_cap_thousands: 250 })).toMatchObject({
+      done: "Recommendations are on with these settings.",
+      upsell_ceiling_percent: 35,
+      monthly_ai_cap: "250 thousand tokens",
+    });
+    expect(tags).toContain(`recommend:${member.store.id}`);
+    const now = (await ownerTools.runOwnerTool(ctx, "get_recommendations", { days: "7" })) as Record<string, unknown>;
+    expect(now).toMatchObject({ on: true, ai_reranking: true, upsell_ceiling_percent: 35, plain_ranking_share_percent: 10, period_days: 7 });
+    // A change that cannot be made is refused before it is kept for a yes.
+    await expect(ownerTools.preflightOwnerTool(ctx, "set_recommendations", { holdout_percent: 80 })).rejects.toThrow("The arguments could not be read");
+    expect(await ownerTools.runOwnerTool(ctx, "set_recommendations", { monthly_token_cap_thousands: null })).toMatchObject({ monthly_ai_cap: "none" });
+
+    // Rules by product names.
+    const [other] = await db().execute<Row>(sql`select handle from commerce.products where store_id = ${member.store.id}::uuid and handle <> ${productHandle} order by handle limit 1`);
+    const otherHandle = String(other.handle);
+    expect(await ownerTools.runOwnerTool(ctx, "add_recommendation_rule", { kind: "goes_with", product: productHandle, other_product: otherHandle, both: true })).toMatchObject({ done: "The rule is added." });
+    await ownerTools.runOwnerTool(ctx, "add_recommendation_rule", { kind: "hide", product: otherHandle });
+    await expect(ownerTools.runOwnerTool(ctx, "add_recommendation_rule", { kind: "goes_with", product: productHandle })).rejects.toThrow("Name the other product");
+    await expect(ownerTools.runOwnerTool(ctx, "add_recommendation_rule", { kind: "hide", product: "no-such-product" })).rejects.toThrow("No product");
+    const listed = (await ownerTools.runOwnerTool(ctx, "get_recommendations", {})) as { rules: string[] };
+    expect(listed.rules).toHaveLength(3);
+    expect(listed.rules.some((r) => r.includes("goes with"))).toBe(true);
+    expect(listed.rules.some((r) => r.includes("is never recommended"))).toBe(true);
+    // Both ways go together; a rule that is not there is said so.
+    expect(await ownerTools.runOwnerTool(ctx, "remove_recommendation_rule", { kind: "goes_with", product: productHandle, other_product: otherHandle })).toMatchObject({ done: "The rule is removed." });
+    await ownerTools.runOwnerTool(ctx, "remove_recommendation_rule", { kind: "hide", product: otherHandle });
+    expect(((await ownerTools.runOwnerTool(ctx, "get_recommendations", {})) as { rules: string[] }).rules).toEqual([]);
+    await expect(ownerTools.runOwnerTool(ctx, "remove_recommendation_rule", { kind: "hide", product: otherHandle })).rejects.toThrow("There is no such rule");
+
+    // The check against past orders is read-only and never asks a model; with no orders it says so.
+    expect(await ownerTools.runOwnerTool(ctx, "check_recommendations", {})).toMatchObject({ checked: 0, note: expect.stringContaining("No order to check yet") });
+  });
+
   let conversationId: string;
 
   it("answers from the store's own data, streaming, and keeps the conversation", async () => {

@@ -11,7 +11,7 @@ const home = "/s/demo/no";
 
 describe("a store's special pages", () => {
   it("are the blog, search and 404 places, and the working pages", () => {
-    expect(PAGE_ROLES).toEqual(["blog", "search", "not_found", "cart", "checkout", "order", "account", "sign_in", "wishlist", "subscription", "deliveries", "cookies"]);
+    expect(PAGE_ROLES).toEqual(["blog", "search", "not_found", "cart", "checkout", "order", "account", "sign_in", "wishlist", "subscription", "deliveries", "cookies", "category", "tag"]);
     expect(isPageRole("blog")).toBe(true);
     expect(isPageRole("cart")).toBe(true);
     expect(isPageRole("basket")).toBe(false);

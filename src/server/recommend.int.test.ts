@@ -38,6 +38,7 @@ vi.mock("./ai", async (original) => ({
 const recommend = await import("./recommend");
 const settings = await import("./recommend-settings");
 const events = await import("./recommend-events");
+const replay = await import("./recommend-eval");
 const stores = await import("./stores");
 const shop = await import("./shop");
 
@@ -288,8 +289,22 @@ describe("what is recommended", () => {
       market,
       request({ place: { kind: "listing", query: "category=hjem" }, block: { ...request().block, limit: 12 } }),
     );
-    expect(handles(archive.items)).toEqual(["demo-keramikkopp"]);
+    // A category includes the categories below it (belysning is under hjem).
+    expect(handles(archive.items).sort()).toEqual(["demo-bordlampe", "demo-keramikkopp"]);
     expect(archive.placement).toBe("listing");
+    // A category's own page (D140) recommends around that category, with the ones below it.
+    const categoryPage = await recommend.recommendFor(
+      store,
+      market,
+      request({ place: { kind: "listing", query: "", termId: term.hjem }, block: { ...request().block, limit: 12 } }),
+    );
+    expect(handles(categoryPage.items).sort()).toEqual(["demo-bordlampe", "demo-keramikkopp"]);
+    const tagPage = await recommend.recommendFor(
+      store,
+      market,
+      request({ place: { kind: "listing", query: "", termId: term.nyhet }, block: { ...request().block, limit: 12 } }),
+    );
+    expect(handles(tagPage.items).sort()).toEqual(["demo-handlenett", "demo-notatbok"]);
     const unknown = await recommend.recommendFor(store, market, request({ place: { kind: "article", pageId: randomUUID() }, block: { ...request().block, limit: 12 } }));
     expect(unknown.items.length).toBeGreaterThan(0);
     expect(unknown.items.every((item) => item.note === t("nb").recommend.popular)).toBe(true);
@@ -395,6 +410,40 @@ describe("the chat agent's recommendations", () => {
     expect(model.asked).toBe(0);
     await save({ enabled: false, ai: true, holdout: 0, ceiling: 50, cap: "" });
     expect(await recommend.recommendForChat(store, market, { productId: null, signals: { views: [], searches: [] } })).toEqual({ on: false, picked: [] });
+  });
+});
+
+describe("the check against past orders (D140)", () => {
+  it("holds a product of each order back and sees whether the engine finds it, against the best sellers", async () => {
+    // People buy the lamp with the mug, and the bag with the notebook.
+    for (let i = 0; i < 6; i++) await order(["demo-bordlampe", "demo-keramikkopp"]);
+    for (let i = 0; i < 6; i++) await order(["demo-handlenett", "demo-notatbok"]);
+    // Not counted: one product only, unpaid, and copied history.
+    await order(["demo-keramikkopp"]);
+    await order(["demo-handlenett", "demo-notatbok"], { status: "pending_payment" });
+    await order(["demo-handlenett", "demo-notatbok"], { copied: true });
+    const result = await replay.replayOnOrders(store, market, 200);
+    expect(result.evaluated).toBeGreaterThanOrEqual(12);
+    expect(result.considered).toBeGreaterThanOrEqual(result.evaluated);
+    // What was bought together comes first far more often than best sellers alone would put it (a small shop's best
+    // sellers are all its products, so only the first places tell them apart).
+    expect(result.engine.hit[1]!).toBeGreaterThan(result.bestSellers.hit[1]!);
+    expect(result.engine.hit[12]!).toBeGreaterThanOrEqual(80);
+    expect(result.engine.mrr!).toBeGreaterThan(result.bestSellers.mrr!);
+    expect(result.liftAt4 === null || result.liftAt4 >= 1).toBe(true);
+    // Never asks a model.
+    expect(model.asked).toBe(0);
+  });
+
+  it("leaves the order it replays out of what it learns from, so one order cannot vouch for itself", async () => {
+    const mine = sql`select id from commerce.orders where store_id = ${storeId}::uuid and number like ${`${run}-%`} and copied_from is null`;
+    await db().execute(sql`delete from commerce.order_lines where order_id in (${mine})`);
+    await db().execute(sql`delete from commerce.orders where id in (${mine})`);
+    // One pair, bought once: replayed with itself left out, nothing is known of it.
+    await order(["demo-notatbok", "demo-keramikkopp"]);
+    const result = await replay.replayOnOrders(store, market, 10);
+    expect(result.evaluated).toBe(1);
+    expect(result.engine.hit[1]).toBe(0);
   });
 });
 

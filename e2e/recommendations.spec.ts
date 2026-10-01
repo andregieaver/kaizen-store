@@ -91,3 +91,55 @@ test("a store that has not switched recommendations on shows the grid as built, 
   // Nothing is asked for or reported.
   expect(requests.some((url) => url.includes("/api/recommendations"))).toBe(false);
 });
+
+test("a category's own page built in the page builder draws its listing and recommends around the category", async ({ page }) => {
+  const slug = `cat-${Date.now().toString(36)}`;
+  const sql = testDb();
+  try {
+    const [request] = await sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Ola', 'Kategoributikk') returning id`;
+    const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Kategoributikk', null) as id`;
+    const content = {
+      title: "Kategori",
+      slug: "category-page",
+      thumbnail: null,
+      seo: { title: "", description: "" },
+      searchEngines: true,
+      aiAssistants: true,
+      categories: [],
+      tags: [],
+      rows: [
+        { id: "row-0", type: "row", layout: "1", columns: [{ id: "col-0", blocks: [{ id: "p", type: "storePart", part: "category" }] }] },
+        { id: "row-1", type: "row", layout: "1", columns: [{ id: "col-1", blocks: [{ id: "h", type: "heading", text: "Du kan like", level: 2 }, grid] }] },
+      ],
+    };
+    const [row] = await sql`insert into commerce.pages (store_id, slug, draft, published, published_at) values (${id}, 'category-page', ${sql.json(content as never)}, ${sql.json(content as never)}, now()) returning id`;
+    await sql`insert into commerce.page_roles (store_id, role, page_id) values (${id}, 'category', ${row.id})`;
+    await sql`insert into commerce.recommendation_settings (store_id, enabled, ai, holdout_percent) values (${id}, true, false, 0)`;
+    const products = await sql`select p.id, p.handle from commerce.products p where p.store_id = ${id}`;
+    const inHome = new Set(
+      (
+        await sql`
+          select pt.product_id from commerce.product_terms pt join commerce.terms t on t.id = pt.term_id
+          where pt.store_id = ${id} and t.slug in ('hjem', 'belysning')`
+      ).map((r) => String(r.product_id)),
+    );
+
+    await page.goto(`/s/${slug}/no/category/hjem`);
+    // The part draws the category as the standard page does, and the grid recommends around it.
+    await expect(page.getByRole("heading", { level: 1, name: "Hjem" })).toBeVisible();
+    const tiles = page.locator("li[data-item-id]");
+    await expect(tiles.first()).toBeVisible();
+    const shown = await tiles.evaluateAll((items) => items.map((item) => item.getAttribute("data-item-id")));
+    expect(shown.length).toBeGreaterThan(0);
+    // Everything recommended is in the category or below it.
+    for (const shownId of shown) expect(inHome.has(String(shownId))).toBe(true);
+    expect(products.length).toBeGreaterThan(shown.length);
+
+    // Without a chosen page the standard category page is shown as before.
+    await sql`delete from commerce.page_roles where store_id = ${id} and role = 'category'`;
+    await page.goto(`/s/${slug}/no/category/hjem?x=1`);
+    await expect(page.getByRole("heading", { level: 1, name: "Hjem" })).toBeVisible();
+  } finally {
+    await sql.end();
+  }
+});

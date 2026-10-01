@@ -173,6 +173,8 @@ const messages = {
       windowLine: (when: string) => `Leveres ${when}`,
     },
     /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    /** Pages for categories and tags (D140), as titles of the pages an owner builds for them. */
+    catalogue: { category: "Kategori", tag: "Merke" },
     recommend: {
       heading: "Anbefalt for deg",
       viewed: (title: string) => `Fordi du så på ${title}`,
@@ -1070,6 +1072,8 @@ const messages = {
       windowLine: (when: string) => `Levereras ${when}`,
     },
     /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    /** Pages for categories and tags (D140), as titles of the pages an owner builds for them. */
+    catalogue: { category: "Kategori", tag: "Etikett" },
     recommend: {
       heading: "Rekommenderas för dig",
       viewed: (title: string) => `Eftersom du tittade på ${title}`,
@@ -1966,6 +1970,8 @@ const messages = {
       windowLine: (when: string) => `Leveres ${when}`,
     },
     /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    /** Pages for categories and tags (D140), as titles of the pages an owner builds for them. */
+    catalogue: { category: "Kategori", tag: "Mærke" },
     recommend: {
       heading: "Anbefalet til dig",
       viewed: (title: string) => `Fordi du så på ${title}`,
@@ -2860,6 +2866,8 @@ const messages = {
       windowLine: (when: string) => `Delivered ${when}`,
     },
     /** Product recommendations (D139): the line under a recommended product says why it is shown. */
+    /** Pages for categories and tags (D140), as titles of the pages an owner builds for them. */
+    catalogue: { category: "Category", tag: "Tag" },
     recommend: {
       heading: "Recommended for you",
       viewed: (title: string) => `Because you viewed ${title}`,

@@ -26,6 +26,7 @@ export const ROLE_GROUPS: readonly { name: string; roles: readonly PageRole[] }[
   { name: "Content pages", roles: ["blog", "search", "not_found"] },
   { name: "Shopping", roles: ["cart", "checkout", "order"] },
   { name: "Customer account", roles: ["account", "sign_in", "wishlist", "subscription", "deliveries"] },
+  { name: "Catalogue", roles: ["category", "tag"] },
   { name: "Information", roles: ["cookies"] },
 ];
 
@@ -120,6 +121,20 @@ export const ROLE_COPY: Record<
     hint: "What shoppers see at their weekly deliveries (/deliveries), when you offer them: the standard page, or one of your published pages with the Weekly deliveries component.",
     slug: "deliveries-page",
   },
+  category: {
+    name: "Category pages",
+    address: "/category/…",
+    standard: "The standard category page",
+    hint: "What shoppers see on every category page (/category/…): the standard page, or one of your published pages with the Category products component, which draws the category the shopper is in. Put a content grid that recommends products (or anything else) around it; a grid on this page recommends around the category.",
+    slug: "category-page",
+  },
+  tag: {
+    name: "Tag pages",
+    address: "/tag/…",
+    standard: "The standard tag page",
+    hint: "What shoppers see on every tag page (/tag/…): the standard page, or one of your published pages with the Tag products component, which draws the tag the shopper is in. A content grid that recommends products on this page recommends around the tag.",
+    slug: "tag-page",
+  },
   cookies: {
     name: "Cookies page",
     address: "/cookies",
@@ -210,6 +225,11 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
       return page(m.deliveries.title, [row(part("deliveries"))]);
     case "cookies":
       return page(m.cookies, [row(part("cookies"))]);
+    // The part draws the category's or tag's own name as the page's heading, as the standard page does.
+    case "category":
+      return page(m.catalogue.category, [row(part("category"))]);
+    case "tag":
+      return page(m.catalogue.tag, [row(part("tag"))]);
   }
 }
 

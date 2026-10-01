@@ -43,6 +43,14 @@ export const STORE_PARTS = {
     name: "Cookies",
     hint: "What the site sets in the browser, and the shopper's choices.",
   },
+  category: {
+    name: "Category products",
+    hint: "A category's name, its own custom fields, its subcategories and its products with Filter and sort. It draws on category pages (/category/…), whichever category the shopper is in.",
+  },
+  tag: {
+    name: "Tag products",
+    hint: "A tag's name, its own custom fields and its products with Filter and sort. It draws on tag pages (/tag/…), whichever tag the shopper is in.",
+  },
 } as const;
 
 export type StorePart = keyof typeof STORE_PARTS;

@@ -7,6 +7,7 @@ import { ENOUGH_VISITORS, percentOf, perVisitor, REPORT_PERIODS, reportDays } fr
 import { requireMember } from "@/server/auth";
 import { aiFor } from "@/server/ai";
 import { recommendationReport } from "@/server/recommend-events";
+import { REPLAY_ORDERS, replayOnOrders } from "@/server/recommend-eval";
 import { getRecommendSettingsFresh, listRules, ruleProducts, tokensUsedThisMonth, type RuleKind } from "@/server/recommend-settings";
 
 import { addRuleAction, removeRuleAction, saveRecommendSettingsAction } from "./actions";
@@ -24,7 +25,11 @@ const KIND_WORDS: Record<RuleKind, string> = { goes_with: "goes with", never_wit
  */
 export default async function RecommendationsPage({ params, searchParams }: PageProps<"/admin/[store]/recommendations">) {
   const { store, role } = await requireMember((await params).store);
-  const days = reportDays(((await searchParams).days as string | undefined) ?? undefined);
+  const query = await searchParams;
+  const days = reportDays((query.days as string | undefined) ?? undefined);
+  const replayMarket = store.markets[0];
+  // The check against past orders is run when asked for: it replays recent orders against the engine.
+  const replay = query.replay === "1" && replayMarket ? await replayOnOrders(store, replayMarket, REPLAY_ORDERS) : null;
   const [settings, used, report, rules, products, ai] = await Promise.all([
     getRecommendSettingsFresh(store.id),
     tokensUsedThisMonth(store.id),
@@ -146,6 +151,56 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </ActionForm>
       </section>
 
+      <section aria-labelledby="replay" className="flex flex-col gap-3">
+        <h2 id="replay" className="font-medium">Check against past orders</h2>
+        <p className="text-sm text-muted">
+          Takes the last {REPLAY_ORDERS} paid orders of two goods or more, holds one product of each back, and asks the engine (the plain ranking, with that order left out of what it
+          learns from) what it would show a shopper who had looked at the others. It shows whether the engine finds what people really bought together, and how that compares with showing
+          the best sellers to everyone. It does not use the AI and says nothing about what shoppers would click: that is what the comparison below is for.
+        </p>
+        {replay ? (
+          replay.evaluated === 0 ? (
+            <p className="rounded-lg border border-dashed border-border bg-background p-6 text-center text-sm text-muted">
+              No order to check yet: the store needs paid orders of two goods or more that are still on sale ({replay.considered} found, {replay.skipped.notOnSaleNow} of them for products not on sale now).
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-border bg-background">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th scope="col" className="px-4 py-2 font-medium">Shown to everyone</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Product first</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Within the first 4</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Within the first 12</th>
+                    <th scope="col" className="px-4 py-2 font-medium">Mean reciprocal rank</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {([["The engine", replay.engine], ["Best sellers alone", replay.bestSellers]] as const).map(([name, r]) => (
+                    <tr key={name} className="border-b border-border last:border-0">
+                      <td className="px-4 py-2 font-medium">{name}</td>
+                      <td className="px-4 py-2 tabular-nums">{r.hit[1]} %</td>
+                      <td className="px-4 py-2 tabular-nums">{r.hit[4]} %</td>
+                      <td className="px-4 py-2 tabular-nums">{r.hit[12]} %</td>
+                      <td className="px-4 py-2 tabular-nums">{r.mrr} %</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="border-t border-border px-4 py-2 text-xs text-muted">
+                {replay.evaluated} orders checked ({replay.skipped.notOnSaleNow} left out because the product held back is not on sale now).
+                {replay.liftAt4 !== null && <> The engine finds it among the first 4 {replay.liftAt4} times as often as best sellers.</>}
+                {replay.evaluated < 30 && " Few orders: take it as a hint."}
+              </p>
+            </div>
+          )
+        ) : (
+          <p>
+            <Link href={`${base}/recommendations?replay=1&days=${days}`} className="underline">Run the check</Link>
+          </p>
+        )}
+      </section>
+
       <section aria-labelledby="results" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="results" className="font-medium">What shoppers did</h2>
@@ -201,9 +256,17 @@ export default async function RecommendationsPage({ params, searchParams }: Page
             </tbody>
           </table>
         </div>
-        {report.arms.some((a) => a.visitors < ENOUGH_VISITORS) && (
-          <p className="text-sm text-muted">With fewer than {ENOUGH_VISITORS} visitors in a ranking the two say little about each other yet; keep a share of visitors on the plain ranking and let it run.</p>
-        )}
+        <p className="rounded-lg border border-border bg-background p-4 text-sm" role="status">
+          <strong className="font-medium">The AI&apos;s order against the plain one: </strong>
+          {report.comparison.words}
+          {report.comparison.clicked.p !== null && (
+            <span className="block text-xs text-muted">
+              Tabs that clicked a recommendation: {report.comparison.clicked.a} % with the AI against {report.comparison.clicked.b} % plain (p = {report.comparison.clicked.p}).
+              {report.comparison.added.p !== null && <> Tabs that put one in the cart: {report.comparison.added.a} % against {report.comparison.added.b} % (p = {report.comparison.added.p}).</>}
+              {" "}A difference counts as clear under p = 0.05, with at least {ENOUGH_VISITORS} tabs in each ranking.
+            </span>
+          )}
+        </p>
         {report.placements.length > 0 && (
           <div className="overflow-x-auto rounded-lg border border-border bg-background">
             <table className="w-full text-left text-sm">

@@ -44,6 +44,7 @@ import {
   type Source,
 } from "@/lib/recommendations";
 import { parseListingParams } from "@/lib/listing-filters";
+import { withDescendants } from "@/lib/taxonomy";
 
 import { AiError, aiFor, completeText } from "./ai";
 import { getBuyer } from "./b2b";
@@ -218,7 +219,7 @@ async function similarLists(storeId: string, locale: string, anchors: string[]):
 }
 
 /** What was bought in the same paid orders as each anchor, most often first (the last year, not copied history). */
-async function boughtTogetherLists(storeId: string, anchors: string[]): Promise<AnchorList[]> {
+async function boughtTogetherLists(storeId: string, anchors: string[], exceptOrder: string | null): Promise<AnchorList[]> {
   if (anchors.length === 0) return [];
   const rows = await readDb().execute<Row>(sql`
     select a.anchor_id, v2.product_id, count(distinct o.id) as together
@@ -227,6 +228,7 @@ async function boughtTogetherLists(storeId: string, anchors: string[]): Promise<
     join commerce.order_lines l1 on l1.store_id = ${storeId}::uuid and l1.variant_id = v1.id
     join commerce.orders o on o.store_id = l1.store_id and o.id = l1.order_id
       and o.status in ${PAID} and o.copied_from is null and o.placed_at > now() - make_interval(days => ${TOGETHER_DAYS})
+      and (${exceptOrder}::uuid is null or o.id <> ${exceptOrder}::uuid)
     join commerce.order_lines l2 on l2.store_id = o.store_id and l2.order_id = o.id and l2.id <> l1.id and not l2.gift
     join commerce.product_variants v2 on v2.id = l2.variant_id and v2.product_id <> a.anchor_id
     group by a.anchor_id, v2.product_id
@@ -268,7 +270,7 @@ async function termLists(storeId: string, anchors: string[]): Promise<AnchorList
 }
 
 /** What sold most in the last three months, then the newest: the store's answer when nothing else is known. */
-async function popularIds(storeId: string, scope: { categoryIds: string[]; tagIds: string[] }, limit: number): Promise<string[]> {
+async function popularIds(storeId: string, scope: { categoryIds: string[]; tagIds: string[] }, limit: number, exceptOrder: string | null = null): Promise<string[]> {
   const inTerms = (termIds: string[]) =>
     termIds.length === 0
       ? sql`true`
@@ -280,7 +282,7 @@ async function popularIds(storeId: string, scope: { categoryIds: string[]; tagId
       from commerce.order_lines l
       join commerce.product_variants v on v.id = l.variant_id
       join commerce.orders o on o.store_id = l.store_id and o.id = l.order_id and o.status in ${PAID} and o.copied_from is null
-        and o.placed_at > now() - make_interval(days => ${SOLD_DAYS})
+        and o.placed_at > now() - make_interval(days => ${SOLD_DAYS}) and (${exceptOrder}::uuid is null or o.id <> ${exceptOrder}::uuid)
       where l.store_id = ${storeId}::uuid and not l.gift
       group by v.product_id
     ) s on s.product_id = p.id
@@ -392,14 +394,18 @@ async function pageWords(store: Store, market: Market, place: RecommendPlace, fa
   return null;
 }
 
-/** The product categories and tags a listing's address chose, as term ids, with their names. */
-async function listingScope(store: Store, query: string): Promise<{ categoryIds: string[]; tagIds: string[]; names: string[] }> {
+/**
+ * The product categories and tags a listing is about, as term ids with their names: the ones its address chose, and on a
+ * category's or tag's own page (D140) that term (a category with the categories below it).
+ */
+async function listingScope(store: Store, query: string, termId?: string): Promise<{ categoryIds: string[]; tagIds: string[]; names: string[] }> {
   const filters = parseListingParams(new URLSearchParams(query));
-  if (filters.categories.length === 0 && filters.tags.length === 0) return { categoryIds: [], tagIds: [], names: [] };
+  if (filters.categories.length === 0 && filters.tags.length === 0 && !termId) return { categoryIds: [], tagIds: [], names: [] };
   const terms = await currentTerms(store.id, "product");
-  const chosen = terms.filter((term) => (term.kind === "category" ? filters.categories : filters.tags).includes(term.slug));
+  const chosen = terms.filter((term) => term.id === termId || (term.kind === "category" ? filters.categories : filters.tags).includes(term.slug));
+  const categories = withDescendants(terms, chosen.filter((term) => term.kind === "category").map((term) => term.id));
   return {
-    categoryIds: chosen.filter((term) => term.kind === "category").map((term) => term.id),
+    categoryIds: categories,
     tagIds: chosen.filter((term) => term.kind === "tag").map((term) => term.id),
     names: chosen.map((term) => term.name),
   };
@@ -432,6 +438,8 @@ type Pipeline = {
   /** Whether the store's model may re-rank (settings, arm and cap are decided by the caller). */
   ai: boolean;
   ceilingPercent: number;
+  /** Replaying a past order (the check against past orders): that order is left out of what was bought together and what sold. */
+  exceptOrder?: string;
 };
 
 async function pipeline(p: Pipeline): Promise<{ items: GridItem[]; picked: Picked[]; ai: RecommendOutcome["ai"] }> {
@@ -442,7 +450,7 @@ async function pipeline(p: Pipeline): Promise<{ items: GridItem[]; picked: Picke
   // What the grid keeps to: its own categories and tags, and a listing's chosen ones.
   const scope = await gridScope(storeId, block);
   if (!scope) return { items: [], picked: [], ai: "none" };
-  const listing = place.kind === "listing" ? await listingScope(store, place.query) : null;
+  const listing = place.kind === "listing" ? await listingScope(store, place.query, place.termId) : null;
   const popularScope = listing && (listing.categoryIds.length > 0 || listing.tagIds.length > 0) ? listing : scope;
 
   // The products the recommendations are about.
@@ -459,12 +467,12 @@ async function pipeline(p: Pipeline): Promise<{ items: GridItem[]; picked: Picke
 
   // Candidate lists, each ranked.
   const [together, similar, terms, rules, never, popular, searched] = await Promise.all([
-    boughtTogetherLists(storeId, anchorIds),
+    boughtTogetherLists(storeId, anchorIds, p.exceptOrder ?? null),
     similarLists(storeId, market.locale, anchorIds),
     termLists(storeId, anchorIds),
     goesWithLists(storeId, anchorIds),
     neverWith(storeId, anchorIds),
-    popularIds(storeId, popularScope, 30),
+    popularIds(storeId, popularScope, 30, p.exceptOrder ?? null),
     Promise.all(searches.slice(0, 3).map((query) => rankedSearch({ storeId, market }, query, 30, null).then((r) => r.ids))),
   ]);
   const lists: Parameters<typeof fuse>[0] = [
@@ -693,4 +701,39 @@ export async function recommendForChat(
     ceilingPercent: settings.upsellCeilingPercent,
   });
   return { on: true, picked: result.picked };
+}
+
+/**
+ * One replay for the check against past orders: what the engine (plain ranking, no AI) would put first for a shopper who looked
+ * at `viewed`, with the order being replayed left out of what it learns from, and what the best sellers alone would; each
+ * as the ids of products that are on sale now, best first.
+ */
+export async function replayFor(
+  store: Store,
+  market: Market,
+  input: { viewed: string[]; exceptOrder: string; ceilingPercent: number; limit: number },
+): Promise<{ engine: string[]; popular: string[] }> {
+  const block = { limit: input.limit, mix: DEFAULT_MIX, explain: false, categories: [], tags: [], tileFields: [] };
+  const result = await pipeline({
+    store,
+    market,
+    place: { kind: "other" },
+    block,
+    signals: { views: input.viewed, searches: [] },
+    viewer: NO_VIEWER,
+    ai: false,
+    ceilingPercent: input.ceilingPercent,
+    exceptOrder: input.exceptOrder,
+  });
+  const scope = { categoryIds: [], tagIds: [] };
+  const sold = await popularIds(store.id, scope, 60, input.exceptOrder);
+  const facts = await loadFacts(store.id, market, sold, recommendable(store.id, market, NO_VIEWER, scope));
+  const popular = sold.filter((id) => facts.has(id) && !input.viewed.includes(id)).slice(0, input.limit);
+  return { engine: result.picked.map((p) => p.product.id), popular };
+}
+
+/** The products of the store that can be recommended now (on sale, in stock): which of a set of products still can be. */
+export async function recommendableNow(store: Store, market: Market, ids: string[]): Promise<Set<string>> {
+  const facts = await loadFacts(store.id, market, ids, recommendable(store.id, market, NO_VIEWER, { categoryIds: [], tagIds: [] }));
+  return new Set(facts.keys());
 }

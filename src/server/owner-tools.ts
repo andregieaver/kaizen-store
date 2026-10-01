@@ -62,6 +62,18 @@ import {
 import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
 import { cookiesTag } from "./site-cookies";
 import { catalogTag } from "./catalog";
+import { recommendationReport } from "./recommend-events";
+import { REPLAY_ORDERS, replayOnOrders } from "./recommend-eval";
+import {
+  addRule,
+  getRecommendSettingsFresh,
+  listRules,
+  recommendTag,
+  removeRuleBetween,
+  saveRecommendSettingsValues,
+  tokensUsedThisMonth,
+} from "./recommend-settings";
+import { settingsProblems, type RecommendSettings } from "@/lib/recommendations";
 import { campaignsTag } from "./campaign-notices";
 import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
@@ -872,6 +884,121 @@ async function setBonusProgramTool(ctx: OwnerToolContext, input: OwnerToolInput<
   };
 }
 
+// Recommendations (D139, D140) -------------------------------------------------------------------------------------
+
+const RULE_WORDS = { goes_with: "goes with", never_with: "is never shown with", hide: "is never recommended" } as const;
+
+async function getRecommendationsTool({ store }: OwnerToolContext, { days }: OwnerToolInput<"get_recommendations">) {
+  const [settings, used, rules, report] = await Promise.all([
+    getRecommendSettingsFresh(store.id),
+    tokensUsedThisMonth(store.id),
+    listRules(store.id),
+    recommendationReport(store.id, Number(days)),
+  ]);
+  const locale = mainLocale(store);
+  const arm = (a: (typeof report.arms)[number]) => ({
+    visitors: a.visitors,
+    shown: a.impressions,
+    clicked: a.clicks,
+    tabs_that_clicked: a.clickers,
+    added_to_cart: a.adds,
+    tabs_that_added: a.adders,
+    orders: a.orders,
+    revenue: a.revenue.map((r) => ({
+      currency: r.currency,
+      total: money(store, r.minor, r.currency),
+      orders: r.orders,
+      per_visitor: a.visitors > 0 ? money(store, Math.round(r.minor / a.visitors), r.currency) : null,
+    })),
+  });
+  return {
+    on: settings.enabled,
+    ai_reranking: settings.ai,
+    upsell_ceiling_percent: settings.upsellCeilingPercent,
+    plain_ranking_share_percent: settings.holdoutPercent,
+    monthly_ai_cap: settings.monthlyTokenCap === null ? "none" : `${(settings.monthlyTokenCap / 1000).toLocaleString(locale)} thousand tokens`,
+    ai_used_this_month: `${Math.round(used / 1000).toLocaleString(locale)} thousand tokens`,
+    rules: rules.map((r) => `${r.product.title} ${RULE_WORDS[r.kind]}${r.other ? ` ${r.other.title}` : ""}`),
+    period_days: report.days,
+    with_ai: arm(report.arms[0]),
+    plain_ranking: arm(report.arms[1]),
+    comparison: report.comparison.words,
+    how_it_is_compared: "On the share of tabs that clicked a recommendation and that put one in the cart, with a two-proportion test (clear under p = 0.05), only with at least 100 tabs in each ranking. Revenue is per currency, never added across.",
+    placements: report.placements,
+    most_clicked: report.topProducts.slice(0, 5).map((p) => ({ title: p.title, shown: p.impressions, clicked: p.clicks, added: p.adds })),
+    where_they_show: "Only in content grids that recommend (page builder: content grid, Recommend products for each shopper), on a product layout, the All products page, articles, other pages, and category and tag pages built in the page builder, and in the chat assistant's suggestions.",
+    admin: adminLink(store, "/recommendations"),
+  };
+}
+
+/** What the settings become when a tool call changes some of them. */
+async function recommendSettingsFor(store: Store, input: OwnerToolInput<"set_recommendations">): Promise<RecommendSettings> {
+  const now = await getRecommendSettingsFresh(store.id);
+  return {
+    enabled: input.enabled ?? now.enabled,
+    ai: input.ai ?? now.ai,
+    holdoutPercent: input.holdout_percent ?? now.holdoutPercent,
+    upsellCeilingPercent: input.upsell_ceiling_percent ?? now.upsellCeilingPercent,
+    monthlyTokenCap: input.monthly_token_cap_thousands === undefined ? now.monthlyTokenCap : input.monthly_token_cap_thousands === null ? null : input.monthly_token_cap_thousands * 1000,
+  };
+}
+
+async function setRecommendationsTool(ctx: OwnerToolContext, input: OwnerToolInput<"set_recommendations">) {
+  const settings = await recommendSettingsFor(ctx.store, input);
+  const result = await saveRecommendSettingsValues(ctx.account, ctx.store.id, settings);
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(recommendTag(ctx.store.id));
+  return {
+    done: settings.enabled ? "Recommendations are on with these settings." : "Recommendations are off.",
+    ai_reranking: settings.ai,
+    upsell_ceiling_percent: settings.upsellCeilingPercent,
+    plain_ranking_share_percent: settings.holdoutPercent,
+    monthly_ai_cap: settings.monthlyTokenCap === null ? "none" : `${settings.monthlyTokenCap / 1000} thousand tokens`,
+    note: settings.enabled ? "They show only in content grids that recommend, and in the chat assistant." : undefined,
+    admin: adminLink(ctx.store, "/recommendations"),
+  };
+}
+
+async function ruleProductIds(store: Store, input: { kind: string; product: string; other_product?: string }) {
+  const productId = await findProductId(store, input.product);
+  const otherProductId = input.kind === "hide" ? null : input.other_product ? await findProductId(store, input.other_product) : fail(`Name the other product for a ${input.kind} rule.`);
+  return { productId, otherProductId };
+}
+
+async function addRecommendationRuleTool(ctx: OwnerToolContext, input: OwnerToolInput<"add_recommendation_rule">) {
+  const { productId, otherProductId } = await ruleProductIds(ctx.store, input);
+  const result = await addRule(ctx.account, ctx.store.id, { kind: input.kind, productId, otherProductId, both: input.both });
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(recommendTag(ctx.store.id));
+  return { done: "The rule is added.", admin: adminLink(ctx.store, "/recommendations") };
+}
+
+async function removeRecommendationRuleTool(ctx: OwnerToolContext, input: OwnerToolInput<"remove_recommendation_rule">) {
+  const { productId, otherProductId } = await ruleProductIds(ctx.store, input);
+  const result = await removeRuleBetween(ctx.account, ctx.store.id, { kind: input.kind, productId, otherProductId });
+  if (!result.ok) return fail(result.problems.join(" "));
+  ctx.invalidate(recommendTag(ctx.store.id));
+  return { done: "The rule is removed.", admin: adminLink(ctx.store, "/recommendations") };
+}
+
+async function checkRecommendationsTool({ store }: OwnerToolContext) {
+  const market = store.markets[0];
+  if (!market) return fail("The store has no market to check in.");
+  const result = await replayOnOrders(store, market, REPLAY_ORDERS);
+  if (result.evaluated === 0) {
+    return { checked: 0, note: `No order to check yet: the store needs paid orders of two goods or more whose products are still on sale (${result.considered} found).` };
+  }
+  return {
+    orders_checked: result.evaluated,
+    left_out_not_on_sale_now: result.skipped.notOnSaleNow,
+    engine: { product_first_percent: result.engine.hit[1], within_first_4_percent: result.engine.hit[4], within_first_12_percent: result.engine.hit[12], mean_reciprocal_rank_percent: result.engine.mrr },
+    best_sellers_alone: { product_first_percent: result.bestSellers.hit[1], within_first_4_percent: result.bestSellers.hit[4], within_first_12_percent: result.bestSellers.hit[12], mean_reciprocal_rank_percent: result.bestSellers.mrr },
+    engine_vs_best_sellers_at_4: result.liftAt4 === null ? null : `${result.liftAt4} times as often`,
+    note: `${result.evaluated < 30 ? "Few orders, so take it as a hint. " : ""}This replays what people bought together with the AI left out; it does not say what shoppers would click. Compare the AI's order with the plain one with get_recommendations once visitors have come.`,
+    admin: adminLink(store, "/recommendations"),
+  };
+}
+
 /** What an adjustment asks, with the customer found and the amount read, or the reason it cannot be done. */
 async function adjustmentFor(store: Store, input: OwnerToolInput<"adjust_customer_credits">) {
   const who = await findBonusCustomer(store, input.customer);
@@ -1312,10 +1439,20 @@ async function createFieldGroupTool(ctx: OwnerToolContext, input: OwnerToolInput
  * `OwnerToolError` with the reason for the model.
  */
 export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<void> {
-  if (name !== "set_fields" && name !== "create_field_group" && name !== "set_bonus_program" && name !== "adjust_customer_credits" && name !== "set_affiliate_program" && name !== "block_affiliate") return;
+  if (name !== "set_recommendations" && name !== "add_recommendation_rule" && name !== "remove_recommendation_rule" && name !== "set_fields" && name !== "create_field_group" && name !== "set_bonus_program" && name !== "adjust_customer_credits" && name !== "set_affiliate_program" && name !== "block_affiliate") return;
   const tool = OWNER_TOOLS_BY_NAME[name];
   const input = tool ? readToolInput(tool, raw) : null;
   if (!input?.ok) return fail(`The arguments could not be read: ${input?.problem ?? "unknown tool"}`);
+  // A recommendations change that could not be made is refused now, never kept for a yes.
+  if (name === "set_recommendations") {
+    const problems = settingsProblems(await recommendSettingsFor(ctx.store, input.input as OwnerToolInput<"set_recommendations">));
+    if (problems.length > 0) return fail(problems.join(" "));
+    return;
+  }
+  if (name === "add_recommendation_rule" || name === "remove_recommendation_rule") {
+    await ruleProductIds(ctx.store, input.input as { kind: string; product: string; other_product?: string });
+    return;
+  }
   // A bonus change that could not be made is refused now, never kept for a yes.
   if (name === "set_bonus_program") {
     const settings = await bonusSettingsFor(ctx.store, input.input as OwnerToolInput<"set_bonus_program">);
@@ -1379,6 +1516,11 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   set_discount_active: setDiscountActiveTool,
   create_campaign: createCampaignTool,
   set_campaign_active: setCampaignActiveTool,
+  get_recommendations: getRecommendationsTool,
+  set_recommendations: setRecommendationsTool,
+  add_recommendation_rule: addRecommendationRuleTool,
+  remove_recommendation_rule: removeRecommendationRuleTool,
+  check_recommendations: checkRecommendationsTool,
   get_bonus_program: getBonusProgramTool,
   set_bonus_program: setBonusProgramTool,
   adjust_customer_credits: adjustCustomerCreditsTool,

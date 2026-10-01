@@ -308,6 +308,49 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "get_recommendations",
+    "The store's product recommendations (upsells, cross-sells and complements picked for each shopper, shown in product grids that recommend, and used by the chat assistant): whether they are on, whether the store's AI re-ranks them, how much dearer than a product an upsell may be, the share of visitors who get the plain ranking, the monthly AI cap and what is used of it this month, the owner's pairing and exclusion rules, and what shoppers did over a period (visitors, shown, clicked, added to cart, revenue per currency) with the AI's order compared with the plain one, worked out by the store with its own significance test. Use it before set_recommendations or a rule change, and for any question about recommendations; never judge the comparison yourself.",
+    z.object({ days: z.enum(["7", "30", "90"]).default("30").describe("The period the figures cover, in days.") }),
+  ),
+  tool(
+    "set_recommendations",
+    "Changes the store's recommendations: switches them on or off, lets the store's AI re-rank or not, sets the ceiling for upsells, the share of visitors who get the plain ranking (so the AI's order can be measured against it), and the monthly cap on the AI's tokens. Give only what changes. Recommendations only show where a content grid that recommends has been placed (page builder, content grid, Recommend products for each shopper), and on the chat assistant's suggestions. Needs the owner's approval.",
+    z.object({
+      enabled: z.boolean().optional().describe("True turns recommendations on, false off."),
+      ai: z.boolean().optional().describe("Whether the store's text model may re-rank the best candidates; the plain ranking is always the fallback."),
+      upsell_ceiling_percent: z.number().int().min(0).max(500).optional().describe("An upsell costs at most this much more than the product it is an upsell of, in percent."),
+      holdout_percent: z.number().int().min(0).max(50).optional().describe("The share of visitors who get the plain ranking, 0 to 50."),
+      monthly_token_cap_thousands: z.number().int().min(0).max(1_000_000).nullable().optional().describe("The most thousands of tokens the AI may use on recommendations in a calendar month; null for no cap."),
+    }),
+    "public",
+  ),
+  tool(
+    "add_recommendation_rule",
+    "Adds an owner's rule to the recommendations: `goes_with` (the other product is offered with the product, ahead of what the engine finds; `both` makes it work from the other product too), `never_with` (the two are never shown together) or `hide` (the product is never recommended anywhere). A rule already there is left as it is. Needs the owner's approval.",
+    z.object({
+      kind: z.enum(["goes_with", "never_with", "hide"]),
+      product: productRef,
+      other_product: productRef.optional().describe("The other product, for goes_with and never_with."),
+      both: z.boolean().default(false).describe("For goes_with: also offer the product with the other one."),
+    }),
+    "public",
+  ),
+  tool(
+    "remove_recommendation_rule",
+    "Takes away an owner's rule from the recommendations, by its kind and products (both ways where both were made). Needs the owner's approval.",
+    z.object({
+      kind: z.enum(["goes_with", "never_with", "hide"]),
+      product: productRef,
+      other_product: productRef.optional().describe("The other product, for goes_with and never_with."),
+    }),
+    "public",
+  ),
+  tool(
+    "check_recommendations",
+    "Checks the recommendation engine against the store's past orders, worked out by the store: for its recent paid orders of two goods or more, one product is held back and the engine (the plain ranking, with that order left out of what it learns from, no AI) is asked what it would show a shopper who had looked at the others. Reports how often the product comes first, in the first four and in the first twelve, against showing the best sellers to everyone. It says nothing about what shoppers would click or about the AI's order: the live comparison in get_recommendations does.",
+    z.object({}),
+  ),
+  tool(
     "get_bonus_program",
     "The store's bonus program (credits that signed-in customers earn on what they pay and use on a later order): whether it is on, how much customers earn back, the wait before credits can be used, the most of an order they can pay, the least to use, whether credits expire, the rules in plain words, and what the store owes (credits outstanding and pending, earned, used and expired in the last 30 days). With `customer` (an email) it also gives that customer's balance and latest history. Use it before set_bonus_program or adjust_customer_credits, and for any question about credits or loyalty; never work out a balance yourself.",
     z.object({ customer: z.string().trim().min(3).max(200).optional().describe("A customer's email, to read their credits too.") }),
@@ -499,6 +542,26 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     }
     case "set_campaign_active":
       return `${input.active ? "Switch on" : "Switch off"} the campaign "${text("campaign")}".`;
+    case "set_recommendations": {
+      const parts = [
+        input.enabled === true ? "switch the recommendations on" : input.enabled === false ? "switch the recommendations off" : "",
+        input.ai === true ? "let the store's AI re-rank them" : input.ai === false ? "keep the AI out of them" : "",
+        input.upsell_ceiling_percent !== undefined ? `an upsell costs at most ${text("upsell_ceiling_percent")} % more than its product` : "",
+        input.holdout_percent !== undefined ? `${text("holdout_percent")} % of visitors get the plain ranking` : "",
+        input.monthly_token_cap_thousands === null ? "no monthly cap on the AI" : input.monthly_token_cap_thousands !== undefined ? `the AI may use at most ${text("monthly_token_cap_thousands")} thousand tokens a month` : "",
+      ].filter(Boolean);
+      return `Change the recommendations: ${parts.join("; ") || "no change"}.`;
+    }
+    case "add_recommendation_rule":
+      return input.kind === "hide"
+        ? `Never recommend "${text("product")}".`
+        : input.kind === "never_with"
+          ? `Never show "${text("product")}" together with "${text("other_product")}".`
+          : `Offer "${text("other_product")}" with "${text("product")}"${input.both ? " and the other way round" : ""}.`;
+    case "remove_recommendation_rule":
+      return input.kind === "hide"
+        ? `Let "${text("product")}" be recommended again.`
+        : `Take away the rule that "${text("product")}" ${input.kind === "never_with" ? "is never shown with" : "goes with"} "${text("other_product")}".`;
     case "set_bonus_program": {
       const parts = [
         input.enabled === true ? "switch the bonus program on" : input.enabled === false ? "switch the bonus program off" : "",

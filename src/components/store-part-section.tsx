@@ -35,6 +35,7 @@ import {
   OrderTotals,
 } from "@/app/s/[store]/[market]/order/[orderId]/order-section";
 import { SubscriptionSection } from "@/app/s/[store]/[market]/subscription/[token]/subscription-section";
+import { TermListing } from "@/app/s/[store]/[market]/term-listing";
 import { WishlistSection } from "@/app/s/[store]/[market]/wishlist/wishlist-section";
 import { t } from "@/lib/i18n";
 import type { StorePartBlock } from "@/lib/page-content";
@@ -140,5 +141,9 @@ async function Part({
       return <DeliveriesSection store={store} market={market} query={query} />;
     case "cookies":
       return <CookiesSection store={store} market={market} />;
+    // A category's or tag's own listing (D140); the address carries the term's slug.
+    case "category":
+    case "tag":
+      return route.param ? <TermListing store={store} market={market} kind={part} slug={route.param} query={query} /> : null;
   }
 }

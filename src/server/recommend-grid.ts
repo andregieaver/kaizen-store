@@ -23,6 +23,8 @@ import { termsTag } from "./taxonomy";
  */
 export function recommendPlaceOf(place: GridPlace): RecommendPlace {
   if (place.product) return { kind: "product", productId: place.product };
+  // A category's or tag's page (D140) is a listing of that term.
+  if (place.term) return { kind: "listing", query: "", termId: place.term.id };
   if (place.route) return { kind: "other" };
   if (place.archive) return { kind: "listing", query: "" };
   if (place.pageId) return place.pageType === "article" ? { kind: "article", pageId: place.pageId } : { kind: "page", pageId: place.pageId };

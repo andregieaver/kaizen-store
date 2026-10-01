@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."page_roles" DROP CONSTRAINT "page_roles_role";--> statement-breakpoint
+ALTER TABLE "commerce"."page_roles" ADD CONSTRAINT "page_roles_role" CHECK ("commerce"."page_roles"."role" in ('blog', 'search', 'not_found', 'cart', 'checkout', 'order', 'account', 'sign_in', 'wishlist', 'subscription', 'deliveries', 'cookies', 'category', 'tag'));

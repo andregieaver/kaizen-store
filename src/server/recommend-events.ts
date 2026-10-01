@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { compareArms } from "@/lib/recommend-eval";
 import { ATTRIBUTION_DAYS, EVENT_DAYS, type Placement, type RecommendEvents } from "@/lib/recommendations";
 
 type Row = Record<string, unknown>;
@@ -82,6 +83,9 @@ export type ArmFigures = {
   visitors: number;
   impressions: number;
   clicks: number;
+  /** Tabs that clicked at least one recommendation, and tabs that put a recommended product in a cart: what the two rankings are compared on. */
+  clickers: number;
+  adders: number;
   /** Recommended products put in a cart. */
   adds: number;
   /** Orders of those carts that held the product, placed within the attribution window, and what those products' lines came to (with VAT, after discounts), per currency. */
@@ -91,18 +95,19 @@ export type ArmFigures = {
 
 export type PlacementFigures = { placement: Placement; impressions: number; clicks: number; adds: number };
 
-export type RecommendReport = { days: number; arms: ArmFigures[]; placements: PlacementFigures[]; topProducts: { productId: string; title: string; impressions: number; clicks: number; adds: number }[] };
+export type RecommendReport = { days: number; arms: ArmFigures[]; comparison: ReturnType<typeof compareArms>; placements: PlacementFigures[]; topProducts: { productId: string; title: string; impressions: number; clicks: number; adds: number }[] };
 
 export async function recommendationReport(storeId: string, days: number): Promise<RecommendReport> {
   const since = sql`now() - make_interval(days => ${days})`;
   const [events, adds, revenue, byPlacement, top] = await Promise.all([
     db().execute<Row>(sql`
       select arm, count(distinct session) filter (where event = 'impression') as visitors,
-        count(*) filter (where event = 'impression') as impressions, count(*) filter (where event = 'click') as clicks
+        count(*) filter (where event = 'impression') as impressions, count(*) filter (where event = 'click') as clicks,
+        count(distinct session) filter (where event = 'click') as clickers
       from commerce.recommendation_events where store_id = ${storeId}::uuid and created_at > ${since} group by arm
     `),
     db().execute<Row>(sql`
-      select arm, count(*) as adds from commerce.recommendation_adds where store_id = ${storeId}::uuid and created_at > ${since} group by arm
+      select arm, count(*) as adds, count(distinct session) as adders from commerce.recommendation_adds where store_id = ${storeId}::uuid and created_at > ${since} group by arm
     `),
     db().execute<Row>(sql`
       select a.arm, o.currency, count(distinct o.id) as orders, coalesce(sum(l.total_minor), 0)::bigint as revenue
@@ -134,6 +139,8 @@ export async function recommendationReport(storeId: string, days: number): Promi
       visitors: Number(e?.visitors ?? 0),
       impressions: Number(e?.impressions ?? 0),
       clicks: Number(e?.clicks ?? 0),
+      clickers: Number(e?.clickers ?? 0),
+      adders: Number(adds.find((r) => r.arm === arm)?.adders ?? 0),
       adds: Number(adds.find((r) => r.arm === arm)?.adds ?? 0),
       orders: rev.reduce((sum, r) => sum + Number(r.orders), 0),
       revenue: rev.map((r) => ({ currency: String(r.currency).trim(), minor: Number(r.revenue), orders: Number(r.orders) })),
@@ -142,9 +149,11 @@ export async function recommendationReport(storeId: string, days: number): Promi
   const placementAdds = await db().execute<Row>(sql`
     select placement, count(*) as adds from commerce.recommendation_adds where store_id = ${storeId}::uuid and created_at > ${since} group by placement
   `);
+  const [ai, plain] = arms;
   return {
     days,
     arms,
+    comparison: compareArms(ai, plain),
     placements: byPlacement.map((r) => ({
       placement: String(r.placement) as Placement,
       impressions: Number(r.impressions),

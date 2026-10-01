@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
-import { DEFAULT_SETTINGS, parseRecommendSettings, type RecommendSettings } from "@/lib/recommendations";
+import { DEFAULT_SETTINGS, parseRecommendSettings, settingsProblems, type RecommendSettings } from "@/lib/recommendations";
 
 import { audit, type Account } from "./auth";
 
@@ -50,7 +50,13 @@ export type SaveResult = { ok: true } | { ok: false; problems: string[] };
 export async function saveRecommendSettings(account: Account, storeId: string, form: FormData): Promise<SaveResult> {
   const parsed = parseRecommendSettings(form);
   if (!parsed.ok) return parsed;
-  const s = parsed.settings;
+  return saveRecommendSettingsValues(account, storeId, parsed.settings);
+}
+
+/** Saves settings already read (the owner's form above, the AI manager's tool), checked once more here. */
+export async function saveRecommendSettingsValues(account: Account, storeId: string, s: RecommendSettings): Promise<SaveResult> {
+  const problems = settingsProblems(s);
+  if (problems.length > 0) return { ok: false, problems };
   await db().execute(sql`
     insert into commerce.recommendation_settings (store_id, enabled, ai, holdout_percent, upsell_ceiling_percent, monthly_token_cap, updated_by)
     values (${storeId}::uuid, ${s.enabled}, ${s.ai}, ${s.holdoutPercent}, ${s.upsellCeilingPercent}, ${s.monthlyTokenCap}, ${account.id}::uuid)
@@ -162,4 +168,29 @@ export async function removeRule(account: Account, storeId: string, ruleId: stri
   if (rows.length === 0) return { ok: false, problems: ["That rule is gone."] };
   await audit(account.id, storeId, "recommendations.rule_removed", { ruleId, kind: String(rows[0].kind) });
   return { ok: true };
+}
+
+/**
+ * Removes the rule of a kind between these products (both ways where both exist), or a product's hiding; says whether any was
+ * there. Both products must be the store's.
+ */
+export async function removeRuleBetween(
+  account: Account,
+  storeId: string,
+  input: { kind: string; productId: string; otherProductId?: string | null },
+): Promise<SaveResult & { removed?: number }> {
+  if (input.kind !== "goes_with" && input.kind !== "never_with" && input.kind !== "hide") return { ok: false, problems: ["Choose what kind of rule this is."] };
+  if (!UUID.test(input.productId)) return { ok: false, problems: ["Choose a product."] };
+  const other = input.kind === "hide" ? null : (input.otherProductId ?? null);
+  if (input.kind !== "hide" && (!other || !UUID.test(other))) return { ok: false, problems: ["Choose the other product."] };
+  const rows = await db().execute<Row>(sql`
+    delete from commerce.recommendation_rules
+    where store_id = ${storeId}::uuid and kind = ${input.kind}
+      and ((product_id = ${input.productId}::uuid and other_product_id is not distinct from ${other}::uuid)
+        or (${other}::uuid is not null and product_id = ${other}::uuid and other_product_id = ${input.productId}::uuid))
+    returning id
+  `);
+  if (rows.length === 0) return { ok: false, problems: ["There is no such rule."] };
+  await audit(account.id, storeId, "recommendations.rule_removed", { kind: input.kind, productId: input.productId, otherProductId: other });
+  return { ok: true, removed: rows.length };
 }

@@ -78,9 +78,38 @@ rate, and orders of those carts that hold the product within 14 days, with the l
 ceiling; the AI switch; the held-out share; the monthly cap. Margins are not in the catalogue, so the ceiling is the upsell
 rule. Pairings and exclusions cache with `recommendTag()`.
 
+## Category and tag pages (D140)
+
+Category and tag pages are page roles like the cart: choose a published page for **Category pages** or **Tag pages** under
+Page roles, with the **Category products** / **Tag products** component (`STORE_PARTS.category` / `tag`, drawn by
+`TermListing`, the same listing the standard page is made of: name, the term's own custom fields, subcategories, Filter and
+sort). Any other component can sit around it, among them a content grid that recommends: on such a page the grid
+recommends around the term (`GridPlace.term`, `RecommendPlace` listing with `termId`; a category with the categories
+below it). The standard page is shown until a page is chosen.
+
+## Checking and tuning (D140)
+
+- **The live comparison.** The report adds, per ranking, the tabs that clicked a recommendation and the tabs that put one in
+  the cart, and compares the AI's ranking with the plain one on those two shares with a two-proportion z-test on tabs
+  (`compareShares()`, `compareArms()`). A difference is called clear under p = 0.05 and only with at least 100 tabs in each
+  ranking; the sentence the admin page and the AI manager give is built in code (`verdictWords()`): keep the AI, switch it
+  off, or wait.
+- **The check against past orders** (`replayOnOrders()`, admin "Run the check", AI manager `check_recommendations`): for the
+  last 100 paid orders of two goods or more, one product is held back and the plain ranking (the order itself left out of
+  co-purchase and sales, so it cannot vouch for itself) is asked what it would show a shopper who had looked at the others.
+  It reports how often the product comes first, in the first 4 and in the first 12, and the mean reciprocal rank, against
+  the best sellers shown to everyone. It uses no model and costs nothing; it measures whether the engine finds what people
+  buy together, not what they would click. In a shop with few products the best sellers are all of them, so only the first
+  places tell the two apart.
+
+## The AI manager (D140)
+
+Owner tools (also served to Kaizen Life's assistant): `get_recommendations` (settings, the AI's use against its cap, rules, the
+live comparison), `set_recommendations`, `add_recommendation_rule`, `remove_recommendation_rule` (all kept for approval, and
+checked before they are kept) and `check_recommendations`; a playbook, *Set up product recommendations*.
+
 ## Not done
 
-- Verification against real traffic: the engine is tested on a small catalogue with a stand-in model. Whether the AI's order
-  beats the plain one is exactly what the figures above are for.
-- Recommendations on category and tag pages (they are not built in the page builder).
+- Verification against real traffic: the engine is tested on a small catalogue with a stand-in model. The live comparison
+  above is how to find out whether the AI's order beats the plain one; it needs visitors, and the held-out share on.
 - Articles are not recommended (by choice).

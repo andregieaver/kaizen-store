@@ -72,6 +72,16 @@ export function parseRecommendSettings(form: FormData): { ok: true; settings: Re
   return parsed.success ? { ok: true, settings: parsed.data } : { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
 }
 
+/** What is wrong with a set of settings, in words; empty when they can be saved (the owner's form and the AI manager share this). */
+export function settingsProblems(s: RecommendSettings): string[] {
+  const problems: string[] = [];
+  const whole = (n: number) => Number.isInteger(n);
+  if (!whole(s.holdoutPercent) || s.holdoutPercent < 0 || s.holdoutPercent > 50) problems.push("The share of visitors who get the plain ranking is a whole number from 0 to 50.");
+  if (!whole(s.upsellCeilingPercent) || s.upsellCeilingPercent < 0 || s.upsellCeilingPercent > 500) problems.push("The ceiling for an upsell is a whole number of percent from 0 to 500.");
+  if (s.monthlyTokenCap !== null && (!whole(s.monthlyTokenCap) || s.monthlyTokenCap < 0 || s.monthlyTokenCap > TOKEN_CAP_MAX)) problems.push("The monthly cap is a whole number of tokens from 0 up to a billion, or none.");
+  return problems;
+}
+
 /** Whether the AI may be asked again this month: no cap, or what was used is under it. */
 export const withinTokenCap = (used: number, cap: number | null): boolean => cap === null || used < cap;
 
@@ -129,7 +139,7 @@ const ids = z.array(z.string().regex(UUID)).max(20);
 /** Where the grid is, as the page knows it; trusted only for what to recommend, never for anything private. */
 export const recommendPlace = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("product"), productId: z.string().regex(UUID) }),
-  z.object({ kind: z.literal("listing"), query: z.string().max(600).default("") }),
+  z.object({ kind: z.literal("listing"), query: z.string().max(600).default(""), /** On a category or tag page: its id. */ termId: z.string().regex(UUID).optional() }),
   z.object({ kind: z.literal("article"), pageId: z.string().regex(UUID) }),
   z.object({ kind: z.literal("page"), pageId: z.string().regex(UUID) }),
   z.object({ kind: z.literal("other") }),
