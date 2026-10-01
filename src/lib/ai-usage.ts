@@ -146,6 +146,10 @@ export function addSums(into: UsageSums, row: UsageSums): UsageSums {
 }
 
 /** The cost as a person reads it: "$0.42", with "+" where some of the usage has no price so the real cost is higher. */
+/** Whether the sums hold any use at all (a failed call that used nothing has no cost to show). */
+export const usedAnything = (sums: Pick<UsageSums, "inputTokens" | "outputTokens" | "images" | "audioSeconds" | "characters">) =>
+  sums.inputTokens + sums.outputTokens + sums.images + sums.audioSeconds + sums.characters > 0;
+
 export const costWords = (sums: Pick<UsageSums, "costMicros" | "unpricedRequests">) => `${formatUsd(sums.costMicros)}${sums.unpricedRequests > 0 ? "+" : ""}`;
 
 /** A group of rows: its key, label and sums, and the rows it holds. */
@@ -202,6 +206,6 @@ export function summarizeUsage(rows: UsageRow[], limit = 12) {
     by_provider_and_model: models(rows),
     by_store: named(groupUsage(rows, withStore)),
     by_feature: groupUsage(rows, withFeature).slice(0, limit).map((g) => ({ feature: g.label, ...sumsForModel(g.sums) })),
-    note: "Tokens are as the providers reported, or counted by Kaizen (about four characters a token) where they did not. Cost is an estimate in US dollars from the platform's price list for each model at the time of the call; requests_without_a_price used a model with no price, so the real cost is higher. Pictures, speech and live calls are not priced.",
+    note: "Tokens are as the providers reported, or counted by Kaizen (about four characters a token) where they did not. Cost is an estimate in US dollars from the platform's price list for each model at the time of the call; requests_without_a_price used a model with no price (or no price for pictures, speech or audio), so the real cost is higher. Pictures, speech and live calls are priced per picture, per million characters and per minute where the platform has set those prices.",
   };
 }

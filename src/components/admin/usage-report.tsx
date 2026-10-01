@@ -7,6 +7,7 @@ import {
   KIND_WORDS,
   SOURCE_WORDS,
   totalOf,
+  usedAnything,
   USAGE_PERIODS,
   withFeature,
   withOwner,
@@ -74,7 +75,7 @@ function Cells({ sums }: { sums: UsageSums }) {
       <td className={tdRight}>{sums.failed > 0 ? n(sums.failed) : "–"}</td>
       <td className={tdRight}>{sums.inputTokens > 0 ? n(sums.inputTokens) : "–"}</td>
       <td className={tdRight}>{sums.outputTokens > 0 ? n(sums.outputTokens) : "–"}</td>
-      <td className={tdRight}>{sums.inputTokens + sums.outputTokens === 0 ? "–" : sums.costMicros === 0 && sums.unpricedRequests > 0 ? <span className="text-muted">No price</span> : costWords(sums)}</td>
+      <td className={tdRight}>{!usedAnything(sums) ? "–" : sums.costMicros === 0 && sums.unpricedRequests > 0 ? <span className="text-muted">No price</span> : costWords(sums)}</td>
       <td className={td}>{otherUse(sums) || "–"}</td>
     </>
   );
@@ -284,14 +285,14 @@ export function UsageReport({ rows, days, scope }: { rows: UsageRow[]; days: Dai
 
       <p className="text-sm text-muted">
         Counted from each call to a model as it is made. {anyEstimated && `${n(total.estimatedRequests)} requests are counted by Kaizen (about four characters a token) because the provider did not report tokens. `}
-        Live voice calls are counted as one request with their length; the provider bills their tokens itself.
-        Cost is an estimate in US dollars: each call&apos;s tokens at the price set for its model on the day it was made
+        Live voice calls are counted as one request with their length.
+        Cost is an estimate in US dollars: each call&apos;s tokens, pictures, minutes of audio and spoken characters at the prices set for its model on the day it was made
         {scope === "platform" ? (
           <>
             {" "}(<Link href="/admin/platform/ai/prices" className="underline">AI prices</Link>)
           </>
         ) : null}
-        ; a &quot;+&quot; means some usage has no price, so the real cost is higher. Pictures, speech and live calls are not priced.
+        ; a &quot;+&quot; means some usage has no price, so the real cost is higher.
         Usage is kept for 400 days.
       </p>
     </div>

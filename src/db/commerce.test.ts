@@ -287,8 +287,14 @@ describe("AI model prices (D145)", () => {
     await expect(price("p143", "neg", -1, 1)).rejects.toThrow(/ai_model_prices_amounts/);
     await expect(price("p143", "neg", 1, -1)).rejects.toThrow(/ai_model_prices_amounts/);
     await expect(price("", "m2", 1, 1)).rejects.toThrow(/ai_model_prices_names/);
+    // Prices per picture, audio minute and million characters (D146) are never negative either, and may be none.
+    const unit = (model: string, value: number | null) =>
+      db.query("insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, per_image, per_audio_minute, per_million_characters) values ('p143', $1, 0, 0, $2, $2, $2)", [model, value]);
+    await expect(unit("neg-unit", -0.01)).rejects.toThrow(/ai_model_prices_amounts/);
+    await unit("unit-none", null);
+    await unit("unit-free", 0);
     await expect(price("p143", "x".repeat(201), 1, 1)).rejects.toThrow(/ai_model_prices_names/);
-    expect((await one<{ n: number }>("select count(*)::int as n from commerce.ai_model_prices where provider = 'p143'")).n).toBe(2);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.ai_model_prices where provider = 'p143'")).n).toBe(4);
   });
 
   it("comes with the prices of the models the platform already used", async () => {

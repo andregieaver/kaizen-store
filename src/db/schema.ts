@@ -3262,6 +3262,12 @@ export const aiModelPrices = commerce.table(
     inputPerMillion: numeric("input_per_million", { precision: 14, scale: 6 }).notNull(),
     /** US dollars per million output tokens. */
     outputPerMillion: numeric("output_per_million", { precision: 14, scale: 6 }).notNull(),
+    /** US dollars per picture made; null: the model has no per-picture price (usage in pictures is unpriced). */
+    perImage: numeric("per_image", { precision: 14, scale: 6 }),
+    /** US dollars per minute of audio (speech to text, live voice calls); null: none. */
+    perAudioMinute: numeric("per_audio_minute", { precision: 14, scale: 6 }),
+    /** US dollars per million characters spoken (text to speech); null: none. */
+    perMillionCharacters: numeric("per_million_characters", { precision: 14, scale: 6 }),
     effectiveFrom: timestamp("effective_from", { withTimezone: true }).notNull().defaultNow(),
     note: text("note").notNull().default(""),
     createdAt: createdAt(),
@@ -3270,7 +3276,10 @@ export const aiModelPrices = commerce.table(
   (t) => [
     unique("ai_model_prices_key").on(t.provider, t.model, t.effectiveFrom),
     index("ai_model_prices_created_by_idx").on(t.createdBy),
-    check("ai_model_prices_amounts", sql`${t.inputPerMillion} >= 0 and ${t.outputPerMillion} >= 0`),
+    check(
+      "ai_model_prices_amounts",
+      sql`${t.inputPerMillion} >= 0 and ${t.outputPerMillion} >= 0 and ${t.perImage} >= 0 and ${t.perAudioMinute} >= 0 and ${t.perMillionCharacters} >= 0`,
+    ),
     check("ai_model_prices_names", sql`length(${t.provider}) between 1 and 60 and length(${t.model}) between 1 and 200`),
   ],
 );

@@ -6,6 +6,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, readDb } from "@/db/client";
 import { DEFAULT_SETTINGS, parseRecommendSettings, settingsProblems, type RecommendSettings } from "@/lib/recommendations";
 
+import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 import { audit, type Account } from "./auth";
 
 type Row = Record<string, unknown>;
@@ -81,16 +82,10 @@ export async function tokensUsedThisMonth(storeId: string): Promise<number> {
 export async function usedThisMonth(storeId: string): Promise<{ tokens: number; costMicros: number; unpriced: boolean }> {
   const [row] = await db().execute<Row>(sql`
     select coalesce(sum(u.input_tokens + u.output_tokens), 0)::bigint as used,
-      coalesce(sum(round(u.input_tokens * p.input_per_million + u.output_tokens * p.output_per_million)), 0)::bigint as cost_micros,
-      coalesce(bool_or(p.id is null and u.input_tokens + u.output_tokens > 0), false) as unpriced
+      coalesce(sum(${costMicrosSql}), 0)::bigint as cost_micros,
+      coalesce(bool_or(${unpricedSql}), false) as unpriced
     from commerce.ai_usage u
-    left join lateral (
-      select pr.id, pr.input_per_million, pr.output_per_million
-      from commerce.ai_model_prices pr
-      where pr.provider = u.provider and (pr.model = u.model or left(u.model, length(pr.model) + 1) = pr.model || '-') and pr.effective_from <= u.created_at
-      order by length(pr.model) desc, pr.effective_from desc
-      limit 1
-    ) p on true
+    ${priceFor}
     where u.store_id = ${storeId}::uuid and u.feature = 'recommendations' and u.created_at >= date_trunc('month', now())
   `);
   return { tokens: Number(row?.used ?? 0), costMicros: Number(row?.cost_micros ?? 0), unpriced: Boolean(row?.unpriced) };

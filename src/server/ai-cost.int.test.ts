@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
-import { costMicros, matchPrice } from "@/lib/ai-cost";
+import { callCost, costMicros, matchPrice } from "@/lib/ai-cost";
 import { summarizeUsage, totalOf } from "@/lib/ai-usage";
 
 import type { Account } from "./auth";
@@ -26,6 +26,14 @@ async function call(model: string, daysAgo: number, input: number, output: numbe
   await db().execute(sql`
     insert into commerce.ai_usage (created_at, store_id, source, provider, model, kind, feature, input_tokens, output_tokens)
     values (now() - make_interval(days => ${daysAgo}), ${over.store ? storeId : null}::uuid, 'platform', ${provider}, ${model}, 'text', ${over.feature ?? "other"}, ${input}, ${output})
+  `);
+}
+
+/** One call that made pictures, listened or spoke, of a kind other than text. */
+async function unitCall(model: string, kind: "image" | "transcription" | "speech" | "live", daysAgo: number, units: { images?: number; audioSeconds?: number; characters?: number; tokens?: number }) {
+  await db().execute(sql`
+    insert into commerce.ai_usage (created_at, store_id, source, provider, model, kind, feature, input_tokens, images, audio_seconds, characters)
+    values (now() - make_interval(days => ${daysAgo}), null, 'platform', ${provider}, ${model}, ${kind}, 'other', ${units.tokens ?? 0}, ${units.images ?? 0}, ${units.audioSeconds ?? 0}, ${units.characters ?? 0})
   `);
 }
 
@@ -114,5 +122,59 @@ describe("what the AI costs (D145)", () => {
     // gpt-c has been $3 in and $6 out for five days: 2 * 3 + 1 * 6.
     expect(month.costMicros).toBe(12_000_000);
     expect(await recommend.tokensUsedThisMonth(storeId)).toBe(3_000_000);
+  });
+});
+
+describe("what pictures, speech and live voice calls cost (D146)", () => {
+  const unitPrice = (model: string, over: { image?: number | null; minute?: number | null; characters?: number | null }) =>
+    db().execute(sql`
+      insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, per_image, per_audio_minute, per_million_characters, effective_from)
+      values (${provider}, ${model}, 0, 0, ${over.image ?? null}, ${over.minute ?? null}, ${over.characters ?? null}, '2000-01-01')
+    `);
+
+  it("prices a picture, a minute of audio and spoken characters by their unit prices, as the code does", async () => {
+    await unitPrice("pic-model", { image: 0.04 });
+    await unitPrice("ear-model", { minute: 0.06 });
+    await unitPrice("voice-model", { characters: 15 });
+    await unitCall("pic-model", "image", 1, { images: 3 });
+    await unitCall("ear-model", "transcription", 1, { audioSeconds: 90 });
+    await unitCall("ear-model", "live", 1, { audioSeconds: 30 });
+    await unitCall("voice-model", "speech", 1, { characters: 2_000 });
+    const rows = await mine();
+    const of = (model: string) => totalOf(rows.filter((r) => r.model === model));
+    const price = (over: object) => ({ provider, model: "m", inputPerMillion: 0, outputPerMillion: 0, effectiveFrom: new Date(0), ...over });
+    expect(of("pic-model")).toMatchObject({ costMicros: 120_000, unpricedRequests: 0 });
+    expect(of("ear-model")).toMatchObject({ costMicros: 120_000, unpricedRequests: 0 });
+    expect(of("voice-model")).toMatchObject({ costMicros: 30_000, unpricedRequests: 0 });
+    expect(of("pic-model").costMicros).toBe(callCost({ images: 3 }, price({ perImage: 0.04 })).micros);
+    expect(of("ear-model").costMicros).toBe(callCost({ audioSeconds: 120 }, price({ perAudioMinute: 0.06 })).micros);
+    expect(of("voice-model").costMicros).toBe(callCost({ characters: 2_000 }, price({ perMillionCharacters: 15 })).micros);
+    // They also show in the daily chart.
+    const days = await usage.usageByDay({ days: 90 });
+    expect(days.reduce((sum, d) => sum + d.costMicros, 0)).toBeGreaterThanOrEqual(270_000);
+  });
+
+  it("leaves what has no price for its unit unpriced, lists the model, and prices it from the beginning once set", async () => {
+    // A model priced for pictures only, used for audio; a live call with no price at all.
+    await unitPrice("picture-only", { image: 0.01 });
+    await unitCall("picture-only", "transcription", 1, { audioSeconds: 600 });
+    await unitCall("live-nameless", "live", 1, { audioSeconds: 300 });
+    // Billed in tokens: the picture price is missing, but its tokens price it.
+    await priceAt("token-pics", 40, 2, 0);
+    await unitCall("token-pics", "image", 1, { images: 1, tokens: 1_000_000 });
+    const rows = await mine();
+    const of = (model: string) => totalOf(rows.filter((r) => r.model === model));
+    expect(of("picture-only")).toMatchObject({ costMicros: 0, unpricedRequests: 1 });
+    expect(of("live-nameless")).toMatchObject({ costMicros: 0, unpricedRequests: 1 });
+    expect(of("token-pics")).toMatchObject({ costMicros: 2_000_000, unpricedRequests: 0 });
+    const listed = (await prices.unpricedModels()).filter((m) => m.provider === provider);
+    expect(listed.map((m) => m.model).sort()).toEqual(["live-nameless", "picture-only"]);
+    expect(listed.find((m) => m.model === "picture-only")).toMatchObject({ audioSeconds: 600, tokens: 0 });
+    // Setting the price (empty fields are none) prices what was recorded before.
+    const form = (entries: Record<string, string>) => ({ get: (name: string) => entries[name] ?? null });
+    expect(await prices.setPrice(admin, form({ provider, model: "live-nameless", input: "0", output: "0", per_audio_minute: "0.30", note: "" }))).toEqual({ ok: true, first: true });
+    expect((await mine()).find((r) => r.model === "live-nameless")).toMatchObject({ costMicros: 1_500_000, unpricedRequests: 0 });
+    const line = (await prices.listPrices()).find((p) => p.provider === provider && p.model === "live-nameless");
+    expect(line).toMatchObject({ perAudioMinute: 0.3, perImage: null, perMillionCharacters: null });
   });
 });

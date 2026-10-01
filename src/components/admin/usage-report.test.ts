@@ -58,6 +58,20 @@ describe("cost in the usage report (D145)", () => {
     expect(render([row({ costMicros: 0, unpricedRequests: 1 })], "owner")).not.toContain("/admin/platform/ai/prices");
   });
 
+  it("prices pictures, speech and live calls too, and says where they have no price (D146)", () => {
+    const pictures = row({ model: "pic", kind: "image", inputTokens: 0, outputTokens: 0, images: 3, costMicros: 120_000 });
+    const live = row({ model: "talk", kind: "live", inputTokens: 0, outputTokens: 0, audioSeconds: 300, costMicros: 0, unpricedRequests: 1 });
+    const out = render([pictures, live]);
+    expect(out).toContain("$0.12+");
+    expect(out).toContain("No price");
+    expect(out).not.toContain("are not priced");
+    // Priced, there is no plus and no "No price".
+    const priced = render([pictures]);
+    expect(priced).toContain("$0.12");
+    expect(priced).not.toContain("No price");
+    expect(priced).not.toContain("$0.12+");
+  });
+
   it("writes a cost with a plus only where some usage has no price", () => {
     expect(costWords({ costMicros: 12_300, unpricedRequests: 0 })).toBe("$0.0123");
     expect(costWords({ costMicros: 12_300, unpricedRequests: 3 })).toBe("$0.0123+");

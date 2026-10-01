@@ -495,7 +495,7 @@ of running `playwright install`.
   call is wrapped in `metered()` with the provider's own token figures
   (`tokensOrEstimate()`). Reports: `/admin/platform/ai/usage` and
   `/admin/account/usage` (`UsageReport`); sums are worked out in
-  `src/lib/ai-usage.ts`. Cost (D145, `src/lib/ai-cost.ts`, `src/server/ai-prices.ts`, `commerce.ai_model_prices`, `/admin/platform/ai/prices`): prices per model are data the platform's admin keeps, a call is priced by the price in force when it was made (`priceFor` in SQL, `matchPrice()` in code), tokens only; any new page that shows tokens shows `costWords()` beside them, and a model with no price shows as such, never as free. Never a price in code.
+  `src/lib/ai-usage.ts`. Cost (D145, `src/lib/ai-cost.ts`, `src/server/ai-prices.ts`, `commerce.ai_model_prices`, `/admin/platform/ai/prices`): prices per model are data the platform's admin keeps, a call is priced by the price in force when it was made (`priceFor`, `costMicrosSql`, `unpricedSql` in `src/server/ai-price-sql.ts`, the one place SQL reads a price; `matchPrice()` and `callCost()` in code). D146: pictures, speech and live calls are priced too (`per_image`, `per_audio_minute`, `per_million_characters`, null = no price); a new kind of use gets its own unit price there, never a new SQL copy. Any new page that shows tokens or other usage shows `costWords()` beside it, and a model with no price shows as such ("No price", a "+" on totals), never as free. Never a price in code.
 - Kaizen Life (D95, `src/server/kaizen-life.ts`): each Supabase project is
   the other's OpenID Connect provider. "Sign in with Kaizen Life" (only with
   `KAIZEN_LIFE_SSO=on`) goes through `/auth/callback?via=kaizen-life` and
