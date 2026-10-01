@@ -279,6 +279,7 @@ const builder = (
         stores: [],
         menus: [],
         menusHref: "/menus",
+        plans: null,
         actions: {} as never,
       },
       fonts: {

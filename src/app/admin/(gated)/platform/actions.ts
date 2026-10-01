@@ -33,6 +33,7 @@ import {
   setPlatformDiscountActive,
   updatePlatformDiscount,
 } from "@/server/platform-discounts";
+import { PLANS_TAG } from "@/server/public-plans";
 import { platformModes } from "@/server/stripe";
 import { getStore } from "@/server/stores";
 
@@ -160,6 +161,8 @@ export async function savePlanAction(
     prices,
   });
   if (!result.ok) return { status: "error", messages: result.problems };
+  // Kaizen's pages that show its plans (D142) follow the change.
+  updateTag(PLANS_TAG);
   refresh();
   return { status: "ok", messages: [result.note ?? (planId ? "Plan saved and updated in Stripe." : "Plan created in Kaizen and Stripe.")] };
 }

@@ -17,6 +17,7 @@ export function pageRulesProblem(owner: PageOwner, type: PageType, content: Page
     productLayoutProblem(owner, type, content) ??
     siteLayoutProblem(owner, type, content) ??
     searchProblem(owner, type, content) ??
+    plansProblem(owner, content) ??
     customFieldProblem(owner, type, content) ??
     storePartProblem(owner, type, content)
   );
@@ -27,6 +28,12 @@ function searchProblem(owner: PageOwner, type: PageType, content: PageContent): 
   if (!pageBlocks(content).some((block) => block.type === "search")) return null;
   if (owner === null) return "Search belongs in a store's pages.";
   if (type !== "page" && type !== "article") return "Search belongs in a store's pages and articles.";
+  return null;
+}
+
+/** Kaizen's plans (D142) are the platform's to sell: only Kaizen's own pages hold the component. */
+function plansProblem(owner: PageOwner, content: PageContent): string | null {
+  if (owner !== null && pageBlocks(content).some((block) => block.type === "plans")) return "Kaizen's plans belong on Kaizen's own pages.";
   return null;
 }
 

@@ -97,6 +97,9 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "search":
       // The store's search is looked up where it is shown (`SearchSection`, D112); the editor shows a stand-in.
       return null;
+    case "plans":
+      // Kaizen's plans are looked up where the page is shown (`PlansSection`, D142); the editor shows a stand-in.
+      return null;
     case "customField":
       // The page's own values are looked up where it is shown (`CustomFieldSection`, D118); the editor shows a stand-in.
       return null;

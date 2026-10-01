@@ -437,6 +437,7 @@ const builder = (over: Partial<ComponentProps<typeof PageBuilder>> = {}) =>
         stores: [],
         menus: [],
         menusHref: "/menus",
+        plans: null,
         actions: {} as never,
       },
       fonts: {

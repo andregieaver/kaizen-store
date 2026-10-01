@@ -581,6 +581,22 @@ const messages = {
     },
     /** A modal in a page (D121): the close button and its name when it has no heading. */
     modal: { close: "Lukk", dialog: "Dialogvindu" },
+    /** Kaizen's plans on its own pages (D142). */
+    plans: {
+      perMonth: "per måned",
+      perYear: "per år",
+      exVat: "eks. mva.",
+      saveYearly: (percent: string): string => `Spar ${percent} % med årlig betaling`,
+      fee: (percent: string): string => `${percent} gebyr per salg`,
+      popular: "Mest populær",
+      includes: "Dette er inkludert",
+      compare: "Sammenlign planer",
+      feature: "Funksjon",
+      included: "Inkludert",
+      notIncluded: "Ikke inkludert",
+      choose: "Kom i gang",
+      yearlyPrice: (price: string): string => `eller ${price} per år`,
+    },
     listing: {
       open: "Filtrer og sorter",
       title: "Filtrer og sorter",
@@ -1479,6 +1495,22 @@ const messages = {
     },
     /** A modal in a page (D121): the close button and its name when it has no heading. */
     modal: { close: "Stäng", dialog: "Dialogruta" },
+    /** Kaizen's plans on its own pages (D142). */
+    plans: {
+      perMonth: "per månad",
+      perYear: "per år",
+      exVat: "exkl. moms",
+      saveYearly: (percent: string): string => `Spara ${percent} % med årlig betalning`,
+      fee: (percent: string): string => `${percent} avgift per försäljning`,
+      popular: "Mest populär",
+      includes: "Det här ingår",
+      compare: "Jämför planer",
+      feature: "Funktion",
+      included: "Ingår",
+      notIncluded: "Ingår inte",
+      choose: "Kom igång",
+      yearlyPrice: (price: string): string => `eller ${price} per år`,
+    },
     listing: {
       open: "Filtrera och sortera",
       title: "Filtrera och sortera",
@@ -2375,6 +2407,22 @@ const messages = {
     },
     /** A modal in a page (D121): the close button and its name when it has no heading. */
     modal: { close: "Luk", dialog: "Dialogvindu" },
+    /** Kaizen's plans on its own pages (D142). */
+    plans: {
+      perMonth: "pr. måned",
+      perYear: "pr. år",
+      exVat: "ekskl. moms",
+      saveYearly: (percent: string): string => `Spar ${percent} % med årlig betaling`,
+      fee: (percent: string): string => `${percent} gebyr pr. salg`,
+      popular: "Mest populær",
+      includes: "Det er inkluderet",
+      compare: "Sammenlign planer",
+      feature: "Funktion",
+      included: "Inkluderet",
+      notIncluded: "Ikke inkluderet",
+      choose: "Kom i gang",
+      yearlyPrice: (price: string): string => `eller ${price} pr. år`,
+    },
     listing: {
       open: "Filtrer og sorter",
       title: "Filtrer og sorter",
@@ -3271,6 +3319,22 @@ const messages = {
     },
     /** A modal in a page (D121): the close button and its name when it has no heading. */
     modal: { close: "Close", dialog: "Dialog" },
+    /** Kaizen's plans on its own pages (D142). */
+    plans: {
+      perMonth: "per month",
+      perYear: "per year",
+      exVat: "excl. VAT",
+      saveYearly: (percent: string): string => `Save ${percent} % with yearly billing`,
+      fee: (percent: string): string => `${percent} fee per sale`,
+      popular: "Most popular",
+      includes: "What's included",
+      compare: "Compare plans",
+      feature: "Feature",
+      included: "Included",
+      notIncluded: "Not included",
+      choose: "Get started",
+      yearlyPrice: (price: string): string => `or ${price} per year`,
+    },
     listing: {
       open: "Filter and sort",
       title: "Filter and sort",

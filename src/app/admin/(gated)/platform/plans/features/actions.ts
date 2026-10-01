@@ -1,10 +1,11 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { parseMatrixForm } from "@/lib/plan-features";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PLANS_TAG } from "@/server/public-plans";
 import { getFeatureMatrix, saveFeatureMatrix } from "@/server/plan-features";
 
 /** Saves the plan comparison: every feature's words and order, the new ones, and what each shown plan includes. */
@@ -15,6 +16,7 @@ export async function saveFeaturesAction(_state: FormState, formData: FormData):
   const parsed = parseMatrixForm(formData, { featureIds: matrix.features.map((f) => f.id), planIds: shown });
   if (!parsed.ok) return { status: "error", messages: parsed.problems };
   await saveFeatureMatrix(admin, parsed.input, shown);
+  updateTag(PLANS_TAG);
   refresh();
   return { status: "ok", messages: ["Saved. Store owners see the comparison when they choose a plan."] };
 }

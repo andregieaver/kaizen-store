@@ -27,12 +27,15 @@ import {
   updateSavedPartAction,
 } from "./actions";
 import { duplicatePageAction } from "./duplicate-action";
+import { planChoices } from "@/lib/plan-offer";
+import { getPublicPlans } from "@/server/public-plans";
+
 import { planMotionAction } from "./motion-action";
 
 /** The page editor's context for Kaizen's own pages (D42, D53) or articles (D57); `author` starts a new article. */
 export async function platformPageContext(type: PageType = "page", author = ""): Promise<PageOwnerContext> {
   const copy = PAGE_TYPE_COPY[type];
-  const [gridStores, fonts, menus, chrome] = await Promise.all([listGridStores(), getPlatformFonts(), platformMenuPreviews(), getPlatformChrome()]);
+  const [gridStores, fonts, menus, chrome, plans] = await Promise.all([listGridStores(), getPlatformFonts(), platformMenuPreviews(), getPlatformChrome(), getPublicPlans()]);
   return {
     owner: null,
     type,
@@ -50,6 +53,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     menus,
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
+    plans: planChoices(plans),
     theme: null,
     templates: null,
     fields: null,

@@ -20,6 +20,7 @@ import { FormSection } from "./form-section";
 import { GoogleReviewsSection } from "./google-reviews-section";
 import { PageBlockView } from "./page-block";
 import { PageModal } from "./page-modal";
+import { PlansSection } from "./plans-section";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelStyle, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 import { StorePartSection } from "./store-part-section";
 import { SearchSection } from "./search-section";
@@ -206,6 +207,8 @@ function RowMarkup({
                           <MenuSection block={block} place={place} />
                         ) : block.type === "search" ? (
                           <SearchSection place={place} results={block.results !== false} />
+                        ) : block.type === "plans" ? (
+                          <PlansSection block={block} />
                         ) : block.type === "customField" ? (
                           <CustomFieldSection block={block} place={place} />
                         ) : block.type === "fieldLoop" ? (

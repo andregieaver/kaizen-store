@@ -48,3 +48,19 @@ describe("the store's own custom fields in headers, footers and product layouts 
     expect(pageRulesProblem(store, "product_layout", withBlock(fields))).toMatch(/the store's own fields/);
   });
 });
+
+describe("where a plans component may be (D142)", () => {
+  const plans: PageBlock = { id: "pl", type: "plans", buttonLabel: "", buttonHref: "" };
+
+  it("belongs on Kaizen's own pages, which sell its plans", () => {
+    expect(pageRulesProblem(null, "page", withBlock(plans))).toBeNull();
+    expect(pageRulesProblem(null, "article", withBlock(plans))).toBeNull();
+  });
+
+  it("is refused on a store's pages: a store does not sell Kaizen's plans", () => {
+    for (const type of ["page", "article", "header", "footer"] as PageType[]) {
+      expect(pageRulesProblem(store, type, withBlock(plans))).not.toBeNull();
+    }
+    expect(pageRulesProblem(store, "page", withBlock(plans))).toMatch(/Kaizen's own pages/);
+  });
+});

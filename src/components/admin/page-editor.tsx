@@ -376,6 +376,7 @@ export function PageEditor({
           stores: context.gridStores,
           menus: context.menus,
           menusHref: context.menusHref,
+          plans: context.plans,
           actions,
         }}
         aside={

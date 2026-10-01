@@ -136,6 +136,7 @@ import {
   type ProductBlock,
   type ProductPart,
   type MenuBlock,
+  type PlansBlock,
   type SearchBlock,
   type CustomFieldBlock,
   type FieldLoopBlock,
@@ -183,6 +184,7 @@ import {
   type Styled,
 } from "@/lib/page-rows";
 import { blockTextFields, setBlockText } from "@/lib/page-translation";
+import { planCurrencies, type PlanChoice } from "@/lib/plan-offer";
 
 import type { GridData } from "@/lib/content-grid";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
@@ -318,6 +320,7 @@ const blockLabels: Record<BlockType, string> = {
   site: "Site",
   menu: "Menu",
   search: "Search",
+  plans: "Plans",
   customField: "Custom fields",
   fieldLoop: "Field loop",
   storePart: "Shop page",
@@ -347,6 +350,7 @@ const blockThis: Record<BlockType, string> = {
   site: "this site component",
   menu: "this menu",
   search: "this search",
+  plans: "these plans",
   customField: "these custom fields",
   fieldLoop: "this field loop",
   storePart: "this shop component",
@@ -399,6 +403,8 @@ export type GridContext = {
   /** The owner's menus (D85), for menu components, and where they are edited. */
   menus: MenuPreview[];
   menusHref: string;
+  /** Kaizen's plans for the Plans component (D142); null on a store's pages. */
+  plans: PlanChoice[] | null;
   actions: PageOwnerContext["actions"];
 };
 
@@ -807,6 +813,8 @@ export function PageBuilder({
             siteParts={siteParts}
             // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
             search={grid.owner !== null && !productParts && !siteParts}
+            // Kaizen's plans (D142) are for Kaizen's own pages.
+            plans={grid.plans !== null && !productParts && !siteParts}
             // Custom fields (D118) are the page's or article's own: a store's pages and articles, when it has any groups.
             customFields={fieldGroups !== null && grid.owner !== null && !productParts}
             shop={shopParts}
@@ -997,6 +1005,7 @@ function Sidebar({
   productParts,
   siteParts,
   search,
+  plans,
   customFields,
   shop,
   parts,
@@ -1021,6 +1030,8 @@ function Sidebar({
   siteParts: SitePart[] | null;
   /** The store's search can be added (D112). */
   search: boolean;
+  /** Kaizen's plans can be added (D142). */
+  plans: boolean;
   /** The page's own custom fields can be added (D118). */
   customFields: boolean;
   /** The store's working pages' components can be added (D113). */
@@ -1168,7 +1179,7 @@ function Sidebar({
                 </>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {[...BLOCK_TYPES, ...(search ? (["search"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
+                {[...BLOCK_TYPES, ...(search ? (["search"] as const) : []), ...(plans ? (["plans"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -1533,6 +1544,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <MenuIcon />;
     case "search":
       return <SearchIcon />;
+    case "plans":
+      return <PlansIcon />;
     case "customField":
       return <FieldsIcon />;
     case "fieldLoop":
@@ -2275,6 +2288,8 @@ function BlockItem({
           <MenuStandIn block={block} menus={actions.grid.menus} />
         ) : block.type === "search" ? (
           <SearchStandIn block={block} />
+        ) : block.type === "plans" ? (
+          <PlansStandIn block={block} />
         ) : block.type === "customField" ? (
           <CustomFieldStandIn block={block} />
         ) : block.type === "fieldLoop" ? (
@@ -2317,6 +2332,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   site: "Site component.",
   menu: "A menu: double-click or use the wrench to choose which.",
   search: "Search.",
+  plans: "Kaizen's plans: the plans and their prices show where the page is seen.",
   customField: "Custom fields.",
   fieldLoop: "A field loop: double-click or use the wrench to choose a repeater.",
   storePart: "A shop page component.",
@@ -2793,6 +2809,45 @@ function Dialogs({
                 />
                 {fontField("Font", block.font, "The site's fonts", (font) =>
                   onRows((current) => patchBlock<MenuBlock>(current, block.id, { font })),
+                )}
+                {spacingFields({ kind: "block", id: block.id })}
+                {frameFields({ kind: "block", id: block.id })}
+              </>
+            }
+            motion={motionFields({ kind: "block", id: block.id })}
+            advanced={advancedFields({ kind: "block", id: block.id })}
+          />
+        )}
+      </Modal>
+
+      <Modal
+        open={block?.type === "plans"}
+        onClose={onClose}
+        title="Plans"
+        footer={
+          block && (
+            <>
+              {saveAs({ kind: "block", content: block })}
+              {done}
+            </>
+          )
+        }
+        wide
+      >
+        {block?.type === "plans" && (
+          <SettingsTabs
+            key={block.id}
+            general={
+              <PlansFields
+                block={block}
+                plans={grid.plans ?? []}
+                onChange={(patch) => onRows((current) => patchBlock<PlansBlock>(current, block.id, patch))}
+              />
+            }
+            style={
+              <>
+                {fontField("Font", block.font, "The site's fonts", (font) =>
+                  onRows((current) => patchBlock<PlansBlock>(current, block.id, { font })),
                 )}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -5159,6 +5214,8 @@ function SavedPartDialog({
                       <p className="text-sm text-muted">Menu: change its settings where it is used.</p>
                     ) : block.type === "search" ? (
                       <p className="text-sm text-muted">Search: change its settings where it is used.</p>
+                    ) : block.type === "plans" ? (
+                      <p className="text-sm text-muted">Plans: change its settings where it is used.</p>
                     ) : block.type === "customField" ? (
                       <p className="text-sm text-muted">Custom fields: change its settings where it is used.</p>
                     ) : block.type === "fieldLoop" ? (
@@ -5250,6 +5307,18 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
 // Menu components (D85)
 // ---------------------------------------------------------------------------
 
+function PlansIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="5" height="14" rx="1" />
+        <rect x="9.5" y="3" width="5" height="16" rx="1" />
+        <rect x="16" y="7" width="5" height="12" rx="1" />
+      </svg>
+    </span>
+  );
+}
+
 function SearchIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
@@ -5282,6 +5351,95 @@ function MenuIcon() {
 }
 
 /** A menu component's settings: which of the owner's menus, and how its links are laid out. */
+/** Kaizen's plans component's settings (D142): the currency and price shown, the highlighted plan, the comparison table and the buttons. */
+function PlansFields({ block, plans, onChange }: { block: PlansBlock; plans: PlanChoice[]; onChange: (patch: BlockPatch<PlansBlock>) => void }) {
+  const id = useId();
+  const currencies = planCurrencies(plans);
+  const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="text-sm text-muted">
+        Draws a card for each of your active plans, with its price, fee per sale and what it includes. The plans, prices and features are edited under
+        Plans: a change there shows on this page at once.
+      </p>
+      {plans.length === 0 && <p className="text-sm">There are no active plans yet, so nothing shows until you set one up under Plans.</p>}
+      <label htmlFor={`${id}-currency`} className="flex flex-col gap-1 text-sm font-medium">
+        Currency
+        <select
+          id={`${id}-currency`}
+          value={block.currency && currencies.includes(block.currency) ? block.currency : ""}
+          onChange={(event) => onChange({ currency: event.target.value || undefined })}
+          className={input}
+        >
+          <option value="">The one most plans have a price in</option>
+          {currencies.map((currency) => (
+            <option key={currency} value={currency}>
+              {currency}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label htmlFor={`${id}-interval`} className="flex flex-col gap-1 text-sm font-medium">
+        Prices
+        <select
+          id={`${id}-interval`}
+          value={block.interval ?? ""}
+          onChange={(event) => onChange({ interval: (event.target.value || undefined) as PlansBlock["interval"] })}
+          className={input}
+        >
+          <option value="">Monthly, with the yearly price under it</option>
+          <option value="month">Monthly only</option>
+          <option value="year">Yearly only</option>
+        </select>
+      </label>
+      <label htmlFor={`${id}-highlight`} className="flex flex-col gap-1 text-sm font-medium">
+        Plan to recommend
+        <select
+          id={`${id}-highlight`}
+          value={plans.some((plan) => plan.id === block.highlightId) ? block.highlightId : ""}
+          onChange={(event) => onChange({ highlightId: event.target.value || undefined })}
+          className={input}
+        >
+          <option value="">None</option>
+          {plans.map((plan) => (
+            <option key={plan.id} value={plan.id}>
+              {plan.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Check
+        label="Show the comparison table"
+        hint="Every feature in a row, with a tick for each plan that includes it, under the cards."
+        checked={block.comparison === true}
+        onChange={(comparison) => onChange({ comparison: comparison ? true : undefined })}
+      />
+      <label htmlFor={`${id}-label`} className="flex flex-col gap-1 text-sm font-medium">
+        Button text
+        <input
+          id={`${id}-label`}
+          value={block.buttonLabel}
+          maxLength={BUTTON_LABEL_MAX}
+          placeholder="Get started"
+          onChange={(event) => onChange({ buttonLabel: event.target.value })}
+          className={input}
+        />
+      </label>
+      <label htmlFor={`${id}-href`} className="flex flex-col gap-1 text-sm font-medium">
+        Button address
+        <input
+          id={`${id}-href`}
+          value={block.buttonHref}
+          placeholder="/sign-up"
+          onChange={(event) => onChange({ buttonHref: event.target.value })}
+          className={input}
+        />
+        <span className="text-xs font-normal text-muted">Where the buttons lead; empty is the sign-up page.</span>
+      </label>
+    </div>
+  );
+}
+
 function MenuFields({
   block,
   menus,
@@ -5356,6 +5514,21 @@ function SearchStandIn({ block }: { block: SearchBlock }) {
     <div className="flex flex-col gap-2">
       <div className="flex min-h-11 items-center rounded-md border border-border bg-background px-3 text-sm text-muted">Search the store …</div>
       <p className="text-xs text-muted">{block.results === false ? "Only the search box." : "The results of what shoppers search for show here."}</p>
+    </div>
+  );
+}
+
+/** Kaizen's plans on the canvas (D142): what the component is set to show, as the canvas reads no plans. */
+function PlansStandIn({ block }: { block: PlansBlock }) {
+  const parts = [
+    block.currency ? `prices in ${block.currency}` : "prices in the platform's main currency",
+    block.interval === "month" ? "monthly prices" : block.interval === "year" ? "yearly prices" : "monthly and yearly prices",
+    block.comparison ? "with the comparison table" : "without the comparison table",
+  ];
+  return (
+    <div className="rounded-md border border-dashed border-border bg-surface p-4 text-sm">
+      <p className="font-medium">Kaizen&apos;s plans</p>
+      <p className="text-xs text-muted">A card for each plan, from the plans you have set up: {parts.join(", ")}.</p>
     </div>
   );
 }

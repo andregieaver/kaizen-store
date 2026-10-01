@@ -12,6 +12,7 @@ import type { TemplateActions } from "@/lib/templates";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { StandardMenus } from "@/lib/site-layout";
 import type { GridStore } from "@/server/content-grid";
+import type { PlanChoice } from "@/lib/plan-offer";
 import type { MenuPreview } from "@/server/menus";
 import type { EditablePage } from "@/server/pages";
 import type { SavedResult } from "@/server/saved-parts";
@@ -64,6 +65,8 @@ export type PageOwnerContext = {
   standardMenus: StandardMenus;
   /** Where the owner's menus are edited. */
   menusHref: string;
+  /** Kaizen's plans for the Plans component (D142), on Kaizen's own pages; null for a store, which does not sell Kaizen's plans. */
+  plans: PlanChoice[] | null;
   /** The owner's own CSS for every page of its site (D100), edited in the builder's CSS panel. */
   siteCss: string;
   /** The store's custom field groups (D118), for the builder's field components and the page's own fields; null for Kaizen, which has none yet. */

@@ -773,6 +773,28 @@ export type SearchBlock = PartBase & BlockFont & {
 };
 
 /**
+ * Kaizen's plans (D142): what each plan costs and includes, drawn as cards and, if wanted, the
+ * comparison table (D132) under them. The plans, their prices, fees and features are the platform's
+ * (`commerce.plans`, `plan_prices`, `plan_features`), read where the page is shown, so a change to a
+ * plan shows on the page with no edit to it. Kaizen's own pages only; stores sell their own things.
+ */
+export type PlansBlock = PartBase & BlockFont & {
+  id: string;
+  type: "plans";
+  /** The currency the prices show in; none: the platform's first. */
+  currency?: string;
+  /** Which price each card shows; both (the default) shows the monthly price and the yearly one under it. */
+  interval?: "month" | "year";
+  /** The plan marked as the one to choose ("Most popular"); an id of Kaizen's plans. */
+  highlightId?: string;
+  /** Show the comparison table of features under the cards. */
+  comparison?: boolean;
+  /** The words on each card's button, and where it leads (sign-up unless chosen). */
+  buttonLabel: string;
+  buttonHref: string;
+};
+
+/**
  * The custom fields (D118) of the page or article it is on: one group, one
  * field of it, or with none chosen all the groups that apply to the page, as a
  * table, list or cards. Only fields the owner made public are drawn, in the
@@ -1217,6 +1239,7 @@ export type PageBlock =
   | SiteBlock
   | MenuBlock
   | SearchBlock
+  | PlansBlock
   | CustomFieldBlock
   | FieldLoopBlock
   | StorePartBlock
@@ -1342,6 +1365,9 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "search":
     case "storePart":
       return true;
+    case "plans":
+      // The platform's plans decide: with none on offer it draws nothing (D142).
+      return true;
     case "customField":
       // The page's own values decide: with none for these fields it draws nothing (D118).
       return true;
@@ -1412,6 +1438,7 @@ export function blockText(block: PageBlock): string {
     case "site":
     case "menu":
     case "search":
+    case "plans":
     case "storePart":
     case "customField":
     case "fieldLoop":
@@ -2002,6 +2029,23 @@ const searchBlock = z.object({
   ...partBase,
 });
 
+const plansBlock = z.object({
+  id: itemId,
+  type: z.literal("plans"),
+  currency: z.string().trim().regex(/^[A-Z]{3}$/, "Choose a currency such as NOK or EUR.").optional(),
+  interval: z.enum(["month", "year"]).optional(),
+  highlightId: z.uuid().optional(),
+  comparison: z.boolean().optional(),
+  buttonLabel: z.string().trim().max(BUTTON_LABEL_MAX, `Keep the button's text under ${BUTTON_LABEL_MAX} characters.`).default(""),
+  buttonHref: z
+    .string()
+    .trim()
+    .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
+    .default(""),
+  font: blockFont,
+  ...partBase,
+});
+
 const customFieldBlock = z.object({
   id: itemId,
   type: z.literal("customField"),
@@ -2336,6 +2380,7 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   siteBlock,
   menuBlock,
   searchBlock,
+  plansBlock,
   customFieldBlock,
   fieldLoopBlock,
   storePartBlock,

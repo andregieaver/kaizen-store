@@ -78,6 +78,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     menus,
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
+    plans: null,
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
     // Templates shared between stores and the marketplace (D125), bound to the store.
     templates: {

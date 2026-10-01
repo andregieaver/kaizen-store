@@ -52,6 +52,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
     case "customField":
     case "separator":
       return { id: id(), type };
+    case "plans":
+      return { id: id(), type, buttonLabel: "", buttonHref: "" };
     case "fieldLoop":
       return { id: id(), type, layout: "cards", columns: 3, slots: {} };
     case "accordion":
