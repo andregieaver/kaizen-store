@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { overdue } from "@/lib/experiments";
 
 import { getExperiment, startExperiment, stopExperiment, unscheduleExperiment } from "./experiment-admin";
+import { notifyGuardrailStop } from "./experiment-emails";
 import { experimentResults } from "./experiment-results";
 import { pruneExperimentData } from "./experiments";
 import { getStore } from "./stores";
@@ -17,7 +18,7 @@ type Row = Record<string, unknown>;
  * (checked again as at any start: one that no longer can goes back to a draft with the reason, for its owner to read);
  * a test past its planned end and a week
  * of grace, or ninety days, is stopped; once an hour every running test's guardrail is looked at, and a version that
- * clearly lowers orders stops the test; old carts' visitors are forgotten.
+ * clearly lowers orders stops the test and the store's owners are emailed; old carts' visitors are forgotten.
  */
 export async function runExperimentJobs(now = new Date()): Promise<{ started: number; stopped: number; checked: number; pruned: number }> {
   let started = 0;
@@ -59,7 +60,11 @@ export async function runExperimentJobs(now = new Date()): Promise<{ started: nu
         if (!store || !test) continue;
         checked += 1;
         const results = await experimentResults(store, test, now);
-        if (results.harmed && (await stopExperiment(null, storeId, id, "guardrail")).ok) stopped += 1;
+        if (results.harmed && (await stopExperiment(null, storeId, id, "guardrail")).ok) {
+          stopped += 1;
+          // The owners are told after the stop has happened: a failure to send never undoes it.
+          await notifyGuardrailStop(store, test, results);
+        }
       } catch (error) {
         console.error("[experiments] check failed", id, error);
       }

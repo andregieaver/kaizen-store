@@ -191,7 +191,7 @@ A fix on the way: the admin functions called `updateTag`, which only a server ac
 are not one, so a stop, a scheduled start or a choice made there changed the database and then threw before refreshing the caches.
 They now refresh through `refreshTag()` (`updateTag`, else `revalidateTag`).
 
-Not done in phase 4: guardrail emails to the owner, and tools for the platform's assistant (a platform admin cannot edit a store's test).
+Not done in phase 4: tools for the platform's assistant (a platform admin cannot edit a store's test). The guardrail emails came in phase 6.
 
 ## What phase 5 built: the platform's view of every store's tests
 
@@ -210,8 +210,24 @@ tests and tells the owner; nothing here starts, stops or changes one.
   scheduled, stopped and the rest, newest first.
 - Totals at the top: running (and in how many stores), scheduled, stopped, and how many need a look.
 
-Still later: emails to the owner when the guardrail stops a test, platform-assistant tools, and moving the search and recommendations tests
-onto the engine.
+Still later: platform-assistant tools, and moving the search and recommendations tests onto the engine.
+
+## What phase 6 built: the guardrail's email
+
+When the hourly check stops a test because a version clearly lowers orders, Kaizen emails the store's owners and whoever made the test
+(`src/server/experiment-emails.ts`, `notifyGuardrailStop()`; the words in `src/lib/experiment-emails.ts`, `guardrailEmail()`, pure).
+
+- **When:** only for the guardrail's stop, after the stop has happened (`runExperimentJobs()`); a stop by a person or at the planned end sends nothing,
+  as the person knows. A failure to send never undoes the stop and never throws: the test's page and the platform's view show a guardrail stop anyway.
+- **To whom:** each active owner of the store and the person who made the test if they are still a member; never a disabled member, other staff
+  or the platform. Once each: the key is `experiment.guardrail:{test}:{account}`, so a second run of the check, or a retry, sends nothing more.
+  The email is kept in `email_messages` like every email (kind `experiment.guardrail`), and goes out when email is set up.
+- **What it says:** the test, what it tested, the days it ran, the version's and the original's orders per visitor with the counts, that nobody new is
+  given a version and that everyone sees the page as before, and that the owner can read the results, discard or apply another version. It does not say
+  why the version did worse, promises nothing and applies nothing. The figures are `experimentResults()`'s, the same as the results page.
+
+Still later: platform-assistant tools, and moving the search and recommendations tests onto the engine. (The table's phase numbers: 6 is this email;
+moving the old tests is now phase 7.)
 
 ## Principles (kept from `measurement.md`)
 
@@ -521,7 +537,8 @@ reports (D106, D145).
 | **3** (header, footer and product layouts built) | Product layouts, headers and footers, modals; surrounding rows on working pages; Kaizen's own pages (platform) | Platform runs the plans-page test |
 | **4** (the AI manager's tools built) | AI manager tools and drafts, the platform's cross-store view, guardrail auto-stop emails | Gated tools tested like other gated tools |
 | **5** (the platform's view built) | The platform's cross-store view of tests | Flags tested on every kind of trouble |
-| **6** | Guardrail emails to owners; move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |
+| **6** (the guardrail's email built) | Guardrail emails to owners | Sent once to the right people, never on a person's stop |
+| **7** | Move search and recommendations tests onto the engine | Old and new give the same numbers on the same data |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the
 new page, a migration applied to production with the advisors checked and its version recorded in `decisions.md`,

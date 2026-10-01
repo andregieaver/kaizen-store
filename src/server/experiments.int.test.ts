@@ -33,6 +33,7 @@ const admin = await import("./experiment-admin");
 const results = await import("./experiment-results");
 const jobs = await import("./experiment-jobs");
 const engine = await import("./experiments");
+const emails = await import("./experiment-emails");
 const stores = await import("./stores");
 const pages = await import("./pages");
 
@@ -428,7 +429,49 @@ describe("ending a test (D148)", () => {
     const guarded = await jobs.runExperimentJobs(hour);
     expect(guarded.stopped).toBe(1);
     expect(await admin.getExperiment(storeId, id)).toMatchObject({ status: "stopped", stopReason: "guardrail" });
+
+    // The owner is told, once, with the figures counted above (phase 6); the planned-end stop earlier sent nothing.
+    const mails = await db().execute<Row>(sql`select to_address, subject, text, status from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'experiment.guardrail'`);
+    expect(mails).toHaveLength(1);
+    expect(mails[0].to_address).toBe(`ab-${run}@example.com`);
+    expect(String(mails[0].subject)).toContain("fewer orders in version B");
+    expect(String(mails[0].text)).toContain("130 of 5,000 visitors who saw version B ordered (2.6 %), against 250 of 5,000 who saw the original (5 %)");
+    expect(String(mails[0].text)).toContain(`/admin/${store.slug}/experiments/${id}`);
+    // Asking again, as a second run of the check would, sends nothing more.
+    const again = await emails.notifyGuardrailStop(store, (await admin.getExperiment(storeId, id))!, r);
+    expect(again).toEqual(["duplicate"]);
   }, 60_000);
+
+  it("emails the store's owners and the person who made the test, but not other staff or anyone disabled", async () => {
+    const id = await runningTest();
+    const test = (await admin.getExperiment(storeId, id))!;
+    const other = async (name: string) => {
+      const [row] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`ab-${name}-${run}@example.com`}, ${name}) returning id`);
+      return String(row.id);
+    };
+    const [staff, gone] = [await other("staff"), await other("gone")];
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${storeId}::uuid, ${account.id}::uuid, 'admin'), (${storeId}::uuid, ${staff}::uuid, 'admin')`);
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role, disabled_at) values (${storeId}::uuid, ${gone}::uuid, 'admin', now())`);
+    // The figures only need to say a version is harmed: the email is made from them.
+    const harmed = {
+      harmed: "b",
+      days: 5,
+      funnel: { a: { visitors: 2000, carts: 0, checkouts: 0, buyers: 100, clicks: 0 }, b: { visitors: 2000, carts: 0, checkouts: 0, buyers: 40, clicks: 0 } },
+    } satisfies Parameters<typeof emails.notifyGuardrailStop>[2];
+    const outcomes = await emails.notifyGuardrailStop(store, test, harmed);
+    expect(outcomes).toHaveLength(2);
+    const sent = await db().execute<Row>(sql`select to_address from commerce.email_messages where idempotency_key like ${`experiment.guardrail:${id}:%`} order by to_address`);
+    expect(sent.map((r) => r.to_address)).toEqual([`ab-admin-${run}@example.com`, `ab-${run}@example.com`].sort());
+    await db().execute(sql`delete from commerce.store_members where store_id = ${storeId}::uuid and account_id in (${account.id}::uuid, ${staff}::uuid, ${gone}::uuid)`);
+  });
+
+  it("does not email anyone for a stop by a person or at the planned end, or when no version is harmed", async () => {
+    const id = await runningTest();
+    const test = (await admin.getExperiment(storeId, id))!;
+    const none = await results.experimentResults(store, test);
+    expect(await emails.notifyGuardrailStop(store, test, none)).toEqual([]);
+    expect(await db().execute<Row>(sql`select 1 from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'experiment.guardrail' and idempotency_key like ${`experiment.guardrail:${id}:%`}`)).toHaveLength(0);
+  });
 
   it("recovers the visitors' cookie values the way the browser reads them", () => {
     const value = encodeAssignments({ visitor: "11111111-1111-4111-8111-111111111111", versions: { "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": "b" } });
