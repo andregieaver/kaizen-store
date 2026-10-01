@@ -12,14 +12,14 @@ import type { CarrierId } from "./shipping-carriers";
  */
 
 /** The countries a carrier's checkout services cover, now: Posten / Bring's are for parcels within Norway (D134), PostNord's for its four countries. */
-export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = { bring: ["NO"], postnord: ["SE", "DK", "NO", "FI"], porterbuddy: ["NO"] };
+export const CHECKOUT_COUNTRIES: Partial<Record<CarrierId, string[]>> = { bring: ["NO"], postnord: ["SE", "DK", "NO", "FI"], porterbuddy: ["NO"], helthjem: ["NO"] };
 
 /**
  * Where a carrier's prices come from: its own price service for this parcel (`carrier`, Bring's Shipping Guide: the price
  * without VAT, to which the store's markup is added), or what the store enters from its agreement (`store`, PostNord has
  * no price API): per country and service, with VAT, as the shopper pays.
  */
-export const CHECKOUT_PRICING: Partial<Record<CarrierId, "carrier" | "store">> = { bring: "carrier", postnord: "store", porterbuddy: "carrier" };
+export const CHECKOUT_PRICING: Partial<Record<CarrierId, "carrier" | "store">> = { bring: "carrier", postnord: "store", porterbuddy: "carrier", helthjem: "store" };
 
 /** How long a quote holds: the time a shopper may take from seeing the prices to paying. */
 export const QUOTE_MINUTES = 120;

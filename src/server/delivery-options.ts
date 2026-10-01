@@ -25,6 +25,7 @@ import { carrierInfo, type CarrierContext, type CarrierId, type PickupPoint, typ
 import { BRING_PRODUCTS } from "@/lib/bring";
 import { POSTNORD_SERVICES } from "@/lib/postnord";
 import { PORTERBUDDY_PRODUCTS } from "@/lib/porterbuddy";
+import { HELTHJEM_SERVICES } from "@/lib/helthjem";
 
 import { audit } from "./auth";
 import { adapterFor } from "./carriers";
@@ -42,10 +43,11 @@ type Runner = Pick<ReturnType<typeof db>, "execute">;
  */
 
 /** The services of a carrier a store may offer at checkout, by its own ids. */
-export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: string; needsPickupPoint: boolean }[]>> = {
+export const CHECKOUT_SERVICES: Partial<Record<CarrierId, { id: string; name: string; needsPickupPoint: boolean; maxWeightGrams?: number }[]>> = {
   bring: BRING_PRODUCTS,
   postnord: POSTNORD_SERVICES,
   porterbuddy: PORTERBUDDY_PRODUCTS,
+  helthjem: HELTHJEM_SERVICES,
 };
 
 /** The carriers that have checkout services built. */
@@ -195,8 +197,14 @@ async function offersFrom(
   let found: Omit<Offer, "points">[];
   if (CHECKOUT_PRICING[active.carrier] === "store") {
     const prices = active.settings.prices[market.code];
+    // A service has a weight it takes at most: not offered for a heavier cart.
+    const weight = known.some((s) => s.maxWeightGrams) ? await cartWeightGrams(storeId, cartId, active.settings.defaultWeightGrams) : 0;
     found = active.settings.services
       .filter((id) => prices && id in prices.services)
+      .filter((id) => {
+        const max = known.find((s) => s.id === id)?.maxWeightGrams;
+        return !max || weight <= max;
+      })
       .map((id) => ({
         carrier: active.carrier,
         serviceId: id,

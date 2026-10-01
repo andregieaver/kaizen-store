@@ -16,7 +16,9 @@ import {
 import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
-import { PorterbuddyBooking } from "@/components/admin/porterbuddy-booking";
+import { ChosenDeliveryBooking } from "@/components/admin/chosen-delivery-booking";
+import { helthjemBookAction } from "../helthjem-actions";
+import { porterbuddyBookAction } from "../porterbuddy-actions";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
 import type { CarrierId } from "@/lib/shipping-carriers";
@@ -87,7 +89,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   ]);
   if (!order) notFound();
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
-  const [bring, porterbuddy, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), estimateWeightGrams(store.id, order.id)]);
+  const [bring, porterbuddy, helthjem, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id)]);
   const locale = store.markets[0]?.locale ?? order.locale;
   const money = (minor: number) => formatMoney(minor, order.currency, locale);
   // Bonus credits on an order (D130) are in the order's own currency; null for an order with none and for copied history.
@@ -346,13 +348,28 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Porterbuddy</summary>
                   <div className="mt-3">
-                    <PorterbuddyBooking
-                      storeSlug={store.slug}
-                      orderId={order.id}
-                      windowText={formatWindow(order.delivery.window, "en-GB", store.timeZone)}
+                    <ChosenDeliveryBooking
+                      carrierName="Porterbuddy"
+                      chosenText={`delivery ${formatWindow(order.delivery.window, "en-GB", store.timeZone)}`}
                       estimatedGrams={estimatedGrams}
                       test={porterbuddy.environment === "test"}
                       hasEmail={Boolean(order.email)}
+                      book={porterbuddyBookAction.bind(null, store.slug, order.id)}
+                    />
+                  </div>
+                </details>
+              )}
+              {helthjem?.complete && order.delivery?.carrier === "helthjem" && order.status !== "pending_payment" && !order.copied && (
+                <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
+                  <summary className="cursor-pointer text-sm font-medium">Book with Helthjem</summary>
+                  <div className="mt-3">
+                    <ChosenDeliveryBooking
+                      carrierName="Helthjem"
+                      chosenText={`${order.delivery.label}${order.delivery.pickupPoint ? ` at ${pickupPointLine(order.delivery.pickupPoint)}` : ""}`}
+                      estimatedGrams={estimatedGrams}
+                      test={helthjem.environment === "test"}
+                      hasEmail={Boolean(order.email)}
+                      book={helthjemBookAction.bind(null, store.slug, order.id)}
                     />
                   </div>
                 </details>

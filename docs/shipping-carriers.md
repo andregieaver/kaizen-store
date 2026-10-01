@@ -169,3 +169,40 @@ a booked order, and any country but Norway.
 store's agreement (it is treated as without, as Porterbuddy invoices, and a `displayPrice` as with; compare the checkout with the
 portal in the test environment and use the markup to adjust), that availability accepts a postal code without a street for the
 destination, and that the pick-up windows match the store's agreement.
+
+
+## Helthjem (D138)
+
+`src/lib/helthjem.ts` (pure), `src/server/carriers/helthjem.ts` (`createHelthjemAdapter()`, `fetchHelthjemLabel()`),
+`src/server/helthjem-shipping.ts` (booking), and the checkout side in `src/server/delivery-options.ts`. Built against
+Helthjem's public OpenAPI description (`developer.helthjem.no/api-docs/openapi.json`): a bearer token from the store's client
+id and secret (`/auth/oauth2/v1/token`, kept until a minute before it runs out and asked for again once if refused), Single
+Address Check, Nearby Service Points, Bookings, Labels (`unified-large`, PDF) and Tracking. The test environment is
+`api.pre.helthjem.no`, live is `api.helthjem.no`.
+
+**Transport solutions**: Helthjem books by *transport solution*, an id the store's agreement gives it (the carrier page asks for
+one for home delivery and, optionally, one for service points). A *stand-alone* solution (2 home only; 86 Helthjem's service
+points) fails where it does not reach; a *fallback* solution (1, 114) lets Helthjem fall back to a service point itself. Which
+is right depends on the shop; the page says so.
+
+**Works now** (Norway)
+- **Services at checkout**: *Helthjem home delivery* (up to 5 kg) and *Helthjem service point* (up to 20 kg), **at prices the
+  store enters** per service, with VAT, and a free-above value (Helthjem has no price API; the same `checkout_prices` as
+  PostNord). A service is left out of a cart heavier than it takes (`maxWeightGrams`).
+- **Service points** for the one that needs it, from Nearby Service Points with the store's collect solution and the shopper's
+  postal code.
+- **Check connection**: gets a token, then asks coverage for a sample address with the store's shop id and solution; an
+  address Helthjem does not cover still counts as accepted.
+- **Booking** (order page → *Book with Helthjem*, for an order whose customer chose Helthjem): for a home delivery Helthjem is
+  asked first whether it reaches the full address and nothing is booked if not; a service point is booked with the point the
+  shopper chose (a `servicePoint` party). The order number is the references. A real booking marks the order as sent with the
+  shipment number (without the `(401)` prefix) as the tracking number; in the test environment the order is **not** marked sent.
+- **Labels** are fetched when printed and never kept (`carrierLabel()`); **tracking** shows the latest event under the shipment.
+
+**Not yet**: Helthjem's own tracking page link (none is given by the API), express (`Helthjem Express`) and parcel lockers,
+cancelling a booking, returns, a chosen delivery date, and a coverage check at checkout for home delivery (it needs the street
+and city, which checkout does not ask for; a fallback solution makes up for it).
+
+**To verify with real credentials** (nothing here has met Helthjem's servers): that a booking with `shipmentId: null` is
+accepted, that service points are found by postal code alone, that the transport solution ids on the carrier's page are the
+ones in the agreement, and the weight limits (5 and 20 kg, from Helthjem's delivery methods guide).

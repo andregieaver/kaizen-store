@@ -12,9 +12,9 @@ describe("the carriers", () => {
     expect(isCarrierId("dhl")).toBe(false);
   });
 
-  it("each need an API key that is secret, and say what they will do", () => {
+  it("each need a secret that is required (an API key, or Helthjem's client secret), and say what they will do", () => {
     for (const carrier of CARRIERS) {
-      expect(carrier.fields.some((f) => f.key === "apiKey" && f.secret && f.required)).toBe(true);
+      expect(carrier.fields.some((f) => (f.key === "apiKey" || f.key === "clientSecret") && f.secret && f.required)).toBe(true);
       expect(carrier.features).toContain("rates");
       expect(carrier.countries.length).toBeGreaterThan(0);
       expect(carrier.steps.length).toBeGreaterThan(1);

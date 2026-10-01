@@ -215,6 +215,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
                     <input type="checkbox" name="service" value={service.id} defaultChecked={checkout.services.includes(service.id)} className="size-4" />
                     {service.name}
                     {service.needsPickupPoint && <span className="text-muted">(the shopper chooses a pickup point)</span>}
+                    {service.maxWeightGrams && <span className="text-muted">(parcels up to {service.maxWeightGrams / 1000} kg)</span>}
                   </label>
                 ))}
                 <p className="text-sm text-muted">A service is shown only when {info.name} offers it for the parcel and the postal code.</p>
