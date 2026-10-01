@@ -2,16 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { JsonLdScript } from "@/components/json-ld";
+import { PlatformPageView, platformPageMetadata } from "@/components/platform-page";
 import { storeBase, storeHref } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { platformJsonLd } from "@/lib/structured-data";
+import { platformPageForRole } from "@/server/platform-roles";
 import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 import { templateStoreSlug } from "@/server/stores";
 
-export const metadata: Metadata = { alternates: { canonical: "/" } };
+/** The front page's own search and sharing texts where one of Kaizen's pages is chosen for it (D143). */
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await platformPageForRole("front");
+  return page ? platformPageMetadata(page, "/") : { alternates: { canonical: "/" } };
+}
 
-/** The platform's front page. Sign-up opens with the invite-only beta. */
+/** The platform's front page: one of Kaizen's own pages where one is chosen (D143), else the standard one. Sign-up opens with the invite-only beta. */
 export default async function Home() {
+  const chosen = await platformPageForRole("front");
+  if (chosen) return <PlatformPageView page={chosen} url="/" front />;
   const [demo, seo] = await Promise.all([templateStoreSlug(), getPlatformSeo()]);
   return (
     <main id="main" className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">

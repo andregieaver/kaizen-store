@@ -3247,6 +3247,29 @@ export const pageRoles = commerce.table(
 );
 
 /**
+ * Which of Kaizen's own pages has a place of its own on its site (D143), as a store's front page and special
+ * pages do (D54, D112): its front page (`/`), its blog (`/blog`) and the page shown for an address that is not
+ * found. Without one the site's standard page shows. A page holds at most one place, only a page of Kaizen's
+ * own (type `page`, no store) can hold one (a trigger in a custom migration), and deleting it lets the place go.
+ */
+export const platformPageRoles = commerce.table(
+  "platform_page_roles",
+  {
+    role: text("role").primaryKey(),
+    pageId: uuid("page_id")
+      .notNull()
+      .unique("platform_page_roles_page_key")
+      .references(() => pages.id, { onDelete: "cascade" }),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("platform_page_roles_role", sql`${t.role} in ('front', 'blog', 'not_found')`),
+    index("platform_page_roles_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/**
  * An address a published page had before its slug changed (D42): visiting
  * it redirects permanently to the page's address now. A page taking the
  * address later replaces the redirect.

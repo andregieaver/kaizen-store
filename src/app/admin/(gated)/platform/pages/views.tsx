@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { PageEditor } from "@/components/admin/page-editor";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
+import { PagePlaceForm } from "@/components/admin/page-place-form";
 import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { ArticleView } from "@/components/article-view";
@@ -13,14 +14,16 @@ import { PageArticle } from "@/components/page-article";
 import { ScopedCss } from "@/components/custom-css";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
+import { PLATFORM_ROLE_COPY, PLATFORM_ROLES, type PlatformRole } from "@/lib/platform-roles";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getPageForEdit, listPages } from "@/server/pages";
 import { getPlatformChrome } from "@/server/platform-navigation";
+import { getPlatformPageRoles } from "@/server/platform-roles";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 
-import { choosePlatformSiteLayoutAction, createPageTermAction, deletePageTermAction, updatePageTermAction } from "./actions";
+import { choosePlatformSiteLayoutAction, createPageTermAction, createPlatformRolePageAction, setPlatformPageRoleAction, deletePageTermAction, updatePageTermAction } from "./actions";
 import { platformPageContext } from "./context";
 import { duplicatePageAction } from "./duplicate-action";
 
@@ -34,7 +37,7 @@ type Query = Promise<Record<string, string | string[] | undefined>>;
 type Params = Promise<{ pageId: string }>;
 
 const INTRO: Record<PageType, string> = {
-  page: "Kaizen's own pages, each at its own address on the site, such as /about. Save a page as a draft while you work on it; publish it to put it on the site. Add pages to the menus under Header and footer.",
+  page: "Kaizen's own pages, each at its own address on the site, such as /about. Save a page as a draft while you work on it; publish it to put it on the site. Add pages to the menus under Header and footer. Choose any page as Kaizen's front page, blog page or 404 page under Special pages.",
   article:
     "Kaizen's blog: articles at /blog/{address}, listed newest first at /blog. Save an article as a draft while you work on it; publish it to put it in the blog.",
   // Stores' own (D79); Kaizen has no products.
@@ -51,7 +54,11 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   await requirePlatformAdmin();
   const copy = PAGE_TYPE_COPY[type];
   const base = `/admin/platform/${copy.segment}`;
-  const [pages, query] = await Promise.all([listPages(null, type), searchParams]);
+  const [pages, query, roles] = await Promise.all([listPages(null, type), searchParams, type === "page" ? getPlatformPageRoles() : []]);
+  // Pages that have a place of their own (D143) are not offered for another.
+  const placedIds = new Set(roles.map(([, id]) => id));
+  const roleOf = Object.fromEntries(roles.map(([role, id]) => [role, id]));
+  const offered = (role: PlatformRole) => pages.filter((p) => (!placedIds.has(p.id) || p.id === roleOf[role]) && (p.state !== "draft" || p.id === roleOf[role]));
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -89,7 +96,37 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       ) : type === "header" || type === "footer" ? (
         <SiteLayoutsTable layouts={pages} adminBase={base} current={(await siteLayoutChoice(null))[type]} />
       ) : (
-        <PagesTable pages={pages} adminBase={base} siteBase={copy.sitePrefix} duplicate={duplicatePageAction.bind(null, type)} />
+        <PagesTable
+          pages={pages}
+          adminBase={base}
+          siteBase={copy.sitePrefix}
+          placed={Object.fromEntries(roles.map(([role, id]) => [id, { name: PLATFORM_ROLE_COPY[role].name, address: PLATFORM_ROLE_COPY[role].address }]))}
+          duplicate={duplicatePageAction.bind(null, type)}
+        />
+      )}
+      {type === "page" && (
+        <section className="flex flex-col gap-4" aria-labelledby="special-pages">
+          <div className="flex flex-col gap-1">
+            <h2 id="special-pages" className="text-lg font-semibold">Special pages</h2>
+            <p className="max-w-2xl text-sm text-muted">
+              Kaizen&apos;s front page, blog and 404 page have a standard look. Build any of them in the page builder instead: choose one
+              of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.
+            </p>
+          </div>
+          {PLATFORM_ROLES.map((role) => (
+            <PagePlaceForm
+              key={role}
+              id={role}
+              name={PLATFORM_ROLE_COPY[role].name}
+              hint={PLATFORM_ROLE_COPY[role].hint}
+              standard={PLATFORM_ROLE_COPY[role].standard}
+              current={roleOf[role] ?? null}
+              pages={offered(role)}
+              choose={setPlatformPageRoleAction.bind(null, role) as never}
+              start={createPlatformRolePageAction.bind(null, role) as never}
+            />
+          ))}
+        </section>
       )}
       {(type === "header" || type === "footer") && (
         <SiteLayoutChoice

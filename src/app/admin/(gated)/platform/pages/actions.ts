@@ -8,6 +8,8 @@ import { requirePlatformAdmin } from "@/server/auth";
 import type { PageSaveState } from "@/components/admin/page-context";
 import { deletePage, getPageForEdit, PAGES_TAG, savePage, unpublishPage } from "@/server/pages";
 import { chooseSiteLayout, type SiteLayoutType } from "@/server/site-layouts";
+import { createPlatformRolePage, setPlatformPageRole } from "@/server/platform-roles";
+import { isPlatformRole, PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
 import type { FormState } from "@/components/admin/action-form";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
@@ -169,4 +171,27 @@ export async function choosePlatformSiteLayoutAction(type: SiteLayoutType, _stat
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(PAGES_TAG);
   return { status: "ok", messages: [choice ? `Saved. Kaizen's pages show this ${type} now.` : `Saved. Kaizen's pages show the standard ${type} now.`] };
+}
+
+/** Chooses the page Kaizen's front page, blog or 404 page shows (D143), or the standard one; the site follows at once. */
+export async function setPlatformPageRoleAction(role: string, _state: FormState, form: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  if (!isPlatformRole(role)) return { status: "error", messages: ["Unknown page."] };
+  const choice = String(form.get("page") ?? "");
+  if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
+  const result = await setPlatformPageRole(admin, role, choice || null);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(PAGES_TAG);
+  const name = PLATFORM_ROLE_COPY[role].name.toLowerCase();
+  return { status: "ok", messages: [choice ? `Saved. Kaizen's ${name} is this page now.` : `Saved. Kaizen's ${name} is the standard one now.`] };
+}
+
+/** Makes a starter page for one of Kaizen's places, published and in place, to change in the builder (D143). */
+export async function createPlatformRolePageAction(role: string): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  if (!isPlatformRole(role)) return { status: "error", messages: ["Unknown page."] };
+  const result = await createPlatformRolePage(admin, role);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  updateTag(PAGES_TAG);
+  redirect(`/admin/platform/pages/${result.id}`);
 }

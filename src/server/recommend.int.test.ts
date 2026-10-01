@@ -439,11 +439,19 @@ describe("the check against past orders (D140)", () => {
     const mine = sql`select id from commerce.orders where store_id = ${storeId}::uuid and number like ${`${run}-%`} and copied_from is null`;
     // Orders are never deleted (their numbers are the law's sequence); cancelled ones are not what a replay learns from.
     await db().execute(sql`update commerce.orders set status = 'cancelled' where id in (${mine})`);
-    // One pair, bought once: replayed with itself left out, nothing is known of it.
-    await order(["demo-notatbok", "demo-keramikkopp"]);
+    // One pair, bought once. With the order counted, it vouches for itself: each product ranks first for the other.
+    const only = await order(["demo-notatbok", "demo-keramikkopp"]);
+    const a = product["demo-notatbok"];
+    const b = product["demo-keramikkopp"];
+    const ranks = async (from: string, to: string, exceptOrder: string) =>
+      (await recommend.replayFor(store, market, { viewed: [from], exceptOrder, ceilingPercent: 0, limit: 12 })).engine.indexOf(to);
+    for (const [from, to] of [[a, b], [b, a]]) {
+      expect(await ranks(from, to, randomUUID())).toBe(0);
+      // Replayed with itself left out, nothing is known of the pair: it is not first.
+      expect(await ranks(from, to, only)).toBeGreaterThan(0);
+    }
     const result = await replay.replayOnOrders(store, market, 10);
     expect(result.evaluated).toBe(1);
-    expect(result.engine.hit[1]).toBe(0);
   });
 });
 

@@ -244,6 +244,38 @@ describe("sequential order numbering", () => {
   });
 });
 
+describe("Kaizen's pages with a place of their own (D143)", () => {
+  const page = async (storeId: string | null, slug: string, type = "page") =>
+    (await one<{ id: string }>("insert into commerce.pages (store_id, slug, draft, type) values ($1, $2, '{}', $3) returning id", [storeId, slug, type])).id;
+  const place = (role: string, pageId: string) => db.query("insert into commerce.platform_page_roles (role, page_id) values ($1, $2)", [role, pageId]);
+
+  it("holds a place for one of Kaizen's own pages, one place for a page, and lets go of it when the page is deleted", async () => {
+    const a = await page(null, "d143-a");
+    const b = await page(null, "d143-b");
+    await place("front", a);
+    await expect(place("front", b)).rejects.toThrow(/platform_page_roles_pkey|duplicate/);
+    await expect(place("blog", a)).rejects.toThrow(/platform_page_roles_page_key|duplicate/);
+    await expect(place("cart", b)).rejects.toThrow(/platform_page_roles_role/);
+    await place("blog", b);
+    await db.query("delete from commerce.pages where id = $1", [a]);
+    expect(await one<{ n: number }>("select count(*)::int as n from commerce.platform_page_roles where role = 'front'")).toEqual({ n: 0 });
+    await db.query("delete from commerce.pages where id = $1", [b]);
+  });
+
+  it("refuses a store's page, and a page that is not a page (an article, a header)", async () => {
+    const mine = await page(store, "d143-store");
+    await expect(place("front", mine)).rejects.toThrow(/platform_page_roles\.page/);
+    for (const type of ["article", "header", "footer"]) {
+      await expect(place("not_found", await page(null, `d143-${type}`, type))).rejects.toThrow(/platform_page_roles\.page/);
+    }
+    // Moving a place to another kind of page is refused too.
+    const ok = await page(null, "d143-ok");
+    await place("front", ok);
+    await expect(db.query("update commerce.platform_page_roles set page_id = $1 where role = 'front'", [mine])).rejects.toThrow(/platform_page_roles\.page/);
+    await db.query("delete from commerce.platform_page_roles");
+  });
+});
+
 describe("stores", () => {
   it("start with invoice series and test payments on (no setup needed)", async () => {
     const { rows: series } = await db.query<{ series: string }>(

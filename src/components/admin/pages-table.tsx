@@ -14,6 +14,9 @@ const STATE_LABELS: Record<PageState, string> = {
 
 const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
 
+/** Where a page is on the site: its own address, or the place's it was chosen for (empty where the place has none, such as the 404 page). */
+const viewPath = (slug: string, place: { address: string } | undefined) => (place ? place.address : `/${slug}`);
+
 /**
  * An owner's pages (D42, D53): Kaizen's or a store's, each with its address,
  * whether it is on the site, and links to edit and view it.
@@ -25,6 +28,7 @@ export function PagesTable({
   frontPageId = null,
   productsPageId = null,
   roles = {},
+  placed = {},
   duplicate,
 }: {
   pages: PageSummary[];
@@ -36,6 +40,8 @@ export function PagesTable({
   productsPageId?: string | null;
   /** The pages chosen for the blog, search and 404 places (D112), by page id. */
   roles?: Record<string, PageRole>;
+  /** Kaizen's pages with a place of their own (D143), by page id: the place's name and address, which the page is at instead of its own. */
+  placed?: Record<string, { name: string; address: string }>;
   /** Makes a copy as a draft (D126), bound to the owner and kind of page; without it the list offers no Duplicate. */
   duplicate?: (id: string) => Promise<DuplicateResult>;
 }) {
@@ -81,7 +87,9 @@ export function PagesTable({
                             ? `Front page · ${siteBase}`
                             : page.id === productsPageId
                               ? `All products page · ${siteBase}/products`
-                              : roles[page.id]
+                              : placed[page.id]
+                                ? `${placed[page.id].name}${placed[page.id].address ? ` · ${siteBase}${placed[page.id].address}` : ""}`
+                                : roles[page.id]
                                 ? `${ROLE_COPY[roles[page.id]].name}${ROLE_COPY[roles[page.id]].address ? ` · ${siteBase}${ROLE_COPY[roles[page.id]].address}` : ""}`
                                 : `${siteBase}/${page.slug}`}
                         </span>
@@ -102,10 +110,10 @@ export function PagesTable({
                     <Link href={`${adminBase}/${page.id}`} className="underline">
                       Edit<span className="sr-only"> {page.title}</span>
                     </Link>
-                    {page.state !== "draft" && (
+                    {page.state !== "draft" && viewPath(page.slug, placed[page.id]) !== "" && (
                       <>
                         {" · "}
-                        <a href={`${siteBase}/${page.slug}`} target="_blank" rel="noopener" className="underline">
+                        <a href={`${siteBase}${viewPath(page.slug, placed[page.id])}`} target="_blank" rel="noopener" className="underline">
                           View<span className="sr-only"> {page.title}</span>
                         </a>
                       </>

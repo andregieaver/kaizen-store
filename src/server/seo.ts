@@ -36,6 +36,7 @@ import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
 import { listPublishedPages } from "./pages";
+import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";
 import { getOpenStore, type Store } from "./stores";
 
@@ -386,13 +387,16 @@ export async function sitemapIndex(): Promise<string> {
 /** Kaizen's own pages: the front page, sign-up and every published page and article open to search engines (D42, D57). */
 export async function platformSitemap(): Promise<string> {
   const origin = siteUrl();
-  const [pages, articles] = await Promise.all([listPublishedPages(), listPublishedPages(null, "article")]);
+  const [all, articles, roles] = await Promise.all([listPublishedPages(), listPublishedPages(null, "article"), getPlatformPageRoles()]);
+  // A page chosen for a place of its own (D143) is at the place's address, which the list below has already.
+  const placed = new Set(roles.map(([, id]) => id));
+  const pages = all.filter((page) => !placed.has(page.id));
   const listed = [
     ...pages.filter((page) => page.content.searchEngines).map((page) => ({ page, path: `/${page.slug}` })),
     ...articles.filter((a) => a.content.searchEngines).map((page) => ({ page, path: `/blog/${page.slug}` })),
   ];
   const urls = [
-    ...["/", "/sign-up", ...(articles.length > 0 ? ["/blog"] : [])].map((path) => `<url><loc>${origin}${path}</loc></url>`),
+    ...["/", "/sign-up", ...(articles.length > 0 || roles.some(([role]) => role === "blog") ? ["/blog"] : [])].map((path) => `<url><loc>${origin}${path}</loc></url>`),
     ...listed.map(
       ({ page, path }) =>
         `<url><loc>${xml(`${origin}${path}`)}</loc><lastmod>${page.publishedAt}</lastmod>${pageImageUrls(page.content)
@@ -490,12 +494,16 @@ export async function storeSitemap(slug: string): Promise<string | null> {
 /** Kaizen's llms.txt: what Kaizen is, its pages open to AI assistants (D42), and where each open store's own llms.txt is. */
 export async function platformLlms(): Promise<string> {
   const origin = siteUrl();
-  const [seo, stores, pages, articles] = await Promise.all([
+  const [seo, stores, all, articles, roles] = await Promise.all([
     getPlatformSeo(),
     listPublicStores(),
     listPublishedPages(),
     listPublishedPages(null, "article"),
+    getPlatformPageRoles(),
   ]);
+  // A page chosen for a place of its own (D143) is at the place's address, not its own.
+  const placed = new Set(roles.map(([, id]) => id));
+  const pages = all.filter((page) => !placed.has(page.id));
   return renderLlms({
     name: seo.title.en || PLATFORM_DEFAULTS.title,
     summary: seo.description.en || PLATFORM_DEFAULTS.description,
