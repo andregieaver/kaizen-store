@@ -1606,10 +1606,10 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
  */
 export const RESERVED_ARTICLE_SLUGS: readonly string[] = ["category", "page", "tag"];
 
-/** What is built in the page builder: pages, articles in the blog (D57), product layouts (D79), and the site's headers and footers (D80). */
-export const PAGE_TYPES = ["page", "article", "product_layout", "header", "footer"] as const;
-/** The types that are parts of the site rather than pages at addresses of their own. */
-export const LAYOUT_TYPES: readonly PageType[] = ["product_layout", "header", "footer"];
+/** What is built in the page builder: pages, articles in the blog (D57), product layouts (D79), the site's headers and footers (D80), and A/B test variants of pages (D148). */
+export const PAGE_TYPES = ["page", "article", "product_layout", "header", "footer", "variant"] as const;
+/** The types that are parts of the site rather than pages at addresses of their own; a `variant` (D148) is a copy of a page made for an A/B test. */
+export const LAYOUT_TYPES: readonly PageType[] = ["product_layout", "header", "footer", "variant"];
 export type PageType = (typeof PAGE_TYPES)[number];
 
 /**

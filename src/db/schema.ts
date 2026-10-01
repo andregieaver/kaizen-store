@@ -3198,7 +3198,9 @@ export const pages = commerce.table(
   },
   (t) => [
     unique("pages_store_slug_key").on(t.storeId, t.type, t.slug).nullsNotDistinct(),
-    check("pages_type", sql`${t.type} in ('page', 'article', 'product_layout', 'header', 'footer')`),
+    check("pages_type", sql`${t.type} in ('page', 'article', 'product_layout', 'header', 'footer', 'variant')`),
+    // A test's variant of a page (D148) is a store's: it has no address of its own on the site.
+    check("pages_variant_store", sql`${t.type} <> 'variant' or ${t.storeId} is not null`),
     // Product layouts (D79) are a store's: Kaizen has no products of its own.
     check("pages_product_layout_store", sql`${t.type} <> 'product_layout' or ${t.storeId} is not null`),
     // For stores' front pages (D54): a store can only choose a page of its own.
@@ -6155,5 +6157,156 @@ export const recommendationAdds = commerce.table(
     index("recommendation_adds_created_idx").on(t.createdAt),
     check("recommendation_adds_arm", sql`${t.arm} in ('ai', 'baseline')`),
     check("recommendation_adds_placement", sql`${t.placement} in ('product', 'listing', 'article', 'page', 'other')`),
+  ],
+);
+
+/**
+ * An A/B test of a page (D148, docs/ab-testing.md): one question about one page of a store. The page under test is the
+ * control (variant `a`); the others are copies of it (pages of type `variant`, with no address on the site). A test is
+ * built as a draft and, once it runs, cannot be changed but for its name, its hypothesis and its planned end, so what
+ * the results say is about what was started. One running test per page, and five per store (rules in the migration).
+ */
+export const experiments = commerce.table(
+  "experiments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    hypothesis: text("hypothesis").notNull().default(""),
+    /** The page under test: a published page of the store. */
+    targetPageId: uuid("target_page_id").notNull(),
+    /** `draft`, `running`, `stopped`, then `applied` (a variant became the page) or `discarded`. */
+    status: text("status").notNull().default("draft"),
+    /** The share of eligible visitors who are enrolled; the rest see the original and are not counted. */
+    trafficShare: numeric("traffic_share", { precision: 4, scale: 3 }).notNull().default("1"),
+    /** Narrowing of who is enrolled: `markets`, `devices`, `returning`. Empty: everyone who is eligible. */
+    audience: jsonb("audience").notNull().default({}),
+    /** What counts as success: `orders`, `revenue`, `cart`, `checkout` or `click` (with the block in `goal_params`). */
+    primaryGoal: text("primary_goal").notNull(),
+    goalParams: jsonb("goal_params").notNull().default({}),
+    /** The least visitors per variant and the least days before a verdict is given. */
+    minVisitors: integer("min_visitors").notNull().default(0),
+    minDays: integer("min_days").notNull().default(14),
+    plannedEnd: timestamp("planned_end", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    stoppedAt: timestamp("stopped_at", { withTimezone: true }),
+    /** Why a test stopped: `person`, `guardrail` or `planned_end`. */
+    stopReason: text("stop_reason"),
+    appliedVariant: text("applied_variant"),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("experiments_store_id_key").on(t.storeId, t.id),
+    foreignKey({ name: "experiments_target_fk", columns: [t.storeId, t.targetPageId], foreignColumns: [pages.storeId, pages.id] }),
+    uniqueIndex("experiments_running_target_key").on(t.storeId, t.targetPageId).where(sql`${t.status} = 'running'`),
+    index("experiments_store_status_idx").on(t.storeId, t.status),
+    index("experiments_target_idx").on(t.storeId, t.targetPageId),
+    index("experiments_created_by_idx").on(t.createdBy),
+    index("experiments_updated_by_idx").on(t.updatedBy),
+    check("experiments_status", sql`${t.status} in ('draft', 'running', 'stopped', 'applied', 'discarded')`),
+    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click')`),
+    check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
+    check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),
+    check("experiments_minimums", sql`${t.minVisitors} >= 0 and ${t.minDays} between 1 and 90`),
+    check("experiments_stop_reason", sql`${t.stopReason} is null or ${t.stopReason} in ('person', 'guardrail', 'planned_end')`),
+    check("experiments_applied", sql`(${t.appliedVariant} is not null) = (${t.status} = 'applied')`),
+  ],
+);
+
+/** A version of the page in a test: `a` is the original (no page of its own), `b` to `d` are copies with their share of the enrolled. */
+export const experimentVariants = commerce.table(
+  "experiment_variants",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    experimentId: uuid("experiment_id").notNull(),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    /** The copy that is this version (a page of type `variant`); null for the original. */
+    pageId: uuid("page_id"),
+    share: numeric("share", { precision: 4, scale: 3 }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.experimentId, t.key] }),
+    foreignKey({ name: "experiment_variants_experiment_fk", columns: [t.storeId, t.experimentId], foreignColumns: [experiments.storeId, experiments.id] }).onDelete("cascade"),
+    foreignKey({ name: "experiment_variants_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }),
+    uniqueIndex("experiment_variants_page_key").on(t.pageId).where(sql`${t.pageId} is not null`),
+    index("experiment_variants_page_idx").on(t.storeId, t.pageId),
+    check("experiment_variants_key_format", sql`${t.key} in ('a', 'b', 'c', 'd')`),
+    check("experiment_variants_control", sql`(${t.key} = 'a') = (${t.pageId} is null)`),
+    check("experiment_variants_share", sql`${t.share} >= 0 and ${t.share} <= 1`),
+    check("experiment_variants_name", sql`length(${t.name}) between 1 and 60`),
+  ],
+);
+
+/**
+ * A visitor who was shown a version of a tested page (D148), once per visitor and test (the first time counts, the
+ * version never changes). `visitor` is a random id the browser keeps for this store, never anything about the person.
+ */
+export const experimentExposures = commerce.table(
+  "experiment_exposures",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    experimentId: uuid("experiment_id").notNull(),
+    visitor: text("visitor").notNull(),
+    variant: text("variant").notNull(),
+    market: text("market").notNull().default(""),
+    device: text("device").notNull().default("desktop"),
+    returning: boolean("returning").notNull().default(false),
+    firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.experimentId, t.visitor] }),
+    foreignKey({ name: "experiment_exposures_variant_fk", columns: [t.experimentId, t.variant], foreignColumns: [experimentVariants.experimentId, experimentVariants.key] }).onDelete("cascade"),
+    foreignKey({ name: "experiment_exposures_experiment_fk", columns: [t.storeId, t.experimentId], foreignColumns: [experiments.storeId, experiments.id] }).onDelete("cascade"),
+    index("experiment_exposures_seen_idx").on(t.storeId, t.firstSeen),
+    index("experiment_exposures_visitor_idx").on(t.storeId, t.visitor),
+    check("experiment_exposures_visitor", sql`length(${t.visitor}) between 8 and 64`),
+    check("experiment_exposures_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+  ],
+);
+
+/** What an exposed visitor did that a test counts (a cart, a checkout, a click on the chosen block), once per visitor and thing. Orders are read from orders. */
+export const experimentEvents = commerce.table(
+  "experiment_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    experimentId: uuid("experiment_id").notNull(),
+    visitor: text("visitor").notNull(),
+    variant: text("variant").notNull(),
+    goal: text("goal").notNull(),
+    /** What was clicked (the block's id), empty for a cart or a checkout. */
+    ref: text("ref").notNull().default(""),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("experiment_events_once_key").on(t.experimentId, t.visitor, t.goal, t.ref),
+    foreignKey({ name: "experiment_events_exposure_fk", columns: [t.experimentId, t.visitor], foreignColumns: [experimentExposures.experimentId, experimentExposures.visitor] }).onDelete("cascade"),
+    index("experiment_events_store_idx").on(t.storeId, t.occurredAt),
+    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click')`),
+    check("experiment_events_ref", sql`length(${t.ref}) <= 80`),
+  ],
+);
+
+/**
+ * The visitor of a cart (D148), so a paid order can be traced to the version its cart's visitor was shown. Not tied to
+ * the cart row, like `recommendation_adds`; kept 90 days.
+ */
+export const experimentCarts = commerce.table(
+  "experiment_carts",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    cartId: uuid("cart_id").notNull(),
+    visitor: text("visitor").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.cartId] }),
+    index("experiment_carts_visitor_idx").on(t.storeId, t.visitor),
+    index("experiment_carts_created_idx").on(t.createdAt),
+    check("experiment_carts_visitor", sql`length(${t.visitor}) between 8 and 64`),
   ],
 );

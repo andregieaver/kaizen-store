@@ -48,6 +48,11 @@ export const COPY_RULES: Record<string, CopyRule> = {
   recommendation_settings: never("A new store starts with recommendations off (D139); the owner switches them on and sets the cap."),
   recommendation_rules: never("Goes-with, never-with and hidden products (D139) name the original's products; the new store's owner sets its own."),
   recommendation_events: never("A log of what the original's shoppers did with recommendations (D139)."),
+  experiments: never("A/B tests of the original's pages and what they measured (D148): a copy starts with none."),
+  experiment_variants: never("The versions of the original's tests (D148)."),
+  experiment_exposures: never("Who saw which version in the original's tests (D148)."),
+  experiment_events: never("What visitors did in the original's tests (D148)."),
+  experiment_carts: never("Which visitor a cart of the original belonged to (D148)."),
   recommendation_adds: never("Recommended products put in the original's carts (D139)."),
   chat_agents: settings(
     "The chat agent's setup (its AI provider is not copied, so it stays off until the site has one).",

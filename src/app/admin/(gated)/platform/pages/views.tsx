@@ -46,6 +46,8 @@ const INTRO: Record<PageType, string> = {
     "The top of Kaizen's pages, built from components: the logo, menus, sign-in, the Start your store button and anything else. Publish a header, then choose it as the site's header; until you do, the standard one is shown.",
   footer:
     "The bottom of Kaizen's pages, built from components: the logo, menus, business details, the cookies link and anything else. Publish a footer, then choose it as the site's footer; until you do, the standard one is shown. A footer shows the business details and the cookies link, as the law asks.",
+  // A store's A/B test copies (D148); Kaizen's own tests come later.
+  variant: "",
 };
 
 export async function PagesListView({ type, searchParams }: { type: PageType; searchParams: Query }) {

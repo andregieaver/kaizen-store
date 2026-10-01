@@ -28,6 +28,7 @@ export const LAYOUT_TYPE_LABELS: Record<PageType, { one: string; many: string }>
   product_layout: { one: "product layout", many: "product layouts" },
   header: { one: "header", many: "headers" },
   footer: { one: "footer", many: "footers" },
+  variant: { one: "variant", many: "variants" },
 };
 
 export const pageLayoutSchema = z

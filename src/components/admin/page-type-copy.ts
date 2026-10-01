@@ -15,4 +15,6 @@ export const PAGE_TYPE_COPY: Record<
   // The site's own header and footer (D80): on every page, at no address of their own.
   header: { list: "Headers", one: "header", One: "Header", many: "headers", segment: "headers", sitePrefix: "" },
   footer: { list: "Footers", one: "footer", One: "Footer", many: "footers", segment: "footers", sitePrefix: "" },
+  // A copy of a page made for an A/B test (D148): at no address of its own, edited from its test.
+  variant: { list: "A/B tests", one: "variant", One: "Variant", many: "variants", segment: "experiments/variants", sitePrefix: "" },
 };

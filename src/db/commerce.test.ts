@@ -276,6 +276,190 @@ describe("Kaizen's pages with a place of their own (D143)", () => {
   });
 });
 
+describe("A/B tests of pages (D148)", () => {
+  let n = 0;
+  const made = async () => {
+    n += 1;
+    const store = await createStore(`ab148-${n}`, ["NO"]);
+    const page = async (slug: string, type = "page", published = true) =>
+      (await one<{ id: string }>(
+        `insert into commerce.pages (store_id, slug, draft, published, published_at, type) values ($1, $2, '{}', ${published ? "'{}', now()" : "null, null"}, $3) returning id`,
+        [store, slug, type],
+      )).id;
+    const target = await page("om-oss");
+    const experiment = (
+      await one<{ id: string }>("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'Shorter hero', $2, 'orders') returning id", [store, target])
+    ).id;
+    const variant = (key: string, pageId: string | null, share: number) =>
+      db.query("insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share) values ($1, $2, $3, $4, $5, $6)", [store, experiment, key, key.toUpperCase(), pageId, share]);
+    return { store, page, target, experiment, variant };
+  };
+  /** A test with its original and one variant, ready to start. */
+  const ready = async () => {
+    const t = await made();
+    const b = await t.page("ab-b", "variant");
+    await t.variant("a", null, 0.5);
+    await t.variant("b", b, 0.5);
+    return { ...t, b };
+  };
+  const set = (id: string, sql: string) => db.query(`update commerce.experiments set ${sql} where id = $1`, [id]);
+  const start = (id: string) => set(id, "status = 'running'");
+
+  it("is made as a draft of a page of the store, with sensible names, goals and shares", async () => {
+    const t = await made();
+    await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, status) values ($1, 'x', $2, 'orders', 'running')", [t.store, t.target])).rejects.toThrow(/experiments\.start/);
+    const article = await t.page("nytt", "article");
+    await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'orders')", [t.store, article])).rejects.toThrow(/experiments\.target/);
+    await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, '', $2, 'orders')", [t.store, t.target])).rejects.toThrow(/experiments_name/);
+    await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'sales')", [t.store, t.target])).rejects.toThrow(/experiments_goal/);
+    await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, traffic_share) values ($1, 'x', $2, 'orders', 1.5)", [t.store, t.target])).rejects.toThrow(/experiments_traffic/);
+    // Another store's page cannot be tested.
+    const other = await made();
+    await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'orders')", [t.store, other.target])).rejects.toThrow(/experiments_target_fk|experiments\.target/);
+  });
+
+  it("starts only with the original, one to three published variants, shares that add up, and a published page", async () => {
+    const t = await made();
+    await expect(start(t.experiment)).rejects.toThrow(/experiments\.variants/);
+    await t.variant("a", null, 0.6);
+    const b = await t.page("ab-b", "variant", false);
+    await t.variant("b", b, 0.3);
+    await expect(start(t.experiment)).rejects.toThrow(/experiments\.split/);
+    await db.query("update commerce.experiment_variants set share = 0.4 where experiment_id = $1 and key = 'b'", [t.experiment]);
+    await expect(start(t.experiment)).rejects.toThrow(/published before the test starts/);
+    await db.query("update commerce.pages set published = '{}', published_at = now() where id = $1", [b]);
+    await db.query("update commerce.pages set published = null, published_at = null where id = $1", [t.target]);
+    await expect(start(t.experiment)).rejects.toThrow(/page under test must be published/);
+    await db.query("update commerce.pages set published = '{}', published_at = now() where id = $1", [t.target]);
+    await start(t.experiment);
+    const row = await one<{ started_at: string | null; planned_end: string | null; status: string }>("select started_at, planned_end, status from commerce.experiments where id = $1", [t.experiment]);
+    expect(row.status).toBe("running");
+    expect(row.started_at).not.toBeNull();
+    // The planned end is the minimum days (14) after the start unless it was set.
+    expect((new Date(row.planned_end!).getTime() - new Date(row.started_at!).getTime()) / 86_400_000).toBeCloseTo(14, 0);
+  });
+
+  it("keeps the front page, the All products page and pages with a place of their own out of tests", async () => {
+    const t = await ready();
+    await db.query("update commerce.stores set front_page_id = $2 where id = $1", [t.store, t.target]);
+    await expect(start(t.experiment)).rejects.toThrow(/front page, the All products page/);
+    await db.query("update commerce.stores set front_page_id = null where id = $1", [t.store]);
+    await db.query("insert into commerce.page_roles (store_id, role, page_id) values ($1, 'blog', $2)", [t.store, t.target]);
+    await expect(start(t.experiment)).rejects.toThrow(/front page, the All products page/);
+    await db.query("delete from commerce.page_roles where store_id = $1", [t.store]);
+    await start(t.experiment);
+  });
+
+  it("runs one test per page and five per store", async () => {
+    const t = await ready();
+    await start(t.experiment);
+    // A second test of the same page can be drafted but not started alongside.
+    const second = (await one<{ id: string }>("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'again', $2, 'cart') returning id", [t.store, t.target])).id;
+    const b2 = await t.page("ab2-b", "variant");
+    await db.query("insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share) values ($1, $2, 'a', 'A', null, 0.5), ($1, $2, 'b', 'B', $3, 0.5)", [t.store, second, b2]);
+    await expect(start(second)).rejects.toThrow(/experiments_running_target_key|duplicate/);
+    // Five at a time in one store.
+    for (let i = 0; i < 4; i += 1) {
+      const page = await t.page(`andre-${i}`);
+      const e = (await one<{ id: string }>("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'cart') returning id", [t.store, page])).id;
+      const v = await t.page(`andre-${i}-b`, "variant");
+      await db.query("insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share) values ($1, $2, 'a', 'A', null, 0.5), ($1, $2, 'b', 'B', $3, 0.5)", [t.store, e, v]);
+      await start(e);
+    }
+    const sixthPage = await t.page("sjette");
+    const sixth = (await one<{ id: string }>("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'cart') returning id", [t.store, sixthPage])).id;
+    const sixthVariant = await t.page("sjette-b", "variant");
+    await db.query("insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share) values ($1, $2, 'a', 'A', null, 0.5), ($1, $2, 'b', 'B', $3, 0.5)", [t.store, sixth, sixthVariant]);
+    await expect(start(sixth)).rejects.toThrow(/experiments\.limit/);
+  });
+
+  it("moves forward only, and what it measures is locked once it has started", async () => {
+    const t = await ready();
+    await expect(set(t.experiment, "status = 'stopped'")).rejects.toThrow(/cannot go from draft to stopped/);
+    // A draft can still be changed.
+    await set(t.experiment, "primary_goal = 'revenue', traffic_share = 0.5, min_days = 21");
+    await start(t.experiment);
+    for (const change of ["primary_goal = 'cart'", "traffic_share = 0.2", "min_days = 7", "audience = '{\"devices\": [\"mobile\"]}'", "goal_params = '{\"block\": \"x\"}'"]) {
+      await expect(set(t.experiment, change), change).rejects.toThrow(/experiments\.locked/);
+    }
+    await expect(db.query("update commerce.experiments set target_page_id = $2 where id = $1", [t.experiment, t.b])).rejects.toThrow(/experiments\.locked/);
+    // Name, hypothesis and the planned end can be changed while it runs (extending it).
+    await set(t.experiment, "name = 'Renamed', hypothesis = 'A shorter hero sells more', planned_end = planned_end + interval '7 days'");
+    await expect(set(t.experiment, "status = 'draft'")).rejects.toThrow(/cannot go from running to draft/);
+    await set(t.experiment, "status = 'stopped'");
+    const stopped = await one<{ stopped_at: string | null; stop_reason: string | null }>("select stopped_at, stop_reason from commerce.experiments where id = $1", [t.experiment]);
+    expect(stopped.stopped_at).not.toBeNull();
+    expect(stopped.stop_reason).toBe("person");
+    await expect(start(t.experiment)).rejects.toThrow(/cannot go from stopped to running/);
+    await expect(set(t.experiment, "status = 'applied'")).rejects.toThrow(/experiments_applied|experiments\.applied/);
+    await expect(set(t.experiment, "status = 'applied', applied_variant = 'a'")).rejects.toThrow(/choose one of the variants/);
+    await set(t.experiment, "status = 'applied', applied_variant = 'b'");
+    await expect(set(t.experiment, "name = 'Too late'")).rejects.toThrow(/finished test cannot be changed/);
+  });
+
+  it("locks the versions once the test has started, and only a made-for-the-test page can be one", async () => {
+    const t = await made();
+    const ordinary = await t.page("vanlig");
+    await t.variant("a", null, 0.5);
+    await expect(t.variant("b", ordinary, 0.5)).rejects.toThrow(/experiment_variants\.page/);
+    await expect(t.variant("a", null, 0.5)).rejects.toThrow(/experiment_variants_experiment_id_key_pk|duplicate/);
+    const odd = await t.page("ab-e", "variant");
+    await expect(t.variant("e", odd, 0.5)).rejects.toThrow(/experiment_variants_key_format/);
+    await expect(t.variant("b", null, 0.5)).rejects.toThrow(/experiment_variants_control/);
+    const b = await t.page("ab-b", "variant");
+    await t.variant("b", b, 0.5);
+    // A copy serves one test only.
+    const e2 = (await one<{ id: string }>("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'cart') returning id", [t.store, ordinary])).id;
+    await expect(db.query("insert into commerce.experiment_variants (store_id, experiment_id, key, name, page_id, share) values ($1, $2, 'b', 'B', $3, 0.5)", [t.store, e2, b])).rejects.toThrow(/experiment_variants_page_key|duplicate/);
+    await start(t.experiment);
+    await expect(db.query("update commerce.experiment_variants set share = 0.7 where experiment_id = $1 and key = 'b'", [t.experiment])).rejects.toThrow(/experiment_variants\.locked/);
+    await expect(db.query("delete from commerce.experiment_variants where experiment_id = $1 and key = 'b'", [t.experiment])).rejects.toThrow(/experiment_variants\.locked/);
+    // A page in a test is not deleted or turned into another kind of page.
+    await expect(db.query("delete from commerce.pages where id = $1", [t.target])).rejects.toThrow(/experiments_target_fk|foreign key/);
+    await expect(db.query("delete from commerce.pages where id = $1", [b])).rejects.toThrow(/experiment_variants_page_fk|foreign key/);
+    await expect(db.query("update commerce.pages set type = 'article' where id = $1", [t.target])).rejects.toThrow(/pages\.experiment/);
+  });
+
+  it("records who saw what once, never changes it, and only while the test runs", async () => {
+    const t = await ready();
+    const expose = (visitor: string, variant: string) =>
+      db.query("insert into commerce.experiment_exposures (store_id, experiment_id, visitor, variant, market, device) values ($1, $2, $3, $4, 'NO', 'mobile')", [t.store, t.experiment, visitor, variant]);
+    await expect(expose("visitor-0001", "a")).rejects.toThrow(/experiment_exposures\.closed/);
+    await start(t.experiment);
+    await expose("visitor-0001", "a");
+    await expect(expose("visitor-0001", "b")).rejects.toThrow(/experiment_exposures_experiment_id_visitor_pk|duplicate/);
+    await expect(expose("short", "a")).rejects.toThrow(/experiment_exposures_visitor/);
+    await expect(expose("visitor-0002", "c")).rejects.toThrow(/experiment_exposures_variant_fk|foreign key/);
+    await expect(db.query("update commerce.experiment_exposures set variant = 'b' where experiment_id = $1", [t.experiment])).rejects.toThrow(/experiment_exposures\.changed/);
+    // An event follows an exposure, in the version the visitor was shown, once.
+    const event = (visitor: string, variant: string, goal = "cart", ref = "") =>
+      db.query("insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal, ref) values ($1, $2, $3, $4, $5, $6)", [t.store, t.experiment, visitor, variant, goal, ref]);
+    await event("visitor-0001", "a");
+    await expect(event("visitor-0001", "a")).rejects.toThrow(/experiment_events_once_key|duplicate/);
+    await expect(event("visitor-0001", "b", "checkout")).rejects.toThrow(/belongs to the version the visitor was shown/);
+    await expect(event("visitor-0009", "a", "checkout")).rejects.toThrow(/experiment_events_exposure_fk|foreign key|belongs to the version/);
+    await expect(event("visitor-0001", "a", "order")).rejects.toThrow(/experiment_events_goal/);
+    await event("visitor-0001", "a", "click", "block-1");
+    await set(t.experiment, "status = 'stopped'");
+    await expect(expose("visitor-0003", "a")).rejects.toThrow(/experiment_exposures\.closed/);
+    await expect(event("visitor-0001", "a", "checkout")).rejects.toThrow(/experiment_events\.closed/);
+  });
+
+  it("keeps a test that has run, deletes a draft with its versions, and goes with its store", async () => {
+    const t = await ready();
+    await db.query("delete from commerce.experiments where id = $1", [t.experiment]);
+    expect(await one<{ n: number }>("select count(*)::int as n from commerce.experiment_variants where store_id = $1", [t.store])).toEqual({ n: 0 });
+    const r = await ready();
+    await start(r.experiment);
+    await expect(db.query("delete from commerce.experiments where id = $1", [r.experiment])).rejects.toThrow(/experiments\.delete/);
+    await set(r.experiment, "status = 'stopped'");
+    await expect(db.query("delete from commerce.experiments where id = $1", [r.experiment])).rejects.toThrow(/experiments\.delete/);
+    // Its carts' visitors are recorded without tying them to the cart.
+    await db.query("insert into commerce.experiment_carts (store_id, cart_id, visitor) values ($1, gen_random_uuid(), 'visitor-0001')", [r.store]);
+    await expect(db.query("insert into commerce.experiment_carts (store_id, cart_id, visitor) values ($1, gen_random_uuid(), 'x')", [r.store])).rejects.toThrow(/experiment_carts_visitor/);
+  });
+});
+
 describe("AI model prices (D145)", () => {
   const price = (provider: string, model: string, input: number, output: number, from = "now()") =>
     db.query(`insert into commerce.ai_model_prices (provider, model, input_per_million, output_per_million, effective_from) values ($1, $2, $3, $4, ${from})`, [provider, model, input, output]);
