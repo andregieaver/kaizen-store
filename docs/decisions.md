@@ -436,6 +436,7 @@ history therefore still lists the nine single-store migrations, then:
 | `20261001200626_ab_site_tests.sql` | `20261001203321` |
 | `20261001223105_ab_working_pages.sql` | `20261002054740` |
 | `20261002060621_ab_front_pages.sql` | `20261002060621` (applied by hand with `execute_sql` in four steps, then recorded in `schema_migrations`; `apply_migration` was cancelled) |
+| `20261002074358_ab_form_goal.sql` | `20261002080630` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
 account was carried over as platform admin and owner of the template store.
