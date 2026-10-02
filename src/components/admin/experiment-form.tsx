@@ -14,7 +14,7 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
 const hint = "text-xs font-normal text-muted";
 
-export type TestablePage = { id: string; slug: string; title: string; kind: TargetKind; role?: string | null; partOnly?: boolean; buttons: { id: string; label: string }[] };
+export type TestablePage = { id: string; slug: string; title: string; kind: TargetKind; role?: string | null; partOnly?: boolean; buttons: { id: string; label: string }[]; forms?: { id: string; label: string }[] };
 type Outcome = { ok: true; id: string } | { ok: false; problems: string[] };
 
 const SHARES = [
@@ -57,8 +57,9 @@ export function ExperimentForm({
   const [devices, setDevices] = useState<Device[]>([...DEVICES]);
   const [chosenMarkets, setChosenMarkets] = useState<string[]>([]);
 
-  // A part's buttons are the ones inside it; a page's, all of its own.
+  // A part's buttons and forms are the ones inside it; a page's, all of its own.
   const buttons = part ? part.buttons : (page?.buttons ?? []);
+  const forms = part ? (part.forms ?? []) : (page?.forms ?? []);
 
   const toggle = <T extends string>(list: T[], value: T, set: (next: T[]) => void) =>
     set(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -73,7 +74,7 @@ export function ExperimentForm({
         hypothesis: hypothesis.trim(),
         pageId,
         goal,
-        goalBlock: goal === "click" ? button || null : null,
+        goalBlock: GOAL_WORDS[goal].needsBlock ? button || null : null,
         trafficShare: share,
         audience: {
           ...(devices.length > 0 && devices.length < DEVICES.length && { devices }),
@@ -133,7 +134,11 @@ export function ExperimentForm({
           <legend className="sr-only">What the test should improve</legend>
           {GOALS.map((g) => (
             <label key={g} className="flex items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground">
-              <input type="radio" name="goal" checked={goal === g} onChange={() => setGoal(g)} className="mt-1" />
+              <input type="radio" name="goal" checked={goal === g} onChange={() => {
+                  setGoal(g);
+                  // A button chosen for one goal is not a form for another.
+                  setButton("");
+                }} className="mt-1" />
               <span>
                 <span className="font-medium">{GOAL_WORDS[g].label}</span>
                 <span className="block text-xs text-muted">The winner is the version that helps you {GOAL_WORDS[g].asks}.</span>
@@ -141,6 +146,24 @@ export function ExperimentForm({
             </label>
           ))}
         </fieldset>
+        {goal === "form" && (
+          <label className={label}>
+            Which form?
+            {forms.length === 0 ? (
+              <span className={hint}>{part ? "There is no email form or newsletter sign-up in this part." : "This page has no email form or newsletter sign-up yet."} Add one in the page builder first, or choose another goal.</span>
+            ) : (
+              <select value={button} onChange={(e) => setButton(e.target.value)} className={input} required>
+                <option value="">Choose a form</option>
+                {forms.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            )}
+            <span className={hint}>A visitor counts once, when the site accepts what they sent: a message, or a sign-up (before they confirm it by email).</span>
+          </label>
+        )}
         {goal === "click" && (
           <label className={label}>
             Which button?

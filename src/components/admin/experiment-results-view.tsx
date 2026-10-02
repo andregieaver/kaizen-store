@@ -174,6 +174,11 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
             Clicks on the button: {test.variants.map((v) => `${v.name} ${(results.funnel[v.key]?.clicks ?? 0).toLocaleString("en-GB")}`).join(", ")}.
           </p>
         )}
+        {test.goal === "form" && (
+          <p className="text-xs text-muted">
+            Visitors who sent the form (each counted once): {test.variants.map((v) => `${v.name} ${(results.funnel[v.key]?.forms ?? 0).toLocaleString("en-GB")}`).join(", ")}.
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="ab-trend" className="flex flex-col gap-2">

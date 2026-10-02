@@ -15,9 +15,11 @@ import { audit } from "./auth";
 import {
   buttonsOf,
   createExperiment,
+  formsOf,
   deleteDraft,
   discardExperiment,
   getExperiment,
+  goalCandidates,
   listExperiments,
   publishedContentOf,
   applyVariant,
@@ -164,8 +166,8 @@ export async function explainResultsTool(ctx: Ctx, { experiment }: OwnerToolInpu
     verdict: { kind: r.verdict.kind, headline: r.verdict.headline, detail: r.verdict.detail },
     versions,
     what_visitors_did: test.variants.map((v) => {
-      const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0 };
-      return { version: v.name, saw_it: f.visitors, added_to_cart: f.carts, started_checkout: f.checkouts, ordered: f.buyers, clicked: test.goal === "click" ? f.clicks : undefined };
+      const f = r.funnel[v.key] ?? { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 };
+      return { version: v.name, saw_it: f.visitors, added_to_cart: f.carts, started_checkout: f.checkouts, ordered: f.buyers, clicked: test.goal === "click" ? f.clicks : undefined, sent_the_form: test.goal === "form" ? f.forms : undefined };
     }),
     revenue_without_vat: test.variants.map((v) => ({ version: v.name, revenue: formatMoney(Math.round(r.revenue[v.key]?.plain ?? 0), r.currency, locale) })),
     split_between_versions: r.splitP < 0.001 ? "Wrong: the versions did not get the share of visitors they should." : "As promised.",
@@ -208,6 +210,7 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
         place: t.kind === "role" && !t.partOnly ? `the store's ${t.role === "front" ? "front page" : "All products page"}: a test of the whole page or of one part of it` : undefined,
         rows: content?.rows.length ?? 0,
         buttons: buttonsOf(content).map((b) => b.label),
+        forms: formsOf(content).map((f) => f.label),
         blocks: content ? offeredBlocks(content) : [],
         earlier_tests: earlier.length > 0 ? earlier.map((x) => ({ name: x.name, status: STATUS_WORDS[x.status], tested: x.part?.label })) : undefined,
       };
@@ -261,6 +264,15 @@ export async function draftExperimentTool(ctx: Ctx, input: OwnerToolInput<"draft
     if (!input.button) return fail("For the goal click, name the button whose clicks should count (button).");
     const hits = buttonsOf(original).filter((b) => b.label.toLowerCase() === input.button!.toLowerCase());
     if (hits.length === 0) return fail(`The page has no button "${input.button}". suggest_experiments lists its buttons.`);
+    goalBlock = hits[0].id;
+  }
+  if (input.goal === "form") {
+    const part = partOf(input.changes);
+    const forms = goalCandidates("form", original, part);
+    const hits = input.form ? forms.filter((f) => f.submit?.toLowerCase() === input.form!.toLowerCase()) : forms;
+    if (forms.length === 0) return fail("The page has no email form or newsletter sign-up to count: add one in the page builder, or choose another goal.");
+    if (hits.length === 0) return fail(`The page has no form with the send button "${input.form}". Its forms: ${forms.map((f) => f.label).join(", ")}.`);
+    if (hits.length > 1) return fail(`Several forms fit: name the one by the text on its send button (form). Its forms: ${hits.map((f) => f.label).join(", ")}.`);
     goalBlock = hits[0].id;
   }
   const part = partOf(input.changes);

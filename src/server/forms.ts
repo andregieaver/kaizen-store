@@ -14,6 +14,7 @@ import { storeSiteUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type SendOutcome } from "./email";
+import { recordFormSent } from "./experiments";
 import { storeById, type EmailStore } from "./shopper-emails";
 
 type Row = Record<string, unknown>;
@@ -153,6 +154,8 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
       values (${owner.storeId}::uuid, ${block.id}, 'message', ${visitor}, 'pending', ${request.path}, ${request.lang})
       returning id
     `);
+    // A test of this form counts it once the site has accepted the answer (D148, phase 11).
+    if (owner.storeId) await recordFormSent(owner.storeId, block.id);
     const answers = [...checked.answers, ...(block.consent ? [{ label: o.form.consent, value: `${block.consent} (${o.form.yes})` }] : [])];
     const status = await relay(
       found,
@@ -197,6 +200,7 @@ export async function submitForm(request: FormRequest, visitor: string): Promise
     returning id
   `);
   const id = String(row.id);
+  if (owner.storeId) await recordFormSent(owner.storeId, block.id);
   if (!confirm) {
     const status = await relaySignup(found, checked.email, payload, null, request.path, id);
     await db().execute(sql`update commerce.form_submissions set status = ${status} where id = ${id}::uuid`);

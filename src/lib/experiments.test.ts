@@ -8,7 +8,9 @@ import {
   deviceOf,
   encodeAssignments,
   evenSplit,
+  GOAL_WORDS,
   isBot,
+  isGoal,
   NEXT_STATUSES,
   overdue,
   parseAudience,
@@ -159,6 +161,15 @@ describe("starting a test", () => {
 
   it("has nothing to say about a test that is ready", () => {
     expect(startProblems(ok)).toEqual([]);
+  });
+
+  it("asks for the form a forms-sent test counts, as for a button (phase 11)", () => {
+    expect(GOAL_WORDS.form).toMatchObject({ kind: "rate", needsBlock: true, block: "form" });
+    expect(GOAL_WORDS.click).toMatchObject({ needsBlock: true, block: "button" });
+    expect(startProblems({ ...ok, goal: "form" })).toContain("Choose the form whose answers you want more of.");
+    expect(startProblems({ ...ok, goal: "click" })).toContain("Choose the button or link whose clicks you want more of.");
+    expect(startProblems({ ...ok, goal: "form", goalBlock: "news-1" })).toEqual([]);
+    expect(isGoal("form")).toBe(true);
   });
 
   it("says what is missing, in words", () => {

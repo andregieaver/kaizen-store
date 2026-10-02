@@ -312,6 +312,9 @@ describe("A/B tests of pages (D148)", () => {
     await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'orders')", [t.store, article])).rejects.toThrow(/experiments\.target/);
     await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, '', $2, 'orders')", [t.store, t.target])).rejects.toThrow(/experiments_name/);
     await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal) values ($1, 'x', $2, 'sales')", [t.store, t.target])).rejects.toThrow(/experiments_goal/);
+    // Forms sent is a goal (phase 11).
+    await db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, goal_params) values ($1, 'forms', $2, 'form', '{\"block\": \"news-1\"}')", [t.store, t.target]);
+    await db.query("delete from commerce.experiments where store_id = $1 and name = 'forms'", [t.store]);
     await expect(db.query("insert into commerce.experiments (store_id, name, target_page_id, primary_goal, traffic_share) values ($1, 'x', $2, 'orders', 1.5)", [t.store, t.target])).rejects.toThrow(/experiments_traffic/);
     // Another store's page cannot be tested.
     const other = await made();
@@ -583,6 +586,10 @@ describe("A/B tests of pages (D148)", () => {
     await expect(event("visitor-0009", "a", "checkout")).rejects.toThrow(/experiment_events_exposure_fk|foreign key|belongs to the version/);
     await expect(event("visitor-0001", "a", "order")).rejects.toThrow(/experiment_events_goal/);
     await event("visitor-0001", "a", "click", "block-1");
+    // A form sent counts once per form (phase 11).
+    await event("visitor-0001", "a", "form", "news-1");
+    await expect(event("visitor-0001", "a", "form", "news-1")).rejects.toThrow(/experiment_events_once_key|duplicate/);
+    await event("visitor-0001", "a", "form", "contact-1");
     await set(t.experiment, "status = 'stopped'");
     await expect(expose("visitor-0003", "a")).rejects.toThrow(/experiment_exposures\.closed/);
     await expect(event("visitor-0001", "a", "checkout")).rejects.toThrow(/experiment_events\.closed/);

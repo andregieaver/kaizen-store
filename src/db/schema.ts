@@ -6218,7 +6218,7 @@ export const experiments = commerce.table(
       sql`(${t.targetPart} is null and ${t.targetPartKind} is null) or (${t.targetPart} is not null and length(${t.targetPart}) between 1 and 64 and coalesce(${t.targetPartKind} in ('row', 'column', 'block'), false))`,
     ),
     check("experiments_scheduled", sql`${t.status} <> 'scheduled' or ${t.scheduledStart} is not null`),
-    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click')`),
+    check("experiments_goal", sql`${t.primaryGoal} in ('orders', 'revenue', 'cart', 'checkout', 'click', 'form')`),
     check("experiments_name", sql`length(${t.name}) between 1 and 120 and length(${t.hypothesis}) <= 500`),
     check("experiments_traffic", sql`${t.trafficShare} > 0 and ${t.trafficShare} <= 1`),
     check("experiments_minimums", sql`${t.minVisitors} >= 0 and ${t.minDays} between 1 and 90`),
@@ -6297,7 +6297,7 @@ export const experimentEvents = commerce.table(
     unique("experiment_events_once_key").on(t.experimentId, t.visitor, t.goal, t.ref),
     foreignKey({ name: "experiment_events_exposure_fk", columns: [t.experimentId, t.visitor], foreignColumns: [experimentExposures.experimentId, experimentExposures.visitor] }).onDelete("cascade"),
     index("experiment_events_store_idx").on(t.storeId, t.occurredAt),
-    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click')`),
+    check("experiment_events_goal", sql`${t.goal} in ('cart', 'checkout', 'click', 'form')`),
     check("experiment_events_ref", sql`length(${t.ref}) <= 80`),
   ],
 );

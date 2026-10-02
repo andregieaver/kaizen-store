@@ -28,7 +28,7 @@ export type ExperimentResults = {
   /** What was compared, for the primary goal. */
   figures: VariantFigures[];
   /** The funnel for every version, whatever the primary goal: exposed, added to cart, started checkout, ordered. */
-  funnel: Record<string, { visitors: number; carts: number; checkouts: number; buyers: number; clicks: number }>;
+  funnel: Record<string, { visitors: number; carts: number; checkouts: number; buyers: number; clicks: number; forms: number }>;
   /** Revenue without VAT per version in the store's main currency (winsorised for the comparison), and the plain sum. */
   revenue: Record<string, { sum: number; plain: number }>;
   currency: string;
@@ -98,7 +98,7 @@ export async function experimentResults(store: Pick<Store, "id" | "markets" | "l
   const values = [...perVisitor.values()].map((v) => v.net).sort((a, b) => a - b);
   const cap = values.length >= 2 ? percentile(values, 0.99) : (values[0] ?? 0);
 
-  const funnel: ExperimentResults["funnel"] = Object.fromEntries(keys.map((k) => [k, { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0 }]));
+  const funnel: ExperimentResults["funnel"] = Object.fromEntries(keys.map((k) => [k, { visitors: 0, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 }]));
   for (const r of exposures) if (funnel[String(r.variant)]) funnel[String(r.variant)].visitors = Number(r.visitors);
   for (const r of events) {
     const f = funnel[String(r.variant)];
@@ -107,6 +107,7 @@ export async function experimentResults(store: Pick<Store, "id" | "markets" | "l
     if (r.goal === "cart") f.carts = n;
     else if (r.goal === "checkout") f.checkouts = n;
     else if (r.goal === "click") f.clicks = n;
+    else if (r.goal === "form") f.forms = n;
   }
   const revenue: ExperimentResults["revenue"] = Object.fromEntries(keys.map((k) => [k, { sum: 0, plain: 0 }]));
   const sumSq: Record<string, number> = Object.fromEntries(keys.map((k) => [k, 0]));
@@ -120,7 +121,7 @@ export async function experimentResults(store: Pick<Store, "id" | "markets" | "l
   }
 
   const goal = test.goal;
-  const conversions = (k: string) => (goal === "orders" ? funnel[k].buyers : goal === "cart" ? funnel[k].carts : goal === "checkout" ? funnel[k].checkouts : goal === "click" ? funnel[k].clicks : 0);
+  const conversions = (k: string) => (goal === "orders" ? funnel[k].buyers : goal === "cart" ? funnel[k].carts : goal === "checkout" ? funnel[k].checkouts : goal === "click" ? funnel[k].clicks : goal === "form" ? funnel[k].forms : 0);
   const figures: VariantFigures[] = test.variants.map((v) => ({
     key: v.key,
     name: v.name,
@@ -140,8 +141,8 @@ export async function experimentResults(store: Pick<Store, "id" | "markets" | "l
   };
   for (const r of daysRows) if (keys.includes(String(r.variant))) touch(String(r.day), String(r.variant)).visitors += Number(r.n);
   if (goal === "orders") for (const v of perVisitor.values()) if (keys.includes(v.variant)) touch(day(v.at), v.variant).conversions += 1;
-  // Cart, checkout and click days come from the events.
-  if (goal === "cart" || goal === "checkout" || goal === "click") {
+  // Cart, checkout, click and form days come from the events.
+  if (goal === "cart" || goal === "checkout" || goal === "click" || goal === "form") {
     const rows = await db().execute<Row>(sql`
       select to_char(occurred_at at time zone 'utc', 'YYYY-MM-DD') as day, variant, count(distinct visitor)::int as n
       from commerce.experiment_events where experiment_id = ${test.id}::uuid and store_id = ${store.id}::uuid and goal = ${goal} group by 1, 2

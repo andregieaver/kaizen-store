@@ -282,8 +282,8 @@ describe("what a test finds (D148)", () => {
 
     const test = (await admin.getExperiment(storeId, id))!;
     const r = await results.experimentResults(store, test);
-    expect(r.funnel.a).toEqual({ visitors: 1, carts: 0, checkouts: 0, buyers: 0, clicks: 0 });
-    expect(r.funnel.b).toEqual({ visitors: 2, carts: 2, checkouts: 1, buyers: 1, clicks: 0 });
+    expect(r.funnel.a).toEqual({ visitors: 1, carts: 0, checkouts: 0, buyers: 0, clicks: 0, forms: 0 });
+    expect(r.funnel.b).toEqual({ visitors: 2, carts: 2, checkouts: 1, buyers: 1, clicks: 0, forms: 0 });
     expect(r.revenue.b.plain).toBe(8000);
     expect(r.currency).toBe(home().currency);
     expect(r.unconverted).toBe(0);
@@ -456,7 +456,7 @@ describe("ending a test (D148)", () => {
     const harmed = {
       harmed: "b",
       days: 5,
-      funnel: { a: { visitors: 2000, carts: 0, checkouts: 0, buyers: 100, clicks: 0 }, b: { visitors: 2000, carts: 0, checkouts: 0, buyers: 40, clicks: 0 } },
+      funnel: { a: { visitors: 2000, carts: 0, checkouts: 0, buyers: 100, clicks: 0, forms: 0 }, b: { visitors: 2000, carts: 0, checkouts: 0, buyers: 40, clicks: 0, forms: 0 } },
     } satisfies Parameters<typeof emails.notifyGuardrailStop>[2];
     const outcomes = await emails.notifyGuardrailStop(store, test, harmed);
     expect(outcomes).toHaveLength(2);
@@ -929,5 +929,126 @@ describe("tests of the front page and the All products page (D148, phase 10)", (
     expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
     expect(JSON.stringify(await publishedOf(productsId))).toContain("Everything we sell");
     await db().execute(sql`update commerce.pages set published = ${originalContent}::jsonb, draft = ${originalContent}::jsonb where id = ${productsId}::uuid`);
+  }, 30_000);
+});
+
+const formsServer = await import("./forms");
+
+describe("a test that counts forms sent (D148, phase 11)", () => {
+  const formId = `news-p11-${run}`;
+  const path = "/s/test/no/om-oss";
+
+  /** Puts a newsletter sign-up (no confirmation email) on the about page, published, and takes it off again after. */
+  async function withForm(body: () => Promise<void>) {
+    delete process.env.RESEND_API_KEY;
+    let k = 0;
+    const row = { ...newRow("1", () => `p11-${(k += 1)}-${run}`), id: `r-${formId}` };
+    const block = { ...(newBlock("newsletter", () => formId) as unknown as Record<string, unknown>), recipients: [`list-${run}@example.com`], confirm: false, submitLabel: "Join us" };
+    const next = { ...row, columns: [{ ...row.columns[0], blocks: [block] }] };
+    for (const column of ["draft", "published"] as const) {
+      const [current] = await db().execute<Row>(column === "draft" ? sql`select draft as c from commerce.pages where id = ${aboutId}::uuid` : sql`select published as c from commerce.pages where id = ${aboutId}::uuid`);
+      const content = current.c as PageContent;
+      const json = JSON.stringify({ ...content, rows: [...content.rows, next] });
+      await db().execute(column === "draft" ? sql`update commerce.pages set draft = ${json}::jsonb where id = ${aboutId}::uuid` : sql`update commerce.pages set published = ${json}::jsonb where id = ${aboutId}::uuid`);
+    }
+    try {
+      await body();
+    } finally {
+      await db().execute(sql`
+        update commerce.pages set
+          draft = jsonb_set(draft, '{rows}', coalesce((select jsonb_agg(r) from jsonb_array_elements(draft -> 'rows') r where r ->> 'id' <> ${`r-${formId}`}), '[]'::jsonb)),
+          published = jsonb_set(published, '{rows}', coalesce((select jsonb_agg(r) from jsonb_array_elements(published -> 'rows') r where r ->> 'id' <> ${`r-${formId}`}), '[]'::jsonb))
+        where id = ${aboutId}::uuid
+      `);
+      await db().execute(sql`delete from commerce.form_submissions where store_id = ${storeId}::uuid and block_id = ${formId}`);
+    }
+  }
+
+  const send = (email: string, over: Partial<{ elapsed: number; values: Record<string, string | boolean>; consent: boolean }> = {}) =>
+    formsServer.submitForm({ store: storeId, block: formId, values: { email, ...over.values }, consent: over.consent ?? true, website: "", lang: "en", path, elapsed: over.elapsed ?? 6000 }, `ip-${email}`);
+
+  it("counts a visitor once when the site accepts their sign-up, in the version they were shown, and nobody else", async () => {
+    await withForm(async () => {
+      // The goal needs a form that is on the page.
+      expect(await admin.createExperiment(account, storeId, { name: "Needs a form", pageId: aboutId, goal: "form" })).toMatchObject({ ok: false, problems: ["Choose the form whose answers you want more of."] });
+      expect(await admin.createExperiment(account, storeId, { name: "Not on the page", pageId: aboutId, goal: "form", goalBlock: "nowhere" })).toMatchObject({ ok: false, problems: ["That form is not on the page."] });
+      expect(await admin.createExperiment(account, storeId, { name: "A heading is no form", pageId: aboutId, goal: "form", goalBlock: "heading-about" })).toMatchObject({ ok: false });
+
+      const made = await admin.createExperiment(account, storeId, { name: "Sign-ups", pageId: aboutId, goal: "form", goalBlock: formId });
+      if (!made.ok) throw new Error(made.problems.join(" "));
+      const draft = (await admin.getExperiment(storeId, made.id))!;
+      expect(draft).toMatchObject({ goal: "form", goalBlock: formId });
+      // A draft's goal can change to another form-less one and back, but never to a block the page does not have.
+      expect(await admin.updateDraft(account, storeId, made.id, { goal: "form", goalBlock: "elsewhere" })).toMatchObject({ ok: false, problems: ["That form is not on the page."] });
+      expect(await admin.updateDraft(account, storeId, made.id, { goal: "click", goalBlock: formId })).toMatchObject({ ok: false, problems: ["That button is not on the page."] });
+      await changeVariant(made.id, "b");
+      expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+      engine.forgetRunning(storeId);
+
+      const sentBy = async (key: string) => (await results.experimentResults(store, (await admin.getExperiment(storeId, made.id))!)).funnel[key]?.forms ?? 0;
+
+      // A visitor in B who has accepted statistics: exposed, then sends the form.
+      const b = await visitorFor(made.id, "b");
+      browser({ statistics: true, versions: { [made.id]: "b" }, visitor: b });
+      await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" });
+      expect(await send(`b-${run}@example.com`)).toMatchObject({ status: 200, body: { ok: true } });
+      expect(await sentBy("b")).toBe(1);
+      // The same visitor sending another address (or the same again) is still one visitor.
+      expect(await send(`b2-${run}@example.com`)).toMatchObject({ status: 200 });
+      expect(await send(`b-${run}@example.com`)).toMatchObject({ status: 200 });
+      expect(await sentBy("b")).toBe(1);
+
+      // A visitor in the original counts in the original.
+      const a = await visitorFor(made.id, "a");
+      browser({ statistics: true, versions: { [made.id]: "a" }, visitor: a });
+      await engine.recordExposure(storeId, made.id, "a", { market: "no", device: "desktop" });
+      await send(`a-${run}@example.com`);
+      expect(await sentBy("a")).toBe(1);
+      expect(await sentBy("b")).toBe(1);
+
+      // Not counted: a robot (told it worked, nothing kept), a refused answer, a visitor who never accepted statistics, one never exposed.
+      const robot = await visitorFor(made.id, "b");
+      browser({ statistics: true, versions: { [made.id]: "b" }, visitor: robot });
+      await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" });
+      expect(await send(`robot-${run}@example.com`, { elapsed: 10 })).toMatchObject({ status: 200 });
+      expect(await send("not-an-address")).toMatchObject({ status: 422 });
+      expect(await sentBy("b")).toBe(1);
+      browser({ statistics: false, versions: { [made.id]: "b" }, visitor: await visitorFor(made.id, "b") });
+      await send(`nostats-${run}@example.com`);
+      browser({ statistics: true, versions: { [made.id]: "b" }, visitor: await visitorFor(made.id, "b") });
+      await send(`unexposed-${run}@example.com`);
+      jar.clear();
+      await send(`nocookie-${run}@example.com`);
+      expect(await sentBy("b")).toBe(1);
+      expect(await sentBy("a")).toBe(1);
+
+      // Only while the test runs.
+      expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
+      browser({ statistics: true, versions: { [made.id]: "b" }, visitor: robot });
+      await send(`late-${run}@example.com`);
+      expect(await sentBy("b")).toBe(1);
+      expect(await admin.discardExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    });
+  }, 30_000);
+
+  it("does not count a form the test is not about, and a test of clicks does not count forms", async () => {
+    await withForm(async () => {
+      const made = await admin.createExperiment(account, storeId, { name: "Other form", pageId: aboutId, goal: "form", goalBlock: formId });
+      if (!made.ok) throw new Error(made.problems.join(" "));
+      await changeVariant(made.id, "b");
+      expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+      engine.forgetRunning(storeId);
+      const visitor = await visitorFor(made.id, "b");
+      browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+      await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "desktop" });
+      await engine.recordFormSent(storeId, "some-other-form");
+      const counted = async () => Number((await db().execute<Row>(sql`select count(*)::int as n from commerce.experiment_events where experiment_id = ${made.id}::uuid and goal = 'form'`))[0].n);
+      expect(await counted()).toBe(0);
+      await engine.recordFormSent(storeId, formId);
+      await engine.recordFormSent(storeId, formId);
+      expect(await counted()).toBe(1);
+      await admin.stopExperiment(account, storeId, made.id);
+      await admin.discardExperiment(account, storeId, made.id);
+    });
   }, 30_000);
 });

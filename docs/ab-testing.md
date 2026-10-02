@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 10 built** (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 11 built** (11: the form-sent goal) (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -355,6 +355,34 @@ Not done: the cookies page and the content pages (blog, search, 404, categories,
 (the platform's header, footer and plans page); and the checks that were open before (the Vercel run of the caching of rewritten pages, a store on
 its own host, the legal check, the moderated usability check).
 
+## What phase 11 built: the goal "more people sending a form"
+
+**A fifth way to say what should get better** (`form`, "More people sending a form"): the owner chooses one email form or newsletter sign-up (D93)
+in the page or the part under test, and the winner is the version in which more of the visitors send it. It is the usual aim of a popup test,
+which phase 9 left without one. It works like the click goal, but the thing counted is not seen in the browser.
+
+- **What counts, and when.** A visitor is counted once per form, in the version they were shown, when the site has accepted what they sent
+  (`recordFormSent()` in `src/server/experiments.ts`, called by `submitForm()` right after the submission is kept). Not counted: a robot (it is
+  told it worked and nothing is kept), an answer the site refused, a sign-up already made that day, a visitor who never accepted statistics, one
+  who was never shown the test, and anything after the test stopped. A newsletter sign-up counts when it is made, before the visitor confirms it
+  by email: a visitor who never confirms is still a visitor the version got to sign up. The form's own answers are never read or kept by the test.
+- **The form, like a button.** The goal takes the form's block id (`goal_params.block`), chosen from the forms in the page or in the part
+  (`formsWithin()`, `formsOf()`, `goalCandidates()`); a draft's goal cannot be changed to a block the page does not have, so a button chosen for
+  the click goal is never taken for a form (`updateDraft()`, and the new-test form forgets the choice when the goal changes). The events are
+  `experiment_events` rows with goal `form` and the block as `ref`, once per visitor and form (the table's own unique key).
+- **Results and words.** The funnel has a `forms` figure per version, the goal's conversions and daily chart read it like the click's, and the
+  results page says "Visitors who sent the form (each counted once)". `BLOCK_CHOICE` holds the words for each kind of block a goal can ask for.
+- **The AI manager.** `draft_experiment` takes `goal: form` and a `form` argument, the text on the form's send button; with one form on the page
+  it needs none, with several it says which there are. `suggest_experiments` lists a page's forms, and `explain_results` says how many sent it.
+- **Database.** Migration `ab_form_goal`: the goal and the event's goal check constraints take `form`.
+
+Tested: unit tests of the goal's words and the forms inside a part, database tests of the constraints, integration tests of the whole path (a
+sign-up sent by visitors in each version, the cases that are not counted, the draft's checks, the assistant's draft) and a browser test
+(`e2e/ab-form-goal.spec.ts`) in which a visitor fills in the real form.
+
+Not done: the checks that were open before, and a goal for a form on a page other than the one under test (a form in the footer, say, is not on
+the list unless it is in the part).
+
 ## Principles (kept from `measurement.md`)
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did
@@ -667,6 +695,7 @@ reports (D106, D145).
 | **7** (built) | Move search and recommendations tests onto the engine's arithmetic, and into the platform's view | Old and new give the same numbers on the same data |
 | **8** (built) | The platform assistant's tools: read every store's tests, say what needs a look | Read-only, no tool that changes a store's test |
 | **9** (built) | Modals; the surrounding rows of working pages | A popup and the cart's trust row tested, served and applied; the shop's own component never |
+| **11** (built) | The goal "more people sending a form" | A newsletter sign-up counted once per visitor in the version they saw, and never for a robot, a refused answer or a visitor outside the test |
 | **10** (built) | The front page and the All products page, whole or by a part | A front page tested whole and the products page by a part, served at their own addresses, held in place, applied |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the

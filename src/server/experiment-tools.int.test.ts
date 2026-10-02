@@ -161,6 +161,8 @@ describe("the AI manager's A/B test tools (D148)", () => {
     await expect(draft({ goal: "click" })).rejects.toThrow(/name the button/);
     await expect(draft({ goal: "click", button: "Buy now", changes: [] })).rejects.toThrow(/no button "Buy now"/);
     await expect(ownerTools.runOwnerTool(ctx(), "draft_experiment", { target: "does-not-exist", goal: "cart" })).rejects.toThrow(/cannot be tested now/);
+    // A forms-sent goal needs a form on the page (phase 11).
+    await expect(draft({ goal: "form" })).rejects.toThrow(/no email form or newsletter sign-up/);
     expect(await admin.listExperiments(member.store.id)).toEqual([]);
   });
 
@@ -289,5 +291,41 @@ describe("the AI manager's A/B test tools (D148)", () => {
       what_is_left: [expect.stringContaining("still the same as the original")],
     });
     expect((await admin.deleteDraft(member.account, member.store.id, made.id)).ok).toBe(true);
+  });
+  it("drafts a test that counts forms sent: the only form on the page, or the one named by its send button (phase 11)", async () => {
+    const formRow = (id: string, submitLabel: string) => ({
+      id: `r-${id}`,
+      type: "row",
+      layout: "1",
+      columns: [{ id: `c-${id}`, blocks: [{ id, type: "newsletter", recipients: ["liste@example.com"], placeholder: "", submitLabel, successMessage: "", consent: "" }] }],
+    });
+    const original = await db().execute<Row>(sql`select draft, published from commerce.pages where id = ${aboutId}::uuid`);
+    const added: unknown[] = [];
+    const put = async (rows: unknown[]) => {
+      added.push(...rows);
+      for (const column of ["draft", "published"] as const) {
+        const content = original[0][column] as { rows: unknown[] };
+        const json = JSON.stringify({ ...content, rows: [...content.rows, ...added] });
+        await db().execute(column === "draft" ? sql`update commerce.pages set draft = ${json}::jsonb where id = ${aboutId}::uuid` : sql`update commerce.pages set published = ${json}::jsonb where id = ${aboutId}::uuid`);
+      }
+    };
+    try {
+      await put([formRow("news-one", "Join us")]);
+      const suggest = (await ownerTools.runOwnerTool(ctx(), "suggest_experiments", {})) as { can_be_tested: { target: string; forms: string[] }[] };
+      expect(suggest.can_be_tested.find((t) => t.target === "om-oss")!.forms).toEqual(["Newsletter sign-up “Join us”"]);
+      const one = (await ownerTools.runOwnerTool(ctx(), "draft_experiment", { target: "om-oss", goal: "form", name: "Sign-ups" })) as { id: string };
+      expect(await admin.getExperiment(member.store.id, one.id)).toMatchObject({ goal: "form", goalBlock: "news-one" });
+      expect((await admin.deleteDraft(member.account, member.store.id, one.id)).ok).toBe(true);
+
+      // Two forms: it must be told which, by the words on its send button.
+      await put([formRow("news-two", "Stay in touch")]);
+      await expect(ownerTools.runOwnerTool(ctx(), "draft_experiment", { target: "om-oss", goal: "form" })).rejects.toThrow(/Several forms fit/);
+      await expect(ownerTools.runOwnerTool(ctx(), "draft_experiment", { target: "om-oss", goal: "form", form: "Nope" })).rejects.toThrow(/no form with the send button "Nope"/);
+      const named = (await ownerTools.runOwnerTool(ctx(), "draft_experiment", { target: "om-oss", goal: "form", form: "stay in touch" })) as { id: string };
+      expect(await admin.getExperiment(member.store.id, named.id)).toMatchObject({ goal: "form", goalBlock: "news-two" });
+      expect((await admin.deleteDraft(member.account, member.store.id, named.id)).ok).toBe(true);
+    } finally {
+      await db().execute(sql`update commerce.pages set draft = ${JSON.stringify(original[0].draft)}::jsonb, published = ${JSON.stringify(original[0].published)}::jsonb where id = ${aboutId}::uuid`);
+    }
   });
 });

@@ -59,6 +59,14 @@ export function buttonsWithin(kind: PartKind, node: PartNode): { id: string; lab
   return blocksWithin(kind, node).flatMap((b) => (b.type === "button" && b.label.trim() ? [{ id: b.id, label: b.label.trim() }] : []));
 }
 
+/** The forms inside a part, for a test that counts forms sent (phase 11): an email form or a newsletter sign-up, by its button's words. */
+export function formsWithin(kind: PartKind, node: PartNode): { id: string; label: string; submit: string }[] {
+  return blocksWithin(kind, node).flatMap((b) => (b.type === "emailForm" || b.type === "newsletter" ? [{ id: b.id, label: formLabel(b), submit: b.submitLabel.trim() }] : []));
+}
+
+/** What to call a form in a list: "Newsletter sign-up “Join”" or "Email form “Send”". */
+export const formLabel = (b: { type: string; submitLabel?: string }): string => `${b.type === "newsletter" ? "Newsletter sign-up" : "Email form"}${b.submitLabel?.trim() ? ` “${clip(b.submitLabel.trim(), 24)}”` : ""}`;
+
 const clip = (text: string, max = 40) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 
 export type PartInfo = {
@@ -66,6 +74,8 @@ export type PartInfo = {
   id: string;
   label: string;
   buttons: { id: string; label: string }[];
+  /** The forms inside it, for a test that counts forms sent. */
+  forms?: { id: string; label: string; submit?: string }[];
   /** For a modal row (D121): whether it opens only by itself, so a version may leave it out. Null for any other part. */
   modal?: { byItself: boolean } | null;
 };
@@ -88,7 +98,7 @@ export function describePart(content: Pick<PageContent, "rows">, target: PartTar
     label = `${blockWord((found.node as PageBlock).type)}${text ? ` “${clip(text)}”` : ""} in row ${rowIndex + 1}`;
   }
   const modal = found.kind === "row" ? (found.node as PageRow).modal : undefined;
-  return { kind: found.kind, id: target.id, label, buttons: buttonsWithin(found.kind, found.node), modal: modal ? { byItself: opensByItself(modal) } : null };
+  return { kind: found.kind, id: target.id, label, buttons: buttonsWithin(found.kind, found.node), forms: formsWithin(found.kind, found.node), modal: modal ? { byItself: opensByItself(modal) } : null };
 }
 
 /** Replaces the part with this id by another of the same kind, or returns null when the page has none. */

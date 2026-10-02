@@ -500,8 +500,9 @@ export const OWNER_TOOLS = [
     "Makes a DRAFT A/B test: a copy of a page, the header, the footer or a product layout as version B, with the words you give put into its headings, buttons or texts. Nothing is shown to visitors until it is started (start_experiment, which needs the owner's approval). Give the new words for blocks listed by suggest_experiments (block ids); one changed block makes a test of that block only, several a test of the whole page; no changes makes an unchanged copy the owner edits in the page builder. Write words the store can stand behind: no prices, stock, urgency, 'best' or green claims; they are checked. Choose one thing to improve.",
     z.object({
       target: z.string().trim().min(1).max(200).describe("What to test: a page's address (slug) or id, `header`, `footer`, or a product layout's title, as listed by suggest_experiments."),
-      goal: z.enum(GOALS).describe("What should get better: orders, revenue (per visitor), cart (added to the cart), checkout (reached checkout) or click (on a button, named in `button`)."),
+      goal: z.enum(GOALS).describe("What should get better: orders, revenue (per visitor), cart (added to the cart), checkout (reached checkout) or click (on a button, named in `button`) or form (a form sent, named in `form`)."),
       button: z.string().trim().max(100).optional().describe("For the goal click: the text of the button whose clicks count (as it is now)."),
+      form: z.string().trim().max(100).optional().describe("For the goal form: the text on the send button of the email form or newsletter sign-up whose answers count (as it is now); left out when the page has only one."),
       changes: z
         .array(z.object({ block: z.string().trim().min(1).max(64).describe("The block's id from suggest_experiments."), text: z.string().trim().min(1).max(2000).describe("The new words: one line for a heading or button, paragraphs for a text.") }))
         .max(6)

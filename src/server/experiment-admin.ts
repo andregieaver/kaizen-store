@@ -5,10 +5,11 @@ import { revalidateTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
 import { isPartOnlyPlace, targetKindOf, TESTED_PLACES, type TargetKind } from "@/lib/ab-site";
-import { applyPart, buttonsWithin, describePart, findPart, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
+import { applyPart, buttonsWithin, describePart, findPart, formsWithin, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { cleanTranslations } from "@/lib/page-translation";
 import {
+  BLOCK_CHOICE,
   evenSplit,
   GOAL_WORDS,
   isGoal,
@@ -273,6 +274,24 @@ export function buttonsOf(content: PageContent | null): { id: string; label: str
   );
 }
 
+/** The forms of a page, for a test that counts forms sent (phase 11): each block's id and what it is. */
+export function formsOf(content: PageContent | null): { id: string; label: string; submit: string }[] {
+  if (!content) return [];
+  return content.rows.flatMap((row) => formsWithin("row", row));
+}
+
+/** What a goal that counts something on the page can count, in the page or in the part under test: its buttons, or its forms. */
+export function goalCandidates(goal: Goal, content: PageContent | null, part: { kind: PartKind; id: string } | null): { id: string; label: string; submit?: string }[] {
+  if (!content) return [];
+  const block = GOAL_WORDS[goal].block;
+  if (part) {
+    const found = findPart(content.rows, part.id);
+    if (!found) return [];
+    return block === "form" ? formsWithin(part.kind, found.node) : buttonsWithin(part.kind, found.node);
+  }
+  return block === "form" ? formsOf(content) : buttonsOf(content);
+}
+
 export type NewExperiment = {
   /** A part of the page to test instead of the whole page: its kind and id (the builder's "Test this"). */
   part?: { kind: PartKind; id: string } | null;
@@ -300,7 +319,7 @@ export async function createExperiment(account: Account, storeId: string, input:
   const name = input.name.trim();
   if (name === "" || name.length > 120) return { ok: false, problems: ["Give the test a name of up to 120 characters."] };
   if (!isGoal(input.goal)) return { ok: false, problems: ["Choose what the test should improve."] };
-  if (GOAL_WORDS[input.goal].needsBlock && !input.goalBlock) return { ok: false, problems: ["Choose the button whose clicks you want more of."] };
+  if (GOAL_WORDS[input.goal].needsBlock && !input.goalBlock) return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[input.goal].block ?? "button"].problem] };
   const traffic = input.trafficShare ?? 1;
   if (!(traffic > 0 && traffic <= 1)) return { ok: false, problems: ["The share of visitors in the test is more than 0 and at most 100 %."] };
   const [page] = await db().execute<Row>(sql`
@@ -322,13 +341,15 @@ export async function createExperiment(account: Account, storeId: string, input:
   if (part) {
     if (!testablePart(original, part, kind)) return { ok: false, problems: ["That part of the page cannot be tested: choose a row, a column or a component with something to see, in the published page. Publish your changes first if you just added it."] };
   }
-  const buttons = part ? buttonsWithin(part.kind, findPart(original.rows, part.id)!.node) : buttonsOf(original);
-  if (input.goal === "click" && !buttons.some((b) => b.id === input.goalBlock)) return { ok: false, problems: [part ? "That button is not in the part you are testing." : "That button is not on the page."] };
+  if (GOAL_WORDS[input.goal].needsBlock && !goalCandidates(input.goal, original, part).some((b) => b.id === input.goalBlock)) {
+    const word = GOAL_WORDS[input.goal].block === "form" ? "form" : "button";
+    return { ok: false, problems: [part ? `That ${word} is not in the part you are testing.` : BLOCK_CHOICE[GOAL_WORDS[input.goal].block ?? "button"].gone] };
+  }
 
   const [made] = await db().execute<Row>(sql`
     insert into commerce.experiments (store_id, name, hypothesis, target_page_id, target_part, target_part_kind, primary_goal, goal_params, traffic_share, audience, min_days, min_visitors, created_by, updated_by)
     values (${storeId}::uuid, ${name}, ${(input.hypothesis ?? "").slice(0, 500)}, ${input.pageId}::uuid, ${part?.id ?? null}, ${part?.kind ?? null}, ${input.goal},
-      ${JSON.stringify(input.goal === "click" ? { block: input.goalBlock } : {})}::jsonb, ${traffic}, ${JSON.stringify(parseAudience(input.audience ?? {}))}::jsonb,
+      ${JSON.stringify(GOAL_WORDS[input.goal].needsBlock ? { block: input.goalBlock } : {})}::jsonb, ${traffic}, ${JSON.stringify(parseAudience(input.audience ?? {}))}::jsonb,
       ${Math.min(90, Math.max(1, Math.round(input.minDays ?? MIN_DAYS)))}, ${Math.max(0, Math.round(input.minVisitors ?? 0))}, ${account.id}::uuid, ${account.id}::uuid)
     returning id
   `);
@@ -406,8 +427,15 @@ export async function updateDraft(account: Account, storeId: string, id: string,
   if (test.status !== "draft") return { ok: false, problems: ["A test that has started cannot be changed, so its results mean what was started. Make a new test instead."] };
   const goal = changes.goal ?? test.goal;
   if (!isGoal(goal)) return { ok: false, problems: ["Choose what the test should improve."] };
-  const block = goal === "click" ? (changes.goalBlock !== undefined ? changes.goalBlock : test.goalBlock) : null;
-  if (GOAL_WORDS[goal].needsBlock && !block) return { ok: false, problems: ["Choose the button whose clicks you want more of."] };
+  const block = GOAL_WORDS[goal].needsBlock ? (changes.goalBlock !== undefined ? changes.goalBlock : test.goalBlock) : null;
+  if (GOAL_WORDS[goal].needsBlock && !block) return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[goal].block ?? "button"].problem] };
+  // A block chosen for another goal (a button for a form) or taken out of the page since is not one this goal can count.
+  if (GOAL_WORDS[goal].needsBlock && (goal !== test.goal || changes.goalBlock !== undefined)) {
+    const content = await publishedContentOf(storeId, test.page.id);
+    if (!goalCandidates(goal, content, test.part ? { kind: test.part.kind, id: test.part.id } : null).some((b) => b.id === block)) {
+      return { ok: false, problems: [BLOCK_CHOICE[GOAL_WORDS[goal].block ?? "button"].gone] };
+    }
+  }
   const traffic = changes.trafficShare ?? test.trafficShare;
   if (!(traffic > 0 && traffic <= 1)) return { ok: false, problems: ["The share of visitors in the test is more than 0 and at most 100 %."] };
   const name = (changes.name ?? test.name).trim();

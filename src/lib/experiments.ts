@@ -36,16 +36,24 @@ export const MIN_DAYS = 14;
 export const VARIANT_KEYS = ["a", "b", "c", "d"] as const;
 export type VariantKey = (typeof VARIANT_KEYS)[number];
 
-export const GOALS = ["orders", "revenue", "cart", "checkout", "click"] as const;
+export const GOALS = ["orders", "revenue", "cart", "checkout", "click", "form"] as const;
 export type Goal = (typeof GOALS)[number];
 
 /** What each goal measures, in the words the admin uses. */
-export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string; kind: "rate" | "money"; needsBlock: boolean }> = {
+export const GOAL_WORDS: Record<Goal, { label: string; asks: string; per: string; kind: "rate" | "money"; needsBlock: boolean; block?: "button" | "form" }> = {
   orders: { label: "More orders", asks: "get more of the visitors to buy", per: "placed an order", kind: "rate", needsBlock: false },
   revenue: { label: "More revenue per visitor", asks: "sell more per visitor", per: "revenue per visitor", kind: "money", needsBlock: false },
   cart: { label: "More people adding to the cart", asks: "get more visitors to add something to the cart", per: "added to the cart", kind: "rate", needsBlock: false },
   checkout: { label: "More people reaching checkout", asks: "get more visitors to start checkout", per: "started checkout", kind: "rate", needsBlock: false },
-  click: { label: "More clicks on a button or link", asks: "get more visitors to click a chosen button or link", per: "clicked it", kind: "rate", needsBlock: true },
+  click: { label: "More clicks on a button or link", asks: "get more visitors to click a chosen button or link", per: "clicked it", kind: "rate", needsBlock: true, block: "button" },
+  // D93's email form or newsletter sign-up, counted when the site accepts the answer (D148, phase 11).
+  form: { label: "More people sending a form", asks: "get more visitors to send a chosen form or sign up to a newsletter", per: "sent the form", kind: "rate", needsBlock: true, block: "form" },
+};
+
+/** What an owner chooses for a goal that counts something on the page, in words: "the button or link whose clicks you want more of". */
+export const BLOCK_CHOICE: Record<"button" | "form", { problem: string; gone: string }> = {
+  button: { problem: "Choose the button or link whose clicks you want more of.", gone: "That button is not on the page." },
+  form: { problem: "Choose the form whose answers you want more of.", gone: "That form is not on the page." },
 };
 
 export const isGoal = (value: unknown): value is Goal => (GOALS as readonly unknown[]).includes(value);
@@ -163,7 +171,7 @@ export function startProblems(test: {
   const problems: string[] = [];
   if (test.name.trim() === "") problems.push("Give the test a name.");
   if (!isGoal(test.goal)) problems.push("Choose what the test should improve.");
-  else if (GOAL_WORDS[test.goal].needsBlock && !test.goalBlock) problems.push("Choose the button or link whose clicks you want more of.");
+  else if (GOAL_WORDS[test.goal].needsBlock && !test.goalBlock) problems.push(BLOCK_CHOICE[GOAL_WORDS[test.goal].block ?? "button"].problem);
   if (!(test.trafficShare > 0 && test.trafficShare <= 1)) problems.push("The share of visitors in the test is more than 0 and at most 100 %.");
   if (!test.pagePublished) problems.push("Publish the page before testing it: a test shows it to real visitors.");
   if (test.pageIsSpecial) problems.push("The cookies page and the blog, search, 404, category and tag pages cannot be tested yet.");

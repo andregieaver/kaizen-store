@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { applyPart, buttonsWithin, describePart, findPart, partChanges, replacePart, testablePart, type PartNode } from "./experiment-parts";
-import { newPageContent, type ButtonBlock, type HeadingBlock, type PageBlock, type PageContent, type PageRow } from "./page-content";
+import { applyPart, buttonsWithin, describePart, findPart, formsWithin, partChanges, replacePart, testablePart, type PartNode } from "./experiment-parts";
+import { newPageContent, type NewsletterBlock, type ButtonBlock, type HeadingBlock, type PageBlock, type PageContent, type PageRow } from "./page-content";
 import { insertBlock, insertRow, newBlock, newRow } from "./page-rows";
 
 let n = 0;
@@ -233,5 +233,23 @@ describe("tests of a modal (D148, phase 9)", () => {
     // A modal that a link opens is never taken out this way.
     const linked = pageWithModal({ button: true });
     expect(applyPart(linked.content, { ...linked.content, rows: linked.content.rows.filter((r) => r.id !== linked.popup.id) }, target(linked.popup))).toBeNull();
+  });
+});
+
+describe("the forms inside a part (phase 11)", () => {
+  const signup = (submitLabel: string): NewsletterBlock => ({ ...(newBlock("newsletter", id) as NewsletterBlock), recipients: ["list@example.com"], submitLabel });
+
+  it("lists an email form and a newsletter sign-up by what they are and their send button, and nothing else", () => {
+    const { content, hero, b1 } = page();
+    const news = signup("Join us");
+    const rows = insertBlock(content.rows, hero.columns[0].id, news, 2);
+    const withForm = { ...content, rows };
+    expect(formsWithin("row", rows[0])).toEqual([{ id: news.id, label: "Newsletter sign-up “Join us”", submit: "Join us" }]);
+    expect(formsWithin("block", news)).toEqual([{ id: news.id, label: "Newsletter sign-up “Join us”", submit: "Join us" }]);
+    // A button or a heading is no form; a form with no words of its own is named by its kind.
+    expect(formsWithin("block", b1)).toEqual([]);
+    expect(formsWithin("column", { ...hero.columns[0], blocks: [signup("")] })[0].label).toBe("Newsletter sign-up");
+    expect(describePart(withForm, { kind: "row", id: hero.id })?.forms).toEqual([{ id: news.id, label: "Newsletter sign-up “Join us”", submit: "Join us" }]);
+    expect(describePart(withForm, { kind: "row", id: rows[1].id })?.forms).toEqual([]);
   });
 });

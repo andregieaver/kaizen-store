@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ExperimentForm } from "@/components/admin/experiment-form";
 import { requireMember } from "@/server/auth";
 import { describePart, testablePart, type PartKind } from "@/lib/experiment-parts";
-import { buttonsOf, publishedContentOf, testablePages } from "@/server/experiment-admin";
+import { buttonsOf, formsOf, publishedContentOf, testablePages } from "@/server/experiment-admin";
 
 import { createExperimentAction } from "../actions";
 
@@ -20,9 +20,12 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
   if (asked("page")) pages = pages.filter((p) => p.id === asked("page"));
   // A working page (the cart, the checkout …) is tested by a part of it only: it is not on the list of whole pages, and a part chosen in the builder reaches it.
   if (!partTarget) pages = pages.filter((p) => !p.partOnly);
-  // The buttons of each page, for a test that counts clicks.
+  // The buttons and the forms of each page, for a test that counts clicks or forms sent.
   const withButtons = await Promise.all(
-    pages.map(async (p) => ({ ...p, buttons: buttonsOf(await publishedContentOf(store.id, p.id)) })),
+    pages.map(async (p) => {
+      const content = await publishedContentOf(store.id, p.id);
+      return { ...p, buttons: buttonsOf(content), forms: formsOf(content) };
+    }),
   );
   let part = null;
   if (partTarget && withButtons[0]) {

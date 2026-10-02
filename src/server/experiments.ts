@@ -304,6 +304,30 @@ export async function recordClick(storeId: string, experimentId: string, block: 
 }
 
 /**
+ * A form sent by an enrolled visitor (D148, phase 11): called by the form endpoint after the site has accepted the answer (a robot's, a
+ * repeat of the day's and a refused one never get here), for every running test whose goal is this form and that the visitor was exposed
+ * to. Once per visitor and form; never fails what it rides on, and says nothing when there is no cookie.
+ */
+export async function recordFormSent(storeId: string, block: string): Promise<void> {
+  try {
+    if (block.length > 80) return;
+    const mine = await readAssignments(storeId);
+    if (!mine) return;
+    if (!(await acceptedStatistics(storeId))) return;
+    await db().execute(sql`
+      insert into commerce.experiment_events (store_id, experiment_id, visitor, variant, goal, ref)
+      select x.store_id, x.experiment_id, x.visitor, x.variant, 'form', ${block}
+      from commerce.experiment_exposures x join commerce.experiments e on e.id = x.experiment_id and e.status = 'running'
+      where x.store_id = ${storeId}::uuid and x.visitor = ${mine.visitor}
+        and e.primary_goal = 'form' and e.goal_params ->> 'block' = ${block}
+      on conflict do nothing
+    `);
+  } catch (error) {
+    console.error("[experiments] form not recorded", error);
+  }
+}
+
+/**
  * A cart or a checkout of an enrolled visitor (D148): the cart is tied to the visitor so a paid order can be traced
  * back, and a cart or checkout event is kept for every running test the visitor was exposed to. Never fails what it
  * rides on: it is called after the cart or the checkout has done its work, and says nothing when there is no cookie.
