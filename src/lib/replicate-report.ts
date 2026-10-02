@@ -2,7 +2,7 @@ import { CSS_MAX } from "./custom-css";
 import { BLOCKS_MAX, ROWS_MAX, pageBlockSchema } from "./page-content";
 import type { ReplicaLogEntry, ReplicaNote, ReplicaPass, ReplicaSummary } from "./replicate";
 import type { Dropped, PartInfo } from "./replicate-build";
-import { indexByPath, walk, type Box, type CaptureHit, type PageCapture } from "./replicate-capture";
+import { indexByPath, walk, type Box, type CaptureHit, type CaptureNode, type PageCapture } from "./replicate-capture";
 import { BAND, stretchMatch, TOLERANCE, type Raster } from "./replicate-diff";
 import type { Analysis } from "./replicate-prompts";
 
@@ -41,6 +41,8 @@ export type Census = {
   controls: { total: number; types: Record<string, number>; samples: CaptureHit[] };
   embeds: { host: string; title: string; y: number }[];
   gradients: { total: number; samples: CaptureHit[] };
+  /** Pieces of content (words, pictures) placed absolutely: a collage, not a flow. */
+  placed: { total: number; samples: CaptureHit[] };
   styles: { boxShadow: number; textShadow: number; transform: number; filter: number; translucent: number; absolute: number; grid: number; flex: number };
   hints: Record<string, { total: number; samples: CaptureHit[] }>;
   extras: NonNullable<PageCapture["extras"]> | null;
@@ -127,6 +129,7 @@ const HINTS: Record<string, RegExp> = {
   lottie: /(lottie|rive)/i,
 };
 
+const hasWords = (n: CaptureNode) => (n.runs ?? []).some((run) => !run.br && (run.t ?? "").trim() !== "");
 const at = (hit: { sel: string; y: number }) => `${hit.sel || "(unnamed)"} at ${hit.y}px`;
 
 export function censusOf(desktop: PageCapture, mobile: PageCapture | null): Census {
@@ -135,6 +138,7 @@ export function censusOf(desktop: PageCapture, mobile: PageCapture | null): Cens
   const controls: Census["controls"] = { total: 0, types: {}, samples: [] };
   const embeds: Census["embeds"] = [];
   const gradients: Census["gradients"] = { total: 0, samples: [] };
+  const placed: Census["placed"] = { total: 0, samples: [] };
   const styles = { boxShadow: 0, textShadow: 0, transform: 0, filter: 0, translucent: 0, absolute: 0, grid: 0, flex: 0 };
   const hints: Census["hints"] = {};
   let nodes = 0;
@@ -172,7 +176,13 @@ export function censusOf(desktop: PageCapture, mobile: PageCapture | null): Cens
     if (n.s.transform && n.s.transform !== "none") styles.transform += 1;
     if (n.s.filter && n.s.filter !== "none") styles.filter += 1;
     if (n.s.opacity && Number(n.s.opacity) < 1) styles.translucent += 1;
-    if (n.s.position === "absolute") styles.absolute += 1;
+    if (n.s.position === "absolute") {
+      styles.absolute += 1;
+      if (n.media?.kind === "img" || (n.runs !== undefined && hasWords(n))) {
+        placed.total += 1;
+        if (placed.samples.length < 6) placed.samples.push({ sel, y });
+      }
+    }
     if (/grid/.test(n.s.display ?? "")) styles.grid += 1;
     if (/flex/.test(n.s.display ?? "")) styles.flex += 1;
     if (n.sel) {
@@ -195,6 +205,7 @@ export function censusOf(desktop: PageCapture, mobile: PageCapture | null): Cens
     controls,
     embeds,
     gradients,
+    placed,
     styles,
     hints,
     extras: desktop.extras ?? null,
@@ -411,6 +422,17 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
       evidence: [...evidence, `The builder has ${BUILDER_BLOCKS.filter((b) => ["tabs", "accordion", "faq"].includes(b)).map((b) => `\`${b}\``).join(", ")} blocks, but the converter only makes ${CONVERTER_BLOCKS.map((b) => `\`${b}\``).join(", ")}; every panel is shown open.`],
       change: "Recognise the pattern in the extractor (a `<details>` with its `<summary>`; elements with `role=tablist/tab/tabpanel`; repeated sibling boxes with a clickable heading) and keep the panels' text even when hidden (the extractor skips hidden boxes, so closed panels are lost today: read `details` content and `aria-hidden` panels by their text). Then emit an `accordion` or `tabs` block from `makeBlock` with those items.",
       where: [F.extract + " (visible(), nodeOf)", F.build + " (makeBlock)", F.content + " (accordion, tabs, faq blocks)"],
+    });
+  }
+  if (census.placed.total >= 3) {
+    add({
+      id: "free-layout",
+      severity: census.placed.total >= 6 ? "high" : "medium",
+      area: "builder",
+      title: "Content placed by position (a collage) has no component",
+      evidence: [`${plural(census.placed.total, "picture or text")} placed absolutely over their section, not laid out in a flow: ${examples(census.placed.samples)}.`, "Rows lay content out in columns, so a collage is copied as columns and stacks on phones, with its pieces in the wrong places."],
+      change: "Add a free-layout container to the builder: a box with a size (or aspect ratio) whose blocks are placed by offsets and sizes in percent, kept in proportion at any width and stacked on phones in reading order. Read each placed piece's offset against its container in the converter (the extractor has the boxes) and emit them as the container's blocks.",
+      where: [F.content + " (a new row or column kind)", F.rows, F.builder, F.build + " (rowSpecs, makeBlock)"],
     });
   }
   const carousel = census.hints["carousel"]?.total ?? 0;

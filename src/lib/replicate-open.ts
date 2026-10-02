@@ -94,7 +94,8 @@ async function hideOverlays(page: Page): Promise<void> {
         if (style.position !== "fixed") continue;
         const rect = element.getBoundingClientRect();
         const top = rect.top <= 4 && rect.height <= 220 && rect.width >= width * 0.8;
-        if (!top) (element as HTMLElement).style.setProperty("visibility", "hidden", "important");
+        // Taken out of sight whole: a banner's children often say `visibility: visible` of their own.
+        if (!top) (element as HTMLElement).style.setProperty("display", "none", "important");
       }
     }, VIEWPORTS.desktop.w)
     .catch(() => {});

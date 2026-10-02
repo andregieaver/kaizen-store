@@ -155,6 +155,12 @@ export function ruleOf(model: StyleModel, id: string, suffix: string): StyleRule
 
 const LOW_WEIGHT = ["letter-spacing", "text-shadow", "filter", "object-position"];
 
+/** What a phone cannot do without when the page's CSS is too long for all of its rules: where things are, how big, and how they are laid out. */
+const PHONE_LAYOUT = [
+  "display", "margin-top", "margin-left", "margin-right", "padding-top", "padding-right", "padding-bottom", "padding-left", "width", "max-width", "min-height", "height",
+  "grid-template-columns", "column-gap", "row-gap", "gap", "overflow-x", "font-size", "line-height", "text-align", "white-space", "aspect-ratio", "background-image",
+] as const;
+
 const ZERO = /^0(?:px)?$/;
 /**
  * What a part's own box is without a rule, for the properties of the box that do not inherit. A rule that says the same as
@@ -174,15 +180,19 @@ const BOX_DEFAULT: Record<string, (value: string) => boolean> = {
   "border-left": (v) => /^0(?:px)? none$/.test(v),
   "border-radius": (v) => v.split(/\s+/).every((x) => ZERO.test(x)),
   "box-shadow": (v) => v === "none",
+  // Inherited, but stated once for every part in the shared rule, so a part's own "normal" and "none" say nothing.
+  "font-style": (v) => v === "normal",
+  "text-transform": (v) => v === "none",
 };
 const isBoxDefault = (property: string, value: string) => BOX_DEFAULT[property]?.(value.trim()) ?? false;
 
 /** The declarations of a rule that say something: not a part's defaults, and for phones not what computers already say. */
-function saying(r: StyleRule, which: "desktop" | "mobile", pick: (decl: Decl) => Decl): Decl {
+function saying(r: StyleRule, which: "desktop" | "mobile", pick: (decl: Decl) => Decl, keep: readonly string[] | null = null): Decl {
   const own = r.suffix === "";
   const decl = pick(r[which]);
   const out: Decl = {};
   for (const [property, value] of Object.entries(decl)) {
+    if (which === "mobile" && keep && !keep.includes(property)) continue;
     if (which === "desktop") {
       if (own && isBoxDefault(property, value)) continue;
     } else {
@@ -201,19 +211,20 @@ function saying(r: StyleRule, which: "desktop" | "mobile", pick: (decl: Decl) =>
  */
 export function renderStyles(model: StyleModel, shared: string): { css: string; trimmed: string | null } {
   const selectorOf = (r: StyleRule) => `#${r.id}${r.suffix}`;
-  const build = (rules: StyleRule[], withMobile: boolean, skip: string[]) => {
+  const build = (rules: StyleRule[], withMobile: boolean, skip: string[], keep: readonly string[] | null = null) => {
     const pick = (decl: Decl) => Object.fromEntries(Object.entries(decl).filter(([property]) => !skip.includes(property)));
     const desktop = rules.map((r) => rule(selectorOf(r), saying(r, "desktop", pick), r.suffix === "")).filter(Boolean).join("\n");
-    const phones = withMobile ? rules.map((r) => rule(selectorOf(r), saying(r, "mobile", pick), r.suffix === "")).filter(Boolean).join("\n") : "";
+    const phones = withMobile ? rules.map((r) => rule(selectorOf(r), saying(r, "mobile", pick, keep), r.suffix === "")).filter(Boolean).join("\n") : "";
     return [shared, desktop, phones ? `@media ${PHONE_QUERY}{\n${phones}\n}` : ""].filter(Boolean).join("\n");
   };
-  const attempts: { mobile: boolean; skip: string[]; note: string | null }[] = [
+  const attempts: { mobile: boolean; skip: string[]; keep?: readonly string[]; note: string | null }[] = [
     { mobile: true, skip: [], note: null },
     { mobile: true, skip: LOW_WEIGHT, note: "The page's CSS was close to its limit, so letter spacing and shadows on text were left out." },
+    { mobile: true, skip: LOW_WEIGHT, keep: PHONE_LAYOUT, note: "The page's CSS was too long to keep all of the phones' rules, so only their sizes, spaces and layout were kept." },
     { mobile: false, skip: LOW_WEIGHT, note: "The page's CSS was too long to keep the phones' layout, so the phone sizes were left out." },
   ];
   for (const attempt of attempts) {
-    const css = build(model.rules, attempt.mobile, attempt.skip);
+    const css = build(model.rules, attempt.mobile, attempt.skip, attempt.keep ?? null);
     if (css.length <= CSS_MAX) return { css, trimmed: attempt.note };
   }
   // Still too long: the last parts go, whole rules at a time.

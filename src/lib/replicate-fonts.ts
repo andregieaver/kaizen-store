@@ -86,6 +86,11 @@ export function fontRelation(wanted: string, installed: string): FontCandidate["
   return "lookalike";
 }
 
+/** A font stack that ends in the kind of face it is, so a missing family falls back to a sans or a serif, not the browser's default serif. */
+export function withGeneric(stack: string): string {
+  return /\b(sans-serif|serif|monospace|cursive|fantasy|system-ui)\s*$/i.test(stack.trim()) ? stack : `${stack}, ${/serif/i.test(stack) && !/sans/i.test(stack) ? "serif" : "sans-serif"}`;
+}
+
 /** The `font-family` value for a typeface that is not installed: the page's own name, then the kind of face it is, so a missing one falls back to a sans or a serif as the original would, not to the browser's default serif. */
 export function fallbackStack(stack: string): string {
   const generic = /\b(sans-serif|serif|monospace|cursive|fantasy|system-ui)\b/i.exec(stack.split(",").slice(1).join(","));

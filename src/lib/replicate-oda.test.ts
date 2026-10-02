@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { PageBlock, PageRow } from "./page-content";
 import { buildReplica, foldButtons, liftBackdrops, SHARED_CSS, type BuildInput } from "./replicate-build";
 import type { Box, CaptureNode, PageCapture, Run } from "./replicate-capture";
-import { cleanedFamily, fallbackStack, fontCandidates, fontRelation } from "./replicate-fonts";
+import { cleanedFamily, fallbackStack, fontCandidates, fontRelation, withGeneric } from "./replicate-fonts";
 import { renderStyles, type StyleModel } from "./replicate-styles";
 
 /**
@@ -95,6 +95,38 @@ describe("hero art laid behind a section", () => {
     expect(blocksOf(built.rows).map((b) => b.type)).toEqual(["heading"]);
   });
 
+  it("is the background too when it is not placed absolutely but words lie over it (a hero with a headline)", () => {
+    const hero = node({ p: "0", tag: "section", box: [0, 0, 1440, 900], s: { display: "block", position: "relative" } }, [
+      node({ p: "0/0", tag: "figure", box: [0, 0, 1440, 900], s: { display: "block" } }, [node({ p: "0/0/0", tag: "img", box: [0, 0, 1440, 900], s: { display: "block", objectFit: "cover" }, media: { kind: "img", url: "https://x.test/car.webp", width: 1920, height: 1200, alt: "" } })]),
+      node({ p: "0/1", tag: "div", box: [318, 688, 804, 136], s: { display: "block", position: "absolute" } }, [text("h1", [318, 688, 804, 80], "Hverdagen fortjener en Kia", { fontSize: "64px", color: "rgb(255, 255, 255)", textAlign: "center" }, { p: "0/1/0" })]),
+    ]);
+    const { capture: lifted, lifted: n } = liftBackdrops(capture(page(hero)));
+    expect(n).toBe(1);
+    expect(lifted.root.children[0].s.backgroundImage).toBe('url("https://x.test/car.webp")');
+    const built = buildReplica(input(capture(page(hero))), newId);
+    expect(built.rows[0].background).toMatchObject({ type: "image" });
+    expect(blocksOf(built.rows).map((b) => b.type)).toEqual(["heading"]);
+  });
+
+  it("is not a background when the words under it do not lie over it", () => {
+    const tall = node({ p: "0", tag: "div", box: [0, 0, 1440, 700], s: { display: "block" } }, [
+      node({ p: "0/0", tag: "img", box: [0, 0, 1440, 600], s: { display: "block", objectFit: "cover" }, media: { kind: "img", url: "https://x.test/a.webp", width: 1440, height: 600, alt: "" } }),
+      text("p", [100, 620, 800, 24], "A caption under the picture", {}, { p: "0/1" }),
+    ]);
+    expect(liftBackdrops(capture(page(tall))).lifted).toBe(0);
+  });
+
+  it("stays a picture, with its box's rounded corners, when it is alone in its box", () => {
+    const frame = node({ p: "0", tag: "div", box: [620, 100, 740, 555], s: { display: "block", position: "relative", overflowX: "hidden", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", borderBottomRightRadius: "16px", borderBottomLeftRadius: "16px" } }, [
+      node({ p: "0/0", tag: "img", box: [620, 100, 740, 555], s: { display: "block", position: "absolute", objectFit: "cover" }, media: { kind: "img", url: "https://x.test/kitchen.jpg", width: 1480, height: 1110, alt: "Kitchen" } }),
+    ]);
+    expect(liftBackdrops(capture(page(frame))).lifted).toBe(0);
+    const built = buildReplica(input(capture(page(node({ p: "1", tag: "section", box: [0, 0, 1440, 700], s: { display: "block" } }, [frame])))), newId);
+    expect(blocksOf(built.rows).map((b) => b.type)).toEqual(["image"]);
+    const css = renderStyles(built.model, built.shared).css;
+    expect(css).toMatch(/ img\{[^}]*border-radius:16px/);
+  });
+
   it("is not lifted when it is only part of a section, or not a cover picture", () => {
     const small = page(node({ p: "0", tag: "div", box: [0, 100, 1440, 600] }, [node({ p: "0/0", tag: "img", box: [100, 100, 400, 300], s: { display: "block", position: "absolute" }, media: { kind: "img", url: "https://x.test/a.jpg", width: 400, height: 300, alt: "" } })]));
     expect(liftBackdrops(capture(small)).lifted).toBe(0);
@@ -177,7 +209,26 @@ describe("the page's CSS with phones in it", () => {
     expect(phones).toContain("#rp1{font-size:16px}");
     expect(phones).not.toContain("color:");
     expect(phones).toContain("#rp2{margin-left:0;width:auto}");
-    expect(SHARED_CSS).toContain(".rp.rp{margin:0;width:auto;max-width:none;border:0 none;border-radius:0;box-shadow:none}");
+    expect(SHARED_CSS).toContain(".rp.rp{margin:0;width:auto;max-width:none;border:0 none;border-radius:0;box-shadow:none;font-style:normal;text-transform:none}");
+  });
+});
+
+describe("a page whose CSS is too long for everything", () => {
+  it("keeps the phones' sizes, spaces and layout before it gives up their rules", () => {
+    const rules = Array.from({ length: 190 }, (_, i) => ({
+      id: `rp${i + 1}`,
+      suffix: "",
+      desktop: { "margin-top": `${i + 1}px`, "font-size": "20px", color: `rgb(${i % 255}, 10, 10)`, "font-family": '"Some Quite Long Family Name", sans-serif', "line-height": "30px", "letter-spacing": "0.2px", "font-weight": "600", "text-align": "center" },
+      mobile: { "margin-top": `${i + 2}px`, "font-size": "16px", color: `rgb(${i % 255}, 20, 20)`, "font-family": '"Another Quite Long Family Name", sans-serif', "line-height": "24px", "letter-spacing": "0.1px", "font-weight": "500", "text-align": "left" },
+    }));
+    const full = renderStyles({ rules }, SHARED_CSS);
+    expect(full.css.length).toBeLessThanOrEqual(50_000);
+    expect(full.trimmed).toMatch(/only their sizes, spaces and layout were kept/);
+    {
+      const phones = full.css.slice(full.css.indexOf("@media"));
+      expect(phones).toContain("font-size:16px");
+      expect(phones).not.toContain("font-family");
+    }
   });
 });
 
@@ -199,5 +250,8 @@ describe("typefaces that are not Google's own", () => {
     expect(fallbackStack('"Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')).toBe('"Inter var", sans-serif');
     expect(fallbackStack('"Galaxie Copernicus", Georgia, "Times New Roman", serif')).toBe('"Galaxie Copernicus", serif');
     expect(fallbackStack('"Mystery"')).toBe('"Mystery", sans-serif');
+    expect(withGeneric('"Kia Signature", Arial')).toBe('"Kia Signature", Arial, sans-serif');
+    expect(withGeneric('"Kia Signature", sans-serif')).toBe('"Kia Signature", sans-serif');
+    expect(withGeneric('"Old Style Serif", Georgia')).toBe('"Old Style Serif", Georgia, serif');
   });
 });

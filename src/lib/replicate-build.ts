@@ -20,7 +20,7 @@ import {
   type VideoRatio,
 } from "./page-content";
 import type { ReplicaNote } from "./replicate";
-import { fallbackStack } from "./replicate-fonts";
+import { fallbackStack, withGeneric } from "./replicate-fonts";
 import {
   backgroundUrls,
   bottomOf,
@@ -102,7 +102,7 @@ export const ROW_GAP = 32;
 export const SHARED_CSS =
   ".rp.rp :is(h1,h2,h3,h4,h5,h6,p,ul,ol,li,blockquote){margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;text-align:inherit;line-height:inherit}\n" +
   ".rp.rp .rich-text{line-height:inherit;overflow-wrap:normal}\n.rp.rp .rich-text a{text-decoration:none;color:inherit}\n" +
-  ".rp.rp{margin:0;width:auto;max-width:none;border:0 none;border-radius:0;box-shadow:none}\n" +
+  ".rp.rp{margin:0;width:auto;max-width:none;border:0 none;border-radius:0;box-shadow:none;font-style:normal;text-transform:none}\n" +
   ".rp.rp figure{margin:0}\n.rp.rp img{display:block;max-width:100%}\n.rp.rp hr{margin:0}";
 
 // ---------------------------------------------------------------------------
@@ -484,23 +484,49 @@ function bands(specs: RowSpec[], get: Get, docWidth: number): (Band | null)[] {
 export function liftBackdrops(capture: PageCapture): { capture: PageCapture; lifted: number } {
   const root = structuredClone(capture.root) as CaptureNode;
   let lifted = 0;
+  /** Whether something else in `box` lies over the picture's place: words or another picture, mostly inside it. */
+  const overlaid = (holder: CaptureNode, via: CaptureNode, picture: Box): boolean => {
+    for (const other of holder.children) {
+      if (other === via || !significant(other)) continue;
+      for (const n of walk(other)) {
+        if (n.runs === undefined && n.media === undefined) continue;
+        const w = Math.min(rightOf(n.box), rightOf(picture)) - Math.max(n.box[0], picture[0]);
+        const h = Math.min(bottomOf(n.box), bottomOf(picture)) - Math.max(n.box[1], picture[1]);
+        if (w > 0 && h > 0 && w * h >= 0.5 * n.box[2] * n.box[3]) return true;
+      }
+    }
+    return false;
+  };
   const visit = (node: CaptureNode, ancestors: CaptureNode[]) => {
     for (const child of [...node.children]) {
       const m = child.media;
-      if (m?.kind === "img" && child.s.position === "absolute" && (!child.s.objectFit || child.s.objectFit === "cover" || child.s.objectFit === "fill") && child.box[2] * child.box[3] >= 40_000) {
+      if (m?.kind === "img" && (!child.s.objectFit || child.s.objectFit === "cover" || child.s.objectFit === "fill") && child.box[2] * child.box[3] >= 40_000) {
         const chain = [...ancestors, node];
-        // The lowest box that holds the picture; it is the picture's section only if the picture is nearly all of it.
+        // From the lowest box that holds the picture outward, while the picture is nearly all of it: the first that has more in it
+        // than the picture is the section the picture is behind. A picture alone in its frame stays a picture.
         for (let i = chain.length - 1; i >= 1; i--) {
           const a = chain[i];
           const holds = a.box[0] <= child.box[0] + 3 && rightOf(a.box) >= rightOf(child.box) - 3 && a.box[1] <= child.box[1] + 3 && bottomOf(a.box) >= bottomOf(child.box) - 3;
           if (!holds) continue;
-          if (child.box[2] >= a.box[2] * 0.85 && child.box[3] >= a.box[3] * 0.85 && (!a.s.backgroundImage || a.s.backgroundImage === "none")) {
-            a.s = { ...a.s, backgroundImage: `url("${m.url}")`, backgroundSize: "cover", backgroundPosition: child.s.objectPosition ?? "50% 50%", backgroundRepeat: "no-repeat" };
-            a.bg = [m.url, ...(a.bg ?? [])];
-            node.children = node.children.filter((c) => c !== child);
-            lifted += 1;
-          }
+          if (!(child.box[2] >= a.box[2] * 0.85 && child.box[3] >= a.box[3] * 0.85)) break;
+          const via = chain[i + 1] ?? child;
+          if (!overlaid(a, via, child.box)) continue;
+          if (a.s.backgroundImage && a.s.backgroundImage !== "none") break;
+          a.s = { ...a.s, backgroundImage: `url("${m.url}")`, backgroundSize: "cover", backgroundPosition: child.s.objectPosition ?? "50% 50%", backgroundRepeat: "no-repeat" };
+          a.bg = [m.url, ...(a.bg ?? [])];
+          const parent = chain[chain.length - 1];
+          parent.children = parent.children.filter((c) => c !== child);
+          lifted += 1;
           break;
+        }
+        // Not lifted: a picture alone in its box (an aspect-ratio frame with rounded corners) takes the box's corners.
+        if (child.media && !(child.s.backgroundImage)) {
+          const frame = chain[chain.length - 1];
+          const corners = ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius"] as const;
+          const framed = frame.box[0] <= child.box[0] + 3 && rightOf(frame.box) >= rightOf(child.box) - 3 && child.box[2] >= frame.box[2] * 0.85 && child.box[3] >= frame.box[3] * 0.85;
+          if (framed && node.children.includes(child) && corners.some((k) => frame.s[k] !== undefined && frame.s[k] !== "0px") && !corners.some((k) => child.s[k] !== undefined && child.s[k] !== "0px")) {
+            child.s = { ...child.s, ...Object.fromEntries(corners.filter((k) => frame.s[k] !== undefined).map((k) => [k, frame.s[k]])) };
+          }
         }
       }
     }
@@ -569,6 +595,8 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   };
   let h1Used = false;
   let claimed = false;
+  /** Small pictures made of a drawn element (icons), the first to go when the page has more blocks than the builder takes. */
+  const icons = new Set<string>();
 
   const note = (level: ReplicaNote["level"], text: string) => {
     if (!notes.some((n) => n.text === text)) notes.push({ level, text });
@@ -586,7 +614,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     if (family === "") return {};
     const installed = input.font(family);
     if (installed) return { native: installed };
-    return { css: stack.length <= 240 ? stack : fallbackStack(stack) };
+    return { css: stack.length <= 240 ? withGeneric(stack) : fallbackStack(stack) };
   };
 
   /** The page's own colour behind a row that paints none, so what shows through is as the original's. */
@@ -730,6 +758,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       put(id, " img", imageDecl(leaf), phone ? imageDecl(phone) : {});
       register();
       counts.pictures += 1;
+      if ((media.kind === "svg" || media.kind === "canvas") && Math.max(leaf.box[2], leaf.box[3]) <= 40) icons.add(id);
       const alt = media.kind === "img" ? media.alt : media.kind === "embed" ? media.title : "";
       const block: ImageBlock = { ...base, type: "image", image: { url: picture.url, width: picture.width, height: picture.height, alt: alt.slice(0, 300) }, caption: "" };
       return block;
@@ -1153,6 +1182,25 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     dropped.push({ kind: "rows-cut", sel: "", y: Math.round(firstCut?.target?.[1] ?? 0), box: firstCut?.target ?? null, text: `${limited.length - ROWS_MAX} rows from here on` });
     note("warn", `The original is longer than a page of the builder can be (${ROWS_MAX} rows): the last ${limited.length - ROWS_MAX} rows are left out.`);
     limited = limited.slice(0, ROWS_MAX);
+  }
+  // Over the builder's block limit, small icons that were photographed go first, last ones first, before any words are lost.
+  let total = limited.reduce((sum, row) => sum + row.columns.reduce((n, column) => n + column.blocks.length, 0), 0);
+  if (total > BLOCKS_MAX) {
+    let removed = 0;
+    for (const row of [...limited].reverse()) {
+      for (const column of [...row.columns].reverse()) {
+        for (let i = column.blocks.length - 1; i >= 0 && total > BLOCKS_MAX; i--) {
+          const id = column.blocks[i].htmlId;
+          if (id && icons.has(id)) {
+            column.blocks.splice(i, 1);
+            total -= 1;
+            removed += 1;
+            counts.pictures -= 1;
+          }
+        }
+      }
+    }
+    if (removed > 0) note("warn", `A page of the builder takes at most ${BLOCKS_MAX} blocks, so ${removed} small icon${removed === 1 ? " was" : "s were"} left out to keep all of the words.`);
   }
   let blockCount = 0;
   for (const row of limited) {
