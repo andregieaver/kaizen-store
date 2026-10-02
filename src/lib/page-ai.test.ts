@@ -333,3 +333,52 @@ describe("addresses and availability", () => {
     expect(findClaims("Miljøvennlig kaffe").length).toBeGreaterThan(0);
   });
 });
+
+describe("pictures built by the studio carry no size of their own (D151)", () => {
+  const everywhere = { ...facts, can: { pictures: true, productGrid: true, articleGrid: true, googleReviews: true } };
+  const variants = (key: string) => {
+    const info = PATTERNS[key as keyof typeof PATTERNS] as { variants?: Record<string, string> };
+    return info.variants ? Object.keys(info.variants) : [undefined];
+  };
+  const imagesOf = (content: Parameters<typeof pageBlocks>[0]) => pageBlocks(content).filter((b) => b.type === "image");
+
+  it("leaves a picture's width and position unset in every design, so it is drawn at its own size and at the left until the owner says otherwise", () => {
+    let seen = 0;
+    const designs = new Set<string>();
+    for (const key of Object.keys(PATTERNS)) {
+      for (const variant of variants(key)) {
+        const pictures = key === "gallery" ? [pic("beans"), pic("cups"), pic("a roaster")] : undefined;
+        const planned = plan([{ pattern: key, variant, name: "S", picture: pic("a thing"), pictures, video: "https://youtu.be/dQw4w9WgXcQ", links: ["/s/kaffe/no/products"] }]);
+        const { plan: checked } = checkPlan(planned, everywhere, "https://youtu.be/dQw4w9WgXcQ");
+        const words = copy({
+          heading: "Overskrift",
+          text: "Tekst.",
+          items: [{ title: "Punkt 1", text: "Tekst.", icon: "check" as const }, { title: "Punkt 2", text: "Tekst.", icon: "check" as const }],
+          buttons: [{ label: "Se", href: "/s/kaffe/no/products" }],
+          captions: ["A", "B", "C"],
+        });
+        const built = buildPage(checked, [words], everywhere, { newId, takenSlugs: [], reservedSlugs: RESERVED_STORE_PAGE_SLUGS });
+        const where = `${key} ${variant ?? ""}`;
+        const images = imagesOf(built.content);
+        for (const image of images) {
+          expect(image, where).not.toHaveProperty("maxWidth");
+          expect(image, where).not.toHaveProperty("align");
+          seen += 1;
+          designs.add(key);
+        }
+        // Saved as the builder saves it, the page still has none: the schema adds no default.
+        const saved = pageInput.parse(built.content);
+        for (const image of imagesOf(saved)) {
+          expect(image, where).not.toHaveProperty("maxWidth");
+          expect(image, where).not.toHaveProperty("align");
+        }
+        expect(imagesOf(saved), where).toHaveLength(images.length);
+      }
+    }
+    // The check looked at pictures: the designs with a picture and the gallery made some.
+    expect(seen).toBeGreaterThan(5);
+    expect(designs.has("hero")).toBe(true);
+    expect(designs.has("gallery")).toBe(true);
+    expect(designs.has("textImage")).toBe(true);
+  });
+});

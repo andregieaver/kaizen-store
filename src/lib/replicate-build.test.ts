@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { newPageContent, pageInput, type PageBlock, type PageRow } from "./page-content";
+import { cssProblem } from "./custom-css";
+import { newPageContent, pageInput, type ImageBlock, type PageBlock, type PageRow } from "./page-content";
 import { buildReplica, SHARED_CSS, type BuildInput } from "./replicate-build";
 import type { Box, CaptureNode, PageCapture, Run } from "./replicate-capture";
 import { renderStyles } from "./replicate-styles";
@@ -230,5 +231,178 @@ describe("converting a captured page into rows and blocks", () => {
     expect(css.startsWith(SHARED_CSS)).toBe(true);
     const parsed = pageInput.safeParse({ ...newPageContent(), title: "Copy", slug: "copy", rows: built.rows, css });
     expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues)).toBe(true);
+  });
+});
+
+describe("pictures keep the size of the original (D151)", () => {
+  type Built = ReturnType<typeof buildReplica>;
+  const rule = (built: Built, id: string, suffix: string) => built.model.rules.find((r) => r.id === id && r.suffix === suffix);
+  const images = (built: Built): ImageBlock[] => blocksOf(built.rows).filter((b): b is ImageBlock => b.type === "image");
+  const section = (p: string, box: Box, children: CaptureNode[]) => node({ p, tag: "section", box, s: { display: "block" } }, children);
+  const img = (p: string, box: Box, src: string, s: Record<string, string> = {}): CaptureNode =>
+    node({ p, tag: "img", box, s: { display: "block", ...s }, media: { kind: "img", url: src, width: 800, height: 600, alt: "A view" } });
+  const video = (p: string, box: Box, s: Record<string, string> = {}, over: Partial<Extract<NonNullable<CaptureNode["media"]>, { kind: "video" }>> = {}): CaptureNode =>
+    node({ p, tag: "video", box, s: { display: "block", ...s }, media: { kind: "video", url: "https://example.com/hero.mp4", poster: "https://example.com/poster.jpg", autoplay: false, loop: false, muted: false, controls: true, ...over } });
+  const phonePage = (...sections: CaptureNode[]) => capture(node({ p: "", tag: "body", box: [0, 0, 390, 2000], s: { display: "block" } }, sections), 390);
+
+  describe("the copy's shared rule", () => {
+    const shared = SHARED_CSS.split("\n").filter((line) => line.startsWith(".rp.rp{"));
+
+    it("has one rule for every part, which counts padding and border inside the width the original was measured at", () => {
+      expect(shared).toHaveLength(1);
+      expect(shared[0].endsWith("}")).toBe(true);
+      const declarations = shared[0].slice(".rp.rp{".length, -1).split(";");
+      expect(declarations).toContain("box-sizing:border-box");
+      // The rest of what makes a part its own size is still stated: a limit of the builder's (a picture's `max-w-(--picture-width)`) never clamps a copy.
+      expect(declarations).toEqual(expect.arrayContaining(["width:auto", "max-width:none"]));
+    });
+
+    it("is the CSS a copy's page starts with, and one the builder accepts", () => {
+      const built = buildReplica(input(capture(page(section("0", [0, 0, 1440, 400], [img("0/0", [100, 40, 400, 300], "https://example.com/a.jpg")])))), newId);
+      expect(renderStyles(built.model, built.shared).css.startsWith(SHARED_CSS)).toBe(true);
+      expect(cssProblem(SHARED_CSS)).toBeNull();
+    });
+
+    it("applies to a picture's own box, which is a part of the copy like any other", () => {
+      const built = buildReplica(input(capture(page(section("0", [0, 0, 1440, 400], [img("0/0", [100, 40, 400, 300], "https://example.com/a.jpg")])))), newId);
+      const [block] = images(built);
+      // `.rp.rp` is the rule above: the block's box must carry the class, or the builder's `box-content` would win.
+      expect(block.className).toBe("rp");
+    });
+  });
+
+  describe("a video that could not be copied, whose still picture could", () => {
+    it("is a picture told to fill the video's box, at the video's shape", () => {
+      const built = buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [video("0/0", [100, 40, 640, 360])])))), newId);
+      const blocks = blocksOf(built.rows);
+      expect(blocks.map((b) => b.type)).toEqual(["image"]);
+      const [block] = images(built);
+      // The still, at the size it was stored at: the page's room for it is the video's box, not what the file measures.
+      expect(block.image).toEqual({ url: "https://files.test/poster.jpg", width: 800, height: 600, alt: "" });
+      expect(block).not.toHaveProperty("maxWidth");
+      expect(block).not.toHaveProperty("align");
+      const picture = rule(built, block.htmlId!, " img")!;
+      expect(picture).toBeDefined();
+      expect(picture.desktop).toEqual({ width: "100%", height: "auto", "aspect-ratio": "640 / 360", "object-fit": "cover", "border-radius": "0px" });
+      // No phone was captured, so there is nothing to say for phones.
+      expect(picture.mobile).toEqual({});
+      expect(built.counts).toMatchObject({ pictures: 1, videos: 0 });
+      expect(built.dropped.map((d) => d.kind)).toEqual(["video-still-only"]);
+      expect(built.notes.some((n) => /still picture is used instead/.test(n.text))).toBe(true);
+    });
+
+    it("takes the video's own corners, and the rule reaches the page's CSS", () => {
+      const rounded = { borderTopLeftRadius: "16px", borderTopRightRadius: "16px", borderBottomRightRadius: "16px", borderBottomLeftRadius: "16px" };
+      const built = buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [video("0/0", [100, 40, 640, 360], rounded)])))), newId);
+      const [block] = images(built);
+      expect(rule(built, block.htmlId!, " img")!.desktop["border-radius"]).toBe("16px");
+      const { css } = renderStyles(built.model, built.shared);
+      expect(css).toContain(`#${block.htmlId} img{width:100%;height:auto;aspect-ratio:640 / 360;object-fit:cover;border-radius:16px}`);
+    });
+
+    it("is told the phone's own box and corners where a phone was captured", () => {
+      const desktopVideo = video("0/0", [100, 40, 640, 360], { borderTopLeftRadius: "16px" });
+      const phoneVideo = video("0/0", [20, 40, 350, 197], { borderTopLeftRadius: "8px" });
+      const built = buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [desktopVideo]))), phonePage(section("0", [0, 0, 390, 300], [phoneVideo]))), newId);
+      const [block] = images(built);
+      const picture = rule(built, block.htmlId!, " img")!;
+      expect(picture.desktop).toMatchObject({ width: "100%", "object-fit": "cover", "aspect-ratio": "640 / 360", "border-radius": "16px" });
+      expect(picture.mobile).toEqual({ width: "100%", height: "auto", "aspect-ratio": "350 / 197", "object-fit": "cover", "border-radius": "8px" });
+      // The page's CSS says for phones only what differs from computers: the shape and the corners.
+      const { css } = renderStyles(built.model, built.shared);
+      expect(css).toContain(`@media (max-width: 767.98px){`);
+      expect(css.slice(css.indexOf("@media"))).toContain(`#${block.htmlId} img{aspect-ratio:350 / 197;border-radius:8px}`);
+    });
+
+    it("says nothing for phones that do not show the video, and the block is hidden there", () => {
+      const built = buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [video("0/0", [100, 40, 640, 360])]))), phonePage(section("0", [0, 0, 390, 300], []))), newId);
+      const [block] = images(built);
+      expect(rule(built, block.htmlId!, "")!.mobile).toEqual({ display: "none" });
+      expect(rule(built, block.htmlId!, " img")!.mobile).toEqual({});
+      expect(rule(built, block.htmlId!, " img")!.desktop).toMatchObject({ width: "100%", "aspect-ratio": "640 / 360" });
+    });
+
+    it("is the only video that gets a picture's rule: a copied video draws itself, and one with nothing is left out", () => {
+      const copied = buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [video("0/0", [100, 40, 640, 360])]))), null, { video: () => ({ url: "https://files.test/hero.mp4" }) }), newId);
+      expect(blocksOf(copied.rows).map((b) => b.type)).toEqual(["video"]);
+      expect(copied.model.rules.some((r) => r.suffix === " img")).toBe(false);
+      expect(copied.dropped.map((d) => d.kind)).not.toContain("video-still-only");
+
+      const nothing = buildReplica(input(capture(page(section("0", [0, 0, 1440, 500], [video("0/0", [100, 40, 640, 360])]))), null, { picture: () => null }), newId);
+      expect(blocksOf(nothing.rows)).toEqual([]);
+      expect(nothing.model.rules.some((r) => r.suffix === " img")).toBe(false);
+      expect(nothing.dropped.map((d) => d.kind)).toEqual(["video-missing"]);
+    });
+  });
+
+  describe("an ordinary picture", () => {
+    const upscaled = img("1/0", [120, 40, 1200, 900], "https://example.com/big.jpg");
+    const pair = (i: number, x: number) => node({ p: `2/c/${i}`, tag: "div", box: [x, 40, 560, 420], s: { display: "block" } }, [img(`2/c/${i}/0`, [x, 40, 560, 420], `https://example.com/p${i}.jpg`, { borderTopLeftRadius: "12px", borderTopRightRadius: "12px" })]);
+    const icon = node({ p: "3/0", tag: "svg", box: [100, 40, 32, 32], s: { display: "block" }, media: { kind: "svg" } });
+    const embed = node({ p: "4/0", tag: "iframe", box: [100, 40, 300, 200], s: { display: "block" }, media: { kind: "embed", url: "https://widgets.example.com/chart", title: "A chart" } });
+    const sections = () => [
+      section("0", [0, 0, 1440, 400], [img("0/0", [100, 40, 400, 300], "https://example.com/a.jpg")]),
+      section("1", [0, 500, 1440, 940], [upscaled]),
+      section("2", [0, 1500, 1440, 500], [node({ p: "2/c", tag: "div", box: [120, 1540, 1200, 420], s: { display: "flex" } }, [pair(0, 120), pair(1, 760)])]),
+      section("3", [0, 2100, 1440, 120], [icon]),
+      section("4", [0, 2300, 1440, 300], [embed]),
+    ];
+    const buildAll = (mobile: PageCapture | null = null) => buildReplica(input(capture(page(...sections())), mobile, { shot: (p) => (p === "3/0" || p === "4/0" ? { url: `https://files.test/shot-${p.replace("/", "-")}.webp`, width: 64, height: 64 } : null) }), newId);
+
+    it("is told to fill its box and sets no width of its own", () => {
+      const built = buildAll();
+      const found = images(built);
+      // A picture, an upscaled picture, two in columns, a photographed drawing and a photographed widget: none left out.
+      expect(found).toHaveLength(6);
+      for (const block of found) {
+        const picture = rule(built, block.htmlId!, " img");
+        expect(picture, `an img rule for ${block.htmlId}`).toBeDefined();
+        expect(picture!.desktop.width).toBe("100%");
+        expect(picture!.desktop["object-fit"]).toBe("cover");
+        expect(picture!.desktop["max-width"]).toBeUndefined();
+        expect(block).not.toHaveProperty("maxWidth");
+        expect(block).not.toHaveProperty("align");
+        expect(block.className).toBe("rp");
+        // The picture's own rule is declared for the one place the builder draws it; nothing else in the model narrows the picture.
+        expect(Object.keys(rule(built, block.htmlId!, "")!.desktop)).not.toContain("--picture-width");
+      }
+      // The upscaled picture is drawn at the original's 1200 wide, though its file is 800: it has to be told, the file would not.
+      const big = found.find((b) => b.image?.url.endsWith("big.jpg"))!;
+      expect(big.image).toMatchObject({ width: 800, height: 600 });
+      expect(rule(built, big.htmlId!, " img")!.desktop["aspect-ratio"]).toBe("1200 / 900");
+    });
+
+    it("keeps that through the builder's own checks, with no width or place added", () => {
+      const built = buildAll();
+      const { css } = renderStyles(built.model, built.shared);
+      const parsed = pageInput.safeParse({ ...newPageContent(), title: "Copy", slug: "copy", rows: built.rows, css });
+      expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues)).toBe(true);
+      if (!parsed.success) return;
+      const kept = parsed.data.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks)).filter((b) => b.type === "image");
+      expect(kept).toHaveLength(6);
+      for (const block of kept) {
+        expect(block).not.toHaveProperty("maxWidth");
+        expect(block).not.toHaveProperty("align");
+        expect(css).toMatch(new RegExp(`#${block.htmlId} img\\{width:100%[;}]`));
+      }
+    });
+
+    it("is told the same for phones, from the phone's own box", () => {
+      const phoneSections = [
+        section("0", [0, 0, 390, 300], [img("0/0", [20, 20, 350, 262], "https://example.com/a.jpg")]),
+        section("1", [0, 300, 390, 300], [img("1/0", [20, 20, 350, 262], "https://example.com/big.jpg")]),
+        section("2", [0, 600, 390, 300], [node({ p: "2/c", tag: "div", box: [20, 600, 350, 300], s: { display: "block" } }, [img("2/c/0/0", [20, 600, 350, 262], "https://example.com/p0.jpg"), img("2/c/1/0", [20, 900, 350, 262], "https://example.com/p1.jpg")])]),
+      ];
+      const built = buildAll(phonePage(...phoneSections));
+      const first = images(built)[0];
+      expect(rule(built, first.htmlId!, " img")!.mobile).toMatchObject({ width: "100%", "aspect-ratio": "350 / 262", "object-fit": "cover" });
+      for (const block of images(built)) {
+        expect(block).not.toHaveProperty("maxWidth");
+        expect(block).not.toHaveProperty("align");
+        const { mobile } = rule(built, block.htmlId!, " img")!;
+        // Where a phone shows the picture it is told to fill its box too; where it does not, there is nothing to say.
+        if (Object.keys(mobile).length > 0) expect(mobile.width).toBe("100%");
+      }
+    });
   });
 });

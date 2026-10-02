@@ -219,6 +219,7 @@ import {
   TextAlignFields,
 } from "./block-fields";
 import { FontPicker, type InstallFont } from "./font-picker";
+import { ImageSizeFields } from "./image-size-fields";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
 import type { PageOwnerContext } from "./page-context";
@@ -2573,6 +2574,7 @@ function Dialogs({
                   value={block.shape}
                   onChange={(shape) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { shape }))}
                 />
+                <ImageSizeFields block={block} onChange={(patch) => onRows((current) => patchBlock<ImageBlock>(current, block.id, patch))} />
                 {fontField("Caption font", block.font, "The site's body font", (font) =>
                   onRows((current) => patchBlock<ImageBlock>(current, block.id, { font })),
                 )}
@@ -3556,6 +3558,11 @@ function ImageFields({
           </button>
         )}
       </div>
+      {block.image && (
+        <p className="text-xs text-muted">
+          Own size: {block.image.width} × {block.image.height} pixels. A picture is never shown larger than that.
+        </p>
+      )}
       {block.image && (
         <label htmlFor={`${id}-alt`} className="flex flex-col gap-1 text-sm font-medium">
           Description

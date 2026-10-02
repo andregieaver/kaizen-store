@@ -344,3 +344,72 @@ describe("page layouts (D127)", () => {
     expect(pageLayoutSchema.safeParse(left).error?.issues).toBeUndefined();
   });
 });
+
+describe("a picture's own size in a template (D151)", () => {
+  const align = { mobile: "center", desktop: "right" } as const;
+  const sized = (): PageBlock =>
+    ({
+      id: "sz1",
+      type: "image",
+      image: { url: `${PUBLIC}/product-media/${from.id}/sized.webp`, width: 800, height: 600, alt: "A cup" },
+      caption: "Our cup",
+      shape: "square",
+      maxWidth: 300,
+      align: { ...align },
+      bind: { fieldId: "f_abcdef" },
+    }) as PageBlock;
+  const inRow = (block: PageBlock): PageRow => ({ id: "rowSz", type: "row", layout: "1", columns: [{ id: "colSz", blocks: [block] }] });
+  const kept = { maxWidth: 300, align, shape: "square", caption: "Our cup" };
+
+  it("is kept when a part is made ready for another store, which only loses the binding", () => {
+    for (const [kind, content] of [
+      ["block", sized()],
+      ["row", inRow(sized())],
+    ] as const) {
+      const clean = sanitizeTemplate(kind, content, from);
+      const block = partBlocks(kind, clean)[0] as unknown as Record<string, unknown>;
+      expect(block, kind).toMatchObject(kept);
+      expect(block.bind, kind).toBeUndefined();
+    }
+    const layout = sanitizeTemplate("page", { pageType: "page", rows: [inRow(sized())], css: "" } satisfies PageLayout, from) as PageLayout;
+    expect(layout.rows[0].columns[0].blocks[0]).toMatchObject(kept);
+  });
+
+  it("is kept with the copy's address when the picture is copied", () => {
+    const mapped = mapTemplateMedia("row", sanitizeTemplate("row", inRow(sized()), from), (url) => url.replace(from.id ?? "", "new-store")) as PageRow;
+    const block = mapped.columns[0].blocks[0];
+    expect(block).toMatchObject({ ...kept, image: { url: expect.stringContaining("new-store"), width: 800, height: 600 } });
+    expect(leftoverStorageUrls(mapped)).toHaveLength(1);
+  });
+
+  it("is kept when the picture could not be copied, so the empty block is drawn as the owner placed it once it has one", () => {
+    const mapped = mapTemplateMedia("row", sanitizeTemplate("row", inRow(sized()), from), () => null) as PageRow;
+    const block = mapped.columns[0].blocks[0];
+    expect(block).toMatchObject({ type: "image", image: null, ...kept });
+    expect(leftoverStorageUrls(mapped)).toEqual([]);
+    const single = mapTemplateMedia("block", sanitizeTemplate("block", sized(), from), () => null);
+    expect(single).toMatchObject({ image: null, ...kept });
+  });
+
+  it("is still accepted, and kept, by the schemas a template is saved and read through", () => {
+    const clean = sanitizeTemplate("row", inRow(sized()), from) as PageRow;
+    const parsed = pageRowSchema.safeParse(clean);
+    expect(parsed.error?.issues).toBeUndefined();
+    expect(parsed.data?.columns[0].blocks[0]).toMatchObject(kept);
+    const column = pageColumnSchema.safeParse(clean.columns[0]);
+    expect(column.data?.blocks[0]).toMatchObject(kept);
+    // Also when the picture is gone: the empty block with its width is a valid block.
+    const empty = mapTemplateMedia("row", clean, () => null) as PageRow;
+    expect(pageRowSchema.safeParse(empty).data?.columns[0].blocks[0]).toMatchObject({ image: null, maxWidth: 300, align });
+    const layout = pageLayoutSchema.safeParse({ pageType: "page", rows: [clean], css: "" });
+    expect(layout.error?.issues).toBeUndefined();
+    expect(layout.data?.rows[0].columns[0].blocks[0]).toMatchObject(kept);
+  });
+
+  it("does not change what it was given", () => {
+    const original = inRow(sized());
+    const before = JSON.stringify(original);
+    mapTemplateMedia("row", sanitizeTemplate("row", original, from), () => null);
+    expect(JSON.stringify(original)).toBe(before);
+  });
+});

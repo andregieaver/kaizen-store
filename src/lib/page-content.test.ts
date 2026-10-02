@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BOUND_PICTURE_SIZE,
+  IMAGE_SHAPES,
+  IMAGE_SHAPE_RATIO,
+  IMAGE_WIDTH_MAX,
+  IMAGE_WIDTH_MIN,
   RESERVED_PAGE_SLUGS,
   RESERVED_STORE_PAGE_SLUGS,
   reservedPageSlugs,
   blockFonts,
   blockHasContent,
+  blockText,
   frameStyle,
+  imageDisplaySize,
+  parsePageContent,
+  samePageContent,
   rowSpacing,
   spacingStyle,
   cleanRichText,
@@ -18,6 +27,7 @@ import {
   pageSlugFromTitle,
   pageSlugProblem,
   richTextPlain,
+  type ImageShape,
   type RichTextDoc,
 } from "./page-content";
 import { newBlock } from "./page-rows";
@@ -205,6 +215,204 @@ describe("pictures and spacing (D47)", () => {
     expect(pageInput.safeParse(page([{ id: "i", type: "image", image: { ...picture, url: "javascript:alert(1)" } }])).success).toBe(false);
   });
 
+  describe("how big a picture is drawn (D151)", () => {
+    const sized = (width: number, height: number) => ({ url: "https://example.com/a.webp", width, height, alt: "" });
+    const size = (width: number, height: number, rest: { shape?: ImageShape; maxWidth?: number } = {}) =>
+      imageDisplaySize({ image: sized(width, height), ...rest });
+
+    it("is nothing without a picture, whatever else is set", () => {
+      expect(imageDisplaySize({ image: null })).toBeNull();
+      expect(imageDisplaySize({ image: null, shape: "circle", maxWidth: 300 })).toBeNull();
+    });
+
+    it("is the picture's own size when there is no shape and no width", () => {
+      expect(size(800, 600)).toEqual({ width: 800, height: 600 });
+      expect(size(1600, 900)).toEqual({ width: 1600, height: 900 });
+      // Odd sizes survive the ratio's rounding exactly: the stored size is what is drawn.
+      for (const [width, height] of [[1000, 333], [1234, 567], [333, 1000], [1599, 1201], [10_000, 1], [1, 10_000]]) {
+        expect(size(width, height), `${width}x${height}`).toEqual({ width, height });
+      }
+    });
+
+    it("makes a picture narrower with maxWidth, keeping its proportions", () => {
+      expect(size(800, 600, { maxWidth: 300 })).toEqual({ width: 300, height: 225 });
+      expect(size(1600, 900, { maxWidth: 333 })).toEqual({ width: 333, height: 187 });
+      expect(size(600, 800, { maxWidth: 150 })).toEqual({ width: 150, height: 200 });
+    });
+
+    it("never makes a picture larger than its own size, whatever maxWidth says", () => {
+      expect(size(800, 600, { maxWidth: 5000 })).toEqual({ width: 800, height: 600 });
+      expect(size(800, 600, { maxWidth: 801 })).toEqual({ width: 800, height: 600 });
+      expect(size(800, 600, { maxWidth: 800 })).toEqual({ width: 800, height: 600 });
+      // A crop's own size is the crop's, not the picture's.
+      expect(size(1600, 900, { shape: "circle", maxWidth: 1600 })).toEqual({ width: 900, height: 900 });
+    });
+
+    it("draws a crop at the largest crop of that shape inside the picture", () => {
+      expect(size(1600, 900, { shape: "circle" })).toEqual({ width: 900, height: 900 });
+      expect(size(1600, 900, { shape: "square" })).toEqual({ width: 900, height: 900 });
+      expect(size(1600, 900, { shape: "landscape" })).toEqual({ width: 1200, height: 900 });
+      expect(size(1600, 900, { shape: "portrait" })).toEqual({ width: 675, height: 900 });
+      expect(size(1600, 400, { shape: "panorama" })).toEqual({ width: 1200, height: 400 });
+      // The other way round, the width is the limit.
+      expect(size(600, 800, { shape: "landscape" })).toEqual({ width: 600, height: 450 });
+      expect(size(600, 800, { shape: "portrait" })).toEqual({ width: 600, height: 800 });
+      expect(size(800, 600, { shape: "panorama" })).toEqual({ width: 800, height: 267 });
+    });
+
+    it("never draws a crop larger than the picture it is cut from", () => {
+      for (const [width, height] of [[800, 600], [600, 800], [1600, 900], [900, 1600], [1600, 400], [400, 1600], [1000, 1000], [10_000, 10_000]]) {
+        for (const shape of Object.keys(IMAGE_SHAPES) as ImageShape[]) {
+          const drawn = size(width, height, { shape })!;
+          expect(drawn.width, `${shape} ${width}x${height}`).toBeLessThanOrEqual(width);
+          expect(drawn.height, `${shape} ${width}x${height}`).toBeLessThanOrEqual(height);
+          // And it is the largest one: it fills the picture in one direction.
+          expect(drawn.width === width || drawn.height === height, `${shape} ${width}x${height} fills one side`).toBe(true);
+          expect(drawn.width / drawn.height).toBeCloseTo(IMAGE_SHAPE_RATIO[shape], 1);
+        }
+      }
+    });
+
+    it("applies maxWidth to a crop's own width, with the crop's proportions", () => {
+      expect(size(1600, 900, { shape: "circle", maxWidth: 300 })).toEqual({ width: 300, height: 300 });
+      expect(size(1600, 900, { shape: "landscape", maxWidth: 600 })).toEqual({ width: 600, height: 450 });
+      expect(size(1600, 900, { shape: "circle", maxWidth: 1000 })).toEqual({ width: 900, height: 900 });
+    });
+
+    it("is at least one pixel in each direction", () => {
+      expect(size(1, 1)).toEqual({ width: 1, height: 1 });
+      expect(size(1, 1, { shape: "panorama" })).toEqual({ width: 1, height: 1 });
+      expect(size(3, 1, { shape: "panorama" })).toEqual({ width: 3, height: 1 });
+    });
+
+    it("can be as narrow as the least a picture is allowed to be", () => {
+      expect(size(800, 600, { maxWidth: IMAGE_WIDTH_MIN })).toEqual({ width: 16, height: 12 });
+      expect(size(1600, 900, { maxWidth: IMAGE_WIDTH_MIN })).toEqual({ width: 16, height: 9 });
+    });
+  });
+
+  describe("a picture's width and place (D151)", () => {
+    const problems = (value: unknown) => {
+      const parsed = pageInput.safeParse(value);
+      return parsed.success ? [] : parsed.error.issues.map((i) => i.message);
+    };
+    const image = (extra: Record<string, unknown> = {}) => ({ id: "i1", type: "image", image: picture, caption: "", ...extra });
+    const firstBlock = (value: unknown) => pageInput.parse(value).rows[0].columns[0].blocks[0] as unknown as Record<string, unknown>;
+
+    it("keeps how wide a picture is drawn and where it sits, by screen", () => {
+      const block = firstBlock(page([image({ maxWidth: 300, align: { mobile: "center", desktop: "right" } })]));
+      expect(block).toMatchObject({ type: "image", maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+      // Nothing is added to the screens that were not given.
+      expect(block.align).toEqual({ mobile: "center", desktop: "right" });
+      // On a picture not set yet too: the width is the owner's choice, not the picture's.
+      expect(firstBlock(page([image({ image: null, maxWidth: 120, align: { tablet: "left" } })]))).toMatchObject({
+        image: null,
+        maxWidth: 120,
+        align: { tablet: "left" },
+      });
+    });
+
+    it("takes a picture from the least to the most a picture can be wide", () => {
+      expect(IMAGE_WIDTH_MIN).toBe(16);
+      expect(IMAGE_WIDTH_MAX).toBe(10_000);
+      for (const ok of [IMAGE_WIDTH_MIN, 17, 300, 1600, IMAGE_WIDTH_MAX]) {
+        expect(problems(page([image({ maxWidth: ok })])), String(ok)).toEqual([]);
+        expect(firstBlock(page([image({ maxWidth: ok })])).maxWidth).toBe(ok);
+      }
+      // The most is what a picture's own width is allowed to be.
+      expect(problems(page([image({ image: { ...picture, width: IMAGE_WIDTH_MAX } })]))).toEqual([]);
+      expect(problems(page([image({ image: { ...picture, width: IMAGE_WIDTH_MAX + 1 } })]))).not.toEqual([]);
+    });
+
+    it("says why a width cannot be used", () => {
+      const tooNarrow = "Make a picture at least 16 pixels wide.";
+      const tooWide = "Keep a picture at most 10000 pixels wide.";
+      const fraction = "A picture's width is whole pixels.";
+      expect(problems(page([image({ maxWidth: 0 })]))).toEqual([tooNarrow]);
+      expect(problems(page([image({ maxWidth: 15 })]))).toEqual([tooNarrow]);
+      expect(problems(page([image({ maxWidth: -300 })]))).toEqual([tooNarrow]);
+      expect(problems(page([image({ maxWidth: 10_001 })]))).toEqual([tooWide]);
+      expect(problems(page([image({ maxWidth: 2.5 })]))).toEqual([fraction]);
+      expect(problems(page([image({ maxWidth: 300.5 })]))).toEqual([fraction]);
+    });
+
+    it("refuses a width that is not a number", () => {
+      for (const bad of ["300", "", null, Number.NaN, {}, [300], true]) {
+        const found = pageInput.safeParse(page([image({ maxWidth: bad })]));
+        expect(found.success, String(bad)).toBe(false);
+        expect(found.error?.issues.map((i) => i.path.join(".")), String(bad)).toEqual(["rows.0.columns.0.blocks.0.maxWidth"]);
+      }
+      expect(problems(page([image({ maxWidth: "300" })]))[0]).toMatch(/expected number/);
+    });
+
+    it("refuses a place that is not left, centre or right, on any screen", () => {
+      for (const screen of ["mobile", "tablet", "desktop"]) {
+        expect(problems(page([image({ align: { [screen]: "justify" } })])), screen).not.toEqual([]);
+        expect(problems(page([image({ align: { [screen]: "middle" } })])), screen).not.toEqual([]);
+        for (const ok of ["left", "center", "right"]) expect(problems(page([image({ align: { [screen]: ok } })])), `${screen} ${ok}`).toEqual([]);
+      }
+      // One place for the whole picture is not the way: it is by screen.
+      expect(problems(page([image({ align: "center" })]))).not.toEqual([]);
+    });
+
+    it("leaves both out of a picture that has neither, so saved pages are unchanged", () => {
+      const block = firstBlock(page([image()]));
+      expect(block).not.toHaveProperty("maxWidth");
+      expect(block).not.toHaveProperty("align");
+      const stored = JSON.parse(JSON.stringify(block)) as Record<string, unknown>;
+      expect("maxWidth" in stored).toBe(false);
+      expect("align" in stored).toBe(false);
+      // What the editor sends for a width taken away is the key left undefined: it is dropped, not saved as something.
+      const taken = firstBlock(page([image({ maxWidth: undefined, align: undefined })]));
+      expect(JSON.parse(JSON.stringify(taken))).toEqual(JSON.parse(JSON.stringify(block)));
+      expect("maxWidth" in JSON.parse(JSON.stringify(taken))).toBe(false);
+    });
+
+    it("keeps both through a save and a read of the stored page", () => {
+      const content = pageInput.parse(page([image({ maxWidth: 300, shape: "circle", align: { mobile: "center", tablet: "left", desktop: "right" } })]));
+      const stored = JSON.parse(JSON.stringify(content));
+      const read = parsePageContent(stored);
+      expect(read).not.toBeNull();
+      expect(read?.rows[0].columns[0].blocks[0]).toMatchObject({
+        type: "image",
+        maxWidth: 300,
+        shape: "circle",
+        align: { mobile: "center", tablet: "left", desktop: "right" },
+      });
+      // Reading changes nothing: saved and read again, it is the same page.
+      expect(samePageContent(read!, content)).toBe(true);
+      expect(samePageContent(parsePageContent(JSON.parse(JSON.stringify(read)))!, content)).toBe(true);
+    });
+
+    it("keeps a width on a picture only, not on headings, text or buttons", () => {
+      const richText = { id: "t1", type: "richText", doc: doc(p("Words")), maxWidth: 300 };
+      const heading = { id: "h1", type: "heading", text: "Prices", level: 2, maxWidth: 300 };
+      const button = { id: "b1", type: "button", label: "Start", href: "/sign-up", maxWidth: 300 };
+      const blocks = pageInput.parse(page([richText, heading, button, image({ maxWidth: 300 })])).rows[0].columns[0].blocks;
+      expect(blocks.map((b) => b.type)).toEqual(["richText", "heading", "button", "image"]);
+      for (const block of blocks.slice(0, 3)) expect(block, block.type).not.toHaveProperty("maxWidth");
+      expect(blocks[3]).toMatchObject({ maxWidth: 300 });
+    });
+
+    it("counts a picture not chosen yet as empty, with a width or not, and says nothing about it", () => {
+      const parsed = pageInput.parse(page([image({ image: null, maxWidth: 300, align: { mobile: "center" } }), image({ id: "i2", image: null })]));
+      const [sized, plain] = parsed.rows[0].columns[0].blocks;
+      expect(sized).toMatchObject({ image: null, maxWidth: 300 });
+      expect(blockHasContent(sized)).toBe(false);
+      expect(blockHasContent(plain)).toBe(false);
+      expect(blockText(sized)).toBe("");
+      expect(pageExcerpt(parsed)).toBe("");
+    });
+
+    it("leaves a picture's words and whether it counts as content as they were", () => {
+      const plain = pageInput.parse(page([image({ caption: "On the desk" })])).rows[0].columns[0].blocks[0];
+      const set = pageInput.parse(page([image({ caption: "On the desk", maxWidth: 200, align: { mobile: "right" } })])).rows[0].columns[0].blocks[0];
+      expect(blockText(set)).toBe("A lamp On the desk");
+      expect(blockText(set)).toBe(blockText(plain));
+      expect(blockHasContent(set)).toBe(true);
+    });
+  });
+
   it("keeps margin and padding in whole pixels from 0 to 240, and turns them into CSS", () => {
     const sides = { top: 8, right: 0, bottom: 24, left: 0 };
     const parsed = pageInput.parse(page([], { style: { margin: sides, padding: sides } }));
@@ -302,6 +510,29 @@ describe("row, column and component settings (D48)", () => {
     expect(blocks[1]).toMatchObject({ shape: "circle" });
     expect(problems(page({}, {}, [{ ...block, align: { tablet: "justify" } }]))).not.toEqual([]);
     expect(problems(page({}, {}, [{ ...picture, shape: "oval" }]))).not.toEqual([]);
+  });
+
+  it("has a proportion for every shape a picture can be cropped to (D151)", () => {
+    // A shape added to IMAGE_SHAPES without a proportion would be drawn as NaN pixels.
+    expect(Object.keys(IMAGE_SHAPE_RATIO).sort()).toEqual(Object.keys(IMAGE_SHAPES).sort());
+    for (const shape of Object.keys(IMAGE_SHAPES) as ImageShape[]) {
+      expect(Number.isFinite(IMAGE_SHAPE_RATIO[shape]), shape).toBe(true);
+      expect(IMAGE_SHAPE_RATIO[shape], shape).toBeGreaterThan(0);
+    }
+    // Width over height, as the crops are named: pinned, as changing one resizes every saved picture of that shape.
+    expect(IMAGE_SHAPE_RATIO).toEqual({ landscape: 4 / 3, portrait: 3 / 4, panorama: 3, square: 1, circle: 1 });
+  });
+
+  it("draws a picture of every shape at a size whose proportion is the shape's (D151)", () => {
+    const image = { url: "https://example.com/a.webp", width: 1200, height: 1200, alt: "" };
+    for (const shape of Object.keys(IMAGE_SHAPES) as ImageShape[]) {
+      const drawn = imageDisplaySize({ image, shape })!;
+      expect(Number.isNaN(drawn.width) || Number.isNaN(drawn.height), shape).toBe(false);
+      expect(drawn.width / drawn.height, shape).toBeCloseTo(IMAGE_SHAPE_RATIO[shape], 2);
+    }
+    // The stand-in size of a picture taken from a custom field is an ordinary landscape picture, drawn at that size.
+    expect(imageDisplaySize({ image: { url: "https://example.com/a.webp", ...BOUND_PICTURE_SIZE, alt: "" } })).toEqual({ width: 1600, height: 1200 });
+    expect(BOUND_PICTURE_SIZE.width / BOUND_PICTURE_SIZE.height).toBeCloseTo(IMAGE_SHAPE_RATIO.landscape, 10);
   });
 
   it("takes ids and classes, tidied, and drops empty ones", () => {

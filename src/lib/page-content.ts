@@ -401,6 +401,15 @@ export const IMAGE_SHAPES = {
 } as const;
 export type ImageShape = keyof typeof IMAGE_SHAPES;
 
+/** A picture is drawn at its own size and never larger (D151); `maxWidth` makes it narrower, in pixels. */
+export const IMAGE_WIDTH_MIN = 16;
+/** The bound `image.width` already has. */
+export const IMAGE_WIDTH_MAX = 10_000;
+/** Each crop's width over its height. Kept in step with the aspect classes in `SHAPES` (page-block.tsx); a test holds them. */
+export const IMAGE_SHAPE_RATIO: Record<ImageShape, number> = { landscape: 4 / 3, portrait: 3 / 4, panorama: 3, square: 1, circle: 1 };
+/** A picture taken from a custom field is not known by its size where it is drawn (`field-binding.ts`); this stands in for it. */
+export const BOUND_PICTURE_SIZE = { width: 1600, height: 1200 } as const;
+
 /**
  * A Google Fonts family a block's text uses (D59), over the site's own;
  * self-hosted, so it must be installed (`installFont`) before it shows.
@@ -425,7 +434,10 @@ export type Bindable = { bind?: FieldBinding };
 export type FieldSource = "store";
 
 export type RichTextBlock = PartBase & BlockFont & Bindable & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
-/** A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. */
+/**
+ * A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. It is drawn at its own size and
+ * never larger (D151), shrinking only to fit a narrower column or a phone; `maxWidth` makes it narrower and `align` places it.
+ */
 export type ImageBlock = PartBase & Bindable & {
   id: string;
   type: "image";
@@ -434,7 +446,24 @@ export type ImageBlock = PartBase & Bindable & {
   image: { url: string; width: number; height: number; alt: string } | null;
   caption: string;
   shape?: ImageShape;
+  /** The widest it is drawn, in pixels. Left out: the picture's own width (for a crop, the crop's own width). Never enlarges. */
+  maxWidth?: number;
+  /** Where it sits when narrower than its column, by screen, as text is aligned; left unless set. The caption follows. */
+  align?: TextAlignments;
 };
+
+/**
+ * How big a picture block draws its picture, in pixels, and the only place that is worked out: the picture's own size (for a
+ * crop, the largest crop of that shape inside it, so a crop is never enlarged), no wider than `maxWidth`. Null without a picture.
+ */
+export function imageDisplaySize(block: Pick<ImageBlock, "image" | "shape" | "maxWidth">): { width: number; height: number } | null {
+  const picture = block.image;
+  if (!picture) return null;
+  const ratio = block.shape ? IMAGE_SHAPE_RATIO[block.shape] : picture.width / picture.height;
+  const own = Math.min(picture.width, picture.height * ratio);
+  const width = Math.max(1, Math.round(Math.min(own, block.maxWidth ?? Infinity)));
+  return { width, height: Math.max(1, Math.round(width / ratio)) };
+}
 /** Heading levels: 1 is the page's main heading, used once (D49). */
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 /** How large a heading looks, apart from its level. */
@@ -1834,6 +1863,13 @@ const imageBlock = z.object({
     .nullable(),
   caption: z.string().trim().max(ALT_MAX, `Keep a caption under ${ALT_MAX} characters.`).default(""),
   shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
+  maxWidth: z
+    .number()
+    .int("A picture's width is whole pixels.")
+    .min(IMAGE_WIDTH_MIN, `Make a picture at least ${IMAGE_WIDTH_MIN} pixels wide.`)
+    .max(IMAGE_WIDTH_MAX, `Keep a picture at most ${IMAGE_WIDTH_MAX} pixels wide.`)
+    .optional(),
+  align: textAlignments,
   font: blockFont,
   bind: bindRule,
   ...partBase,

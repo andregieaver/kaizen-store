@@ -284,6 +284,167 @@ test("rows, columns and components take their settings: width, background, link,
   expect((await second.boundingBox())!.y).toBeLessThan((await first.boundingBox())!.y);
 });
 
+test("a picture keeps its own size, shrinks to its column and can be made smaller (D151)", async ({ page, baseURL }) => {
+  const slug = `picsize-${run}`;
+  const sides = (all: number) => ({ top: all, right: all, bottom: all, left: all });
+  // A picture is stored at the size it was uploaded (the builder shrinks to 1600 px). The files are drawn for the test, one of each
+  // shape stored, so the browser's own idea of a picture's shape (its natural size) is the one the block says: not square.
+  await page.route(/\/e2e-fixture\/(\d+)x(\d+)\.svg$/, (route) => {
+    const [, w, h] = new URL(route.request().url()).pathname.match(/(\d+)x(\d+)\.svg$/)!;
+    return route.fulfill({
+      contentType: "image/svg+xml",
+      body: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#3f6b55"/><circle cx="${Number(w) / 2}" cy="${Number(h) / 2}" r="${Math.min(Number(w), Number(h)) / 4}" fill="#e6ece8"/></svg>`,
+    });
+  });
+  const picture = (id: string, width: number, height: number, extra: Record<string, unknown> = {}) => ({
+    id,
+    type: "image",
+    image: { url: `${baseURL}/e2e-fixture/${width}x${height}.svg`, width, height, alt: id },
+    caption: "",
+    ...extra,
+  });
+  const longCaption =
+    "A caption with a good many words in it, written to be much wider than the narrow picture above it, so that it has to break onto several lines inside the picture's width.";
+  const blocks = [
+    picture("own", 400, 300),
+    picture("wide", 1600, 900),
+    picture("smaller", 400, 300, { maxWidth: 200 }),
+    picture("centred", 400, 300, { align: { mobile: "center" } }),
+    picture("right", 400, 300, { align: { desktop: "right" } }),
+    // Centred on phones, at the left of a wide column.
+    picture("turns", 200, 150, { align: { mobile: "center", desktop: "left" } }),
+    picture("framed", 400, 300, {
+      border: { width: sides(2), color: "#ff0000", style: "solid" },
+      radius: 12,
+      style: { padding: sides(8) },
+    }),
+    picture("captioned", 400, 300, { caption: longCaption }),
+    picture("round", 1600, 900, { shape: "circle" }),
+  ];
+  const published = {
+    ...content("Picture sizes", slug, "Unused. "),
+    blocks: undefined,
+    // One column of its own for each, so each is measured against the whole content width.
+    rows: blocks.map((block) => ({
+      id: `r-${block.id}`,
+      type: "row",
+      layout: "1",
+      columns: [{ id: `c-${block.id}`, blocks: [block] }],
+    })),
+  };
+  const sql = testDb();
+  try {
+    await sql`
+      insert into commerce.pages (slug, draft, published, published_at)
+      values (${slug}, ${sql.json(published)}, ${sql.json(published)}, now())
+    `;
+  } finally {
+    await sql.end();
+  }
+
+  // The picture, the box the block draws around it (its frame) and the column the block sits in. They are measured once the file
+  // has loaded, since a lazy picture below the fold only comes in when it is near.
+  const measure = async (alt: string) => {
+    const img = page.getByRole("img", { name: alt, exact: true });
+    await img.scrollIntoViewIfNeeded();
+    await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0), { message: `${alt} loads` }).toBe(true);
+    const caption = img.locator("xpath=following-sibling::figcaption");
+    return {
+      picture: (await img.boundingBox())!,
+      wrapper: (await img.locator("xpath=../..").boundingBox())!,
+      column: (await img.locator("xpath=../../..").boundingBox())!,
+      caption: (await caption.count()) ? (await caption.boundingBox())! : null,
+    };
+  };
+  const near = (actual: number, expected: number, what: string, tolerance = 1) =>
+    expect(Math.abs(actual - expected), `${what}: ${actual} against ${expected}`).toBeLessThanOrEqual(tolerance);
+
+  // A computer: one column as wide as the content (about 984 px).
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto(`/${slug}`);
+  const own = await measure("own");
+  const column = own.column.width;
+  expect(column, "the column is wide enough for the sizes below").toBeGreaterThan(900);
+
+  // Its own size, not the column's, at the column's left.
+  near(own.picture.width, 400, "a 400 px picture is drawn at 400 px");
+  near(own.picture.x, own.column.x, "and sits at the column's left");
+  // The block's box is as wide as the picture, so nothing around it is drawn over empty space.
+  near(own.wrapper.width, 400, "the block's box is the picture's width");
+  near(own.picture.height, 300, "and its height is its own, not stretched or squeezed");
+
+  // A picture bigger than its column fills the column and goes no further.
+  const wide = await measure("wide");
+  near(wide.picture.width, wide.column.width, "a 1600 px picture fills the column");
+  near(wide.wrapper.width, wide.column.width, "its box is the column");
+  near(wide.picture.x, wide.column.x, "from the column's left");
+  near(wide.picture.height, (wide.column.width * 900) / 1600, "keeping its shape");
+
+  // A width setting makes it narrower.
+  const smaller = await measure("smaller");
+  near(smaller.picture.width, 200, "a width of 200 px on a 400 px picture");
+  near(smaller.wrapper.width, 200, "the box follows");
+  near(smaller.picture.height, 150, "and the height with it, in the picture's own proportions");
+
+  // Alignment places a picture narrower than its column: the middle, or the right.
+  const centred = await measure("centred");
+  near(centred.picture.width, 400, "a centred picture keeps its size");
+  near(centred.picture.x + centred.picture.width / 2, centred.column.x + centred.column.width / 2, "and is in the column's middle");
+  const right = await measure("right");
+  near(right.picture.width, 400, "a picture to the right keeps its size");
+  near(right.picture.x + right.picture.width, right.column.x + right.column.width, "and ends at the column's right");
+  const turns = await measure("turns");
+  near(turns.picture.width, 200, "a 200 px picture");
+  near(turns.picture.x, turns.column.x, "is at the left of a computer's column when only phones are centred");
+
+  // The frame hugs the picture: its border and padding are around it, not around the column.
+  const framed = await measure("framed");
+  near(framed.picture.width, 400, "a framed picture keeps its own width inside its padding and border");
+  near(framed.wrapper.width, 400 + 2 * 8 + 2 * 2, "its box is the picture, the padding and the border");
+  near(framed.wrapper.height, framed.picture.height + 2 * 8 + 2 * 2, "on every side");
+  near(framed.picture.x - framed.wrapper.x, 8 + 2, "the picture sits inside the left edge");
+  near(framed.picture.y - framed.wrapper.y, 8 + 2, "and the top edge");
+  near(framed.wrapper.x, framed.column.x, "and the box is at the column's left");
+
+  // A caption is under the picture and no wider than it; it breaks into lines instead of widening the box.
+  const captioned = await measure("captioned");
+  near(captioned.picture.width, 400, "a captioned picture keeps its size");
+  expect(captioned.caption, "the caption is drawn").not.toBeNull();
+  expect(captioned.caption!.width, "a long caption stays within the picture").toBeLessThanOrEqual(captioned.picture.width + 1);
+  expect(captioned.caption!.height, "and breaks into lines").toBeGreaterThanOrEqual(40);
+  near(captioned.caption!.x, captioned.picture.x, "under the picture's left edge");
+  expect(captioned.caption!.y, "below it").toBeGreaterThanOrEqual(captioned.picture.y + captioned.picture.height - 1);
+
+  // A crop is the largest crop that fits inside the picture's own pixels (900 x 900 from 1600 x 900), square for a circle.
+  const round = await measure("round");
+  near(round.picture.width, 900, "a circle cut from 1600 x 900 is 900 px across");
+  near(round.picture.height, round.picture.width, "and square");
+
+  // A phone: a picture wider than the column shrinks to it, keeping its shape, and the page does not scroll sideways.
+  await page.setViewportSize({ width: 390, height: 800 });
+  const phoneOwn = await measure("own");
+  expect(phoneOwn.column.width, "a phone's column is narrower than the picture").toBeLessThan(400);
+  near(phoneOwn.picture.width, phoneOwn.column.width, "a 400 px picture shrinks to the column");
+  near(phoneOwn.picture.x, phoneOwn.column.x, "from the column's left");
+  const phoneWide = await measure("wide");
+  near(phoneWide.picture.width, phoneWide.column.width, "a 1600 px picture is the column's width on a phone");
+  const phoneRound = await measure("round");
+  near(phoneRound.picture.width, phoneRound.column.width, "a circle shrinks to the column");
+  near(phoneRound.picture.height, phoneRound.picture.width, "and stays square");
+  const phoneCaptioned = await measure("captioned");
+  expect(phoneCaptioned.caption!.width, "a caption stays within the picture on a phone").toBeLessThanOrEqual(phoneCaptioned.picture.width + 1);
+  // Alignment by screen: centred on a phone, the computer's own at the left or the right.
+  const phoneTurns = await measure("turns");
+  near(phoneTurns.picture.width, 200, "a picture narrower than the column keeps its size on a phone");
+  near(phoneTurns.picture.x + phoneTurns.picture.width / 2, phoneTurns.column.x + phoneTurns.column.width / 2, "and is centred when phones are");
+  const phoneRight = await measure("right");
+  near(phoneRight.picture.x, phoneRight.column.x, "a picture placed right on computers only is at the left on a phone");
+  const phoneSmaller = await measure("smaller");
+  near(phoneSmaller.picture.x, phoneSmaller.column.x, "and so is one with no alignment");
+  const overflow = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, window: window.innerWidth }));
+  expect(overflow.scroll, "no sideways scrolling on a phone").toBeLessThanOrEqual(overflow.window);
+});
+
 test("a heading can be the page's main heading, a button links, and parts take borders, corners and shadows (D49)", async ({ page }) => {
   const slug = `parts-${run}`;
   const published = {

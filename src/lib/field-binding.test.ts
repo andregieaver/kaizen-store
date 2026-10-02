@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { ShownField, ShownGroup } from "./custom-fields";
 import { bindPage, bindable, canBind, hasBindings, textToDoc, withoutBindings } from "./field-binding";
 import {
+  BOUND_PICTURE_SIZE,
   blockHasContent,
   blockShowsUnbound,
+  imageDisplaySize,
   newPageContent,
   pageInput,
   type ButtonBlock,
@@ -416,5 +418,65 @@ describe("bindings in a page's life", () => {
     });
     expect(keys).toContain("block.h.text");
     expect(blocksOf(mapped)[0]).toMatchObject({ bind: { fieldId: "f_title00" } });
+  });
+});
+
+describe("a bound picture's own size (D151)", () => {
+  const align = { mobile: "center", desktop: "right" } as const;
+  const own = { url: "https://cdn.example.com/own.webp", width: 640, height: 480, alt: "Own" };
+  const sized = (over: Partial<ImageBlock> = {}) => image({ maxWidth: 300, align: { ...align }, bind: { fieldId: "f_pict000" }, ...over });
+
+  it("is drawn at the stand-in's size, which the editor shares, since the field's real size is not known here", () => {
+    expect(BOUND_PICTURE_SIZE).toEqual({ width: 1600, height: 1200 });
+    const [plain] = blocksOf(bindPage(pageOf(image({ bind: { fieldId: "f_pict000" } })), groups)) as ImageBlock[];
+    expect(plain.image).toEqual({ url: "https://cdn.example.com/a.webp", ...BOUND_PICTURE_SIZE, alt: "An oak table" });
+    expect(imageDisplaySize(plain)).toEqual({ width: 1600, height: 1200 });
+  });
+
+  it("keeps the width and position the owner gave the block, and draws the field's picture no wider than that", () => {
+    const [block] = blocksOf(bindPage(pageOf(sized()), groups)) as ImageBlock[];
+    expect(block).toMatchObject({
+      maxWidth: 300,
+      align: { mobile: "center", desktop: "right" },
+      caption: "Caption",
+      image: { url: "https://cdn.example.com/a.webp", width: 1600, height: 1200, alt: "An oak table" },
+    });
+    expect(block).not.toHaveProperty("bind");
+    expect(imageDisplaySize(block)).toEqual({ width: 300, height: 225 });
+    // A crop of the bound picture is sized from the stand-in too.
+    const [crop] = blocksOf(bindPage(pageOf(sized({ shape: "circle", maxWidth: undefined })), groups)) as ImageBlock[];
+    expect(imageDisplaySize(crop)).toEqual({ width: 1200, height: 1200 });
+  });
+
+  it("keeps them on the block's own picture when the field gives nothing and the block asks for its own content", () => {
+    const result = bindPage(pageOf(sized({ image: own, bind: { fieldId: "f_gone000", fallback: true } })), groups);
+    const [block] = blocksOf(result) as ImageBlock[];
+    expect(block).toMatchObject({ image: own, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    expect(block).not.toHaveProperty("bind");
+    expect(imageDisplaySize(block)).toEqual({ width: 300, height: 225 });
+  });
+
+  it("keeps them when the bindings are taken off for the builder's canvas", () => {
+    const [block] = blocksOf(withoutBindings(pageOf(sized()))) as ImageBlock[];
+    expect(block).toMatchObject({ image: null, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    expect(block).not.toHaveProperty("bind");
+  });
+
+  it("is left out with the block when the field gives nothing, as any bound block is", () => {
+    expect(blocksOf(bindPage(pageOf(sized({ bind: { fieldId: "f_gone000" } })), groups))).toEqual([]);
+  });
+
+  it("survives saving a page with a bound picture, and is copied with its row", () => {
+    const saved = pageInput.parse({
+      ...newPageContent(),
+      title: "T",
+      slug: "t",
+      rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [sized({ id: "i1" })] }] }],
+    }) as PageContent;
+    expect(blocksOf(saved)[0]).toMatchObject({ bind: { fieldId: "f_pict000" }, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    let n = 0;
+    const copy = copyRow(saved.rows[0], () => `n${++n}`);
+    expect(copy.columns[0].blocks[0]).toMatchObject({ bind: { fieldId: "f_pict000" }, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    expect(copy.columns[0].blocks[0].id).not.toBe("i1");
   });
 });

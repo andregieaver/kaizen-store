@@ -102,7 +102,7 @@ export const ROW_GAP = 32;
 export const SHARED_CSS =
   ".rp.rp :is(h1,h2,h3,h4,h5,h6,p,ul,ol,li,blockquote){margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;text-align:inherit;line-height:inherit}\n" +
   ".rp.rp .rich-text{line-height:inherit;overflow-wrap:normal}\n.rp.rp .rich-text a{text-decoration:none;color:inherit}\n" +
-  ".rp.rp{margin:0;width:auto;max-width:none;border:0 none;border-radius:0;box-shadow:none;font-style:normal;text-transform:none}\n" +
+  ".rp.rp{margin:0;width:auto;max-width:none;box-sizing:border-box;border:0 none;border-radius:0;box-shadow:none;font-style:normal;text-transform:none}\n" +
   ".rp.rp figure{margin:0}\n.rp.rp img{display:block;max-width:100%}\n.rp.rp hr{margin:0}";
 
 // ---------------------------------------------------------------------------
@@ -786,6 +786,9 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
         drop("video-still-only", leaf, media.url ?? "no address");
         note("warn", "A video could not be copied; its still picture is used instead.");
         counts.pictures += 1;
+        // A picture is drawn at its own size unless told otherwise (D151): the poster is told to fill the video's measured box.
+        const posterDecl = (n: CaptureNode): Decl => ({ width: "100%", height: "auto", "aspect-ratio": `${round(n.box[2])} / ${round(n.box[3])}`, "object-fit": "cover", "border-radius": (n.s.borderTopLeftRadius ?? "0px").split(" ")[0] });
+        put(id, " img", posterDecl(leaf), phone ? posterDecl(phone) : {});
         const image: ImageBlock = { ...base, type: "image", image: { url: poster!.url, width: poster!.width, height: poster!.height, alt: "" }, caption: "" };
         return image;
       }

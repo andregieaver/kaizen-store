@@ -137,3 +137,55 @@ describe("a component's texts for the translator", () => {
     expect(blockTextFields({ id: "m", type: "menu" })).toEqual([]);
   });
 });
+
+describe("a picture's own size and its translations (D151)", () => {
+  const picture = { url: "https://example.com/a.webp", width: 800, height: 600, alt: "En kopp" };
+  const sized = { id: "i1", type: "image" as const, image: picture, caption: "Vår kopp", shape: "circle" as const, maxWidth: 300, align: { mobile: "center", desktop: "right" } as const };
+  const withSized = (): PageContent => {
+    const base = page();
+    return { ...base, rows: base.rows.map((row) => ({ ...row, columns: row.columns.map((column) => ({ ...column, blocks: column.blocks.map((b) => (b.id === "i1" ? { ...sized, align: { ...sized.align } } : b)) })) })) };
+  };
+  const pictureOf = (content: PageContent) => content.rows[0].columns[0].blocks.find((b) => b.id === "i1");
+
+  it("adds no text to translate: the translator still lists the caption and the description, and no more", () => {
+    expect(blockTextFields(sized).map((field) => field.key)).toEqual(["block.i1.caption", "block.i1.alt"]);
+    expect(blockTextFields(sized)).toEqual(blockTextFields({ ...sized, maxWidth: undefined, align: undefined }));
+    // The page lists the same texts with the size as without it: the width and position are no text.
+    expect([...pageTexts(withSized()).keys()]).toEqual([...pageTexts(page()).keys()]);
+  });
+
+  it("keeps the width and position when a text is set, and when a block's texts are mapped", () => {
+    const next = setBlockText(sized, "block.i1.alt", "Een kop");
+    expect(next).toMatchObject({ maxWidth: 300, align: { mobile: "center", desktop: "right" }, shape: "circle", image: { alt: "Een kop", width: 800, height: 600 } });
+    expect(setBlockText(sized, "block.i1.caption", "Onze kop")).toMatchObject({ caption: "Onze kop", maxWidth: 300, align: { desktop: "right" } });
+  });
+
+  it("is read in another language with the same width and position, the words changed", () => {
+    const base = withSized();
+    const translated = withTranslation(base, "sv-SE", { "block.i1.caption": "Vår kopp (sv)", "block.i1.alt": "En kopp (sv)" });
+    const read = localizePage(translated, "sv-SE");
+    expect(pictureOf(read)).toMatchObject({ caption: "Vår kopp (sv)", maxWidth: 300, align: { mobile: "center", desktop: "right" }, shape: "circle", image: { alt: "En kopp (sv)", width: 800, height: 600 } });
+    // Another language, or none, reads the page as written.
+    expect(pictureOf(localizePage(translated, "da-DK"))).toMatchObject({ caption: "Vår kopp", maxWidth: 300 });
+    // The page the translation was made on is not touched.
+    expect(pictureOf(base)).toMatchObject({ caption: "Vår kopp", image: { alt: "En kopp" } });
+  });
+
+  it("is no translation by itself: a copy with another width or position gives none, and a changed caption only its own", () => {
+    const base = withSized();
+    const narrower: PageContent = { ...base, rows: base.rows.map((row) => ({ ...row, columns: row.columns.map((column) => ({ ...column, blocks: column.blocks.map((b) => (b.id === "i1" ? { ...b, maxWidth: 120, align: { mobile: "left" as const } } : b)) })) })) };
+    expect(translationOf(base, narrower)).toEqual({});
+    const edited = localizePage(withTranslation(narrower, "sv-SE", { "block.i1.caption": "Vår mugg" }), "sv-SE");
+    expect(translationOf(base, edited)).toEqual({ "block.i1.caption": "Vår mugg" });
+  });
+
+  it("is saved with its translations: they are cleaned against the page's texts and the width is not one of them", () => {
+    const content = { ...withSized(), translations: { "sv-SE": { "block.i1.caption": "  Vår mugg  ", "block.i1.maxWidth": "100" } } } as PageContent;
+    const cleaned = cleanTranslations(content, [{ locale: "sv-SE", name: "Swedish" }]);
+    expect(cleaned).toMatchObject({ ok: true, content: { translations: { "sv-SE": { "block.i1.caption": "Vår mugg" } } } });
+    if (cleaned.ok) expect(pictureOf(cleaned.content)).toMatchObject({ maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    const parsed = pageInput.safeParse(content);
+    expect(parsed.success).toBe(true);
+    expect(pictureOf(parsed.data!)).toMatchObject({ maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+  });
+});

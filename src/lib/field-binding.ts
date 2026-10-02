@@ -1,6 +1,7 @@
 import type { FieldType, ShownField, ShownGroup } from "./custom-fields";
 import { drawable, linksOf, pictureOf } from "./field-parts";
 import {
+  BOUND_PICTURE_SIZE,
   BUTTON_LABEL_MAX,
   HEADING_MAX,
   RICH_TEXT_MAX,
@@ -168,8 +169,9 @@ function filled(block: PageBlock, field: ShownField): PageBlock | null {
     }
     case "image": {
       const picture = pictureOf(field.value);
-      // A library picture's size is not known here; the picture is drawn at its own shape, the size only reserves room.
-      return picture ? { ...block, image: { url: picture.url, width: 1600, height: 1200, alt: picture.alt } } : null;
+      // A library picture's size is not known here, so it is drawn at the stand-in size (D151): never wider than that, in its own
+      // proportions, and shrinking in a narrower column.
+      return picture ? { ...block, image: { url: picture.url, ...BOUND_PICTURE_SIZE, alt: picture.alt } } : null;
     }
     case "button": {
       const link = linksOf(field)[0];

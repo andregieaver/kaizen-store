@@ -87,6 +87,10 @@ What copying oda.com's front page taught (D150):
   commercial families (`replicate-fonts.ts`), and a cut font stack falls back to the kind of face, never the browser's serif;
 - the second visit at a phone's width is tried twice and says why when it fails.
 
+A copy's pictures are sized by their own rules (`#id img{width:100%}`, `#id{width;max-width}`, `.rp.rp{max-width:none;box-sizing:border-box}`),
+which beat the builder's natural-size classes (D151) because they are unlayered; the converter never sets a picture block's width
+or position setting.
+
 ## The report for whoever improves it
 
 Every job ends with a report (`summary.report`, `src/lib/replicate-report.ts`) that the panel offers to copy or download as

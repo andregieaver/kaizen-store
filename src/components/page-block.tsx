@@ -10,6 +10,7 @@ import {
   type PanelItem,
   buttonShows,
   frameStyle,
+  imageDisplaySize,
   type ButtonBlock,
   type ButtonShape,
   type ButtonSize,
@@ -134,21 +135,25 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return block.source === "google" ? null : <Testimonials block={block} />;
     case "html":
       return block.html.trim() ? <HtmlFrame html={block.html} title={block.title} height={block.height} waitForClick={Boolean(block.waitForClick)} /> : null;
-    case "image":
-      if (!block.image) return null;
+    case "image": {
+      // Its own size, never stretched to the column (D151): the box `blockBox()` draws is as wide as the picture and no wider than
+      // the column, so the picture shrinks to a narrower column or a phone, keeping its shape, and the caption stays under it.
+      const size = imageDisplaySize(block);
+      if (!block.image || !size) return null;
       return (
-        <figure className="flex flex-col gap-2">
+        <figure>
           <Image
             src={block.image.url}
             alt={block.image.alt}
-            width={block.image.width}
-            height={block.image.height}
+            width={size.width}
+            height={size.height}
             unoptimized
-            className={`h-auto w-full bg-surface ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
+            className={`h-auto max-w-full bg-surface ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
           />
-          {block.caption && <figcaption className="text-sm text-muted">{block.caption}</figcaption>}
+          {block.caption && <figcaption className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">{block.caption}</figcaption>}
         </figure>
       );
+    }
   }
 }
 

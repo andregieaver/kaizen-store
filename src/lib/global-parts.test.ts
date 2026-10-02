@@ -21,7 +21,7 @@ import {
   type GlobalPart,
   type PartsDoc,
 } from "./global-parts";
-import type { HeadingBlock, PageBlock, PageColumn, PageRow } from "./page-content";
+import { newPageContent, pageInput, type HeadingBlock, type ImageBlock, type PageBlock, type PageColumn, type PageContent, type PageRow } from "./page-content";
 
 
 const uuid = () => crypto.randomUUID();
@@ -206,5 +206,113 @@ describe("usePlace", () => {
     expect(usePlace(rows, hero.columns[1].id)?.local).toBe(true);
     expect(usePlace(rows, hero.columns[1].blocks[0].id)?.inLocal).toBe(true);
     expect(usePlace(rows, page.rows[1].id)).toEqual({ global: null, within: null, local: false, inLocal: false });
+  });
+});
+
+describe("a picture's own size in a global (D151)", () => {
+  const photo = (id: string, maxWidth?: number): ImageBlock => ({
+    id,
+    type: "image",
+    image: { url: `https://cdn.example.com/${id}.webp`, width: 800, height: 600, alt: id },
+    caption: "",
+    ...(maxWidth !== undefined && { maxWidth }),
+    align: { mobile: "center", desktop: "right" },
+  });
+  const sizes = (rows: PageRow[]) => rows.flatMap((r) => r.columns.flatMap((c) => c.blocks.map((b) => (b as ImageBlock).maxWidth)));
+  /** The page as the server writes it after a global changed: through `refreshUses`, then checked again by `pageInput`. */
+  const saved = (rows: PageRow[]): PageContent => {
+    const parsed = pageInput.safeParse({ ...newPageContent(), title: "T", slug: "t", rows });
+    expect(parsed.error?.issues).toBeUndefined();
+    return parsed.data as PageContent;
+  };
+
+  it("reaches every use of a global component, and is still there when the page is saved again", () => {
+    const first = photo("a", 300);
+    const block: GlobalPart = { id: "40000000-0000-4000-8000-000000000004", kind: "block", content: globalContent("block", first), translations: {} };
+    // Two pages use the picture as it was; the global then becomes narrower and loses its position on tablets.
+    const pageA: PartsDoc = { rows: [row(column(newUse(block, uuid()) as PageBlock)), row(column(newUse(block, uuid()) as PageBlock))] };
+    const pageB: PartsDoc = { rows: [row(column(newUse(block, uuid()) as PageBlock))] };
+    expect(sizes([...pageA.rows, ...pageB.rows])).toEqual([300, 300, 300]);
+
+    const changed: GlobalPart = { ...block, content: { ...(block.content as ImageBlock), maxWidth: 120, align: { mobile: "left" } } };
+    for (const doc of [pageA, pageB]) {
+      const refreshed = refreshUses(doc, new Map([[block.id, changed]]));
+      expect(sizes(refreshed.rows).every((width) => width === 120)).toBe(true);
+      const kept = saved(refreshed.rows);
+      for (const use of kept.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks))) {
+        expect(use).toMatchObject({ type: "image", global: block.id, maxWidth: 120, align: { mobile: "left" } });
+        expect(use).not.toHaveProperty("align.desktop");
+      }
+    }
+
+    // Taking the width out of the global (back to the picture's own size) takes it out of every use, not only the first.
+    const own = { ...(block.content as ImageBlock) };
+    delete own.maxWidth;
+    const reset = refreshUses(pageB, new Map([[block.id, { ...block, content: own }]]));
+    expect(reset.rows[0].columns[0].blocks[0]).not.toHaveProperty("maxWidth");
+  });
+
+  it("is a change to the global when it is made in a use, and the page's other uses follow it", () => {
+    const first = photo("a", 300);
+    const block: GlobalPart = { id: "40000000-0000-4000-8000-000000000004", kind: "block", content: globalContent("block", first), translations: {} };
+    const known = new Map([[block.id, block]]);
+    const prev: PartsDoc = { rows: [row(column(newUse(block, uuid()) as PageBlock)), row(column(newUse(block, uuid()) as PageBlock))] };
+    expect(editedGlobals(prev, known)).toEqual([]);
+
+    // The owner narrows the first picture on the page.
+    const edited = (rows: PageRow[], width: number): PartsDoc => ({
+      rows: rows.map((r, i) => (i === 0 ? { ...r, columns: [{ ...r.columns[0], blocks: [{ ...(r.columns[0].blocks[0] as ImageBlock), maxWidth: width }] }] } : r)),
+    });
+    const next = edited(prev.rows, 200);
+    expect(editedGlobals(next, known)).toEqual([block.id]);
+    const settled = settleUses(prev, next, known);
+    expect(sizes(settled.rows)).toEqual([200, 200]);
+    expect(currentGlobal(settled, block).content).toMatchObject({ maxWidth: 200, align: { mobile: "center", desktop: "right" } });
+    // A position changed in the second use reaches the first.
+    const placed: PartsDoc = {
+      rows: settled.rows.map((r, i) => (i === 1 ? { ...r, columns: [{ ...r.columns[0], blocks: [{ ...(r.columns[0].blocks[0] as ImageBlock), align: { desktop: "center" as const } }] }] } : r)),
+    };
+    const again = settleUses(settled, placed, known);
+    expect(again.rows.map((r) => (r.columns[0].blocks[0] as ImageBlock).align)).toEqual([{ desktop: "center" }, { desktop: "center" }]);
+  });
+
+  it("is each page's own on a picture the page made its own inside a global row, while the rest follows", () => {
+    const hero = row(column(photo("shared", 300)), column(photo("own", 300)));
+    const global: GlobalPart = { id: "50000000-0000-4000-8000-000000000005", kind: "row", content: globalContent("row", hero), translations: {} };
+    const ownColumn = hero.columns[1].id;
+    const withSizes = (rows: PageRow[], shared: number, own: number): PageRow[] =>
+      rows.map((r, i) =>
+        i === 0
+          ? { ...r, columns: [
+              { ...r.columns[0], blocks: [{ ...(r.columns[0].blocks[0] as ImageBlock), maxWidth: shared }] },
+              { ...r.columns[1], blocks: [{ ...(r.columns[1].blocks[0] as ImageBlock), maxWidth: own }] },
+            ] }
+          : r,
+      );
+
+    // This page makes its second picture's column its own and gives it 120, and narrows the shared one to 200.
+    const mine: PartsDoc = { rows: withSizes(setLocal(markUse([hero], hero.id, global.id), ownColumn, true), 200, 120) };
+    const known = new Map([[global.id, global]]);
+    expect(editedGlobals(mine, known)).toEqual([global.id]);
+    const current = currentGlobal(mine, global);
+    expect((current.content as PageRow).columns[0].blocks[0]).toMatchObject({ maxWidth: 200 });
+
+    // Another page, made from the global before: its own column gets its own size, the shared one follows the global.
+    const other: PartsDoc = { rows: [newUse(global, uuid()) as PageRow] };
+    const theirs = refreshUses(other, new Map([[global.id, current]]));
+    expect(theirs.rows[0].columns[1].local).toBe(true);
+    const writing: PartsDoc = { rows: withSizes(theirs.rows, 200, 500) };
+    const synced = refreshUses(writing, new Map([[global.id, current]]));
+    expect(sizes(synced.rows)).toEqual([200, 500]);
+    expect(sizes(refreshUses(mine, new Map([[global.id, current]])).rows)).toEqual([200, 120]);
+
+    // Changing only the page's own picture is no change to the global; changing the shared one is.
+    const onlyOwn: PartsDoc = { rows: withSizes(synced.rows, 200, 90) };
+    expect(editedGlobals(onlyOwn, new Map([[global.id, current]]))).toEqual([]);
+    expect(editedGlobals({ rows: withSizes(synced.rows, 150, 500) }, new Map([[global.id, current]]))).toEqual([global.id]);
+    // And a later change to the global's shared picture still leaves each page's own width alone, also when saved again.
+    const later = refreshUses(onlyOwn, new Map([[global.id, { ...current, content: { ...current.content, columns: [{ ...(current.content as PageRow).columns[0], blocks: [{ ...((current.content as PageRow).columns[0].blocks[0] as ImageBlock), maxWidth: 64 }] }, (current.content as PageRow).columns[1]] } as PageRow }]]));
+    expect(sizes(later.rows)).toEqual([64, 90]);
+    expect(sizes(saved(later.rows).rows)).toEqual([64, 90]);
   });
 });

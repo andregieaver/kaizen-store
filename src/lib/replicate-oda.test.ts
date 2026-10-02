@@ -209,7 +209,7 @@ describe("the page's CSS with phones in it", () => {
     expect(phones).toContain("#rp1{font-size:16px}");
     expect(phones).not.toContain("color:");
     expect(phones).toContain("#rp2{margin-left:0;width:auto}");
-    expect(SHARED_CSS).toContain(".rp.rp{margin:0;width:auto;max-width:none;border:0 none;border-radius:0;box-shadow:none;font-style:normal;text-transform:none}");
+    expect(SHARED_CSS).toContain(".rp.rp{margin:0;width:auto;max-width:none;box-sizing:border-box;border:0 none;border-radius:0;box-shadow:none;font-style:normal;text-transform:none}");
   });
 });
 

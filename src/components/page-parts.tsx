@@ -5,6 +5,7 @@ import {
   ROW_LAYOUTS,
   blockText,
   frameStyle,
+  imageDisplaySize,
   rowSpacing,
   spacingStyle,
   type PageBlock,
@@ -160,6 +161,19 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
   };
 }
 
+/**
+ * Where a picture narrower than its column sits, by screen (D151): auto margins, which text alignment cannot do to a box. Written
+ * out whole so Tailwind finds each class; each screen unset follows the smaller one, as text does.
+ */
+const PICTURE_SIDE = {
+  mobile: { left: "", center: "mx-auto", right: "ml-auto" },
+  tablet: { left: "md:ml-0 md:mr-0", center: "md:mx-auto", right: "md:ml-auto md:mr-0" },
+  desktop: { left: "lg:ml-0 lg:mr-0", center: "lg:mx-auto", right: "lg:ml-auto lg:mr-0" },
+} as const;
+
+const pictureSide = (align: TextAlignments | undefined): string =>
+  cx(align?.mobile && PICTURE_SIDE.mobile[align.mobile], align?.tablet && PICTURE_SIDE.tablet[align.tablet], align?.desktop && PICTURE_SIDE.desktop[align.desktop]);
+
 function alignClasses(align: TextAlignments | undefined): string | false {
   return (
     Boolean(align) &&
@@ -177,10 +191,17 @@ function alignClasses(align: TextAlignments | undefined): string | false {
  * it holds, such as a picture. A button takes its frame itself.
  */
 export function blockBox(block: PageBlock, mode: PartsMode): Box {
+  // A picture's box is the picture's own width (D151), so its frame, effects, id and classes hug it, not the empty column beside
+  // it; null without a picture, so the empty block keeps the whole column. The limit is a class and a custom property, never
+  // an inline width: owner CSS and the page replicator's `#id` rules can still say otherwise.
+  const picture = block.type === "image" ? imageDisplaySize(block) : null;
   return {
     id: mode === "site" ? block.htmlId : undefined,
     className: cx(
       "align" in block && alignClasses(block.align),
+      // `box-content` makes the limit the picture's width however much padding and border the block has.
+      picture && "box-content max-w-(--picture-width)",
+      picture && block.type === "image" && pictureSide(block.align),
       // Its own font (D59) for all its text; the stylesheet comes with `FontLinks`.
       "font" in block && block.font && fontClass(block.font),
       block.type !== "button" && Boolean(block.radius) && "overflow-hidden",
@@ -190,7 +211,7 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
       mode === "site" && block.className,
     ),
     // A button's border, corners and shadow are the button's own (`PageBlockView`).
-    style: { ...spacingStyle(block.style), ...(block.type === "button" ? {} : frameStyle(block)) },
+    style: { ...spacingStyle(block.style), ...(block.type === "button" ? {} : frameStyle(block)), ...(picture ? ({ "--picture-width": `${picture.width}px` } as CSSProperties) : {}) },
   };
 }
 
