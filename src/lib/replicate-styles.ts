@@ -73,6 +73,8 @@ const PROPS: Record<string, "length" | "color" | "number" | "keyword" | "text" |
   "object-fit": "keyword",
   "object-position": "text",
   overflow: "keyword",
+  "overflow-x": "keyword",
+  "overflow-y": "keyword",
   "list-style-type": "keyword",
   "list-style-position": "keyword",
   filter: "text",
@@ -153,6 +155,45 @@ export function ruleOf(model: StyleModel, id: string, suffix: string): StyleRule
 
 const LOW_WEIGHT = ["letter-spacing", "text-shadow", "filter", "object-position"];
 
+const ZERO = /^0(?:px)?$/;
+/**
+ * What a part's own box is without a rule, for the properties of the box that do not inherit. A rule that says the same as
+ * these says nothing, so it is left out: the shared rule (`SHARED_CSS`) states them once for every part. Only for a part's
+ * own element, never a descendant such as its picture or its button's link, whose base styles are the builder's.
+ */
+const BOX_DEFAULT: Record<string, (value: string) => boolean> = {
+  "margin-top": (v) => ZERO.test(v),
+  "margin-right": (v) => ZERO.test(v),
+  "margin-bottom": (v) => ZERO.test(v),
+  "margin-left": (v) => ZERO.test(v),
+  width: (v) => v === "auto",
+  "max-width": (v) => v === "none",
+  "border-top": (v) => /^0(?:px)? none$/.test(v),
+  "border-right": (v) => /^0(?:px)? none$/.test(v),
+  "border-bottom": (v) => /^0(?:px)? none$/.test(v),
+  "border-left": (v) => /^0(?:px)? none$/.test(v),
+  "border-radius": (v) => v.split(/\s+/).every((x) => ZERO.test(x)),
+  "box-shadow": (v) => v === "none",
+};
+const isBoxDefault = (property: string, value: string) => BOX_DEFAULT[property]?.(value.trim()) ?? false;
+
+/** The declarations of a rule that say something: not a part's defaults, and for phones not what computers already say. */
+function saying(r: StyleRule, which: "desktop" | "mobile", pick: (decl: Decl) => Decl): Decl {
+  const own = r.suffix === "";
+  const decl = pick(r[which]);
+  const out: Decl = {};
+  for (const [property, value] of Object.entries(decl)) {
+    if (which === "desktop") {
+      if (own && isBoxDefault(property, value)) continue;
+    } else {
+      const wide = r.desktop[property];
+      if (wide !== undefined ? wide === value : own && isBoxDefault(property, value)) continue;
+    }
+    out[property] = value;
+  }
+  return out;
+}
+
 /**
  * The model as CSS: the shared rule first, then each part's, then the phones' in one media query. If it is longer than the
  * page may hold (`CSS_MAX`), the declarations of least weight go first, then the phones' rules, then the last parts;
@@ -162,8 +203,8 @@ export function renderStyles(model: StyleModel, shared: string): { css: string; 
   const selectorOf = (r: StyleRule) => `#${r.id}${r.suffix}`;
   const build = (rules: StyleRule[], withMobile: boolean, skip: string[]) => {
     const pick = (decl: Decl) => Object.fromEntries(Object.entries(decl).filter(([property]) => !skip.includes(property)));
-    const desktop = rules.map((r) => rule(selectorOf(r), pick(r.desktop), r.suffix === "")).filter(Boolean).join("\n");
-    const phones = withMobile ? rules.map((r) => rule(selectorOf(r), pick(r.mobile), r.suffix === "")).filter(Boolean).join("\n") : "";
+    const desktop = rules.map((r) => rule(selectorOf(r), saying(r, "desktop", pick), r.suffix === "")).filter(Boolean).join("\n");
+    const phones = withMobile ? rules.map((r) => rule(selectorOf(r), saying(r, "mobile", pick), r.suffix === "")).filter(Boolean).join("\n") : "";
     return [shared, desktop, phones ? `@media ${PHONE_QUERY}{\n${phones}\n}` : ""].filter(Boolean).join("\n");
   };
   const attempts: { mobile: boolean; skip: string[]; note: string | null }[] = [

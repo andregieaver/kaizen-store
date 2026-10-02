@@ -62,6 +62,31 @@ drawn (`PageDrawing`, its theme, fonts and CSS) without the admin around it, pai
 behind a sign-in, as the job's browser has none: the token (`src/lib/replicate-token.ts`) names one job, is signed with a key
 derived from `SETTINGS_ENCRYPTION_KEY`, and opens that job's draft for forty minutes, and nothing else.
 
+## Working on it against a real site
+
+`REPLICATE_PROBE_URL=https://example.com/ REPLICATE_PROBE_PASSES=3 pnpm test:e2e e2e/replicate-probe.spec.ts` (after `pnpm build`
+and a seeded database, with `PLAYWRIGHT_CHROMIUM_PATH` in a sandbox) runs the replicator's own pipeline against any address
+without the AI: opens both widths, downloads the pictures, installs the typefaces as the site does, builds, saves the draft,
+measures and calibrates, and writes `test-results/probe/`: both photographs, the copy after each pass, the captures, the rows, the
+CSS, and `report.md`. In a sandbox the browser goes through the proxy (the spec sets it up). Find the cause in the pictures,
+fix it in the converter, add a case to `replicate-oda.test.ts`, run the probe again.
+
+What copying oda.com's front page taught (D150):
+
+- a zero-size holder (`picture`, `display: contents`) hid the image laid out inside it: the extractor now flattens holders
+  (`isHolder()`), and an image placed absolutely over a whole section is that section's background (`liftBackdrops()`);
+- a link or button that paints and holds one piece of text (usually in a span) is folded into one button (`foldButtons()`), so it
+  keeps its fill in any column;
+- a painted box that makes several rows is drawn in slices (`sliceFrame()`), so a card is one card;
+- content clipped out of sight (a folded menu, a slide scrolled out of a track) is not captured (`clippedAway()`), and a box that
+  scrolls sideways is kept with all its cards (`scroll`) and copied as a scrolling row of the cards' own widths;
+- a picture that fills a section on computers but is not there on phones is drawn by CSS so the phone's rule can remove it;
+- **the page's CSS limit dropped every phone rule** when computers' and phones' rules together passed 50 000 characters: a part's
+  box defaults are now stated once (`SHARED_CSS`, `BOX_DEFAULT`) and phone rules say only what differs from computers';
+- typefaces: a family's name without a foundry's words ("Inter var" is Inter), then the nearest look-alike for the well-known
+  commercial families (`replicate-fonts.ts`), and a cut font stack falls back to the kind of face, never the browser's serif;
+- the second visit at a phone's width is tried twice and says why when it fails.
+
 ## The report for whoever improves it
 
 Every job ends with a report (`summary.report`, `src/lib/replicate-report.ts`) that the panel offers to copy or download as

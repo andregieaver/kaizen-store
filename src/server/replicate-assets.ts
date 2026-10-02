@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 export { fontFamilies, pictureAddresses, videoAddresses } from "@/lib/replicate-assets-plan";
 
 import { fontSlug } from "@/lib/fonts";
+import { fontCandidates } from "@/lib/replicate-fonts";
 
 import { findFontBySlug, installFont } from "./fonts";
 import { registerVideo, storePicture } from "./media-library";
@@ -89,10 +90,18 @@ export async function saveVideo(owner: AssetOwner, url: string, referer: string)
 // Fonts
 // ---------------------------------------------------------------------------
 
-/** Installs a family from Google Fonts if it is one; the catalogue's own spelling of its name, or why not. */
+/**
+ * Installs a family from Google Fonts: the page's own, or the same without a foundry's file words, or the nearest look-alike
+ * (`fontCandidates()`). Gives the installed family's name, which may differ from the one asked for, or why none could be.
+ */
 export async function installFamily(family: string): Promise<{ ok: true; family: string } | { ok: false; problem: string }> {
-  const font = findFontBySlug(fontSlug(family));
-  if (!font) return { ok: false, problem: "It is not in Google Fonts." };
-  const result = await installFont(font.family);
-  return result.ok ? { ok: true, family: font.family } : { ok: false, problem: result.problem };
+  let last = "It is not in Google Fonts.";
+  for (const candidate of fontCandidates(family)) {
+    const font = findFontBySlug(fontSlug(candidate.name));
+    if (!font) continue;
+    const result = await installFont(font.family);
+    if (result.ok) return { ok: true, family: font.family };
+    last = result.problem;
+  }
+  return { ok: false, problem: last };
 }

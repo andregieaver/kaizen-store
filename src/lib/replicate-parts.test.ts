@@ -294,7 +294,7 @@ describe("the summary", () => {
     notes: [{ level: "warn", text: "2 form fields were not copied: a form needs its own recipient." }],
     words: 412,
     counts: { rows: 9, blocks: 40, headings: 8, texts: 14, pictures: 12, buttons: 4, videos: 1 },
-    assets: { picturesOk: 11, picturesFailed: 1, videosOk: 1, videosFailed: 0, fontsInstalled: ["Inter"], fontsFailed: ["Gotham"], shots: 2 },
+    assets: { picturesOk: 11, picturesFailed: 1, videosOk: 1, videosFailed: 0, fontsInstalled: ["Inter"], fontsStandIn: [], fontsFailed: ["Gotham"], shots: 2 },
     passes: [
       { iteration: 0, desktop: score(61.2), mobile: score(58), changes: [] },
       { iteration: 1, desktop: score(88.4), mobile: score(80.1), changes: [] },

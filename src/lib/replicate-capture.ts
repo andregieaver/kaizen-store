@@ -53,6 +53,8 @@ export type CaptureNode = {
   /** An `a`'s address, made absolute. */
   href?: string;
   media?: NodeMedia;
+  /** A box that scrolls sideways inside itself (a carousel's track): its children may lie beyond the screen and are kept. */
+  scroll?: true;
   /** A link or button that looks like a button. */
   button?: true;
   /** The addresses of its background pictures, made absolute. */

@@ -15,6 +15,7 @@ import { hexOf, runsText, walk, type PageCapture } from "@/lib/replicate-capture
 import { compareRasters, isPerfect } from "@/lib/replicate-diff";
 import { applyPatchPlan } from "@/lib/replicate-patches";
 import { digestOf, partLine, textNodes } from "@/lib/replicate-prompts";
+import { fontRelation } from "@/lib/replicate-fonts";
 import { buildReport, finalDiffOf } from "@/lib/replicate-report";
 import { buildSummary } from "@/lib/replicate-summary";
 import { renderStyles } from "@/lib/replicate-styles";
@@ -234,12 +235,20 @@ async function stepOpen(tick: Tick): Promise<void> {
     await say("ok", `Loaded “${desktop.capture.title || host}”: ${desktop.capture.docWidth} × ${desktop.capture.docHeight} px at computers' width, ${desktop.capture.fonts.length} typefaces in use.`);
     if (desktop.capture.left.fixed.length > 0) await say("info", `Left out because they float over the page: ${desktop.capture.left.fixed.slice(0, 4).join(", ")}.`);
     let mobile = null;
-    try {
-      mobile = await openOriginal(browser, row.url, "mobile", tick.signal);
-      await say("ok", `Looked at it at a phone's width too: ${mobile.capture.docHeight} px tall.`);
-    } catch {
-      await say("warn", "The page could not be looked at a second time at a phone's width; the copy will use the builder's own phone layout.");
+    let phoneProblem = "";
+    // Twice: a second visit often meets a site's bot protection or a slow start that the first did not.
+    for (let attempt = 1; attempt <= 2 && !mobile; attempt++) {
+      try {
+        mobile = await openOriginal(browser, row.url, "mobile", tick.signal);
+        await say("ok", `Looked at it at a phone's width too: ${mobile.capture.docHeight} px tall.`);
+      } catch (error) {
+        phoneProblem = error instanceof Error ? error.message : "It could not be opened.";
+        if (phoneProblem === "Stopped.") throw error;
+        console.error("[replicate] phone width", attempt, error);
+        if (attempt === 1) await say("info", `Opening the page at a phone's width did not work (${phoneProblem}); trying once more.`);
+      }
     }
+    if (!mobile) await say("warn", `The page could not be looked at at a phone's width (${phoneProblem}); the copy will use the builder's own phone layout.`);
     stopIfAsked(tick);
 
     // Photographs: the originals to compare with, and small ones for the owner's panel.
@@ -423,7 +432,8 @@ async function stepAssets(tick: Tick): Promise<void> {
     const result = await installFamily(family);
     if (result.ok) {
       state.fonts[family] = result.family;
-      await say("ok", `The typeface ${result.family} is in Google Fonts and is installed for the site.`);
+      const relation = fontRelation(family, result.family);
+      await say(relation === "lookalike" ? "warn" : "ok", relation === "lookalike" ? `The typeface ${family} is not in Google Fonts; its nearest look-alike, ${result.family}, is installed for the site instead.` : `The typeface ${result.family} is in Google Fonts and is installed for the site.`);
     } else {
       state.fonts[family] = null;
       state.failures[`font:${family}`] = result.problem;
@@ -684,7 +694,8 @@ async function conclude(owner: ReplicaOwner, row: ReplicaRow, outcome: "done" | 
       picturesFailed: pictures.filter((p) => !p).length,
       videosOk: Object.values(assets?.videos ?? {}).filter(Boolean).length,
       videosFailed: Object.values(assets?.videos ?? {}).filter((v) => !v).length,
-      fontsInstalled: fonts.filter(([, installed]) => installed).map(([, installed]) => installed as string),
+      fontsInstalled: fonts.filter(([family, installed]) => installed && fontRelation(family, installed) !== "lookalike").map(([, installed]) => installed as string),
+      fontsStandIn: fonts.filter(([family, installed]) => installed && fontRelation(family, installed) === "lookalike").map(([family, installed]) => ({ from: family, to: installed as string })),
       fontsFailed: fonts.filter(([, installed]) => !installed).map(([family]) => family),
       shots: Object.values(assets?.shots ?? {}).filter(Boolean).length,
     },

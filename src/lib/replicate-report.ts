@@ -311,6 +311,19 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
   const droppedOf = (...kinds: Dropped["kind"][]) => f.dropped.filter((d) => kinds.includes(d.kind));
   const unused = BUILDER_BLOCKS.filter((b) => !CONVERTER_BLOCKS.includes(b));
 
+  if (f.mobile === null) {
+    const said = f.log.filter((l) => /phone/i.test(l.text) && (l.level === "warn" || l.level === "error")).map((l) => l.text);
+    add({
+      id: "no-phone",
+      severity: "high",
+      area: "replicator",
+      title: "The page was not looked at at a phone's width",
+      evidence: said.length > 0 ? said.slice(0, 3) : ["No phone capture was kept for this job."],
+      change: "Without a second capture the copy has the builder's own phone layout and no phone rules, so phones are not compared at all. Find why the second visit failed (the reason is in the evidence): a site's bot protection, a redirect to an app page, a timeout on a heavy page. The second visit's error was swallowed before; it is now logged and tried twice.",
+      where: [F.engine + " (stepOpen)", "src/lib/replicate-open.ts (openOriginal, newPage)"],
+    });
+  }
+
   // -- Content the copy lacks ------------------------------------------------
   const fields = droppedOf("form-field");
   if (fields.length > 0 || census.controls.total > 0) {
@@ -402,19 +415,19 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
   }
   const carousel = census.hints["carousel"]?.total ?? 0;
   const scrollers = census.extras?.total.scrollers ?? 0;
-  if (carousel > 0 || scrollers > 0) {
+  if (carousel > 0) {
     add({
       id: "carousel",
-      severity: "high",
+      severity: "medium",
       area: "builder",
-      title: "Sliders and carousels have no component",
+      title: "Sliders that move by script have no component",
       evidence: [
-        ...(carousel > 0 ? [`Slider-like boxes by class: ${examples(census.hints["carousel"].samples)}.`] : []),
-        ...(scrollers > 0 ? [`${plural(scrollers, "box")} that scroll sideways inside themselves: ${examples(census.extras!.scrollers)}.`] : []),
-        `Only the slide in view is copied (slides parked off the screen are skipped); the builder has no slider block (blocks: ${BUILDER_BLOCKS.join(", ")}).`,
+        `Slider-like boxes by class: ${examples(census.hints["carousel"].samples)}.`,
+        ...(scrollers > 0 ? [`${plural(scrollers, "box")} scroll sideways by themselves and are copied as scrolling rows (the cards keep their widths): ${examples(census.extras!.scrollers)}.`] : []),
+        `A slider that is moved by script (a transform, not scrolling) shows only the slide in view; arrows, dots and autoplay are not copied. The builder has no slider block (blocks: ${BUILDER_BLOCKS.join(", ")}).`,
       ],
-      change: "Add a `carousel` (slider) block to the builder: a list of slides (picture, heading, text, button), arrows and dots, swipe on phones, optional autoplay that respects reduced motion. In the extractor keep the boxes of off-screen slides (flag them `offscreen`) so the converter can fill the block's slides from them.",
-      where: [F.content + " (a new block type)", F.builder, "src/components/page-block.tsx", F.extract + " (the off-screen skip in nodeOf)", F.build + " (makeBlock)"],
+      change: "Add a `carousel` (slider) block to the builder: a list of slides (picture, heading, text, button), arrows and dots, swipe on phones, optional autoplay that respects reduced motion. In the extractor keep the boxes of slides that are translated out of view (they are skipped as off-screen unless the box scrolls by itself), so the converter can fill the block's slides from them.",
+      where: [F.content + " (a new block type)", F.builder, "src/components/page-block.tsx", F.extract + " (the off-screen skip in nodeOf)", F.build + " (makeBlock, the scroller track in the row loop)"],
     });
   }
   const modals = census.hints["modal"]?.total ?? 0;

@@ -161,6 +161,44 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     return true;
   }
 
+  /**
+   * Whether a box lies wholly outside a box that clips it: a menu folded to no height, a slide scrolled out of a track. Such
+   * content is in the document but not on the page, as a visitor sees it. A box placed absolutely is clipped only by the boxes
+   * from the one it is placed against, outward.
+   */
+  /** A box that scrolls sideways: its overflow is meant to be reached by scrolling. */
+  function scrollsSideways(el: Element, cs: CSSStyleDeclaration): boolean {
+    return (cs.overflowX === "auto" || cs.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 4;
+  }
+
+  /** Whether an element is inside a box that scrolls sideways. */
+  function inScroller(el: Element): boolean {
+    for (let ancestor = el.parentElement; ancestor && ancestor !== doc.body; ancestor = ancestor.parentElement) {
+      if (scrollsSideways(ancestor, win.getComputedStyle(ancestor))) return true;
+    }
+    return false;
+  }
+
+  function clippedAway(el: Element, cs: CSSStyleDeclaration, rect: DOMRect): boolean {
+    if (cs.position === "fixed" || (rect.width <= 0 && rect.height <= 0)) return false;
+    let absolute = cs.position === "absolute";
+    for (let ancestor = el.parentElement; ancestor && ancestor !== doc.body && ancestor !== doc.documentElement; ancestor = ancestor.parentElement) {
+      const style = win.getComputedStyle(ancestor);
+      if (absolute) {
+        if (style.position === "static") continue;
+        absolute = false;
+      }
+      if (style.overflowX !== "visible" || style.overflowY !== "visible") {
+        const r = ancestor.getBoundingClientRect();
+        // What a box scrolls sideways is not hidden by it, only what lies above or below it.
+        const sideways = scrollsSideways(ancestor, style) && (rect.right <= r.left + 1 || rect.left >= r.right - 1);
+        if (!sideways && (rect.right <= r.left + 1 || rect.left >= r.right - 1 || rect.bottom <= r.top + 1 || rect.top >= r.bottom - 1)) return true;
+      }
+      if (style.position === "fixed") break;
+    }
+    return false;
+  }
+
   const INLINE = /^(inline|inline-block|inline-flex|inline-grid|contents|ruby)/;
 
   /** Whether a block holds only text and inline elements, so it is one piece of text. */
@@ -285,6 +323,36 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     return tag === "BUTTON" || paintsBackground || bordered || (padded && (cs.display === "inline-block" || cs.display === "inline-flex" || cs.display === "flex"));
   }
 
+  /**
+   * A box that is nothing but a holder for what is in it: a `picture` (zero size, its image drawn wherever the image's own
+   * styles put it), `display: contents`, or an empty inline wrapper. Its children belong to its parent, with the paths they
+   * have, so a picture laid over a whole section is not lost with its holder.
+   */
+  function isHolder(el: Element): boolean {
+    if (el.children.length === 0) return false;
+    const tag = el.tagName.toUpperCase();
+    if (tag === "PICTURE") return true;
+    const cs = win.getComputedStyle(el);
+    if (cs.display === "contents") return true;
+    const rect = el.getBoundingClientRect();
+    return rect.width === 0 && rect.height === 0 && /^inline/.test(cs.display) && (el.textContent || "").trim() === "";
+  }
+
+  function nodesOf(el: Element, path: string, depth: number): CaptureNode[] {
+    if (SKIP.indexOf(el.tagName) < 0 && isHolder(el)) {
+      const found: CaptureNode[] = [];
+      let index = 0;
+      for (let child = el.firstChild; child; child = child.nextSibling) {
+        if (child.nodeType !== 1) continue;
+        found.push(...nodesOf(child as Element, `${path}/${index}`, depth + 1));
+        index += 1;
+      }
+      return found;
+    }
+    const node = nodeOf(el, path, depth);
+    return node ? [node] : [];
+  }
+
   function nodeOf(el: Element, path: string, depth: number): CaptureNode | null {
     if (count >= options.maxNodes) {
       capped = true;
@@ -301,13 +369,13 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
         return null;
       }
     }
-    if (!visible(el, cs, rect)) {
+    if (!visible(el, cs, rect) || clippedAway(el, cs, rect)) {
       hidden += 1;
       return null;
     }
     const box: [number, number, number, number] = [Math.round((rect.left + scrollX) * 10) / 10, Math.round((rect.top + scrollY) * 10) / 10, Math.round(rect.width * 10) / 10, Math.round(rect.height * 10) / 10];
     // Wider slides and menus parked off the screen are not part of the page as it is seen.
-    if (box[0] >= options.width + 2 || box[0] + box[2] <= -2) {
+    if ((box[0] >= options.width + 2 || box[0] + box[2] <= -2) && !inScroller(el)) {
       hidden += 1;
       return null;
     }
@@ -319,6 +387,7 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     const sel = describe(el);
     if (sel !== tag) node.sel = sel;
     if (path !== "") observe(el, cs, box[1]);
+    if (scrollsSideways(el, cs)) node.scroll = true;
     if (media) node.media = media;
     if (el.id && /^rp\d+$/.test(el.id)) node.id = el.id;
     if (media && (media.kind === "svg" || media.kind === "canvas")) el.setAttribute("data-rp", path);
@@ -345,9 +414,9 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     for (let child = el.firstChild; child; child = child.nextSibling) {
       if (child.nodeType === 1) {
         const element = child as Element;
-        const childNode = nodeOf(element, path === "" ? String(index) : `${path}/${index}`, depth + 1);
+        const childNodes = nodesOf(element, path === "" ? String(index) : `${path}/${index}`, depth + 1);
         index += 1;
-        if (childNode) node.children.push(childNode);
+        node.children.push(...childNodes);
       } else if (child.nodeType === 3 && (child.nodeValue || "").trim() !== "") {
         // Loose text beside boxes: its own text node, where the browser drew it.
         const range = doc.createRange();

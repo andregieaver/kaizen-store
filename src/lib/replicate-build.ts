@@ -1,4 +1,5 @@
 import { findClaims } from "./claims";
+import { allowedCssUrl } from "./custom-css";
 import {
   BLOCKS_MAX,
   ROWS_MAX,
@@ -19,6 +20,7 @@ import {
   type VideoRatio,
 } from "./page-content";
 import type { ReplicaNote } from "./replicate";
+import { fallbackStack } from "./replicate-fonts";
 import {
   backgroundUrls,
   bottomOf,
@@ -100,6 +102,7 @@ export const ROW_GAP = 32;
 export const SHARED_CSS =
   ".rp.rp :is(h1,h2,h3,h4,h5,h6,p,ul,ol,li,blockquote){margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;text-align:inherit;line-height:inherit}\n" +
   ".rp.rp .rich-text{line-height:inherit;overflow-wrap:normal}\n.rp.rp .rich-text a{text-decoration:none;color:inherit}\n" +
+  ".rp.rp{margin:0;width:auto;max-width:none;border:0 none;border-radius:0;box-shadow:none}\n" +
   ".rp.rp figure{margin:0}\n.rp.rp img{display:block;max-width:100%}\n.rp.rp hr{margin:0}";
 
 // ---------------------------------------------------------------------------
@@ -164,7 +167,7 @@ function lines(nodes: CaptureNode[]): CaptureNode[][] {
   return result.map((line) => line.items.sort((a, b) => a.box[0] - b.box[0]));
 }
 
-type Item = { kind: "leaf"; node: CaptureNode } | { kind: "split"; cols: CaptureNode[] } | { kind: "box"; node: CaptureNode; items: Item[] };
+type Item = { kind: "leaf"; node: CaptureNode } | { kind: "split"; cols: CaptureNode[]; scroller?: CaptureNode } | { kind: "box"; node: CaptureNode; items: Item[] };
 
 /** What is in a box, top to bottom: pieces of content, boxes side by side, and boxes that paint. */
 function flow(node: CaptureNode): Item[] {
@@ -177,7 +180,7 @@ function flow(node: CaptureNode): Item[] {
       else if (paintsBox(child)) items.push({ kind: "box", node: child, items: flow(child) });
       else items.push(...flow(child));
     } else {
-      items.push({ kind: "split", cols: line });
+      items.push({ kind: "split", cols: line, ...(node.scroll ? { scroller: node } : {}) });
     }
   }
   return items;
@@ -212,7 +215,7 @@ function descend(node: CaptureNode): CaptureNode {
 
 type ColSpec = { path: string | null; paint: boolean; leaves: CaptureNode[]; /** Its content is one line of pieces (a menu, a row of buttons): the builder's side by side column. */ inline?: boolean };
 /** `stack`: content one under another; `split`: boxes side by side; `card`: one painted box. */
-type RowSpec = { frame: CaptureNode | null; kind: "stack" | "split" | "card"; cols: ColSpec[]; nested: boolean };
+type RowSpec = { frame: CaptureNode | null; kind: "stack" | "split" | "card"; cols: ColSpec[]; nested: boolean; /** The box whose cards scroll sideways: the row is a track, not a grid that fits. */ scroller?: CaptureNode };
 
 function rowSpecs(items: Item[], frame: CaptureNode | null): RowSpec[] {
   const specs: RowSpec[] = [];
@@ -236,7 +239,7 @@ function rowSpecs(items: Item[], frame: CaptureNode | null): RowSpec[] {
         if (line) return { path: col.p, paint: paintsBox(col), leaves: leavesOf(inside), inline: true, nested: false };
         return { path: col.p, paint: paintsBox(col), leaves: leavesOf(inside), nested: inside.some((i) => i.kind === "split" || i.kind === "box") };
       });
-      specs.push({ frame, kind: "split", cols, nested: cols.some((c) => c.nested) });
+      specs.push({ frame, kind: "split", cols, nested: cols.some((c) => c.nested), ...(item.scroller ? { scroller: item.scroller } : {}) });
     }
   }
   flush();
@@ -427,13 +430,15 @@ function bands(specs: RowSpec[], get: Get, docWidth: number): (Band | null)[] {
     const found = cols.filter((c): c is CaptureNode => Boolean(c));
     const boxes = spec.kind === "stack" ? leaves : found;
     if (boxes.length === 0 || (spec.kind !== "stack" && found.length === 0)) return null;
+    // A track's cards run past its edge: its content is as wide as the track shows.
+    const track = spec.scroller ? get(spec.scroller.p) : null;
     return {
       cols,
       leaves,
       top: Math.min(...boxes.map((b) => b.box[1])),
       bottom: Math.max(...boxes.map((b) => bottomOf(b.box))),
-      contentLeft: Math.min(...boxes.map((b) => b.box[0])),
-      contentRight: Math.max(...boxes.map((b) => rightOf(b.box))),
+      contentLeft: track ? Math.max(track.box[0], Math.min(...boxes.map((b) => b.box[0]))) : Math.min(...boxes.map((b) => b.box[0])),
+      contentRight: track ? Math.min(rightOf(track.box), Math.max(...boxes.map((b) => rightOf(b.box)))) : Math.max(...boxes.map((b) => rightOf(b.box))),
     };
   });
   const result: (Band | null)[] = [];
@@ -472,9 +477,77 @@ function bands(specs: RowSpec[], get: Get, docWidth: number): (Band | null)[] {
 // The build
 // ---------------------------------------------------------------------------
 
+/**
+ * A picture laid behind a whole section (an `img` placed absolutely over a box and as large as it, as hero art often is) is that
+ * box's background: the box paints it, and the picture is no longer a piece of content in the flow. Works on a copy of the capture.
+ */
+export function liftBackdrops(capture: PageCapture): { capture: PageCapture; lifted: number } {
+  const root = structuredClone(capture.root) as CaptureNode;
+  let lifted = 0;
+  const visit = (node: CaptureNode, ancestors: CaptureNode[]) => {
+    for (const child of [...node.children]) {
+      const m = child.media;
+      if (m?.kind === "img" && child.s.position === "absolute" && (!child.s.objectFit || child.s.objectFit === "cover" || child.s.objectFit === "fill") && child.box[2] * child.box[3] >= 40_000) {
+        const chain = [...ancestors, node];
+        // The lowest box that holds the picture; it is the picture's section only if the picture is nearly all of it.
+        for (let i = chain.length - 1; i >= 1; i--) {
+          const a = chain[i];
+          const holds = a.box[0] <= child.box[0] + 3 && rightOf(a.box) >= rightOf(child.box) - 3 && a.box[1] <= child.box[1] + 3 && bottomOf(a.box) >= bottomOf(child.box) - 3;
+          if (!holds) continue;
+          if (child.box[2] >= a.box[2] * 0.85 && child.box[3] >= a.box[3] * 0.85 && (!a.s.backgroundImage || a.s.backgroundImage === "none")) {
+            a.s = { ...a.s, backgroundImage: `url("${m.url}")`, backgroundSize: "cover", backgroundPosition: child.s.objectPosition ?? "50% 50%", backgroundRepeat: "no-repeat" };
+            a.bg = [m.url, ...(a.bg ?? [])];
+            node.children = node.children.filter((c) => c !== child);
+            lifted += 1;
+          }
+          break;
+        }
+      }
+    }
+    for (const child of node.children) visit(child, [...ancestors, node]);
+  };
+  visit(root, []);
+  return { capture: { ...capture, root }, lifted };
+}
+
+const BUTTON_TEXT_STYLES = ["color", "fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textTransform", "textDecorationLine", "whiteSpace"] as const;
+
+/**
+ * A link or button that paints (a fill or a border) and holds one piece of text (often in a span of its own) is a button: the
+ * text's words and type are folded into it, so it is one piece of content that keeps its own face wherever it stands, not a
+ * box whose paint belongs to a column. A button with an icon or other content beside its words is left as it is. Works on a copy.
+ */
+export function foldButtons(capture: PageCapture): { capture: PageCapture; folded: number } {
+  const root = structuredClone(capture.root) as CaptureNode;
+  let folded = 0;
+  const visit = (node: CaptureNode) => {
+    const isButton = (node.tag === "a" || node.tag === "button") && node.runs === undefined && !node.media && node.children.length > 0 && hasSize(node);
+    if (isButton && (paints(node.s.backgroundColor) || SIDES.some((side) => borderOf(node, side) > 0))) {
+      const inside = [...walk(node)].slice(1);
+      const texts = inside.filter((n) => n.runs !== undefined && runsText(n.runs) !== "");
+      const other = inside.some((n) => n.media !== undefined || (n.runs === undefined && n.children.length === 0 && paintsBox(n) && hasSize(n)));
+      if (texts.length === 1 && !other) {
+        const text = texts[0];
+        node.runs = text.runs;
+        node.button = true;
+        node.children = [];
+        for (const key of BUTTON_TEXT_STYLES) if (text.s[key] !== undefined && node.s[key] === undefined) node.s = { ...node.s, [key]: text.s[key] };
+        folded += 1;
+        return;
+      }
+    }
+    for (const child of node.children) visit(child);
+  };
+  visit(root);
+  return { capture: { ...capture, root }, folded };
+}
+
+/** What a capture needs done before it is built: buttons folded, backdrops lifted. */
+const prepared = (capture: PageCapture): PageCapture => liftBackdrops(foldButtons(capture).capture).capture;
+
 export function buildReplica(input: BuildInput, newId: () => string): BuildOutput {
-  const desktop = input.desktop;
-  const mobile = input.mobile;
+  const desktop = prepared(input.desktop);
+  const mobile = input.mobile ? prepared(input.mobile) : null;
   const dIndex = indexByPath(desktop.root);
   const mIndex = mobile ? indexByPath(mobile.root) : null;
   const getD: Get = (p) => dIndex.get(p);
@@ -513,7 +586,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     if (family === "") return {};
     const installed = input.font(family);
     if (installed) return { native: installed };
-    return { css: stack.length <= 240 ? stack : family };
+    return { css: stack.length <= 240 ? stack : fallbackStack(stack) };
   };
 
   /** The page's own colour behind a row that paints none, so what shows through is as the original's. */
@@ -836,6 +909,30 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   let previousBottom = 0;
   let previousBottomM = 0;
   const firstOfFrame = new Set<string>();
+  // A painted box that makes several rows (a card with a heading, then two buttons) is drawn in slices: each row keeps the
+  // sides, the first the top edge and its corners, the last the bottom edge and its corners, so the box is one box again.
+  const frameRows = new Map<string, number>();
+  for (const sp of specs) if (sp.frame) frameRows.set(sp.frame.p, (frameRows.get(sp.frame.p) ?? 0) + 1);
+  const frameSeen = new Map<string, number>();
+  const sliceFrame = (decl: Decl, first: boolean, last: boolean): Decl => {
+    if (first && last) return decl;
+    const out: Decl = { ...decl };
+    const radii = (out["border-radius"] ?? "0px 0px 0px 0px").split(" ");
+    while (radii.length < 4) radii.push(radii[0] ?? "0px");
+    if (!first) {
+      out["border-top"] = "0 none";
+      radii[0] = "0px";
+      radii[1] = "0px";
+    }
+    if (!last) {
+      out["border-bottom"] = "0 none";
+      radii[2] = "0px";
+      radii[3] = "0px";
+    }
+    out["border-radius"] = radii.join(" ");
+    out["box-shadow"] = "none";
+    return out;
+  };
   const frameImage = new Map<string, { url: string; width: number; height: number }>();
 
   specs.forEach((spec, index) => {
@@ -845,11 +942,14 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     const frame = spec.frame;
     const first = !frame || !firstOfFrame.has(frame.p);
     if (frame) firstOfFrame.add(frame.p);
+    const nth = frame ? (frameSeen.get(frame.p) ?? 0) : 0;
+    if (frame) frameSeen.set(frame.p, nth + 1);
+    const lastOfFrame = !frame || nth + 1 >= (frameRows.get(frame.p) ?? 1);
     const rowId = nextId();
     const native: { background?: Background } = {};
 
     // The row: the section's paint (on each of its rows, but a picture only on the first), its room and its place.
-    const paintD = frame ? paintDecl(frame, native) : {};
+    const paintD = frame ? sliceFrame(paintDecl(frame, native), first, lastOfFrame) : {};
     if (frame && first && native.background?.type === "image") frameImage.set(frame.p, native.background.image);
     const image = frame ? frameImage.get(frame.p) : undefined;
     if (frame && !first) {
@@ -883,7 +983,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
         "padding-left": pxs(Math.max(0, phoneBand.contentLeft - phoneBand.left)),
         "padding-right": pxs(Math.max(0, phoneBand.right - phoneBand.contentRight)),
         ...(frame && pFrame ? placed(pFrame.box[0], pFrame.box[2], 0, mobile!.docWidth) : { width: "auto", "max-width": "none", "margin-left": "0", "margin-right": "0" }),
-        ...(pFrame ? paintDecl(pFrame) : {}),
+        ...(pFrame ? sliceFrame(paintDecl(pFrame), first, lastOfFrame) : {}),
       };
       if (!first) {
         for (const key of ["background-image", "background-size", "background-position", "background-repeat"]) delete rowM[key];
@@ -892,6 +992,21 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       previousBottomM = phoneBand.outerBottom;
     } else if (mBands) {
       rowM = { display: "none" };
+    }
+    // A picture that fills a section on computers but is not there on phones is drawn by the section's CSS, so the phone's rule can take it away.
+    if (frame && native.background?.type === "image" && getM) {
+      const pFrame = getM(frame.p);
+      const phoneHas = pFrame !== undefined && pFrame !== null && ((pFrame.bg?.length ?? 0) > 0 || (pFrame.s.backgroundImage !== undefined && pFrame.s.backgroundImage !== "none"));
+      if (!phoneHas && allowedCssUrl(native.background.image.url)) {
+        const picture = native.background.image;
+        delete native.background;
+        rowD["background-image"] = `url("${picture.url}")`;
+        rowD["background-size"] = "cover";
+        rowD["background-position"] = "50% 50%";
+        rowD["background-repeat"] = "no-repeat";
+        rowM["background-image"] = "none";
+        if (!paintD["background-color"]) native.background = { type: "color", color: pageColour };
+      }
     }
     put(rowId, "", rowD, rowM);
     if (symmetric) {
@@ -903,7 +1018,9 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     // The columns' grid: widths in proportion, the gap between them, and at phones' width stacked or kept side by side.
     const colBoxes = band.cols;
     const split = spec.kind === "split" && colBoxes.every(Boolean) && colBoxes.length > 1;
-    const template = split ? colBoxes.map((c) => `minmax(0, ${round(c!.box[2])}fr)`).join(" ") : null;
+    // A track of cards that scroll sideways keeps the cards' own widths and scrolls, instead of squeezing them into the row.
+    const track = Boolean(spec.scroller) && split;
+    const template = split ? colBoxes.map((c) => (track ? pxs(c!.box[2]) : `minmax(0, ${round(c!.box[2])}fr)`)).join(" ") : null;
     const gapOf = (boxes: (CaptureNode | null)[]) => {
       const found = boxes.filter((c): c is CaptureNode => Boolean(c));
       if (found.length < 2) return 0;
@@ -912,14 +1029,16 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     };
     const phoneBoxes = phoneBand ? phoneBand.cols : null;
     const sideBySide =
-      split && phoneBoxes !== null && phoneBoxes.every(Boolean) && phoneBoxes.every((c) => Math.abs(c!.box[1] - phoneBoxes[0]!.box[1]) < Math.min(c!.box[3], phoneBoxes[0]!.box[3]) * 0.5);
+      track || (split && phoneBoxes !== null && phoneBoxes.every(Boolean) && phoneBoxes.every((c) => Math.abs(c!.box[1] - phoneBoxes[0]!.box[1]) < Math.min(c!.box[3], phoneBoxes[0]!.box[3]) * 0.5));
     const gridD: Decl = { "column-gap": pxs(gapOf(colBoxes)), "row-gap": "0px" };
     if (template) gridD["grid-template-columns"] = template;
+    if (track) gridD["overflow-x"] = "auto";
     const gridM: Decl = {};
+    if (track) gridM["overflow-x"] = "auto";
     if (split && phoneBoxes && phoneBoxes.every(Boolean)) {
       if (sideBySide) {
         gridM["column-gap"] = pxs(gapOf(phoneBoxes));
-        gridM["grid-template-columns"] = phoneBoxes.map((c) => `minmax(0, ${round(c!.box[2])}fr)`).join(" ");
+        gridM["grid-template-columns"] = phoneBoxes.map((c) => (track ? pxs(c!.box[2]) : `minmax(0, ${round(c!.box[2])}fr)`)).join(" ");
       } else {
         const sorted = [...phoneBoxes].sort((a, b) => a!.box[1] - b!.box[1]);
         gridM["row-gap"] = pxs(Math.max(0, sorted[1]!.box[1] - bottomOf(sorted[0]!.box)));
@@ -956,6 +1075,11 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
             colM["padding-left"] = pxs(phoneRoom.room.left);
             colM["margin-top"] = "0px";
             colM["min-height"] = "0px";
+            // Stacked on phones but narrower than the row there (a logo, a badge): keeps its own width and place.
+            if (split && !sideBySide && phoneBand && phoneCol.box[2] < (phoneBand.contentRight - phoneBand.contentLeft) * 0.9) {
+              colM.width = pxs(phoneCol.box[2]);
+              colM["margin-left"] = pxs(Math.max(0, phoneCol.box[0] - phoneBand.contentLeft));
+            }
           } else colM.display = "none";
         }
       }

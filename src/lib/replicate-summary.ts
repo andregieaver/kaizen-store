@@ -12,7 +12,7 @@ export type SummaryFacts = {
   notes: ReplicaNote[];
   words: number;
   counts: ReplicaSummary["counts"];
-  assets: { picturesOk: number; picturesFailed: number; videosOk: number; videosFailed: number; fontsInstalled: string[]; fontsFailed: string[]; shots: number };
+  assets: { picturesOk: number; picturesFailed: number; videosOk: number; videosFailed: number; fontsInstalled: string[]; fontsStandIn: { from: string; to: string }[]; fontsFailed: string[]; shots: number };
   passes: ReplicaPass[];
   iterationsAsked: number;
   stoppedEarly: boolean;
@@ -67,6 +67,7 @@ export function buildSummary(f: SummaryFacts): ReplicaSummary {
   if (!f.vision.used) problems.push(f.vision.why ?? "The site's AI did not look at the pictures, so the copy was corrected by measuring only. Choose a text model that sees pictures under AI settings to let it judge colours and shapes too.");
   if (f.assets.picturesFailed > 0 && !f.notes.some((n) => /could not be downloaded/.test(n.text))) problems.push(`${plural(f.assets.picturesFailed, "picture")} could not be downloaded.`);
   if (f.assets.videosFailed > 0) problems.push(`${plural(f.assets.videosFailed, "video")} could not be copied.`);
+  for (const stand of f.assets.fontsStandIn) problems.push(`${stand.from} is not in Google Fonts; its nearest look-alike, ${stand.to}, is used instead, so letters differ slightly.`);
   if (f.assets.fontsFailed.length > 0) problems.push(`Not in Google Fonts, so the original's own font stack is used (the browser's font where it has none): ${f.assets.fontsFailed.join(", ")}.`);
   for (const hard of f.analysis?.hard ?? []) problems.push(`The AI flagged this as hard to copy: ${hard}`);
   for (const note of f.notes) if (note.level !== "ok") problems.push(note.text);

@@ -123,7 +123,7 @@ describe("the replicator's report", () => {
     plain.extras = undefined;
     plain.fonts = [];
     plain.left.fixed = [];
-    const report = buildReport(facts({ desktop: plain, dropped: [], parts: [], passes: [], assets: null, vision: { used: true, why: null }, log: [], cssLength: null }));
+    const report = buildReport(facts({ desktop: plain, mobile: plain, dropped: [], parts: [], passes: [], assets: null, vision: { used: true, why: null }, log: [], cssLength: null }));
     expect(report.findings).toEqual([]);
     expect(reportMarkdown(report)).toContain("None: nothing was found");
   });
