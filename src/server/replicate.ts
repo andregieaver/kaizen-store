@@ -15,6 +15,7 @@ import { hexOf, runsText, walk, type PageCapture } from "@/lib/replicate-capture
 import { compareRasters, isPerfect } from "@/lib/replicate-diff";
 import { applyPatchPlan } from "@/lib/replicate-patches";
 import { digestOf, partLine, textNodes } from "@/lib/replicate-prompts";
+import { buildReport, finalDiffOf } from "@/lib/replicate-report";
 import { buildSummary } from "@/lib/replicate-summary";
 import { renderStyles } from "@/lib/replicate-styles";
 import { parseReplicaUrl } from "@/lib/replicate-url";
@@ -202,6 +203,13 @@ const stopIfAsked = (tick: Tick) => {
 // Step: open the page
 // ---------------------------------------------------------------------------
 
+/** The first line of why a browser did not start, for the owner and whoever fixes it; never a path or a secret. */
+function browserReason(error: unknown): string {
+  const text = error instanceof Error ? error.message.split("\n")[0] : "";
+  const clean = text.replace(/\/[^\s'"]+/g, "…").replace(/\s+/g, " ").trim().slice(0, 160);
+  return clean ? ` (${clean}).` : ".";
+}
+
 async function stepOpen(tick: Tick): Promise<void> {
   const { row, say, owner } = tick;
   const host = new URL(row.url).hostname;
@@ -211,7 +219,7 @@ async function stepOpen(tick: Tick): Promise<void> {
     browser = await launchBrowser();
   } catch (error) {
     console.error("[replicate] browser", error);
-    throw new Failed("The browser that looks at pages could not be started on this server.");
+    throw new Failed(`The browser that looks at pages could not be started on this server${browserReason(error)}`);
   }
   try {
     let desktop;
@@ -490,7 +498,7 @@ async function stepBuild(tick: Tick): Promise<void> {
   await setPage(row.id, saved.id);
   await say("ok", `Built the page as a draft: ${built.counts.rows} rows and ${built.counts.blocks} blocks (${built.counts.headings} headings, ${built.counts.texts} text blocks, ${built.counts.pictures} pictures, ${built.counts.buttons} buttons, ${built.counts.videos} videos).`);
   for (const note of notes.slice(0, 8)) await say(note.level === "ok" ? "ok" : "warn", note.text);
-  await patchWork(row.id, { model: built.model, parts: built.parts, shared: built.shared, notes, counts: built.counts, cssLength: styled.css.length, passes: [] });
+  await patchWork(row.id, { model: built.model, parts: built.parts, shared: built.shared, notes, counts: built.counts, dropped: built.dropped, cssLength: styled.css.length, cssTrimmed: styled.trimmed ?? null, passes: [] });
   await setPhase(row.id, "refine", 0);
 }
 
@@ -522,8 +530,9 @@ async function stepRefine(tick: Tick): Promise<void> {
   let browser;
   try {
     browser = await launchBrowser();
-  } catch {
-    throw new Failed("The browser that looks at pages could not be started on this server.");
+  } catch (error) {
+    console.error("[replicate] browser", error);
+    throw new Failed(`The browser that looks at pages could not be started on this server${browserReason(error)}`);
   }
   try {
     const desktop = await openCopy(browser, frameUrl, "desktop").catch((error: Error) => {
@@ -541,9 +550,11 @@ async function stepRefine(tick: Tick): Promise<void> {
     const [od, cd] = await Promise.all([rasterOf(originalDesktop, width), rasterOf(desktop.screenshot, width)]);
     const scoreDesktop = compareRasters(od.raster, cd.raster, od.scale);
     let scoreMobile = null;
+    let phoneSide: Parameters<typeof finalDiffOf>[2] = null;
     if (mobile && originalMobile) {
       const [om, cm] = await Promise.all([rasterOf(originalMobile, 130), rasterOf(mobile.screenshot, 130)]);
       scoreMobile = compareRasters(om.raster, cm.raster, om.scale);
+      phoneSide = { original: om.raster, copy: cm.raster, scale: om.scale, capture: mobile.capture };
     }
     const pass: ReplicaPass = { iteration: k, desktop: scoreDesktop, mobile: scoreMobile, changes: [] };
     const passes = [...(work.passes ?? []), pass];
@@ -575,7 +586,7 @@ async function stepRefine(tick: Tick): Promise<void> {
 
     const perfect = isPerfect(scoreDesktop) && isPerfect(scoreMobile);
     if (k >= max || perfect) {
-      if (perfect && k < max) await patchWork(row.id, { stoppedEarly: true });
+      await patchWork(row.id, { ...(perfect && k < max ? { stoppedEarly: true } : {}), finalDiff: finalDiffOf(parts, { original: od.raster, copy: cd.raster, scale: od.scale, capture: desktop.capture }, phoneSide) });
       await conclude(owner, (await getRow(row.id, owner.storeId)) ?? row, "done", null);
       return;
     }
@@ -596,6 +607,7 @@ async function stepRefine(tick: Tick): Promise<void> {
     const connection = await tick.connection();
     const vision = work.vision?.used !== false && connection?.textModel ? connection : null;
     let blind = false;
+    let observed: ReplicaPass["ai"] | undefined;
     if (vision && originalDesktop) {
       const regions = scoreDesktop.weakest.slice(0, 2).map((w) => ({ ...w, y: Math.max(0, w.y - 20), height: Math.min(900, w.height + 40) }));
       const phoneRegion = scoreMobile?.weakest[0] ? { y: Math.max(0, scoreMobile.weakest[0].y - 20), height: Math.min(1000, scoreMobile.weakest[0].height + 40) } : null;
@@ -626,6 +638,7 @@ async function stepRefine(tick: Tick): Promise<void> {
           if (applied.refused.length > 0) await say("warn", `${applied.refused.length} suggested change${applied.refused.length === 1 ? " was" : "s were"} not allowed and left out.`);
           for (const note of answer.value.notes.slice(0, 3)) await say("info", `The AI could not fix: ${note}`);
           changes.push(...applied.applied.slice(0, 20));
+          observed = { summary: answer.value.summary ?? "", couldNotFix: answer.value.notes.slice(0, 8), refused: applied.refused.slice(0, 15), applied: applied.applied.length };
         } else {
           await say("warn", answer.problem);
           if (answer.blind) {
@@ -642,7 +655,7 @@ async function stepRefine(tick: Tick): Promise<void> {
     // Save the page's CSS as it is now, and move on to the next pass.
     const styled = renderStyles(model, work.shared ?? "");
     await saveDraftCss(row, owner.account.id, styled.css);
-    passes[passes.length - 1] = { ...pass, changes };
+    passes[passes.length - 1] = { ...pass, changes, ...(observed ? { ai: observed } : {}) };
     await patchWork(row.id, { model, passes, cssLength: styled.css.length });
     await setPhase(row.id, "refine", k + 1);
   } finally {
@@ -682,6 +695,36 @@ async function conclude(owner: ReplicaOwner, row: ReplicaRow, outcome: "done" | 
     page,
     analysis: work.analysis ? { summary: work.analysis.summary, hard: work.analysis.hard } : null,
   });
+  const captured = await readCapture(row.id).catch(() => null);
+  if (captured) {
+    const report = buildReport({
+      now: new Date().toISOString(),
+      url: row.url,
+      outcome,
+      problem,
+      iterationsAsked: row.iterationsMax,
+      stoppedEarly: Boolean(work.stoppedEarly),
+      vision: { used: work.vision?.used ?? false, why: work.vision?.why ?? null },
+      desktop: captured.desktop,
+      mobile: captured.mobile,
+      parts: work.parts ?? [],
+      counts: summary.counts,
+      words: work.words ?? 0,
+      notes: work.notes ?? [],
+      dropped: work.dropped ?? [],
+      passes: work.passes ?? [],
+      finalDiff: work.finalDiff ?? null,
+      assets: assets ? { pictures: assets.pictures, videos: assets.videos, shots: assets.shots, fonts: assets.fonts, failures: assets.failures } : null,
+      analysis: work.analysis ?? null,
+      cssLength: work.cssLength ?? null,
+      cssTrimmed: work.cssTrimmed ?? null,
+      log: row.log,
+    });
+    summary.report = report;
+    // What the report found beyond the notes above is said in the summary too, in one line each.
+    const said = new Set(["forms", "nested", "shapes", "pictures", "videos", "fonts", "limits", "no-vision", "ai-hard", "graphics"]);
+    for (const finding of report.findings.filter((x) => x.severity !== "low" && !said.has(x.id)).slice(0, 6)) summary.problems.push(`${finding.title}: ${finding.evidence[0] ?? ""}`.trim());
+  }
   await finishRow(row.id, outcome, summary);
   await writeLog(row.id, "done", outcome === "done" ? "ok" : outcome === "aborted" ? "warn" : "error", outcome === "done" ? "Finished. The summary is below." : outcome === "aborted" ? "Stopped." : `Stopped: ${problem ?? "the copy could not be made."}`);
   await audit(owner.account.id, owner.storeId, "store.page_replicated", { job: row.id, outcome, page: row.pageId, match: summary.finalMatch.desktop, iterations: (work.passes ?? []).length - 1 });

@@ -15,6 +15,7 @@ import {
   type ReplicaLogEntry,
   type ReplicaPass,
 } from "@/lib/replicate";
+import { reportMarkdown, type ReplicaReport } from "@/lib/replicate-report";
 
 /**
  * Copying another website's page (D150), on the AI studio's page: the owner types an address and how many times the AI
@@ -437,6 +438,7 @@ function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
           </ul>
         </div>
       )}
+      {summary.report ? <ReportCard report={summary.report} /> : null}
       {summary.page ? (
         <div className="flex flex-wrap gap-2">
           <Link href={`${pagesHref}/${summary.page.id}/preview`} className={primary} target="_blank">
@@ -448,6 +450,74 @@ function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
         </div>
       ) : null}
       <p className="text-xs text-muted">The copy is a draft: its address, search texts and links are the original&apos;s, and it is hidden from search engines until you publish it. Its text is the original&apos;s and may need to be changed to be yours.</p>
+    </div>
+  );
+}
+
+/** The report for whoever improves the replicator: the findings at a glance, and the whole of it as Markdown to copy or save. */
+function ReportCard({ report }: { report: ReplicaReport }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const markdown = () => reportMarkdown(report);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(markdown());
+      setState("copied");
+    } catch {
+      setState("failed");
+    }
+    window.setTimeout(() => setState("idle"), 3000);
+  };
+  const download = () => {
+    let host = "page";
+    try {
+      host = new URL(report.source.url).hostname.replace(/[^a-z0-9.-]/gi, "-");
+    } catch {
+      /* keep the default */
+    }
+    const url = URL.createObjectURL(new Blob([markdown()], { type: "text/markdown;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `replicator-report-${host}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const tone = { high: "text-red-700", medium: "text-amber-700 dark:text-amber-300", low: "text-muted" } as const;
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-3">
+      <h4 className="text-sm font-medium">Report for improving the replicator</h4>
+      <p className="text-xs text-muted">
+        Every gap the copy has, with what was counted in the original, the change that would close it and the files to start in. Copy it and use it as the brief for a change to the replicator or the page builder.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={secondary} onClick={copy}>
+          {state === "copied" ? "Copied" : state === "failed" ? "Could not copy: use Download" : "Copy the report"}
+        </button>
+        <button type="button" className={secondary} onClick={download}>
+          Download as Markdown
+        </button>
+      </div>
+      {report.findings.length > 0 ? (
+        <details>
+          <summary className="cursor-pointer text-sm">
+            {report.findings.length} finding{report.findings.length === 1 ? "" : "s"}
+          </summary>
+          <ol className="mt-2 flex flex-col gap-2 text-sm">
+            {report.findings.map((finding) => (
+              <li key={finding.id}>
+                <span className={`text-xs font-medium uppercase ${tone[finding.severity]}`}>{finding.severity}</span> <span className="font-medium">{finding.title}</span>
+                <span className="text-xs text-muted"> — {finding.area === "builder" ? "builder component missing" : finding.area === "both" ? "builder and replicator" : "replicator"}</span>
+                <ul className="mt-0.5 list-disc pl-5 text-xs text-muted">
+                  {finding.evidence.slice(0, 3).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : (
+        <p className="text-sm">Nothing was found that the copy lacks.</p>
+      )}
     </div>
   );
 }

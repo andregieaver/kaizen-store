@@ -72,11 +72,45 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
   let hidden = 0;
   const fixed: string[] = [];
   const fontUse = new Map<string, { family: string; weight: string; style: string; chars: number }>();
+  const extras = {
+    pseudo: [] as { sel: string; y: number; note?: string }[],
+    animated: [] as { sel: string; y: number; note?: string }[],
+    sticky: [] as { sel: string; y: number; note?: string }[],
+    scrollers: [] as { sel: string; y: number; note?: string }[],
+    roles: [] as { sel: string; y: number; note?: string }[],
+    total: { pseudo: 0, animated: 0, sticky: 0, scrollers: 0, roles: 0 },
+  };
+  const ROLES = ["tablist", "tab", "tabpanel", "dialog", "alertdialog", "slider", "menu", "menubar", "marquee", "timer", "progressbar", "carousel"];
 
   function describe(el: Element): string {
-    const id = el.id ? `#${el.id}` : "";
-    const cls = typeof el.className === "string" && el.className.trim() ? `.${el.className.trim().split(/\s+/)[0]}` : "";
-    return `${el.tagName.toLowerCase()}${id}${cls}`.slice(0, 60);
+    const id = el.id && !/^rp\d+$/.test(el.id) ? `#${el.id}` : "";
+    const cls = typeof el.className === "string" && el.className.trim() ? `.${el.className.trim().split(/\s+/).slice(0, 3).join(".")}` : "";
+    return `${el.tagName.toLowerCase()}${id}${cls}`.slice(0, 70);
+  }
+
+  function note(kind: "pseudo" | "animated" | "sticky" | "scrollers" | "roles", el: Element, y: number, text?: string) {
+    extras.total[kind] += 1;
+    if (extras[kind].length < 15) extras[kind].push(text ? { sel: describe(el), y: Math.round(y), note: text } : { sel: describe(el), y: Math.round(y) });
+  }
+
+  /** What an element does that its box does not show. */
+  function observe(el: Element, cs: CSSStyleDeclaration, y: number) {
+    if (cs.position === "sticky") note("sticky", el, y);
+    if (cs.animationName !== "none" && cs.animationName !== "" && cs.animationDuration !== "0s") note("animated", el, y, cs.animationName.split(",")[0]);
+    if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && el.scrollWidth > el.clientWidth + 4) note("scrollers", el, y);
+    const role = el.getAttribute("role") || "";
+    const roledescription = (el.getAttribute("aria-roledescription") || "").toLowerCase();
+    if (ROLES.indexOf(role) >= 0) note("roles", el, y, role);
+    else if (roledescription) note("roles", el, y, roledescription);
+    for (const which of ["::before", "::after"]) {
+      const pseudo = win.getComputedStyle(el, which);
+      const content = pseudo.content;
+      if (content === "none" || content === "normal" || content === "") continue;
+      const empty = content === '""' || content === "''";
+      const paints = pseudo.backgroundImage !== "none" || pseudo.backgroundColor !== "rgba(0, 0, 0, 0)";
+      if (empty && !(paints && parseFloat(pseudo.width) > 0 && parseFloat(pseudo.height) > 0)) continue;
+      note("pseudo", el, y, `${which} ${empty ? "a shape" : content.slice(0, 30)}`);
+    }
   }
 
   function styleOf(cs: CSSStyleDeclaration, text: boolean, boxy: boolean): Record<string, string> {
@@ -282,6 +316,9 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     const media = mediaOf(el, cs);
     const text = !media && isTextual(el);
     const node: CaptureNode = { p: path, tag, box, s: styleOf(cs, text || tag === "li", true), children: [] };
+    const sel = describe(el);
+    if (sel !== tag) node.sel = sel;
+    if (path !== "") observe(el, cs, box[1]);
     if (media) node.media = media;
     if (el.id && /^rp\d+$/.test(el.id)) node.id = el.id;
     if (media && (media.kind === "svg" || media.kind === "canvas")) el.setAttribute("data-rp", path);
@@ -357,5 +394,6 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     root,
     fonts: Array.from(fontUse.values()).sort((a, b) => b.chars - a.chars),
     left: { fixed: fixed.slice(0, 20), hidden, capped },
+    extras,
   };
 }

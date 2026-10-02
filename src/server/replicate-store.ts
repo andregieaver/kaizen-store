@@ -3,10 +3,11 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import type { PartInfo } from "@/lib/replicate-build";
+import type { Dropped, PartInfo } from "@/lib/replicate-build";
 import type { PageCapture } from "@/lib/replicate-capture";
 import { LOG_MAX, appendLog, finished, progressOf, type LogLevel, type ReplicaJob, type ReplicaLogEntry, type ReplicaNote, type ReplicaPass, type ReplicaPhase, type ReplicaPreviews, type ReplicaStatus, type ReplicaSummary } from "@/lib/replicate";
 import type { Analysis } from "@/lib/replicate-prompts";
+import type { FinalDiff } from "@/lib/replicate-report";
 import { frameTokenValid, signFrame } from "@/lib/replicate-token";
 import type { StyleModel } from "@/lib/replicate-styles";
 
@@ -53,6 +54,12 @@ export type ReplicaWork = {
   parts?: PartInfo[];
   shared?: string;
   notes?: ReplicaNote[];
+  /** What the converter left out or simplified, with where it was in the original (for the report). */
+  dropped?: Dropped[];
+  /** How each row and part of the last copy compares with the original (for the report). */
+  finalDiff?: FinalDiff;
+  /** What the style came to, and what was cut from it to fit. */
+  cssTrimmed?: string | null;
   counts?: ReplicaSummary["counts"];
   words?: number;
   passes?: ReplicaPass[];

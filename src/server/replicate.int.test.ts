@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { closeDb, db } from "@/db/client";
 import { finished } from "@/lib/replicate";
 import type { Box, CaptureNode, PageCapture } from "@/lib/replicate-capture";
+import { reportMarkdown } from "@/lib/replicate-report";
 
 import type { Account } from "./auth";
 
@@ -229,6 +230,12 @@ describe("copying a page, from the address to the summary", () => {
     expect(summary.wentWell.join("\n")).toMatch(/as close as pixels allow/);
     expect(summary.wentWell.join("\n")).toMatch(/words of text were copied exactly/);
     expect(summary.wentWell.join("\n")).toMatch(/1 picture was downloaded/);
+    // The report for whoever improves the replicator: findings with evidence and where to start, and the whole of it as Markdown.
+    const report = summary.report!;
+    expect(report.source.url).toContain("source.test");
+    expect(report.rows.length).toBeGreaterThan(0);
+    expect(report.findings.every((f) => f.evidence.length > 0 && f.where.length > 0 && f.change !== "")).toBe(true);
+    expect(reportMarkdown(report)).toContain("## Findings, worst first");
     expect(summary.problems.join("\n")).toMatch(/1 picture could not be downloaded/);
     expect(summary.problems.join("\n")).toMatch(/hard to copy: A carousel/);
     expect(summary.page).not.toBeNull();

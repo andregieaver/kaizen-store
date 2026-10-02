@@ -19,10 +19,30 @@ export type NodeMedia =
   | { kind: "embed"; url: string; title: string }
   | { kind: "control"; type: string; label: string };
 
+/** A place in the page worth telling a developer about: a selector as the original wrote it, and how far down it is. */
+export type CaptureHit = { sel: string; y: number; note?: string };
+
+/** What the page does that boxes and styles do not say; counts are complete, the samples are the first few. */
+export type CaptureExtras = {
+  /** Content drawn by `::before` and `::after` (icons, quotes, badges, decorative shapes). */
+  pseudo: CaptureHit[];
+  /** Elements with a running CSS animation. */
+  animated: CaptureHit[];
+  /** Elements that stick to the screen as the page scrolls. */
+  sticky: CaptureHit[];
+  /** Boxes that scroll sideways inside themselves (carousels, tables, tab bars). */
+  scrollers: CaptureHit[];
+  /** Elements that say what they are with a role (`tablist`, `dialog`, `slider`, …). */
+  roles: CaptureHit[];
+  total: { pseudo: number; animated: number; sticky: number; scrollers: number; roles: number };
+};
+
 export type CaptureNode = {
   /** Where it is in the page: its element-child indexes from the body, `0/3/1`. The same page gives the same key at every width. */
   p: string;
   tag: string;
+  /** The element as a developer would name it: `section#hero.wide.dark`. Left out for a bare tag. */
+  sel?: string;
   /** The element's own id, kept where it is one of the copy's (`rp…`), so a copy's boxes are found by it. */
   id?: string;
   box: Box;
@@ -56,6 +76,7 @@ export type PageCapture = {
   fonts: CaptureFont[];
   /** What was left out: overlays kept off the screen (cookie banners, chat widgets), boxes that were hidden, and whether the node limit was reached. */
   left: { fixed: string[]; hidden: number; capped: boolean };
+  extras?: CaptureExtras;
 };
 
 /** The two widths a page is looked at. */

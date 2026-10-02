@@ -62,6 +62,27 @@ drawn (`PageDrawing`, its theme, fonts and CSS) without the admin around it, pai
 behind a sign-in, as the job's browser has none: the token (`src/lib/replicate-token.ts`) names one job, is signed with a key
 derived from `SETTINGS_ENCRYPTION_KEY`, and opens that job's draft for forty minutes, and nothing else.
 
+## The report for whoever improves it
+
+Every job ends with a report (`summary.report`, `src/lib/replicate-report.ts`) that the panel offers to copy or download as
+Markdown (`reportMarkdown()`), written to be pasted as the brief for the next change to the extractor, the converter or the
+builder. It is counted and measured in code; only text marked "AI" is a model's. It holds:
+
+- the verdict (match per width, passes, heights, what was built);
+- **findings**, worst first, each with its evidence (what was counted and where in the original, by selector and y), the change
+  that would close it, whether the **replicator** or the **builder** has to change (a component it lacks), and the files to start
+  in: forms, nested boxes, decorative shapes, graphics that could not be kept, embeds, accordions and tabs, carousels, tables,
+  pop-ups, pseudo-element content, animations, sticky elements, styles read but not written, gradients, pictures, videos and
+  fonts that failed, the rows that differ most, height drift, a weak phone layout, the builder's size limits, the style budget,
+  and what the AI could not fix or the whitelist refused;
+- the page outline (each row's selector in the original, y, height, match on computers and phones, the copy's own height, its blocks);
+- the largest box differences, part by part; what was left out, by selector; the original counted (tags, forms, gradients, patterns by
+  class name, sticky, animated, sideways scrollers); assets; the AI's reading and what it said each pass; the log's warnings.
+
+The extractor records a selector for each box (`CaptureNode.sel`) and what boxes do not say (`CaptureExtras`: pseudo-element content,
+animations, sticky elements, sideways scrollers, roles). A new kind of gap is a finding in `findingsOf()` with a test, and a new
+thing the converter leaves out is a `drop()` in `buildReplica()`, so it has a place and a selector in the report.
+
 ## Safety
 
 - The address is checked by `parseReplicaUrl()` (`src/lib/replicate-url.ts`): http(s) only, no sign-in details, the usual ports,
@@ -78,5 +99,5 @@ derived from `SETTINGS_ENCRYPTION_KEY`, and opens that job's draft for forty min
 
 ## What it does not do (yet)
 
-Forms, carousels and animations; fonts that are not in Google Fonts (the original's stack is used); pages that need a sign-in;
+Forms, carousels and animations (the report lists each one it finds, with where); fonts that are not in Google Fonts (the original's stack is used); pages that need a sign-in;
 several pages at once; Kaizen's own pages (the platform's studio has no copy button).

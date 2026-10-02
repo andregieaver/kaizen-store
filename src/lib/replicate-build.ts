@@ -75,6 +75,11 @@ export type PartInfo = {
   targetM: Box | null;
 };
 
+/** Something in the original that the copy does not have, or has only in part, named so a developer can find it. */
+export type DroppedKind = "form-field" | "shape" | "picture-missing" | "graphic-unphotographed" | "video-missing" | "video-still-only" | "nested-boxes" | "background-layers" | "rows-cut" | "blocks-cut" | "columns-cut";
+export type Dropped = { kind: DroppedKind; sel: string; y: number; box: Box | null; text?: string };
+export const DROPPED_MAX = 80;
+
 export type BuildOutput = {
   rows: PageRow[];
   model: StyleModel;
@@ -85,6 +90,8 @@ export type BuildOutput = {
   notes: ReplicaNote[];
   parts: PartInfo[];
   counts: { rows: number; blocks: number; headings: number; texts: number; pictures: number; buttons: number; videos: number };
+  /** What was left out or made simpler, with where it was in the original. */
+  dropped: Dropped[];
 };
 
 /** The page's own gap between rows (`gap-8` of `PageArticle`): a row's margin is what it needs beyond it, so down to this much less. */
@@ -479,6 +486,14 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   let seq = 0;
   const nextId = () => `rp${++seq}`;
   const skipped = { controls: 0, shapes: 0, missing: new Set<string>(), nested: 0 };
+  const dropped: Dropped[] = [];
+  const drop = (kind: DroppedKind, n: CaptureNode | null, text?: string) => {
+    if (dropped.length >= DROPPED_MAX) return;
+    const sel = n ? (n.sel ?? n.tag) : "";
+    const y = n ? Math.round(n.box[1]) : 0;
+    if (dropped.some((d) => d.kind === kind && d.sel === sel && d.y === y && d.text === text)) return;
+    dropped.push({ kind, sel, y, box: n ? n.box : null, ...(text ? { text: text.slice(0, 120) } : {}) });
+  };
   let h1Used = false;
   let claimed = false;
 
@@ -531,6 +546,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
             const copy = input.picture(url);
             if (!copy) {
               skipped.missing.add(url);
+              drop("picture-missing", n, `background ${url}`);
               return;
             }
             rewritten.push(`url("${copy.url}")`);
@@ -620,8 +636,13 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     if (media?.kind === "img" || media?.kind === "svg" || media?.kind === "canvas" || (media?.kind === "embed" && !embedSource(media.url))) {
       const picture = media.kind === "img" ? input.picture(media.url) : input.shot(leaf.p);
       if (!picture) {
-        if (media.kind === "img") skipped.missing.add(media.url);
-        else note("warn", `A ${media.kind === "svg" ? "vector graphic" : media.kind === "canvas" ? "canvas drawing" : "widget"} could not be photographed, so it is left out.`);
+        if (media.kind === "img") {
+          skipped.missing.add(media.url);
+          drop("picture-missing", leaf, media.url);
+        } else {
+          drop("graphic-unphotographed", leaf, media.kind === "embed" ? media.url : media.kind);
+          note("warn", `A ${media.kind === "svg" ? "vector graphic" : media.kind === "canvas" ? "canvas drawing" : "widget"} could not be photographed, so it is left out.`);
+        }
         return null;
       }
       const fit = leaf.s.objectFit && leaf.s.objectFit !== "fill" ? leaf.s.objectFit : "cover";
@@ -654,11 +675,13 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       const copy = media.url ? input.video(media.url) : null;
       const poster = media.poster ? input.picture(media.poster) : null;
       if (!copy && !poster) {
+        drop("video-missing", leaf, media.url ?? "no address");
         note("warn", "A video could not be copied (it is too large, streamed, or not a file a page can play), so it is left out.");
         return null;
       }
       register();
       if (!copy) {
+        drop("video-still-only", leaf, media.url ?? "no address");
         note("warn", "A video could not be copied; its still picture is used instead.");
         counts.pictures += 1;
         const image: ImageBlock = { ...base, type: "image", image: { url: poster!.url, width: poster!.width, height: poster!.height, alt: "" }, caption: "" };
@@ -776,12 +799,18 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       return block;
     }
     skipped.shapes += 1;
+    drop("shape", leaf, `${Math.round(leaf.box[2])}×${Math.round(leaf.box[3])}px`);
     return null;
   }
 
   // -- rows ------------------------------------------------------------------
   // Form fields have no block (a form needs its own recipient): counted where they stand, as no row holds them.
-  for (const n of walk(desktop.root)) if (n.media?.kind === "control" && hasSize(n)) skipped.controls += 1;
+  for (const n of walk(desktop.root)) {
+    if (n.media?.kind === "control" && hasSize(n)) {
+      skipped.controls += 1;
+      drop("form-field", n, `${n.media.type}${n.media.label ? `: ${n.media.label.slice(0, 40)}` : ""}`);
+    }
+  }
   const specs: RowSpec[] = [];
   let pending: Item[] = [];
   const flushPending = () => {
@@ -827,7 +856,10 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       if (native.background?.type === "image") delete native.background;
       for (const key of ["background-image", "background-size", "background-position", "background-repeat"]) delete paintD[key];
       if (image) Object.assign(paintD, continued(image, frame.box, band.outerTop - frame.box[1]));
-      else if (frame.bg && frame.bg.length > 0) note("warn", "A section with a complex background (layers or a gradient) is made of several rows; its background is on the first only.");
+      else if (frame.bg && frame.bg.length > 0) {
+        drop("background-layers", frame, `${frame.bg.length} layer${frame.bg.length === 1 ? "" : "s"}`);
+        note("warn", "A section with a complex background (layers or a gradient) is made of several rows; its background is on the first only.");
+      }
     }
     if (!native.background && !paintD["background-color"] && !paintD["background-image"]) native.background = { type: "color", color: pageColour };
     const symmetric = near(band.contentLeft - band.left, band.right - band.contentRight) && band.contentLeft - band.left > 8;
@@ -961,7 +993,10 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       return { id: newId(), htmlId: colId, blocks, ...(nativeCol.background ? { background: nativeCol.background } : {}), ...inlineProps };
     });
 
-    if (spec.nested) skipped.nested += 1;
+    if (spec.nested) {
+      skipped.nested += 1;
+      drop("nested-boxes", frame ?? colBoxes.find(Boolean) ?? null, `${spec.cols.length} columns with boxes inside`);
+    }
     const columnBoxes = colBoxes.filter((c): c is CaptureNode => Boolean(c));
     const equal = split && spec.cols.every((c) => c.paint) && columnBoxes.every((c) => near(c.box[3], columnBoxes[0].box[3]));
     const align = split ? verticalAlign(columnBoxes) : undefined;
@@ -981,12 +1016,17 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       ...(equal ? { equalHeight: true } : {}),
       ...(align ? { align } : {}),
     });
-    if (split && columns.length > 6) note("warn", "A row of more than six boxes side by side was cut to six, as a row of the builder holds at most six columns.");
+    if (split && columns.length > 6) {
+      drop("columns-cut", frame, `${columns.length} boxes side by side, six kept`);
+      note("warn", "A row of more than six boxes side by side was cut to six, as a row of the builder holds at most six columns.");
+    }
   });
 
   // The limits of a page: fifty rows, a hundred blocks.
   let limited = rows;
   if (limited.length > ROWS_MAX) {
+    const firstCut = parts.find((p) => p.kind === "row" && p.id === (limited[ROWS_MAX]?.htmlId ?? ""));
+    dropped.push({ kind: "rows-cut", sel: "", y: Math.round(firstCut?.target?.[1] ?? 0), box: firstCut?.target ?? null, text: `${limited.length - ROWS_MAX} rows from here on` });
     note("warn", `The original is longer than a page of the builder can be (${ROWS_MAX} rows): the last ${limited.length - ROWS_MAX} rows are left out.`);
     limited = limited.slice(0, ROWS_MAX);
   }
@@ -995,6 +1035,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     for (const column of row.columns) {
       const room = Math.max(0, BLOCKS_MAX - blockCount);
       if (column.blocks.length > room) {
+        if (!dropped.some((d) => d.kind === "blocks-cut")) dropped.push({ kind: "blocks-cut", sel: "", y: Math.round(parts.find((p) => p.kind === "row" && p.id === row.htmlId)?.target?.[1] ?? 0), box: null, text: `${column.blocks.length - room} blocks from here on` });
         note("warn", `A page of the builder takes at most ${BLOCKS_MAX} blocks, so the last blocks of the original are left out.`);
         column.blocks = column.blocks.slice(0, room);
       }
@@ -1011,7 +1052,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   if (desktop.left.fixed.length > 0) note("warn", `Left out because they float over the page: ${desktop.left.fixed.slice(0, 6).join(", ")}.`);
   if (desktop.left.capped) note("warn", "The page is very large; only its first part was looked at.");
 
-  return { rows: limited, model, shared: SHARED_CSS, title: desktop.title, description: desktop.description, notes, parts, counts };
+  return { rows: limited, model, shared: SHARED_CSS, title: desktop.title, description: desktop.description, notes, parts, counts, dropped };
 }
 
 /**

@@ -106,3 +106,23 @@ export function diffRaster(original: Raster, copy: Raster): Raster {
 
 /** Whether a score is as good as a copy gets by pixels: no pass would be worth the time. */
 export const isPerfect = (score: ReplicaScore | null): boolean => score === null || (score.match >= 99.6 && score.heights.original === score.heights.copy);
+
+/**
+ * The match of one stretch of the page, 0–100: `y` and `height` are in pixels of the page, `scale` how many of them one
+ * pixel of the rasters stands for. What the copy does not reach counts as wrong; a stretch beyond the original is not asked.
+ */
+export function stretchMatch(original: Raster, copy: Raster, scale: number, y: number, height: number): number | null {
+  const top = Math.max(0, Math.floor(y / scale));
+  const bottom = Math.min(original.height, Math.ceil((y + height) / scale));
+  if (bottom <= top) return null;
+  const width = Math.min(original.width, copy.width);
+  let good = 0;
+  let all = 0;
+  for (let row = top; row < bottom; row++) {
+    for (let x = 0; x < width; x++) {
+      all += 1;
+      if (row < copy.height && !wrong(original, copy, x, row)) good += 1;
+    }
+  }
+  return all === 0 ? null : Math.round((good / all) * 1000) / 10;
+}

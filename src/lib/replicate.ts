@@ -3,6 +3,8 @@
  * the steps it goes through, its log and what it says at the end. Pure, so the server, the page and the tests share them.
  */
 
+import type { ReplicaReport } from "./replicate-report";
+
 export const ITERATIONS = { min: 1, max: 10, default: 3 } as const;
 
 /** The steps the owner follows, in order. */
@@ -48,6 +50,8 @@ export type ReplicaPass = {
   mobile: ReplicaScore | null;
   /** What was changed in this pass, in words. */
   changes: string[];
+  /** What the AI said of the copy this pass, when it looked: kept for the report, never acted on beyond the checked changes. */
+  ai?: { summary: string; couldNotFix: string[]; refused: string[]; applied: number };
 };
 
 /** The pictures the owner watches: the original and the copy, per width, with the number of the pass the copy is from. */
@@ -70,6 +74,8 @@ export type ReplicaSummary = {
   design: string | null;
   /** The draft page, to preview and edit; null when none was made. */
   page: { id: string; title: string } | null;
+  /** Everything a developer needs to improve the replicator from this copy (`replicate-report.ts`); absent on older jobs. */
+  report?: ReplicaReport;
 };
 
 /** A job as the owner's page reads it: nothing from `capture`, and no working data. */
