@@ -58,7 +58,7 @@ export async function platformExperiments(everything = false, now = new Date()):
     select e.id, e.store_id, e.name, e.status, e.primary_goal, e.started_at, e.stopped_at, e.planned_end, e.scheduled_start, e.created_at,
            e.stop_reason, e.applied_variant, e.schedule_problem, e.target_part,
            s.slug as store_slug, s.name as store_name, p.slug as page_slug, p.type as page_type, p.draft->>'title' as page_title,
-           (select r.role from commerce.page_roles r where r.store_id = e.store_id and r.page_id = e.target_page_id) as page_role,
+           commerce.page_place(e.store_id, e.target_page_id) as page_role,
            (select count(*)::int from commerce.experiment_variants v where v.experiment_id = e.id) as versions,
            (select count(*)::int from commerce.experiment_exposures x where x.experiment_id = e.id) as exposed
     from commerce.experiments e

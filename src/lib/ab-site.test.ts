@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isWorkingRole, pageTypeOfKind, ROLE_NAMES, ROLE_SEGMENT, splitSiteVersions, targetKindOf, targetLabel, testToken, WORKING_ROLES, withSiteVersions } from "./ab-site";
+import { isPartOnlyPlace, isTestedPlace, isWorkingRole, OWN_PLACES, pageTypeOfKind, ROLE_NAMES, ROLE_SEGMENT, splitSiteVersions, TESTED_PLACES, targetKindOf, targetLabel, testToken, WORKING_ROLES, withSiteVersions } from "./ab-site";
 
 describe("the versions of site-wide tests in a market address", () => {
   it("names a test by the start of its id", () => {
@@ -61,9 +61,27 @@ describe("what a test is of", () => {
     expect(isWorkingRole("cart")).toBe(true);
   });
 
+  it("treats the front page and the All products page as places of their own, tested whole or by a part (phase 10)", () => {
+    for (const place of OWN_PLACES) {
+      expect(targetKindOf("page", place), place).toBe("role");
+      expect(isTestedPlace(place), place).toBe(true);
+      expect(ROLE_NAMES[place], place).toBeTruthy();
+      // Not a shop component's page: a version may be the whole page.
+      expect(isPartOnlyPlace(place), place).toBe(false);
+      expect(isWorkingRole(place), place).toBe(false);
+    }
+    for (const role of WORKING_ROLES) expect(isPartOnlyPlace(role), role).toBe(true);
+    expect(TESTED_PLACES).toHaveLength(WORKING_ROLES.length + OWN_PLACES.length);
+    // The front page is the market's own address, matched by there being nothing after it; the All products page by its route.
+    expect(ROLE_SEGMENT.front).toBe("");
+    expect(ROLE_SEGMENT.products).toBe("products");
+  });
+
   it("labels a working page by what it is, and anything else as before", () => {
     expect(targetLabel("role", "kurv", "Handlekurv", "cart")).toBe("Cart page: Handlekurv");
-    expect(targetLabel("role", "kurv", "Handlekurv")).toBe("Working page: Handlekurv");
+    expect(targetLabel("role", "forside", "Forside", "front")).toBe("Front page: Forside");
+    expect(targetLabel("role", "alle", "Alle produkter", "products")).toBe("All products page: Alle produkter");
+    expect(targetLabel("role", "kurv", "Handlekurv")).toBe("Page with a place of its own: Handlekurv");
     expect(targetLabel("page", "om-oss", "Om oss")).toBe("/om-oss");
     expect(targetLabel("header", "x", "Spring header")).toBe("Header: Spring header");
   });

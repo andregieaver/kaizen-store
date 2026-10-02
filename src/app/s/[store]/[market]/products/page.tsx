@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AbMarker } from "@/components/ab/ab-marker";
 import { PageEditLink } from "@/components/page-edit-link";
 import { ProductGrid, ProductListingFor } from "@/components/product-listing";
 import { StorePageArticle } from "@/components/store-page-article";
@@ -11,6 +12,7 @@ import { adminOrigin, marketPath } from "@/lib/paths";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
 import { productsPageOf } from "@/server/pages";
+import { placePageForVisitor } from "@/server/role-pages";
 import { storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 
@@ -20,8 +22,10 @@ async function load(params: Props["params"]) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return null;
-  // The store's own All products page (D83) while it is published; else the standard list.
-  return { ...shop, page: await productsPageOf(shop.store) };
+  // The store's own All products page (D83) while it is published; else the standard list. While the page is in a test (D148, phase 10) and
+  // the address carries the visitor's other version of it, that version.
+  const { page, test, version } = await placePageForVisitor(shop.store.id, "products", await productsPageOf(shop.store), shop.ab);
+  return { ...shop, page, test, version };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -62,7 +66,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductsPage({ params, searchParams }: Props) {
   const loaded = await load(params);
   if (!loaded) notFound();
-  const { store, market, page } = loaded;
+  const { store, market, page, test, version } = loaded;
   const base = marketPath(store.slug, market.slug);
   const path = `${base}/products`;
 
@@ -74,6 +78,8 @@ export default async function ProductsPage({ params, searchParams }: Props) {
           place={{ pageId: page.id, owner: store.id, market: market.slug, archive: true, listing: { query: searchParams, path } }}
         />
         <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        {/* A test of the All products page (D148, phase 10): which version this is, for the exposure. */}
+        {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}
       </>
     );
   }

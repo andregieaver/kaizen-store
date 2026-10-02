@@ -166,7 +166,7 @@ export function startProblems(test: {
   else if (GOAL_WORDS[test.goal].needsBlock && !test.goalBlock) problems.push("Choose the button or link whose clicks you want more of.");
   if (!(test.trafficShare > 0 && test.trafficShare <= 1)) problems.push("The share of visitors in the test is more than 0 and at most 100 %.");
   if (!test.pagePublished) problems.push("Publish the page before testing it: a test shows it to real visitors.");
-  if (test.pageIsSpecial) problems.push("The front page, the All products page, the cookies page and the blog, search, 404, category and tag pages cannot be tested yet.");
+  if (test.pageIsSpecial) problems.push("The cookies page and the blog, search, 404, category and tag pages cannot be tested yet.");
   if (test.needsPart) problems.push("A working page is tested by a part of it, around the shop's own component, not as a whole: choose the part in the page builder with “A/B test this”.");
   const others = test.variants.filter((v) => v.key !== "a");
   if (!test.variants.some((v) => v.key === "a") || others.length === 0) problems.push("A test needs the original and at least one other version.");

@@ -204,7 +204,8 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
         kind: t.kind,
         title: t.title,
         // A working page (the cart, the checkout, …): one block or part around the shop's own component, never the page as a whole.
-        working_page: t.kind === "role" ? `${t.role}: test one block at a time (a heading, a text, a button around the shop's own component), never the whole page` : undefined,
+        working_page: t.kind === "role" && t.partOnly ? `${t.role}: test one block at a time (a heading, a text, a button around the shop's own component), never the whole page` : undefined,
+        place: t.kind === "role" && !t.partOnly ? `the store's ${t.role === "front" ? "front page" : "All products page"}: a test of the whole page or of one part of it` : undefined,
         rows: content?.rows.length ?? 0,
         buttons: buttonsOf(content).map((b) => b.label),
         blocks: content ? offeredBlocks(content) : [],
@@ -240,7 +241,7 @@ async function findTarget(store: Store, ref: string) {
   const targets = await testablePages(store.id);
   const lower = ref.trim().toLowerCase();
   const hits = targets.filter((t) => t.id === ref.trim() || (t.kind === "page" && t.slug === lower) || (t.kind === "header" && lower === "header") || (t.kind === "footer" && lower === "footer") || (t.kind === "layout" && t.title.toLowerCase() === lower));
-  if (hits.length === 0) return fail(`"${ref}" cannot be tested now: it must be a published page (not the front page, the All products page or a page with a place of its own), the header or footer the store uses, or a product layout in use, and not already in a running test. suggest_experiments lists what can.`);
+  if (hits.length === 0) return fail(`"${ref}" cannot be tested now: it must be a published page (the front page and the All products page can be tested, other pages with a place of their own cannot, except a working page by a part), the header or footer the store uses, or a product layout in use, and not already in a running test. suggest_experiments lists what can.`);
   if (hits.length > 1) return fail(`Several things fit "${ref}": give the id from suggest_experiments.`);
   return hits[0];
 }

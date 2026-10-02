@@ -166,7 +166,7 @@ describe("starting a test", () => {
     expect(startProblems({ ...ok, goal: "click" })).toContain("Choose the button or link whose clicks you want more of.");
     expect(startProblems({ ...ok, goal: "click", goalBlock: "block-1" })).toEqual([]);
     expect(startProblems({ ...ok, pagePublished: false })[0]).toMatch(/Publish the page/);
-    expect(startProblems({ ...ok, pageIsSpecial: true })[0]).toMatch(/front page/);
+    expect(startProblems({ ...ok, pageIsSpecial: true })[0]).toMatch(/cookies page and the blog/);
     expect(startProblems({ ...ok, variants: [ok.variants[0]] })[0]).toMatch(/at least one other version/);
     expect(startProblems({ ...ok, variants: [ok.variants[0], { ...ok.variants[1], share: 0.3 }] })[0]).toMatch(/add up to 100/);
     expect(startProblems({ ...ok, variants: [ok.variants[0], { ...ok.variants[1], published: false }] })[0]).toMatch(/Publish version B/);

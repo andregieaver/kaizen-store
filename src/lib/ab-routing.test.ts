@@ -147,3 +147,30 @@ describe("the proxy's matcher", () => {
     expect(source).toContain(`key: "${MARKER_COOKIE}"`);
   });
 });
+describe("where a visitor's request goes under a test of the front page or the All products page (phase 10)", () => {
+  const front = { id: E, kind: "role" as const, slug: "forside", segment: "" };
+  const products = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", kind: "role" as const, slug: "alle", segment: "products" };
+  const at = (rest: string[], hostBased = false) => ({ store: "demo", market: "no", rest, hostBased });
+
+  it("changes the market part of the market's own address only, for the front page", () => {
+    expect(variantPath(at([]), [front], cookie("b"))).toBe("/s/demo/no~aaaaaaaab");
+    expect(variantPath(at([], true), [front], cookie("c"))).toBe("/no~aaaaaaaac");
+    // Any other address is left alone, the page's own too (it redirects to the front page).
+    for (const rest of [["products"], ["cart"], ["p", "lampe"], ["forside"], ["om-oss"]]) expect(variantPath(at(rest), [front], cookie("b")), rest.join("/")).toBeNull();
+    expect(variantPath(at([]), [front], cookie("a"))).toBeNull();
+    expect(variantPath(at([]), [front], cookie("0"))).toBeNull();
+  });
+
+  it("changes the market part of /products only, for the All products page", () => {
+    const both = encodeAssignments({ visitor: V, versions: { [products.id]: "d" } });
+    expect(variantPath(at(["products"]), [products], both)).toBe("/s/demo/no~bbbbbbbbd/products");
+    for (const rest of [[], ["cart"], ["alle"], ["category", "lamper"]]) expect(variantPath(at(rest), [products], both), rest.join("/")).toBeNull();
+  });
+
+  it("serves both from their own routes at once, and composes with a header's", () => {
+    const header = { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", kind: "header" as const, slug: null };
+    const mixed = encodeAssignments({ visitor: V, versions: { [E]: "b", [products.id]: "c", [header.id]: "d" } });
+    expect(variantPath(at([]), [header, front, products], mixed)).toBe("/s/demo/no~aaaaaaaab_ccccccccd");
+    expect(variantPath(at(["products"]), [header, front, products], mixed)).toBe("/s/demo/no~bbbbbbbbc_ccccccccd/products");
+  });
+});

@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 9 built** (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 10 built** (10: the front page and the All products page) (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -320,6 +320,41 @@ Not done: the front page, the All products page, the cookies page and the conten
 for sending a form (the popup's usual aim); Kaizen's own pages (the platform's header, footer and plans page); and the checks that were open
 before (the Vercel run of the caching of rewritten pages, a store on its own host, the legal check, the moderated usability check).
 
+## What phase 10 built: the front page and the All products page
+
+**The store's front page and its All products page can be tested** (they were refused until now), whole or by a part. They are pages with a
+place of their own like the cart's (D54, D83): chosen on the Pages list (`stores.front_page_id`, `stores.products_page_id`), drawn by the
+market's own route and by `/products`, and their own addresses redirect there. So a test is served from the route, like phase 9's, not from the
+page's address. Unlike a working page they hold no shop component (their listings read the same catalogue in every version), so a version may
+be the whole page, which is what an owner means by "test my front page".
+
+- **One notion of a place** (`commerce.page_place(store, page)`, migration `ab_front_pages`): the page role (D112, D113), else `front` or
+  `products`, else null. Every query that asked "what place is this page chosen for" (`runningExperiments()`, `siteTests()`,
+  `experimentOfPage()`, the admin's lists and the platform's view) asks it, and `TESTED_PLACES` (`src/lib/ab-site.ts`: the working roles and
+  `OWN_PLACES`) are the places a test can be served from. A working page stays part-only (`isPartOnlyPlace()`); the cookies page and the content
+  pages are still refused, in words, at the start (`experiments.start`).
+- **Serving.** `ROLE_SEGMENT.products` is `products`; the front page's segment is empty, matched by there being nothing after the market
+  (`atSegment()` in `ab-routing.ts`), so the proxy rewrites `/s/{store}/no` to `/s/{store}/no~{token}{letter}` and `/products` likewise, on the
+  platform's address and on a store's own host. The routes (`[market]/page.tsx`, `[market]/products/page.tsx`) draw the visitor's version through
+  `placePageForVisitor()` (`src/server/role-pages.ts`, which `rolePageForVisitor()` now calls), take its search and sharing texts from it too, and
+  render the page marker for the exposure. The page's own address redirects to the place, so it draws no marker (`experimentOfPage()`).
+- **The place stays put while a test runs** (`stores_experiment_guard`, now on `front_page_id` and `products_page_id` too): the page cannot be
+  taken off the place, and a page in a running test cannot be put on one, as the header and the footer cannot be changed (phase 3).
+- **A part test no longer fails at once on a copied page.** Saving a page keeps only the texts in the store's own languages, so a version, which
+  is saved, lacks the languages a template-copied page carried in others (the template's front page has Danish and Swedish); a part test of such
+  a page was "outside the part" from the start. The original is now compared as it would be saved (`asSaved()` in `experiment-admin.ts`, the
+  same `cleanTranslations()`), for every part test.
+- **Admin and tools.** The new-test form offers both pages from the list, whole or by a part (`partOnly` false), names them "Front page: …" and
+  "All products page: …" (`ROLE_NAMES`), and `suggest_experiments` says so. The platform's view and the assistants name them the same way.
+
+Tested: unit tests of the routing and the place names, database tests of `page_place()` and the guard on both places, an integration test of a
+front page tested whole (served, counted, held in place, applied under the same address) and of a part of the All products page, and a browser test
+(`e2e/ab-front-pages.spec.ts`) of both at their own addresses.
+
+Not done: the cookies page and the content pages (blog, search, 404, categories, tags) as targets; a goal for sending a form; Kaizen's own pages
+(the platform's header, footer and plans page); and the checks that were open before (the Vercel run of the caching of rewritten pages, a store on
+its own host, the legal check, the moderated usability check).
+
 ## Principles (kept from `measurement.md`)
 
 - Randomise who is eligible, then compare everyone assigned; never compare people who used a thing with those who did
@@ -632,6 +667,7 @@ reports (D106, D145).
 | **7** (built) | Move search and recommendations tests onto the engine's arithmetic, and into the platform's view | Old and new give the same numbers on the same data |
 | **8** (built) | The platform assistant's tools: read every store's tests, say what needs a look | Read-only, no tool that changes a store's test |
 | **9** (built) | Modals; the surrounding rows of working pages | A popup and the cart's trust row tested, served and applied; the shop's own component never |
+| **10** (built) | The front page and the All products page, whole or by a part | A front page tested whole and the products page by a part, served at their own addresses, held in place, applied |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the
 new page, a migration applied to production with the advisors checked and its version recorded in `decisions.md`,

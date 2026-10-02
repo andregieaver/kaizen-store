@@ -339,11 +339,8 @@ describe("A/B tests of pages (D148)", () => {
     expect((new Date(row.planned_end!).getTime() - new Date(row.started_at!).getTime()) / 86_400_000).toBeCloseTo(14, 0);
   });
 
-  it("keeps the front page, the All products page, the cookies page and the content pages out of tests", async () => {
+  it("keeps the cookies page and the content pages out of tests", async () => {
     const t = await ready();
-    await db.query("update commerce.stores set front_page_id = $2 where id = $1", [t.store, t.target]);
-    await expect(start(t.experiment)).rejects.toThrow(/front page and the All products page/);
-    await db.query("update commerce.stores set front_page_id = null where id = $1", [t.store]);
     for (const role of ["blog", "search", "not_found", "cookies", "category", "tag"]) {
       await db.query("insert into commerce.page_roles (store_id, role, page_id) values ($1, $2, $3)", [t.store, role, t.target]);
       await expect(start(t.experiment), role).rejects.toThrow(/cookies page and the blog, search, 404/);
@@ -369,6 +366,38 @@ describe("A/B tests of pages (D148)", () => {
       await set(t.experiment, "status = 'stopped'");
       await db.query("update commerce.page_roles set page_id = $3 where store_id = $1 and role = $2", [t.store, role, other]);
     }
+  });
+
+  it("tests the front page and the All products page, whole or by a part, and keeps them in place while a test runs (phase 10)", async () => {
+    for (const [column, place] of [["front_page_id", "front"], ["products_page_id", "products"]] as const) {
+      const t = await ready();
+      await db.query(`update commerce.stores set ${column} = $2 where id = $1`, [t.store, t.target]);
+      expect((await one<{ place: string | null }>("select commerce.page_place($1, $2) as place", [t.store, t.target])).place).toBe(place);
+      // Whole, or by a part: nothing on them is the shop's own component.
+      await start(t.experiment);
+      // While it runs, no other page takes the place, and the page cannot be taken off it.
+      const other = await t.page(`${place}-2`);
+      await expect(db.query(`update commerce.stores set ${column} = $2 where id = $1`, [t.store, other]), place).rejects.toThrow(/stores\.experiment/);
+      await expect(db.query(`update commerce.stores set ${column} = null where id = $1`, [t.store]), place).rejects.toThrow(/stores\.experiment/);
+      // Choosing the page it already is, again, changes nothing.
+      await db.query(`update commerce.stores set ${column} = $2 where id = $1`, [t.store, t.target]);
+      await set(t.experiment, "status = 'stopped'");
+      await db.query(`update commerce.stores set ${column} = $2 where id = $1`, [t.store, other]);
+    }
+    // A test by a part is as good.
+    const part = await ready();
+    await db.query("update commerce.stores set front_page_id = $2 where id = $1", [part.store, part.target]);
+    await set(part.experiment, "target_part = 'row-1', target_part_kind = 'row'");
+    await start(part.experiment);
+  });
+
+  it("does not let a page in a running test be made the front page or the All products page (phase 10)", async () => {
+    const t = await ready();
+    await start(t.experiment);
+    await expect(db.query("update commerce.stores set front_page_id = $2 where id = $1", [t.store, t.target])).rejects.toThrow(/stores\.experiment/);
+    await expect(db.query("update commerce.stores set products_page_id = $2 where id = $1", [t.store, t.target])).rejects.toThrow(/stores\.experiment/);
+    await set(t.experiment, "status = 'stopped'");
+    await db.query("update commerce.stores set front_page_id = $2 where id = $1", [t.store, t.target]);
   });
 
   it("does not let a page in a running test be chosen for a place of its own", async () => {

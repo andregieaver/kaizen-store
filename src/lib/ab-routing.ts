@@ -4,8 +4,9 @@ import { dataCookieName, decodeAssignments, OUTSIDE } from "./experiments";
 /**
  * Where an enrolled visitor's request for a tested page goes (D148): the proxy asks this for requests that carry the
  * `kaizen_ab` cookie. Pure, so it is tested without a server. A visitor in the original (`a`), outside a test, or with
- * nothing for it goes where it was going. A working page (D113: the cart, the checkout, …) under test is drawn by its own route, so its
- * version travels in the market part of the address, like a header's, only on requests to that route (phase 9).
+ * nothing for it goes where it was going. A working page (D113: the cart, the checkout, …), the front page or the All products page under test
+ * is drawn by its own route, so its version travels in the market part of the address, like a header's, only on requests to that route
+ * (phases 9 and 10).
  */
 
 export type StoreRequest = {
@@ -42,6 +43,10 @@ export function parseStoreRequest(pathname: string, hostStore: string | null): S
 /** The page address a request is for, when it is one page of the market's own (`/{slug}`); null for the front page and for deeper routes. */
 export const pageSlugOf = (request: Pick<StoreRequest, "rest">): string | null => (request.rest.length === 1 && SLUG.test(request.rest[0]) ? request.rest[0] : null);
 
+/** Whether a request is for the route a place of its own is drawn by: its first segment, or, for the front page (empty), nothing after the market. */
+const atSegment = (request: Pick<StoreRequest, "rest">, segment: string | null | undefined): boolean =>
+  segment === null || segment === undefined ? false : segment === "" ? request.rest.length === 0 : request.rest[0] === segment;
+
 /** The store a host belongs to: `{store}.{domain}` on the store domain, or one of a store's own domains. */
 export function storeOfHost(host: string, domain: string | null, customHosts: Record<string, { primary: string | null; hosts: string[] }>): string | null {
   const bare = host.toLowerCase().replace(/:\d+$/, "");
@@ -54,7 +59,10 @@ export function storeOfHost(host: string, domain: string | null, customHosts: Re
   return match && match[1] !== "www" ? match[1] : null;
 }
 
-/** A running test as the proxy needs it: its kind, for a test of a page the page's address, and for a working page's the first part of its route. */
+/**
+ * A running test as the proxy needs it: its kind, for a test of a page the page's address, and for a page with a place of its own the first part
+ * of its route (empty for the front page, which is the market's own address).
+ */
 export type TestOnPage = { id: string; kind?: TargetKind; slug: string | null; segment?: string | null };
 
 /**
@@ -80,7 +88,7 @@ export function variantPath(request: StoreRequest, tests: TestOnPage[], dataCook
     const kind = test.kind ?? "page";
     if (kind === "page") {
       if (slug !== null && test.slug === slug) pageVersion = version;
-    } else if (kind === "header" || kind === "footer" || (kind === "layout" && productPage) || (kind === "role" && test.segment && request.rest[0] === test.segment)) {
+    } else if (kind === "header" || kind === "footer" || (kind === "layout" && productPage) || (kind === "role" && atSegment(request, test.segment))) {
       site[testToken(test.id)] = version;
     }
   }

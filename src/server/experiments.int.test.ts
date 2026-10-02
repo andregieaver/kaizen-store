@@ -151,9 +151,9 @@ describe("making a test (D148)", () => {
   it("offers the pages that can be tested, and makes a draft with the original and a copy to change", async () => {
     const offered = await admin.testablePages(storeId);
     expect(offered.map((p) => p.slug)).toContain("om-oss");
-    // The front page and the All products page have addresses of their own kind.
-    expect(offered.map((p) => p.slug)).not.toContain("forside");
-    expect(offered.map((p) => p.slug)).not.toContain("alle-produkter");
+    // The front page and the All products page are offered as pages with a place of their own, whole or by a part (phase 10).
+    expect(offered.find((p) => p.slug === "forside")).toMatchObject({ kind: "role", role: "front", partOnly: false });
+    expect(offered.find((p) => p.slug === "alle-produkter")).toMatchObject({ kind: "role", role: "products", partOnly: false });
 
     const made = await admin.createExperiment(account, storeId, { name: "Longer story", pageId: aboutId, goal: "orders" });
     expect(made.ok).toBe(true);
@@ -844,5 +844,90 @@ describe("tests of a modal and of a working page (D148, phase 9)", () => {
     expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
     expect(JSON.stringify(await rowsOf(aboutId))).toContain("Free returns, always");
     await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid`);
+  }, 30_000);
+});
+
+describe("tests of the front page and the All products page (D148, phase 10)", () => {
+  const idOf = async (slug: string) => String((await db().execute<Row>(sql`select id from commerce.pages where store_id = ${storeId}::uuid and type = 'page' and slug = ${slug}`))[0].id);
+  const text = (drawn: { page: { content: PageContent } | null }) => JSON.stringify(drawn.page?.content.rows ?? []);
+
+  it("tests the front page as a whole, served from the market's own address, and applies the winner under the same address", async () => {
+    const frontId = await idOf("forside");
+    const fresh = (await stores.getOpenStore(store.slug))!;
+    expect(fresh.frontPageId).toBe(frontId);
+    const originalContent = JSON.stringify(await publishedOf(frontId));
+
+    const made = await admin.createExperiment(account, storeId, { name: "Front page headline", pageId: frontId, goal: "orders" });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect((await admin.getExperiment(storeId, made.id))!.page).toMatchObject({ kind: "role", role: "front" });
+    await changeVariant(made.id, "b");
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+
+    // The proxy sees a test of the front page: it matches the market's own address.
+    const [running] = (await engine.runningExperiments(storeId)).filter((t) => t.id === made.id);
+    expect(running).toMatchObject({ kind: "role", role: "front", targetPageId: frontId });
+    const token = abSite.testToken(made.id);
+    expect(await engine.siteTests(storeId)).toEqual([expect.objectContaining({ id: made.id, token, kind: "role", role: "front", targetPageId: frontId })]);
+    // The page's own address redirects to the front page, so it draws no marker there.
+    expect(await engine.experimentOfPage(storeId, frontId)).toBeNull();
+
+    const rolePages = await import("./role-pages");
+    const chosen = (await pages.listPublishedPages(storeId)).find((p) => p.id === frontId)!;
+    const original = await rolePages.placePageForVisitor(storeId, "front", chosen, {});
+    expect(original).toMatchObject({ version: "a", test: { id: made.id } });
+    expect(text(original)).not.toContain("(new)");
+    const mine = await rolePages.placePageForVisitor(storeId, "front", chosen, { [token]: "b" });
+    expect(mine.version).toBe("b");
+    expect(text(mine)).toContain("Produkter (new)");
+    expect(mine.page?.id).toBe(frontId);
+    // Another place, or a page that is not the front page, is not this test's.
+    expect(await rolePages.placePageForVisitor(storeId, "products", chosen, { [token]: "b" })).toMatchObject({ test: null, version: "a" });
+    expect(await rolePages.placePageForVisitor(storeId, "front", null, { [token]: "b" })).toEqual({ page: null, test: null, version: "a" });
+
+    // While it runs the page stays the front page; a version counts like any other.
+    const other = await idOf("alle-produkter");
+    const refused = await db().execute(sql`update commerce.stores set front_page_id = ${other}::uuid where id = ${storeId}::uuid`).then(() => null, (error: { cause?: { message?: string } }) => String(error.cause?.message ?? error));
+    expect(refused).toMatch(/stores\.experiment/);
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "mobile" });
+    expect((await results.experimentResults(store, (await admin.getExperiment(storeId, made.id))!)).figures.find((f) => f.key === "b")).toMatchObject({ visitors: 1 });
+
+    // After the stop the front page draws as it was; a winner becomes the page, under the front page's own address name.
+    expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    expect(text(await rolePages.placePageForVisitor(storeId, "front", chosen, { [token]: "b" }))).not.toContain("(new)");
+    expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
+    expect(JSON.stringify(await publishedOf(frontId))).toContain("Produkter (new)");
+    expect((await db().execute<Row>(sql`select slug from commerce.pages where id = ${frontId}::uuid`))[0].slug).toBe("forside");
+    await db().execute(sql`update commerce.pages set published = ${originalContent}::jsonb, draft = ${originalContent}::jsonb where id = ${frontId}::uuid`);
+  }, 30_000);
+
+  it("tests a part of the All products page, and refuses a test of it while it is in a running test of another kind of place", async () => {
+    const productsId = await idOf("alle-produkter");
+    const originalContent = JSON.stringify(await publishedOf(productsId));
+    const made = await admin.createExperiment(account, storeId, { name: "Products heading", pageId: productsId, goal: "cart", part: { kind: "block", id: "products-heading" } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    await editVersion(made.id, "b", (c) => withBlock(c, "products-heading", (b) => ({ ...b, text: "Everything we sell" })));
+    expect((await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")).toMatchObject({ scope: "ok", changed: true });
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+
+    const token = abSite.testToken(made.id);
+    const rolePages = await import("./role-pages");
+    const chosen = await pages.productsPageOf((await stores.getOpenStore(store.slug))!);
+    const mine = await rolePages.placePageForVisitor(storeId, "products", chosen, { [token]: "b" });
+    expect(mine.version).toBe("b");
+    expect(text(mine)).toContain("Everything we sell");
+    expect(text(await rolePages.placePageForVisitor(storeId, "products", chosen, {}))).not.toContain("Everything we sell");
+
+    // The page cannot be made the front page while its test runs.
+    const refused = await db().execute(sql`update commerce.stores set front_page_id = ${productsId}::uuid where id = ${storeId}::uuid`).then(() => null, (error: { cause?: { message?: string } }) => String(error.cause?.message ?? error));
+    expect(refused).toMatch(/stores\.experiment/);
+
+    expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
+    expect(JSON.stringify(await publishedOf(productsId))).toContain("Everything we sell");
+    await db().execute(sql`update commerce.pages set published = ${originalContent}::jsonb, draft = ${originalContent}::jsonb where id = ${productsId}::uuid`);
   }, 30_000);
 });

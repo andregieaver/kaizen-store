@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 
 import { db, readDb } from "@/db/client";
-import { isWorkingRole, targetKindOf, testToken, WORKING_ROLES, type TargetKind, type WorkingRole } from "@/lib/ab-site";
+import { isTestedPlace, targetKindOf, testToken, TESTED_PLACES, type TargetKind, type TestedPlace } from "@/lib/ab-site";
 import { decodeConsent, consentCookieName } from "@/lib/cookie-consent";
 import { parsePageContent, type PageContent } from "@/lib/page-content";
 import {
@@ -43,7 +43,7 @@ export type RunningExperiment = {
   /** What is tested: a page, the product layout, the header, the footer (D148, phase 3) or a working page (phase 9). */
   kind: TargetKind;
   /** The working page under test, for a test of one. */
-  role: WorkingRole | null;
+  role: TestedPlace | null;
   targetPageId: string;
   /** The address of the page under test, as it is now. */
   slug: string;
@@ -82,7 +82,7 @@ export function runningExperiments(storeId: string): Promise<RunningExperiment[]
   return remembered(`running:${storeId}`, MEMO_MS, async () => {
     const rows = await db().execute<Row>(sql`
       select e.id, e.target_page_id, p.slug, p.type as target_type, e.traffic_share::float8 as traffic_share, e.audience, e.primary_goal, e.goal_params,
-        (select r.role from commerce.page_roles r where r.store_id = e.store_id and r.page_id = e.target_page_id) as target_role,
+        commerce.page_place(e.store_id, e.target_page_id) as target_role,
         (select jsonb_agg(jsonb_build_object('key', v.key, 'share', v.share::float8, 'pageId', v.page_id) order by v.key)
          from commerce.experiment_variants v where v.experiment_id = e.id) as variants
       from commerce.experiments e
@@ -94,7 +94,7 @@ export function runningExperiments(storeId: string): Promise<RunningExperiment[]
         id: String(r.id),
         storeId,
         kind: targetKindOf(String(r.target_type), r.target_role ? String(r.target_role) : null) ?? "page",
-        role: isWorkingRole(r.target_role) ? r.target_role : null,
+        role: isTestedPlace(r.target_role) ? r.target_role : null,
         targetPageId: String(r.target_page_id),
         slug: String(r.slug),
         trafficShare: Number(r.traffic_share),
@@ -130,14 +130,15 @@ export async function experimentOfPage(storeId: string, pageId: string): Promise
   "use cache";
   cacheLife("hours");
   cacheTag(experimentsTag(storeId));
-  // A working page's test is served from its own route (rolePageForVisitor()), not from the page's address: not found here.
+  // The test of a page with a place of its own (a working page, the front page, the All products page) is served from its route
+  // (placeVersionFor()), not from the page's address: not found here.
   const [row] = await readDb().execute<Row>(sql`
     select e.id, e.primary_goal, e.goal_params,
       (select jsonb_agg(jsonb_build_object('key', v.key, 'has_page', v.page_id is not null) order by v.key)
        from commerce.experiment_variants v where v.experiment_id = e.id) as variants
     from commerce.experiments e
     where e.store_id = ${storeId}::uuid and e.target_page_id = ${pageId}::uuid and e.status = 'running'
-      and not exists (select 1 from commerce.page_roles r where r.store_id = e.store_id and r.page_id = e.target_page_id)
+      and commerce.page_place(e.store_id, e.target_page_id) is null
   `);
   if (!row) return null;
   const id = String(row.id);
@@ -165,7 +166,7 @@ export type SiteTest = {
   token: string;
   kind: Exclude<TargetKind, "page">;
   /** The working page under test, for a test of one (phase 9). */
-  role: WorkingRole | null;
+  role: TestedPlace | null;
   targetPageId: string;
   goalBlock: string | null;
   /** The version pages, by letter. */
@@ -179,12 +180,12 @@ export async function siteTests(storeId: string): Promise<SiteTest[]> {
   cacheTag(experimentsTag(storeId));
   const rows = await readDb().execute<Row>(sql`
     select e.id, e.target_page_id, p.type as target_type, e.goal_params,
-      (select r.role from commerce.page_roles r where r.store_id = e.store_id and r.page_id = e.target_page_id) as target_role,
+      commerce.page_place(e.store_id, e.target_page_id) as target_role,
       (select jsonb_agg(jsonb_build_object('key', v.key, 'pageId', v.page_id) order by v.key) from commerce.experiment_variants v where v.experiment_id = e.id and v.page_id is not null) as versions
     from commerce.experiments e join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
     where e.store_id = ${storeId}::uuid and e.status = 'running'
       and (p.type in ('header', 'footer', 'product_layout')
-        or exists (select 1 from commerce.page_roles r where r.store_id = e.store_id and r.page_id = e.target_page_id and r.role = any(${`{${WORKING_ROLES.join(",")}}`}::text[])))
+        or commerce.page_place(e.store_id, e.target_page_id) = any(${`{${TESTED_PLACES.join(",")}}`}::text[]))
     order by e.id
   `);
   return rows.flatMap((r): SiteTest[] => {
@@ -195,7 +196,7 @@ export async function siteTests(storeId: string): Promise<SiteTest[]> {
         id: String(r.id),
         token: testToken(String(r.id)),
         kind,
-        role: isWorkingRole(r.target_role) ? r.target_role : null,
+        role: isTestedPlace(r.target_role) ? r.target_role : null,
         targetPageId: String(r.target_page_id),
         goalBlock: typeof (r.goal_params as { block?: unknown })?.block === "string" ? String((r.goal_params as { block: string }).block) : null,
         versions: ((r.versions ?? []) as { key: string; pageId: string }[]).map((v) => ({ key: v.key, pageId: v.pageId })),

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AbMarker } from "@/components/ab/ab-marker";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageEditLink } from "@/components/page-edit-link";
 import { ProductCard } from "@/components/product-card";
@@ -12,6 +13,7 @@ import { storeHomeJsonLd } from "@/lib/structured-data";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listProducts } from "@/server/catalog";
 import { listPublishedPages } from "@/server/pages";
+import { placePageForVisitor } from "@/server/role-pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 
@@ -21,11 +23,13 @@ async function load(params: Props["params"]) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return null;
-  // The store's chosen front page (D54), while it is published; else the product list.
-  const frontPage = shop.store.frontPageId
+  // The store's chosen front page (D54), while it is published; else the product list. While the page is in a test (D148, phase 10) and the
+  // address carries the visitor's other version of it, that version.
+  const chosen = shop.store.frontPageId
     ? ((await listPublishedPages(shop.store.id)).find((p) => p.id === shop.store.frontPageId) ?? null)
     : null;
-  return { ...shop, frontPage };
+  const { page: frontPage, test, version } = await placePageForVisitor(shop.store.id, "front", chosen, shop.ab);
+  return { ...shop, frontPage, test, version };
 }
 
 /** A front page's own search and sharing texts, over the store's. */
@@ -56,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MarketHome({ params, searchParams }: Props) {
   const loaded = await load(params);
   if (!loaded) notFound();
-  const { store, market, frontPage } = loaded;
+  const { store, market, frontPage, test, version } = loaded;
   const m = t(market.lang);
   const [products, notices] = await Promise.all([listProducts(store.id, market), campaignNotices(store.id, market)]);
   const origin = storeSiteUrl(store.slug);
@@ -89,6 +93,8 @@ export default async function MarketHome({ params, searchParams }: Props) {
           }}
         />
         <PageEditLink pageId={frontPage.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        {/* A test of the front page (D148, phase 10): which version this is, for the exposure. */}
+        {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}
       </>
     );
   }
