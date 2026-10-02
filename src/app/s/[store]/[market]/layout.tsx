@@ -8,6 +8,7 @@ import { SiteConsent } from "@/components/consent/site-consent";
 import { AbMarker } from "@/components/ab/ab-marker";
 import { StoreExperiments } from "@/components/ab/store-experiments";
 import { StoreAffiliate } from "@/components/store-affiliate";
+import { StoreVisits } from "@/components/store-visits";
 import { StoreChat } from "@/components/site-chat";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
@@ -170,6 +171,10 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         {/* A friend's referral link (D131): read in the browser, kept in memory and, once allowed, in a cookie. */}
         <Suspense fallback={null}>
           <StoreAffiliate store={store} base={marketPath(store.slug, market.slug)} />
+        </Suspense>
+        {/* Cookieless visit counting (D152), while the owner has it on; the beacon reads the path, so it sits in a boundary. */}
+        <Suspense fallback={null}>
+          <StoreVisits store={store} />
         </Suspense>
         {/* A test of the header or the footer (D148): which version this page has, for the exposure. */}
         {[header, footer].map(

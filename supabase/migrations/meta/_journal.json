@@ -1611,6 +1611,27 @@
       "when": 1790931579546,
       "tag": "20261002085939_page_replications_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 230,
+      "version": "7",
+      "when": 1790951778670,
+      "tag": "20261002143618_analytics",
+      "breakpoints": true
+    },
+    {
+      "idx": 231,
+      "version": "7",
+      "when": 1790951798019,
+      "tag": "20261002143638_analytics_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 232,
+      "version": "7",
+      "when": 1790960024050,
+      "tag": "20261002165344_analytics_indexes",
+      "breakpoints": true
     }
   ]
 }

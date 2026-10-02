@@ -121,6 +121,18 @@ describe("the AI manager's analyses (D104)", () => {
     const funnel = (await ownerTools.runOwnerTool(ctx(), "sales_funnel", { days: 30 })) as Answer;
     expect(funnel).toMatchObject({ orders_placed: expect.any(Number), orders_paid: expect.any(Number) });
     expect(funnel.note).toContain("not tracked");
+    expect(performance.note).toContain("not tracked");
+  });
+
+  it("does not tell a store that counts visits that visits and product views are not tracked", async () => {
+    const counting = { ...ctx(), store: { ...member.store, visitCounting: true } };
+    const funnel = (await ownerTools.runOwnerTool(counting, "sales_funnel", { days: 30 })) as Answer;
+    const performance = (await ownerTools.runOwnerTool(counting, "product_performance", { days: 30 })) as Answer;
+    for (const note of [String(funnel.note), String(performance.note)]) {
+      expect(note).not.toMatch(/not tracked/i);
+      expect(note).toMatch(/visit counting is on/);
+    }
+    expect(String(funnel.note)).toContain("analytics_overview");
   });
 
   it("emails only the store's own customers, without unbacked claims", async () => {

@@ -33,6 +33,35 @@ html[data-admin] {
   --shadow-md: 0 6px 16px -4px rgb(19 26 46 / 0.12), 0 2px 4px rgb(19 26 46 / 0.05);
   --shadow-header: 0 6px 16px -10px rgb(19 26 46 / 0.18);
 
+  /* Charts (D152): a categorical set in a fixed order, a one-hue ramp for magnitude (0 is "nothing", 6 the most), the ink that
+     reads on each step, and the colours of good and bad news (never the only sign: arrows and signs go with them). */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-seq-0: #eef3fb;
+  --chart-seq-1: #cde2fb;
+  --chart-seq-2: #9ec5f4;
+  --chart-seq-3: #6da7ec;
+  --chart-seq-4: #3987e5;
+  --chart-seq-5: #1c5cab;
+  --chart-seq-6: #0d366b;
+  --chart-seq-0-ink: #131a2e;
+  --chart-seq-1-ink: #131a2e;
+  --chart-seq-2-ink: #131a2e;
+  --chart-seq-3-ink: #131a2e;
+  --chart-seq-4-ink: #131a2e;
+  --chart-seq-5-ink: #ffffff;
+  --chart-seq-6-ink: #ffffff;
+  --chart-good: #006300;
+  --chart-bad: #b91c1c;
+  --chart-warn: #b45309;
+  --chart-grid: #dde2ec;
+  --chart-axis: #b9c0d0;
+  --chart-compare: #8a93a8;
+
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   accent-color: var(--brand-solid);
   scrollbar-color: color-mix(in srgb, var(--muted) 38%, transparent) transparent;
@@ -58,6 +87,33 @@ html[data-admin] {
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 1px rgb(0 0 0 / 0.25);
     --shadow-md: 0 8px 20px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
     --shadow-header: 0 8px 18px -10px rgb(0 0 0 / 0.7);
+
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-seq-0: #1d2437;
+    --chart-seq-1: #104281;
+    --chart-seq-2: #256abf;
+    --chart-seq-3: #3987e5;
+    --chart-seq-4: #6da7ec;
+    --chart-seq-5: #9ec5f4;
+    --chart-seq-6: #cde2fb;
+    --chart-seq-0-ink: #e8eaf4;
+    --chart-seq-1-ink: #ffffff;
+    --chart-seq-2-ink: #ffffff;
+    --chart-seq-3-ink: #131a2e;
+    --chart-seq-4-ink: #131a2e;
+    --chart-seq-5-ink: #131a2e;
+    --chart-seq-6-ink: #131a2e;
+    --chart-good: #0ca30c;
+    --chart-bad: #f87171;
+    --chart-warn: #fab219;
+    --chart-grid: #2b3350;
+    --chart-axis: #3b4566;
+    --chart-compare: #7c86a3;
   }
 }
 
@@ -79,6 +135,32 @@ html[data-admin][data-color-mode="dark"] {
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 1px rgb(0 0 0 / 0.25);
   --shadow-md: 0 8px 20px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
   --shadow-header: 0 8px 18px -10px rgb(0 0 0 / 0.7);
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-seq-0: #1d2437;
+  --chart-seq-1: #104281;
+  --chart-seq-2: #256abf;
+  --chart-seq-3: #3987e5;
+  --chart-seq-4: #6da7ec;
+  --chart-seq-5: #9ec5f4;
+  --chart-seq-6: #cde2fb;
+  --chart-seq-0-ink: #e8eaf4;
+  --chart-seq-1-ink: #ffffff;
+  --chart-seq-2-ink: #ffffff;
+  --chart-seq-3-ink: #131a2e;
+  --chart-seq-4-ink: #131a2e;
+  --chart-seq-5-ink: #131a2e;
+  --chart-seq-6-ink: #131a2e;
+  --chart-good: #0ca30c;
+  --chart-bad: #f87171;
+  --chart-warn: #fab219;
+  --chart-grid: #2b3350;
+  --chart-axis: #3b4566;
+  --chart-compare: #7c86a3;
 }
 
 /* ------------------------------------------------------------ page and type */
@@ -306,6 +388,13 @@ html[data-admin] tbody tr {
 }
 html[data-admin] tbody tr:hover {
   background-color: color-mix(in srgb, var(--brand-solid) 5%, var(--background));
+}
+
+/* ------------------------------------------------------------------- charts */
+
+/* A chart's hover column or bar (D152): a faint wash of the brand colour; the figures are in its <title>, so nothing else is needed. */
+html[data-admin] .an-hit:hover {
+  fill: var(--brand-wash);
 }
 
 /* ---------------------------------------------------------------- load states */

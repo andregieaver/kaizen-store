@@ -49,6 +49,7 @@ async function createStore(slug: string): Promise<Store> {
     audience: "consumers",
     businessPopup: false,
     openCartOnAdd: false,
+    visitCounting: false,
     bookingsOn: false,
     deliveriesOn: false,
     workOn: false,
@@ -210,6 +211,37 @@ describe("saving a product", () => {
       [`K-SVART-${run}`, "NO", 24900, true],
       [`K-SVART-${run}`, "SE", 26900, false],
     ]);
+  });
+
+  it("keeps each variant's cost per unit in the main currency (D152): unknown until typed, changeable, and refused when not an amount", async () => {
+    const read = async () => (await getProductForEdit(store, context, productId))!.variants.map((v) => v.cost);
+    expect(context.mainCurrency).toBe("NOK");
+    expect(await read()).toEqual(["", ""]);
+
+    const { archived, ...input } = (await getProductForEdit(store, context, productId))!;
+    expect(archived).toBe(false);
+    input.variants[0].cost = "62,50";
+    input.variants[1].cost = "0";
+    expect(await saveProduct(store, context, productId, productInput.parse(input))).toMatchObject({ ok: true });
+    expect(await read()).toEqual(["62,50", "0,00"]);
+    const stored = await db().execute<Row>(sql`
+      select sku, cost_minor::int as cost from commerce.product_variants where product_id = ${productId}::uuid order by sku
+    `);
+    expect(stored.map((r) => r.cost)).toEqual([6250, 0]);
+
+    // Emptying the field takes the cost away (unknown, not zero); a new variant starts without one.
+    input.variants[1].cost = "";
+    expect(await saveProduct(store, context, productId, productInput.parse(input))).toMatchObject({ ok: true });
+    expect(await read()).toEqual(["62,50", ""]);
+
+    input.variants[0].cost = "dyrt";
+    expect(await saveProduct(store, context, productId, productInput.parse(input))).toEqual({
+      ok: false,
+      problems: ['Hvit: "dyrt" is not a cost in NOK.'],
+    });
+    expect(await read()).toEqual(["62,50", ""]);
+    input.variants[0].cost = "";
+    expect(await saveProduct(store, context, productId, productInput.parse(input))).toMatchObject({ ok: true });
   });
 
   it("keeps each variant's picture, and lets it go", async () => {

@@ -7,6 +7,7 @@ import { parsePaymentMode } from "@/lib/pay-later";
 import { parseProductAudience, withVat, withoutVat, type StoreAudience } from "@/lib/b2b";
 import { feeFor, parseSeason } from "@/lib/booking-prices";
 import { parseRentalPeriod } from "@/lib/booking-ranges";
+import { mainCurrency } from "@/lib/markets";
 import { parseVatCategory, type VatCategory } from "@/lib/vat";
 import {
   combineOptions,
@@ -53,6 +54,8 @@ export type EditorContext = {
   markets: { code: string; currency: string; name: string; vatRates: Record<VatCategory, number> }[];
   /** Who the store sells to (B2B): a store selling only to businesses enters its prices without VAT. */
   audience: StoreAudience;
+  /** The store's main currency (D152): what a variant's cost is entered in. */
+  mainCurrency: string;
   operators: Operator[];
   /** Where stock is counted; null until the first product is saved. */
   locationName: string | null;
@@ -120,6 +123,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     terms,
     markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name, vatRates: vatRates.get(m.code) ?? noVat })),
     audience: store.audience,
+    mainCurrency: mainCurrency(store),
     operators: operators.map((row) => ({
       id: String(row.id),
       name: String(row.name),
@@ -170,6 +174,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
         sku: "",
         gtin: null,
         prices: {},
+        cost: "",
         stock: 0,
         active: true,
         weightGrams: null,
@@ -303,7 +308,7 @@ export async function getProductForEdit(
     `),
     db().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country, v.delivery, v.rental_period,
-             v.image_url, v.image_thumbnail_url,
+             v.image_url, v.image_thumbnail_url, v.cost_minor,
              coalesce((
                select l.on_hand from commerce.inventory_levels l
                join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
@@ -410,6 +415,7 @@ export async function getProductForEdit(
             formatPriceInput(typedAmount(context, String(p.market_code), Number(p.amount_minor), category), String(p.currency)),
           ]),
       ),
+      cost: v.cost_minor === null ? "" : formatPriceInput(Number(v.cost_minor), context.mainCurrency),
       stock: Number(v.stock),
       active: Boolean(v.active),
       weightGrams: v.weight_grams === null ? null : Number(v.weight_grams),
@@ -601,6 +607,7 @@ export async function saveProduct(
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
   const problems = productProblems(input, {
     markets: context.markets,
+    mainCurrency: context.mainCurrency,
     primaryLocale: context.primaryLocale,
     operatorCountries: Object.fromEntries(context.operators.map((o) => [o.id, o.country])),
     euCountries: new Set(euRows.map((r) => String(r.code))),
@@ -861,13 +868,16 @@ async function saveVariants(
   for (const variant of input.variants) {
     // Digital variants are not shipped: no weight or customs details.
     const physical = variant.delivery === "physical";
+    // The cost per unit (D152), in the main currency; unknown when empty, and sold lines keep what it was then.
+    const cost = parsePrice(variant.cost, context.mainCurrency);
     const fields = sql`
       sku = ${variant.sku}, gtin = ${variant.gtin}, options = ${JSON.stringify(variant.options)}::jsonb,
       active = ${variant.active}, delivery = ${variant.delivery},
       rental_period = ${input.kind === "rental" ? variant.rentalPeriod : "day"},
       weight_grams = ${physical ? variant.weightGrams : null},
       hs_code = ${physical ? variant.hsCode : null}, origin_country = ${physical ? variant.originCountry : null},
-      image_url = ${variant.image?.url ?? null}, image_thumbnail_url = ${variant.image?.thumbnailUrl ?? null}
+      image_url = ${variant.image?.url ?? null}, image_thumbnail_url = ${variant.image?.thumbnailUrl ?? null},
+      cost_minor = ${cost}
     `;
     let id: string;
     if (variant.id && existingIds.has(variant.id)) {
@@ -877,13 +887,14 @@ async function saveVariants(
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.product_variants (
           store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
-          image_url, image_thumbnail_url
+          image_url, image_thumbnail_url, cost_minor
         ) values (
           ${storeId}::uuid, ${productId}::uuid, ${variant.sku}, ${variant.gtin},
           ${JSON.stringify(variant.options)}::jsonb, ${variant.active}, ${variant.delivery},
           ${input.kind === "rental" ? variant.rentalPeriod : "day"},
           ${physical ? variant.weightGrams : null}, ${physical ? variant.hsCode : null},
-          ${physical ? variant.originCountry : null}, ${variant.image?.url ?? null}, ${variant.image?.thumbnailUrl ?? null}
+          ${physical ? variant.originCountry : null}, ${variant.image?.url ?? null}, ${variant.image?.thumbnailUrl ?? null},
+          ${cost}
         )
         returning id
       `);

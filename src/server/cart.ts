@@ -13,6 +13,7 @@ import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 
 import { freeResourcesAt } from "./appointments";
+import { attachVisitToCart } from "./analytics-visits";
 import { audit, type Membership } from "./auth";
 import { checkRange, linePrice, rangePricing } from "./ranges";
 
@@ -389,6 +390,8 @@ async function openCart(tx: Tx, shop: Shop): Promise<string> {
     returning id
   `);
   const id = String(row.id);
+  // Which visit made the cart, for the analytics' channel of its order (D152); never in the way of adding to it.
+  await attachVisitToCart(tx, storeId, id);
   (await cookies()).set(cookieName(shop), id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

@@ -44,6 +44,7 @@ import { t } from "@/lib/i18n";
 import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts, productFacts, saveFieldData, saveFieldGroup, storeRuleFacts } from "./custom-fields";
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
+import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
 import { deliveryRounds } from "./standing-orders";
@@ -1553,6 +1554,9 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   product_performance: productPerformance,
   sales_trend: salesTrend,
   sales_funnel: salesFunnel,
+  analytics_overview: analyticsOverviewTool,
+  explain_change: explainChangeTool,
+  analytics_alerts: analyticsAlertsTool,
   restock_suggestions: restockSuggestions,
   list_integrations: listIntegrationsTool,
   email_customer: emailCustomerTool,

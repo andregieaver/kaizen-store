@@ -32,6 +32,16 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
           choices shoppers make about them. Your cookie page lists every cookie, in each of your languages.
         </p>
       </div>
+      <section aria-labelledby="visit-counting-heading" className="flex flex-col gap-1 rounded-lg border border-border bg-background p-5">
+        <h2 id="visit-counting-heading" className="font-medium">
+          Visit counting for your analytics: {store.visitCounting ? "on" : "off"}
+        </h2>
+        <p className="max-w-2xl text-sm text-muted">
+          {store.visitCounting
+            ? "Your store counts visits without cookies, and nothing is set or stored in the shopper's browser, so it shows no cookie banner. A visit is one line with the country, the kind of device, the channel, the first page and how many pages were seen, under an id made with a key that changes every day, so it cannot be followed from one day to the next. No IP address or browser details are kept, and visitors who send Global Privacy Control or Do Not Track are not counted. When a shopper adds something to the cart that day, that visit is tied to the cart (and so to the order made from it), which is how a sale gets its channel. Your cookie page says all this, in each of your languages."
+            : "Visit counting is off. When you switch it on under Analytics settings, your store counts visits without cookies (one line per visitor per day under an id that changes every day, no IP address or browser details kept; a visit is tied to a cart when something is added to it, so a sale gets its channel), and your cookie page says so."}
+        </p>
+      </section>
       <TrackingForm
         tracking={store.tracking}
         action={saveStoreTrackingAction.bind(null, store.slug)}

@@ -242,7 +242,7 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     title: "Sell more",
     when: "The owner asks how to grow, get more sales or keep customers coming back.",
     steps: [
-      "Look first: sales_trend, customer_insights, product_performance, sales_funnel, search_insights, cart_reminder_stats.",
+      "Look first: analytics_overview (the figures and what is missing), analytics_alerts (what needs a look), explain_change when sales moved, then sales_trend, customer_insights, product_performance, sales_funnel, search_insights, cart_reminder_stats.",
       "Common wins, only those that fit what you found: cart reminders on (cart-reminders); fixing searches that find nothing; a code for a campaign; winning back customers at risk (the win-back skill); purchase options for things people buy again (subscriptions on the product); a chat agent for questions (chat); Google reviews on the front page; passing events to a newsletter tool through Zapier or Make (integrations).",
       "Suggest at most three, each with why and the page, and offer to start with one.",
     ],
@@ -294,10 +294,10 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     title: "Understand the customers",
     when: "The owner asks who buys, how loyal customers are, what sells, or where shoppers drop off.",
     steps: [
-      "Call customer_insights, then product_performance and sales_funnel for the same period.",
+      "Call customer_insights, then product_performance and sales_funnel for the same period. For how the store is doing in money, or why sales moved, call analytics_overview and explain_change and repeat their sentences and figures: they are counted in code, with what is missing (product costs, visit counting) said plainly.",
       "Answer in plain words: how many come back and how often, the best sellers and what does not sell, and where carts are left.",
       "One or two suggestions that follow from it, each with its page or skill (win-back, improve-search, run-a-sale).",
-      "Visits and product views are not tracked: never guess them.",
+      "Visits are counted only when the store has switched visit counting on (analytics_overview says whether it has): never guess them, and never give a profit figure the tool did not.",
     ],
   },
   {

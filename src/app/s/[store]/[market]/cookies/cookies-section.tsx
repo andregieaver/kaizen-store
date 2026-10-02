@@ -10,5 +10,5 @@ export async function CookiesSection({ store, market }: { store: Store; market: 
     buyers: store.audience === "both",
     colorMode: store.theme.settings.visitorSwitch,
   });
-  return <CookiePolicy lang={market.lang} cookies={cookies} categories={categories} />;
+  return <CookiePolicy lang={market.lang} cookies={cookies} categories={categories} visitCounting={store.visitCounting} />;
 }

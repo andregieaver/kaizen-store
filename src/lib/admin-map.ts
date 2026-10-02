@@ -310,6 +310,39 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["stripe", "card", "go live", "payouts"],
   }),
 
+  // Store: analytics (D152) ------------------------------------------------------------------
+  store("analytics", "/analytics", "Analytics", "Analytics", "The store's cockpit: revenue, profit, orders, conversion, basket size, customers and refunds against the previous period and last year, the funnel, best sellers, channels, target progress and what needs doing today.", {
+    keywords: ["dashboard", "kpi", "revenue", "sales", "profit", "conversion", "statistics", "report", "performance"],
+    tasks: ["See how the store is doing", "Find out why sales changed", "See what needs doing today"],
+  }),
+  store("analytics.finance", "/analytics/finance", "Finance", "Analytics", "From gross sales to net revenue, contribution profit and estimated operating profit: discounts, refunds, VAT, cost of goods, payment and platform fees, shipping and marketing.", {
+    keywords: ["profit", "margin", "cogs", "fees", "vat", "net sales", "contribution"],
+  }),
+  store("analytics.customers", "/analytics/customers", "Customer analytics", "Analytics", "New against returning customers, repeat purchase rate, purchase frequency, lifetime value, customer segments (RFM) and cohort retention.", {
+    keywords: ["ltv", "retention", "cohort", "rfm", "repeat", "loyal", "churn"],
+  }),
+  store("analytics.products", "/analytics/products", "Product analytics", "Analytics", "Revenue, units, margin, refund rate and share of revenue and profit for each product.", {
+    keywords: ["best sellers", "top products", "margin", "pareto"],
+  }),
+  store("analytics.inventory", "/analytics/inventory", "Inventory analytics", "Analytics", "Stock on hand and its value, sales velocity, days of stock left, products about to run out and dead stock.", {
+    keywords: ["stock", "stockout", "velocity", "turnover", "dead stock", "reorder"],
+  }),
+  store("analytics.marketing", "/analytics/marketing", "Marketing analytics", "Analytics", "Channels with sessions, orders, revenue, conversion, cost to win a customer and return on ad spend; ad spend entry; discounts and coupons.", {
+    keywords: ["cac", "roas", "ads", "channels", "campaign", "spend", "discounts", "coupons"],
+    tasks: ["Enter this month's ad spend", "See which channel earns the most"],
+  }),
+  store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
+    keywords: ["mrr", "arr", "churn", "recurring"],
+  }),
+  store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, and sales by weekday and hour.", {
+    keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "heatmap"],
+  }),
+  store("analytics.settings", "/analytics/settings", "Analytics settings", "Analytics", "Cost of goods, payment fee and shipping cost estimates, fixed costs, customer lifetime, monthly revenue targets, and whether visits are counted.", {
+    needs: "owner",
+    keywords: ["cost", "cogs", "fees", "target", "goal", "visit counting"],
+    tasks: ["Set this month's revenue target", "Turn visit counting on or off", "Apply costs to earlier orders"],
+  }),
+
   store("website", "/website", "Website", "Website", "The store's website at a glance: a card for each of its pages, blog, media, menus, headers, footers, design and translations.", {
     keywords: ["site", "storefront", "content"],
   }),

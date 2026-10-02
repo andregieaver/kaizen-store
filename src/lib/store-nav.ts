@@ -15,7 +15,7 @@ export type StoreItem = { path: string; label: string; description: string; exac
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
 export type StoreSection = {
-  key: "orders" | "products" | "customers" | "marketing" | "website" | "bookings" | "settings";
+  key: "orders" | "products" | "customers" | "marketing" | "analytics" | "website" | "bookings" | "settings";
   label: string;
   icon: NavIconName;
   /** The tab's address after the store's: the section's main page, or its hub. */
@@ -104,6 +104,30 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart."),
           item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction."),
           item("/affiliates", "Referral program", "Customers who refer their friends, and what both get."),
+        ],
+      },
+    ],
+  },
+  {
+    key: "analytics",
+    label: "Analytics",
+    icon: "chart",
+    start: "/analytics",
+    hub: false,
+    intro: "How the store is doing: sales and profit, why they change, which customers and products drive them, and what needs doing today.",
+    groups: [
+      {
+        heading: "Analytics",
+        items: [
+          item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true }),
+          item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left."),
+          item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts."),
+          item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves."),
+          item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell."),
+          item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons."),
+          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals."),
+          item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours."),
+          item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted."),
         ],
       },
     ],

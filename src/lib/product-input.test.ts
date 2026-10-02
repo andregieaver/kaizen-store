@@ -118,6 +118,7 @@ describe("productProblems", () => {
       { code: "NO", currency: "NOK" },
       { code: "SE", currency: "SEK" },
     ],
+    mainCurrency: "NOK",
     primaryLocale: "nb-NO",
     operatorCountries: { "11111111-1111-4111-8111-111111111111": "NO" },
     euCountries: new Set(["DE", "SE", "BE"]),
@@ -147,6 +148,38 @@ describe("productProblems", () => {
       variants: [{ ...base.variants[0], prices: { NO: "abc" } }],
     };
     expect(productProblems(draft, context)).toEqual(['Default: "abc" is not a price in NOK.']);
+  });
+
+  describe("a unit's cost (D152)", () => {
+    const withCost = (cost: string) => ({ ...base, variants: [{ ...base.variants[0], cost }] });
+
+    it("is optional: left out it is empty, and an empty cost is no problem", () => {
+      expect(base.variants[0].cost).toBe("");
+      expect(productProblems(withCost(""), context)).toEqual([]);
+    });
+
+    it("is typed like a price, in the main currency", () => {
+      for (const typed of ["0", "12", "12,50", "1 249.5", "1.249,50"]) {
+        expect(productProblems(withCost(typed), context), typed).toEqual([]);
+      }
+    });
+
+    it("is refused when it is not an amount, with the text it was typed as", () => {
+      for (const typed of ["abc", "-5", "12 kr", "1e3"]) {
+        expect(productProblems(withCost(typed), context), typed).toEqual([`Default: "${typed}" is not a cost in NOK.`]);
+      }
+    });
+
+    it("is read in the main currency, so the same text is a different cost problem per currency", () => {
+      expect(parsePrice("12,50", "NOK")).toBe(1250);
+      expect(productProblems(withCost("12,50"), { ...context, mainCurrency: "SEK" })).toEqual([]);
+    });
+
+    it("is trimmed and limited in length by the schema", () => {
+      const variant = { ...base.variants[0], cost: "  12,50 " };
+      expect(productInput.parse({ ...base, variants: [variant] }).variants[0].cost).toBe("12,50");
+      expect(productInput.safeParse({ ...base, variants: [{ ...variant, cost: "1".repeat(21) }] }).success).toBe(false);
+    });
   });
 
   it("catches duplicate SKUs and a missing title", () => {

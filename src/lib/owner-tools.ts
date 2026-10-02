@@ -197,6 +197,27 @@ export const OWNER_TOOLS = [
     z.object({ days: z.number().int().min(1).max(365).default(30) }),
   ),
   tool(
+    "analytics_overview",
+    "The store's analytics for a period (D152), counted in code from paid orders: revenue, net revenue after refunds, orders, conversion rate, average order, gross profit and margin, new and returning customers, refund rate, visits and revenue per visit, each written out with its change against the previous period (or the same period last year). A figure that cannot be known is not given as zero: it says what is missing and where to add it (product costs, visit counting, fees). It also says how much of sales the profit figures rest on. Amounts are in the store's main currency without VAT. Use it for any question about how the store is doing in money terms; never add up or compare figures yourself.",
+    z.object({
+      period: z.enum(["7d", "30d", "month", "last_month", "year"]).default("30d").describe("The last 7 or 30 days (today included), this month so far, the whole of last month, or this year so far."),
+      compare: z.enum(["previous", "year"]).default("previous").describe("What to compare with: the period just before it, or the same dates a year earlier."),
+    }),
+  ),
+  tool(
+    "explain_change",
+    "Why revenue changed between a period and the one before it (or last year), worked out in code and never guessed: how much came from traffic, conversion and the average order (each one's part of the change), the device, channel, country and product that carry most of it, the day it began, and which analytics page to look at next. Revenue here is before refunds, without VAT. Repeat the sentences it gives and add no cause it did not find; when it says there is too little to explain, say so.",
+    z.object({
+      period: z.enum(["7d", "30d", "month", "last_month", "year"]).default("30d").describe("The period to explain: the last 7 or 30 days, this month so far, last month, or this year so far."),
+      compare: z.enum(["previous", "year"]).default("previous").describe("What to compare with: the period just before it, or the same dates a year earlier."),
+    }),
+  ),
+  tool(
+    "analytics_alerts",
+    "What needs a look in the store's analytics right now, most pressing first, worked out in code with a minimum volume for every rule so small numbers raise nothing: conversion falling, a day's revenue far under its weekday's usual, a product's refunds over twice its usual, a channel's cost per new customer up, stock running out, checkouts left unfinished, discounts creeping up, the month's target at risk, product costs missing, and good news. Each comes with its figures and the page to look at. An empty list means nothing needs a look.",
+    z.object({}),
+  ),
+  tool(
     "restock_suggestions",
     "What to reorder: each shipped product's sales per day, the days its stock lasts, and how many to order to cover the days asked for plus the supplier's delivery time. Worked out in code from paid orders.",
     z.object({

@@ -246,6 +246,8 @@ export const productInput = z.object({
           message: "A barcode (GTIN/EAN) is 8 to 14 digits.",
         }),
         prices: z.record(z.string(), z.string().trim().max(20)),
+        /** What one unit costs the store (D152), typed like a price in the store's main currency, without VAT; empty when unknown. */
+        cost: z.string().trim().max(20).default(""),
         stock: z.number().int().min(0, "Stock cannot be negative.").max(1_000_000),
         active: z.boolean(),
         weightGrams: z.number().int().positive("Weight must be more than 0 g.").max(1_000_000).nullable(),
@@ -379,6 +381,8 @@ export function variantLabel(options: Record<string, string>): string {
 export type PublishContext = {
   /** Markets the store sells to: code and currency. */
   markets: { code: string; currency: string }[];
+  /** The store's main currency (D152): what a variant's cost is typed in. */
+  mainCurrency: string;
   /** The primary locale, whose title is required. */
   primaryLocale: string;
   /** Country codes of existing operators, by id. */
@@ -406,6 +410,13 @@ export function productProblems(input: ProductInput, context: PublishContext): s
       if (typed && parsePrice(typed, market.currency) === null) {
         problems.push(`${variantLabel(variant.options)}: "${typed}" is not a price in ${market.currency}.`);
       }
+    }
+  }
+
+  // A unit's cost (D152) is typed like a price, in the main currency; empty means not known.
+  for (const variant of input.variants) {
+    if (variant.cost && parsePrice(variant.cost, context.mainCurrency) === null) {
+      problems.push(`${variantLabel(variant.options)}: "${variant.cost}" is not a cost in ${context.mainCurrency}.`);
     }
   }
 

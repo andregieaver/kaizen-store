@@ -143,7 +143,7 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
-        p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
+        p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         (p.status = 'active' and v.active and ${bookable}) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -587,7 +587,8 @@ export async function placeOrder(
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
-          campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor
+          campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
+          unit_cost_minor
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${vatIncluded(p.total, p.rate)},
@@ -597,7 +598,8 @@ export async function placeOrder(
           ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
           ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
           ${p.range && p.startsAt ? p.count : null},
-          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}, ${p.referral}
+          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}, ${p.referral},
+          ${p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor)}
         )
         returning id
       `);

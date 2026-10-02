@@ -5606,3 +5606,185 @@ describe("the bonus program (D130)", () => {
     expect((await one<{ c: string }>("select commerce.bonus_currency($1) as c", [fresh])).c).toBe("SEK");
   });
 });
+
+describe("store analytics data (D152)", () => {
+  const TABLES = ["analytics_settings", "analytics_targets", "marketing_spend", "visits", "product_views"];
+  const rejects = (sql: string, params: unknown[], pattern: RegExp) => expect(db.query(sql, params)).rejects.toThrow(pattern);
+
+  it("keeps a cost per unit on a variant and on a sold line, never below zero, and nothing without one", async () => {
+    const { variantId } = await createProduct();
+    expect((await one<{ cost_minor: string | null }>("select cost_minor from commerce.product_variants where id = $1", [variantId])).cost_minor).toBeNull();
+    await db.query("update commerce.product_variants set cost_minor = 0 where id = $1", [variantId]);
+    await db.query("update commerce.product_variants set cost_minor = 1250 where id = $1", [variantId]);
+    await rejects("update commerce.product_variants set cost_minor = -1 where id = $1", [variantId], /product_variants_cost_minor/);
+
+    const { id: orderId } = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor,
+         discount_minor, tax_minor, total_minor, billing_address, shipping_address, placed_at)
+       values ($1, 'AN-1', 'DE', 'EUR', 'de-DE', 'a@example.com', 'paid', 1000, 0, 0, 160, 1000, '{}', '{}', now()) returning id`,
+      [store],
+    );
+    const line = (cost: number | null) =>
+      db.query(
+        `insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
+           total_minor, tax_minor, tax_rate, tax_code, unit_cost_minor)
+         values ($1, $2, $3, 'SKU', 'A thing', 1, 1000, 0, 1000, 160, 0.19, 'txcd_99999999', $4)`,
+        [store, orderId, variantId, cost],
+      );
+    await line(null);
+    await line(0);
+    await line(1250);
+    await expect(line(-5)).rejects.toThrow(/order_lines_unit_cost/);
+    // A later change of the variant's cost never reaches the line.
+    await db.query("update commerce.product_variants set cost_minor = 9999 where id = $1", [variantId]);
+    expect(
+      (await db.query("select unit_cost_minor::int as c from commerce.order_lines where order_id = $1 order by c nulls first", [orderId])).rows,
+    ).toEqual([{ c: null }, { c: 0 }, { c: 1250 }]);
+  });
+
+  it("has the settings' defaults and refuses values out of range", async () => {
+    const shop = await createStore("analytics-settings", ["NO"]);
+    await db.query("insert into commerce.analytics_settings (store_id) values ($1)", [shop]);
+    expect(await one("select payment_fee_bps, payment_fee_fixed_minor::int as fixed, shipping_cost_minor::int as ship, fixed_costs_monthly_minor::int as monthly, ltv_lifespan_years from commerce.analytics_settings where store_id = $1", [shop])).toEqual({
+      payment_fee_bps: 0,
+      fixed: 0,
+      ship: 0,
+      monthly: 0,
+      ltv_lifespan_years: 3,
+    });
+    for (const [column, value, check] of [
+      ["payment_fee_bps", 10001, /analytics_settings_fee_bps/],
+      ["payment_fee_bps", -1, /analytics_settings_fee_bps/],
+      ["payment_fee_fixed_minor", -1, /analytics_settings_amounts/],
+      ["shipping_cost_minor", -1, /analytics_settings_amounts/],
+      ["fixed_costs_monthly_minor", -1, /analytics_settings_amounts/],
+      ["ltv_lifespan_years", 0, /analytics_settings_lifespan/],
+      ["ltv_lifespan_years", 11, /analytics_settings_lifespan/],
+    ] as const) {
+      await rejects(`update commerce.analytics_settings set ${column} = $2 where store_id = $1`, [shop, value], check);
+    }
+    await db.query("update commerce.analytics_settings set payment_fee_bps = 10000, ltv_lifespan_years = 10 where store_id = $1", [shop]);
+  });
+
+  it("keeps one target per month, on its first day, above zero", async () => {
+    const shop = await createStore("analytics-targets", ["NO"]);
+    const insert = "insert into commerce.analytics_targets (store_id, month, revenue_target_minor) values ($1, $2, $3)";
+    await db.query(insert, [shop, "2026-10-01", 500000]);
+    await rejects(insert, [shop, "2026-10-01", 600000], /analytics_targets_month_key/);
+    await rejects(insert, [shop, "2026-11-15", 600000], /analytics_targets_first_of_month/);
+    await rejects(insert, [shop, "2026-11-01", 0], /analytics_targets_amount/);
+    await db.query(insert, [other, "2026-10-01", 1]);
+  });
+
+  it("keeps one spend per day, channel and campaign, from a known channel, above zero", async () => {
+    const shop = await createStore("analytics-spend", ["NO"]);
+    const insert = "insert into commerce.marketing_spend (store_id, day, channel, campaign, amount_minor) values ($1, $2, $3, $4, $5)";
+    await db.query(insert, [shop, "2026-10-01", "paid_search", "", 1000]);
+    await db.query(insert, [shop, "2026-10-01", "paid_search", "brand", 500]);
+    await db.query(insert, [shop, "2026-10-02", "paid_search", "", 500]);
+    await rejects(insert, [shop, "2026-10-01", "paid_search", "", 1], /marketing_spend_key/);
+    await rejects(insert, [shop, "2026-10-01", "carrier_pigeon", "", 1], /marketing_spend_channel/);
+    await rejects(insert, [shop, "2026-10-01", "email", "", 0], /marketing_spend_amount/);
+    await rejects(insert, [shop, "2026-10-01", "email", "x".repeat(101), 5], /marketing_spend_campaign/);
+    await rejects("insert into commerce.marketing_spend (store_id, day, channel, amount_minor, note) values ($1, '2026-10-03', 'email', 5, $2)", [shop, "x".repeat(501)], /marketing_spend_note/);
+  });
+
+  it("keeps one visitor-day per store, only of a known device and channel, with nothing that identifies anyone", async () => {
+    const shop = await createStore("analytics-visits", ["NO"]);
+    const insert = `insert into commerce.visits (store_id, day, visitor, device, channel, landing_path) values ($1, '2026-10-01', $2, $3, $4, '/s/x/no')`;
+    const hex = "0123456789abcdef01234567";
+    await db.query(insert, [shop, hex, "mobile", "direct"]);
+    await rejects(insert, [shop, hex, "desktop", "email"], /visits_day_visitor_key/);
+    await db.query(insert, [other, hex, "tablet", "referral"]);
+    await rejects(insert, [shop, "NOT-HEX-0123456789abcd", "mobile", "direct"], /visits_visitor/);
+    await rejects(insert, [shop, "fedcba9876543210fedcba98", "watch", "direct"], /visits_device/);
+    await rejects(insert, [shop, "fedcba9876543210fedcba98", "mobile", "tv"], /visits_channel/);
+    await rejects("update commerce.visits set landing_path = $2 where store_id = $1", [shop, "/" + "x".repeat(300)], /visits_text_lengths/);
+    await rejects("update commerce.visits set page_views = -1 where store_id = $1", [shop], /visits_counts/);
+    // No column holds an address or a user agent.
+    const { rows } = await db.query<{ column_name: string }>(
+      "select column_name from information_schema.columns where table_schema = 'commerce' and table_name = 'visits'",
+    );
+    expect(rows.map((r) => r.column_name).filter((c) => /ip|agent|cookie|email/.test(c))).toEqual([]);
+  });
+
+  it("links a cart to its visit, and lets go of it when the visit is deleted", async () => {
+    const shop = await createStore("analytics-cart", ["NO"]);
+    const { id: visit } = await one<{ id: string }>(
+      "insert into commerce.visits (store_id, day, visitor, device, channel, landing_path) values ($1, '2026-10-01', '0123456789abcdef01234567', 'mobile', 'direct', '/') returning id",
+      [shop],
+    );
+    const { id: cart } = await one<{ id: string }>(
+      "insert into commerce.carts (store_id, market_code, currency, locale, expires_at, visit_id) values ($1, 'NO', 'NOK', 'nb-NO', now() + interval '1 day', $2) returning id",
+      [shop, visit],
+    );
+    await db.query("delete from commerce.visits where id = $1", [visit]);
+    expect((await one<{ visit_id: string | null }>("select visit_id from commerce.carts where id = $1", [cart])).visit_id).toBeNull();
+  });
+
+  it("keeps product views per day and product, and only of the store's own products", async () => {
+    const mine = await createProduct();
+    const theirs = await createProduct({ storeId: other });
+    const insert = "insert into commerce.product_views (store_id, day, product_id, views) values ($1, '2026-10-01', $2, $3)";
+    await db.query(insert, [store, mine.productId, 3]);
+    await rejects(insert, [store, mine.productId, 1], /product_views_store_id_day_product_id_pk/);
+    await rejects(insert, [store, theirs.productId, 1], /product_views_product_fk/);
+    await rejects("update commerce.product_views set views = -1 where store_id = $1", [store], /product_views_views/);
+  });
+
+  it("has row-level security on every table, like the rest of commerce", async () => {
+    for (const table of TABLES) {
+      const row = await one<{ relrowsecurity: boolean }>(
+        "select relrowsecurity from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname = 'commerce' and c.relname = $1",
+        [table],
+      );
+      expect([table, row.relrowsecurity]).toEqual([table, true]);
+    }
+  });
+
+  it("copies a variant's cost with a duplicated store and a copied order's line cost, and nothing else of the analytics", async () => {
+    const owner = await createAccount("analytics-copier@example.com");
+    const src = await createStore("analytics-copy-source", ["DE"]);
+    await db.query("update commerce.stores set visit_counting = true where id = $1", [src]);
+    const { productId, variantId } = await createProduct({ storeId: src });
+    await db.query("update commerce.products set status = 'active' where id = $1", [productId]);
+    await db.query("update commerce.product_variants set cost_minor = 777 where id = $1", [variantId]);
+    const { id: orderId } = await one<{ id: string }>(
+      `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor,
+         discount_minor, tax_minor, total_minor, billing_address, shipping_address, placed_at)
+       values ($1, '1001', 'DE', 'EUR', 'de-DE', 'a@example.com', 'paid', 1000, 0, 0, 160, 1000, '{}', '{}', now()) returning id`,
+      [src],
+    );
+    await db.query(
+      `insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
+         total_minor, tax_minor, tax_rate, tax_code, unit_cost_minor)
+       values ($1, $2, $3, 'SKU', 'A thing', 1, 1000, 0, 1000, 160, 0.19, 'txcd_99999999', 777)`,
+      [src, orderId, variantId],
+    );
+    await db.query("insert into commerce.analytics_settings (store_id, payment_fee_bps) values ($1, 290)", [src]);
+    await db.query("insert into commerce.analytics_targets (store_id, month, revenue_target_minor) values ($1, '2026-10-01', 5)", [src]);
+    await db.query("insert into commerce.marketing_spend (store_id, day, channel, amount_minor) values ($1, '2026-10-01', 'email', 5)", [src]);
+    await db.query("insert into commerce.visits (store_id, day, visitor, device, channel, landing_path) values ($1, '2026-10-01', '0123456789abcdef01234567', 'mobile', 'direct', '/')", [src]);
+    await db.query("insert into commerce.product_views (store_id, day, product_id, views) values ($1, '2026-10-01', $2, 4)", [src, productId]);
+
+    const { id: copy } = await one<{ id: string }>("select commerce.duplicate_store($1, 'analytics-copy', 'Copy', $2) as id", [src, owner]);
+    const copiedVariant = await one<{ cost_minor: string }>("select cost_minor from commerce.product_variants where store_id = $1", [copy]);
+    expect(Number(copiedVariant.cost_minor)).toBe(777);
+    for (const table of TABLES) {
+      const { c } = await one<{ c: number }>(`select count(*)::int as c from commerce.${table} where store_id = $1`, [copy]);
+      expect([table, c]).toEqual([table, 0]);
+    }
+    // A copy counts nothing until its own owner switches visit counting on.
+    expect((await one<{ visit_counting: boolean }>("select visit_counting from commerce.stores where id = $1", [copy])).visit_counting).toBe(false);
+
+    await db.query("insert into commerce.store_copies (source_store_id, new_store_id, requested_by, options) values ($1, $2, $3, '{}')", [src, copy, owner]);
+    await db.query("select * from commerce.copy_orders($1, $2, null, 10)", [src, copy]);
+    expect((await db.query("select unit_cost_minor::int as c from commerce.order_lines where store_id = $1", [copy])).rows).toEqual([{ c: 777 }]);
+    // The template's way: a new store from the template carries the variants' cost too.
+    await db.query("update commerce.stores set is_template = true where id = $1", [src]);
+    const fresh = await one<{ id: string }>("select commerce.clone_store($1, 'analytics-fresh', 'Fresh', $2) as id", [src, owner]);
+    const clonedVariant = await one<{ cost_minor: string }>("select cost_minor from commerce.product_variants where store_id = $1", [fresh.id]);
+    expect(Number(clonedVariant.cost_minor)).toBe(777);
+    expect((await one<{ visit_counting: boolean }>("select visit_counting from commerce.stores where id = $1", [fresh.id])).visit_counting).toBe(false);
+  });
+});

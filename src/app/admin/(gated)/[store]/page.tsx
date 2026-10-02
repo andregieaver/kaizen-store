@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
+import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { attentionFor, changeText, money, totalSales } from "@/lib/control-center";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
@@ -23,6 +25,8 @@ export default async function AdminOverview({ params }: Props) {
   const orders = sales.reduce((sum, f) => sum + f.orders, 0);
   const priorOrders = sales.reduce((sum, f) => sum + f.priorOrders, 0);
   const base = `/admin/${store.slug}`;
+  // After the member is known, so the clock is read in a request (the page is not prerendered).
+  const now = new Date();
   const steps = [
     { done: progress.details, label: "Business details", step: "details" },
     { done: progress.countries, label: "Countries you sell to", step: "countries" },
@@ -51,6 +55,12 @@ export default async function AdminOverview({ params }: Props) {
       )}
       {/* Setup has its own checklist below; what else needs someone is listed here. */}
       {store.setupCompletedAt && <Attention items={attention} empty="Nothing needs you right now. Every order is sent and stock is fine." />}
+      {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}
+      {store.setupCompletedAt && (
+        <Suspense fallback={<HomeAnalyticsAlertsFallback />}>
+          <HomeAnalyticsAlerts store={store} base={base} now={now} />
+        </Suspense>
+      )}
       {store.setupCompletedAt && (
         <Section id="week-heading" title="The last 7 days">
           <StatGrid>

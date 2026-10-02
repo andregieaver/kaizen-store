@@ -25,11 +25,14 @@ export function CookiePolicy({
   lang,
   cookies,
   categories,
+  visitCounting = false,
 }: {
   lang: string;
   cookies: ListedCookie[];
   /** The optional categories the site uses; empty when it uses only necessary cookies. */
   categories: OptionalCategory[];
+  /** The store counts visits without cookies (D152): the page says so, plainly, though no cookie is involved. */
+  visitCounting?: boolean;
 }) {
   const m = t(lang);
   const shown = CONSENT_CATEGORIES.filter(
@@ -50,6 +53,7 @@ export function CookiePolicy({
             className="w-fit min-h-11 button-primary px-4 text-sm font-medium"
           />
         )}
+        {visitCounting && <p className="max-w-2xl">{m.visitCounting}</p>}
       </div>
       {shown.map((category) => {
         const list = cookies.filter((cookie) => cookie.category === category);

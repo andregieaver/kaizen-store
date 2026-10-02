@@ -59,6 +59,7 @@ const PATHS = {
       <path d="M4.5 21a7.5 7.5 0 0 1 15 0" />
     </>
   ),
+  chart: <path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6M20 16V6" />,
   bell: <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2ZM10 21a2 2 0 0 0 4 0" />,
   cog: (
     <>

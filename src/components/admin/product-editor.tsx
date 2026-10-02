@@ -788,6 +788,7 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   sku: "",
   gtin: null,
   prices: {},
+  cost: "",
   stock: 0,
   active: true,
   weightGrams: null,
@@ -1050,6 +1051,7 @@ function VariantsSection({
                   variant={variant}
                   name={name}
                   markets={context.markets}
+                  mainCurrency={context.mainCurrency}
                   countries={countries}
                   showDelivery={mixed}
                   showPeriod={product.kind === "rental"}
@@ -1080,6 +1082,7 @@ function VariantRow({
   variant,
   name,
   markets,
+  mainCurrency,
   countries,
   showDelivery,
   showPeriod = false,
@@ -1094,6 +1097,8 @@ function VariantRow({
   pictures: ProductInput["media"];
   upload: PictureUpload | null;
   markets: EditorContext["markets"];
+  /** What a unit's cost is typed in (D152). */
+  mainCurrency: string;
   countries: CountryOption[];
   showDelivery: boolean;
   /** A rental's variants are each booked by the day, half day or hour (D69). */
@@ -1199,15 +1204,25 @@ function VariantRow({
         <td colSpan={columns} className="pb-3">
           <details>
             <summary className="cursor-pointer text-xs text-muted">
-              {digital ? `Barcode for ${name}` : `Barcode, weight and customs for ${name}`}
+              {digital ? `Barcode and cost for ${name}` : `Barcode, cost, weight and customs for ${name}`}
             </summary>
-            <div className="mt-2 grid gap-3 sm:grid-cols-4">
+            <div className="mt-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <label className="flex flex-col gap-1 text-xs font-medium">
                 Barcode (GTIN/EAN)
                 <input
                   inputMode="numeric"
                   value={variant.gtin ?? ""}
                   onChange={(e) => onChange({ gtin: e.target.value || null })}
+                  className={cell}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-medium">
+                Cost per unit ({mainCurrency}, without VAT)
+                <input
+                  inputMode="decimal"
+                  value={variant.cost}
+                  onChange={(e) => onChange({ cost: e.target.value })}
+                  placeholder="Not known"
                   className={cell}
                 />
               </label>

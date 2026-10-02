@@ -347,13 +347,15 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
       insert into commerce.order_lines (
         store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
         total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
-        selling_plan_id, plan_interval, plan_interval_count
+        selling_plan_id, plan_interval, plan_interval_count, unit_cost_minor
       )
       select l.store_id, ${orderId}::uuid, l.variant_id, l.sku, l.title, l.quantity, l.unit_price_minor, 0,
              l.total_minor, round(l.total_minor * l.tax_rate / (1 + l.tax_rate))::bigint, l.tax_rate, l.tax_code,
              case when l.delivery = 'digital' then 'digital_content' else 'none' end::commerce.withdrawal_exclusion,
-             l.delivery, l.selling_plan_id, ${sub.interval}::commerce.plan_interval, ${sub.interval_count}
+             l.delivery, l.selling_plan_id, ${sub.interval}::commerce.plan_interval, ${sub.interval_count},
+             v.cost_minor
       from commerce.subscription_lines l
+      left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
       where l.store_id = ${storeId}::uuid and l.subscription_id = ${sub.id}::uuid
     `);
     await tx.execute(sql`

@@ -7,6 +7,7 @@ import { SiteConsent } from "@/components/consent/site-consent";
 import { CustomCss } from "@/components/custom-css";
 import { StoreAffiliate } from "@/components/store-affiliate";
 import { StoreColorScript } from "@/components/store-color-switch";
+import { StoreVisits } from "@/components/store-visits";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
@@ -78,6 +79,10 @@ export default async function ChooserLayout({ children, params }: Props) {
         {/* A friend's referral link (D131): it goes with the visitor to the market they choose. */}
         <Suspense fallback={null}>
           <StoreAffiliate store={store} base={null} />
+        </Suspense>
+        {/* Cookieless visit counting (D152), while the owner has it on. */}
+        <Suspense fallback={null}>
+          <StoreVisits store={store} />
         </Suspense>
         {/* The front door asks and loads as the store's markets do (D58, D61), in its first market's language. */}
         {market && (

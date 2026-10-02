@@ -39,6 +39,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { CHANNEL_KEYS } from "../lib/analytics-channels";
 
 export const commerce = pgSchema("commerce");
 
@@ -51,6 +52,8 @@ const updatedAt = () =>
   timestamp("updated_at", { withTimezone: true }).notNull().defaultNow();
 const money = (name: string) => bigint(name, { mode: "number" }).notNull();
 const storeId = () => uuid("store_id").notNull();
+/** The channels' keys as a SQL list for a check (`src/lib/analytics-channels.ts`, D152). */
+const channelList = sql.raw(CHANNEL_KEYS.map((k) => `'${k}'`).join(", "));
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -329,6 +332,11 @@ export const stores = commerce.table(
     businessPopup: boolean("business_popup").notNull().default(false),
     /** On phones, open the slide-out cart (D64) once something is added to it. */
     openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
+    /**
+     * Cookieless visit counting for the analytics (D152): off until the owner switches it on, and never copied with a
+     * store, so a copy counts nothing until its own owner chooses.
+     */
+    visitCounting: boolean("visit_counting").notNull().default(false),
     /** Modules the store has switched on (D65): `bookings` for appointments, `deliveries` (D102), `work` (D122). */
     modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
     /** Where the store's times are, e.g. appointments' (D65): an IANA time zone. */
@@ -1129,6 +1137,11 @@ export const productVariants = commerce.table(
     imageUrl: text("image_url"),
     imageThumbnailUrl: text("image_thumbnail_url"),
     weightGrams: integer("weight_grams"),
+    /**
+     * What one unit costs the store, in its main currency (D152); null while unknown. Copied onto each order line
+     * when it is sold (`order_lines.unit_cost_minor`), so a later change never rewrites history.
+     */
+    costMinor: bigint("cost_minor", { mode: "number" }),
     /** Customs tariff (HS) code and country of origin, for export declarations. */
     hsCode: text("hs_code"),
     originCountry: char("origin_country", { length: 2 }),
@@ -1144,6 +1157,7 @@ export const productVariants = commerce.table(
     check("product_variants_rental_period", sql`${t.rentalPeriod} in ('day', 'half_day', 'hour')`),
     check("product_variants_image", sql`${t.imageThumbnailUrl} is null or ${t.imageUrl} is not null`),
     check("product_variants_weight_positive", sql`${t.weightGrams} > 0`),
+    check("product_variants_cost_minor", sql`${t.costMinor} >= 0`),
     check("product_variants_hs_code_digits", sql`${t.hsCode} ~ '^[0-9]{6,10}$'`),
   ],
 );
@@ -1837,6 +1851,11 @@ export const carts = commerce.table(
      * market's flat rate. No foreign key (the quotes point back at the cart); a quote that is gone or has run out is none.
      */
     deliveryQuoteId: uuid("delivery_quote_id"),
+    /**
+     * The visitor-day that made the cart (D152, only while the store counts visits), which is how a paid order knows
+     * its channel and device. The visit is deleted after 25 months; the cart then keeps nothing.
+     */
+    visitId: uuid("visit_id").references((): AnyPgColumn => visits.id, { onDelete: "set null" }),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -1845,6 +1864,7 @@ export const carts = commerce.table(
   (t) => [
     unique("carts_store_id_key").on(t.storeId, t.id),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
+    index("carts_visit_idx").on(t.visitId),
     marketCountryRef("carts_market_fk", t),
     customerRef("carts_customer_fk", t),
     index("carts_market_idx").on(t.storeId, t.marketCode, t.currency),
@@ -2078,6 +2098,11 @@ export const orderLines = commerce.table(
      */
     bookedCount: integer("booked_count"),
     unitPriceMinor: money("unit_price_minor"),
+    /**
+     * The variant's cost per unit when the line was sold (D152), in the store's main currency; null when it was not
+     * known (it can be filled in later by `backfillCosts()`). Never read for a price.
+     */
+    unitCostMinor: bigint("unit_cost_minor", { mode: "number" }),
     discountMinor: money("discount_minor").default(0),
     /** The part of the discount that is the buyer's group or company discount (D108). */
     memberDiscountMinor: money("member_discount_minor").default(0),
@@ -2127,6 +2152,7 @@ export const orderLines = commerce.table(
     check("order_lines_bonus_discount", sql`${t.bonusDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_referral_discount", sql`${t.referralDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
+    check("order_lines_unit_cost", sql`${t.unitCostMinor} >= 0`),
   ],
 );
 
@@ -6374,5 +6400,133 @@ export const experimentCarts = commerce.table(
     index("experiment_carts_visitor_idx").on(t.storeId, t.visitor),
     index("experiment_carts_created_idx").on(t.createdAt),
     check("experiment_carts_visitor", sql`length(${t.visitor}) between 8 and 64`),
+  ],
+);
+
+/**
+ * A store's cost assumptions for the analytics (D152, `docs/analytics.md`): what its estimates of payment fees,
+ * shipping and fixed costs use, all in the main currency. A store without a row has the defaults (everything zero, which
+ * the pages say is "not entered", never a profit).
+ */
+export const analyticsSettings = commerce.table(
+  "analytics_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    /** Estimated payment fee per paid order, in basis points of its total: 290 is 2.9 %. */
+    paymentFeeBps: integer("payment_fee_bps").notNull().default(0),
+    /** Plus this fixed amount per paid order. */
+    paymentFeeFixedMinor: bigint("payment_fee_fixed_minor", { mode: "number" }).notNull().default(0),
+    /** What sending one order costs the store, per paid order with a physical line. */
+    shippingCostMinor: bigint("shipping_cost_minor", { mode: "number" }).notNull().default(0),
+    /** Rent, pay and other fixed costs for a month; taken pro rata by day. */
+    fixedCostsMonthlyMinor: bigint("fixed_costs_monthly_minor", { mode: "number" }).notNull().default(0),
+    /** Years a customer is expected to keep buying, for the predicted lifetime value. */
+    ltvLifespanYears: integer("ltv_lifespan_years").notNull().default(3),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check("analytics_settings_fee_bps", sql`${t.paymentFeeBps} between 0 and 10000`),
+    check("analytics_settings_amounts", sql`${t.paymentFeeFixedMinor} >= 0 and ${t.shippingCostMinor} >= 0 and ${t.fixedCostsMonthlyMinor} >= 0`),
+    check("analytics_settings_lifespan", sql`${t.ltvLifespanYears} between 1 and 10`),
+  ],
+);
+
+/** A month's net revenue target (D152); `month` is its first day. */
+export const analyticsTargets = commerce.table(
+  "analytics_targets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    month: date("month", { mode: "string" }).notNull(),
+    revenueTargetMinor: bigint("revenue_target_minor", { mode: "number" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("analytics_targets_month_key").on(t.storeId, t.month),
+    check("analytics_targets_first_of_month", sql`${t.month} = date_trunc('month', ${t.month}::timestamp)::date`),
+    check("analytics_targets_amount", sql`${t.revenueTargetMinor} > 0`),
+  ],
+);
+
+/**
+ * Marketing spend the owner entered (D152): what was paid for a channel (and a campaign within it) on a day, in the
+ * store's main currency. Entered by hand, so the pages say when none has been.
+ */
+export const marketingSpend = commerce.table(
+  "marketing_spend",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    channel: text("channel").notNull(),
+    /** The campaign within the channel, empty for the channel as a whole. */
+    campaign: text("campaign").notNull().default(""),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("marketing_spend_key").on(t.storeId, t.day, t.channel, t.campaign),
+    check("marketing_spend_channel", sql`${t.channel} in (${channelList})`),
+    check("marketing_spend_campaign", sql`length(${t.campaign}) <= 100`),
+    check("marketing_spend_amount", sql`${t.amountMinor} > 0`),
+    check("marketing_spend_note", sql`length(${t.note}) <= 500`),
+  ],
+);
+
+/**
+ * One visitor on one day (D152, `docs/analytics.md`): written only while the store's `visit_counting` is on. The visitor
+ * is a keyed hash that changes every day, so nobody can be followed from one day to the next; no IP address and no user
+ * agent is kept. Deleted after 25 months.
+ */
+export const visits = commerce.table(
+  "visits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    /** The day in the store's time zone. */
+    day: date("day", { mode: "string" }).notNull(),
+    /** 24 hex characters of the daily keyed hash. */
+    visitor: text("visitor").notNull(),
+    marketCode: char("market_code", { length: 2 }),
+    device: text("device").notNull(),
+    /** Decided once, on the visitor-day's first page view (`classifyChannel()`). */
+    channel: text("channel").notNull(),
+    source: text("source").notNull().default(""),
+    campaign: text("campaign").notNull().default(""),
+    landingPath: text("landing_path").notNull(),
+    pageViews: integer("page_views").notNull().default(1),
+    productViews: integer("product_views").notNull().default(0),
+    /** When the visitor first reached checkout that day. */
+    checkoutAt: timestamp("checkout_at", { withTimezone: true }),
+    firstSeen: timestamp("first_seen", { withTimezone: true }).notNull().defaultNow(),
+    lastSeen: timestamp("last_seen", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("visits_day_visitor_key").on(t.storeId, t.day, t.visitor),
+    index("visits_store_day_idx").on(t.storeId, t.day),
+    check("visits_visitor", sql`${t.visitor} ~ '^[0-9a-f]{24}$'`),
+    check("visits_device", sql`${t.device} in ('mobile', 'tablet', 'desktop')`),
+    check("visits_channel", sql`${t.channel} in (${channelList})`),
+    check("visits_text_lengths", sql`length(${t.source}) <= 100 and length(${t.campaign}) <= 100 and length(${t.landingPath}) <= 300`),
+    check("visits_counts", sql`${t.pageViews} >= 0 and ${t.productViews} >= 0`),
+  ],
+);
+
+/** How often a product's page was viewed on a day (D152), while the store counts visits; no visitor in it. */
+export const productViews = commerce.table(
+  "product_views",
+  {
+    storeId: storeId().references(() => stores.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    productId: uuid("product_id").notNull(),
+    views: integer("views").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.day, t.productId] }),
+    productRef("product_views_product_fk", t),
+    check("product_views_views", sql`${t.views} >= 0`),
   ],
 );

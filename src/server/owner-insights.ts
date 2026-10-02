@@ -202,7 +202,9 @@ export async function productPerformance({ store }: Ctx, { days }: OwnerToolInpu
     products_sold: selling.length,
     best_sellers: selling.slice(0, 15).map(show),
     not_selling: { count: idle.length, products: idle.slice(0, 15).map(show) },
-    note: "Takings are the lines' totals with VAT, before shipping and refunds. Product views are not tracked; wishes and search opens show interest.",
+    note: store.visitCounting
+      ? "Takings are the lines' totals with VAT, before shipping and refunds. Product views are counted (visit counting is on) but are not in this list; wishes and search opens show interest here."
+      : "Takings are the lines' totals with VAT, before shipping and refunds. Product views are not tracked (visit counting is off); wishes and search opens show interest.",
   };
 }
 
@@ -285,7 +287,9 @@ export async function salesFunnel({ store }: Ctx, { days }: OwnerToolInput<"sale
     searches: n("searches"),
     searches_that_found_nothing: n("found_nothing"),
     searches_where_a_product_was_opened: pct(n("searches_opened"), n("searches")),
-    note: "Visits and product views are not tracked, so the funnel starts at the cart. Shares are worked out in code.",
+    note: store.visitCounting
+      ? "This funnel starts at the cart. The store counts visits (visit counting is on), but not in this tool: use analytics_overview and the traffic figures for visits, conversion and the funnel from a visit. Shares are worked out in code."
+      : "Visits and product views are not tracked (visit counting is off), so the funnel starts at the cart. Shares are worked out in code.",
   };
 }
 

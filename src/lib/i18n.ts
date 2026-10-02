@@ -440,6 +440,8 @@ const messages = {
     cookiePageIntro:
       "Informasjonskapsler (cookies) er små tekstfiler som lagres i nettleseren din. Her ser du hvilke dette nettstedet bruker, hvem som setter dem, hva de brukes til og hvor lenge de varer.",
     onlyNecessary: "Nettstedet bruker bare informasjonskapsler som er nødvendige for at det skal virke. Slike krever ikke samtykke.",
+    visitCounting:
+      "Nettstedet teller besøk uten informasjonskapsler. Et besøk lagres som én linje med land, type enhet, hvor du kom fra, første side og hvor mange sider du så på, under en id som er laget med en nøkkel som skiftes hver dag, så den kan ikke følges fra en dag til neste. IP-adresse og nettleserinformasjon lagres ikke. Legger du noe i handlekurven samme dag, kan butikken se hvilken kanal salget kom fra.",
     cookieName: "Navn",
     cookieProvider: "Satt av",
     cookiePurpose: "Formål",
@@ -1352,6 +1354,8 @@ const messages = {
     cookiePageIntro:
       "Kakor (cookies) är små textfiler som sparas i din webbläsare. Här ser du vilka den här webbplatsen använder, vem som sätter dem, vad de används till och hur länge de finns kvar.",
     onlyNecessary: "Webbplatsen använder bara kakor som behövs för att den ska fungera. Sådana kräver inget samtycke.",
+    visitCounting:
+      "Webbplatsen räknar besök utan kakor. Ett besök sparas som en rad med land, typ av enhet, varifrån du kom, första sidan och hur många sidor du tittade på, under ett id som skapas med en nyckel som byts varje dag, så det kan inte följas från en dag till nästa. IP-adress och webbläsaruppgifter sparas inte. Lägger du något i varukorgen samma dag kan butiken se vilken kanal försäljningen kom från.",
     cookieName: "Namn",
     cookieProvider: "Sätts av",
     cookiePurpose: "Ändamål",
@@ -2266,6 +2270,8 @@ const messages = {
     cookiePageIntro:
       "Cookies er små tekstfiler, der gemmes i din browser. Her kan du se, hvilke dette websted bruger, hvem der sætter dem, hvad de bruges til, og hvor længe de varer.",
     onlyNecessary: "Webstedet bruger kun cookies, der er nødvendige for, at det virker. Sådanne kræver ikke samtykke.",
+    visitCounting:
+      "Webstedet tæller besøg uden cookies. Et besøg gemmes som én linje med land, type enhed, hvor du kom fra, første side og hvor mange sider du så, under et id, der er lavet med en nøgle, som skiftes hver dag, så det ikke kan følges fra en dag til den næste. IP-adresse og browseroplysninger gemmes ikke. Lægger du noget i kurven samme dag, kan butikken se, hvilken kanal salget kom fra.",
     cookieName: "Navn",
     cookieProvider: "Sat af",
     cookiePurpose: "Formål",
@@ -3178,6 +3184,8 @@ const messages = {
     cookiePageIntro:
       "Cookies are small text files stored in your browser. Here you can see which ones this site uses, who sets them, what they are for and how long they last.",
     onlyNecessary: "This site uses only cookies it needs to work. Those do not need consent.",
+    visitCounting:
+      "This site counts visits without cookies. A visit is stored as one line with the country, the kind of device, where you came from, the first page and how many pages you looked at, under an id made with a key that changes every day, so it cannot be followed from one day to the next. No IP address or browser details are stored. If you add something to the cart the same day, the store can tell which channel that sale came from.",
     cookieName: "Name",
     cookieProvider: "Set by",
     cookiePurpose: "Purpose",
