@@ -2370,6 +2370,30 @@ describe("consents (D58)", () => {
   });
 });
 
+describe("page replications (D150)", () => {
+  it("allow one waiting or running job per store, a few passes and only the known states", async () => {
+    const storeId = await createStore("replica-store", ["NO"]);
+    const insert = "insert into commerce.page_replications (store_id, url, iterations_max) values ($1, 'https://example.com/', $2)";
+    await db.query(insert, [storeId, 3]);
+    await expect(db.query(insert, [storeId, 3])).rejects.toThrow(/page_replications_one_active_idx/);
+    // Another store has its own.
+    await db.query(insert, [other, 3]);
+    await db.query("update commerce.page_replications set status = 'done' where store_id = $1", [storeId]);
+    await expect(db.query(insert, [storeId, 11])).rejects.toThrow(/page_replications_iterations/);
+    await expect(db.query(insert, [storeId, 0])).rejects.toThrow(/page_replications_iterations/);
+    await db.query(insert, [storeId, 10]);
+    await expect(db.query("update commerce.page_replications set status = 'lost' where store_id = $1", [storeId])).rejects.toThrow(
+      /page_replications_status/,
+    );
+    await expect(db.query("update commerce.page_replications set phase = 'dancing' where store_id = $1", [storeId])).rejects.toThrow(
+      /page_replications_phase/,
+    );
+    await expect(db.query("update commerce.page_replications set log = '{}' where store_id = $1", [storeId])).rejects.toThrow(
+      /page_replications_json/,
+    );
+  });
+});
+
 describe("cookie scans and notes (D58)", () => {
   it("allow one waiting or running scan per site, and one note per item a site found", async () => {
     const storeId = await createStore("scan-store", ["NO"]);

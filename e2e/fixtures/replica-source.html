@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Northwind Coffee Roasters</title>
+<meta name="description" content="Small-batch coffee, roasted weekly.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #2b2118; background: #fbf7f2; line-height: 1.5; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  header { background: #fff; border-bottom: 1px solid #e8dfd3; }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+  .logo { font-size: 24px; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; }
+  nav { display: flex; gap: 28px; align-items: center; font-family: Arial, Helvetica, sans-serif; font-size: 15px; }
+  nav a { text-decoration: none; }
+  .btn { display: inline-block; font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 6px; }
+  .btn-dark { background: #2b2118; color: #fff; }
+  .btn-light { background: transparent; color: #2b2118; border: 2px solid #2b2118; padding: 12px 26px; }
+  .hero { background: #2b2118 url("/hero.png") center / cover no-repeat; color: #fff; padding: 120px 0 110px; text-align: center; }
+  .hero h1 { font-size: 56px; line-height: 64px; margin: 0 0 20px; }
+  .hero p { font-size: 20px; line-height: 30px; max-width: 640px; margin: 0 auto 36px; color: #efe3d3; }
+  .hero .btn-dark { background: #e8b04a; color: #2b2118; }
+  .hero .btn-light { color: #fff; border-color: #fff; margin-left: 12px; }
+  .features { padding: 88px 0; }
+  .features h2 { text-align: center; font-size: 38px; margin: 0 0 12px; }
+  .features .lead { text-align: center; color: #6d5b49; font-family: Arial, sans-serif; margin: 0 0 56px; }
+  .cards { display: flex; gap: 32px; }
+  .card { flex: 1; background: #fff; border-radius: 14px; padding: 32px; box-shadow: 0 4px 14px rgba(43, 33, 24, 0.08); }
+  .card svg { width: 44px; height: 44px; margin-bottom: 18px; }
+  .card h3 { font-size: 22px; margin: 0 0 10px; }
+  .card p { margin: 0; font-family: Arial, sans-serif; font-size: 16px; color: #5b4a3a; }
+  .split { padding: 40px 0 96px; }
+  .split .wrap { display: flex; align-items: center; gap: 64px; }
+  .split img { width: 520px; height: 390px; object-fit: cover; border-radius: 16px; display: block; }
+  .split h2 { font-size: 34px; margin: 0 0 16px; }
+  .split p { font-family: Arial, sans-serif; margin: 0 0 14px; color: #5b4a3a; }
+  .split ul { font-family: Arial, sans-serif; color: #5b4a3a; padding-left: 22px; margin: 0 0 24px; }
+  .quote { background: #efe3d3; padding: 72px 0; text-align: center; }
+  .quote blockquote { margin: 0 auto; max-width: 760px; font-size: 28px; line-height: 40px; font-style: italic; }
+  .quote cite { display: block; margin-top: 18px; font-family: Arial, sans-serif; font-size: 15px; font-style: normal; color: #6d5b49; }
+  .signup { background: #e8b04a; padding: 64px 0; text-align: center; }
+  .signup h2 { margin: 0 0 20px; font-size: 32px; }
+  .signup input { font-size: 16px; padding: 14px 16px; width: 320px; border: 1px solid #b8862f; border-radius: 6px; }
+  footer { background: #1f1710; color: #cdbba5; padding: 56px 0 32px; font-family: Arial, sans-serif; font-size: 14px; }
+  footer .cols { display: flex; gap: 48px; }
+  footer .cols div { flex: 1; }
+  footer h4 { color: #fff; margin: 0 0 14px; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; }
+  footer ul { list-style: none; margin: 0; padding: 0; }
+  footer li { margin-bottom: 8px; }
+  footer .copy { margin-top: 40px; border-top: 1px solid #3a2e22; padding-top: 20px; }
+  .cookie { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #ccc; padding: 16px; text-align: center; font-family: Arial, sans-serif; z-index: 50; }
+  @media (max-width: 767px) {
+    header .wrap { height: 64px; }
+    nav a:not(.btn) { display: none; }
+    .hero { padding: 72px 0; }
+    .hero h1 { font-size: 34px; line-height: 40px; }
+    .hero .btn-light { margin: 12px 0 0; }
+    .cards, .split .wrap, footer .cols { flex-direction: column; gap: 20px; }
+    .split img { width: 100%; height: auto; }
+    .features { padding: 56px 0; }
+  }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="logo" href="/">Northwind</a><nav><a href="/shop">Shop</a><a href="/about">About</a><a href="/journal">Journal</a><a class="btn btn-dark" href="/subscribe" style="padding:10px 20px;font-size:14px">Subscribe</a></nav></div></header>
+<section class="hero"><div class="wrap"><h1>Coffee worth waking up for</h1><p>We roast small batches every week and ship them fresh, so every cup tastes like the first one.</p><a class="btn btn-dark" href="/shop">Shop the roast</a><a class="btn btn-light" href="/about">Our story</a></div></section>
+<section class="features"><div class="wrap"><h2>Why people switch</h2><p class="lead">Three small things we refuse to compromise on.</p>
+<div class="cards">
+<div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="#b8862f" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><h3>Roasted weekly</h3><p>Every order is roasted the week it ships, never sitting on a shelf.</p></div>
+<div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="#b8862f" stroke-width="2"><path d="M4 12l5 5L20 6"/></svg><h3>Fairly sourced</h3><p>We pay farms more than the market price and say exactly how much.</p></div>
+<div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="#b8862f" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M8 7V5h8v2"/></svg><h3>Plastic-free</h3><p>Compostable bags and paper boxes, from our door to yours.</p></div>
+</div></div></section>
+<section class="split"><div class="wrap"><img src="/roastery.png" alt="Our roastery at sunrise"><div><h2>From our roastery to your kitchen</h2><p>Our beans come from three small farms we visit every year. We roast them in a restored brick workshop.</p><p>Pick a roast, pick a rhythm, and change or pause it any time.</p><ul><li>Free delivery over 40 euros</li><li>Pause or skip with one click</li><li>Grind to suit your brewer</li></ul><a class="btn btn-dark" href="/subscribe">Start a subscription</a></div></div></section>
+<section class="quote"><div class="wrap"><blockquote>“The best coffee I have had at home, and it turns up on the day they promise.”<cite>Ingrid H., subscriber since 2022</cite></blockquote></div></section>
+<section class="signup"><div class="wrap"><h2>Get the first bag at half price</h2><input type="email" placeholder="you@example.com"> <a class="btn btn-dark" href="/subscribe">Claim it</a></div></section>
+<footer><div class="wrap"><div class="cols"><div><h4>Northwind</h4><p>Small-batch coffee, roasted weekly in Bergen.</p></div><div><h4>Shop</h4><ul><li><a href="/shop/espresso">Espresso</a></li><li><a href="/shop/filter">Filter</a></li><li><a href="/shop/gifts">Gifts</a></li></ul></div><div><h4>Help</h4><ul><li><a href="/delivery">Delivery</a></li><li><a href="/contact">Contact</a></li><li><a href="/faq">FAQ</a></li></ul></div></div><div class="copy">© 2026 Northwind Coffee Roasters AS</div></div></footer>
+<div class="cookie">We use cookies. <a href="/privacy">Privacy</a> <button>Accept</button></div>
+</body>
+</html>

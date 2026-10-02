@@ -3629,6 +3629,61 @@ export const cookieScans = commerce.table(
 );
 
 /**
+ * A page of another website copied into a store's page builder by the AI (D150, `src/server/replicate.ts`): one row per
+ * job, run step by step by the owner's open page (one tick of work per request), with its log for the progress panel,
+ * what was captured from the original page (`capture`, never sent to the browser), and the job's working state (`work`:
+ * the analysis, the assets, the style sheet and the scores of each pass). At most one job is active per store.
+ */
+export const pageReplications = commerce.table(
+  "page_replications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    requestedBy: uuid("requested_by").references(() => accounts.id, { onDelete: "set null" }),
+    /** The address of the original page, as the owner gave it (checked by `parseReplicaUrl()`). */
+    url: text("url").notNull(),
+    status: text("status").notNull().default("queued"),
+    /** The owner pressed Abort: the next tick stops the job. */
+    abortRequested: boolean("abort_requested").notNull().default(false),
+    /** How many times the AI looks at its copy and improves it, set by the owner. */
+    iterationsMax: integer("iterations_max").notNull().default(3),
+    iteration: integer("iteration").notNull().default(0),
+    /** The step the job is at: `open`, `examine`, `copy`, `assets`, `build`, `refine`, `done`. */
+    phase: text("phase").notNull().default("open"),
+    /** What happened, newest last (`ReplicaLogEntry[]`), capped by the app. */
+    log: jsonb("log").notNull().default([]),
+    /** The original page as captured (`ReplicaCapture`): large, only read by the server. */
+    capture: jsonb("capture"),
+    /** The job's working state (`ReplicaWork`). */
+    work: jsonb("work").notNull().default({}),
+    /** The draft page the job builds, kept if the page is deleted. */
+    pageId: uuid("page_id").references(() => pages.id, { onDelete: "set null" }),
+    /** What went well and what did not (`ReplicaSummary`), written when the job ends. */
+    summary: jsonb("summary"),
+    /** A tick holds this until it has run, so two requests never work on one job. */
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("page_replications_store_created_idx").on(t.storeId, t.createdAt),
+    index("page_replications_requested_by_idx").on(t.requestedBy),
+    index("page_replications_page_idx").on(t.pageId),
+    uniqueIndex("page_replications_one_active_idx")
+      .on(t.storeId)
+      .where(sql`${t.status} in ('queued', 'running')`),
+    check("page_replications_status", sql`${t.status} in ('queued', 'running', 'done', 'failed', 'aborted')`),
+    check("page_replications_iterations", sql`${t.iterationsMax} between 1 and 10 and ${t.iteration} between 0 and 10`),
+    check("page_replications_phase", sql`${t.phase} in ('open', 'examine', 'copy', 'assets', 'build', 'refine', 'done')`),
+    check("page_replications_json", sql`jsonb_typeof(${t.log}) = 'array' and jsonb_typeof(${t.work}) = 'object'`),
+  ],
+);
+
+/**
  * What an owner says about a cookie a scan found that Kaizen does not know
  * (D58): its category and purpose, shown on the site's cookie page and
  * deciding whether visitors are asked about it.

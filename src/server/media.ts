@@ -165,6 +165,32 @@ export async function startVideoUpload(folder: string, file: { type: string; siz
   return { ok: true, path, token: data.token, bucket: VIDEOS_BUCKET, url: storage.getPublicUrl(path).data.publicUrl };
 }
 
+/**
+ * Puts bytes the server made or fetched in one of the public media buckets, at a path of its own (the page replicator's
+ * previews and the videos it copies, D150). The buckets refuse other types and larger files themselves.
+ */
+export async function uploadBytes(
+  bucket: "product-media" | "page-videos",
+  path: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<{ ok: true; url: string } | { ok: false; problem: string }> {
+  const secret = secretKey();
+  if ("problem" in secret) return { ok: false, problem: secret.problem };
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(bucket);
+  const { error } = await storage.upload(path, bytes, { contentType, cacheControl: "300", upsert: true });
+  if (error) {
+    console.error("[media] upload failed:", error.message);
+    return { ok: false, problem: "The file could not be stored." };
+  }
+  return { ok: true, url: storage.getPublicUrl(path).data.publicUrl };
+}
+
+/** The video types a page can play, with the extension each is stored under. */
+export const VIDEO_FILE_TYPES = VIDEO_TYPES;
+
 // ---------------------------------------------------------------------------
 // Files for custom fields (D118)
 // ---------------------------------------------------------------------------

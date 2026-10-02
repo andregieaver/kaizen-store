@@ -4,6 +4,7 @@ import { PageStudioView } from "@/components/admin/page-studio-view";
 import { requireMember } from "@/server/auth";
 import { studioAbilities } from "@/server/page-ai";
 import { ownerLanguages } from "@/server/pages";
+import { currentReplication } from "@/server/replicate";
 
 import {
   storeStudioBuildAction,
@@ -21,7 +22,7 @@ export const maxDuration = 300;
 
 export default async function StorePageStudio({ params }: PageProps<"/admin/[store]/pages/ai">) {
   const { store } = await requireMember((await params).store);
-  const [abilities, languages] = await Promise.all([studioAbilities(store.id), ownerLanguages(store.id)]);
+  const [abilities, languages, replication] = await Promise.all([studioAbilities(store.id), ownerLanguages(store.id), currentReplication({ storeId: store.id })]);
   const locale = languages[0]?.locale ?? "en";
   const bind = <A extends unknown[], R>(action: (slug: string, ...args: A) => R) => action.bind(null, store.slug) as (...args: A) => R;
   return (
@@ -38,6 +39,7 @@ export default async function StorePageStudio({ params }: PageProps<"/admin/[sto
       abilities={abilities}
       pagesHref={`/admin/${store.slug}/pages`}
       settingsHref={`/admin/${store.slug}/settings/ai`}
+      replicate={{ storeSlug: store.slug, initial: replication }}
     />
   );
 }

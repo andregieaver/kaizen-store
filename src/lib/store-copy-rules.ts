@@ -155,6 +155,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   company_invites: never("Invitations hold tokens for the original."),
   consents: never("The consent log is evidence for the original site."),
   cookie_scans: never("Scan results of the original site; the new store scans its own."),
+  page_replications: never("Jobs that copied another website's page for the original store; their drafts are pages and copied as pages."),
   credit_notes: never("Accounting documents with gap-free numbers of the original."),
   customer_codes: never("Sign-in codes."),
   customer_sessions: never("Sessions."),
