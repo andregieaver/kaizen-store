@@ -1,0 +1,458 @@
+/*
+ * The admin's look (design refresh): the same semantic colours the admin has always been written in (`bg-background`,
+ * `bg-surface`, `border-border`, `text-muted`, `bg-foreground`), given a cool tint, one brand colour, soft depth and a little
+ * motion. Everything is scoped to `html[data-admin]`, which only the admin's root layout sets, so the storefront and Kaizen's
+ * own site keep their themes; and it leaves alone the previews of a store's pages drawn inside the admin (`data-theme-canvas`,
+ * `data-theme-preview`), which must look as the store does.
+ *
+ * Nothing here moves layout: colour, shadow, outline, opacity and small transforms only, and every motion is off with
+ * `prefers-reduced-motion`.
+ */
+
+/* ------------------------------------------------------------------ colours */
+
+html[data-admin] {
+  --background: #ffffff;
+  --foreground: #131a2e;
+  --muted: #5a6279;
+  --surface: #eef1f7;
+  --border: #dde2ec;
+
+  --brand-solid: #4f46e5;
+  --brand-text: #4338ca;
+  --brand-soft: #eef0ff;
+  --brand-ring: rgb(79 70 229 / 0.26);
+  --brand-wash: rgb(79 70 229 / 0.07);
+  --danger: #b91c1c;
+
+  --accent: var(--brand-solid);
+  --accent-foreground: #ffffff;
+
+  --admin-canvas: var(--surface);
+  --shadow-sm: 0 1px 2px rgb(19 26 46 / 0.06), 0 1px 1px rgb(19 26 46 / 0.03);
+  --shadow-md: 0 6px 16px -4px rgb(19 26 46 / 0.12), 0 2px 4px rgb(19 26 46 / 0.05);
+  --shadow-header: 0 6px 16px -10px rgb(19 26 46 / 0.18);
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  accent-color: var(--brand-solid);
+  scrollbar-color: color-mix(in srgb, var(--muted) 38%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-admin]:not([data-color-mode="light"]) {
+    --background: #141927;
+    --foreground: #e8eaf4;
+    --muted: #9aa3bd;
+    --surface: #1d2437;
+    --border: #2b3350;
+
+    --brand-solid: #5b5fe8;
+    --brand-text: #a5b4fc;
+    --brand-soft: rgb(99 102 241 / 0.16);
+    --brand-ring: rgb(129 140 248 / 0.38);
+    --brand-wash: rgb(129 140 248 / 0.1);
+    --danger: #f87171;
+
+    --admin-canvas: #0b0e18;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 1px rgb(0 0 0 / 0.25);
+    --shadow-md: 0 8px 20px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
+    --shadow-header: 0 8px 18px -10px rgb(0 0 0 / 0.7);
+  }
+}
+
+html[data-admin][data-color-mode="dark"] {
+  --background: #141927;
+  --foreground: #e8eaf4;
+  --muted: #9aa3bd;
+  --surface: #1d2437;
+  --border: #2b3350;
+
+  --brand-solid: #5b5fe8;
+  --brand-text: #a5b4fc;
+  --brand-soft: rgb(99 102 241 / 0.16);
+  --brand-ring: rgb(129 140 248 / 0.38);
+  --brand-wash: rgb(129 140 248 / 0.1);
+  --danger: #f87171;
+
+  --admin-canvas: #0b0e18;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 1px rgb(0 0 0 / 0.25);
+  --shadow-md: 0 8px 20px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
+  --shadow-header: 0 8px 18px -10px rgb(0 0 0 / 0.7);
+}
+
+/* ------------------------------------------------------------ page and type */
+
+html[data-admin] body {
+  /* A faint wash of the brand colour from the top, over a slightly tinted page. */
+  background-color: var(--admin-canvas);
+  background-image: radial-gradient(70rem 24rem at 50% -8rem, var(--brand-wash), transparent 70%);
+  background-repeat: no-repeat;
+  font-family: ui-sans-serif, "Inter", system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "cv11", "ss03", "calt";
+  text-rendering: optimizeLegibility;
+}
+
+html[data-admin] ::selection {
+  background: color-mix(in srgb, var(--brand-solid) 24%, transparent);
+}
+
+html[data-admin] :is(h1, h2, h3) {
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+}
+html[data-admin] h1 {
+  font-weight: 650;
+}
+html[data-admin] :is(table, [data-tabular]) {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------- header and navigation */
+
+/* The header: a thin brand line along the top, and a soft shadow so the page slides under it. */
+html[data-admin] header.border-b.bg-background {
+  background:
+    linear-gradient(90deg, var(--brand-solid), #8b5cf6 55%, #06b6d4) top / 100% 2px no-repeat,
+    var(--background);
+  box-shadow: var(--shadow-header);
+}
+
+html[data-admin] :is(nav, aside) a {
+  transition:
+    background-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    border-color 0.2s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+/* The page you are on, in the sidebar: tinted, with a bar that grows in. */
+html[data-admin] :is(aside, [role="dialog"]) a[aria-current="page"] {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--brand-solid);
+}
+html[data-admin] :is(aside, [role="dialog"]) a:not([aria-current="page"]):hover {
+  background: var(--surface);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brand-solid) 35%, transparent);
+}
+
+/* The tabs: the underline takes the brand colour, and a hint of it appears when you point at one. */
+html[data-admin] header nav a[aria-current="page"] {
+  border-bottom-color: var(--brand-solid);
+  color: var(--brand-text);
+}
+html[data-admin] header nav a:not([aria-current="page"]):hover {
+  border-bottom-color: color-mix(in srgb, var(--brand-solid) 40%, transparent);
+  color: var(--foreground);
+}
+
+/* ---------------------------------------------------------------- surfaces */
+
+/* Cards (a bordered white box): a soft shadow lifts them off the page. */
+html[data-admin] :is(.rounded-lg, .rounded-xl).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 0.18s var(--ease),
+    border-color 0.18s var(--ease),
+    transform 0.18s var(--ease);
+}
+/* ... and one that is a link rises a little when pointed at. */
+html[data-admin] a:is(.rounded-lg, .rounded-xl).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *):hover {
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--brand-solid) 35%, var(--border));
+  transform: translateY(-1px);
+}
+
+/* Empty states (a dashed box): a gentle tint instead of a hole. */
+html[data-admin] .border-dashed:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  background-color: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+/* ------------------------------------------------------------------ fields */
+
+html[data-admin]
+  :is(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="submit"], [type="button"], [type="hidden"]),
+    select,
+    textarea
+  ):not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  box-shadow: inset 0 1px 1px rgb(19 26 46 / 0.04);
+  transition:
+    border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease),
+    background-color 0.15s var(--ease);
+}
+html[data-admin]
+  :is(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="submit"], [type="button"], [type="hidden"]),
+    select,
+    textarea
+  ):not(:is([data-theme-canvas], [data-theme-preview]) *):hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--border), var(--foreground) 30%);
+}
+/* A focused field: the brand colour and a soft ring (an outline that is transparent shows in forced colours). */
+html[data-admin]
+  :is(
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="submit"], [type="button"], [type="hidden"]),
+    select,
+    textarea
+  ):not(:is([data-theme-canvas], [data-theme-preview]) *):focus {
+  border-color: var(--brand-solid);
+  box-shadow: 0 0 0 3px var(--brand-ring);
+  outline: 2px solid transparent;
+}
+/* A field the browser has judged wrong, once the person has touched it. */
+html[data-admin]
+  :is(input, select, textarea):not(:is([data-theme-canvas], [data-theme-preview]) *):user-invalid {
+  border-color: var(--danger);
+}
+html[data-admin]
+  :is(input, select, textarea):not(:is([data-theme-canvas], [data-theme-preview]) *):user-invalid:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+html[data-admin] :is(input, select, textarea):disabled:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  cursor: not-allowed;
+  background-color: var(--surface);
+}
+
+/* The label of the field being typed in takes the brand colour. */
+html[data-admin] label.flex-col:has(:is(input, select, textarea):focus-visible):not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  color: var(--brand-text);
+  transition: color 0.15s var(--ease);
+}
+
+/* ----------------------------------------------------------------- controls */
+
+/* Anything you can press eases between its states, and sinks a little when pressed. */
+html[data-admin] :is(button, a, summary, [role="button"], [role="tab"], [role="menuitem"], [role="switch"]):not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  transition:
+    background-color 0.15s var(--ease),
+    border-color 0.15s var(--ease),
+    color 0.15s var(--ease),
+    box-shadow 0.18s var(--ease),
+    transform 0.12s var(--ease),
+    filter 0.15s var(--ease);
+}
+html[data-admin] :is(button, [role="button"], summary):not(:disabled, [aria-disabled="true"], :is([data-theme-canvas], [data-theme-preview]) *):active {
+  transform: translateY(0.5px) scale(0.985);
+}
+html[data-admin] button:disabled:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  cursor: not-allowed;
+}
+
+/* One focus ring everywhere you tab to. */
+html[data-admin] :is(a, button, summary, [role="tab"], [role="button"], [tabindex]):not(:is([data-theme-canvas], [data-theme-preview]) *):focus-visible {
+  outline: 2px solid var(--brand-solid);
+  outline-offset: 2px;
+}
+
+/* The main action: the brand colour with a hint of light on top, which lifts and glows when pointed at. */
+html[data-admin] .bg-foreground.text-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  background-color: var(--brand-solid);
+  color: #ffffff;
+}
+html[data-admin] :is(button, a, summary).bg-foreground.text-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.16), rgb(255 255 255 / 0));
+  box-shadow:
+    0 1px 2px rgb(30 27 110 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+html[data-admin] :is(button, a, summary).bg-foreground.text-background:not(:disabled, [aria-disabled="true"], :is([data-theme-canvas], [data-theme-preview]) *):hover {
+  filter: brightness(1.07);
+  box-shadow:
+    0 6px 16px -4px color-mix(in srgb, var(--brand-solid) 55%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+  transform: translateY(-1px);
+}
+/* The same colour where the page uses it plainly: a step reached, a chosen option. */
+html[data-admin] .bg-foreground:not(.text-background, :is([data-theme-canvas], [data-theme-preview]) *) {
+  background-color: var(--brand-solid);
+}
+html[data-admin] .bg-foreground\/50:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  background-color: color-mix(in srgb, var(--brand-solid) 50%, transparent);
+}
+html[data-admin] .border-foreground:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  border-color: var(--brand-solid);
+}
+
+/* The secondary button (a bordered one): the border warms up and a soft shadow appears. */
+html[data-admin] :is(button, a).border.border-border:not(:disabled, [aria-disabled="true"], :is([data-theme-canvas], [data-theme-preview]) *):hover {
+  border-color: color-mix(in srgb, var(--brand-solid) 40%, var(--border));
+  background-color: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Red for what went wrong: the same on light and dark (a pale red where the page is dark, so it stays readable). */
+html[data-admin] :is(.text-red-700, .text-red-800, .text-red-900):not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  color: var(--danger);
+}
+html[data-admin] .border-red-700:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  border-color: var(--danger);
+}
+
+/* ------------------------------------------------------------------- tables */
+
+html[data-admin] thead th {
+  background: color-mix(in srgb, var(--surface) 70%, var(--background));
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+html[data-admin] tbody tr {
+  transition: background-color 0.12s var(--ease);
+}
+html[data-admin] tbody tr:hover {
+  background-color: color-mix(in srgb, var(--brand-solid) 5%, var(--background));
+}
+
+/* ---------------------------------------------------------------- load states */
+
+/* Where a form is working: the pointer says so, and its button shows a spinner after its words. */
+html[data-admin] [aria-busy="true"] {
+  cursor: progress;
+}
+html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([type])):disabled::after {
+  content: "";
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 0.55em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 9999px;
+  vertical-align: -0.12em;
+  animation: admin-spin 0.7s linear infinite;
+}
+
+/* A placeholder while something loads: a soft light sweeps across it instead of a blink. */
+html[data-admin] .animate-pulse.rounded-lg.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  border: 1px solid var(--border);
+  background-image: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--brand-solid) 9%, transparent) 50%, transparent 70%);
+  background-size: 220% 100%;
+  animation: admin-shimmer 1.5s linear infinite;
+}
+
+/* The bar along the top while a page loads (`AdminProgress`): it grows by scaling, so nothing reflows. */
+.admin-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: linear-gradient(90deg, var(--brand-solid), #8b5cf6, #06b6d4);
+  box-shadow: 0 0 8px var(--brand-solid);
+}
+.admin-progress[data-state="loading"] {
+  opacity: 1;
+  transform: scaleX(0.82);
+  transition: transform 9s cubic-bezier(0.1, 0.6, 0.2, 1);
+}
+.admin-progress[data-state="done"] {
+  opacity: 0;
+  transform: scaleX(1);
+  transition:
+    transform 0.2s ease-out,
+    opacity 0.35s ease-out 0.15s;
+}
+
+/* ------------------------------------------------------------------- motion */
+
+/* A page eases in when it appears (also when one left behind is shown again). */
+html[data-admin] main > * {
+  animation: admin-enter 0.2s var(--ease) both;
+}
+
+/* What a form says after it works: it slides in rather than popping, and a failure gives a small shake. */
+html[data-admin] [role="status"][aria-live] > p {
+  animation: admin-reveal 0.25s var(--ease) both;
+}
+html[data-admin] [role="status"][aria-live] > ul {
+  animation: admin-shake 0.32s ease-in-out both;
+}
+
+/* Dialogs scale in over a softly blurred backdrop. */
+html[data-admin] dialog[open]:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  animation: admin-pop 0.18s var(--ease) both;
+}
+html[data-admin] dialog:not(:is([data-theme-canvas], [data-theme-preview]) *)::backdrop {
+  background: rgb(10 13 28 / 0.5);
+  backdrop-filter: blur(2px);
+  animation: admin-fade 0.18s ease-out both;
+}
+
+/* A disclosure opens with its content easing down. */
+html[data-admin] details[open] > :not(summary):not(:is([data-theme-canvas], [data-theme-preview]) *) {
+  animation: admin-reveal 0.2s var(--ease) both;
+}
+
+@keyframes admin-enter {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes admin-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes admin-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes admin-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+}
+@keyframes admin-shake {
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+@keyframes admin-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes admin-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-admin] *,
+  html[data-admin] *::before,
+  html[data-admin] *::after,
+  html[data-admin] dialog::backdrop,
+  .admin-progress {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([type])):disabled::after {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

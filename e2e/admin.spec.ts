@@ -186,7 +186,7 @@ test("the admin opens in the light or dark someone chose, before it is drawn (D9
   await page.evaluate(() => localStorage.setItem("kaizen_admin_color_mode", "dark"));
   await page.reload();
   await expect(html).toHaveAttribute("data-color-mode", "dark");
-  expect(await html.evaluate((el) => getComputedStyle(el).getPropertyValue("--background").trim())).toBe("#0a0a0a");
+  expect(await html.evaluate((el) => getComputedStyle(el).getPropertyValue("--background").trim())).toBe("#141927");
   // Dark by choice on a light device, and light by choice on a dark one.
   await page.evaluate(() => localStorage.setItem("kaizen_admin_color_mode", "light"));
   await page.emulateMedia({ colorScheme: "dark" });

@@ -253,6 +253,7 @@ of running `playwright install`.
   Owner pages go under `/admin/account/…`, never a new `/admin/{word}`, which
   would take a store address. A layout's auth check does not stop its page
   streaming: every page checks for itself.
+- The admin's look (D149, `src/app/admin/admin.css`): the admin's colours are semantic tokens (`bg-background`, `bg-surface`, `border-border`, `text-muted`, `bg-foreground` for the main action), re-tinted and given depth and motion only under `html[data-admin]` (set by the admin's root layout, which alone imports the file); write admin pages in those tokens and never a fixed colour or a one-off shadow or transition, so they follow it, in light and dark, for free. The main action is a `bg-foreground … text-background` button (brand colour, lifts on hover); a field is an `input`/`select`/`textarea` with `border-border` (brand ring on focus); a form that works sets `aria-busy` on itself (`ActionForm` does) and its disabled submit button shows a spinner; a loading placeholder is `animate-pulse rounded-lg bg-background` (it sweeps). Everything that restyles an element carries `:not(:is([data-theme-canvas], [data-theme-preview]) *)`, so a store's page previewed in the admin keeps the store's look, and every motion has a `prefers-reduced-motion` stop (`admin-css.test.ts` holds the scoping).
 - `/admin` has its own root layout. People sign in with email and password, or
   with a Supabase magic link (`/admin/sign-in` → email → `/auth/callback` or
   `/auth/confirm`); only accounts (`commerce.accounts`) that belong to a store
