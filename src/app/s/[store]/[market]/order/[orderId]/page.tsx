@@ -30,7 +30,7 @@ async function Order({ params, searchParams }: Pick<Props, "params" | "searchPar
   if (!shop) notFound();
   const { store, market } = shop;
   return (
-    <RolePage store={store} market={market} role="order" route={{ part: "order", param: orderId, query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="order" route={{ part: "order", param: orderId, query: searchParams }}>
       <OrderDetails store={store} market={market} orderId={orderId} query={searchParams} />
     </RolePage>
   );

@@ -4,7 +4,8 @@ import { dataCookieName, decodeAssignments, OUTSIDE } from "./experiments";
 /**
  * Where an enrolled visitor's request for a tested page goes (D148): the proxy asks this for requests that carry the
  * `kaizen_ab` cookie. Pure, so it is tested without a server. A visitor in the original (`a`), outside a test, or with
- * nothing for it goes where it was going.
+ * nothing for it goes where it was going. A working page (D113: the cart, the checkout, …) under test is drawn by its own route, so its
+ * version travels in the market part of the address, like a header's, only on requests to that route (phase 9).
  */
 
 export type StoreRequest = {
@@ -53,8 +54,8 @@ export function storeOfHost(host: string, domain: string | null, customHosts: Re
   return match && match[1] !== "www" ? match[1] : null;
 }
 
-/** A running test as the proxy needs it: its kind, and for a test of a page the page's address. */
-export type TestOnPage = { id: string; kind?: TargetKind; slug: string | null };
+/** A running test as the proxy needs it: its kind, for a test of a page the page's address, and for a working page's the first part of its route. */
+export type TestOnPage = { id: string; kind?: TargetKind; slug: string | null; segment?: string | null };
 
 /**
  * The path to rewrite to for this visitor, or null to leave the request alone. A test of a page sends its page to the
@@ -79,7 +80,7 @@ export function variantPath(request: StoreRequest, tests: TestOnPage[], dataCook
     const kind = test.kind ?? "page";
     if (kind === "page") {
       if (slug !== null && test.slug === slug) pageVersion = version;
-    } else if (kind === "header" || kind === "footer" || (kind === "layout" && productPage)) {
+    } else if (kind === "header" || kind === "footer" || (kind === "layout" && productPage) || (kind === "role" && test.segment && request.rest[0] === test.segment)) {
       site[testToken(test.id)] = version;
     }
   }

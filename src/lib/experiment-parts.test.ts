@@ -148,3 +148,90 @@ describe("replacing and applying a part", () => {
     expect(applyPart({ ...p.content, rows: [p.content.rows[1]] }, version, { kind: "row", id: p.hero.id })).toBeNull();
   });
 });
+
+/** A page with a modal row (D121) among two ordinary ones: opened by a timer unless `triggers` says otherwise. */
+function pageWithModal(triggers: NonNullable<PageRow["modal"]>["triggers"] = { timer: { seconds: 5 } }) {
+  const p = page();
+  const popup = newRow("1", id);
+  popup.modal = { key: "newsletter", name: "Newsletter", triggers, frequency: "session", size: "md" };
+  const text = heading("Join our list");
+  const rows = insertBlock(insertRow(p.content.rows, popup, 1), popup.columns[0].id, text, 0);
+  return { ...p, content: { ...p.content, rows }, popup: rows[1], text };
+}
+
+describe("tests of a modal (D148, phase 9)", () => {
+  const target = (row: PageRow) => ({ kind: "row" as const, id: row.id });
+
+  it("offers a modal's row, names it by its name, and says whether it opens by itself", () => {
+    const p = pageWithModal();
+    expect(testablePart(p.content, target(p.popup))).toBe(true);
+    expect(describePart(p.content, target(p.popup))).toMatchObject({ label: "Modal “Newsletter” (row 2)", modal: { byItself: true } });
+    const linked = pageWithModal({ button: true });
+    expect(describePart(linked.content, target(linked.popup))?.modal).toEqual({ byItself: false });
+    expect(describePart(p.content, target(p.hero))?.modal).toBeNull();
+  });
+
+  it("lets a version change what the modal says and how it opens, and nothing else", () => {
+    const p = pageWithModal();
+    const reworded = edit(p.content, p.text.id, (b) => ({ ...b, text: "Get 10 % off" }) as PageBlock);
+    expect(partChanges(p.content, reworded, target(p.popup))).toBe("ok");
+    const slower = { ...p.content, rows: p.content.rows.map((r) => (r.id === p.popup.id ? { ...r, modal: { ...r.modal!, triggers: { timer: { seconds: 20 } } } } : r)) };
+    expect(partChanges(p.content, slower, target(p.popup))).toBe("ok");
+    expect(partChanges(p.content, edit(reworded, p.h2.id, (b) => ({ ...b, text: "Changed" }) as PageBlock), target(p.popup))).toBe("outside");
+  });
+
+  it("keeps a modal's address name and its being a modal, whatever it opens by, so links to it keep working", () => {
+    const p = pageWithModal({ button: true });
+    const renamed = { ...p.content, rows: p.content.rows.map((r) => (r.id === p.popup.id ? { ...r, modal: { ...r.modal!, key: "signup" } } : r)) };
+    expect(partChanges(p.content, renamed, target(p.popup))).toBe("modal");
+    const inline = { ...p.content, rows: p.content.rows.map((r) => (r.id === p.popup.id ? { ...r, modal: undefined } : r)) };
+    expect(partChanges(p.content, inline, target(p.popup))).toBe("modal");
+    // And an ordinary row cannot become one in a version.
+    const hero = p.content.rows[0];
+    const made = { ...p.content, rows: p.content.rows.map((r) => (r.id === hero.id ? { ...r, modal: { key: "x", triggers: { button: true }, frequency: "always" as const, size: "md" as const } } : r)) };
+    expect(partChanges(p.content, made, target(hero))).toBe("modal");
+  });
+
+  it("lets a version leave out a modal that opens by itself, which is the test of whether it helps", () => {
+    for (const triggers of [{ timer: { seconds: 5 } }, { exitIntent: true }, { timer: { seconds: 5 }, exitIntent: true }]) {
+      const p = pageWithModal(triggers);
+      const without = { ...p.content, rows: p.content.rows.filter((r) => r.id !== p.popup.id) };
+      expect(partChanges(p.content, without, target(p.popup)), JSON.stringify(triggers)).toBe("ok");
+      // Leaving out something else with it is not the same test.
+      expect(partChanges(p.content, { ...without, rows: without.rows.filter((r) => r.id !== p.second.id) }, target(p.popup))).toBe("outside");
+    }
+  });
+
+  it("does not let a version leave out a modal that a link or a class opens, or any other row", () => {
+    for (const triggers of [{ button: true }, { className: "open-news" }, { button: true, timer: { seconds: 5 } }]) {
+      const p = pageWithModal(triggers);
+      const without = { ...p.content, rows: p.content.rows.filter((r) => r.id !== p.popup.id) };
+      expect(partChanges(p.content, without, target(p.popup)), JSON.stringify(triggers)).toBe("missing");
+    }
+    const p = pageWithModal();
+    expect(partChanges(p.content, { ...p.content, rows: p.content.rows.filter((r) => r.id !== p.second.id) }, target(p.second))).toBe("missing");
+  });
+
+  it("counts the other languages' texts of the left-out modal as its own, and of anything else as outside", () => {
+    const p = pageWithModal();
+    const content = { ...p.content, translations: { nb: { [`block.${p.text.id}.text`]: "Bli med", [`block.${p.h2.id}.text`]: "Vår historie" } } };
+    const without = { ...content, rows: content.rows.filter((r) => r.id !== p.popup.id), translations: { nb: { [`block.${p.h2.id}.text`]: "Vår historie" } } };
+    expect(partChanges(content, without, target(p.popup))).toBe("ok");
+    expect(partChanges(content, { ...without, translations: { nb: {} } }, target(p.popup))).toBe("outside");
+  });
+
+  it("applies a winner that leaves the modal out by taking it, and its texts, out of the page as it is now", () => {
+    const p = pageWithModal();
+    const content = { ...p.content, translations: { nb: { [`block.${p.text.id}.text`]: "Bli med", [`block.${p.h2.id}.text`]: "Vår historie" } } };
+    const without = { ...content, rows: content.rows.filter((r) => r.id !== p.popup.id) };
+    // The page changed elsewhere while the test ran.
+    const now = edit(content, p.h2.id, (b) => ({ ...b, text: "Our new story" }) as PageBlock);
+    const applied = applyPart(now, without, target(p.popup))!;
+    expect(applied.rows.map((r) => r.id)).toEqual([p.hero.id, p.second.id]);
+    expect(JSON.stringify(applied.rows)).toContain("Our new story");
+    expect(applied.translations).toEqual({ nb: { [`block.${p.h2.id}.text`]: "Vår historie" } });
+    // A modal that a link opens is never taken out this way.
+    const linked = pageWithModal({ button: true });
+    expect(applyPart(linked.content, { ...linked.content, rows: linked.content.rows.filter((r) => r.id !== linked.popup.id) }, target(linked.popup))).toBeNull();
+  });
+});

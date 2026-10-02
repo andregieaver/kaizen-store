@@ -1,7 +1,7 @@
 # A/B testing
 
 Design for an A/B testing tool that platform admins and store owners use to find out whether a change to a page earns
-its place. Status: **phases 1 to 8 built** (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals, the surrounding rows of working pages, the platform's own pages and its cross-store view are later. It builds on [`measurement.md`](measurement.md), whose principles
+its place. Status: **phases 1 to 9 built** (9: modals and working pages) (4: the AI manager's tools; 5: the platform's view; 6: the guardrail email; 7: search and recommendations on the engine; 8: the platform assistant's tools) (D148): the engine, tests of whole store pages and of a part of one (a row, column or component chosen in the builder), scheduled starts, and tests of a store's header, footer and product layouts; see "What phase 1 built", "What phase 2 built" and "What phase 3 built" below. The AI manager's tools are phase 4 ("What phase 4 built"). Modals and working pages are phase 9; the platform's own pages are later. It builds on [`measurement.md`](measurement.md), whose principles
 it keeps, and on what already exists: the page builder, `src/lib/experiment-stats.ts`, the search test (D77) and the
 recommendations test (D139/D140).
 
@@ -149,7 +149,7 @@ page, so the serving is different from a page test's:
 Tested end to end in a browser (`e2e/ab-site-tests.spec.ts`): a header version on a full load, after a click on a footer link and after adding to
 the cart; the original and the unenrolled; accepting statistics; a product layout's version on product pages only.
 
-Not done: the same for **modals** and the surrounding rows of working pages, Kaizen's own pages (the platform's header, footer and
+Not done in phase 3 (modals and working pages came in phase 9): Kaizen's own pages (the platform's header, footer and
 plans page), a store on its own host (the proxy knows the address form, and the host rewrite in `next.config.ts` has not been checked
 with the market suffix), and the Vercel check of the caching of rewritten pages, which phase 0 left open and which now matters more:
 every page of an enrolled visitor in another version of a header test is a rewrite.
@@ -272,6 +272,53 @@ admin cannot edit a store's test (the design's rule), so the assistant says what
 Not done: nothing is planned for the A/B tools; the open items are the ones listed before (modals and working pages, Kaizen's own pages, the
 moderated usability check, signed-in customers, the shareable preview link and the three pre-launch checks).
 
+
+## What phase 9 built: modals and working pages
+
+**A modal (D121) can be tested.** A modal is a row with a `modal` setting, so it is a part like any other (the builder offers "A/B test
+this" on it): a version may change what it says, how it looks and when it opens. Two rules in `partChanges()` keep the test about the
+popup (`src/lib/experiment-parts.ts`):
+
+- **It keeps its address name and stays a modal** (scope `modal`): a link to `#modal-newsletter` elsewhere on the site, or a class that
+  opens it, must still work in every version, so a version that renames it, or turns it into an ordinary row (or an ordinary row into
+  a modal), is refused in words at the start.
+- **A popup that opens by itself may be left out of a version altogether.** That is the test of whether it helps at all: the version is the page
+  without it. Only a modal that opens by a timer or on exit intent (`opensByItself()`) can be left out; one that a link or a class opens stays
+  in every version, because those links would be dead. A winner that leaves it out takes the row, with its texts in other languages, out of
+  the page as it is then (`applyPart()`).
+
+What is counted is the page test's: exposure at the first page view in the version, whether or not the popup opened (an intention-to-treat
+count, so a popup that is never seen is not a better popup), carts, checkouts, orders, and clicks on a button inside the popup (its buttons are
+offered like any part's). A modal in a header or a footer is a part of that test. There is no goal for sending a form yet.
+
+**A working page can be tested by a part of it.** The page a store chose for the cart, the checkout, the order confirmation, My account,
+sign-in, wishlists, a subscription or weekly deliveries (`WORKING_ROLES`, `src/lib/ab-site.ts`) is a target of kind `role`, by a part of it
+only: a row, a column or a component around the shop's own component, never the component itself (`testablePart()` already refuses a part that
+holds a `storePart`) and never the page as a whole, since the whole holds the cart or the payment form. The cookies page is a legal page, and
+the front page, the All products page, the blog, search, 404 and the category and tag pages cannot be tested yet.
+
+- **The database** (`ab_working_pages`): at the start a page chosen for a working place needs a `target_part`, one chosen for any other place
+  (or the front page, the All products page) is refused as before; and a page in a running test cannot change the place it is chosen for or be
+  chosen for one (`page_roles_experiment_guard`), as the header and footer cannot (`stores_experiment_guard`).
+- **Serving.** These pages are drawn by their own routes (`/cart`, `/checkout`, `/order/{id}`, `/account`, `/wishlist`, `/subscription/{token}`,
+  `/deliveries`), so a version travels in the market part of the address like a header's, only on requests to that route (`ROLE_SEGMENT`; the
+  proxy's `variantPath()` adds the test's token for a request whose first segment is the route's). `RolePage` draws the visitor's version through
+  `rolePageForVisitor()` (`src/server/role-pages.ts`: the page, or the version's content from `siteVersionContent()`, with the running test and the
+  version for the marker) and renders the page marker; the routes pass `resolveShop()`'s `ab`. The page's own address is not where it is served:
+  `experimentOfPage()` leaves a working page out, so the address of the page itself draws no marker.
+- **The shop's logic is not tested.** Cart totals, shipping, discounts and payment are drawn by the same component in every version and read the
+  same data; a test changes the rows around them. Nothing about prices, shipping or discounts may be varied between versions, and a version's
+  words, like any page's, are the owner's to stand behind.
+- **Admin.** The new-test form offers a working page only from the builder's "A/B test this" on a part of it (the whole-page list leaves it out),
+  names it by its place (`ROLE_NAMES`: "Cart page: …"), and the checks say what is wrong in words. The platform's view and the assistants' tools
+  name it the same way (`targetLabel(kind, slug, title, role)`), and `suggest_experiments` lists it as a working page to test one block of.
+
+Tested: unit tests of the modal rules and the routing, database tests of the rules, an integration test of a popup left out and applied and of a
+cart test served and applied, and a browser test (`e2e/ab-working-pages.spec.ts`) of the cart at its own address and of a popup left out.
+
+Not done: the front page, the All products page, the cookies page and the content pages (blog, search, 404, categories, tags) as targets; a goal
+for sending a form (the popup's usual aim); Kaizen's own pages (the platform's header, footer and plans page); and the checks that were open
+before (the Vercel run of the caching of rewritten pages, a store on its own host, the legal check, the moderated usability check).
 
 ## Principles (kept from `measurement.md`)
 
@@ -584,6 +631,7 @@ reports (D106, D145).
 | **6** (the guardrail's email built) | Guardrail emails to owners | Sent once to the right people, never on a person's stop |
 | **7** (built) | Move search and recommendations tests onto the engine's arithmetic, and into the platform's view | Old and new give the same numbers on the same data |
 | **8** (built) | The platform assistant's tools: read every store's tests, say what needs a look | Read-only, no tool that changes a store's test |
+| **9** (built) | Modals; the surrounding rows of working pages | A popup and the cart's trust row tested, served and applied; the shop's own component never |
 
 Each phase ends the way every change here does: lint, typecheck, unit and integration tests, the e2e spec for the
 new page, a migration applied to production with the advisors checked and its version recorded in `decisions.md`,

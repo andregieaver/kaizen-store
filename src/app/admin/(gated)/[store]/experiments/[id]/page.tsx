@@ -34,7 +34,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
         </Link>
         <h1 className="text-2xl font-semibold">{test.name}</h1>
         <p className="text-sm text-muted">
-          {STATUS_WORDS[test.status]} · {targetLabel(test.page.kind, test.page.slug, test.page.title)}
+          {STATUS_WORDS[test.status]} · {targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}
           {test.part && ` · testing ${test.part.label}`} · {goal.label}
           {test.startedAt && ` · started ${date.format(new Date(test.startedAt))}`}
           {test.stoppedAt && ` · stopped ${date.format(new Date(test.stoppedAt))}`}

@@ -143,7 +143,7 @@ export const pageMarker = (experimentId: string, variant: string) => `${experime
 // ---------------------------------------------------------------------------
 
 /** `scope` is a part test's check of the version (see `partChanges()`); null for a test of the whole page. */
-export type VariantDraft = { key: string; name: string; share: number; published: boolean; scope?: "ok" | "outside" | "missing" | null };
+export type VariantDraft = { key: string; name: string; share: number; published: boolean; scope?: "ok" | "outside" | "missing" | "modal" | null };
 
 /** What is wrong with a test about to start, in words an owner can act on; empty when it can start. */
 export function startProblems(test: {
@@ -155,6 +155,8 @@ export function startProblems(test: {
   pagePublished: boolean;
   runningInStore: number;
   pageIsSpecial: boolean;
+  /** A working page (the cart, the checkout, …) is tested by a part of it, not as a whole. */
+  needsPart?: boolean;
   /** The part under test, in words, for a part test. */
   partLabel?: string | null;
 }): string[] {
@@ -164,7 +166,8 @@ export function startProblems(test: {
   else if (GOAL_WORDS[test.goal].needsBlock && !test.goalBlock) problems.push("Choose the button or link whose clicks you want more of.");
   if (!(test.trafficShare > 0 && test.trafficShare <= 1)) problems.push("The share of visitors in the test is more than 0 and at most 100 %.");
   if (!test.pagePublished) problems.push("Publish the page before testing it: a test shows it to real visitors.");
-  if (test.pageIsSpecial) problems.push("The front page, the All products page and pages chosen for a place of their own cannot be tested yet.");
+  if (test.pageIsSpecial) problems.push("The front page, the All products page, the cookies page and the blog, search, 404, category and tag pages cannot be tested yet.");
+  if (test.needsPart) problems.push("A working page is tested by a part of it, around the shop's own component, not as a whole: choose the part in the page builder with “A/B test this”.");
   const others = test.variants.filter((v) => v.key !== "a");
   if (!test.variants.some((v) => v.key === "a") || others.length === 0) problems.push("A test needs the original and at least one other version.");
   if (others.length > MAX_VARIANTS - 1) problems.push(`A test has at most ${MAX_VARIANTS} versions, the original included.`);
@@ -175,6 +178,7 @@ export function startProblems(test: {
   for (const v of others) {
     if (v.scope === "outside") problems.push(`Version ${v.key.toUpperCase()} changes more than ${part}. Put everything else back as it was, or test the whole page instead.`);
     if (v.scope === "missing") problems.push(`Version ${v.key.toUpperCase()} no longer has ${part}: a test needs the part in every version.`);
+    if (v.scope === "modal") problems.push(`Version ${v.key.toUpperCase()} changes the address name of ${part}, or whether it is a modal: links to it elsewhere would stop working. Keep the address name and keep it a modal.`);
   }
   if (test.runningInStore >= MAX_RUNNING_PER_STORE) problems.push(`A store can run ${MAX_RUNNING_PER_STORE} tests at a time. Stop one first.`);
   return problems;

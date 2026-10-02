@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { revalidateTag, updateTag } from "next/cache";
 
 import { db } from "@/db/client";
-import { targetKindOf, type TargetKind } from "@/lib/ab-site";
+import { targetKindOf, WORKING_ROLES, type TargetKind } from "@/lib/ab-site";
 import { applyPart, buttonsWithin, describePart, findPart, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import {
@@ -28,6 +28,9 @@ import { experimentsTag, forgetRunning, variantSlug } from "./experiments";
 import { pagesTag, savePage } from "./pages";
 
 type Row = Record<string, unknown>;
+
+/** The working pages' places as a Postgres array literal, for the queries that tell them from the other pages with a place of their own. */
+const WORKING_ROLE_LIST = `{${WORKING_ROLES.join(",")}}`;
 
 /**
  * Refreshes a cache tag after a change. A server action may `updateTag` (the owner sees it at once); anywhere else (the
@@ -57,7 +60,7 @@ export type VariantInfo = {
   published: boolean;
   changed: boolean;
   /** For a part test: whether the version differs from the original in the part only (see `partChanges()`). */
-  scope: "ok" | "outside" | "missing" | null;
+  scope: "ok" | "outside" | "missing" | "modal" | null;
 };
 
 export type ExperimentInfo = {
@@ -79,9 +82,19 @@ export type ExperimentInfo = {
   createdAt: string;
   scheduledStart: string | null;
   scheduleProblem: string | null;
-  page: { id: string; slug: string; title: string; published: boolean; /** What it is: a page, a product layout, a header or a footer. */ type: PageType; kind: TargetKind };
+  page: {
+    id: string;
+    slug: string;
+    title: string;
+    published: boolean;
+    /** What it is: a page, a product layout, a header or a footer. */
+    type: PageType;
+    kind: TargetKind;
+    /** The place the page was chosen for (D112), if it has one: a working page's, for a test of it. */
+    role?: string | null;
+  };
   /** The part under test (D148, phase 2), by its id, kind and a name for it; null for a test of the whole page. */
-  part: { id: string; kind: PartKind; label: string } | null;
+  part: { id: string; kind: PartKind; label: string; modal?: { byItself: boolean } | null } | null;
   variants: VariantInfo[];
 };
 
@@ -93,7 +106,7 @@ function partOfRow(row: Row): ExperimentInfo["part"] {
   const target = { id: String(row.target_part), kind: row.target_part_kind as PartKind };
   const content = parsePageContent(row.page_published) ?? parsePageContent(row.page_draft);
   const info = content ? describePart(content, target) : null;
-  return { ...target, label: info?.label ?? "the part under test" };
+  return { ...target, label: info?.label ?? "the part under test", modal: info?.modal ?? null };
 }
 
 const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
@@ -122,7 +135,8 @@ const infoOf = (row: Row, variants: VariantInfo[]): ExperimentInfo => ({
     title: String((row.page_draft as { title?: unknown } | null)?.title ?? row.page_slug),
     published: row.page_published_at !== null,
     type: String(row.page_type) as PageType,
-    kind: targetKindOf(String(row.page_type)) ?? "page",
+    kind: targetKindOf(String(row.page_type), row.page_role ? String(row.page_role) : null) ?? "page",
+    role: row.page_role ? String(row.page_role) : null,
   },
   variants,
 });
@@ -159,7 +173,8 @@ function scopeOf(row: Row, original: PageContent | null, part: { id: string; kin
 const partOfExperimentRow = (row: Row) => (row.target_part ? { id: String(row.target_part), kind: row.target_part_kind as PartKind } : null);
 
 const SELECT = sql`
-  select e.*, p.slug as page_slug, p.type as page_type, p.draft as page_draft, p.published as page_published, p.published_at as page_published_at
+  select e.*, p.slug as page_slug, p.type as page_type, p.draft as page_draft, p.published as page_published, p.published_at as page_published_at,
+    (select r.role from commerce.page_roles r where r.store_id = e.store_id and r.page_id = e.target_page_id) as page_role
   from commerce.experiments e join commerce.pages p on p.id = e.target_page_id and p.store_id = e.store_id
 `;
 
@@ -192,15 +207,26 @@ export async function testOfVersionPage(storeId: string, pageId: string): Promis
   return test && version ? { id: test.id, name: test.name, status: test.status, key: version.key, pageId: test.page.id, targetType: test.page.type, part: test.part?.label ?? null } : null;
 }
 
-export type TestableTarget = { id: string; slug: string; title: string; kind: TargetKind };
+export type TestableTarget = {
+  id: string;
+  slug: string;
+  title: string;
+  kind: TargetKind;
+  /** The place a working page was chosen for; a test of it is by a part of it only (`partOnly`). */
+  role?: string | null;
+  partOnly?: boolean;
+};
 
 /**
  * What a store can test: its published pages with an address of their own (not the front page, the All products page or a page
- * chosen for a place), the header and footer it uses, and its product layouts that something uses; none already in a running test.
+ * chosen for a place), its working pages (the cart, the checkout, …) by a part of them, the header and footer it uses, and its
+ * product layouts that something uses; none already in a running test.
  */
 export async function testablePages(storeId: string): Promise<TestableTarget[]> {
   const rows = await db().execute<Row>(sql`
-    select p.id, p.slug, p.type, p.published ->> 'title' as title from commerce.pages p
+    select p.id, p.slug, p.type, p.published ->> 'title' as title,
+      (select r.role from commerce.page_roles r where r.store_id = p.store_id and r.page_id = p.id) as role
+    from commerce.pages p
     where p.store_id = ${storeId}::uuid and p.published_at is not null
       and p.id not in (select e.target_page_id from commerce.experiments e where e.store_id = p.store_id and e.status = 'running')
       and (
@@ -208,6 +234,7 @@ export async function testablePages(storeId: string): Promise<TestableTarget[]> 
           and p.id not in (select coalesce(s.front_page_id, '00000000-0000-0000-0000-000000000000') from commerce.stores s where s.id = p.store_id)
           and p.id not in (select coalesce(s.products_page_id, '00000000-0000-0000-0000-000000000000') from commerce.stores s where s.id = p.store_id)
           and p.id not in (select r.page_id from commerce.page_roles r where r.store_id = p.store_id))
+        or (p.type = 'page' and p.id in (select r.page_id from commerce.page_roles r where r.store_id = p.store_id and r.role = any(${WORKING_ROLE_LIST}::text[])))
         or (p.type = 'header' and p.id in (select s.header_id from commerce.stores s where s.id = p.store_id))
         or (p.type = 'footer' and p.id in (select s.footer_id from commerce.stores s where s.id = p.store_id))
         or (p.type = 'product_layout' and (
@@ -217,7 +244,10 @@ export async function testablePages(storeId: string): Promise<TestableTarget[]> 
       )
     order by case p.type when 'page' then 0 when 'header' then 1 when 'footer' then 2 else 3 end, p.slug
   `);
-  return rows.map((r) => ({ id: String(r.id), slug: String(r.slug), title: String(r.title ?? r.slug), kind: targetKindOf(String(r.type)) ?? "page" }));
+  return rows.map((r) => {
+    const kind = targetKindOf(String(r.type), r.role ? String(r.role) : null) ?? "page";
+    return { id: String(r.id), slug: String(r.slug), title: String(r.title ?? r.slug), kind, role: r.role ? String(r.role) : null, partOnly: kind === "role" };
+  });
 }
 
 /** A store's page, header, footer or layout as last published, by its id: what a test of it starts from. Null when it is not published. */
@@ -266,12 +296,19 @@ export async function createExperiment(account: Account, storeId: string, input:
   const traffic = input.trafficShare ?? 1;
   if (!(traffic > 0 && traffic <= 1)) return { ok: false, problems: ["The share of visitors in the test is more than 0 and at most 100 %."] };
   const [page] = await db().execute<Row>(sql`
-    select id, slug, type, published, published_at from commerce.pages
-    where id = ${input.pageId}::uuid and store_id = ${storeId}::uuid and type in ('page', 'product_layout', 'header', 'footer')
+    select p.id, p.slug, p.type, p.published, p.published_at,
+      (select r.role from commerce.page_roles r where r.store_id = p.store_id and r.page_id = p.id) as role,
+      exists (select 1 from commerce.stores s where s.id = p.store_id and (s.front_page_id = p.id or s.products_page_id = p.id)) as front
+    from commerce.pages p
+    where p.id = ${input.pageId}::uuid and p.store_id = ${storeId}::uuid and p.type in ('page', 'product_layout', 'header', 'footer')
   `);
   if (!page) return { ok: false, problems: ["Choose one of the store's pages, its header or footer, or one of its product layouts."] };
   const targetType = String(page.type) as PageType;
-  const kind = targetKindOf(targetType) ?? "page";
+  const role = page.role ? String(page.role) : null;
+  const kind = targetKindOf(targetType, role) ?? "page";
+  // The front page and the pages for a place of their own that are not working pages cannot be tested yet; a working page only by a part of it.
+  if (page.front || (role && kind !== "role")) return { ok: false, problems: ["The front page, the All products page, the cookies page and the blog, search, 404, category and tag pages cannot be tested yet."] };
+  if (kind === "role" && !input.part) return { ok: false, problems: ["A working page is tested by a part of it: open it in the page builder and choose a row, a column or a component around the shop's own, with “A/B test this”."] };
   const original = parsePageContent(page.published);
   if (!original) return { ok: false, problems: ["Publish the page before testing it: a test shows it to real visitors."] };
   const part = input.part ?? null;
@@ -406,7 +443,7 @@ export async function renameExperiment(account: Account, storeId: string, id: st
 async function checkStart(storeId: string, test: ExperimentInfo): Promise<string[]> {
   const [special] = await db().execute<Row>(sql`
     select (s.front_page_id = ${test.page.id}::uuid or s.products_page_id = ${test.page.id}::uuid
-      or exists (select 1 from commerce.page_roles r where r.store_id = s.id and r.page_id = ${test.page.id}::uuid)) as special,
+      or exists (select 1 from commerce.page_roles r where r.store_id = s.id and r.page_id = ${test.page.id}::uuid and not r.role = any(${WORKING_ROLE_LIST}::text[]))) as special,
       (select count(*) from commerce.experiments e where e.store_id = s.id and e.status = 'running' and e.id <> ${test.id}::uuid)::int as running
     from commerce.stores s where s.id = ${storeId}::uuid
   `);
@@ -419,6 +456,7 @@ async function checkStart(storeId: string, test: ExperimentInfo): Promise<string
     pagePublished: test.page.published,
     runningInStore: Number(special?.running ?? 0),
     pageIsSpecial: Boolean(special?.special),
+    needsPart: test.page.kind === "role" && !test.part,
     partLabel: test.part?.label ?? null,
   });
   for (const v of test.variants) if (v.key !== "a" && !v.changed) problems.push(`Version ${v.key.toUpperCase()} is still the same as the original: change it first, or the test has nothing to find.`);

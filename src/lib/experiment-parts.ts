@@ -1,5 +1,6 @@
 import type { TargetKind } from "./ab-site";
 import { blockText, type PageBlock, type PageColumn, type PageContent, type PageRow, type PageTranslation } from "./page-content";
+import type { RowModal } from "./page-modal";
 
 /**
  * Tests of a part of a page (D148, phase 2): a row, a column or a block, chosen in the builder. A version of a part test is
@@ -60,7 +61,14 @@ export function buttonsWithin(kind: PartKind, node: PartNode): { id: string; lab
 
 const clip = (text: string, max = 40) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 
-export type PartInfo = { kind: PartKind; id: string; label: string; buttons: { id: string; label: string }[] };
+export type PartInfo = {
+  kind: PartKind;
+  id: string;
+  label: string;
+  buttons: { id: string; label: string }[];
+  /** For a modal row (D121): whether it opens only by itself, so a version may leave it out. Null for any other part. */
+  modal?: { byItself: boolean } | null;
+};
 
 /** What to call a part in a sentence: "Row 2", "Column 1 of row 2" or "Heading “Welcome”", and the buttons inside it. Null when the page has no such part. */
 export function describePart(content: Pick<PageContent, "rows">, target: PartTarget): PartInfo | null {
@@ -68,7 +76,10 @@ export function describePart(content: Pick<PageContent, "rows">, target: PartTar
   if (!found || found.kind !== target.kind) return null;
   const rowIndex = content.rows.findIndex((r) => r.id === target.id || r.columns.some((c) => c.id === target.id || c.blocks.some((b) => b.id === target.id)));
   let label: string;
-  if (found.kind === "row") label = `Row ${rowIndex + 1}`;
+  if (found.kind === "row") {
+    const modal = (found.node as PageRow).modal;
+    label = modal ? `Modal “${clip(modal.name?.trim() || modal.key)}” (row ${rowIndex + 1})` : `Row ${rowIndex + 1}`;
+  }
   else if (found.kind === "column") {
     const columnIndex = content.rows[rowIndex].columns.findIndex((c) => c.id === target.id);
     label = `Column ${columnIndex + 1} of row ${rowIndex + 1}`;
@@ -76,7 +87,8 @@ export function describePart(content: Pick<PageContent, "rows">, target: PartTar
     const text = blockText(found.node as PageBlock).replace(/\s+/g, " ").trim();
     label = `${blockWord((found.node as PageBlock).type)}${text ? ` “${clip(text)}”` : ""} in row ${rowIndex + 1}`;
   }
-  return { kind: found.kind, id: target.id, label, buttons: buttonsWithin(found.kind, found.node) };
+  const modal = found.kind === "row" ? (found.node as PageRow).modal : undefined;
+  return { kind: found.kind, id: target.id, label, buttons: buttonsWithin(found.kind, found.node), modal: modal ? { byItself: opensByItself(modal) } : null };
 }
 
 /** Replaces the part with this id by another of the same kind, or returns null when the page has none. */
@@ -117,15 +129,47 @@ function translationsOutside(translations: PageContent["translations"], ids: Rea
 }
 
 /**
+ * Whether a modal (D121) opens only by itself, at a time or on exit intent. A modal that a link or a class opens is opened from
+ * elsewhere on the site, which a version cannot be allowed to break, so only one that opens by itself may be left out.
+ */
+export const opensByItself = (modal: RowModal): boolean => !modal.triggers.button && !modal.triggers.className;
+
+/** The rows without the one with this id. */
+const withoutRow = (rows: readonly PageRow[], id: string): PageRow[] => rows.filter((row) => row.id !== id);
+
+/**
+ * Whether a version leaves out a modal of the original (D148, phase 9): the part is a modal row that opens by itself and the version has
+ * no row with its id. That is the way to test whether a popup helps at all: the version is the page without it.
+ */
+function leavesOutModal(original: PageContent, version: PageContent, target: PartTarget): boolean {
+  const a = findPart(original.rows, target.id);
+  if (!a || a.kind !== "row" || target.kind !== "row") return false;
+  const modal = (a.node as PageRow).modal;
+  return Boolean(modal && opensByItself(modal) && !findPart(version.rows, target.id));
+}
+
+/**
  * Whether a version differs from the original in the part only. `missing` when either has lost the part (or it changed
  * kind), `outside` when anything else on the page is different (other rows, columns or blocks, or their texts in
- * other languages), `ok` otherwise. The page's own title, address and search texts are not compared: a version's
- * differ by design.
+ * other languages), `modal` when a modal stopped being one or got another address name (links to `#modal-name` elsewhere
+ * would stop working), `ok` otherwise. A modal that opens by itself may be left out of a version altogether: that is the
+ * test of whether it helps (`ok`, when nothing else differs). The page's own title, address and search texts are not
+ * compared: a version's differ by design.
  */
-export function partChanges(original: PageContent, version: PageContent, target: PartTarget): "ok" | "missing" | "outside" {
+export function partChanges(original: PageContent, version: PageContent, target: PartTarget): "ok" | "missing" | "outside" | "modal" {
   const a = findPart(original.rows, target.id);
+  if (a && leavesOutModal(original, version, target)) {
+    if (canon(withoutRow(original.rows, target.id)) !== canon(version.rows)) return "outside";
+    const ids = new Set(idsWithin(a.kind, a.node));
+    return canon(translationsOutside(original.translations, ids)) === canon(translationsOutside(version.translations, ids)) ? "ok" : "outside";
+  }
   const b = findPart(version.rows, target.id);
   if (!a || !b || a.kind !== target.kind || b.kind !== target.kind) return "missing";
+  if (a.kind === "row") {
+    const before = (a.node as PageRow).modal;
+    const after = (b.node as PageRow).modal;
+    if (Boolean(before) !== Boolean(after) || (before && after && before.key !== after.key)) return "modal";
+  }
   const merged = replacePart(version.rows, target, a.node);
   if (!merged || canon(merged) !== canon(original.rows)) return "outside";
   const ids = new Set([...idsWithin(a.kind, a.node), ...idsWithin(b.kind, b.node)]);
@@ -139,6 +183,12 @@ export function partChanges(original: PageContent, version: PageContent, target:
 export function applyPart(current: PageContent, version: PageContent, target: PartTarget): PageContent | null {
   const mine = findPart(current.rows, target.id);
   const theirs = findPart(version.rows, target.id);
+  // A winner that leaves a modal out takes it out of the page, with its texts in other languages.
+  if (mine && !theirs && leavesOutModal(current, version, target)) {
+    const gone = new Set(idsWithin(mine.kind, mine.node));
+    const kept = translationsOutside(current.translations, gone);
+    return { ...current, rows: withoutRow(current.rows, target.id), ...(current.translations && { translations: kept }) };
+  }
   if (!mine || !theirs || mine.kind !== target.kind || theirs.kind !== target.kind) return null;
   const rows = replacePart(current.rows, target, theirs.node);
   if (!rows) return null;

@@ -2038,7 +2038,7 @@ function RowItem({
         onEdit={() => actions.open({ kind: "edit-row", rowId: row.id, columnId: null })}
         editLabel="Settings"
         onDuplicate={() => actions.onRows((rows) => duplicateRow(rows, row.id, newId))}
-        onTest={actions.onTest && !row.modal ? () => actions.onTest!({ kind: "row", id: row.id }) : undefined}
+        onTest={actions.onTest ? () => actions.onTest!({ kind: "row", id: row.id }) : undefined}
         onDelete={() => (rowHasText(row) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and everything in it`, run: remove }) : remove())}
       />
       )}

@@ -33,7 +33,7 @@ const fail = (message: string): never => {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
-const target = (t: PlatformTest) => `${targetLabel(t.target.type as Parameters<typeof targetLabel>[0], t.target.slug, t.target.title)}${t.target.part ? ", a part of it" : ""}`;
+const target = (t: PlatformTest) => `${targetLabel(t.target.type as Parameters<typeof targetLabel>[0], t.target.slug, t.target.title, t.target.role)}${t.target.part ? ", a part of it" : ""}`;
 
 const testLine = (t: PlatformTest, now: Date) => ({
   id: t.id,
@@ -110,7 +110,7 @@ export async function explainAbTest(account: Account, { test }: PlatformToolInpu
       if (info.status === "draft" || info.status === "scheduled") {
         return {
           store: store.slug,
-          test: { id: info.id, name: info.name, status: STATUS_WORDS[info.status], tests: targetLabel(info.page.kind, info.page.slug, info.page.title), improves: GOAL_WORDS[info.goal].label },
+          test: { id: info.id, name: info.name, status: STATUS_WORDS[info.status], tests: targetLabel(info.page.kind, info.page.slug, info.page.title, info.page.role), improves: GOAL_WORDS[info.goal].label },
           results: "None yet: the test has not started.",
           schedule_problem: info.scheduleProblem ?? undefined,
           what_next: adviceFor({ status: info.status, verdict: null, guardrail: false }),

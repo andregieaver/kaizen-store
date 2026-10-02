@@ -703,3 +703,146 @@ describe("tests of the header, the footer and the product layout (D148, phase 3)
     await db().execute(sql`update commerce.products set product_layout_id = null where id = ${productId}::uuid`);
   });
 });
+
+describe("tests of a modal and of a working page (D148, phase 9)", () => {
+  let k = 0;
+  const nid = () => `p9-${(k += 1)}`;
+  const rowsOf = async (pageId: string) => (await publishedOf(pageId)).rows;
+
+  /** Puts a modal row (D121) on the about page, published, and returns its id. */
+  async function addModal(triggers: Record<string, unknown>): Promise<string> {
+    const row = newRow("1", nid);
+    const heading = { ...(newBlock("heading", nid) as unknown as Record<string, unknown>), text: "Join our list", level: 2 };
+    const modal = { key: "newsletter", name: "Newsletter", triggers, frequency: "session", size: "md" };
+    const next = { ...row, columns: [{ ...row.columns[0], blocks: [heading] }], modal };
+    for (const column of ["draft", "published"]) {
+      const content = column === "draft" ? ((await db().execute<Row>(sql`select draft from commerce.pages where id = ${aboutId}::uuid`))[0].draft as PageContent) : await publishedOf(aboutId);
+      const json = JSON.stringify({ ...content, rows: [...content.rows, next] });
+      await db().execute(column === "draft" ? sql`update commerce.pages set draft = ${json}::jsonb where id = ${aboutId}::uuid` : sql`update commerce.pages set published = ${json}::jsonb where id = ${aboutId}::uuid`);
+    }
+    return row.id;
+  }
+  const removeModal = async (rowId: string) => {
+    await db().execute(sql`
+      update commerce.pages set
+        draft = jsonb_set(draft, '{rows}', coalesce((select jsonb_agg(r) from jsonb_array_elements(draft -> 'rows') r where r ->> 'id' <> ${rowId}), '[]'::jsonb)),
+        published = jsonb_set(published, '{rows}', coalesce((select jsonb_agg(r) from jsonb_array_elements(published -> 'rows') r where r ->> 'id' <> ${rowId}), '[]'::jsonb))
+      where id = ${aboutId}::uuid
+    `);
+  };
+
+  it("tests a popup that opens by itself against the page without it, and applies the winner by taking it out", async () => {
+    const popup = await addModal({ timer: { seconds: 5 } });
+    const made = await admin.createExperiment(account, storeId, { name: "Does the popup help?", pageId: aboutId, goal: "cart", part: { kind: "row", id: popup } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const draft = (await admin.getExperiment(storeId, made.id))!;
+    expect(draft.part).toMatchObject({ kind: "row", id: popup, label: "Modal “Newsletter” (row 2)", modal: { byItself: true } });
+    // Unchanged it has nothing to find; without the modal it is a different page, and the only difference is the part.
+    expect(await admin.startExperiment(account, storeId, made.id)).toMatchObject({ ok: false, problems: [expect.stringMatching(/still the same/)] });
+    await editVersion(made.id, "b", (c) => ({ ...c, rows: c.rows.filter((r) => r.id !== popup) }));
+    expect((await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")).toMatchObject({ scope: "ok", changed: true });
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    // The page was edited elsewhere in the meantime: the winner takes the modal out and keeps the edit.
+    await db().execute(sql`update commerce.pages set published = jsonb_set(published, '{rows,0,columns,0,blocks,1,htmlId}', '"edited-after"') where id = ${aboutId}::uuid`);
+    expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
+    const rows = await rowsOf(aboutId);
+    expect(rows.some((r) => r.id === popup)).toBe(false);
+    expect(JSON.stringify(rows)).toContain("edited-after");
+    await db().execute(sql`update commerce.pages set published = published #- '{rows,0,columns,0,blocks,1,htmlId}', draft = draft #- '{rows,0,columns,0,blocks,1,htmlId}' where id = ${aboutId}::uuid`);
+  });
+
+  it("keeps a popup that a link opens in every version, and its address name and being a popup", async () => {
+    const popup = await addModal({ button: true, timer: { seconds: 5 } });
+    const made = await admin.createExperiment(account, storeId, { name: "Linked popup", pageId: aboutId, goal: "orders", part: { kind: "row", id: popup } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    expect((await admin.getExperiment(storeId, made.id))!.part?.modal).toEqual({ byItself: false });
+    const scope = async () => (await admin.getExperiment(storeId, made.id))!.variants.find((v) => v.key === "b")!.scope;
+    // Left out: links to it elsewhere would be dead.
+    await editVersion(made.id, "b", (c) => ({ ...c, rows: c.rows.filter((r) => r.id !== popup) }));
+    expect(await scope()).toBe("missing");
+    const gone = await admin.startExperiment(account, storeId, made.id);
+    expect(gone.ok).toBe(false);
+    if (!gone.ok) expect(gone.problems.join(" ")).toMatch(/no longer has Modal “Newsletter”/);
+    // Renamed: the same.
+    await db().execute(sql`
+      update commerce.pages set published = (select jsonb_set(o.published, '{rows}', (select jsonb_agg(case when r ->> 'id' = ${popup} then jsonb_set(r, '{modal,key}', '"signup"') else r end) from jsonb_array_elements(o.published -> 'rows') r)) from commerce.pages o where o.id = ${aboutId}::uuid)
+      where id = (select page_id from commerce.experiment_variants where experiment_id = ${made.id}::uuid and key = 'b')
+    `);
+    expect(await scope()).toBe("modal");
+    const renamed = await admin.startExperiment(account, storeId, made.id);
+    expect(renamed.ok).toBe(false);
+    if (!renamed.ok) expect(renamed.problems.join(" ")).toMatch(/address name/);
+    // What it says and how it looks may change.
+    await editVersion(made.id, "b", (c) => ({ ...c, rows: c.rows.map((r) => (r.id === popup ? { ...r, modal: { ...r.modal!, key: "newsletter", size: "lg" as const } } : r)) }));
+    expect(await scope()).toBe("ok");
+    await admin.deleteDraft(account, storeId, made.id);
+    await removeModal(popup);
+  });
+
+  it("tests a part around a working page's component, served from the page's own route, never the page as a whole", async () => {
+    await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid`);
+    await db().execute(sql`insert into commerce.page_roles (store_id, role, page_id) values (${storeId}::uuid, 'cart', ${aboutId}::uuid)`);
+    const fresh = (await stores.getOpenStore(store.slug))!;
+    expect(fresh.pageRoles.cart).toBe(aboutId);
+
+    // Offered for a part only, not as a page to test.
+    expect((await admin.testablePages(storeId)).find((t) => t.id === aboutId)).toMatchObject({ kind: "role", role: "cart", partOnly: true });
+    const whole = await admin.createExperiment(account, storeId, { name: "Whole cart page", pageId: aboutId, goal: "orders" });
+    expect(whole).toMatchObject({ ok: false, problems: [expect.stringMatching(/working page is tested by a part/)] });
+    // The cookies page and the content pages are not testable at all.
+    await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid`);
+    await db().execute(sql`insert into commerce.page_roles (store_id, role, page_id) values (${storeId}::uuid, 'cookies', ${aboutId}::uuid)`);
+    expect((await admin.testablePages(storeId)).some((t) => t.id === aboutId)).toBe(false);
+    expect(await admin.createExperiment(account, storeId, { name: "Cookies", pageId: aboutId, goal: "orders", part: { kind: "block", id: "heading-about" } })).toMatchObject({ ok: false, problems: [expect.stringMatching(/cookies page/)] });
+    await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid`);
+    await db().execute(sql`insert into commerce.page_roles (store_id, role, page_id) values (${storeId}::uuid, 'cart', ${aboutId}::uuid)`);
+
+    const made = await admin.createExperiment(account, storeId, { name: "Trust row on the cart", pageId: aboutId, goal: "checkout", part: { kind: "block", id: "heading-about" } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const draft = (await admin.getExperiment(storeId, made.id))!;
+    expect(draft.page).toMatchObject({ kind: "role", role: "cart" });
+    await editVersion(made.id, "b", (c) => withBlock(c, "heading-about", (b) => ({ ...b, text: "Free returns, always" })));
+    expect(await admin.startExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    engine.forgetRunning(storeId);
+
+    // The proxy and the pages see a test of the cart.
+    const [running] = (await engine.runningExperiments(storeId)).filter((t) => t.id === made.id);
+    expect(running).toMatchObject({ kind: "role", role: "cart", targetPageId: aboutId });
+    const token = abSite.testToken(made.id);
+    const [site] = await engine.siteTests(storeId);
+    expect(site).toMatchObject({ id: made.id, token, kind: "role", role: "cart", targetPageId: aboutId });
+    // The page's own address is not where it is served: no marker there.
+    expect(await engine.experimentOfPage(storeId, aboutId)).toBeNull();
+
+    // The cart's route draws the visitor's version of the page chosen for it.
+    const rolePages = await import("./role-pages");
+    const text = (drawn: { page: { content: PageContent } | null }) => JSON.stringify(drawn.page?.content.rows ?? []);
+    const original = await rolePages.rolePageForVisitor(fresh, "cart", {});
+    expect(original).toMatchObject({ version: "a", test: { id: made.id } });
+    expect(text(original)).not.toContain("Free returns, always");
+    const mine = await rolePages.rolePageForVisitor(fresh, "cart", { [token]: "b" });
+    expect(mine.version).toBe("b");
+    expect(text(mine)).toContain("Free returns, always");
+    expect(mine.page?.id).toBe(aboutId);
+    expect((await rolePages.rolePageForVisitor(fresh, "cart", { [token]: "a" })).version).toBe("a");
+    expect((await rolePages.rolePageForVisitor(fresh, "cart", { [token]: "d" })).version).toBe("a");
+    // Another working page, or a page that is not one, is not this test's.
+    expect(await rolePages.rolePageForVisitor(fresh, "checkout", { [token]: "b" })).toMatchObject({ page: null, test: null });
+
+    // While it runs the page keeps its place; its exposure counts like any other.
+    const refused = await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid and role = 'cart'`).then(() => null, (error: { cause?: { message?: string } }) => String(error.cause?.message ?? error));
+    expect(refused).toMatch(/page_roles\.experiment/);
+    const visitor = await visitorFor(made.id, "b");
+    browser({ statistics: true, versions: { [made.id]: "b" }, visitor });
+    await engine.recordExposure(storeId, made.id, "b", { market: "no", device: "mobile" });
+    expect((await results.experimentResults(store, (await admin.getExperiment(storeId, made.id))!)).figures.find((f) => f.key === "b")).toMatchObject({ visitors: 1 });
+
+    // After the stop the cart draws its page as it was; a winner becomes the page, only its part.
+    expect(await admin.stopExperiment(account, storeId, made.id)).toEqual({ ok: true });
+    expect(text(await rolePages.rolePageForVisitor(fresh, "cart", { [token]: "b" }))).not.toContain("Free returns, always");
+    expect(await admin.applyVariant(account, storeId, made.id, "b")).toEqual({ ok: true });
+    expect(JSON.stringify(await rowsOf(aboutId))).toContain("Free returns, always");
+    await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid`);
+  }, 30_000);
+});

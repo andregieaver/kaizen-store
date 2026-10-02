@@ -30,7 +30,7 @@ async function Subscription({ params, searchParams }: Pick<Props, "params" | "se
   if (!shop) notFound();
   const { store, market } = shop;
   return (
-    <RolePage store={store} market={market} role="subscription" route={{ part: "subscription", param: token, query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="subscription" route={{ part: "subscription", param: token, query: searchParams }}>
       <SubscriptionSection store={store} market={market} token={token} />
     </RolePage>
   );

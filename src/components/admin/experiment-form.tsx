@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { DEVICES, GOALS, GOAL_WORDS, type Device, type Goal } from "@/lib/experiments";
-import { KIND_WORDS, type TargetKind } from "@/lib/ab-site";
+import { isWorkingRole, KIND_WORDS, ROLE_NAMES, type TargetKind } from "@/lib/ab-site";
 import type { PartInfo } from "@/lib/experiment-parts";
 
 import { RuntimeEstimate } from "./runtime-estimate";
@@ -14,7 +14,7 @@ const label = "flex flex-col gap-1 text-sm font-medium";
 const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
 const hint = "text-xs font-normal text-muted";
 
-export type TestablePage = { id: string; slug: string; title: string; kind: TargetKind; buttons: { id: string; label: string }[] };
+export type TestablePage = { id: string; slug: string; title: string; kind: TargetKind; role?: string | null; partOnly?: boolean; buttons: { id: string; label: string }[] };
 type Outcome = { ok: true; id: string } | { ok: false; problems: string[] };
 
 const SHARES = [
@@ -89,7 +89,8 @@ export function ExperimentForm({
     return (
       <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
         There is no page to test yet. A page can be tested when it is published and is not the front page, the All products page or a page with a place of
-        its own (the cart, the blog …), and is not in a running test already.
+        its own, and is not in a running test already. The cart, the checkout and the other working pages are tested by a part of them: open one in the page
+        builder and use “A/B test this” on a row around the shop&apos;s own component.
       </p>
     );
   }
@@ -100,7 +101,7 @@ export function ExperimentForm({
         <h2 id="ab-page" className="text-lg font-semibold">{part ? "1. What you are testing" : "1. What do you want to test?"}</h2>
         {part ? (
           <p className="text-sm">
-            <span className="font-medium">{part.label}</span> in {page && page.kind !== "page" ? `the ${KIND_WORDS[page.kind].name.toLowerCase()} ` : "the page "}
+            <span className="font-medium">{part.label}</span> in {page && page.kind !== "page" ? `the ${(page.kind === "role" && isWorkingRole(page.role) ? ROLE_NAMES[page.role] : KIND_WORDS[page.kind].name).toLowerCase()} ` : "the page "}
             <span className="font-medium">{page?.title}</span>
             {page?.kind === "page" && ` (/${page.slug})`}.
             <span className={`${hint} block`}>
@@ -114,7 +115,7 @@ export function ExperimentForm({
           <select value={pageId} onChange={(e) => setPageId(e.target.value)} className={input}>
             {pages.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.kind === "page" ? `${p.title} (/${p.slug})` : `${KIND_WORDS[p.kind].name}: ${p.title}`}
+                {p.kind === "page" ? `${p.title} (/${p.slug})` : `${p.kind === "role" && isWorkingRole(p.role) ? ROLE_NAMES[p.role] : KIND_WORDS[p.kind].name}: ${p.title}`}
               </option>
             ))}
           </select>

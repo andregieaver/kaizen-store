@@ -105,7 +105,13 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         </div>
         <p className="text-sm text-muted">
           {test.part
-            ? `The original is your page as it is. Each other version starts as a copy of it: open it in the page builder and change ${test.part.label}, then publish it there. Everything else on the page has to stay as it is, so the test is about that part only.`
+            ? `The original is your page as it is. Each other version starts as a copy of it: open it in the page builder and change ${test.part.label}, then publish it there. Everything else on the page has to stay as it is, so the test is about that part only.${
+                test.part.modal
+                  ? test.part.modal.byItself
+                    ? " To see whether the popup helps at all, delete its row in a version: a popup that opens by itself may be left out. Keep its address name, and keep it a modal, in the others."
+                    : " A link or a class elsewhere opens this popup, so it stays in every version: change what it says and how it looks, and keep its address name."
+                  : ""
+              }`
             : "The original is your page as it is. Each other version starts as a copy of it: open it in the page builder, change the thing you want to try (a heading, a picture, a button), and publish it there. Change one thing at a time, so you know what made the difference."}
         </p>
         <ul className="flex flex-col gap-2">
@@ -125,6 +131,11 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
                 {v.scope === "missing" && (
                   <span role="alert" className="block text-xs text-red-800 dark:text-red-300">
                     No longer has {test.part?.label}.
+                  </span>
+                )}
+                {v.scope === "modal" && (
+                  <span role="alert" className="block text-xs text-red-800 dark:text-red-300">
+                    Changes the address name of {test.part?.label}, or whether it is a modal: keep both.
                   </span>
                 )}
               </span>

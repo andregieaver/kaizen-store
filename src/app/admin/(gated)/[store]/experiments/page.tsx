@@ -69,7 +69,7 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
                       {t.variants.length} versions
                     </span>
                   </td>
-                  <td className="hidden px-4 py-2 sm:table-cell">{targetLabel(t.page.kind, t.page.slug, t.page.title)}</td>
+                  <td className="hidden px-4 py-2 sm:table-cell">{targetLabel(t.page.kind, t.page.slug, t.page.title, t.page.role)}</td>
                   <td className="hidden px-4 py-2 md:table-cell">{GOAL_WORDS[t.goal].label}</td>
                   <td className="hidden px-4 py-2 md:table-cell">
                     {t.startedAt ? date.format(new Date(t.startedAt)) : t.scheduledStart ? `Starts ${date.format(new Date(t.scheduledStart))}` : "—"}

@@ -26,7 +26,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   if (!shop) notFound();
   const { store, market } = shop;
   return (
-    <RolePage store={store} market={market} role="checkout" route={{ part: "checkout", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="checkout" route={{ part: "checkout", query: searchParams }}>
       <h1 className="mb-6 text-3xl font-heading tracking-tight">{t(market.lang).checkoutTitle}</h1>
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-surface" />}>
         <Checkout store={store} market={market} />

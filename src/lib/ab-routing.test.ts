@@ -110,6 +110,37 @@ describe("where a visitor's request goes under a test of the header, the footer 
   });
 });
 
+describe("where a visitor's request goes under a test of a working page (phase 9)", () => {
+  const cart = { id: E, kind: "role" as const, slug: "kurv", segment: "cart" };
+  const order = { id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", kind: "role" as const, slug: "takk", segment: "order" };
+  const at = (rest: string[], hostBased = false) => ({ store: "demo", market: "no", rest, hostBased });
+
+  it("changes the market part of the working page's own route only, never the page's address or other pages", () => {
+    expect(variantPath(at(["cart"]), [cart], cookie("b"))).toBe("/s/demo/no~aaaaaaaab/cart");
+    expect(variantPath(at(["cart"], true), [cart], cookie("c"))).toBe("/no~aaaaaaaac/cart");
+    // Other pages, the front page, products and the page's own address are left alone.
+    for (const rest of [[], ["checkout"], ["p", "lampe"], ["kurv"], ["om-oss"], ["cartoon"]]) expect(variantPath(at(rest), [cart], cookie("b")), rest.join("/")).toBeNull();
+    // The original, or outside the test: left alone.
+    expect(variantPath(at(["cart"]), [cart], cookie("a"))).toBeNull();
+    expect(variantPath(at(["cart"]), [cart], cookie("0"))).toBeNull();
+  });
+
+  it("reaches routes that carry more in the address: the order, with its id, and the account's pages", () => {
+    const both = encodeAssignments({ visitor: V, versions: { [order.id]: "b" } });
+    expect(variantPath(at(["order", "9f2c"]), [order], both)).toBe("/s/demo/no~bbbbbbbbb/order/9f2c");
+    const account = { id: E, kind: "role" as const, slug: "konto", segment: "account" };
+    expect(variantPath(at(["account", "orders"]), [account], cookie("d"))).toBe("/s/demo/no~aaaaaaaad/account/orders");
+  });
+
+  it("does nothing for a test with no route, and composes with the site's and a page's", () => {
+    expect(variantPath(at(["cart"]), [{ ...cart, segment: null }], cookie("b"))).toBeNull();
+    const header = { id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc", kind: "header" as const, slug: null };
+    const mixed = encodeAssignments({ visitor: V, versions: { [E]: "b", [header.id]: "c" } });
+    expect(variantPath(at(["cart"]), [header, cart], mixed)).toBe("/s/demo/no~aaaaaaaab_ccccccccc/cart");
+    expect(variantPath(at(["cart"]), [cart], mixed)).toBe("/s/demo/no~aaaaaaaab/cart");
+  });
+});
+
 describe("the proxy's matcher", () => {
   it("is written with the marker cookie's name, which the build needs as a literal", () => {
     const source = readFileSync(join(process.cwd(), "src/proxy.ts"), "utf8");

@@ -29,7 +29,7 @@ async function WishlistRoute({ params, searchParams }: Pick<Props, "params" | "s
   if (!shop) notFound();
   const { store, market } = shop;
   return (
-    <RolePage store={store} market={market} role="wishlist" route={{ part: "wishlist", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="wishlist" route={{ part: "wishlist", query: searchParams }}>
       <WishlistSection store={store} market={market} query={searchParams} />
     </RolePage>
   );

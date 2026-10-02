@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AbMarker } from "@/components/ab/ab-marker";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
 import type { Market } from "@/lib/markets";
@@ -8,7 +9,7 @@ import type { PageRole } from "@/lib/page-roles";
 import { adminOrigin } from "@/lib/paths";
 import type { StoreRoute } from "@/lib/store-parts";
 import type { GridPlace } from "@/server/content-grid";
-import { pageForRole } from "@/server/pages";
+import { rolePageForVisitor } from "@/server/role-pages";
 import type { Store } from "@/server/stores";
 
 /**
@@ -23,6 +24,7 @@ export async function RolePage({
   role,
   route,
   place,
+  ab,
   children,
 }: {
   store: Store;
@@ -31,9 +33,11 @@ export async function RolePage({
   route?: StoreRoute;
   /** More about where the page is shown, such as the listing a search reads. */
   place?: Partial<GridPlace>;
+  /** The visitor's versions of tests of working pages, from `resolveShop()` (D148, phase 9). */
+  ab?: Record<string, string>;
   children: ReactNode;
 }) {
-  const page = await pageForRole(store, role);
+  const { page, test, version } = await rolePageForVisitor(store, role, ab);
   if (!page) return children;
   return (
     <>
@@ -42,6 +46,8 @@ export async function RolePage({
         place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route }}
       />
       <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
+      {/* A test of this working page (D148): which version this is, for the exposure. */}
+      {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}
     </>
   );
 }

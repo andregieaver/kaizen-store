@@ -33,13 +33,13 @@ async function AccountRoute({ params, searchParams }: Pick<Props, "params" | "se
   if (!shop) notFound();
   const { store, market } = shop;
   const account = (
-    <RolePage store={store} market={market} role="account" route={{ part: "account", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="account" route={{ part: "account", query: searchParams }}>
       <AccountSection store={store} market={market} query={searchParams} />
     </RolePage>
   );
   if (await getCustomer(store.id)) return account;
   return (
-    <RolePage store={store} market={market} role="sign_in" route={{ part: "sign_in", query: searchParams }}>
+    <RolePage store={store} market={market} ab={shop.ab} role="sign_in" route={{ part: "sign_in", query: searchParams }}>
       {account}
     </RolePage>
   );

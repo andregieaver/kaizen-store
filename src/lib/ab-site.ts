@@ -10,13 +10,52 @@ import { VARIANT_KEYS } from "./experiments";
  * original, are served from the same cached pages as before. Pure; the proxy, `resolveShop()` and the tests share it.
  */
 
-export type TargetKind = "page" | "layout" | "header" | "footer";
+export type TargetKind = "page" | "layout" | "header" | "footer" | "role";
 
-/** The kind of test a page is the target of, from its type; null for a page that cannot be tested. */
-export function targetKindOf(pageType: string): TargetKind | null {
+/**
+ * The working pages of a store (D113) whose surrounding rows can be tested (D148, phase 9): the page a store chose for the cart, the
+ * checkout, the order confirmation, My account, sign-in, wishlists, a subscription and weekly deliveries. They are served from their own
+ * routes, so a version travels in the market part of the address like a header's (`withSiteVersions()`), and only a part around the shop's
+ * own component may differ: never the component itself. The cookies page is a legal page, and the blog, search, 404, category and tag
+ * pages are content pages that are not tested yet.
+ */
+export const WORKING_ROLES = ["cart", "checkout", "order", "account", "sign_in", "wishlist", "subscription", "deliveries"] as const;
+export type WorkingRole = (typeof WORKING_ROLES)[number];
+
+export const isWorkingRole = (value: unknown): value is WorkingRole => (WORKING_ROLES as readonly unknown[]).includes(value);
+
+/** The first part of a working page's address after the market, which the proxy matches (`/cart`, `/order/{id}`, `/account/…`). */
+export const ROLE_SEGMENT: Record<WorkingRole, string> = {
+  cart: "cart",
+  checkout: "checkout",
+  order: "order",
+  account: "account",
+  sign_in: "account",
+  wishlist: "wishlist",
+  subscription: "subscription",
+  deliveries: "deliveries",
+};
+
+/** What the admin calls each working page. */
+export const ROLE_NAMES: Record<WorkingRole, string> = {
+  cart: "Cart page",
+  checkout: "Checkout page",
+  order: "Order confirmation page",
+  account: "My account page",
+  sign_in: "Sign-in page",
+  wishlist: "Wishlist page",
+  subscription: "Subscription page",
+  deliveries: "Weekly deliveries page",
+};
+
+/**
+ * The kind of test a page is the target of, from its type and, for a page of the store's own, the place it was chosen for (a working
+ * page, if any); null for a page that cannot be tested.
+ */
+export function targetKindOf(pageType: string, role?: string | null): TargetKind | null {
   switch (pageType) {
     case "page":
-      return "page";
+      return isWorkingRole(role) ? "role" : "page";
     case "product_layout":
       return "layout";
     case "header":
@@ -29,7 +68,7 @@ export function targetKindOf(pageType: string): TargetKind | null {
 }
 
 /** The page type a kind of test is a test of. */
-export const pageTypeOfKind = (kind: TargetKind): "page" | "product_layout" | "header" | "footer" => (kind === "layout" ? "product_layout" : kind);
+export const pageTypeOfKind = (kind: TargetKind): "page" | "product_layout" | "header" | "footer" => (kind === "layout" ? "product_layout" : kind === "role" ? "page" : kind);
 
 /** A test's short name in an address: the first eight characters of its id. */
 export const testToken = (experimentId: string): string => experimentId.replace(/-/g, "").slice(0, 8).toLowerCase();
@@ -71,7 +110,9 @@ export const KIND_WORDS: Record<TargetKind, { name: string; where: string }> = {
   layout: { name: "Product layout", where: "on every product page that uses this layout" },
   header: { name: "Header", where: "on every page of the store" },
   footer: { name: "Footer", where: "on every page of the store" },
+  role: { name: "Working page", where: "on its own address, such as the cart or the checkout" },
 };
 
 /** A test's target in a sentence or a table: a page by its address, anything else by what it is and its name. */
-export const targetLabel = (kind: TargetKind, slug: string, title: string): string => (kind === "page" ? `/${slug}` : `${KIND_WORDS[kind].name}: ${title}`);
+export const targetLabel = (kind: TargetKind, slug: string, title: string, role?: string | null): string =>
+  kind === "page" ? `/${slug}` : kind === "role" && isWorkingRole(role) ? `${ROLE_NAMES[role]}: ${title}` : `${KIND_WORDS[kind].name}: ${title}`;

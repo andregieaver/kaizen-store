@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pageTypeOfKind, splitSiteVersions, targetKindOf, testToken, withSiteVersions } from "./ab-site";
+import { isWorkingRole, pageTypeOfKind, ROLE_NAMES, ROLE_SEGMENT, splitSiteVersions, targetKindOf, targetLabel, testToken, WORKING_ROLES, withSiteVersions } from "./ab-site";
 
 describe("the versions of site-wide tests in a market address", () => {
   it("names a test by the start of its id", () => {
@@ -41,5 +41,30 @@ describe("what a test is of", () => {
     expect(targetKindOf("variant")).toBeNull();
     expect(pageTypeOfKind("layout")).toBe("product_layout");
     expect(pageTypeOfKind("header")).toBe("header");
+  });
+
+  it("is a working page when a page is the one a store chose for the cart, the checkout, … (phase 9)", () => {
+    for (const role of WORKING_ROLES) expect(targetKindOf("page", role), role).toBe("role");
+    // The cookies page and the content pages are pages with a place that is not tested; a page with no place is a page.
+    for (const role of ["cookies", "blog", "search", "not_found", "category", "tag", null, undefined]) expect(targetKindOf("page", role as string), String(role)).toBe("page");
+    // A role means nothing for a header or a layout.
+    expect(targetKindOf("header", "cart")).toBe("header");
+    expect(pageTypeOfKind("role")).toBe("page");
+  });
+
+  it("gives every working page a name and a route to match, the cookies page none", () => {
+    for (const role of WORKING_ROLES) {
+      expect(ROLE_NAMES[role], role).toBeTruthy();
+      expect(ROLE_SEGMENT[role], role).toMatch(/^[a-z]+$/);
+    }
+    expect(isWorkingRole("cookies")).toBe(false);
+    expect(isWorkingRole("cart")).toBe(true);
+  });
+
+  it("labels a working page by what it is, and anything else as before", () => {
+    expect(targetLabel("role", "kurv", "Handlekurv", "cart")).toBe("Cart page: Handlekurv");
+    expect(targetLabel("role", "kurv", "Handlekurv")).toBe("Working page: Handlekurv");
+    expect(targetLabel("page", "om-oss", "Om oss")).toBe("/om-oss");
+    expect(targetLabel("header", "x", "Spring header")).toBe("Header: Spring header");
   });
 });

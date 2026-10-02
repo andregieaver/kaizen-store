@@ -37,7 +37,7 @@ export async function notifyGuardrailStop(store: Pick<Store, "id" | "slug" | "na
       guardrailEmail({
         storeName: store.name,
         testName: test.name,
-        target: test.part ? `${test.part.label} on ${targetLabel(test.page.kind, test.page.slug, test.page.title)}` : targetLabel(test.page.kind, test.page.slug, test.page.title),
+        target: test.part ? `${test.part.label} on ${targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}` : targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role),
         version: { key: version.key, name: version.name, visitors: harmed.visitors, buyers: harmed.buyers },
         original: { visitors: original.visitors, buyers: original.buyers },
         days: results.days,

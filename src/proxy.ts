@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { ROLE_SEGMENT } from "@/lib/ab-site";
 import { parseStoreRequest, storeOfHost, variantPath } from "@/lib/ab-routing";
 import { dataCookieName } from "@/lib/experiments";
 import { storeDomain, storeHosts } from "@/lib/paths";
@@ -25,7 +26,7 @@ export async function proxy(request: NextRequest) {
     if (!storeId) return NextResponse.next();
     const tests = await runningExperiments(storeId);
     if (tests.length === 0) return NextResponse.next();
-    const to = variantPath(request_, tests.map((t) => ({ id: t.id, kind: t.kind, slug: t.kind === "page" ? t.slug : null })), request.cookies.get(dataCookieName(storeId))?.value);
+    const to = variantPath(request_, tests.map((t) => ({ id: t.id, kind: t.kind, slug: t.kind === "page" ? t.slug : null, segment: t.role ? ROLE_SEGMENT[t.role] : null })), request.cookies.get(dataCookieName(storeId))?.value);
     if (!to) return NextResponse.next();
     const url = request.nextUrl.clone();
     url.pathname = to;

@@ -18,6 +18,8 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
   // From the builder's "A/B test this" (D148): one page, and a part of it.
   const partTarget = asked("part") ? { id: asked("part"), kind: asked("kind") as PartKind } : null;
   if (asked("page")) pages = pages.filter((p) => p.id === asked("page"));
+  // A working page (the cart, the checkout …) is tested by a part of it only: it is not on the list of whole pages, and a part chosen in the builder reaches it.
+  if (!partTarget) pages = pages.filter((p) => !p.partOnly);
   // The buttons of each page, for a test that counts clicks.
   const withButtons = await Promise.all(
     pages.map(async (p) => ({ ...p, buttons: buttonsOf(await publishedContentOf(store.id, p.id)) })),
@@ -41,7 +43,7 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
       {asked("page") && pages.length === 0 ? (
         <p role="alert" className="rounded-lg border border-border bg-background p-5 text-sm">
           This page cannot be tested now: it is in a running test, it is not published, or it is the front page, the All products page or a page with a place of
-          its own (the cart, the blog …).
+          its own that cannot be tested yet (the cookies page, the blog …). A working page such as the cart is tested by a part of it: choose the part in the page builder.
         </p>
       ) : partTarget && !part ? (
         <p role="alert" className="rounded-lg border border-border bg-background p-5 text-sm">

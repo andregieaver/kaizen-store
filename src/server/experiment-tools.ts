@@ -64,7 +64,7 @@ async function findTest(store: Store, ref: string): Promise<ExperimentInfo> {
 
 const claimsIn = (...texts: string[]) => [...new Set(texts.flatMap((text) => findClaims(text).map((c) => c.phrase)))];
 
-const targetWords = (t: ExperimentInfo) => `${targetLabel(t.page.kind, t.page.slug, t.page.title)}${t.part ? `, ${t.part.label}` : ""}`;
+const targetWords = (t: ExperimentInfo) => `${targetLabel(t.page.kind, t.page.slug, t.page.title, t.page.role)}${t.part ? `, ${t.part.label}` : ""}`;
 
 // Reading ---------------------------------------------------------------------------------------------
 
@@ -200,9 +200,11 @@ export async function suggestExperimentsTool({ store }: Ctx, input: OwnerToolInp
       const content = await publishedContentOf(store.id, t.id);
       const earlier = tests.filter((x) => x.page.id === t.id && (x.status === "applied" || x.status === "stopped" || x.status === "discarded")).slice(0, 2);
       return {
-        target: t.kind === "page" ? t.slug : t.kind === "layout" ? t.title : t.kind,
+        target: t.kind === "page" || t.kind === "role" ? t.slug : t.kind === "layout" ? t.title : t.kind,
         kind: t.kind,
         title: t.title,
+        // A working page (the cart, the checkout, …): one block or part around the shop's own component, never the page as a whole.
+        working_page: t.kind === "role" ? `${t.role}: test one block at a time (a heading, a text, a button around the shop's own component), never the whole page` : undefined,
         rows: content?.rows.length ?? 0,
         buttons: buttonsOf(content).map((b) => b.label),
         blocks: content ? offeredBlocks(content) : [],
@@ -321,7 +323,7 @@ export async function applyWinnerTool(ctx: Ctx, { experiment, version }: OwnerTo
   const result = version === "original" ? await discardExperiment(account, store.id, test.id) : await applyVariant(account, store.id, test.id, version);
   if (!result.ok) return fail(result.problems.join(" "));
   return {
-    done: version === "original" ? `The A/B test "${test.name}" is over and the original stays.` : `Version ${version.toUpperCase()} is now ${test.part ? test.part.label : "the page"} (${targetLabel(test.page.kind, test.page.slug, test.page.title)}). The test is over.`,
+    done: version === "original" ? `The A/B test "${test.name}" is over and the original stays.` : `Version ${version.toUpperCase()} is now ${test.part ? test.part.label : "the page"} (${targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}). The test is over.`,
     admin: adminLink(store, `/experiments/${test.id}`),
   };
 }
