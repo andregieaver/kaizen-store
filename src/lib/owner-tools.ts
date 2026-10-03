@@ -5,6 +5,8 @@ import { BONUS_EXPIRY_MONTHS_MAX, BONUS_PENDING_DAYS_MAX, BONUS_REDEEM_PERCENT_M
 import { adjustmentPhrase } from "./bonus-admin";
 import { GOALS } from "./experiments";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
+import { MAX_INSTRUCTIONS } from "./withdrawal";
+import { approveSummary, declineSummary } from "./return-tools";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -42,6 +44,8 @@ const limit = (max: number, fallback: number) => z.number().int().min(1).max(max
 const orderRef = z.string().trim().min(1).max(64).describe("The order's number, such as 1042, or its id.");
 const fieldEntity = z.enum(TOOL_FIELD_ENTITIES).describe("What the fields are on: a product, a page, a blog article, or the store itself (its own site-wide fields such as opening hours or a brand story).");
 const fieldThing = z.string().trim().min(1).max(200).describe("The product's id, handle or title, or the page's or article's id or address (slug). Leave it out for the store itself.");
+/** A return by its number (such as 1042-R1, as the queue shows it) or its id. */
+const returnRef = z.string().trim().min(1).max(64).describe("The return's number, such as 1042-R1, or its id; an order number works when the order has one return.");
 const productRef = z.string().trim().min(1).max(200).describe("The product's id, its handle, or its title as listed.");
 
 export const OWNER_TOOLS = [
@@ -70,6 +74,21 @@ export const OWNER_TOOLS = [
     "get_order",
     "One order in full: its lines, totals, payment, what is left to refund, shipments, bookings and history.",
     z.object({ order: orderRef }),
+  ),
+  tool(
+    "list_returns",
+    "The store's returns (D153), oldest first: customers' withdrawals from a purchase (their legal right to change their mind, which the store cannot refuse) and return requests inside the store's own longer window. Each has its number, kind, status, order, customer, units, when its refund is due and whether it is past the legal deadline; the answer also counts what waits: open, to answer, past the deadline, and acknowledgements not sent. `which` is open (the default), requested (waiting for an answer), overdue (past the refund deadline), or every status; `search` matches the return or order number, the name or the email. Read-only: the figures are the queue's own, never worked out by you.",
+    z.object({
+      which: z.enum(["open", "requested", "overdue", "approved", "in_transit", "received", "inspected", "closed", "declined", "cancelled", "all"]).default("open"),
+      kind: z.enum(["all", "withdrawal", "return"]).default("all").describe("A withdrawal (the legal right) or a return request (the store's own window)."),
+      search: z.string().trim().max(100).optional(),
+      limit: limit(50, 15),
+    }),
+  ),
+  tool(
+    "explain_return",
+    "One return in full, in words from the store's own data: what the customer asked for and why, each line with its decision and condition, where the return stands and what comes next, when the refund is due and whether it is overdue, what the refund would be now (worked out by the store, with its working) or what was refunded, and its history. It also says what can be done and where: approving or declining a return request can be done here (kept for the owner's approval); refunding and the other steps are done on the return's page. Repeat what it says and add nothing it did not give.",
+    z.object({ return: returnRef }),
   ),
   tool(
     "list_products",
@@ -278,6 +297,22 @@ export const OWNER_TOOLS = [
       notify: z.boolean().default(true).describe("Email the customer about the refund."),
     }),
     "spend",
+  ),
+  tool(
+    "approve_return",
+    "Approves a return request (a return inside the store's own window that waits for an answer) and emails the customer how to send the goods back. It cannot be used on a withdrawal: that is the customer's legal right and starts approved. Receiving, inspecting and refunding are done on the return's page, never here. Needs the owner's approval.",
+    z.object({
+      return: returnRef,
+      instructions: z.string().trim().min(1).max(MAX_INSTRUCTIONS).optional().describe("What the customer should do to send it back, if it differs from the store's standing instructions; the store's own are used when left out."),
+      note: z.string().trim().min(1).max(1000).optional().describe("A note kept with the approval."),
+    }),
+    "send",
+  ),
+  tool(
+    "decline_return",
+    "Declines a return request (a return inside the store's own window that waits for an answer) and emails the customer the reason. It can never be used on a withdrawal: the right of withdrawal is not the store's to refuse. Needs the owner's approval.",
+    z.object({ return: returnRef, reason: z.string().trim().min(1).max(1000).describe("Why the return is declined, in plain words the customer is sent.") }),
+    "send",
   ),
   tool(
     "create_discount",
@@ -602,6 +637,10 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.archived === false ? `Put the product "${text("product")}" back as a draft.` : `Take the product "${text("product")}" off the site.`;
     case "unpublish_page":
       return `Take the ${input.type === "article" ? "article" : "page"} ${text("page")} off the site, keeping its draft.`;
+    case "approve_return":
+      return approveSummary(text("return"), text("instructions") || null);
+    case "decline_return":
+      return declineSummary(text("return"), text("reason"));
     case "refund_order":
       return `Refund ${text("amount") || "everything left to refund"} on order ${text("order")} (${text("reason")})${input.restock === false ? "" : ", putting its items back in stock"}${input.notify === false ? "" : ", and email the customer"}.`;
     case "create_discount":

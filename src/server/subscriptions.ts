@@ -310,7 +310,7 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
 
   return db().transaction(async (tx) => {
     const [sub] = await tx.execute<Row>(sql`
-      select s.*, o.billing_address, o.digital_consent_at
+      select s.*, o.billing_address, o.digital_consent_at, o.return_cost_payer, o.standard_shipping_minor
       from commerce.subscriptions s
       join commerce.orders o on o.store_id = s.store_id and o.id = s.first_order_id
       where s.store_id = ${storeId}::uuid and s.provider = 'stripe' and s.provider_reference = ${reference}
@@ -332,13 +332,15 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
       insert into commerce.orders (
         store_id, number, market_code, currency, locale, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-        billing_address, shipping_address, digital_consent_at, subscription_id, customer_id
+        billing_address, shipping_address, digital_consent_at, subscription_id, customer_id,
+        return_cost_payer, standard_shipping_minor
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${sub.market_code}, ${sub.currency}, ${sub.locale},
         ${sub.email}, 'pending_payment',
         ${sub.subtotal_minor}, ${sub.shipping_minor}, 0, ${sub.tax_minor}, ${sub.total_minor},
         ${JSON.stringify(sub.billing_address ?? {})}::jsonb, ${JSON.stringify(sub.shipping_address ?? {})}::jsonb,
-        ${sub.digital_consent_at ?? null}::timestamptz, ${sub.id}::uuid, ${sub.customer_id ?? null}::uuid
+        ${sub.digital_consent_at ?? null}::timestamptz, ${sub.id}::uuid, ${sub.customer_id ?? null}::uuid,
+        ${sub.return_cost_payer ?? null}, ${sub.standard_shipping_minor ?? null}::bigint
       )
       returning id
     `);

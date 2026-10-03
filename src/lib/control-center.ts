@@ -35,7 +35,14 @@ export type StoreFigures = {
    * overview's own items (`workOverview().attention`, worded with the store's name and pointing at its Work pages).
    */
   work?: AttentionItem[];
+  /**
+   * What waits in Returns (D153), only when something does: withdrawals past the legal deadline for the refund, confirmed
+   * withdrawals whose acknowledgement was not sent, and return requests waiting for an answer.
+   */
+  returns?: ReturnFigures;
 };
+
+export type ReturnFigures = { overdue: number; unacknowledged: number; requested: number };
 
 export type AttentionItem = { text: string; href: string; action: string; urgent?: boolean };
 
@@ -66,6 +73,31 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         href: `${base}/orders?show=to-send`,
         action: "Send",
         urgent: late >= LATE_TO_SEND_DAYS,
+      });
+    }
+    // Withdrawals are a legal duty (D153): the deadline and the acknowledgement come before everything else of the store's own.
+    const returns = s.returns;
+    if (returns && returns.overdue > 0) {
+      items.push({
+        text: `${s.name}: ${plural(returns.overdue, "withdrawal is", "withdrawals are")} past the legal deadline for the refund.`,
+        href: `${base}/returns?overdue=1`,
+        action: "Refund",
+        urgent: true,
+      });
+    }
+    if (returns && returns.unacknowledged > 0) {
+      items.push({
+        text: `${s.name}: the acknowledgement of ${plural(returns.unacknowledged, "withdrawal was", "withdrawals were")} not sent.`,
+        href: `${base}/returns`,
+        action: "Send again",
+        urgent: true,
+      });
+    }
+    if (returns && returns.requested > 0) {
+      items.push({
+        text: `${s.name}: ${plural(returns.requested, "return request is", "return requests are")} waiting for an answer.`,
+        href: `${base}/returns?status=requested`,
+        action: "Answer",
       });
     }
     if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });

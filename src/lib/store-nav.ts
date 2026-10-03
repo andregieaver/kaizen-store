@@ -36,12 +36,13 @@ export const STORE_SECTIONS: StoreSection[] = [
     icon: "package",
     start: "/orders",
     hub: false,
-    intro: "Everything that is bought: orders, subscriptions and the emails the store sent about them.",
+    intro: "Everything that is bought: orders, returns and withdrawals, subscriptions and the emails the store sent about them.",
     groups: [
       {
         heading: "Orders",
         items: [
           item("/orders", "Orders", "Every order: open it, fulfil it, refund it, print its packing slip."),
+          item("/returns", "Returns", "Customers' withdrawals and return requests: approve, receive, inspect and refund them in time."),
           item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments."),
           item("/deliveries", "Subscription boxes", "Weekly delivery days, cutoffs, and the lists customers have set up.", { needs: "deliveries" }),
           item("/emails", "Emails", "Every email the store sent to customers and staff, and whether it arrived."),
@@ -198,6 +199,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use."),
           item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers."),
+          item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get."),
           item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services."),
         ],
       },

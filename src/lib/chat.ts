@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { findClaims } from "./claims";
 import { cleanSignals } from "./recommendations";
+import type { ReturnPolicyFacts } from "./structured-data";
 
 /**
  * The chat agent (D81), the pure parts: what a visitor's request and the
@@ -87,6 +88,22 @@ export const navigateArgs = z.object({
 const text = (description: string) => ({ type: "string", description });
 
 /** The tools a store's agent is given. */
+/**
+ * What the chat agent may say about returns, from the store's own settings (D153) and never from the model: the legal right to
+ * withdraw (14 days), the store's own window, who pays to send goods back, whether goods the law leaves out of the right are
+ * taken back too, and where a customer withdraws. Complaints about faulty goods are another matter and are not promised here.
+ */
+export function returnFacts(policy: ReturnPolicyFacts, withdrawPath: string) {
+  return {
+    legalRightToWithdrawDays: 14,
+    storeReturnWindowDays: policy.days,
+    returnShippingPaidBy: policy.whoPaysReturn === "store" ? "the store" : "the customer",
+    takesBackGoodsTheLawExcludes: policy.acceptExcluded,
+    withdrawFromContractPage: withdrawPath,
+    note: "A customer withdraws from a purchase on the withdrawal page; faulty goods are a separate matter under the legal guarantee.",
+  };
+}
+
 export function storeTools() {
   return [
     {
@@ -118,7 +135,7 @@ export function storeTools() {
     },
     {
       name: "store_info",
-      description: "The store's facts: its name, who runs it, contact details, countries, shipping costs to the visitor's country, and its pages.",
+      description: "The store's facts: its name, who runs it, contact details, countries, shipping costs to the visitor's country, its return policy, and its pages.",
       parameters: { type: "object", properties: {} },
     },
     {

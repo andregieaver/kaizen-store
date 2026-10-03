@@ -189,6 +189,29 @@ describe("the agent", () => {
     await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
   });
 
+  it("tells the model the store's return policy from its settings, and the legal default when it has set none (D153)", async () => {
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
+    const info = async (forStore: Store) => {
+      const sent = fakeModel([{ content: null, tool_calls: [call("1", "store_info", {})] }, { content: "Se siden for å angre kjøpet." }]);
+      await chat.runChat({ kind: "store", store: forStore, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Kan jeg returnere?" }], signals: { views: [], searches: [] } }, connection);
+      const result = (sent[1].messages as Row[]).find((message) => message.role === "tool");
+      return JSON.parse(String(result!.content)) as { returns: Record<string, unknown> };
+    };
+    expect((await info(store)).returns).toEqual({
+      legalRightToWithdrawDays: 14,
+      storeReturnWindowDays: 14,
+      returnShippingPaidBy: "the customer",
+      takesBackGoodsTheLawExcludes: false,
+      withdrawFromContractPage: `/s/${slug}/no/withdraw`,
+      note: expect.stringContaining("faulty goods are a separate matter"),
+    });
+    await db().execute(sql`insert into commerce.return_settings (store_id, window_days, who_pays_return, accept_excluded) values (${storeId}::uuid, 45, 'store', true)`);
+    const own = (await getStore(slug))!;
+    expect((await info(own)).returns).toMatchObject({ storeReturnWindowDays: 45, returnShippingPaidBy: "the store", takesBackGoodsTheLawExcludes: true, legalRightToWithdrawDays: 14 });
+    await db().execute(sql`delete from commerce.return_settings where store_id = ${storeId}::uuid`);
+  });
+
   it("recommends through the store's recommendation engine, which it uses only while the store has it on (D139)", async () => {
     const market = store.markets.find((m) => m.code === "NO")!;
     const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };

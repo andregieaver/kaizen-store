@@ -40,6 +40,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
+import { RETURN_REASONS } from "../lib/withdrawal";
 
 export const commerce = pgSchema("commerce");
 
@@ -156,12 +157,21 @@ export const paymentStatus = commerce.enum("payment_status", [
 
 export const refundStatus = commerce.enum("refund_status", ["pending", "succeeded", "failed"]);
 
+/**
+ * A return's life (D153, `docs/returns.md`): `requested` (a voluntary return waiting for the store) or `approved` (a
+ * withdrawal return starts here), then `in_transit`, `received`, `inspected`, `closed`; `declined` (a voluntary return
+ * the store refused) and `cancelled` end it elsewhere. The order of the values is the order of the steps (the
+ * lifecycle trigger in `returns_rules` holds the rest). New values are added in their own migration step.
+ */
 export const returnStatus = commerce.enum("return_status", [
   "requested",
+  "approved",
   "in_transit",
   "received",
   "inspected",
   "closed",
+  "declined",
+  "cancelled",
 ]);
 
 export const idempotencyStatus = commerce.enum("idempotency_status", [
@@ -1982,8 +1992,24 @@ export const orders = commerce.table(
      * angrerettloven § 22 n). Null when the order has no such content.
      */
     digitalConsentAt: timestamp("digital_consent_at", { withTimezone: true }),
-    /** When the goods reached the customer; starts the withdrawal period. */
+    /**
+     * When the goods reached the customer; starts the withdrawal period (D153). Written by staff (*Mark delivered*) or
+     * by a carrier's tracking, never estimated: the statutory period does not start from the date a parcel was sent.
+     */
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /**
+     * Who pays for sending a withdrawn item back, as the store's setting stood when the order was placed (D153): the
+     * consumer is told of that cost before buying (CRD Art. 6(1)(i)), so a later change of the setting changes nothing
+     * for this order. Null for an order with no record, which counts as the store paying.
+     */
+    returnCostPayer: text("return_cost_payer"),
+    /**
+     * The cheapest standard delivery the store offered for the basket when it was placed, in the order's currency (D153):
+     * the market's flat rate (free over its limit, judged on the basket before discounts), kept so a withdrawal of the
+     * whole order refunds no more delivery than that (Art. 13(1)) whatever a carrier's dearer service cost. Null when
+     * it was not worked out.
+     */
+    standardShippingMinor: bigint("standard_shipping_minor", { mode: "number" }),
     /** The subscription this order started or renewed (D25). */
     subscriptionId: uuid("subscription_id"),
     /** The discount code used, and its text as the shopper saw it (D31). */
@@ -2027,6 +2053,10 @@ export const orders = commerce.table(
     index("orders_cart_idx").on(t.storeId, t.cartId),
     index("orders_store_placed_idx").on(t.storeId, t.placedAt),
     index("orders_email_idx").on(t.storeId, sql`lower(${t.email})`),
+    /** The withdrawal function finds an order by its number typed without spaces or case (`matchOrder()`). */
+    index("orders_number_normalised_idx").on(t.storeId, sql`upper(regexp_replace(${t.number}, '\\s', '', 'g'))`),
+    check("orders_return_cost_payer", sql`${t.returnCostPayer} is null or ${t.returnCostPayer} in ('shopper', 'store')`),
+    check("orders_standard_shipping", sql`${t.standardShippingMinor} is null or ${t.standardShippingMinor} >= 0`),
     check(
       "orders_amounts_non_negative",
       sql`${t.subtotalMinor} >= 0 and ${t.shippingMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.taxMinor} >= 0`,
@@ -2505,9 +2535,13 @@ export const shipments = commerce.table(
 // Withdrawals and returns
 // ---------------------------------------------------------------------------
 
+const reasonList = sql.raw(RETURN_REASONS.map((r) => `'${r}'`).join(", "));
+
 /**
- * A use of the withdrawal button (Directive (EU) 2023/2673): the legal notice.
- * The physical return of goods is tracked separately in `returns`.
+ * A use of the withdrawal button (Directive (EU) 2023/2673, D153): the legal notice. The physical return of goods is
+ * tracked separately in `returns`. A request is `pending` after the shopper's first step and expires after 24 hours
+ * unconfirmed (deleted by `commerce.expire_withdrawal_requests()`); `confirmed` is the legal act. Rules in SQL: a
+ * confirmed request is a record that cannot be changed (but for its acknowledgement), and only a pending one confirms.
  */
 export const withdrawalRequests = commerce.table(
   "withdrawal_requests",
@@ -2518,7 +2552,14 @@ export const withdrawalRequests = commerce.table(
     name: text("name").notNull(),
     email: text("email").notNull(),
     channel: text("channel").notNull(),
+    /** The order's language, which the acknowledgement is written in, and the country the shopper used. */
+    locale: text("locale").notNull().default("en"),
+    marketCode: char("market_code", { length: 2 }),
+    /** `pending`, `confirmed` or `expired`; `confirmed_at` is set exactly when it is `confirmed`. */
+    status: text("status").notNull().default("pending"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    /** When an unconfirmed request lapses; a confirm after it is refused. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull().default(sql`now() + interval '24 hours'`),
     /** The second, "confirm withdrawal" step. */
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     /** When the acknowledgement was sent on a durable medium. */
@@ -2529,10 +2570,16 @@ export const withdrawalRequests = commerce.table(
     unique("withdrawal_requests_store_id_key").on(t.storeId, t.id),
     orderRef("withdrawal_requests_order_fk", t),
     index("withdrawal_requests_order_idx").on(t.storeId, t.orderId),
+    index("withdrawal_requests_expiry_idx").on(t.expiresAt).where(sql`${t.confirmedAt} is null`),
     check(
       "withdrawal_requests_ack_after_confirm",
       sql`${t.acknowledgedAt} is null or ${t.confirmedAt} is not null`,
     ),
+    check("withdrawal_requests_status", sql`${t.status} in ('pending', 'confirmed', 'expired')`),
+    check("withdrawal_requests_confirmed", sql`(${t.status} = 'confirmed') = (${t.confirmedAt} is not null)`),
+    check("withdrawal_requests_confirm_after_submit", sql`${t.confirmedAt} is null or ${t.confirmedAt} >= ${t.submittedAt}`),
+    check("withdrawal_requests_ack_in_order", sql`${t.acknowledgedAt} is null or ${t.acknowledgedAt} >= ${t.confirmedAt}`),
+    check("withdrawal_requests_expires_after_submit", sql`${t.expiresAt} >= ${t.submittedAt}`),
   ],
 );
 
@@ -2558,6 +2605,36 @@ export const withdrawalRequestLines = commerce.table(
   ],
 );
 
+/**
+ * Attempts at the withdrawal function that matched no order (D153), kept only as hashes of what the request itself
+ * supplied (the store with the normalised email, or with the order number), so repeated guessing can be limited
+ * without an IP address or a cookie. No raw email or number is stored, and the rows are deleted after a day by the
+ * daily job (`commerce.expire_withdrawal_requests()`).
+ */
+export const withdrawalAttempts = commerce.table(
+  "withdrawal_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** `email` or `order`. */
+    keyKind: text("key_kind").notNull(),
+    /** sha-256 (hex) of the store id and the normalised value. */
+    keyHash: text("key_hash").notNull(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("withdrawal_attempts_key_idx").on(t.storeId, t.keyKind, t.keyHash, t.at),
+    index("withdrawal_attempts_at_idx").on(t.at),
+    check("withdrawal_attempts_kind", sql`${t.keyKind} in ('email', 'order')`),
+  ],
+);
+
+/**
+ * The physical side (D153): created by a confirmed withdrawal (`kind = 'withdrawal'`, starts `approved`) or by a
+ * shopper's request inside the store's own longer window (`kind = 'return'`, starts `requested`). `number` is
+ * `{order number}-R{n}`, assigned in SQL. Quantities within what is left, the lifecycle, the timestamps' order and a
+ * refund never above what was paid are enforced by `returns_rules`.
+ */
 export const returns = commerce.table(
   "returns",
   {
@@ -2567,17 +2644,98 @@ export const returns = commerce.table(
     withdrawalRequestId: uuid("withdrawal_request_id"),
     status: returnStatus("status").notNull().default("requested"),
     createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    /** `withdrawal` (the statutory right, needs a confirmed request) or `return` (the store's own window). */
+    kind: text("kind").notNull().default("return"),
+    /** Per order, `{order number}-R{n}`; assigned by a trigger. */
+    number: text("number").notNull(),
+    reason: text("reason"),
+    reasonNote: text("reason_note"),
+    /** What the store tells the shopper to do, and the address as it was when the return was made. */
+    instructions: text("instructions"),
+    labelUrl: text("label_url"),
+    returnAddress: jsonb("return_address"),
+    /** Why the store declined (a voluntary return), or a note with its approval; emailed to the shopper. */
+    decisionNote: text("decision_note"),
+    /** Staff's own notes; never shown to the shopper. */
+    staffNote: text("staff_note"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    /** The shopper's proof of sending, or staff's. */
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    inspectedAt: timestamp("inspected_at", { withTimezone: true }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    /** `refunded`, `declined`, `no_refund` or `cancelled`; set when the return ends. */
+    outcome: text("outcome"),
+    /** The refund made through `refundOrder()`, when one was made through Stripe (null when refunded outside or not at all). */
+    refundId: uuid("refund_id"),
+    /** What `refundFor()` worked out; what was actually refunded is `refund_minor`, and a difference has a reason. */
+    refundComputedMinor: bigint("refund_computed_minor", { mode: "number" }),
+    refundMinor: bigint("refund_minor", { mode: "number" }),
+    refundNote: text("refund_note"),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    /** Refunded outside Kaizen's Stripe (a note and an event; nothing sent from here). */
+    refundOutside: boolean("refund_outside").notNull().default(false),
+    /** The return shipping cost taken off the refund when the shopper pays it. */
+    returnShippingMinor: bigint("return_shipping_minor", { mode: "number" }).notNull().default(0),
+    /** The delivery this return's refund gave back (Art. 13(1)): later returns of the order take it off what is left. */
+    shippingRefundMinor: bigint("shipping_refund_minor", { mode: "number" }).notNull().default(0),
+    /** Set while a staff member's refund of this return is with Stripe, so two at once cannot both pay it; cleared when it is recorded or fails. */
+    refundClaimedAt: timestamp("refund_claimed_at", { withTimezone: true }),
+    /** The latest day the store may refund (14 days after it was informed of a withdrawal, Art. 13(1)). */
+    refundDeadline: timestamp("refund_deadline", { withTimezone: true }),
+    /** For the shopper's status page: a secret address that shows and changes nothing. */
+    publicToken: text("public_token")
+      .notNull()
+      .default(sql`replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')`),
   },
   (t) => [
     unique("returns_store_id_key").on(t.storeId, t.id),
+    unique("returns_store_number_key").on(t.storeId, t.number),
+    unique("returns_public_token_key").on(t.publicToken),
+    uniqueIndex("returns_withdrawal_request_key")
+      .on(t.storeId, t.withdrawalRequestId)
+      .where(sql`${t.withdrawalRequestId} is not null`),
     orderRef("returns_order_fk", t),
     foreignKey({
       name: "returns_withdrawal_request_fk",
       columns: [t.storeId, t.withdrawalRequestId],
       foreignColumns: [withdrawalRequests.storeId, withdrawalRequests.id],
     }),
+    foreignKey({
+      name: "returns_refund_fk",
+      columns: [t.storeId, t.refundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }),
     index("returns_order_idx").on(t.storeId, t.orderId),
     index("returns_withdrawal_request_idx").on(t.storeId, t.withdrawalRequestId),
+    index("returns_refund_idx").on(t.storeId, t.refundId),
+    index("returns_queue_idx").on(t.storeId, t.status, t.createdAt),
+    index("returns_refund_deadline_idx").on(t.storeId, t.refundDeadline),
+    check("returns_kind", sql`${t.kind} in ('withdrawal', 'return')`),
+    check("returns_kind_request", sql`(${t.kind} = 'withdrawal') = (${t.withdrawalRequestId} is not null)`),
+    check("returns_reason", sql`${t.reason} is null or ${t.reason} in (${reasonList})`),
+    check("returns_reason_note", sql`${t.reasonNote} is null or length(${t.reasonNote}) <= 500`),
+    check("returns_instructions", sql`${t.instructions} is null or length(${t.instructions}) <= 2000`),
+    check("returns_decision_note", sql`${t.decisionNote} is null or length(${t.decisionNote}) <= 1000`),
+    check("returns_staff_note", sql`${t.staffNote} is null or length(${t.staffNote}) <= 2000`),
+    check("returns_label_url", sql`${t.labelUrl} is null or ${t.labelUrl} ~ '^https://'`),
+    check("returns_outcome", sql`${t.outcome} is null or ${t.outcome} in ('refunded', 'declined', 'no_refund', 'cancelled')`),
+    check(
+      "returns_amounts",
+      sql`${t.returnShippingMinor} >= 0 and ${t.refundMinor} >= 0 and ${t.refundComputedMinor} >= 0 and ${t.shippingRefundMinor} >= 0`,
+    ),
+    check("returns_refund_recorded", sql`(${t.refundMinor} is null) = (${t.refundedAt} is null)`),
+    check("returns_refund_stripe", sql`${t.refundId} is null or (${t.refundMinor} is not null and not ${t.refundOutside})`),
+    check("returns_refund_outside", sql`not ${t.refundOutside} or ${t.refundMinor} is not null`),
+    check(
+      "returns_times_in_order",
+      sql`(${t.receivedAt} is null or ${t.approvedAt} is null or ${t.receivedAt} >= ${t.approvedAt})
+        and (${t.inspectedAt} is null or ${t.receivedAt} is null or ${t.inspectedAt} >= ${t.receivedAt})
+        and (${t.closedAt} is null or ${t.inspectedAt} is null or ${t.closedAt} >= ${t.inspectedAt})
+        and (${t.closedAt} is null or ${t.receivedAt} is null or ${t.closedAt} >= ${t.receivedAt})
+        and (${t.shippedAt} is null or ${t.receivedAt} is null or ${t.shippedAt} <= ${t.receivedAt})`,
+    ),
   ],
 );
 
@@ -2588,7 +2746,17 @@ export const returnLines = commerce.table(
     returnId: uuid("return_id").notNull(),
     orderLineId: uuid("order_line_id").notNull(),
     quantity: integer("quantity").notNull(),
+    /** What staff found when inspecting: `as_new`, `opened`, `used` or `damaged`. */
     condition: text("condition"),
+    reason: text("reason"),
+    /** Whether the units go back into stock. */
+    restock: boolean("restock").notNull().default(false),
+    /** The diminished value taken off (CRD Art. 14(2)), in the order's currency; never above the line's value. */
+    deductionMinor: bigint("deduction_minor", { mode: "number" }).notNull().default(0),
+    deductionNote: text("deduction_note"),
+    /** `accept`, or `decline` (only for a line the law excludes, or on a voluntary return). */
+    decision: text("decision").notNull().default("accept"),
+    declineReason: text("decline_reason"),
   },
   (t) => [
     primaryKey({ columns: [t.returnId, t.orderLineId] }),
@@ -2601,6 +2769,54 @@ export const returnLines = commerce.table(
     index("return_lines_return_idx").on(t.storeId, t.returnId),
     index("return_lines_order_line_idx").on(t.storeId, t.orderLineId),
     check("return_lines_quantity_positive", sql`${t.quantity} > 0`),
+    check("return_lines_condition", sql`${t.condition} is null or ${t.condition} in ('as_new', 'opened', 'used', 'damaged')`),
+    check("return_lines_reason", sql`${t.reason} is null or ${t.reason} in (${reasonList})`),
+    check("return_lines_deduction", sql`${t.deductionMinor} >= 0`),
+    check("return_lines_deduction_note", sql`${t.deductionNote} is null or length(${t.deductionNote}) <= 500`),
+    check("return_lines_decision", sql`${t.decision} in ('accept', 'decline')`),
+    check("return_lines_decline_reason", sql`${t.decision} = 'accept' or length(trim(coalesce(${t.declineReason}, ''))) > 0`),
+    check("return_lines_declined_nothing", sql`${t.decision} = 'accept' or (${t.deductionMinor} = 0 and not ${t.restock})`),
+  ],
+);
+
+/**
+ * A store's rules for returns (D153): one row per store (a store without one has the legal defaults, `docs/returns.md`).
+ * A store setting, copied with a store; edited by owners at `/admin/{store}/settings/returns`.
+ */
+export const returnSettings = commerce.table(
+  "return_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    /** The store's own window in days, 14 at least (the legal 14 days are never shortened). */
+    windowDays: integer("window_days").notNull().default(14),
+    /** Days the store allows for transit before the withdrawal period starts, when delivery is unknown. */
+    transitDays: integer("transit_days").notNull().default(3),
+    /** `shopper` or `store`: who pays for sending a withdrawn item back. */
+    whoPaysReturn: text("who_pays_return").notNull().default("shopper"),
+    /** `received` (refund once the goods are back or proof of sending is shown) or `request`. */
+    refundWhen: text("refund_when").notNull().default("received"),
+    /** Whether goods the law excludes can still be returned inside the store's own window. */
+    acceptExcluded: boolean("accept_excluded").notNull().default(false),
+    /** Shown and emailed, in the store's main language. */
+    instructions: text("instructions").notNull().default(""),
+    /** The instructions in the store's other languages, `{ "sv": "…" }`: written by staff or accepted from the store translation (D110). */
+    instructionsTranslations: jsonb("instructions_translations").notNull().default(sql`'{}'::jsonb`),
+    /** Where returns are sent: name, street, postal code, city, country; null is the store's postal address. */
+    returnAddress: jsonb("return_address"),
+    /** Voluntary returns for company orders. */
+    b2bReturns: boolean("b2b_returns").notNull().default(false),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("return_settings_updated_by_idx").on(t.updatedBy),
+    check("return_settings_window", sql`${t.windowDays} between 14 and 100`),
+    check("return_settings_transit", sql`${t.transitDays} between 0 and 14`),
+    check("return_settings_who_pays", sql`${t.whoPaysReturn} in ('shopper', 'store')`),
+    check("return_settings_refund_when", sql`${t.refundWhen} in ('received', 'request')`),
+    check("return_settings_instructions", sql`length(${t.instructions}) <= 2000`),
   ],
 );
 
@@ -3242,7 +3458,7 @@ export const pages = commerce.table(
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw')`,
     ),
     // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
     check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),

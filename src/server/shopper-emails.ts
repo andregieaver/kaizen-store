@@ -23,6 +23,7 @@ import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { ensureUi } from "./ui-text";
+import { withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
 import type { Store } from "./stores";
 import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
@@ -269,6 +270,8 @@ export async function sendOrderConfirmation(
         ]
       : []),
     ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
+    // The right of withdrawal (D153): a consumer's order says so and links to the withdrawal function.
+    ...(await withdrawBlocks(storeId, store, market, order, text)),
     ...(subscription
       ? [
           { type: "divider" as const },
@@ -318,7 +321,7 @@ async function orderNotice(
     money: (minor: number) => string;
     store: EmailStore;
     m: Messages;
-  }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[]; attachments?: OutgoingEmail["attachments"] },
+  }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[]; attachments?: OutgoingEmail["attachments"]; withdraw?: boolean },
 ): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
   if (!order?.email || order.copied) return null;
@@ -338,6 +341,7 @@ async function orderNotice(
       { type: "paragraph", text: built.intro },
       ...(built.extra ?? []),
       ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
+      ...(built.withdraw ? await withdrawBlocks(storeId, store, market, order, text) : []),
     ],
   });
   return sendEmail({
@@ -367,6 +371,7 @@ export function sendShipped(
       subject: text.shippedSubject(store.name, order.number),
       heading: text.shippedHeading,
       intro: text.shippedIntro(order.number),
+      withdraw: true,
       extra: [
         ...(shipment.trackingNumber ? [{ type: "paragraph" as const, text: text.tracking(shipment.carrier, shipment.trackingNumber) }] : []),
         ...(shipment.trackingUrl ? [{ type: "button" as const, text: text.trackParcel, url: shipment.trackingUrl }] : []),

@@ -79,6 +79,19 @@ describe("the store admin's sections (D147)", () => {
     expect(storeAreas("/admin/s", NONE)).toHaveLength(storeSections(NONE).length + 1);
   });
 
+  it("puts returns with the orders and their rules with the selling settings (D153)", () => {
+    const orders = STORE_SECTIONS.find((s) => s.key === "orders")!;
+    expect(orders.groups[0].items.map((i) => i.label).slice(0, 2)).toEqual(["Orders", "Returns"]);
+    const settings = STORE_SECTIONS.find((s) => s.key === "settings")!;
+    const selling = settings.groups.find((g) => g.heading === "Selling")!;
+    expect(selling.items.map((i) => i.path)).toContain("/settings/returns");
+    // A return's own page is inside Orders, and the rules are Settings', not the Orders' address space.
+    expect(sectionOf("/returns")?.key).toBe("orders");
+    expect(sectionOf("/returns/abc")?.key).toBe("orders");
+    expect(sectionOf("/settings/returns")?.key).toBe("settings");
+    expect(storeAreas("/admin/s", ALL).find((a) => a.prefixes.includes("/admin/s/returns"))?.groups[0].items.map((i) => i.href)).toContain("/admin/s/returns");
+  });
+
   it("finds a page's section by the longest address it is inside", () => {
     expect(sectionOf("/orders/abc/packing-slip")?.key).toBe("orders");
     expect(sectionOf("/settings/design")?.key).toBe("website");

@@ -23,7 +23,7 @@ import { PageRowView, rowShows } from "./page-article";
 import { MotionSupport } from "./motion-support";
 import { BUILT_IN, Brand as KaizenBrand } from "./platform-layout";
 import { HidingHeader } from "./store-chrome";
-import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice } from "./store-layout";
+import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice, WithdrawalLink } from "./store-layout";
 import { WishlistCount } from "./wishlist-heart";
 
 /**
@@ -169,6 +169,9 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
           {m.cookies}
         </Link>
       );
+    case "withdrawal":
+      // The withdrawal function, always reachable (D153).
+      return <WithdrawalLink store={store} market={market} />;
     case "signUp":
       return null;
   }

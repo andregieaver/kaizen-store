@@ -155,7 +155,7 @@ cannot be followed from one day to the next, and that adding to the cart lets th
 | Inventory | stock, value, days remaining, stockouts, dead stock, turnover, sell-through |
 | Marketing | channels: sessions, orders, revenue, conversion, CAC, ROAS, profit ROAS, LTV:CAC; spend entry; discounts and coupons |
 | Subscriptions | MRR and its movements, churn, failed renewals, subscribers |
-| Traffic | funnel, devices, geography, search, sales by weekday and hour |
+| Traffic | funnel, devices, geography, search, sales by weekday and hour; refunds and returns (D153) at the bottom |
 | Settings | costs, fees, fixed costs, lifespan, targets, visit counting |
 
 Common: a period (today, yesterday, 7 days, 30 days, this month, previous month, this year, custom) and a comparison
@@ -212,8 +212,34 @@ the comparison has too few days for has no point (null), not a shorter one.
 - The AI manager gets read-only, ungated tools over the same functions (`analytics_overview`, `explain_change`,
   `analytics_alerts`; `src/server/analytics-tools.ts`), served to Kaizen Life's assistant like every owner tool.
 
+## Returns (D153)
+
+The Returns section of the Traffic page (under Refunds), `returnsReport()` in `src/server/analytics-returns-data.ts`, pure parts in
+`src/lib/analytics-returns.ts`. It reads `commerce.returns` and `return_lines` (`docs/returns.md`); copied and hosts' orders never count,
+amounts are in the main currency without VAT, days are the store's, and an order (or a return of an order) in a currency with no rate is left
+out of every figure and counted (`unconverted`), like every other page.
+
+| Term | Definition |
+|---|---|
+| **Return** | A row of `returns` (a withdrawal return, `kind = 'withdrawal'`, or a voluntary return, `kind = 'return'`), dated by `created_at` (a withdrawal return is made when the withdrawal is confirmed). A **counting return** is one that is not `declined` or `cancelled`: it asks for goods back. **Returns made** = counting returns created in the period, split into withdrawals and voluntary returns; declined voluntary requests and cancelled returns are shown beside, never in the rates. |
+| **Cohort** | Paid orders placed in the period that have at least one **goods line** (`variant_id` set and `delivery = 'physical'`): orders that could be returned. **Units sold** = Σ quantity of those goods lines. Services, bookings and digital content are not units that can come back, so they are in neither the numerator nor the denominator. |
+| **Return rate (orders)** | Cohort orders with at least one counting return, **made at any time**, / cohort orders. Like the share of orders with a refund it keeps growing while the cohort's returns arrive; the page says so when the period's last days are still inside the store's return window (`return_settings.window_days`). |
+| **Return rate (units)** | Units on accepted lines (`return_lines.decision = 'accept'`) of counting returns of cohort orders / units sold in the cohort. A line the law excludes is declined, so it is never in the numerator. |
+| **Returned value** | The cohort's accepted return lines at what they were sold for, without VAT: `(total − tax) × returned quantity / line quantity`, before any deduction for diminished value. |
+| **Refunded for returns** | Σ `returns.refund_minor` dated by `refunded_at` in the period, each scaled to without VAT by its order's `(total − tax) / total`, as Refunds scales a refund. A return refunded outside Kaizen's Stripe (`refund_outside`) is included, because the return records it, and counted apart. |
+| **Reasons** | `returns.reason`, a fixed list. A withdrawal asks for no reason and is never refused for one, so most withdrawals have none: **No reason given** is its own row and is never spread over the others. Shares are of the returns that have a reason, and are shown only when at least `MIN_REASON_SAMPLE` (10) returns made in the period have one; counts are always shown. |
+| **Time to refund** | For returns refunded in the period: **request to refund** (a withdrawal's confirmation, or a voluntary request's date, to `refunded_at`) and **received to refund** (`received_at` to `refunded_at`; only returns received before the refund: a store that refunds on the request has none). Shown as the **median** in days with the slowest, only from `MIN_TIMING_SAMPLE` (5) returns; fewer shows what is missing. **Refunded after the deadline** counts withdrawals refunded in the period after their `refund_deadline` (14 days after the confirmation). |
+| **Overdue** | Right now (not in the period): withdrawal returns past their refund deadline with no refund recorded and still open. It is the queue's own condition (`OVERDUE_SQL`), so the figure is the queue's count. |
+| **By product** | The cohort per product: units returned (accepted lines of counting returns) and their value, against units sold of the same product in the same cohort. The most returned first. A product's rate is shown only from `MIN_PRODUCT_UNITS` (20) units sold, otherwise the units are shown and the rate says why it is not. |
+
+Honesty: the rates need at least `MIN_RATE_ORDERS` (30) cohort orders and `MIN_RATE_UNITS` (30) units sold; below that the card says how many
+there were and shows no percentage. A store with **no return recorded at all** shows what is missing ("no return has been recorded in Kaizen yet"),
+never 0 %. Returns a shopper made without using Kaizen (a parcel sent back with no withdrawal) are not seen, and the page says so, always. Reasons
+are the shopper's own choice (and never asked first for a withdrawal): they describe, they never refuse. The section is for the owner; the AI manager's
+`list_returns` and `explain_return` repeat the queue, not these figures.
+
 ## Not tracked (said on the pages)
 
-Refunds made only in Stripe's dashboard; return reasons (free text only); subscription expansion, contraction and
+Refunds made only in Stripe's dashboard; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and
 reactivation (no status history); regions inside a country (only country and city); revenue after a search (searches are
 not tied to a visit); anything before visit counting was switched on.

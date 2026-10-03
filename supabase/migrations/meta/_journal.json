@@ -1632,6 +1632,34 @@
       "when": 1790960024050,
       "tag": "20261002165344_analytics_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1790978018371,
+      "tag": "20261002215338_returns",
+      "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1790978032517,
+      "tag": "20261002215352_returns_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 235,
+      "version": "7",
+      "when": 1790980838963,
+      "tag": "20261002224038_returns_instructions_i18n",
+      "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1790981679404,
+      "tag": "20261002225439_reserve_withdraw_slug",
+      "breakpoints": true
     }
   ]
 }

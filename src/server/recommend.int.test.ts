@@ -445,13 +445,19 @@ describe("the check against past orders (D140)", () => {
     const b = product["demo-keramikkopp"];
     const ranks = async (from: string, to: string, exceptOrder: string) =>
       (await recommend.replayFor(store, market, { viewed: [from], exceptOrder, ceilingPercent: 0, limit: 12 })).engine.indexOf(to);
-    for (const [from, to] of [[a, b], [b, a]]) {
+    const pairs = [[a, b], [b, a]];
+    const left: number[] = [];
+    for (const [from, to] of pairs) {
       expect(await ranks(from, to, randomUUID())).toBe(0);
-      // Replayed with itself left out, nothing is known of the pair: it is not first.
-      expect(await ranks(from, to, only)).toBeGreaterThan(0);
+      left.push(await ranks(from, to, only));
     }
     const result = await replay.replayOnOrders(store, market, 10);
     expect(result.evaluated).toBe(1);
+    // Replayed with itself left out, the engine sees what it would if the order had never been made. (Where the rest
+    // ties, the pair may still come first by the order the database returns ties in, so the check is that the two
+    // agree, not that the pair is not first.)
+    await db().execute(sql`update commerce.orders set status = 'cancelled' where id = ${only}::uuid`);
+    for (const [i, [from, to]] of pairs.entries()) expect(await ranks(from, to, randomUUID())).toBe(left[i]);
   });
 });
 

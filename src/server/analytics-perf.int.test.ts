@@ -23,6 +23,7 @@ const products = await import("./analytics-products-data");
 const inventory = await import("./analytics-inventory-data");
 const discounts = await import("./analytics-discounts-data");
 const refunds = await import("./analytics-refunds-data");
+const returns = await import("./analytics-returns-data");
 const subscriptions = await import("./analytics-subscriptions-data");
 const geo = await import("./analytics-geo-data");
 const time = await import("./analytics-time-data");
@@ -258,6 +259,11 @@ describe("analytics reads on a busy store, with no statistics", () => {
     expect(offers.summary.orders).toBeGreaterThan(0);
     const back = await within("refundsReport", () => refunds.refundsReport(store, YEAR));
     expect(back.refunds).toBeGreaterThan(0);
+    // The returns section reads the same orders; with no return recorded it still reads the whole cohort, and says what is missing.
+    const returned = await within("returnsReport", () => returns.returnsReport(store, YEAR, NOW));
+    expect(returned.cohort.orders).toBeGreaterThan(500);
+    expect(returned.tracked).toBe(false);
+    expect(returned.orderRate.value).toBeNull();
   });
 
   it("subscriptions, geography and times", async () => {

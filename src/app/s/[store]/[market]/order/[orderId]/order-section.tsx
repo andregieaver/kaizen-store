@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
 import { OwnBookings } from "@/components/own-bookings";
+import { OrderReturns } from "@/components/withdraw/order-returns";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
@@ -20,6 +21,7 @@ import { marketPath } from "@/lib/paths";
 import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
+import { listOrderReturns } from "@/server/returns";
 import { perRequest } from "@/server/request-memo";
 import type { Store } from "@/server/stores";
 import { getSubscriptionForOrder } from "@/server/subscriptions";
@@ -41,12 +43,14 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const [downloads, subscription, account] = await Promise.all([
+  const [downloads, subscription, account, returns] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],
     order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
     getCheckoutAccount(store.id, order.id),
+    // The order's own key has just been checked, so its returns (withdrawal and return requests, D153) are the visitor's to see.
+    listOrderReturns(store.id, order.id),
   ]);
-  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account };
+  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns };
 }
 
 const FRAME = "rounded-lg border border-border p-4";
@@ -76,6 +80,7 @@ export async function OrderDetails(shop: Shop) {
           {earnedNote(view)}
         </div>
       </section>
+      {returnsBlock(view)}
       {subscription && <div className={FRAME}>{subscription}</div>}
       {downloads && <div className={FRAME}>{downloads}</div>}
       {addressBlock(view)}
@@ -153,6 +158,19 @@ function statusBlock({ order, m }: OrderView) {
         </p>
       </div>
     </>
+  );
+}
+
+/** The way into the withdrawal function with this order filled in, and the order's returns (D153). */
+function returnsBlock({ store, market, order, sessionId, returns }: OrderView) {
+  return (
+    <OrderReturns
+      m={t(market.lang).returns}
+      base={marketPath(store.slug, market.slug)}
+      order={order}
+      orderKey={sessionId}
+      returns={returns}
+    />
   );
 }
 

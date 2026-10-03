@@ -9,6 +9,7 @@ vi.mock("@/server/orders", () => ({
   getOrderDownloads: async () => [],
 }));
 vi.mock("@/server/customers", () => ({ getCheckoutAccount: async () => null }));
+vi.mock("@/server/returns", () => ({ listOrderReturns: async () => [] }));
 vi.mock("@/server/subscriptions", () => ({ getSubscriptionForOrder: async () => null }));
 vi.mock("@/app/s/[store]/[market]/account/actions", () => ({ checkoutSignInAction: async () => undefined }));
 vi.mock("@/components/own-bookings", () => ({ OwnBookings: () => null }));

@@ -292,7 +292,7 @@ async function readCohort(store: Store, period: AnalyticsPeriod): Promise<Row[]>
 }
 
 /** The products' own names, in the store's main language where there is one. */
-async function productNames(store: Store, ids: readonly string[]): Promise<Map<string, string>> {
+export async function productNames(store: Store, ids: readonly string[]): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
   const locale = store.localization.locales[0] ?? "en";
   const rows = await db().execute<Row>(sql`

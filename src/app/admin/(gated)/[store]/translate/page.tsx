@@ -22,7 +22,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
       <div>
         <h1 className="text-2xl font-semibold">Translate the store</h1>
         <p className="text-sm text-muted">
-          Products, menus, pages, articles and custom fields into another of the store&apos;s languages in one go, with AI. The AI
+          Products, menus, pages, articles, custom fields and the return instructions into another of the store&apos;s languages in one go, with AI. The AI
           suggests; you read each text and keep the ones that are right, and nothing is written before you save.
           Pages are saved as drafts, so nothing is published for you.
         </p>

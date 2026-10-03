@@ -45,6 +45,29 @@ describe("the control center (D107)", () => {
     expect(items.map((i) => i.action)).toEqual(["Send"]);
   });
 
+  it("puts withdrawals past the legal refund deadline and unsent acknowledgements first, then return requests (D153)", () => {
+    const items = attentionFor([
+      store({ slug: "a", name: "A", lowStock: 2, returns: { overdue: 2, unacknowledged: 1, requested: 3 } }),
+      store({ slug: "b", name: "B", returns: { overdue: 0, unacknowledged: 0, requested: 1 } }),
+    ]);
+    expect(items.map((i) => [i.href, Boolean(i.urgent)])).toEqual([
+      ["/admin/a/returns?overdue=1", true],
+      ["/admin/a/returns", true],
+      ["/admin/a/returns?status=requested", false],
+      ["/admin/a/products", false],
+      ["/admin/b/returns?status=requested", false],
+    ]);
+    expect(items[0].text).toBe("A: 2 withdrawals are past the legal deadline for the refund.");
+    expect(items[1].text).toBe("A: the acknowledgement of 1 withdrawal was not sent.");
+    expect(items[2].text).toBe("A: 3 return requests are waiting for an answer.");
+    expect(items[4].text).toBe("B: 1 return request is waiting for an answer.");
+  });
+
+  it("says nothing about returns when nothing waits, and shows staff the same, as every member works the queue", () => {
+    expect(attentionFor([store({ returns: { overdue: 0, unacknowledged: 0, requested: 0 } })])).toEqual([]);
+    expect(attentionFor([store({ role: "admin", returns: { overdue: 1, unacknowledged: 0, requested: 0 } })]).map((i) => i.action)).toEqual(["Refund"]);
+  });
+
   it("adds Work's own attention items for a store that uses it, urgent first, and nothing for one that does not", () => {
     const now = Date.parse("2026-09-29T12:00:00Z");
     const workOf = (slug: string, name: string) => workOverview({

@@ -12,6 +12,7 @@ import { cronAuthorised } from "@/server/cron-auth";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
 import { pruneReplications } from "@/server/replicate-store";
+import { runReturnJobs } from "@/server/return-jobs";
 import { pruneFormSubmissions } from "@/server/forms";
 import { pruneRecommendEvents } from "@/server/recommend-events";
 import { pruneSearchCache } from "@/server/search-cache";
@@ -47,12 +48,12 @@ import { prepareDueRecurringWork } from "@/server/work-recurring";
  * soon, and credits held by unpaid orders given back; and the referral program's emails (D131, never throws): the
  * customers whose friends' orders earned them credits are told, once per order; and recommendation events older than 90 days
  * forgotten (D139); and A/B tests' upkeep (D148, never throws): tests past their end stopped, guardrails looked at, old
- * carts' visitors forgotten; and copies of other websites' pages (D150) older than thirty days forgotten with their pictures.
+ * carts' visitors forgotten; and copies of other websites' pages (D150) older than thirty days forgotten with their pictures; and withdrawals and returns (D153, never throws): a reminder to the store, once per return, when a refund is past its legal deadline, and the acknowledgement of a confirmed withdrawal tried again when the first email never got out.
  */
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -74,13 +75,14 @@ async function run(request: Request) {
     pruneRecommendEvents(),
     runExperimentJobs(),
     pruneReplications(),
+    runReturnJobs(),
   ]);
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

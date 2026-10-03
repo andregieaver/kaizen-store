@@ -7,6 +7,7 @@ import { toMarket } from "@/lib/markets";
 import { EMPTY_NAVIGATION } from "@/lib/navigation";
 import { DEFAULT_STAY, productInput, seasonInput, type ProductInput } from "@/lib/product-input";
 import { parseStoreSeo } from "@/lib/seo";
+import { DEFAULT_RETURN_POLICY } from "@/lib/structured-data";
 import { templateSettings } from "@/lib/theme";
 
 import {
@@ -49,6 +50,7 @@ async function createStore(slug: string): Promise<Store> {
     audience: "consumers",
     businessPopup: false,
     openCartOnAdd: false,
+    returnPolicy: DEFAULT_RETURN_POLICY,
     visitCounting: false,
     bookingsOn: false,
     deliveriesOn: false,

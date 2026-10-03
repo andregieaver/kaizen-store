@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { pageInput, sitePartsFor, type PageContent } from "./page-content";
-import { defaultFooter, defaultHeader, headerOverlays, siteBlocks, siteLayoutProblem } from "./site-layout";
+import { defaultFooter, defaultHeader, footerHasWithdrawal, footerRequired, headerOverlays, siteBlocks, siteLayoutProblem } from "./site-layout";
 
 const withBlocks = (base: PageContent, blocks: unknown[]): PageContent =>
   ({ ...base, rows: [{ id: "r", type: "row", layout: "1", columns: [{ id: "c", blocks }] }] }) as PageContent;
@@ -61,9 +61,54 @@ describe("headers and footers (D80)", () => {
       { id: "l", type: "site", part: "logo" },
       { id: "b", type: "site", part: "business" },
     ]);
-    expect(siteLayoutProblem("store", "footer", withoutCookies)).toMatch(/business details and the cookies link/);
+    expect(siteLayoutProblem("store", "footer", withoutCookies)).toMatch(/business details, the cookies link and the withdrawal link/);
+    // Kaizen's own site sells nothing to consumers: its footer needs the first two only.
+    expect(siteLayoutProblem(null, "footer", withBlocks(defaultFooter(null), [{ id: "l", type: "site", part: "logo" }]))).toMatch(/business details and the cookies link/);
     // A header needs neither.
     expect(siteLayoutProblem("store", "header", withBlocks(defaultHeader("store"), [{ id: "l", type: "site", part: "logo" }]))).toBeNull();
+  });
+
+  it("keeps the withdrawal link in every store footer, for everyone (D153)", () => {
+    // The standard footer has it, and only a store's.
+    expect(siteBlocks(defaultFooter("store")).map((b) => b.part)).toContain("withdrawal");
+    expect(siteBlocks(defaultFooter(null)).map((b) => b.part)).not.toContain("withdrawal");
+    expect(footerRequired("store")).toContain("withdrawal");
+    expect(footerRequired(null)).not.toContain("withdrawal");
+    expect(sitePartsFor("store")).toContain("withdrawal");
+    expect(sitePartsFor(null)).not.toContain("withdrawal");
+
+    const base = [
+      { id: "b", type: "site", part: "business" },
+      { id: "c", type: "site", part: "cookies" },
+    ];
+    // A footer without it is refused when saved, and shown with the standard link under it when it is already saved.
+    const without = withBlocks(defaultFooter("store"), base);
+    expect(siteLayoutProblem("store", "footer", without)).toMatch(/withdrawal link/);
+    expect(footerHasWithdrawal(without)).toBe(false);
+
+    // With it, it counts only if every visitor gets it: not hidden on phones.
+    const hidden = withBlocks(defaultFooter("store"), [...base, { id: "w", type: "site", part: "withdrawal", hideOnPhones: true }]);
+    expect(siteLayoutProblem("store", "footer", hidden)).toMatch(/shown on phones too/);
+    expect(footerHasWithdrawal(hidden)).toBe(false);
+    const shown = withBlocks(defaultFooter("store"), [...base, { id: "w", type: "site", part: "withdrawal" }]);
+    expect(siteLayoutProblem("store", "footer", shown)).toBeNull();
+    expect(footerHasWithdrawal(shown)).toBe(true);
+
+    // A modal's row is not in the page: a link only there is not the footer's.
+    const inModal = {
+      ...defaultFooter("store"),
+      rows: [
+        { id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: base }] },
+        {
+          id: "r2",
+          type: "row",
+          layout: "1",
+          modal: { key: "m", triggers: { click: true } },
+          columns: [{ id: "c2", blocks: [{ id: "w", type: "site", part: "withdrawal" }] }],
+        },
+      ],
+    } as unknown as PageContent;
+    expect(footerHasWithdrawal(inModal)).toBe(false);
   });
 
   it("checks site components' settings", () => {

@@ -24,6 +24,7 @@ import {
 } from "./experiment-tools";
 import { cancelBooking, listBookings } from "./bookings";
 import { cartReminderStats } from "./cart-reminders";
+import { approveReturnTool, declineReturnTool, explainReturnTool, listReturnsTool, preflightReturnTool } from "./return-tools";
 import { findCustomer, getCustomerDetail, listCustomers } from "./customer-admin";
 import { listEmails } from "./email";
 import { findClaims } from "@/lib/claims";
@@ -491,7 +492,7 @@ async function markOrderSentTool({ store, account }: OwnerToolContext, input: Ow
   const id = await findOrderId(store, input.order);
   const carrier = CARRIERS.find((c) => c.id === input.carrier.toLowerCase() || c.name.toLowerCase() === input.carrier.toLowerCase())?.id ?? "other";
   const shipment = await markSent(store.id, id, { carrier, trackingNumber: input.tracking_number, trackingUrl: null }, account.id);
-  if (!shipment) return fail(`Order ${input.order} is not paid, so it cannot be sent.`);
+  if (!shipment) return fail(`Order ${input.order} is not paid, or every item on it was withdrawn before sending, so it cannot be sent.`);
   if (input.notify) await sendShipped(store.id, id, shipment);
   return { done: input.notify ? `Order ${input.order} is marked as sent and the customer has been told.` : `Order ${input.order} is marked as sent.` };
 }
@@ -1455,6 +1456,13 @@ async function createFieldGroupTool(ctx: OwnerToolContext, input: OwnerToolInput
  * `OwnerToolError` with the reason for the model.
  */
 export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<void> {
+  // A return that could not be approved or declined (a withdrawal is never declined) is refused now, never kept for a yes (D153).
+  if (name === "approve_return" || name === "decline_return") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightReturnTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A test that could not be started, stopped or decided is refused now, never kept for a yes (D148).
   if (name === "start_experiment" || name === "stop_experiment" || name === "apply_winner") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1508,6 +1516,10 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   sales_summary: salesSummary,
   list_orders: listOrdersTool,
   get_order: getOrderTool,
+  list_returns: listReturnsTool,
+  explain_return: explainReturnTool,
+  approve_return: approveReturnTool,
+  decline_return: declineReturnTool,
   list_products: listProductsTool,
   get_product: getProductTool,
   low_stock: lowStock,

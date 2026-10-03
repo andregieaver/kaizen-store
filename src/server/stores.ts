@@ -15,6 +15,7 @@ import { parseCustomCode, type CustomCode } from "@/lib/custom-code";
 import type { SiteFonts } from "@/lib/fonts";
 import { parseMenuItems, parseNavigation, type Menu, type StoreNavigation } from "@/lib/navigation";
 import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
+import { returnPolicyOf, type ReturnPolicyFacts } from "@/lib/structured-data";
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
 
 export type StoreStatus = "active" | "suspended" | "closed";
@@ -38,6 +39,8 @@ export type Store = {
   businessPopup: boolean;
   /** On phones, open the slide-out cart once something is added to it (D64). */
   openCartOnAdd: boolean;
+  /** The store's return rules as search engines are told them (D153): the window, who pays return shipping, excluded goods. */
+  returnPolicy: ReturnPolicyFacts;
   /** Cookieless visit counting for the analytics is on (D152); off until the owner switches it on. */
   visitCounting: boolean;
   /** Appointments and bookings are switched on (D65). */
@@ -132,6 +135,10 @@ async function loadStore(slug: string): Promise<Store | null> {
         from commerce.store_currencies c where c.store_id = s.id
       ) as currencies,
       (select coalesce(jsonb_object_agg(r.role, r.page_id), '{}'::jsonb) from commerce.page_roles r where r.store_id = s.id) as page_roles,
+      (
+        select json_build_object('windowDays', rs.window_days, 'whoPaysReturn', rs.who_pays_return, 'acceptExcluded', rs.accept_excluded)
+        from commerce.return_settings rs where rs.store_id = s.id
+      ) as return_policy,
       exists (
         select 1 from commerce.payment_providers p
         where p.store_id = s.id and p.enabled
@@ -184,6 +191,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     audience: parseStoreAudience(row.audience),
     businessPopup: Boolean(row.business_popup) && row.audience === "both",
     openCartOnAdd: Boolean(row.open_cart_on_add),
+    returnPolicy: returnPolicyOf(row.return_policy),
     visitCounting: Boolean(row.visit_counting),
     bookingsOn: ((row.modules ?? []) as string[]).includes("bookings"),
     deliveriesOn: ((row.modules ?? []) as string[]).includes("deliveries"),

@@ -23,12 +23,15 @@ import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
 import type { CarrierId } from "@/lib/shipping-carriers";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
+import { OrderReturnsCard } from "@/components/admin/returns/order-returns-card";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { bookingWhen } from "@/lib/booking-text";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
+import { isReturnEvent, eventSentence } from "@/lib/return-admin";
+import { marketPath, storeHref } from "@/lib/paths";
 import { formatDeliveryDate } from "@/lib/standing-orders";
 import { orderAttribution } from "@/server/affiliates";
 import { requireMember } from "@/server/auth";
@@ -37,12 +40,15 @@ import { carrierTracking, trackedCarrier } from "@/server/carrier-tracking";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
+import { orderReturnsOverview } from "@/server/order-returns";
 import { getCarrier } from "@/server/shipping-carriers";
 import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, type Address, type OrderEvent } from "@/server/orders";
 import { listCartAdds } from "@/server/wishlist-admin";
 
 import { saveOrderFieldsAction } from "../actions";
+import { markDeliveredAction, registerWithdrawalAction } from "../../returns/actions";
+import { todayIn } from "@/lib/work-dates";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -76,7 +82,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const { store: slug, orderId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -86,6 +92,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     deliveryOfOrder(store.id, orderId),
     // Whose friend it is, when a referral link led to it (D131).
     orderAttribution(store.id, orderId),
+    // The withdrawals and returns made on it, and where it stands in the 14 days (D153).
+    orderReturnsOverview(store.id, orderId),
   ]);
   if (!order) notFound();
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
@@ -111,7 +119,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
   // History: the order's events and its emails, newest first.
   const history: { at: string; node: ReactNode }[] = [
-    ...events.map((event) => ({ at: event.createdAt, node: <EventLine event={event} money={money} /> })),
+    ...events.map((event) => ({ at: event.createdAt, node: <EventLine event={event} money={money} currency={order.currency} base={`/admin/${store.slug}`} /> })),
     ...emails.map((email) => ({
       at: email.createdAt,
       node: (
@@ -431,6 +439,20 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
+          {returns && !order.copied && (
+            <OrderReturnsCard
+              base={`/admin/${store.slug}`}
+              overview={returns}
+              withdrawalPage={storeHref(store.slug, marketPath(store.slug, order.marketCode, "/withdraw"))}
+              timeZone={store.timeZone}
+              today={todayIn(store.timeZone)}
+              actions={{
+                markDelivered: markDeliveredAction.bind(null, store.slug, orderId),
+                registerWithdrawal: registerWithdrawalAction.bind(null, store.slug, orderId),
+              }}
+            />
+          )}
+
           <section aria-labelledby="history" className={card}>
             <h2 id="history" className="mb-3 font-medium">History</h2>
             {order.status !== "pending_payment" && (
@@ -543,9 +565,25 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   );
 }
 
-function EventLine({ event, money }: { event: OrderEvent; money: (minor: number) => string }) {
+function EventLine({ event, money, currency, base }: { event: OrderEvent; money: (minor: number) => string; currency: string; base: string }) {
   const label = EVENT_LABELS[event.type] ?? event.type;
   const data = event.data as Record<string, unknown>;
+  // A withdrawal or return's own steps (D153), in words, with a link to the return.
+  if (isReturnEvent(event.type)) {
+    return (
+      <>
+        {eventSentence(event.type, data, currency)}
+        {typeof data.returnId === "string" && typeof data.number === "string" && (
+          <>
+            {" · "}
+            <Link href={`${base}/returns/${data.returnId}`} className="underline">
+              {data.number}
+            </Link>
+          </>
+        )}
+      </>
+    );
+  }
   if (event.type === "note.added") {
     return (
       <>

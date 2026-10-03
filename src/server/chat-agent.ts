@@ -11,6 +11,7 @@ import {
   cleanReply,
   kaizenTools,
   navigateArgs,
+  returnFacts,
   storeTools,
   systemPrompt,
   type ChatAction,
@@ -329,6 +330,7 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
                 freeOver: shipping.freeOverMinor === null ? null : formatMoney(shipping.freeOverMinor, shipping.currency, market.locale),
               }
             : null,
+          returns: returnFacts(store.returnPolicy, marketPath(store.slug, market.slug, "/withdraw")),
           pages: [...new Map(pages.map(([, page]) => [page.slug, page.title])).entries()].slice(0, 30).map(([slug, title]) => ({ slug, title })),
         }),
       };

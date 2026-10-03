@@ -11,7 +11,7 @@ import { StoreAffiliate } from "@/components/store-affiliate";
 import { StoreVisits } from "@/components/store-visits";
 import { StoreChat } from "@/components/site-chat";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
-import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu } from "@/components/store-layout";
+import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu, WithdrawalStrip } from "@/components/store-layout";
 import { CustomCss } from "@/components/custom-css";
 import { StoreColorScript } from "@/components/store-color-switch";
 import { UiTexts } from "@/components/ui-texts";
@@ -22,6 +22,7 @@ import { t } from "@/lib/i18n";
 import { inView } from "@/lib/markets";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
+import { footerHasWithdrawal } from "@/lib/site-layout";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
@@ -148,6 +149,8 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
           {children}
         </main>
         {footerLayout ? <StoreSiteFooter store={store} market={market} layout={footerLayout} /> : <StoreFooter store={store} market={market} />}
+        {/* The withdrawal function is always reachable (D153): a footer of the store's own without its link gets the standard one. */}
+        {footerLayout && !footerHasWithdrawal(footerLayout.content) && <WithdrawalStrip store={store} market={market} />}
         {/*
           Phone enhancements, each in its own boundary: React counts
           everything outside boundaries towards a 12.8 kB budget, past which

@@ -75,7 +75,7 @@ export async function sendOrderAction(
     { ...input.data, trackingUrl: input.data.trackingUrl || null },
     found.member.account.id,
   );
-  if (!shipment) return failed("Only paid orders can be sent.");
+  if (!shipment) return failed("Only paid orders can be sent, and not one where every item was withdrawn before sending.");
   if (input.data.notify) await sendShipped(found.member.store.id, orderId, shipment);
   refresh();
   const paid = charged ? "The card was charged, and the order is " : "";

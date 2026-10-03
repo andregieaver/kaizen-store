@@ -12,6 +12,7 @@ import {
   type SiteBlock,
   type SitePart,
 } from "./page-content";
+import { flowRows } from "./page-modal";
 
 /**
  * Headers and footers (D80): a site's top and bottom built in the page
@@ -61,12 +62,18 @@ export function defaultHeader(storeId: string | null, menus: StandardMenus = { h
   return { ...newPageContent(), title: "Header", slug: "header", rows: [row] };
 }
 
-/** A footer: who runs the site and the cookies link, the footer menu, and a store's countries. */
+/** A footer: who runs the site, the cookies link and (a store's) the withdrawal link, the footer menu, and a store's countries. */
 export function defaultFooter(storeId: string | null, menus: StandardMenus = { header: null, footer: null }): PageContent {
   const columns: PageColumn[] = [
     {
       id: "footer-about",
-      blocks: [part("footer-logo", "logo"), part("footer-business", "business"), part("footer-cookies", "cookies")],
+      blocks: [
+        part("footer-logo", "logo"),
+        part("footer-business", "business"),
+        part("footer-cookies", "cookies"),
+        // The withdrawal function is always reachable (EU Directive 2023/2673, D153): a store's footer holds its link.
+        ...(storeId !== null ? [part("footer-withdrawal", "withdrawal")] : []),
+      ],
     },
     { id: "footer-menu", blocks: [menu("footer-links", menus.footer, { direction: "column" })] },
   ];
@@ -90,8 +97,20 @@ export const isSiteBlock = (block: PageBlock): block is SiteBlock => block.type 
 export const siteBlocks = (content: Pick<PageContent, "rows">): SiteBlock[] =>
   content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.filter(isSiteBlock)));
 
-/** What a footer must show on every page (who runs the site, by e-commerce law; the cookie choices, D58). */
+/**
+ * What a footer must show on every page (who runs the site, by e-commerce law; the cookie choices, D58; and in a store the
+ * link to the withdrawal function, which the law asks to be always accessible, D153).
+ */
 export const FOOTER_REQUIRED: readonly SitePart[] = ["business", "cookies"];
+export const footerRequired = (storeId: string | null): readonly SitePart[] => (storeId === null ? FOOTER_REQUIRED : [...FOOTER_REQUIRED, "withdrawal"]);
+
+/**
+ * Whether a footer's withdrawal link is there for everyone: a component of the part, in a row of the page's flow (a modal's
+ * is not on the page), not hidden on phones. A footer without it gets the standard link under it (`StoreWithdrawalLink`), so
+ * the function is reachable in every footer layout, including ones saved before it existed.
+ */
+export const footerHasWithdrawal = (content: Pick<PageContent, "rows">): boolean =>
+  siteBlocks({ rows: flowRows(content.rows) }).some((block) => block.part === "withdrawal" && !block.hideOnPhones);
 
 /**
  * Why a page of a type cannot be saved with its site components (D80), or
@@ -114,8 +133,13 @@ export function siteLayoutProblem(storeId: string | null, type: PageType, conten
   const foreign = parts.find((block) => !offered.includes(block.part));
   if (foreign) return storeId === null ? "Kaizen's site has no cart, wishlist, search, countries or buyer switch." : "A store's site has no Start your store button.";
   if (type === "footer") {
-    const missing = FOOTER_REQUIRED.filter((name) => !parts.some((block) => block.part === name));
-    if (missing.length > 0) return "A footer shows the business details and the cookies link, as the law asks. Add the missing components.";
+    const missing = footerRequired(storeId).filter((name) => !parts.some((block) => block.part === name));
+    if (missing.length > 0) {
+      return storeId === null
+        ? "A footer shows the business details and the cookies link, as the law asks. Add the missing components."
+        : "A footer shows the business details, the cookies link and the withdrawal link, as the law asks. Add the missing components.";
+    }
+    if (storeId !== null && !footerHasWithdrawal(content)) return "The withdrawal link must be in the footer itself and shown on phones too, as the law asks.";
   }
   return null;
 }

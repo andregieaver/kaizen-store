@@ -61,11 +61,11 @@ describe("headers and footers (D80)", () => {
     expect(await layouts.siteLayoutFor(storeId, "header")).toBeNull();
   });
 
-  it("refuses a footer without the business details and cookies link, and site components on pages", async () => {
+  it("refuses a footer without the business details, cookies and withdrawal links, and site components on pages", async () => {
     const footer = defaultFooter(storeId);
     const bare = { ...footer, slug: `bare-${run}`, rows: [{ ...footer.rows[0], columns: footer.rows[0].columns.map((c) => ({ ...c, blocks: [] })) }] };
     const refused = await pages.savePage(owner, storeId, null, bare, { publish: true, type: "footer" });
-    expect(refused).toEqual({ ok: false, problems: [expect.stringMatching(/business details and the cookies link/)] });
+    expect(refused).toEqual({ ok: false, problems: [expect.stringMatching(/business details, the cookies link and the withdrawal link/)] });
     const onPage = await pages.savePage(owner, storeId, null, { ...defaultHeader(storeId), slug: `page-${run}` }, { publish: false, type: "page" });
     expect(onPage).toEqual({ ok: false, problems: ["Site components belong in headers and footers."] });
     const saved = await pages.savePage(owner, storeId, null, { ...footer, slug: `bottom-${run}` }, { publish: true, type: "footer" });

@@ -343,6 +343,32 @@ export function StoreMenu({ store, market }: Props) {
 }
 
 /**
+ * The way to the withdrawal function (D153, `docs/returns.md`): the EU asks it to be always accessible, so the standard footer
+ * holds it, a footer built in the page builder holds it as a component, and one without it gets this under it.
+ */
+export function WithdrawalLink({ store, market }: Props) {
+  return (
+    <Link href={marketPath(store.slug, market.slug, "/withdraw")} className="w-fit text-muted underline">
+      {t(market.lang).returns.footerLink}
+    </Link>
+  );
+}
+
+/**
+ * The standard link, under a footer that has none of its own: a store's footer from before the withdrawal function, or one
+ * where the component is hidden on phones or only in a modal.
+ */
+export function WithdrawalStrip({ store, market }: Props) {
+  return (
+    <div className="border-t border-border bg-surface/40 px-4 py-3 text-sm">
+      <div className="mx-auto max-w-(--content-width)">
+        <WithdrawalLink store={store} market={market} />
+      </div>
+    </div>
+  );
+}
+
+/**
  * Who sells (required on every page of a web shop, by e-commerce and
  * consumer law), the footer menu and the countries.
  */
@@ -371,6 +397,8 @@ export function StoreFooter({ store, market }: Props) {
           <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
             {m.cookies}
           </Link>
+          {/* The withdrawal function, always reachable (D153). */}
+          <WithdrawalLink store={store} market={market} />
         </div>
         {footer.length > 0 && (
           <nav aria-label={m.footerMenu}>

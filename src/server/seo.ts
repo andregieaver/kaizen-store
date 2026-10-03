@@ -245,6 +245,7 @@ export function storeFacts(store: Store): StoreFacts {
     seo: store.seo,
     details: store.details,
     countries: store.markets.map((market) => market.code),
+    returns: store.returnPolicy,
   };
 }
 

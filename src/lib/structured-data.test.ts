@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { toMarket } from "./markets";
 import { parseStoreSeo } from "./seo";
-import { postalAddress, productJsonLd, storeNode, type ProductFacts, type StoreFacts } from "./structured-data";
+import {
+  DEFAULT_RETURN_POLICY,
+  postalAddress,
+  productJsonLd,
+  returnPolicy,
+  returnPolicyOf,
+  storeNode,
+  type ProductFacts,
+  type ReturnPolicyFacts,
+  type StoreFacts,
+} from "./structured-data";
 
 const store: StoreFacts = {
   name: "Kopp",
@@ -36,12 +46,12 @@ const variant = (id: string, options: Record<string, string>, amountMinor = 2490
   price: { amountMinor, currency: "NOK" },
 });
 
-const build = (facts: ProductFacts, freeOverMinor: number | null = null) =>
+const build = (facts: ProductFacts, freeOverMinor: number | null = null, returns?: ReturnPolicyFacts) =>
   productJsonLd({
     product: facts,
     url: "https://x.test/s/kopp/no/p/kopp",
     origin: "https://x.test",
-    store,
+    store: returns ? { ...store, returns } : store,
     market,
     marketHome: "https://x.test/s/kopp/no",
     inStock: (id) => id !== "b",
@@ -121,5 +131,71 @@ describe("productJsonLd", () => {
       hasMerchantReturnPolicy: { returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" },
     });
     expect(offer.shippingDetails).toBeUndefined();
+  });
+});
+
+describe("the return policy comes from the store's return settings (D153)", () => {
+  it("is the legal 14 days at the shopper's cost when the store has not set its rules", () => {
+    expect(returnPolicy(["NO"])).toEqual({
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: ["NO"],
+      returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+      merchantReturnDays: 14,
+      returnMethod: "https://schema.org/ReturnByMail",
+      returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
+    });
+    expect(returnPolicy(["NO"], DEFAULT_RETURN_POLICY)).toEqual(returnPolicy(["NO"]));
+  });
+
+  it("says the store's own window and that it pays for the return when it does", () => {
+    const policy: ReturnPolicyFacts = { days: 30, whoPaysReturn: "store", acceptExcluded: false };
+    expect(returnPolicy(["NO", "SE"], policy)).toMatchObject({ applicableCountry: ["NO", "SE"], merchantReturnDays: 30, returnFees: "https://schema.org/FreeReturn" });
+    expect(returnPolicy(["NO"], { ...policy, whoPaysReturn: "shopper" })).toMatchObject({ merchantReturnDays: 30, returnFees: "https://schema.org/ReturnFeesCustomerResponsibility" });
+  });
+
+  it("never says fewer days than the law gives", () => {
+    expect(returnPolicy(["NO"], { days: 7, whoPaysReturn: "shopper", acceptExcluded: false })).toMatchObject({ merchantReturnDays: 14 });
+  });
+
+  it("is the store's policy on the store and on each product's offer", () => {
+    const policy: ReturnPolicyFacts = { days: 45, whoPaysReturn: "store", acceptExcluded: false };
+    expect(storeNode({ ...store, returns: policy }, "https://x.test")).toMatchObject({
+      hasMerchantReturnPolicy: { applicableCountry: ["NO", "SE"], merchantReturnDays: 45, returnFees: "https://schema.org/FreeReturn" },
+    });
+    const [node] = build(product([variant("a", {})]), null, policy);
+    expect(node.offers).toMatchObject({
+      hasMerchantReturnPolicy: { applicableCountry: ["NO"], merchantReturnDays: 45, returnFees: "https://schema.org/FreeReturn" },
+    });
+    // A store with no settings says the legal default, as before.
+    expect(storeNode(store, "https://x.test")).toMatchObject({ hasMerchantReturnPolicy: { merchantReturnDays: 14, returnFees: "https://schema.org/ReturnFeesCustomerResponsibility" } });
+  });
+
+  it("keeps saying no returns for goods the law excludes, unless the store takes those back too", () => {
+    const excluded = product([variant("a", {}, 100000)], "custom_made");
+    expect(build(excluded)[0].offers).toMatchObject({ hasMerchantReturnPolicy: { returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" } });
+    expect(build(excluded, null, { days: 14, whoPaysReturn: "shopper", acceptExcluded: false })[0].offers).toMatchObject({
+      hasMerchantReturnPolicy: { returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" },
+    });
+    expect(build(excluded, null, { days: 30, whoPaysReturn: "shopper", acceptExcluded: true })[0].offers).toMatchObject({
+      hasMerchantReturnPolicy: { returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow", merchantReturnDays: 30 },
+    });
+  });
+
+  it("never offers a download back, whatever the store accepts", () => {
+    const [node] = build(product([{ ...variant("b", {}), delivery: "digital" }]), null, { days: 30, whoPaysReturn: "store", acceptExcluded: true });
+    expect(node.offers).toMatchObject({ hasMerchantReturnPolicy: { returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted" } });
+  });
+
+  it("reads a settings row without trusting it", () => {
+    expect(returnPolicyOf(null)).toEqual(DEFAULT_RETURN_POLICY);
+    expect(returnPolicyOf(undefined)).toEqual(DEFAULT_RETURN_POLICY);
+    expect(returnPolicyOf("14")).toEqual(DEFAULT_RETURN_POLICY);
+    expect(returnPolicyOf({ windowDays: 30, whoPaysReturn: "store", acceptExcluded: true })).toEqual({ days: 30, whoPaysReturn: "store", acceptExcluded: true });
+    expect(returnPolicyOf({ windowDays: "60", whoPaysReturn: "shopper", acceptExcluded: false })).toEqual({ days: 60, whoPaysReturn: "shopper", acceptExcluded: false });
+    // A window the settings could not hold, or an unknown payer, is read as the legal default.
+    expect(returnPolicyOf({ windowDays: 3, whoPaysReturn: "somebody", acceptExcluded: "yes" })).toEqual(DEFAULT_RETURN_POLICY);
+    expect(returnPolicyOf({ windowDays: 400 })).toEqual(DEFAULT_RETURN_POLICY);
+    expect(returnPolicyOf({ windowDays: 30.5 })).toEqual(DEFAULT_RETURN_POLICY);
+    expect(returnPolicyOf({ windowDays: null })).toEqual(DEFAULT_RETURN_POLICY);
   });
 });

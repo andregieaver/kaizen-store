@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { OwnBookings } from "@/components/own-bookings";
+import { OrderReturns } from "@/components/withdraw/order-returns";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
@@ -17,6 +18,7 @@ import { marketPath } from "@/lib/paths";
 import { getCustomer, ownsOrder } from "@/server/customers";
 import { getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads } from "@/server/orders";
+import { listOrderReturns } from "@/server/returns";
 import { resolveShop } from "@/server/shop";
 import { getSubscriptionForOrder } from "@/server/subscriptions";
 
@@ -44,10 +46,12 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const customer = await getCustomer(store.id);
   if (!customer) redirect(`${base}/account`);
   if (!z.uuid().safeParse(orderId).success || !(await ownsOrder(store.id, customer.id, orderId))) notFound();
-  const [order, downloads, subscription] = await Promise.all([
+  const [order, downloads, subscription, returns] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderDownloads(store.id, orderId),
     getSubscriptionForOrder(store.id, orderId),
+    // The order is the signed-in customer's own (checked above): its withdrawals and returns (D153).
+    listOrderReturns(store.id, orderId),
   ]);
   if (!order) notFound();
   const m = t(market.lang);
@@ -192,6 +196,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         </dl>
         {earned && <p className="mt-3 text-sm">{earned}</p>}
       </section>
+
+      <OrderReturns m={m.returns} base={base} order={order} orderKey={null} returns={returns} />
 
       {downloads.length > 0 && (
         <section aria-labelledby="downloads-heading" className="rounded-lg border border-border p-4">

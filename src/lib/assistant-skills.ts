@@ -86,6 +86,21 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "Sent or partly returned: refund_order with the amount and the reason; restock only what came back.",
       "Refunds go back to the card through Stripe; the customer gets an email if they choose.",
       "Add a note to the order about what was agreed (add_order_note).",
+      "If the customer is withdrawing from the purchase or returning goods, use the handle-return skill: returns have their own queue and the refund is made from the return.",
+    ],
+  },
+  {
+    id: "handle-return",
+    area: "store",
+    title: "Answer a return or a withdrawal",
+    when: "A customer withdraws from a purchase, asks to return goods, or the owner asks about returns, the right of withdrawal or what is overdue.",
+    steps: [
+      "Call list_returns (which overdue first, then requested) for what waits; it counts what is past the legal refund deadline, what needs an answer and withdrawals whose acknowledgement was not sent.",
+      "Call explain_return for one: say what the customer asked for, the lines, where it stands, when the refund is due and what it would be now. Repeat what it says; never work out an amount or a date yourself.",
+      "A withdrawal is the customer's legal right inside the withdrawal period: it cannot be refused and starts approved. The store must refund without undue delay and at most 14 days after it was told, and may wait for the goods or proof of sending. Never suggest declining one.",
+      "A return request (the store's own longer window) is the owner's to answer: approve_return (kept for their approval; it emails the customer how to send the goods back) or decline_return with a plain reason the customer is sent. Ask the owner which before keeping either.",
+      "Receiving, inspecting for diminished value and refunding are done on the return's page (return, with its returnId), where the working is shown before the button: you do not refund returns. Offer to open it (open_admin_page), or the queue (returns).",
+      "The rules (window, who pays return shipping, instructions) are on returns.settings, owners only. A customer's defect complaint under the legal guarantee is not this flow.",
     ],
   },
   {

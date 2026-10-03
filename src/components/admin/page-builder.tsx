@@ -5653,6 +5653,7 @@ const SITE_HELP: Record<SitePart, string> = {
   signUp: "The Start your store button.",
   business: "Who runs the site: name, organisation number, address and email, required on every page.",
   cookies: "A link to the cookies page, where visitors change their choice.",
+  withdrawal: "A link to the withdrawal function, where shoppers withdraw from a purchase. The law asks for it on every page, so a store's footer must have it, and it must show on phones.",
 };
 
 function SiteIcon() {
@@ -5703,7 +5704,8 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
           onChange={(direction) => onChange({ direction: direction === "row" ? undefined : direction })}
         />
       )}
-      {block.part !== "menuButton" && (
+      {/* The withdrawal link is for every visitor (D153): it cannot be hidden on phones. */}
+      {block.part !== "menuButton" && block.part !== "withdrawal" && (
         <Check
           label="Hide on phones"
           hint="Phones have the menu button and the slide-out menu, with the menu, account and countries."
@@ -5775,6 +5777,8 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
         );
       case "cookies":
         return <span className="text-sm text-muted underline">Cookies</span>;
+      case "withdrawal":
+        return <span className="text-sm text-muted underline">Withdraw from contract</span>;
     }
   })();
   return (

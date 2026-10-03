@@ -60,6 +60,20 @@ describe("the admin map (D103)", () => {
     expect(findPages("store", "subscription box", { deliveries: true })[0]?.id).toBe("deliveries");
   });
 
+  it("knows where withdrawals and returns are worked, and their rules (D153)", () => {
+    expect(findPages("store", "a customer withdrew from a purchase and wants a refund")[0]?.id).toBe("returns");
+    expect(findPages("store", "who pays return shipping", { owner: true })[0]?.id).toBe("returns.settings");
+    // The rules are the owner's.
+    expect(findPages("store", "return window", {}).map((p) => p.id)).not.toContain("returns.settings");
+    const order = ADMIN_PAGES.find((p) => p.area === "store" && p.id === "return")!;
+    expect(pageHref(order, { returnId: "abc-123" }, "kaffe")).toBe("/admin/kaffe/returns/abc-123");
+    expect(matchPath("/admin/kaffe/returns/abc-123")).toMatchObject({ page: { id: "return" }, params: { returnId: "abc-123" }, storeSlug: "kaffe" });
+    expect(matchPath("/admin/kaffe/returns")?.page.id).toBe("returns");
+    expect(matchPath("/admin/kaffe/settings/returns")?.page.id).toBe("returns.settings");
+    expect(ADMIN_PAGES.find((p) => p.id === "returns")?.group).toBe("Orders");
+    expect(ADMIN_PAGES.find((p) => p.id === "returns.settings")?.group).toBe("Settings");
+  });
+
   it("builds addresses, and reads them back", () => {
     const order = ADMIN_PAGES.find((p) => p.area === "store" && p.id === "order")!;
     expect(pageHref(order, { orderId: "abc-123" }, "kaffe")).toBe("/admin/kaffe/orders/abc-123");

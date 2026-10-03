@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { chatAgentInput, chatRequest, cleanReply, HISTORY_MAX, kaizenTools, storeTools, systemPrompt } from "./chat";
+import { chatAgentInput, chatRequest, cleanReply, HISTORY_MAX, kaizenTools, returnFacts, storeTools, systemPrompt } from "./chat";
 
 const agent = { enabled: true, name: "Ingrid", occupation: "Customer service", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
 
@@ -80,5 +80,23 @@ describe("cleanReply", () => {
 
   it("falls back when nothing is left", () => {
     expect(cleanReply("", "sorry")).toBe("sorry");
+  });
+});
+
+describe("returnFacts", () => {
+  it("gives the store's own return rules and the legal right, from settings and never from the model", () => {
+    expect(returnFacts({ days: 30, whoPaysReturn: "store", acceptExcluded: true }, "/s/kopp/no/withdraw")).toEqual({
+      legalRightToWithdrawDays: 14,
+      storeReturnWindowDays: 30,
+      returnShippingPaidBy: "the store",
+      takesBackGoodsTheLawExcludes: true,
+      withdrawFromContractPage: "/s/kopp/no/withdraw",
+      note: expect.stringContaining("faulty goods"),
+    });
+    expect(returnFacts({ days: 14, whoPaysReturn: "shopper", acceptExcluded: false }, "/no/withdraw")).toMatchObject({ returnShippingPaidBy: "the customer", takesBackGoodsTheLawExcludes: false });
+  });
+
+  it("is told to the model with the store's other facts", () => {
+    expect(storeTools().find((tool) => tool.name === "store_info")!.description).toMatch(/return policy/);
   });
 });

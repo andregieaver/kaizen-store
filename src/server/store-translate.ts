@@ -12,6 +12,7 @@ import {
   menuUnit,
   PRODUCT_FIELDS,
   productUnits,
+  returnInstructionsUnit,
   type Accepted,
   type ProductField,
   type ProductTexts,
@@ -22,6 +23,7 @@ import {
 import { audit, type Membership } from "./auth";
 import { fieldWork, writeFieldUnit } from "./field-translate";
 import { savePage } from "./pages";
+import { getReturnSettings, getInstructionTranslations, saveInstructionTranslations } from "./return-settings";
 
 type Row = Record<string, unknown>;
 
@@ -101,6 +103,13 @@ async function pageWork(storeId: string, to: string, mode: TranslateMode): Promi
   });
 }
 
+/** The store's return instructions (D153), when they have words and the language has none yet. */
+async function returnsWork(storeId: string, to: string, mode: TranslateMode): Promise<Unit[]> {
+  const [settings, translations] = await Promise.all([getReturnSettings(storeId), getInstructionTranslations(storeId)]);
+  const unit = returnInstructionsUnit(settings.instructions, translations[to] ?? null, mode);
+  return unit ? [unit] : [];
+}
+
 /** What there is to translate into `to`, from the store's main language, in the scopes asked for. */
 export async function translationWorklist(
   { store }: Pick<Membership, "store">,
@@ -115,6 +124,7 @@ export async function translationWorklist(
     scopes.includes("menus") ? menuWork(store.id, from, to, mode) : [],
     scopes.includes("pages") ? pageWork(store.id, to, mode) : [],
     scopes.includes("fields") ? fieldWork(store.id, from, to, mode) : [],
+    scopes.includes("returns") ? returnsWork(store.id, to, mode) : [],
   ]);
   const units = parts.flat();
   return { units: limit === null ? units : units.slice(0, limit), total: units.length };
@@ -125,8 +135,8 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
   const others = store.localization.locales.slice(1);
   const rows = await Promise.all(
     others.map(async (locale) => {
-      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields"], "missing", null);
-      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0 };
+      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns"], "missing", null);
+      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0 };
       for (const unit of units) count[unit.scope] += 1;
       return [locale, count] as const;
     }),
@@ -137,7 +147,7 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
 export type ApplyResult = { ok: true; saved: number; skipped: string[] } | { ok: false; problem: string };
 
 const APPLY_LIMIT = 300;
-const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields" };
+const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns" };
 
 /**
  * Writes what staff accepted, in the language `to`. Each accepted text is
@@ -181,6 +191,17 @@ export async function applyTranslations(member: Membership, to: string, accepted
     } else if (unit.scope === "menus") {
       const [, menuId, index] = unitId.split(":");
       menus.set(menuId, [...(menus.get(menuId) ?? []), { index: Number(index), text: String(ok.label).trim() }]);
+    } else if (unit.scope === "returns") {
+      const text = String(ok.instructions ?? "").trim();
+      if (!text) {
+        skipped.push(`${unit.title}: nothing usable to save.`);
+        continue;
+      }
+      // The other languages' texts are kept: only this language's is replaced.
+      const kept = await getInstructionTranslations(store.id);
+      const result = await saveInstructionTranslations(store.id, { ...kept, [to]: text }, store.localization.locales.slice(1), member.account.id);
+      if (result.ok) saved += 1;
+      else skipped.push(`${unit.title}: ${result.problems[0]}`);
     } else if (unit.scope === "fields") {
       const result = await writeFieldUnit(member, unitId, to, ok);
       if (result === true) saved += 1;

@@ -161,7 +161,25 @@ export function trackingUrl(input: SendInput): string | null {
   return carrier?.url && input.trackingNumber ? carrier.url(input.trackingNumber) : null;
 }
 
-/** Records the parcel and marks the order as sent. False if the order is not paid. */
+type SentTx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/**
+ * Whether every physical unit of the order was withdrawn before anything was sent (D153): the consumer withdrew from the
+ * contract, so the parcel is not sent. An order with a shipment already is never stopped (goods that are on their way, or a
+ * replacement, are the store's business).
+ */
+export async function withdrawnInFull(tx: SentTx | ReturnType<typeof db>, storeId: string, orderId: string): Promise<boolean> {
+  const [row] = await tx.execute<Row>(sql`
+    select exists (select 1 from commerce.order_lines ol where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid and ol.delivery = 'physical')
+       and not exists (select 1 from commerce.order_lines ol
+                       where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid and ol.delivery = 'physical'
+                         and commerce.returned_quantity(ol.id) < ol.quantity)
+       and not exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.order_id = ${orderId}::uuid) as whole
+  `);
+  return Boolean(row?.whole);
+}
+
+/** Records the parcel and marks the order as sent. Null if the order is not paid, or every unit of it was withdrawn before sending. */
 export async function markSent(
   storeId: string,
   orderId: string,
@@ -176,6 +194,8 @@ export async function markSent(
       where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
     `);
     if (!order || Boolean(order.copied) || !["paid", "fulfilled"].includes(String(order.status))) return null;
+    // Every unit was withdrawn before anything was sent (D153): there is nothing left to send.
+    if (await withdrawnInFull(tx, storeId, orderId)) return null;
     const carrierName = CARRIERS.find((c) => c.id === input.carrier)?.name ?? input.carrier;
     const [row] = await tx.execute<Row>(sql`
       insert into commerce.shipments (
@@ -186,9 +206,21 @@ export async function markSent(
               ${booking?.carrierId ?? null}, ${booking?.consignmentNumber ?? null}, ${booking?.labelUrl ?? null})
       returning id, carrier, tracking_number, tracking_url, created_at, carrier_id, label_url is not null as has_label
     `);
-    await tx.execute(sql`
-      update commerce.orders set status = 'fulfilled' where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+    // Goods sent in parts are received when the last part is (CRD Art. 9(2)(b)): a part sent after the receipt was recorded
+    // means the receipt is not complete, so the date is taken back and the consumer's 14 days start again when it is recorded.
+    const [reset] = await tx.execute<Row>(sql`
+      update commerce.orders o set status = 'fulfilled', delivered_at = null
+      from (select delivered_at from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid) before
+      where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+      returning before.delivered_at as was_delivered_at
     `);
+    if (reset?.was_delivered_at) {
+      await tx.execute(sql`
+        insert into commerce.order_events (store_id, order_id, type, data, actor)
+        values (${storeId}::uuid, ${orderId}::uuid, 'order.delivery_reopened',
+                ${JSON.stringify({ was: new Date(String(reset.was_delivered_at)).toISOString() })}::jsonb, 'system')
+      `);
+    }
     await tx.execute(sql`
       insert into commerce.order_events (store_id, order_id, type, data, actor)
       values (${storeId}::uuid, ${orderId}::uuid, 'order.sent',
@@ -218,8 +250,29 @@ export type RefundInput = {
 };
 
 export type RefundOutcome =
-  | { ok: true; refundId: string; amountMinor: number; unpaid?: boolean }
+  | { ok: true; refundId: string; amountMinor: number; unpaid?: boolean; status?: string }
   | { ok: false; problem: string };
+
+/**
+ * What a caller that refunds for a reason of its own, such as a return (D153), may add to `refundOrder()`: it never
+ * duplicates the Stripe code, it only hooks into it.
+ */
+export type RefundOptions = {
+  /** Stripe's idempotency key for the refund; the default is made from the order and its refunds so far. */
+  idempotencyKey?: string;
+  /**
+   * Runs in the same transaction that records the refund and puts the stock back, with the refund's id (empty when no
+   * money was sent) and its status, so the caller's own record of the refund is written or not with it.
+   */
+  inTransaction?: (tx: Tx, result: { refundId: string; status: string }) => Promise<void>;
+  /** More data on the order's history event, such as the return's id. */
+  eventData?: Record<string, unknown>;
+  /**
+   * The money is refunded outside Kaizen's Stripe (the order was paid some other way): nothing is sent from here, only the
+   * stock goes back and the order's history says so. The amount must be 0.
+   */
+  outside?: boolean;
+};
 
 /** The Stripe payment behind an order's payment row: its PaymentIntent, on the store's account. */
 async function paymentIntentFor(
@@ -256,11 +309,13 @@ export async function refundOrder(
   orderId: string,
   input: RefundInput,
   accountId: string | null,
+  options: RefundOptions = {},
 ): Promise<RefundOutcome> {
   const order = await getOrderAdmin(storeId, orderId);
   if (!order) return { ok: false, problem: "This order no longer exists." };
   if (order.copied) return { ok: false, problem: COPIED_ORDER_MESSAGE };
-  if (!order.canRefund) return { ok: false, problem: "This order was not paid through Kaizen's Stripe, so refund it in Stripe." };
+  if (options.outside && input.amountMinor !== 0) return { ok: false, problem: "Nothing is sent from here for a refund made outside Stripe." };
+  if (!order.canRefund && !options.outside) return { ok: false, problem: "This order was not paid through Kaizen's Stripe, so refund it in Stripe." };
   if (!Number.isInteger(input.amountMinor) || input.amountMinor < 0 || input.amountMinor > order.refundableMinor) {
     return { ok: false, problem: "The amount is more than is left to refund." };
   }
@@ -276,24 +331,26 @@ export async function refundOrder(
   }
   if (input.amountMinor === 0 && restock.length === 0) return { ok: false, problem: "Enter an amount to refund." };
 
-  const [payment] = await db().execute<Row>(sql`
-    select p.id, p.provider_reference, p.provider_account, a.mode
-    from commerce.payments p
-    join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
-    where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured' and p.provider = 'stripe'
-    order by p.created_at limit 1
-  `);
+  const [payment] = options.outside
+    ? []
+    : await db().execute<Row>(sql`
+        select p.id, p.provider_reference, p.provider_account, a.mode
+        from commerce.payments p
+        join commerce.connected_accounts a on a.store_id = p.store_id and a.account_id = p.provider_account
+        where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured' and p.provider = 'stripe'
+        order by p.created_at limit 1
+      `);
   const stripe = payment ? platformStripe(payment.mode as PaymentModeName) : null;
-  if (!payment || !stripe) return { ok: false, problem: "Stripe cannot be reached for this store right now." };
+  if (!options.outside && (!payment || !stripe)) return { ok: false, problem: "Stripe cannot be reached for this store right now." };
 
   let providerReference: string | null = null;
   let status = "succeeded";
   if (input.amountMinor > 0) {
     try {
       const stripeAccount = String(payment.provider_account);
-      const paymentIntent = await paymentIntentFor(stripe, String(payment.provider_reference), stripeAccount);
+      const paymentIntent = await paymentIntentFor(stripe!, String(payment.provider_reference), stripeAccount);
       if (!paymentIntent) return { ok: false, problem: "Stripe has no payment to refund for this order." };
-      const refund = await stripe.refunds.create(
+      const refund = await stripe!.refunds.create(
         {
           payment_intent: paymentIntent,
           amount: input.amountMinor,
@@ -301,7 +358,7 @@ export async function refundOrder(
           refund_application_fee: true,
           metadata: { order_id: orderId, order_number: order.number },
         },
-        { stripeAccount, idempotencyKey: `refund-${orderId}-${order.refunds.length}-${input.amountMinor}` },
+        { stripeAccount, idempotencyKey: options.idempotencyKey ?? `refund-${orderId}-${order.refunds.length}-${input.amountMinor}` },
       );
       providerReference = refund.id;
       status = refund.status === "failed" || refund.status === "canceled" ? "failed" : refund.status === "succeeded" ? "succeeded" : "pending";
@@ -318,7 +375,7 @@ export async function refundOrder(
     if (input.amountMinor > 0) {
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by)
-        values (${storeId}::uuid, ${String(payment.id)}::uuid, ${input.amountMinor}, ${input.reason},
+        values (${storeId}::uuid, ${String(payment!.id)}::uuid, ${input.amountMinor}, ${input.reason},
                 ${providerReference}, ${status}::commerce.refund_status,
                 ${JSON.stringify(restock.map(({ sku, quantity }) => ({ sku, quantity })))}::jsonb, ${accountId}::uuid)
         returning id
@@ -333,13 +390,17 @@ export async function refundOrder(
                 amount: input.amountMinor,
                 reason: input.reason,
                 restocked: restock.map(({ sku, quantity }) => ({ sku, quantity })),
+                // A refund Stripe reported as failed is kept as a row too; a caller that retries (a return) counts these.
+                ...(input.amountMinor > 0 && status === "failed" ? { status } : {}),
+                ...options.eventData,
               })}::jsonb, 'staff')
     `);
+    await options.inTransaction?.(tx, { refundId: id, status });
     return id;
   });
   // A host's order (D71): the store gives back the refunded share of its commission.
-  if (input.amountMinor > 0 && status !== "failed") await reverseHostCommission(storeId, String(payment.id));
-  return { ok: true, refundId, amountMinor: input.amountMinor };
+  if (input.amountMinor > 0 && status !== "failed") await reverseHostCommission(storeId, String(payment!.id));
+  return { ok: true, refundId, amountMinor: input.amountMinor, status };
 }
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];

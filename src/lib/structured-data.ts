@@ -25,7 +25,34 @@ export type StoreFacts = {
   };
   /** Country codes the store sells to. */
   countries: string[];
+  /** The store's own return rules (D153); the legal defaults when left out. */
+  returns?: ReturnPolicyFacts;
 };
+
+/**
+ * What the store's return settings (`commerce.return_settings`, D153) say to search engines: how many days goods can come back, who
+ * pays for sending them, and whether goods the law leaves out of the right of withdrawal are taken back too.
+ */
+export type ReturnPolicyFacts = { days: number; whoPaysReturn: "shopper" | "store"; acceptExcluded: boolean };
+
+/** The legal 14 days, returned at the shopper's cost: a store that has not set its rules. */
+export const DEFAULT_RETURN_POLICY: ReturnPolicyFacts = { days: 14, whoPaysReturn: "shopper", acceptExcluded: false };
+
+/** The longest window the settings allow (`MAX_WINDOW_DAYS`); a value outside the legal range is read as the default. */
+const MIN_RETURN_DAYS = 14;
+const MAX_RETURN_DAYS = 100;
+
+/** A store's return policy as its settings row gives it (null: no row, the defaults); never throws, never gives less than the legal 14 days. */
+export function returnPolicyOf(raw: unknown): ReturnPolicyFacts {
+  if (!raw || typeof raw !== "object") return DEFAULT_RETURN_POLICY;
+  const r = raw as Record<string, unknown>;
+  const days = Number(r.windowDays);
+  return {
+    days: Number.isInteger(days) && days >= MIN_RETURN_DAYS && days <= MAX_RETURN_DAYS ? days : DEFAULT_RETURN_POLICY.days,
+    whoPaysReturn: r.whoPaysReturn === "store" ? "store" : "shopper",
+    acceptExcluded: r.acceptExcluded === true,
+  };
+}
 
 export type ShippingFacts = { amountMinor: number; freeOverMinor: number | null; currency: string } | null;
 
@@ -47,18 +74,18 @@ export function postalAddress(text: string | null, country: string | null): Json
 }
 
 /**
- * The right of withdrawal as a return policy: 14 days, returned by post at
- * the shopper's cost (the legal default in Norway and the EU). Products the
- * law excludes say so on their own offer.
+ * The store's return policy (D153): the days it takes goods back (the legal 14, or the longer window the store set), returned by post,
+ * with the shopper paying to send them unless the store has said it pays. Products the law excludes say so on their own offer, unless
+ * the store takes those back too.
  */
-export function returnPolicy(countries: string[]): JsonLd {
+export function returnPolicy(countries: string[], policy: ReturnPolicyFacts = DEFAULT_RETURN_POLICY): JsonLd {
   return {
     "@type": "MerchantReturnPolicy",
     applicableCountry: countries,
     returnPolicyCategory: `${SCHEMA}/MerchantReturnFiniteReturnWindow`,
-    merchantReturnDays: 14,
+    merchantReturnDays: Math.max(MIN_RETURN_DAYS, policy.days),
     returnMethod: `${SCHEMA}/ReturnByMail`,
-    returnFees: `${SCHEMA}/ReturnFeesCustomerResponsibility`,
+    returnFees: `${SCHEMA}/${policy.whoPaysReturn === "store" ? "FreeReturn" : "ReturnFeesCustomerResponsibility"}`,
   };
 }
 
@@ -82,7 +109,7 @@ export function storeNode(store: StoreFacts, origin: string): JsonLd {
     ...(store.seo.image && { image: absoluteUrl(store.seo.image.url, origin) }),
     address: postalAddress(d.postalAddress, d.country),
     ...(store.seo.sameAs.length > 0 && { sameAs: store.seo.sameAs }),
-    ...(store.countries.length > 0 && { hasMerchantReturnPolicy: returnPolicy(store.countries) }),
+    ...(store.countries.length > 0 && { hasMerchantReturnPolicy: returnPolicy(store.countries, store.returns) }),
   };
 }
 
@@ -189,8 +216,9 @@ export function productJsonLd({
   shipping: ShippingFacts;
 }): JsonLd {
   const seller = { "@id": storeNodeId(store.url) };
+  const policy = store.returns ?? DEFAULT_RETURN_POLICY;
   const returns =
-    product.withdrawalExclusion === "none" ? returnPolicy([market.code]) : noReturns(market.code);
+    product.withdrawalExclusion === "none" || policy.acceptExcluded ? returnPolicy([market.code], policy) : noReturns(market.code);
 
   const offer = (variant: ProductFacts["variants"][number]): JsonLd => {
     const digits = minorUnitDigits(variant.price.currency);

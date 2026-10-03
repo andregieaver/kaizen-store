@@ -1,6 +1,7 @@
 import type { TranslateItem } from "./page-translate-ai";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { LABEL_MAX } from "./navigation";
+import { MAX_INSTRUCTIONS } from "./withdrawal";
 
 /**
  * Translating a whole store with AI (D110): its products' texts, its menus'
@@ -14,7 +15,7 @@ import { LABEL_MAX } from "./navigation";
  * needs human review. Pure and shared with the browser.
  */
 
-export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields"] as const;
+export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns"] as const;
 export type TranslateScope = (typeof TRANSLATE_SCOPES)[number];
 
 export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> = {
@@ -22,11 +23,12 @@ export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> 
   menus: { name: "Menus", one: "Menu link" },
   pages: { name: "Pages and articles", one: "Page" },
   fields: { name: "Custom fields", one: "Custom field" },
+  returns: { name: "Return instructions", one: "Return instructions" },
 };
 
 /** One thing to translate: a product, a menu link, a page or custom fields' words, with its texts. */
 export type Unit = {
-  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}` or `fieldval:{entity}:{id}` (D118). */
+  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}`, `fieldval:{entity}:{id}` (D118) or `returns:instructions` (D153). */
   id: string;
   scope: TranslateScope;
   /** What it is called in the main language, and what kind of page it is. */
@@ -107,6 +109,31 @@ export function menuUnit(menuId: string, menuName: string, index: number, label:
 const LEGAL_PAGE = /(terms|vilk[aå]r|villkor|vilk[aå]ar|betingelser|conditions|privacy|personvern|personal-?data|integritet|persondata|databeskyttelse|cookie|retur|return|angrerett|[ãa]ngerr[äa]tt|fortrydelse|withdrawal|refund|imprint|impressum|gdpr|legal|juridisk)/i;
 
 export const isLegalPage = (slug: string, title: string) => LEGAL_PAGE.test(slug) || LEGAL_PAGE.test(title);
+
+// ---------------------------------------------------------------------------
+// Return instructions (D153)
+// ---------------------------------------------------------------------------
+
+/** The unit id of the store's return instructions: there is one text per store. */
+export const RETURN_INSTRUCTIONS_UNIT = "returns:instructions";
+
+/**
+ * The store's instructions for sending goods back, from its main language, when they have words and the language has none
+ * (or with `all`, again). They are told to shoppers who withdraw from a purchase, so the unit is a legal one: shown apart and
+ * left unticked until staff have read it.
+ */
+export function returnInstructionsUnit(source: string, target: string | null, mode: "missing" | "all"): Unit | null {
+  if (source.trim() === "") return null;
+  if (mode === "missing" && target && target.trim() !== "") return null;
+  return {
+    id: RETURN_INSTRUCTIONS_UNIT,
+    scope: "returns",
+    title: "Return instructions",
+    kind: "How to send goods back",
+    legal: true,
+    items: [{ key: "instructions", label: "Instructions", max: MAX_INSTRUCTIONS, rich: false, runs: [source] }],
+  };
+}
 
 // ---------------------------------------------------------------------------
 // What came back

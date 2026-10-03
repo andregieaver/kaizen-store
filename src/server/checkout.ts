@@ -436,12 +436,13 @@ export async function placeOrder(
       : null;
     // Free shipping counts the whole basket, downloads included; a
     // subscription pays shipping on each delivery (D25).
-    const shippingFor = () =>
+    const shippingWith = (offer: typeof shippingRate) =>
       basketShipping(
         priced.filter((p) => !p.gift).map((p) => ({ totalMinor: p.renewUnit * p.quantity, delivery: p.delivery, recurring: p.recurring })),
-        shippingRate,
+        offer,
         { trial },
       );
+    const shippingFor = () => shippingWith(shippingRate);
     let basket = shippingFor();
 
     // The buyer's group or company discount (D108): off what is bought once, before any
@@ -514,6 +515,20 @@ export async function placeOrder(
       discount = { id: found.discount.id, code: found.discount.code };
     }
     const shipping = basket.first;
+    // The cheapest standard delivery on offer, kept with the order (D153): a withdrawal of the whole order gives back no
+    // more delivery than this (CRD Art. 13(1)), whatever a carrier's dearer service the shopper chose cost. It is the
+    // market's flat rate, free over its limit judged on the basket before discounts, as shown in the order's currency.
+    const standardShipping = chosen
+      ? rate
+        ? shippingWith({
+            amountMinor: shown(market, Number(rate.amount_minor)),
+            freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)),
+          }).first
+        : null
+      : shipping;
+    // Who pays for sending a withdrawn item back, as the store's setting stands now: the shopper is told of it before buying.
+    const [returnRules] = await tx.execute<Row>(sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`);
+    const returnCostPayer = returnRules?.who_pays_return === "store" ? "store" : "shopper";
     const discountTotal = priced.reduce((sum, p) => sum + p.discount, 0) + shippingDiscount;
     const memberTotal = priced.reduce((sum, p) => sum + p.member, 0);
     const campaignTotal = priced.reduce((sum, p) => sum + p.campaign, 0);
@@ -566,7 +581,7 @@ export async function placeOrder(
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
         company_name, organisation_number, balance_minor, host_id,
         member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor,
-        referral_discount_minor, delivery
+        referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
@@ -575,7 +590,7 @@ export async function placeOrder(
         ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
         ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null},
         ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}, ${referralTotal},
-        ${chosen ? JSON.stringify(chosen.delivery) : null}::jsonb
+        ${chosen ? JSON.stringify(chosen.delivery) : null}::jsonb, ${standardShipping}, ${returnCostPayer}
       )
       returning id
     `);

@@ -98,6 +98,14 @@ const PAGES: readonly AdminPage[] = [
   store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices.", {
     keywords: ["print", "slip", "pack"],
   }),
+  store("returns", "/returns", "Returns", "Main", "Customers' withdrawals from a purchase (the legal right to change their mind) and return requests inside the store's own window: a queue with what is overdue, to approve, to receive and to refund.", {
+    tasks: ["See what is past its refund deadline (?overdue=1)", "See return requests to answer (?status=requested)", "Search by return, order, name or email (?q=)", "Open a return and work it to a refund"],
+    keywords: ["return", "withdrawal", "withdraw", "right of withdrawal", "angrerett", "refund deadline", "send back", "14 days", "return request", "RMA"],
+  }),
+  store("return", "/returns/[returnId]", "Return", "Main", "One withdrawal or return: the customer's statement and its acknowledgement, the lines, approving or declining, instructions, receiving, inspecting for diminished value, the refund with its working, and closing.", {
+    tasks: ["Approve or decline a return request", "Set return instructions and address", "Mark the goods in transit or received", "Inspect the goods and set a deduction", "Refund with the working shown", "Send the acknowledgement again", "Close or cancel"],
+    keywords: ["refund", "inspect", "restock", "acknowledgement", "withdrawal statement", "deduction", "diminished value"],
+  }),
   store("subscriptions", "/subscriptions", "Subscriptions", "Main", "Shoppers' subscriptions to products bought on a schedule.", {
     keywords: ["recurring", "renewals"],
   }),
@@ -305,6 +313,11 @@ const PAGES: readonly AdminPage[] = [
   store("cart-reminder.new", "/cart-reminders/new", "New cart reminder", "Sales", "Adds a reminder step."),
   store("cart-reminder", "/cart-reminders/[stepId]", "Cart reminder", "Sales", "One reminder step: when it goes, its words and any coupon."),
   store("shipping", "/settings/shipping", "Shipping", "Sales", "One shipping price per country, optionally free above a basket value.", { keywords: ["delivery price", "freight"] }),
+  store("returns.settings", "/settings/returns", "Returns settings", "Sales", "The store's rules for returns: the return window (never under the legal 14 days), the transit allowance, who pays return shipping, when refunds are made, goods the law excludes, companies, the return address and the instructions customers get (with translations).", {
+    needs: "owner",
+    keywords: ["return window", "withdrawal", "return policy", "return address", "who pays return shipping", "refund when", "instructions", "angrerett"],
+    tasks: ["Set the return window", "Choose who pays for return shipping", "Write the return instructions", "Translate the return instructions"],
+  }),
   store("payments", "/settings/payments", "Payments", "Sales", "Stripe: the store's accounts in test and live, going live, and invoices for orders.", {
     needs: "owner",
     keywords: ["stripe", "card", "go live", "payouts"],
@@ -334,8 +347,8 @@ const PAGES: readonly AdminPage[] = [
   store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
     keywords: ["mrr", "arr", "churn", "recurring"],
   }),
-  store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, and sales by weekday and hour.", {
-    keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "heatmap"],
+  store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
+    keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "heatmap", "refunds", "return rate", "returns analytics", "return reasons"],
   }),
   store("analytics.settings", "/analytics/settings", "Analytics settings", "Analytics", "Cost of goods, payment fee and shipping cost estimates, fixed costs, customer lifetime, monthly revenue targets, and whether visits are counted.", {
     needs: "owner",

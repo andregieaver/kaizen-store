@@ -739,9 +739,10 @@ export const SITE_PARTS = {
   signUp: "Start your store",
   business: "Business details",
   cookies: "Cookies link",
+  withdrawal: "Withdrawal link",
 } as const;
 export type SitePart = keyof typeof SITE_PARTS;
-const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode"];
+const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode", "withdrawal"];
 const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];
 
 /** The site parts an owner's headers and footers offer: a store's (with a store id) or Kaizen's (null). */
@@ -1622,11 +1623,13 @@ export const RESERVED_STORE_PAGE_SLUGS: readonly string[] = [
   "order",
   "p",
   "products",
+  "returns",
   "search",
   "subscription",
   "tag",
   "unsubscribe",
   "wishlist",
+  "withdraw",
 ];
 
 /**

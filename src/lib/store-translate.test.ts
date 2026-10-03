@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { fitsItem, globalKey, isLegalPage, menuUnit, productUnits, unitItems, type ProductTexts } from "./store-translate";
+import { fitsItem, globalKey, isLegalPage, menuUnit, productUnits, returnInstructionsUnit, RETURN_INSTRUCTIONS_UNIT, SCOPE_WORDS, TRANSLATE_SCOPES, unitItems, type ProductTexts } from "./store-translate";
+import { MAX_INSTRUCTIONS } from "./withdrawal";
 
 const source: ProductTexts = { title: "Keramikkopp", description: "En kopp.", safetyInformation: "Ikke for barn.", seoTitle: "", seoDescription: "" };
 const none: ProductTexts = { title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "" };
@@ -57,5 +58,26 @@ describe("what comes back", () => {
     const [unit] = productUnits("p1", source, null, "all");
     expect(unitItems([unit])[0].key).toBe(globalKey("product:p1", "title"));
     expect(unitItems([unit])[0].label).toContain("Keramikkopp");
+  });
+});
+
+describe("the return instructions' unit (D153)", () => {
+  it("is a scope of its own, with words for the review page", () => {
+    expect(TRANSLATE_SCOPES).toContain("returns");
+    expect(SCOPE_WORDS.returns.name).toBe("Return instructions");
+  });
+
+  it("is one legal unit with one text, as long as the instructions may be", () => {
+    const unit = returnInstructionsUnit("Pakk godt.", null, "missing")!;
+    expect(unit).toMatchObject({ id: RETURN_INSTRUCTIONS_UNIT, scope: "returns", legal: true });
+    expect(unit.items).toEqual([{ key: "instructions", label: "Instructions", max: MAX_INSTRUCTIONS, rich: false, runs: ["Pakk godt."] }]);
+  });
+
+  it("is left out when there are no instructions, or the language has them and only what is missing is asked for", () => {
+    expect(returnInstructionsUnit("", null, "all")).toBeNull();
+    expect(returnInstructionsUnit("   ", null, "missing")).toBeNull();
+    expect(returnInstructionsUnit("Pakk godt.", "Pack well.", "missing")).toBeNull();
+    expect(returnInstructionsUnit("Pakk godt.", "  ", "missing")).not.toBeNull();
+    expect(returnInstructionsUnit("Pakk godt.", "Pack well.", "all")).not.toBeNull();
   });
 });

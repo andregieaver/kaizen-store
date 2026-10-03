@@ -315,6 +315,8 @@ const WORKING_PATHS = new Set([
   "deliveries",
   "unsubscribe",
   "download",
+  "withdraw",
+  "returns",
   "sign-in",
   "sign-up",
   "forgot-password",
