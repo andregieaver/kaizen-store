@@ -1,0 +1,1117 @@
+[
+  {
+    "id": "ai.admin-ai-assistant-that-performs-tasks",
+    "domain": "ai",
+    "feature": "Admin AI assistant that performs tasks",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). Text chat, voice and screen sharing; creates and edits products, content, discounts, segments, reports and Flow workflows; continues longer tasks in the background and notifies when ready; can generate custom apps. Availability varies by plan, device and language; no extra cost stated.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "71 owner tools plus 8 manager tools (D94, D103 to D105, D153 added list_returns, explain_return, approve_return, decline_return), calls that send, publish or spend are only kept for the owner's yes. Writes are narrow: discounts, campaigns, recommendations, bonus and affiliate programmes, custom fields, stock by SKU, A/B tests, returns, refunds, email to one customer. There is no tool to create or edit a product, a page (only unpublish_page), a menu, a theme or a customer segment, and a turn runs inside one request: no background tasks and no notification when work is done.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "The assistant can create and edit a product (title, description, price per market through commerce.set_price, variants, stock) through a gated tool whose approval summary shows the whole change.",
+      "The assistant can create, edit and publish a page, and edit a menu, through gated tools that use the same validation as the editors (pageInput, menu rules) and call updateTag.",
+      "A long request (for example a bulk change across many products) runs as a background job that survives closing the panel, and the owner is told in the admin when it is ready for review.",
+      "A tool that changes a store appears in the store MCP server (D96) too, and the owner-tool coverage test fails when it has no TOOL_WORDS line."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/owner-tools.ts",
+        "src/server/owner-tools.ts",
+        "src/server/owner-assistant.ts",
+        "src/server/assistant-route.ts",
+        "src/lib/manager-tools.ts",
+        "src/server/manager-tools.ts",
+        "src/lib/return-tools.ts",
+        "src/server/return-tools.ts",
+        "src/server/store-mcp.ts",
+        "src/components/admin/ai-manager.tsx"
+      ],
+      "tests": [
+        "src/server/owner-assistant.int.test.ts",
+        "src/server/ai-manager.int.test.ts",
+        "src/server/return-tools.int.test.ts",
+        "src/lib/return-tools.test.ts",
+        "src/server/owner-tools-fields.int.test.ts",
+        "src/server/store-mcp.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D94",
+      "D96",
+      "D103",
+      "D104",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.assistant-voice-mode",
+    "domain": "ai",
+    "feature": "Assistant voice mode",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). \"Use text chat, voice mode, or screen sharing to interact with Sidekick.\"",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 1,
+    "gap": "Evidence debt: hands-free listening by loudness and barge-in are browser code (`voice-mode.ts`, `live-voice.ts`) with no test, and no test covers the path with no speech model; `speech-text.test.ts` holds sentence cutting and `saysYes`, `live-voice.int.test.ts` the server side.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "With a speech model set, voice mode listens hands-free, transcribes, and speaks each answer sentence by sentence; talking over it stops it.",
+      "With a live (full-duplex) model set, voice mode is a WebRTC call made by a server route (the key stays on the server) that delegates every request to a normal assistant turn with its tools and approval gate.",
+      "A change waiting for approval is approved in words only when the person's own message plainly says yes (saysYes), whatever the model says.",
+      "Without a speech or live model configured the assistant says so and text chat still works."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/admin/voice-mode.ts",
+        "src/components/admin/live-voice.ts",
+        "src/lib/speech-text.ts",
+        "src/server/live-voice.ts",
+        "src/app/admin/(gated)/[store]/assistant/speak/route.ts",
+        "src/app/admin/(gated)/[store]/assistant/live/route.ts",
+        "src/app/admin/(gated)/[store]/assistant/live/delegate/route.ts",
+        "src/app/admin/(gated)/[store]/assistant/live/transcript/route.ts"
+      ],
+      "tests": [
+        "src/lib/speech-text.test.ts",
+        "src/server/live-voice.int.test.ts"
+      ],
+      "untested": true
+    },
+    "decisions": [
+      "D104",
+      "D105"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.assistant-memory-and-saved-skills",
+    "domain": "ai",
+    "feature": "Assistant memory and saved skills",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). Learns from past conversations and recent admin activity; a repeated request can be saved as a skill and run again with a shortcut.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Memory is complete: per account, found by keyword and meaning, learned after each turn and from thumbs, shown and editable on the Memory tab, learning can be switched off (D103). Skills are 24 fixed store playbooks in code (and 4 for the platform) (ASSISTANT_SKILLS) loaded by use_skill; an owner cannot save a request as a skill, edit one or delete one.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "An owner can save a conversation's request as a named skill (store or account scope) from the panel, and list, edit and delete their skills.",
+      "use_skill loads a saved skill like a built-in one; a saved skill cannot replace a built-in id and cannot hold a secret or a customer's details (the memory filters apply).",
+      "A saved skill's steps can only call tools the person may use; gated tools stay gated when a skill runs."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/assistant-memory.ts",
+        "src/lib/assistant-skills.ts",
+        "src/lib/manager-tools.ts",
+        "src/server/manager-tools.ts",
+        "src/components/admin/ai-memory.tsx",
+        "src/components/admin/ai-manager.tsx"
+      ],
+      "tests": [
+        "src/server/ai-manager.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D103"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.proactive-insights",
+    "domain": "ai",
+    "feature": "Proactive insights",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick Pulse). Recommendations on the admin Home; Sidekick also notifies when a background task is ready.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "The store's Home shows the top three alerts (eleven kinds: conversion drop, weekday revenue, refund rate, CAC, stock-outs, checkout abandonment, discount creep, targets, cost coverage, good news) with figures and a page to open (D152), the full list is on the Analytics overview and the assistant has analytics_alerts. All of it is worked out on read, in code, from analytics: nothing is pushed (no morning or weekly briefing by email or in the admin), and nothing outside analytics (catalogue, SEO, marketing) is suggested.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "A weekly (or daily) briefing is built in code from alertsForStore and the store checkup, sent to owners who switched it on, once per period (idempotent key), and never sent for a quiet store.",
+      "Every figure in the briefing is counted in code and each item links to the admin page that acts on it; the model never makes a number.",
+      "The owner can switch the briefing off and choose its frequency; a platform admin never receives a store's briefing.",
+      "An alert can hand its context to the assistant (open the panel with the alert's figures) to propose a gated next step."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-alerts.ts",
+        "src/server/analytics-insights.ts",
+        "src/server/analytics-tools.ts",
+        "src/components/admin/analytics/home-alerts.tsx",
+        "src/components/admin/analytics/alerts.tsx",
+        "src/server/control-center.ts"
+      ],
+      "tests": [
+        "src/lib/analytics-alerts.test.ts",
+        "src/server/analytics-insights.int.test.ts",
+        "src/server/analytics-tools.int.test.ts",
+        "src/server/control-center.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-product-descriptions-and-seo-text",
+    "domain": "ai",
+    "feature": "AI product descriptions and SEO text",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). Generates product descriptions and other text from a text icon on admin editing pages; most features at no additional cost, availability varies by plan, device and language.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "In the product editor staff can ask for a write, improve, SEO or translate suggestion; the suggestion fills only the fields of that kind (title, description, SEO title, SEO description) within their limits.",
+      "The model is given the product's own words and never prices or stock, and every suggestion passes the claims filter before it can be used.",
+      "A suggestion is only shown in the editor for staff to edit and copy in; nothing is written to the product directly, and the log records who asked, never the text."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/product-writing.ts",
+        "src/server/product-writer.ts",
+        "src/components/admin/ai-writer.tsx",
+        "src/lib/claims.ts"
+      ],
+      "tests": [
+        "src/lib/product-writing.test.ts",
+        "src/server/product-writer.int.test.ts",
+        "src/lib/claims.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D76"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-image-generation",
+    "domain": "ai",
+    "feature": "AI image generation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). Generates images from a text description (reference photos allowed) and saves them; monthly and short-term limits depend on the Shopify plan.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "generateImage()/makePicture() (picture model named in the AI settings, never in code) is called only by the AI page studio (src/server/page-ai.ts), which saves to the media library. The product editor, the media library and the page builder have no generate-image action.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "The media library and the product editor each have a generate-picture action that takes a prompt, uses the store's picture model, shrinks to WebP with a thumbnail and registers the file in the library with alt text.",
+      "Without a picture model the action says so and nothing is spent; every call is metered under an AI feature and counts toward the store's usage.",
+      "Generated pictures are marked as AI-made in the library and the alt text passes the claims filter."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/ai-pictures.ts",
+        "src/server/ai.ts",
+        "src/server/page-ai.ts",
+        "src/components/admin/page-studio.tsx"
+      ],
+      "tests": [
+        "src/server/ai-pictures.test.ts",
+        "src/server/ai.int.test.ts",
+        "src/server/page-ai.int.test.ts",
+        "src/server/ai-usage.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D92",
+      "D106",
+      "D146"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-image-editing",
+    "domain": "ai",
+    "feature": "AI image editing",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick and the media file editor). The file editor can replace an image's background; Tinker, a separate free mobile app, offers more than 100 AI tools for images and video.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/shopify-magic",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Text-to-image only: ai.ts calls /images/generations and nothing sends a picture to a model for editing (no background replacement or removal, no cleanup, no variants).",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "From a library picture the owner can run an edit (replace or remove the background, and a prompted change) through the provider's image-edit endpoint, set in AI settings.",
+      "The result is saved as a new library item and the original is never overwritten; the edit is metered and priced like other picture calls.",
+      "A provider without an edit endpoint shows the action as unavailable with the reason."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "ai.ai-alt-text",
+    "domain": "ai",
+    "feature": "AI alt text",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, narrower than first reported: the media editor \"might suggest alt text for images where alt text isn't already filled in\" (one image at a time, 512 characters allowed). Bulk AI alt text across a catalogue is done by third-party apps.",
+      "url": "https://help.shopify.com/en/manual/products/product-media/add-alt-text",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A library picture without alt text gets an AI-written one in the main language and in each of the store's languages, told the store's name and where the picture is used.",
+      "Staff's alt texts are never written over by the AI; a picture is described again when the store gains a language.",
+      "The site shows library alt text wherever a picture has none of its own, in the shopper's language.",
+      "Without a model that sees pictures nothing is written and the reason is given."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/alt-texts.ts",
+        "src/lib/alt-text.ts",
+        "src/server/media-alts.ts",
+        "src/server/media-library.ts",
+        "src/app/api/cron/cart-reminders/route.ts"
+      ],
+      "tests": [
+        "src/server/alt-texts.int.test.ts",
+        "src/lib/alt-text.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D89"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-and-semantic-storefront-search",
+    "domain": "ai",
+    "feature": "AI and semantic storefront search",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Semantic Search is AI-powered storefront search that understands intent; the 2024 changelog says merchants on the Shopify or Advanced plan can enable it, and the Search & Discovery page limits it to under 200,000 products on Grow, Advanced and Plus (not Japanese).",
+      "url": "https://changelog.shopify.com/posts/semantic-search-is-now-available-on-more-plans",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Keyword search (stemmed per locale, trigram typo tolerance) works with no AI and is the fallback whenever the model is unavailable.",
+      "Search by meaning merges keyword and vector results by reciprocal rank fusion and compares only vectors of the same space.",
+      "Query understanding turns a sentence into filters only through cleanFilters (the store's own slugs, prices to minor units in code); the model never names products or prices.",
+      "A search test can be run with the unit being the search, setting no cookie."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/search.ts",
+        "src/lib/search.ts",
+        "src/server/query-understanding.ts",
+        "src/lib/query-understanding.ts",
+        "src/server/query-vector.ts",
+        "src/server/search-cache.ts",
+        "src/server/search-experiment.ts"
+      ],
+      "tests": [
+        "src/server/search.int.test.ts",
+        "src/lib/search.test.ts",
+        "src/lib/query-understanding.test.ts",
+        "src/server/query-understanding.int.test.ts",
+        "src/server/search-cache.int.test.ts",
+        "src/server/search-experiment.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D72",
+      "D73",
+      "D74",
+      "D75",
+      "D77",
+      "D78"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.product-recommendations",
+    "domain": "ai",
+    "feature": "Product recommendations",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, as the free Shopify-built Search & Discovery app: related products (purchase history, product description for English storefronts, related collections) and complementary products, with up to 10 manual picks.",
+      "url": "https://help.shopify.com/en/manual/online-store/search-and-discovery/product-recommendations",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A product grid with a recommendation source shows a cached stand-in for everyone and swaps in the shopper's own, using no cookie and no AI for the stand-in.",
+      "Candidates come only from the store's data and every product passes recommendable() and the exclusions (anchors, cart, already bought, never-with).",
+      "The model only reorders ids it was given (parseRerank), through the metered connection, under the owner's token cap, and never for the held-out arm.",
+      "The effect is measured on tabs with a minimum sample, and past orders can be replayed without learning from the order being checked."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/recommend.ts",
+        "src/lib/recommendations.ts",
+        "src/server/recommend-settings.ts",
+        "src/server/recommend-events.ts",
+        "src/server/recommend-grid.ts",
+        "src/server/recommend-eval.ts",
+        "src/lib/recommend-eval.ts",
+        "src/lib/recommend-session.ts",
+        "src/app/api/recommendations/route.ts"
+      ],
+      "tests": [
+        "src/server/recommend.int.test.ts",
+        "src/lib/recommendations.test.ts",
+        "src/lib/recommend-eval.test.ts",
+        "src/lib/recommend-session.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D139",
+      "D140"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-customer-support-chat-agent",
+    "domain": "ai",
+    "feature": "AI customer-support chat agent",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Shopify Inbox, opt-in). The Inbox agent chats with customers automatically and answers questions about products, shipping, returns, sizing and store policies from the catalogue, policies, knowledge bases and web search; existing conversations stay with staff until it is switched on.",
+      "url": "https://help.shopify.com/en/manual/inbox",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "D81: typed or spoken, answers only from the site's tools (search, recommend, product, content search, store info, navigate); since D153 store_info carries the store's return policy from its settings and points to the withdrawal page. Still no lookup of a customer's order or return (it points to the account page) and no human handoff: a visitor cannot leave a message or pass the conversation to staff, and conversations live only in the visitor's tab.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "A visitor can ask for a human: the transcript and the visitor's own typed contact address reach the store's chosen recipients by email, once, and the visitor is told so.",
+      "Order status is answered only after the visitor gives the order number and the order's email; a wrong number and a wrong email get the same answer, and no cookie or storage is set.",
+      "The model gets the order's facts from a tool (status, shipments, return state) and never states anything the tool did not return; the reply passes cleanReply.",
+      "Return and withdrawal policy answers come from store settings (returnFacts) and the agent links the withdrawal page; this already holds."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/chat.ts",
+        "src/server/chat-agent.ts",
+        "src/server/chat-route.ts",
+        "src/server/knowledge.ts",
+        "src/lib/knowledge.ts",
+        "src/components/chat-widget.tsx",
+        "src/app/api/chat/route.ts",
+        "src/app/api/chat/voice/route.ts"
+      ],
+      "tests": [
+        "src/lib/chat.test.ts",
+        "src/server/chat.int.test.ts",
+        "src/lib/knowledge.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D81",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-page-and-theme-generation",
+    "domain": "ai",
+    "feature": "AI page and theme generation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick in the theme editor). AI block generation, powered by Sidekick, works with every Theme Store theme since 10 December 2025: describe a design, Sidekick writes the block and can be iterated. Sidekick writes copy but is reported (secondary sources) not to build whole pages.",
+      "url": "https://changelog.shopify.com/posts/ai-block-generation-for-all-theme-store-themes",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Kaizen's AI page studio interviews, plans sections from PATTERNS, writes the words, builds rows and makes the pictures as a draft (D92), plus Make my page cool (D128), AI page translation and copying another site's page (D150). Missing: conversational edits of an existing page or of the theme (\"make the hero shorter\", \"use warmer colours\"), and a whole-store redesign.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "In the builder an owner can describe a change to the open page; the model returns a validated plan of edits on existing parts and it is applied to the editor unsaved, so nothing is saved or published until the owner saves.",
+      "A theme change request returns only ThemeSettings values checked by parseStoreTheme, previewed and applied only on the owner's yes.",
+      "Every text passes the claims filter, links go only to SiteFacts.links, and a model never writes CSS or script.",
+      "Without AI the studio says so and the builder is unchanged."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/page-ai.ts",
+        "src/server/page-ai.ts",
+        "src/components/admin/page-studio.tsx",
+        "src/components/admin/page-studio-view.tsx",
+        "src/server/motion-ai.ts",
+        "src/lib/motion-plan.ts",
+        "src/lib/page-translate-ai.ts",
+        "src/server/page-translate.ts"
+      ],
+      "tests": [
+        "src/lib/page-ai.test.ts",
+        "src/server/page-ai.int.test.ts",
+        "src/server/motion-ai.test.ts",
+        "src/lib/page-translate-ai.test.ts",
+        "src/server/page-translate.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D92",
+      "D128",
+      "D150"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-translation",
+    "domain": "ai",
+    "feature": "AI translation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, as the free Shopify-built Translate & Adapt app: automatic translation (the listing says auto-translate up to two languages for free, 20 languages listed), a side-by-side editor and market adaptation.",
+      "url": "https://apps.shopify.com/translate-and-adapt",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "From /admin/{store}/translate the owner gets suggestions for products, menus and pages that a person reads and ticks before applyTranslations writes them.",
+      "Pages are only saved as drafts; legal texts and a product's safety information start unticked.",
+      "Interface text of languages beyond the hand-written ones is translated by AI into the catalogue from the English messages, read key by key, and the languages offered are a platform setting.",
+      "Every translation answer is checked (shape, length, claims) and an AI failure leaves the English text."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/store-translate.ts",
+        "src/lib/store-translate.ts",
+        "src/lib/ui-catalog.ts",
+        "src/lib/ui-catalog-all.ts",
+        "src/lib/icu-lite.ts",
+        "src/server/ui-text.ts",
+        "src/lib/page-translate-ai.ts",
+        "src/server/page-translate.ts",
+        "src/server/field-translate.ts"
+      ],
+      "tests": [
+        "src/server/store-translate.int.test.ts",
+        "src/lib/store-translate.test.ts",
+        "src/lib/ui-catalog.test.ts",
+        "src/lib/icu-lite.test.ts",
+        "src/lib/page-translate-ai.test.ts",
+        "src/server/custom-fields-translate.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D55",
+      "D110",
+      "D111"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.natural-language-analytics-and-custom-reports",
+    "domain": "ai",
+    "feature": "Natural-language analytics and custom reports",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). Generates ShopifyQL queries and custom data explorations from a question.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "The assistant answers from fixed, code-counted tools: analytics_overview, explain_change, analytics_alerts, sales_summary, sales_trend, sales_funnel, product_performance, customer_insights and restock_suggestions (D104, D152). No arbitrary cut (by variant, category, channel, country, payment method), no saved or custom report and no query layer for the model to use; that rests on the analytics report builder, which is missing.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "Over a safe query layer (a typed spec, never free SQL) the assistant can answer a question that cuts a figure by dimension and period; amounts are per currency with a counted note for currencies without a rate.",
+      "A figure that cannot be known is returned as what is missing and how to add it, never as zero, and every number is counted in code.",
+      "The owner can save an answer as a report that reruns on fresh data, and it shows its definition.",
+      "Every report query takes the store id and runs through setBased()."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-tools.ts",
+        "src/server/owner-tools.ts",
+        "src/server/owner-insights.ts",
+        "src/server/analytics-insights.ts",
+        "src/lib/owner-tools.ts"
+      ],
+      "tests": [
+        "src/server/analytics-tools.int.test.ts",
+        "src/lib/analytics-tools.test.ts",
+        "src/server/owner-insights.int.test.ts",
+        "src/server/analytics-insights.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D104",
+      "D152"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-or-rule-based-customer-segmentation",
+    "domain": "ai",
+    "feature": "AI or rule-based customer segmentation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). Creates customer segments from a natural-language prompt, on top of the rule-based segment editor.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "None of the criteria holds. Customers are grouped as counts and advice (six RFM groups, cohorts, LTV in analytics; customer_insights tool, D104, D152) and discount groups are assigned by hand (D108). No segment builder: no saved segments, no rules on orders, spend, dates, country, group or RFM, no member list and nothing to send to.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "An owner can build a segment from rules (orders, spend, dates, country, group, RFM class, tags) and save it; the member count and list are worked out in code.",
+      "The assistant turns a sentence into a rule set that passes the same validation as the editor; the model never lists customers or counts them.",
+      "A segment can be used as the audience of a broadcast or a discount, and only customers who consented are mailed.",
+      "A segment's list is store-owned, left out of the export unless asked, and never readable on the shopper's side."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/owner-insights.ts",
+        "src/server/analytics-tools.ts",
+        "src/lib/analytics-customers.ts",
+        "src/server/customer-tiers.ts",
+        "src/lib/customer-tiers.ts"
+      ],
+      "tests": [
+        "src/server/owner-insights.int.test.ts",
+        "src/server/analytics-tools.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D104",
+      "D108",
+      "D152"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "No criterion holds; RFM counts are credited in analytics.rfm-segments-and-customer-lists, and there is no segment builder for the assistant to fill"
+      }
+    ]
+  },
+  {
+    "id": "ai.workflow-builder-with-ai-generation",
+    "domain": "ai",
+    "feature": "Workflow builder with AI generation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Shopify Flow). Workflows are made manually in a drag-and-drop editor with triggers, conditions and actions, from templates, or by describing them to Sidekick (desktop only); a generated workflow starts inactive and tagged sidekick. The page does not state plan availability.",
+      "url": "https://help.shopify.com/en/manual/shopify-flow/create/create-workflow",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "No trigger, condition and action builder, so nothing for the AI to generate. Outbound event webhooks to Zapier and Make with a queue and retries (D41), Slack messages (D101) and fixed cron jobs are credited in platform.outgoing-webhooks and platform.workflow-automation-flow, not here. Waits for the wave 9 Flow engine.",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "An owner can create a workflow of one trigger (an order, customer, stock or return event), conditions on its data and actions (email, tag, webhook, Slack, create a task), save it inactive, test it and activate it.",
+      "Runs are logged with their result, retried, bounded per store, and can be switched off; an action that sends or spends follows the same gates as the assistant.",
+      "The assistant turns a description into a draft workflow that is validated like a hand-made one and always starts inactive."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/integrations.ts",
+        "src/lib/integrations.ts",
+        "src/lib/slack.ts",
+        "src/server/slack.ts",
+        "src/app/api/cron/integrations/route.ts"
+      ],
+      "tests": [
+        "src/server/integrations.int.test.ts",
+        "src/lib/integrations.test.ts",
+        "src/lib/slack.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D41",
+      "D101"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "No builder exists; the webhook queue is credited in platform.outgoing-webhooks"
+      }
+    ]
+  },
+  {
+    "id": "ai.create-discounts-and-campaigns-from-a-prompt",
+    "domain": "ai",
+    "feature": "Create discounts and campaigns from a prompt",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). Creates amount-off product, amount-off order and free-shipping discounts from a prompt.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "The owner asks in words and create_discount or create_campaign is kept as a pending approval with a summary written from the arguments; it runs exactly that call on the owner's yes.",
+      "Arguments are validated like the forms (percent, dates, scope, limits) and a campaign works out in the cart and placeOrder the same way.",
+      "set_discount_active and set_campaign_active switch them off by chat, also gated."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/owner-tools.ts",
+        "src/server/owner-tools.ts",
+        "src/server/campaigns.ts",
+        "src/lib/campaigns.ts",
+        "src/server/owner-assistant.ts"
+      ],
+      "tests": [
+        "src/server/owner-assistant.int.test.ts",
+        "src/server/owner-insights.int.test.ts",
+        "src/server/campaigns.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D31",
+      "D94",
+      "D114",
+      "D115"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-written-marketing-email",
+    "domain": "ai",
+    "feature": "AI-written marketing email",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick with Shopify Messaging). Assists with email campaigns: text, design elements and image insertion.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick/generate-content",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "No marketing email. Only email_customer exists: the assistant drafts one email to one of the store's own customers, shown whole in the approval and kept for the owner's yes, with AI text through the claims filter. There is no audience, no campaign, no template or design, no consent list to send to and no broadcast to write for; that waits for wave 5 broadcasts.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "In the broadcast editor the assistant writes subject, preview text and body for a chosen segment from the store's own facts (products, campaigns), each text passing findClaims.",
+      "The draft is only a suggestion in the editor; sending is a gated action and goes only to customers who consented, with an unsubscribe link.",
+      "The model is given no prices or stock it was not handed by a tool, and the email's amounts come from the store's data."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/owner-tools.ts",
+        "src/lib/owner-tools.ts",
+        "src/lib/claims.ts",
+        "src/server/email.ts"
+      ],
+      "tests": [
+        "src/server/owner-insights.int.test.ts",
+        "src/lib/claims.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D104"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: the AI manager drafts one email to one customer (`email_customer`), so not missing; the report itself called it thin and effectively missing for campaigns. Entry written in wave 0 from the first report, which did not log it."
+      },
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "email_customer is a one-customer gated mail, not a marketing email; no criterion holds"
+      }
+    ]
+  },
+  {
+    "id": "ai.agentic-storefronts-chatgpt-gemini-copilot",
+    "domain": "ai",
+    "feature": "Agentic storefronts (ChatGPT, Gemini, Copilot)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Products reach ChatGPT, Google AI Mode, Gemini, Microsoft Copilot and Meta through the Shopify Catalog (Google ones also through Merchant Center); active by default for eligible stores after accepting the supplemental terms, managed under Sales channels > Agentic; ChatGPT is discovery only, other channels can use direct checkout; orders carry channel attribution.",
+      "url": "https://help.shopify.com/en/manual/online-sales-channels/agentic-storefronts",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "No syndication to any AI channel and no feed (no feed, merchant or agent route under src/app); in-chat checkout is deferred. Kaizen only publishes llms.txt, crawler switches and JSON-LD (see AI discovery signals).",
+    "bucket": "B",
+    "wave": 8,
+    "criteria": [
+      "A store can opt in per channel and a normalised product feed is served per market with the attributes each channel requires, only for published products with VAT-inclusive prices in the market's currency.",
+      "Products the feed cannot carry are listed in the admin with the reason, and the feed validates against the channel's own spec in a test.",
+      "An order that comes from an agent channel is attributed to it in analytics without any cookie or storage.",
+      "In-chat checkout stays off until a payment path exists; a channel's switch is per store and defaults to off."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "ai.agent-ready-ucp-or-mcp-endpoints",
+    "domain": "ai",
+    "feature": "Agent-ready UCP or MCP endpoints",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Every store's UCP discovery profile is at /.well-known/ucp and its MCP endpoint at /api/ucp/mcp (Catalog tools search_catalog, lookup_catalog, get_product; Cart tools; Checkout); UCP replaces the deprecated Storefront MCP, and agents send an agent profile with each request. Shopify manages agents.md for every store by default.",
+      "url": "https://shopify.dev/docs/apps/build/storefront-mcp",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "`/api/mcp` serves the owner tools to Kaizen Life only (D96) and answers 401 without a Kaizen Life token. There is no public, read-only endpoint for shopping agents and no /.well-known/ucp profile or /agents.md.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "A store serves a discovery profile and a public MCP endpoint whose catalog tools (search, lookup, get product) answer from the store's published products only, with the market's VAT-inclusive prices and stock as available or not.",
+      "The endpoint is rate-limited, returns no personal data, sets no cookie, and obeys the store's per-bot switches.",
+      "A create-cart tool hands back the store's own checkout address; nothing is paid or ordered through the endpoint.",
+      "The owner MCP at /api/mcp is unchanged and still refuses any token but Kaizen Life's."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/api/mcp/route.ts",
+        "src/server/store-mcp.ts"
+      ],
+      "tests": [
+        "src/server/store-mcp.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D96"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-discovery-signals",
+    "domain": "ai",
+    "feature": "AI discovery signals",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, from Shopify's own documentation: Shopify manages an agents.md for every store by default (theme templates agents.md.liquid, llms.txt.liquid and llms-full.txt.liquid can override), with llms.txt and llms-full.txt mirroring it and pointing to the UCP and MCP endpoints.",
+      "url": "https://shopify.dev/docs/storefronts/themes/architecture/templates/agents-md-liquid",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Each store and Kaizen serve /llms.txt listing the open store's products and pages with the owner's own text, and leave out a hidden store.",
+      "robots.txt carries per-bot switches for AI assistants and AI training crawlers and the owner's extra rules, written under the store's address and checked for what it cannot read.",
+      "Products, pages, articles and the organisation carry JSON-LD."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/llms.txt/route.ts",
+        "src/app/s/[store]/llms.txt/route.ts",
+        "src/app/robots.txt/route.ts",
+        "src/app/s/[store]/robots.txt/route.ts",
+        "src/lib/seo.ts",
+        "src/server/seo.ts",
+        "src/lib/structured-data.ts",
+        "src/components/json-ld.tsx"
+      ],
+      "tests": [
+        "src/lib/seo.test.ts",
+        "src/server/seo.int.test.ts",
+        "src/lib/structured-data.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21",
+      "D56",
+      "D112"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.third-party-apps-extend-the-assistant",
+    "domain": "ai",
+    "feature": "Third-party apps extend the assistant",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick). \"Sidekick can also work with third-party apps to answer questions and complete tasks.\"",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 1,
+    "gap": "No app ecosystem, so nothing can add tools to the assistant; the tool catalogue is in code (OWNER_TOOLS). Only Kaizen Life reaches it from outside, through the owner-only MCP (D96). Depends on the extension-platform decision (plan section 5, decision 2).",
+    "bucket": "C",
+    "wave": 9,
+    "criteria": [
+      "An owner can register a custom app with scoped tokens whose tools the assistant may call, each switched on by the owner.",
+      "A custom app's tools are read-only unless declared gated; a gated call is only kept for the owner's yes.",
+      "Calls to a custom app are metered, time-limited and logged, and an app's answer is treated as data, never as instructions."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/store-mcp.ts",
+        "src/lib/owner-tools.ts"
+      ],
+      "tests": [
+        "src/server/store-mcp.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D96"
+    ],
+    "history": []
+  },
+  {
+    "id": "ai.ai-controls-usage-and-cost-visibility",
+    "domain": "ai",
+    "feature": "AI controls, usage and cost visibility",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, narrower: merchants choose which agentic channels take part under Sales channels > Agentic and see search and sales performance of products there; Sidekick image generation has plan-dependent monthly and short-term limits. No per-call token or cost view was found on the pages read.",
+      "url": "https://help.shopify.com/en/manual/online-sales-channels/agentic-storefronts",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every model call goes through metered() and is recorded for the store the connection was made for, with the feature it was for, and the owner sees usage and the platform sees all of it.",
+      "Cost uses the price in force when the call was made, from a price table the platform admin keeps; pictures, speech and live calls have their own units; a model with no price shows as no price and totals carry a plus, never as free.",
+      "A store can use its own provider and key instead of Kaizen's, and Kaizen never names a provider or model in code."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/ai-usage.ts",
+        "src/lib/ai-usage.ts",
+        "src/lib/ai-cost.ts",
+        "src/server/ai-prices.ts",
+        "src/server/ai-price-sql.ts",
+        "src/server/ai.ts",
+        "src/lib/ai-provider.ts",
+        "src/components/admin/usage-report.tsx",
+        "src/app/admin/(gated)/(owner)/account/usage/page.tsx",
+        "src/app/admin/(gated)/platform/ai/usage/page.tsx",
+        "src/app/admin/(gated)/platform/ai/prices/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/ai/page.tsx"
+      ],
+      "tests": [
+        "src/server/ai-usage.int.test.ts",
+        "src/server/ai-cost.int.test.ts",
+        "src/lib/ai-cost.test.ts",
+        "src/lib/ai-provider.test.ts",
+        "src/components/admin/usage-report.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D73",
+      "D106",
+      "D145",
+      "D146"
+    ],
+    "history": []
+  }
+]

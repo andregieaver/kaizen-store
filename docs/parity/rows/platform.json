@@ -1,0 +1,1228 @@
+[
+  {
+    "id": "platform.app-store-and-ecosystem",
+    "domain": "platform",
+    "feature": "App Store and ecosystem",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The Shopify App Store states \"over 16,000 apps\" and that each app \"goes through a 100-checkpoint review\" before it is listed.",
+      "url": "https://apps.shopify.com",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "No app model: no installable third-party apps, no app directory, no OAuth apps with scopes and no extension points inside the admin or the page builder. Integrations are a fixed list (Zapier, Make, Slack: D41, D101) and the owner's own code is limited to CSS (D100), an HTML block (D91) and consent-gated head and body code (D61). Understated by the weight: this is the structural gap. Plan section 5 decision 2: API, webhooks and scoped custom apps first, a public directory only when outside developers ask.",
+    "bucket": "C",
+    "wave": null,
+    "criteria": [
+      "A developer registers an app with a name, a redirect URL and the scopes it asks for; an owner installs it through a consent screen that lists exactly those scopes.",
+      "An installed app's token reaches only the installing store and only its granted scopes; uninstalling revokes the token and stops the app's webhooks.",
+      "Platform admins can list, review and suspend apps, and an app appears in a directory only after review.",
+      "An app can add a settings page or a builder block through a declared extension point without running its code in the storefront's origin."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "platform.public-admin-api-and-custom-apps",
+    "domain": "platform",
+    "feature": "Public Admin API and custom apps",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The GraphQL Admin API takes an X-Shopify-Access-Token header and the access scopes an app asks for at install; calls are limited by a calculated query cost, not a request count.",
+      "url": "https://shopify.dev/docs/api/admin-graphql",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "No merchant-facing API: an owner cannot create a token or choose scopes, and there are no REST or GraphQL endpoints over products, orders or customers. `/api/mcp` (D96) accepts only access tokens issued to Kaizen Life (`mcpCaller()` compares the token's client id with `KAIZEN_LIFE_CLIENT_ID`), so it is a first-party integration, not an Admin API; one-way events go to Zapier, Make and Slack (D41). Re-rated from partial: nothing here is usable by a merchant or a developer of theirs.",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "An owner creates a named API token for one store with chosen scopes (for example read orders, write products), sees the secret once, and can revoke it; only a hash is stored.",
+      "A request with the token reads or writes only that store's data inside its scopes; another store's id or an out-of-scope call is refused with 403, and an over-limit client gets 429 with a retry time.",
+      "The API covers products, variants, stock, orders, customers and discount codes with cursor pagination and money as minor units plus ISO code, and every change is written to the audit log with the token's name.",
+      "A call that would send mail, publish or spend (the assistant's `gate`s) is refused or kept for approval exactly as in the AI manager, never run silently."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/api/mcp/route.ts",
+        "src/server/store-mcp.ts",
+        "src/lib/owner-tools.ts",
+        "src/server/owner-tools.ts"
+      ],
+      "tests": [
+        "src/server/store-mcp.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D95",
+      "D96"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "The first report's recheck counted the owner MCP server as a partial Admin API."
+      },
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "Read at HEAD: store-mcp.ts line 53 refuses every token whose client_id is not Kaizen Life's; no token an owner or a developer can create exists. A first-party channel is not a public Admin API."
+      }
+    ]
+  },
+  {
+    "id": "platform.storefront-api-and-headless",
+    "domain": "platform",
+    "feature": "Storefront API and headless",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The GraphQL Storefront API is set up through the Headless channel, which provides public and private tokens; the docs name no plan restriction. Apps can hold up to 100 active storefront tokens per shop, and real buyers' requests have no fixed per-minute limit.",
+      "url": "https://shopify.dev/docs/api/storefront",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Only Kaizen's own storefront renders a store: it reads its own database server-side. There is no public catalogue, cart or checkout API; the only machine interfaces are the owner MCP server (`/api/mcp`, Kaizen Life only) and `/api/recommendations` for Kaizen's own grids. Plan section 5 decision 4: cheap once the Admin API exists, weight 2.",
+    "bucket": "C",
+    "wave": 9,
+    "criteria": [
+      "A read endpoint returns a store's published products, categories and prices as a given market shows them (VAT label and currency included) with a public token tied to that store and market; hidden, draft and business-only products are never returned.",
+      "A cart can be created and changed through the API with live stock checks and the same caps as the site, and the checkout hand-off URL opens Kaizen's own checkout with that cart.",
+      "Responses never contain cost, exact stock beyond an available flag, or other stores' data, and the endpoint is rate limited and cached by store tag."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "platform.outgoing-webhooks",
+    "domain": "platform",
+    "feature": "Outgoing webhooks",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Webhook subscriptions deliver to an HTTPS URL, a Google Pub/Sub URI or an Amazon EventBridge ARN, and each delivery carries an X-Shopify-Hmac-Sha256 header the receiver verifies.",
+      "url": "https://shopify.dev/docs/apps/build/webhooks",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Zapier, Make and Slack hosts only (`checkWebhookUrl()` refuses any other address, D41); seven events (order paid, sent, cancelled, refunded, customer created, subscription started and cancelled) where the report said about eight; no signing secret or signature on deliveries; no events for products, stock, returns or withdrawals (D153) or discounts. What exists is solid: queued by the database, five retries over about 8.6 hours (60 s, 5 min, 30 min, 2 h, 6 h), a delivery log kept 30 days, encrypted addresses, a test send.",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "An owner adds an HTTPS endpoint of their own (not only Zapier, Make or Slack); private and loopback addresses are refused and every send goes through the same address guard as other outbound fetches.",
+      "Every delivery is signed with HMAC-SHA256 over a timestamp and the body using a per-endpoint secret shown once; a test verifies the signature and rejects an old timestamp.",
+      "Topics cover orders, refunds, returns and withdrawals, customers, products, stock, subscriptions and discounts, each payload carrying a version, and an owner picks topics per endpoint.",
+      "Failed deliveries retry with back-off, the log shows each attempt, an endpoint failing for days is switched off and the owner emailed, and a failed delivery can be sent again by hand."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/integrations.ts",
+        "src/server/integrations.ts",
+        "src/app/api/cron/integrations/route.ts",
+        "src/lib/slack.ts",
+        "src/server/slack.ts"
+      ],
+      "tests": [
+        "src/server/integrations.int.test.ts",
+        "src/lib/integrations.test.ts",
+        "src/lib/slack.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D41",
+      "D101"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.custom-logic-functions",
+    "domain": "platform",
+    "feature": "Custom logic (Functions)",
+    "shopify": {
+      "tier": "plus",
+      "text": "Plus (for custom code). \"Stores on any plan can use public apps that are distributed through the Shopify App Store and contain functions. Only stores on a Shopify Plus plan can use custom apps that contain Shopify Function APIs.\" Function types include discounts, payment customization, delivery options, cart validation, order routing and bundles.",
+      "url": "https://shopify.dev/docs/apps/build/functions",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 2,
+    "gap": "No way to run an owner's or developer's own logic at checkout: no hook for discounts, shipping rates, payment methods or cart validation, and no sandbox to run one. What exists are Kaizen's built-in rule types (campaigns D114, customer groups D108, discount codes D31, carrier and store-priced delivery D135), which correspond to Shopify's native features and are counted in their own rows, not to Functions. Re-rated from partial for that reason.",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "An owner or an installed app registers a pricing, shipping-rate, payment-method or cart-validation rule as sandboxed, declarative or WebAssembly logic, with a time and memory limit and no network access.",
+      "`cartSummary()` and `placeOrder()` run the same rule and agree to the minor unit in a store's own currency and in euro (a scenario in `checkout-kinds.int.test.ts`).",
+      "A rule that fails, times out or returns an invalid answer is skipped and recorded, and checkout carries on with the built-in behaviour.",
+      "A rule can never set a price below zero, change VAT, or touch a legal page; the order keeps which rule changed what."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "Read at HEAD: no hook, sandbox or custom-code runtime exists (grep for vm, wasm and eval finds nothing outside the cookie scan). The built-in rule types are Shopify's native discounts and shipping, already rated in other rows, so they do not make Functions partial."
+      }
+    ]
+  },
+  {
+    "id": "platform.workflow-automation-flow",
+    "domain": "platform",
+    "feature": "Workflow automation (Flow)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. \"Shopify Flow is a free app available on the Basic, Grow, Advanced, and Plus plans\", built from triggers, conditions and actions; Send HTTP Request actions need Grow or higher and custom partner app tasks are Plus only; usage limits follow the plan's API limits.",
+      "url": "https://help.shopify.com/en/manual/shopify-flow",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Fixed automations only: abandoned-cart and plan reminders (D33), events to Zapier, Make and Slack (D41, D101), subscription and delivery jobs in the five-minute cron, and the AI manager's gated tools on request (D94, D103). No trigger-condition-action builder, no automation an owner defines, no run log. Zapier or Make give an owner a builder outside Kaizen over the seven events.",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "An owner builds a workflow from a trigger (an order, return, customer, stock or schedule event), conditions on its data and actions (email, tag, note, post to Slack, send an HTTP request through the address guard) and switches it on or off.",
+      "Each run is logged with the trigger, the path taken and each action's result; a failing action does not run twice and the owner sees it.",
+      "Per-store limits stop loops and floods (runs per hour, actions per run), and no action can spend money, refund or change prices without the assistant's approval gate.",
+      "The AI manager can draft a workflow from a sentence, which is only saved off and shown for the owner to read and switch on; copy it passes `findClaims()`."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/cart-reminders.ts",
+        "src/server/integrations.ts",
+        "src/server/owner-assistant.ts",
+        "src/server/manager-tools.ts"
+      ],
+      "tests": [
+        "src/server/cart-reminders.int.test.ts",
+        "src/server/integrations.int.test.ts",
+        "src/server/owner-assistant.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D33",
+      "D41",
+      "D94",
+      "D103"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.custom-data-metafields",
+    "domain": "platform",
+    "feature": "Custom data (metafields)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Metafields \"extend an existing platform data model, such as products, customers, and orders with your own custom data\"; the page lists products and variants, customers, orders, collections and categories.",
+      "url": "https://help.shopify.com/en/manual/metafields",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "An owner defines groups of typed fields (text, number, measurement, money, file, link, relation and more) and attaches them by rules to products, variants, categories and tags, pages, articles, the store, customers and orders.",
+      "Values are entered in the editor in each language where a field is translatable, are kept by field id, and survive renaming a field.",
+      "Public fields appear in product layouts and pages and in structured data, and can filter and search listings; private fields (customers, orders) are never readable on the shopper's side.",
+      "Groups and values are copied and translated with the store, and the AI manager can read and fill them through gated tools."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/custom-fields.ts",
+        "src/server/custom-fields.ts",
+        "src/lib/field-money.ts",
+        "src/lib/field-loop.ts",
+        "src/server/field-search.ts",
+        "src/lib/field-group-editor.ts"
+      ],
+      "tests": [
+        "src/server/custom-fields.int.test.ts",
+        "src/server/custom-fields-types.int.test.ts",
+        "src/server/custom-fields-entities.int.test.ts",
+        "src/server/custom-fields-flexible.int.test.ts",
+        "src/server/custom-fields-money.int.test.ts",
+        "src/server/custom-fields-store.int.test.ts",
+        "src/server/field-values-readers.test.ts",
+        "src/lib/custom-fields.test.ts",
+        "e2e/custom-fields.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D118",
+      "D119",
+      "D120"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.metaobjects",
+    "domain": "platform",
+    "feature": "Metaobjects",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Metaobjects are custom data structures of several related fields that stand on their own and can be \"referenced from multiple resources\"; merchants manage merchant-owned types in the admin, and a type can have optional features such as publishable or renderable. The page names no plan restriction or limits.",
+      "url": "https://shopify.dev/docs/apps/build/custom-data/metaobjects",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Group, repeater and flexible-content fields (D119, D120) hold structured data inside a thing that already exists, and relation fields point at products, pages and terms; there is no standalone entry type: no definition of a content type of its own, no entries listed and edited apart from a product or page, no entry reused by reference across things, no entry page with its own address.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "An owner defines an entry type (name, fields from the existing field types) and creates, edits, translates and deletes entries on a page of their own.",
+      "A relation field on a product, page, article or another entry points at entries by id; deleting an entry clears the references, and the site reads only entries of the store.",
+      "A content grid or loop block lists a type's entries, and an entry type can be switched to have a page at its own address with a title, search texts and a sitemap entry.",
+      "Entries and types are copied with the store (a `COPY_RULES` decision) and appear in the translation worklist."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/custom-fields.ts",
+        "src/server/custom-fields.ts",
+        "src/lib/field-loop.ts",
+        "src/lib/field-group-editor.ts"
+      ],
+      "tests": [
+        "src/server/custom-fields-flexible.int.test.ts",
+        "src/lib/custom-fields-flexible.test.ts",
+        "src/lib/field-loop.test.ts",
+        "e2e/custom-fields-flexible.spec.ts",
+        "e2e/custom-fields-loop.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D119",
+      "D120"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.staff-accounts-and-roles",
+    "domain": "platform",
+    "feature": "Staff accounts and roles",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Staff permissions are set per user across store, organization, POS and partner permission types; \"Users are available only on the Grow plan and higher\": Grow 5 staff accounts, Advanced 15, Plus unlimited (Basic none). Two-step authentication is a separate page (https://help.shopify.com/en/manual/your-account/staff-accounts/two-step-authentication): staff set it up for themselves and only Plus can require it for all users; the plan-requirements page above does not mention it.",
+      "url": "https://help.shopify.com/en/manual/your-account/users/users-plan-requirements",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Two fixed roles, `owner` and `admin` (`Role` in `src/server/auth.ts`, a `role` select on the Staff page): owners manage staff and payment keys, admins everything else. No per-section permissions, no collaborator accounts for agencies, no two-step authentication, no staff limit by plan. Changes are written to `commerce.audit_log` but the log is read only on the payments page (`recentAudit()`, 20 rows). No test holds `inviteStaff()`, `disableStaff()` or `recentAudit()` directly.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "An owner creates a role with a chosen set of per-section permissions (orders, products, customers, marketing, settings, billing, staff) and assigns it; a page and a server action both refuse a member without the permission.",
+      "A collaborator can be invited for a store by an agency's account with a limited role and an expiry, and shows as a collaborator in the staff list.",
+      "A staff member can switch on two-step authentication (authenticator app or passkey), is asked for it at sign-in, and an owner can require it for the whole store.",
+      "A viewer lists the audit log by person, action and date for the store, and every role or permission change appears in it."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/auth.ts",
+        "src/server/settings.ts",
+        "src/app/admin/(gated)/[store]/staff/page.tsx",
+        "src/app/admin/(gated)/actions.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "platform.multi-store-management",
+    "domain": "platform",
+    "feature": "Multi-store management",
+    "shopify": {
+      "tier": "plus",
+      "text": "Plus. \"By default, stores on the Shopify Plus plan have access to organization features and settings\": an organization lets a merchant with several stores review and manage them centrally, with user management, security settings and consolidated billing. The page gives no store limit.",
+      "url": "https://help.shopify.com/en/manual/shopify-plus/organization-admin",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "An owner creates further stores from the admin, up to 10 owned stores, each with the owner as its owner and a copy of the demo catalogue.",
+      "An owner duplicates one of their stores (content, then pictures, customers and orders as a resumable job) and the copy never carries payment accounts, domains, secrets or invoice series.",
+      "The control center shows every store of the account in one overview, and a level switcher moves between the platform, the owner's level and one store."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/platform.ts",
+        "src/server/store-copy.ts",
+        "src/lib/store-copy-rules.ts",
+        "src/server/control-center.ts",
+        "src/lib/control-center.ts",
+        "src/lib/owner-nav.ts",
+        "src/components/admin/admin-shell-parts.tsx"
+      ],
+      "tests": [
+        "src/server/platform.int.test.ts",
+        "src/server/store-copy.int.test.ts",
+        "src/server/control-center.int.test.ts",
+        "src/lib/store-copy-rules.test.ts",
+        "src/lib/control-center.test.ts",
+        "src/lib/owner-nav.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D19",
+      "D107",
+      "D129"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.store-duplication-staging-theme-versions",
+    "domain": "platform",
+    "feature": "Store duplication, staging, theme versions",
+    "shopify": {
+      "tier": "native",
+      "text": "Native for themes. \"Before you customize a theme, it's a good idea to make a backup copy so that you can discard your changes and start again\"; the duplicate is named Copy Of plus the theme's name and the theme library holds up to 20 themes. The page describes no version history or rollback.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/managing-themes/duplicating-themes",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "D129 duplicates a whole store (content in one SQL transaction, pictures, customers and orders as a resumable cron job) and D126 duplicates pages; saved themes (`store_themes`, D60), a page's draft against its published copy and A/B versions of pages (D148) exist. No revision history or rollback of pages, themes or settings, no staging copy that is merged back, no shareable preview of unpublished changes.",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "Every publish of a page, header, footer, product layout and the theme keeps a revision; an owner lists revisions, compares two and restores one, which is itself a new revision.",
+      "An unpublished draft of a page or the theme can be previewed at a private expiring address that needs no sign-in and sets no cookie, and is not indexed.",
+      "A staging copy of a store can be made, edited and merged back (pages, theme, menus) without touching products, orders or customers.",
+      "Restoring or merging never changes a page's address without leaving the redirect and calls `updateTag()` for the page and site tags."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/store-copy.ts",
+        "src/lib/store-copy.ts",
+        "src/server/page-duplicate.ts",
+        "src/lib/page-duplicate.ts",
+        "src/server/themes.ts",
+        "src/lib/theme.ts"
+      ],
+      "tests": [
+        "src/server/store-copy.int.test.ts",
+        "src/server/page-duplicate.int.test.ts",
+        "src/server/themes.int.test.ts",
+        "src/lib/page-duplicate.test.ts",
+        "src/lib/store-copy-rules.test.ts",
+        "e2e/themes.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D60",
+      "D126",
+      "D129",
+      "D148"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.themes-and-templates-marketplace",
+    "domain": "platform",
+    "feature": "Themes and templates marketplace",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The Shopify Theme Store: \"Explore free and paid themes in the Shopify Theme Store\". The help page gives no counts or prices.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/theme-store",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Rows, columns and components (D46, D125) and whole page layouts (D127) are shared as templates (`private`, `stores`, `marketplace`), switched on per store, moderated by platform admins and previewed before use; stores choose a theme template and save themes (D60). No whole-store theme package (design, header, footer, product layout and starter pages in one), no submissions or review queue for designers outside Kaizen, no ratings, no paid templates; the supply of third-party designers is a business matter code does not create.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "An owner publishes a whole-store theme (design settings, header, footer, product layout and starter pages) to the marketplace, and another store previews and applies it without any of the first store's products, customers or secrets.",
+      "A submitted template waits in a review queue; a platform admin approves, rejects with a reason or hides it, and `visibleTo()` is the only way a template is listed.",
+      "A template shows its author, a version and the stores using it, and an author's update is offered to users, never applied on its own."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/templates.ts",
+        "src/server/templates.ts",
+        "src/lib/page-layout.ts",
+        "src/lib/page-layout-apply.ts",
+        "src/lib/template-content.ts",
+        "src/lib/theme.ts",
+        "src/server/themes.ts"
+      ],
+      "tests": [
+        "src/server/templates.int.test.ts",
+        "src/server/themes.int.test.ts",
+        "src/lib/page-layout-apply.test.ts",
+        "src/lib/template-content.test.ts",
+        "e2e/themes.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D46",
+      "D60",
+      "D125",
+      "D127"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.developer-access-to-storefront-code",
+    "domain": "platform",
+    "feature": "Developer access to storefront code",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Themes are written in Liquid, \"Shopify's theme templating language\", with HTML, CSS, JavaScript and JSON; Shopify CLI can \"initialize, preview, test, and share themes locally\". The page names no plan restriction.",
+      "url": "https://shopify.dev/docs/storefronts/themes",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Owners write CSS for one page and for the whole site (D100, checked by `cssProblem()`), an HTML block (D91), and head and body code that loads only after consent and only on a store's own host (D61, `liveCustomCode()`). No templating language, no theme files, no CLI or Git workflow, no way for a developer to change markup the page builder does not expose. The builder's model (rows, columns, blocks) is a deliberate alternative to theme code, which is why the plan leaves it unplaced.",
+    "bucket": "C",
+    "wave": null,
+    "criteria": [
+      "A developer can export a store's design and pages as files, edit them locally and import them back, with the same validation as the builder.",
+      "A developer's snippet or template can only use declared data (product, page, store) and never raw HTML from owner data, and a bad one is refused with a line number.",
+      "Custom code that sets cookies or loads third-party scripts still goes through consent and `KNOWN_COOKIES`."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/custom-css.ts",
+        "src/lib/custom-code.ts",
+        "src/lib/html-frame.ts"
+      ],
+      "tests": [
+        "src/lib/custom-css.test.ts",
+        "src/lib/custom-code.test.ts",
+        "src/lib/html-frame.test.ts",
+        "e2e/custom-css.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D61",
+      "D91",
+      "D100"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.product-customer-and-order-csv",
+    "domain": "platform",
+    "feature": "Product, customer and order CSV",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Products can be imported and exported by CSV in the admin; the format allows up to 3 options, up to 250 images and up to 250 tags per product. The page states no file-size or row limit.",
+      "url": "https://help.shopify.com/en/manual/products/import-export/using-csv",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Verified at HEAD: `toCsv()` is used only by the Work module's reports and invoices and the DAC7 report; custom-field values have a customer export (`customerFieldExport()`). No product, customer or order import or export, so stores cannot be filled in bulk, leave with their data or hand an accountant a period's orders. The same gap is rated in the catalogue, orders, customers and analytics domains.",
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "An owner exports products (variants, prices per market, stock, translations, custom fields) as CSV and importing that file again changes nothing; custom-field values (a product's, and a customer's through `customerFieldExport()`, which has no caller yet) are in the exports.",
+      "An import runs a dry run first that lists every row's problem, then applies as a resumable job keyed on SKU or handle, with per-store size limits, never touching another store's rows.",
+      "Orders export for a period with totals, VAT, discounts and refunds in the store's currency; customers export with their marketing-consent state; neither contains secrets or tokens, and both are owner-only and audited.",
+      "Text for spreadsheets goes through `toCsv()` so a formula cannot run when opened."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/work-csv.ts",
+        "src/server/dac7.ts",
+        "src/lib/dac7.ts",
+        "src/server/work-exports.ts"
+      ],
+      "tests": [
+        "src/lib/work-csv.test.ts",
+        "src/lib/dac7.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "platform.migration-from-other-platforms",
+    "domain": "platform",
+    "feature": "Migration from other platforms",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, through a free Shopify-built app. Store Migration imports products (titles, descriptions, variants, prices, inventory levels, images, SKUs) and customers (names, emails, phones, addresses) from Square, WooCommerce, Etsy, Wix, Amazon, eBay, Clover and Lightspeed R/X; it does not import orders, collections, menus, SEO data, blog posts or reviews.",
+      "url": "https://www.shopify.com/blog/store-migration-shopify-app",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizen store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life; there is no catalogue or customer import from another platform. Shopify's own migration app imports no orders either, so the missing order import is a gap against third-party tools, not against the native feature.",
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "An owner uploads a Shopify or WooCommerce product export and gets products, variants, prices, stock and pictures (fetched through `safeFetch()`) with a dry run that lists what cannot be mapped.",
+      "A customer file is imported without marketing consent unless the file proves it, and a customer's password or payment data is never imported.",
+      "An import can create redirects from the old product addresses, and a repeated import updates instead of duplicating.",
+      "Orders can be imported as history (marked as copied, never paid, refunded, emailed or counted in revenue), as D129's copied orders are."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/replicate.ts",
+        "src/lib/replicate-build.ts",
+        "src/server/store-copy.ts",
+        "scripts/import-life-work.mjs",
+        "src/lib/work-import.ts"
+      ],
+      "tests": [
+        "src/server/replicate.int.test.ts",
+        "src/server/store-copy.int.test.ts",
+        "src/server/work-import.int.test.ts",
+        "src/lib/work-import.test.ts",
+        "e2e/replicate.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D129",
+      "D150"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.pos-and-retail",
+    "domain": "platform",
+    "feature": "POS and retail",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Casual in-person selling comes with every paid plan (limited staff, simple customer profiles, returns at the original purchase location); POS Pro is $89 USD a month per location (unlimited staff, roles, returns and exchanges at any location, inventory management with purchase orders, retail reports).",
+      "url": "https://www.shopify.com/pos/pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "No in-person selling: no tablet or phone register, no card reader, no receipts, no store-location stock drawn at a till. Plan section 5 decision 3: defer, revisit after wave 9 (weight 2, a large build with hardware and offline).",
+    "bucket": "C",
+    "wave": null,
+    "criteria": [
+      "Staff ring up an order at a store location on a phone or tablet, paid by cash or a Stripe Terminal reader, and it becomes an ordinary numbered order drawing stock from that location.",
+      "A receipt is printed or emailed with the store's VAT lines, and a refund or exchange at the till follows the same rules as an online one.",
+      "A sale made while offline is kept on the device and sent once, never twice, when the connection returns."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "platform.marketplace-and-multi-vendor",
+    "domain": "platform",
+    "feature": "Marketplace and multi-vendor",
+    "shopify": {
+      "tier": "app",
+      "text": "App. \"While Shopify doesn't have built-in multi-vendor functionality, you can use third-party, multi-vendor platforms and apps (like Multi Vendor Marketplace) to convert your online store into a multi-vendor marketplace.\"",
+      "url": "https://www.shopify.com/blog/multi-vendor-ecommerce-platform",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 1,
+    "gap": "Hosts for stays and rentals only (D71): outside hosts sign in to their own area, are paid through their own Stripe account with Kaizen's fee and a commission, and report DAC7 details. No hosts for ordinary goods, no vendor product catalogue with moderation, no split orders or payouts for several sellers in one cart (`placeOrder()` refuses a mix as `host_mix`). Plan section 5 decision 7: keep hosts, weight 1.",
+    "bucket": "C",
+    "wave": null,
+    "criteria": [
+      "A vendor lists and edits their own products in an area of their own and sees only their own orders.",
+      "A cart with products of several vendors is split into one order per vendor, each charged on that vendor's own Stripe account with the commission as application fee.",
+      "A vendor's refund, return and tax details (DAC7) stay with that vendor's orders, and one vendor can never read another's."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/hosts.ts",
+        "src/server/host-payments.ts",
+        "src/server/dac7.ts",
+        "src/lib/dac7.ts"
+      ],
+      "tests": [
+        "src/server/hosts.int.test.ts",
+        "src/server/host-payments.int.test.ts",
+        "src/lib/dac7.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D71"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.bookings-appointments-rentals",
+    "domain": "platform",
+    "feature": "Bookings, appointments, rentals",
+    "shopify": {
+      "tier": "app",
+      "text": "App. No native booking: Appointo, a Built for Shopify app, sells appointments, services, rentals, classes and multi-day events from $14 to $39 a month (a free tier exists).",
+      "url": "https://apps.shopify.com/appointo",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store sells appointments (staff slots), stays (nights) and rentals (days, half days, hours) as products with their own variants, prices and VAT.",
+      "A time is taken only under a lock that checks capacity and buffers; a slot lost between payment and confirmation is reported, never double-booked.",
+      "Seasons and fees price each night or day, and the date picker and the cart show the same total.",
+      "Shoppers cancel or move their booking within the store's rule, staff cancel from a week calendar, and emails carry a calendar file.",
+      "Rooms and items read other sites' iCal calendars, and their own calendar is published without personal data."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/bookings.ts",
+        "src/server/appointments.ts",
+        "src/server/ranges.ts",
+        "src/server/calendar-sync.ts",
+        "src/lib/booking-slots.ts",
+        "src/lib/booking-ranges.ts",
+        "src/lib/booking-prices.ts",
+        "src/lib/ics.ts"
+      ],
+      "tests": [
+        "src/server/bookings.int.test.ts",
+        "src/server/appointments.int.test.ts",
+        "src/server/ranges.int.test.ts",
+        "src/server/seasons.int.test.ts",
+        "src/server/rental-periods.int.test.ts",
+        "src/server/calendar-sync.int.test.ts",
+        "src/lib/booking-slots.test.ts",
+        "src/lib/booking-ranges.test.ts",
+        "src/lib/booking-prices.test.ts",
+        "e2e/bookings.spec.ts",
+        "e2e/stays.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D65",
+      "D66",
+      "D67",
+      "D68",
+      "D69",
+      "D70"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.mobile-admin-app",
+    "domain": "platform",
+    "feature": "Mobile admin app",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. \"The Shopify mobile app is available on iOS or Android to help you manage orders, products, and store analytics on a mobile device\"; some advanced settings need a desktop.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/shopify-mobile-app",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 3,
+    "gap": "An admin shell with a few responsive classes (`admin-frame.tsx`; no test holds the admin at phone width, the phone e2e tests cover the storefront only) and an AI manager with voice and live voice that works from a phone (D104, D105); order events reach a phone only through Slack (D101). No web app manifest or service worker (none under `src/app` or `public`), so the admin cannot be installed, and no push notification for new orders. Plan section 5 decision 6: an installable PWA with push, native apps not worth it yet.",
+    "bucket": "C",
+    "wave": 9,
+    "criteria": [
+      "The admin has a web app manifest and a service worker, can be installed to a phone's home screen, and opens its signed-in shell when offline.",
+      "An owner or staff member switches on push for new paid orders on one device; the notification carries the order number and total only and opens that order.",
+      "Push can be switched off per device and per store, expired subscriptions are removed, and a staff member removed from a store stops receiving its pushes.",
+      "An e2e test at 390 px wide signs in, opens the orders list and one order, and finds nothing cut off or scrolling sideways."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/admin/admin-frame.tsx",
+        "src/components/admin/live-voice.ts",
+        "src/components/admin/voice-mode.ts",
+        "src/components/admin/ai-manager-launcher.tsx",
+        "src/lib/slack.ts"
+      ],
+      "tests": [
+        "src/lib/speech-text.test.ts",
+        "src/lib/slack.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D101",
+      "D104",
+      "D105"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "The first report's recheck counted the responsive admin and the phone-friendly voice assistant."
+      }
+    ]
+  },
+  {
+    "id": "platform.consumer-network-shop-app-shop-pay",
+    "domain": "platform",
+    "feature": "Consumer network (Shop app, Shop Pay)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Shop and Shop Pay: \"250M+ verified shoppers worldwide\"; Shop Pay remembers payment and shipping details (\"Just 2 taps\"), the page claims it \"converts up to 50% higher\" than a regular checkout, and Shop has no marketplace fees.",
+      "url": "https://www.shopify.com/shop",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "No cross-store shopper identity: a customer account belongs to one store (D28), and no Kaizen shopper app exists. Stripe Link is requested for every store's account (D23) and gives a saved-details wallet that Stripe, not Kaizen, runs. The network (shoppers and brands that already use it) is Shopify's own and not reachable by code.",
+    "bucket": "D",
+    "wave": null,
+    "criteria": [
+      "A shopper with an account at one Kaizen store can choose, with explicit and revocable consent, to reuse their name and delivery address at another Kaizen store, and no order data crosses stores.",
+      "Stripe Link shows at checkout wherever the store's Stripe account has it active, and the order page works the same whichever wallet paid."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D23",
+      "D28"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.admin-ai-assistant",
+    "domain": "platform",
+    "feature": "Admin AI assistant",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Sidekick can analyze data, manage orders and edit products, write blog posts, product descriptions and images, generate custom apps, remembers past conversations and saves repeated prompts as shortcuts, and works on desktop, mobile and Apple Watch by text, voice or screen sharing; the page names no plan restriction.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/sidekick",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 2,
+    "gap": "The AI manager (D94, D103) has about 70 owner tools with approval gates for sending, publishing and spending, memory and skills, voice and live voice (D104, D105), usage and cost (D106, D145), and the same tools are served to Kaizen Life (D96). It reads and acts on orders, returns, discounts, campaigns, stock, recommendations, experiments and fields, but has no tool to create or edit products, pages, menus or themes (those are separate AI studios), no background tasks and no screen sharing. The AI domain rates the same capability partial (w3), and plan wave 8 names the missing editing tools.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "Gated tools create and update a product draft and a page draft; nothing is published or priced without the owner's yes, and the model never states a price or stock it was not given by a tool.",
+      "A tool edits a menu and a page's rows through the same validation as the editor (`productInput`, `pageInput`), with every text passing `findClaims()`.",
+      "A long job (translating a store, building a page) runs in the background with progress the owner can read, and survives closing the panel.",
+      "Each new tool has zod arguments, a `TOOL_WORDS` line and a `gate`, and is served by the store MCP server like the rest."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/owner-assistant.ts",
+        "src/server/assistant-route.ts",
+        "src/lib/owner-tools.ts",
+        "src/server/owner-tools.ts",
+        "src/server/manager-tools.ts",
+        "src/lib/manager-tools.ts",
+        "src/server/assistant-memory.ts",
+        "src/server/live-voice.ts",
+        "src/server/ai-usage.ts",
+        "src/lib/assistant-skills.ts"
+      ],
+      "tests": [
+        "src/server/owner-assistant.int.test.ts",
+        "src/server/ai-manager.int.test.ts",
+        "src/server/live-voice.int.test.ts",
+        "src/server/ai-usage.int.test.ts",
+        "src/server/owner-tools-fields.int.test.ts",
+        "src/lib/speech-text.test.ts",
+        "src/lib/admin-map.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D94",
+      "D96",
+      "D103",
+      "D104",
+      "D105",
+      "D106",
+      "D145"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Read at HEAD: OWNER_TOOLS (src/lib/owner-tools.ts) has reads, orders, discounts, campaigns, stock, experiments and fields but no create or edit tool for products, pages, menus or themes, which Sidekick has ('editing products'); the AI domain row already says partial. The two rows now agree."
+      }
+    ]
+  },
+  {
+    "id": "platform.custom-domains-and-ssl",
+    "domain": "platform",
+    "feature": "Custom domains and SSL",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, on every plan. \"You can use domains that you buy from Shopify or from any third-party domain provider\"; the pricing page lists a free SSL certificate and a custom domain name on all plans.",
+      "url": "https://www.shopify.com/pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every store is served at `{store}.{store domain}` with a wildcard certificate, and `/s/{store}/…` redirects there (P7 in `docs/platform.md`).",
+      "An owner adds a domain of their own; it becomes active only when its DNS carries Kaizen's TXT record with the claim's token and points at Vercel, so no one can claim a domain they do not hold (P8).",
+      "The first active domain becomes the store's primary address, routing and `storeOrigin()` follow it, and removing a domain leaves Vercel's copy only until no store claims it.",
+      "A routing change asks for a new deployment at most every 15 minutes and the admin says while it is on its way."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/domains.ts",
+        "src/lib/custom-domains.ts",
+        "src/server/vercel.ts",
+        "src/lib/store-hosts.ts",
+        "src/lib/store-hosts-build.ts",
+        "src/lib/paths.ts"
+      ],
+      "tests": [
+        "src/server/domains.int.test.ts",
+        "src/lib/custom-domains.test.ts",
+        "src/lib/store-hosts.test.ts",
+        "e2e/store-hosts.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "platform.hosting-cdn-uptime-status-page",
+    "domain": "platform",
+    "feature": "Hosting, CDN, uptime, status page",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. shopifystatus.com shows the operational state of Admin, Checkout, Storefront, API and Point of Sale with a 90-day incident history and \"Subscribe to Updates\".",
+      "url": "https://www.shopifystatus.com",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Vercel's network serves the storefront, with functions in Dublin next to a single-region Supabase database (D6), and `/api/health` reports the database, email and key checks (`src/lib/health.ts`). No public status page, no error tracking (D13 chose none until needed), no SLA or uptime promise, no restore test recorded in the repo, and pushes go straight to production (D5: 'revisit before launch'). The uptime promise is a contract, so the row can be built as far as software goes and then declared, never Full.",
+    "bucket": "D",
+    "wave": 9,
+    "criteria": [
+      "A public status page shows storefront, checkout, admin, database and email as operational or degraded from real checks, with a 90-day history.",
+      "A platform admin posts an incident and its updates, and visitors subscribe by email or feed without an account.",
+      "Unhandled server errors are captured with the store id and route, with personal data scrubbed, in an EU-hosted tool, and a failing health check alerts platform admins.",
+      "Production changes go through a preview deployment and a passing gate before they are promoted (D5 revisited), and a database restore is rehearsed and its date recorded."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/api/health/route.ts",
+        "src/lib/health.ts",
+        "vercel.json"
+      ],
+      "tests": [
+        "src/lib/health.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D5",
+      "D6",
+      "D13"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.merchant-support-channels",
+    "domain": "platform",
+    "feature": "Merchant support channels",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The pricing page lists live chat on Basic and Grow, enhanced live chat on Advanced and priority support on Plus.",
+      "url": "https://www.shopify.com/pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "AI-first help only: Kaizen's chat agent answers about Kaizen's own pages and articles from its knowledge (D81) and the AI manager guides owners through the admin (D103). No ticketing, no contact route to a person from the admin, no stated response time. People and a promised response time are not software, so the row is bucket D; the inbox can be built.",
+    "bucket": "D",
+    "wave": null,
+    "criteria": [
+      "A signed-in owner sends a support request from the admin with the page and store attached and no secrets, receives an acknowledgement by email, and sees its status.",
+      "Platform admins work an inbox with status, assignee and replies sent by email, and every reply is kept with the request.",
+      "The chat agent can hand a conversation to the inbox with the visitor's consent, and the response time the admin states is measured from the inbox, not typed."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/chat-agent.ts",
+        "src/lib/chat.ts",
+        "src/server/knowledge.ts",
+        "src/server/chat-route.ts"
+      ],
+      "tests": [
+        "src/server/chat.int.test.ts",
+        "src/lib/chat.test.ts",
+        "src/lib/knowledge.test.ts",
+        "e2e/chat.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D81",
+      "D103"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.transparent-plans-fees-and-billing",
+    "domain": "platform",
+    "feature": "Transparent plans, fees and billing",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The pricing page lists Basic $29, Grow $79, Advanced $299 and Plus from $2,300 a month, \"Try 3 days free, then $1/month for 3 months\", and card rates of 2.9% + 30 cents, 2.7%, 2.5% and 2.25% + 30 cents by plan.",
+      "url": "https://www.shopify.com/pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Plans and their prices are data a platform admin edits (a new amount is a new price row), copied to Stripe, and shown on Kaizen's pages from the database without Stripe ids or store counts.",
+      "Every plan has a stated sale fee, a store's own fee wins over its plan's, and checkout takes the fee that applies (`storeFeeBps()`).",
+      "An owner chooses and changes a plan at once with proration, sees their plan invoices, and can own several stores each with a plan.",
+      "A feature comparison table shows what each plan includes and enables nothing by itself."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/billing.ts",
+        "src/lib/plans.ts",
+        "src/lib/plan-offer.ts",
+        "src/server/public-plans.ts",
+        "src/lib/plan-features.ts",
+        "src/server/plan-features.ts",
+        "src/server/stripe-webhooks.ts"
+      ],
+      "tests": [
+        "src/server/billing.int.test.ts",
+        "src/server/public-plans.int.test.ts",
+        "src/server/plan-features.int.test.ts",
+        "src/lib/plans.test.ts",
+        "src/lib/plan-offer.test.ts",
+        "src/lib/plan-features.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D18",
+      "D19",
+      "D132",
+      "D142"
+    ],
+    "history": []
+  },
+  {
+    "id": "platform.self-serve-sign-up-and-onboarding",
+    "domain": "platform",
+    "feature": "Self-serve sign-up and onboarding",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Self-serve: a visitor enters an email address and \"Try Shopify free for 3 days, no credit card required\", then picks a plan; the page offers Sidekick as guidance during setup.",
+      "url": "https://www.shopify.com/free-trial",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Invite-only beta with manual approval (P3 in `docs/platform.md`): `/sign-up` stores an access request, a platform admin approves it at `/admin/platform`, which calls `commerce.approve_access_request()` (account, `clone_store()` and decision in one transaction) and emails a sign-in link. After approval a setup wizard (`/admin/{store}/setup/{step}`, progress derived from data in `src/server/setup.ts`) guides the owner. No instant store creation, no trial or plan checkout at sign-up.",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "A visitor signs up with an email and password or magic link and gets a store at once, without a person approving it, behind email verification and per-address and per-network limits against abuse.",
+      "The new store is copied from the template with its owner as the only member, opens the setup wizard, and records no payment details until Stripe onboarding.",
+      "A plan is chosen after a trial with a stated end date, and an owner of a store that is not open yet cannot take payments.",
+      "Platform admins can switch self-serve sign-up off, and every sign-up is in the audit log."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/(platform)/sign-up/actions.ts",
+        "src/app/(platform)/sign-up/page.tsx",
+        "src/server/platform.ts",
+        "src/server/setup.ts",
+        "src/server/sign-in.ts"
+      ],
+      "tests": [
+        "src/server/platform.int.test.ts",
+        "e2e/sign-up.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  }
+]

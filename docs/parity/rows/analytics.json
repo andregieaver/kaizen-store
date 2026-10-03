@@ -1,0 +1,1373 @@
+[
+  {
+    "id": "analytics.dashboard-with-period-comparison",
+    "domain": "analytics",
+    "feature": "Dashboard with period comparison",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The Analytics dashboard shows cards of key sales, sessions and fulfilment metrics for any date range across all sales channels, \"to compare data across time periods\"; cards can be added, removed and rearranged.",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/overview-dashboard",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Residual: fixed layout, not owner-customisable.",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "The Overview shows twelve figures for a chosen period against the previous period and the same period last year.",
+      "The period and the comparison live in the address (?period=&from=&to=&compare=) and survive navigation between the Analytics pages.",
+      "Every chart has a data table behind it, and a figure that cannot be known shows what is missing, never zero.",
+      "A currency with no rate is left out and counted, not summed silently."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/admin/(gated)/[store]/analytics/page.tsx",
+        "src/components/admin/analytics/overview-view.tsx",
+        "src/components/admin/analytics/kpi-card.tsx",
+        "src/components/admin/analytics/period-picker.tsx",
+        "src/lib/analytics-period.ts",
+        "src/lib/analytics-kpi.ts",
+        "src/server/analytics-totals.ts"
+      ],
+      "tests": [
+        "src/server/analytics-totals.int.test.ts",
+        "src/lib/analytics-period.test.ts",
+        "src/lib/analytics-kpi.test.ts",
+        "src/components/admin/analytics/overview-view.test.ts",
+        "src/components/admin/analytics/period-picker.test.ts",
+        "src/components/admin/analytics/kpi-card.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.live-view",
+    "domain": "analytics",
+    "feature": "Live View",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Real-time view of activity: active visitors in the past 5 minutes, sales, sessions and orders since midnight, a map and globe, active carts and checkouts (page read 2026-10-03; still available, no deprecation).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/live-view",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Visits are one row per hashed visitor and store day (`visits`, no timestamps of activity); nothing is real-time. Confirmed: no live page, route or query in the code.",
+    "history": [],
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "A Live page shows visitors active in the last 5 minutes, today's sessions, orders and sales so far (store time zone), and active carts and checkouts.",
+      "Active-now is read from a last-seen time kept on the existing visitor-day row, with no new personal data, no cookie, no IP and no user agent (D152's promises hold).",
+      "With visit counting off it says what is missing and how to turn it on, never zero.",
+      "The figures are store-scoped and in the main currency without VAT, with a euro scenario for the sales so far."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-visits.ts",
+        "src/lib/visit-record.ts",
+        "src/app/api/visit/route.ts"
+      ],
+      "tests": [
+        "src/server/analytics-visits.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.standard-sales-reports",
+    "domain": "analytics",
+    "feature": "Standard sales reports",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Sales reports cut by time, product, variant SKU, product type, vendor, channel, discount, referrer, billing country, customer, currency, bundle and subscription status (page read 2026-10-03; plan limits not stated).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 5,
+    "gap": "No sales cut by variant or SKU, product category or type, vendor, shopper currency or payment method; no saved or custom cuts (see the report builder row). Time, product, channel, discount, country, customer, market and device are covered.",
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Re-read against Shopify's sales report page: Shopify cuts sales by time, product, variant SKU, product type, vendor, channel, discount, referrer, billing country, customer, currency, bundle and subscription status. Kaizen has time, product, channel, discount code, country and city, market, device, customer (top customers) and subscriptions, but no cut by variant or SKU, product category or type, vendor, shopper currency or payment method: `productsReport()` groups by product only and no analytics query groups by variant, term or currency."
+      }
+    ],
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "Sales can be cut by variant or SKU and by product category (term) as well as by product, each table reconciling to the period's revenue within rounding.",
+      "Sales can be cut by the currency the shopper saw, in the main currency without VAT, with unconverted currencies counted.",
+      "Sales can be cut by payment method (needs the payments-by-method row).",
+      "Each cut honours the paid-order definition in docs/analytics.md, the period and the comparison, and is store-scoped."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-products-data.ts",
+        "src/server/analytics-totals.ts",
+        "src/server/analytics-geo-data.ts",
+        "src/server/analytics-time-data.ts",
+        "src/server/analytics-discounts-data.ts",
+        "src/server/analytics-customers-data.ts",
+        "src/components/admin/analytics/products-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/products/page.tsx",
+        "docs/analytics.md"
+      ],
+      "tests": [
+        "src/server/analytics-products-data.int.test.ts",
+        "src/server/analytics-totals.int.test.ts",
+        "src/server/analytics-geo-data.int.test.ts",
+        "src/server/analytics-time-data.int.test.ts",
+        "src/server/analytics-discounts-data.int.test.ts",
+        "src/components/admin/analytics/products-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.custom-report-builder-and-shopifyql",
+    "domain": "analytics",
+    "feature": "Custom report builder and ShopifyQL",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Custom reports: start from a report or from scratch, filter, edit columns, set and compare time ranges, choose visualisations, add annotations, save, export, and generate reports with Sidekick (page read 2026-10-03; ShopifyQL, sharing, plan limits and scheduling are not stated on the page).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/custom-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Reports are fixed pages; no saved reports, no report builder and no analytics API. Confirmed by listing `src/app/admin/(gated)/[store]/analytics/`: only fixed pages.",
+    "history": [],
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "An owner builds a report from a closed catalogue of metrics and dimensions (never free SQL), saves it under a name for the store, and reopens it.",
+      "Every report runs through one safe query layer that takes the store id, the paid-order definition and the period/compare model.",
+      "A saved report can be exported to CSV and refuses another store's id.",
+      "A money metric has a euro scenario test, and an unknown metric or dimension is refused with a plain message."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-totals.ts",
+        "src/server/analytics-sql.ts",
+        "src/lib/analytics-period.ts"
+      ],
+      "tests": [
+        "src/server/analytics-perf.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.natural-language-analytics",
+    "domain": "analytics",
+    "feature": "Natural-language analytics",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Sidekick in Analytics). Questions in plain language become ShopifyQL queries and reports with a business-friendly explanation, from a new exploration or any saved report; the post states no plan or region limit.",
+      "url": "https://changelog.shopify.com/posts/turn-business-questions-into-analytics-reports-with-natural-language-queries",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "The AI manager answers from fixed read-only tools (`analytics_overview`, `explain_change`, `analytics_alerts` and D104's insight tools); it cannot cut the data in a new way.",
+    "history": [],
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "A question is turned into a validated query spec over the report builder's safe layer; the model never writes SQL and never states a number.",
+      "Every figure in the answer is computed in code and carries its definition, period and what is missing.",
+      "A question the layer cannot answer is declined in words that say what can be asked.",
+      "Without a text model the manager still answers from the fixed tools, and the call is metered under its own AI feature."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-tools.ts",
+        "src/server/analytics-insights.ts",
+        "src/server/owner-insights.ts",
+        "src/lib/manager-tools.ts",
+        "src/lib/assistant-skills.ts"
+      ],
+      "tests": [
+        "src/server/analytics-tools.int.test.ts",
+        "src/lib/analytics-tools.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152",
+      "D104",
+      "D103"
+    ]
+  },
+  {
+    "id": "analytics.conversion-funnel-and-rate",
+    "domain": "analytics",
+    "feature": "Conversion funnel and rate",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Behavior reports include Conversion rate breakdown (the path visitors take through the store and checkout) and Conversion rate over time (the share of online store visitors who purchase); the page states no plan limit.",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/behaviour-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Residual: cookieless counting, off by default (the owner switches it on); nothing before it was switched on.",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "With visit counting on, the funnel counts sessions, product views, carts, checkouts reached and paid orders for the period, and the conversion rate is paid orders over sessions for the days both are known.",
+      "A visit sets no cookie or storage and keeps no IP address or user agent; bots and Global Privacy Control are dropped.",
+      "With counting off, the page says what is missing and how to add it, never a zero.",
+      "Funnel stages (visits, viewed a product, added to cart, reached checkout, purchased) are visitor-days and null when counting is off."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-traffic.ts",
+        "src/server/analytics-traffic-data.ts",
+        "src/server/analytics-visits.ts",
+        "src/lib/visit-record.ts",
+        "src/lib/visit-beacon.ts",
+        "src/lib/visit-hash.ts",
+        "src/components/visit-beacon.tsx",
+        "src/app/api/visit/route.ts",
+        "src/components/admin/analytics/traffic-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/traffic/page.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-traffic.test.ts",
+        "src/server/analytics-traffic-data.int.test.ts",
+        "src/server/analytics-visits.int.test.ts",
+        "src/lib/visit-record.test.ts",
+        "src/lib/visit-beacon.test.ts",
+        "src/lib/visit-hash.test.ts",
+        "src/components/admin/analytics/traffic-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.traffic-by-device-country-landing-page",
+    "domain": "analytics",
+    "feature": "Traffic by device, country, landing page",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Behavior reports include Sessions by device and Sessions by landing page; a sessions-by-location report is not on the page read.",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/behaviour-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Residual: country and city only, no regions inside a country.",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Sessions, orders and conversion are broken down by device class, by market country and by landing page, for the period and its comparison.",
+      "Landing paths are a whitelist of shapes, never a raw path with an id or token.",
+      "Sales by country and city come from the orders, in the main currency without VAT.",
+      "With counting off the visit-based tables say what is missing."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-traffic-data.ts",
+        "src/server/analytics-geo-data.ts",
+        "src/lib/analytics-traffic.ts",
+        "src/lib/visit-record.ts",
+        "src/components/admin/analytics/traffic-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/traffic/page.tsx"
+      ],
+      "tests": [
+        "src/server/analytics-traffic-data.int.test.ts",
+        "src/server/analytics-geo-data.int.test.ts",
+        "src/lib/analytics-traffic.test.ts",
+        "src/lib/visit-record.test.ts",
+        "src/components/admin/analytics/traffic-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.marketing-and-channel-attribution",
+    "domain": "analytics",
+    "feature": "Marketing and channel attribution",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Marketing performance in Growth reports sales, sessions, orders, conversion rate, AOV and ROAS per channel, with five attribution models (default last non-direct click) and traffic with utm_campaign parameters attributed to marketing; ad cost, ROAS or CPA for Facebook and Google campaigns are not shown directly and ad data can take up to 24 hours to sync.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/analyze-marketing/marketing-performance",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "A visit is tied to a cart made the same day and the channel follows the order (`carts.visit_id`); channel table has sessions, orders, revenue, CAC, ROAS and profit ROAS, with spend entered by hand per day and channel. No campaign-level table from the UTM tags the visit already holds, no multi-touch or model comparison, no ad-platform spend sync (a third-party credential, bucket B) and no UTM builder.",
+    "history": [],
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "Marketing shows a campaign table (UTM campaign and source) with sessions, orders, revenue, spend, CAC and ROAS from data the visit already keeps.",
+      "The owner can choose last-touch or a first-touch comparison for a period, and the page states which model it uses.",
+      "An admin UTM builder produces tagged links for the store's own addresses.",
+      "Ad spend can be imported from a file and, when a platform connection exists, synced, without changing the stated definitions of ROAS, MER and CAC."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-traffic-data.ts",
+        "src/lib/analytics-channels.ts",
+        "src/lib/analytics-traffic.ts",
+        "src/lib/visit-record.ts",
+        "src/components/admin/analytics/marketing-view.tsx",
+        "src/components/admin/analytics/spend-form.tsx",
+        "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx",
+        "src/server/analytics-visits.ts"
+      ],
+      "tests": [
+        "src/lib/analytics-traffic.test.ts",
+        "src/server/analytics-traffic-data.int.test.ts",
+        "src/server/analytics-visits.int.test.ts",
+        "src/components/admin/analytics/marketing-view.test.ts",
+        "src/components/admin/analytics/spend-form.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.profit-and-margin-reports",
+    "domain": "analytics",
+    "feature": "Profit and margin reports",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Five profit reports (average profit margin by market, gross profit by product, by variant, by POS location, profit margin by order) from the cost per item the merchant enters; profit is reported only for items that had a cost recorded when sold.",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/profit-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Residual: profit is an estimate from 30 to under 100 % cost coverage and missing under 30 %; per-product and per-channel profit is on known costs only (the pages say so).",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Gross profit, margin, contribution and operating profit are computed from the cost frozen on each order line when it was sold.",
+      "Profit states how much of sales it covers; below the minimum coverage it shows an add-costs prompt, never a profit that treats unknown cost as free.",
+      "Payment fees, shipping costs and fixed costs are the owner's labelled estimates.",
+      "Later cost changes never rewrite history; backfill is an explicit owner action."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-kpi.ts",
+        "src/lib/analytics-finance.ts",
+        "src/lib/analytics-settings.ts",
+        "src/server/analytics-settings.ts",
+        "src/server/analytics-settings-data.ts",
+        "src/server/analytics-products-data.ts",
+        "src/components/admin/analytics/settings-forms.tsx",
+        "src/app/admin/(gated)/[store]/analytics/settings/page.tsx"
+      ],
+      "tests": [
+        "src/server/analytics-cost.int.test.ts",
+        "src/lib/analytics-kpi.test.ts",
+        "src/lib/analytics-finance.test.ts",
+        "src/lib/analytics-settings.test.ts",
+        "src/server/analytics-settings.int.test.ts",
+        "src/server/analytics-products-data.int.test.ts",
+        "src/components/admin/analytics/settings-forms.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.finance-summary",
+    "domain": "analytics",
+    "feature": "Finance summary",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Finance reports: a finance summary plus sales, taxes, payments by method and gateway, gift card, store credit and tips reports; all export to CSV (page read 2026-10-03; plan limits not stated).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Residual: refunds made only in the Stripe Dashboard are not seen (no refund webhook; the page says so); no payments or liabilities section (separate rows).",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Finance shows the bridge gross sales, discounts, shipping income, revenue, refunds, net revenue, COGS, fees, marketing and profit, with VAT shown apart as not income.",
+      "Each bridge line reconciles to the period's figures and any rounding is a named line.",
+      "Refunds are dated by their own date and scaled to without-VAT; copied and host orders never count.",
+      "The same figures are repeated by the AI manager and the Overview."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-finance.ts",
+        "src/components/admin/analytics/finance-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/finance/page.tsx",
+        "src/server/analytics-totals.ts",
+        "src/server/analytics-refunds-data.ts",
+        "src/server/analytics-sql.ts"
+      ],
+      "tests": [
+        "src/lib/analytics-finance.test.ts",
+        "src/components/admin/analytics/finance-view.test.ts",
+        "src/server/analytics-totals.int.test.ts",
+        "src/server/analytics-refunds-data.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.tax-and-vat-reports-by-rate-and-jurisdiction",
+    "domain": "analytics",
+    "feature": "Tax and VAT reports by rate and jurisdiction",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, but narrower than the row claims for the EU: Shopify's tax reports are the US and Canada sales tax reports, a Taxes finance report (summary of sales taxes applied) and a Managed Markets report; its tax-reports page mentions no EU VAT-by-country-and-rate or OSS return report, and third-party apps fill that (page read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/taxes/tax-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "One VAT total on Finance (VAT collected, including shipping); no VAT by country or by rate, no OSS data, no export. Confirmed: no VAT breakdown in `analytics-finance.ts` or `finance-view.tsx`.",
+    "history": [],
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "A VAT report lists, per country and VAT rate (including reduced and shipping rates), the net sales, the VAT and the number of orders for a period, reconciling to the Finance VAT total.",
+      "An OSS view groups EU B2C sales by destination country and rate per quarter, in euro at a stated rate, and exports as CSV (formula-safe).",
+      "Refunds and later credit notes reduce the period they are made in; copied and host orders are excluded.",
+      "A euro scenario test covers a store selling in more than one currency."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-finance.ts",
+        "src/components/admin/analytics/finance-view.tsx",
+        "src/server/analytics-sql.ts",
+        "docs/analytics.md"
+      ],
+      "tests": [
+        "src/lib/analytics-finance.test.ts",
+        "src/components/admin/analytics/finance-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.payouts-and-reconciliation",
+    "domain": "analytics",
+    "feature": "Payouts and reconciliation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, for Shopify Payments only: the payments activity (payout reconciliation) report shows starting balance, gross activity, fees, payouts, net movement and ending balance and exports to PDF (page read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/payments/shopify-payments/payouts/payout-reconciliation-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Payouts are in the owner's Stripe Dashboard; Kaizen estimates payment fees from a percentage and keeps no payout or balance-transaction data.",
+    "history": [],
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "Each Stripe payout of a store's connected account is listed with date, amount, fees and the orders and refunds it settles.",
+      "Real Stripe fees replace the estimated payment fee in profit when balance transactions exist, and the page says which it uses.",
+      "A payout that does not reconcile to its orders is flagged with the difference.",
+      "The report exports to CSV and works in the store's main currency with a euro scenario."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/connect.ts",
+        "src/server/stripe-webhooks.ts",
+        "src/lib/analytics-finance.ts"
+      ],
+      "tests": [
+        "src/lib/analytics-finance.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D17",
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.payments-reports-by-method",
+    "domain": "analytics",
+    "feature": "Payments reports by method",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The finance reports include payment reports by method, gateway and over time, with CSV export (page read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Method mix not recorded: Kaizen keeps no payment method on a payment (`payment_methods` is only what is offered per market).",
+    "history": [],
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "The payment's method (card, Klarna, MobilePay, Link, wallet) is recorded when the payment is captured.",
+      "A report shows orders, amount, fees and refunds per method for a period, reconciling to paid orders.",
+      "Methods unknown for older payments are shown as Unknown, not guessed.",
+      "Figures are in the main currency without VAT where they are sales and with VAT where they are money received, labelled."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "src/server/stripe-webhooks.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D23"
+    ]
+  },
+  {
+    "id": "analytics.liabilities-gift-card-and-store-credit",
+    "domain": "analytics",
+    "feature": "Liabilities: gift card and store credit",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The finance reports include gift card reports (net sales from gift cards, outstanding balances) and store credit reports (transaction history, outstanding balances) (page read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 2,
+    "gap": "Outstanding bonus credit is shown at `/admin/{store}/bonus` (`outstandingMinor`), not in Analytics or Finance; no gift cards exist yet; no roll-forward of issued, used and expired credit.",
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: outstanding bonus credit (D130) is shown on the bonus page, so the row is not missing."
+      }
+    ],
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "Finance shows the store's outstanding liability for bonus credit, equal to the sum of `commerce.bonus_balance()` over customers, in the main currency.",
+      "A roll-forward for the period shows opening balance, issued, redeemed, expired and closing, which adds up.",
+      "When gift cards exist their outstanding balance is a second liability line and its own report.",
+      "Credits in another currency are converted for display only, never summed silently."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/bonus.ts",
+        "src/lib/bonus.ts",
+        "docs/bonus.md",
+        "src/app/admin/(gated)/[store]/bonus/page.tsx"
+      ],
+      "tests": [
+        "src/server/bonus.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D130"
+    ]
+  },
+  {
+    "id": "analytics.customer-reports-cohorts-repeat-rate",
+    "domain": "analytics",
+    "feature": "Customer reports: cohorts, repeat rate",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Customer reports include cohort analysis, RFM analysis, new vs returning, customers by location, one-time customers, predicted spend tier and returning customers (page read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Customers shows new versus returning customers, repeat purchase rate at 30, 90, 180 and 365 days, purchase frequency and monthly cohorts.",
+      "A customer is keyed by account email or guest email over paid orders; orders in a currency with no rate leave the customer out and are counted.",
+      "Small bases are flagged as small rather than shown as firm rates."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-customers.ts",
+        "src/server/analytics-customers-data.ts",
+        "src/components/admin/analytics/customers-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/customers/page.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-customers.test.ts",
+        "src/server/analytics-customers-data.int.test.ts",
+        "src/components/admin/analytics/customers-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.customer-lifetime-value",
+    "domain": "analytics",
+    "feature": "Customer lifetime value",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Shopify's customer reports page (read 2026-10-03) lists cohort analysis and predicted spend tier (a per-customer segmentation filter) and no separate lifetime value report; the row's link is the predicted spend tier page.",
+      "url": "https://help.shopify.com/en/manual/customers/customer-segmentation/predicted-spend-tier",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Residual: store and cohort level only (historic and predicted); no per-customer predicted value (Shopify's predicted spend tier is per customer).",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Historic LTV is the mean of customers' net revenue and, when costs are known, contribution to date.",
+      "Predicted LTV is contribution per order times orders per customer per year times the owner's lifespan, labelled revenue when costs are not entered.",
+      "LTV:CAC uses the same predicted LTV and the blended CAC.",
+      "Predicted LTV is null, with an add-the-missing-input prompt, when orders per year or contribution per order cannot be known."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-customers.ts",
+        "src/server/analytics-customers-data.ts",
+        "src/components/admin/analytics/customers-view.tsx",
+        "src/lib/analytics-settings.ts"
+      ],
+      "tests": [
+        "src/lib/analytics-customers.test.ts",
+        "src/server/analytics-customers-data.int.test.ts",
+        "src/components/admin/analytics/customers-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.rfm-segments-and-customer-lists",
+    "domain": "analytics",
+    "feature": "RFM segments and customer lists",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The RFM report has an RFM customer list: clicking a group name opens the list filtered to that group (page read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/customers-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Six RFM groups as counts and advice (`SEGMENT_COPY`); no list of members to open, filter or act on. Shopify's RFM report opens an RFM customer list per group.",
+    "history": [],
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "Clicking an RFM group opens a paged list of its customers (name, last order, orders, spend) that matches the group's count.",
+      "The list is store-scoped, uses the same keyed customer definition, and customers outside the converted currencies are counted, not listed as zero.",
+      "The list can be exported to CSV and used as a selectable segment (needs the dynamic segments row)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-customers.ts",
+        "src/server/analytics-customers-data.ts",
+        "src/components/admin/analytics/customers-view.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-customers.test.ts",
+        "src/server/analytics-customers-data.int.test.ts",
+        "src/components/admin/analytics/customers-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.dynamic-segments-for-marketing",
+    "domain": "analytics",
+    "feature": "Dynamic segments for marketing",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Segments are dynamic, rule-based customer lists written with ShopifyQL filters that update automatically, used for analysis and marketing (page read 2026-10-03; plan limits not stated).",
+      "url": "https://help.shopify.com/en/manual/customers/customer-segmentation",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "No rule-based segment builder: no saved segments, no filter on orders, spend, dates, country, group or RFM.",
+    "history": [],
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "An owner builds a segment from a closed list of filters (orders, spend, last order date, country, customer group, RFM group, subscribed) and saves it per store.",
+      "A segment's member count and list update from live data and never include another store's customers.",
+      "Marketing consent is a filter, and a segment never reveals a customer to anyone who may not see customers.",
+      "A segment is selectable as the audience of a broadcast or automation (wave 5)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-customers.ts",
+        "src/server/analytics-customers-data.ts"
+      ],
+      "tests": [
+        "src/server/analytics-customers-data.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.inventory-reports",
+    "domain": "analytics",
+    "feature": "Inventory reports",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Inventory reports: month-end snapshot and value, inventory sold daily, products by percentage sold, sell-through rate, ABC product analysis, inventory remaining per product, and inventory adjustment changes and counts.",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/inventory-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Inventory shows stock, stock value at cost, days of stock from weighted 7- and 30-day velocity, stockouts, dead stock (90 days) and sell-through and turnover.",
+      "A product that has not sold has no days-of-stock figure, never infinity or zero.",
+      "Stock at cost uses known costs only and says so."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-inventory.ts",
+        "src/server/analytics-inventory-data.ts",
+        "src/components/admin/analytics/inventory-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/inventory/page.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-inventory.test.ts",
+        "src/server/analytics-inventory-data.int.test.ts",
+        "src/components/admin/analytics/inventory-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.returns-and-refund-analytics",
+    "domain": "analytics",
+    "feature": "Returns and refund analytics",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The sales report carries 'sales reversals' (refunds, order edits, cancellations, adjustments) with returned quantity, reversed quantity and return line item reason (page read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "Residual: refunds made only in the Stripe Dashboard and returns made without Kaizen's withdrawal or return request are not seen (no refund webhook; the pages say so).",
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "full",
+        "why": "D153 shipped: `returnsReport()` gives return rate by orders and units, returned value, refunded for returns, return reasons (a fixed list, withdrawals shown as 'No reason given'), time to refund, refunds after the deadline, overdue refunds and returns by product, each with minimum volumes, and the section sits on the Traffic page under Refunds; the refunds report has refund rate and by market. The old gap 'no return reasons' is closed; refunds made only in Stripe's Dashboard are still unseen, which the pages say."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Return rate (orders and units), returned value, refunded for returns and reasons are shown for a period, from `returns` and `return_lines`, in the main currency without VAT.",
+      "A withdrawal's missing reason is its own row, shares appear only from 10 returns with a reason, and no rate shows below 30 orders or units.",
+      "A store with no recorded return sees what is missing, never 0 %.",
+      "Refund rate, refunds by market and time to refund agree with the refunds Kaizen made; copied and host orders never count."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-returns.ts",
+        "src/server/analytics-returns-data.ts",
+        "src/components/admin/analytics/returns-view.tsx",
+        "src/server/analytics-refunds-data.ts",
+        "src/components/admin/analytics/refunds-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/traffic/page.tsx",
+        "src/lib/return-admin.ts",
+        "docs/returns.md"
+      ],
+      "tests": [
+        "src/lib/analytics-returns.test.ts",
+        "src/server/analytics-returns-data.int.test.ts",
+        "src/components/admin/analytics/returns-view.test.ts",
+        "src/server/analytics-refunds-data.int.test.ts",
+        "src/components/admin/analytics/refunds-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152",
+      "D153"
+    ]
+  },
+  {
+    "id": "analytics.subscription-analytics",
+    "domain": "analytics",
+    "feature": "Subscription analytics",
+    "shopify": {
+      "tier": "native",
+      "text": "Native for the cut only: the sales report splits sales by subscription versus one-time purchase; MRR, churn and active-subscription dashboards are in Shopify's free Subscriptions app and other apps.",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/sales-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Residual: subscription expansion, contraction and reactivation are not tracked (no status history).",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Subscriptions shows MRR normalised to a month in the main currency, its movements, churn rate and revenue churn from subscriptions active at the period's start.",
+      "Failed renewals and subscriber counts are shown for the period.",
+      "A currency with no rate is left out and counted."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-subscriptions.ts",
+        "src/server/analytics-subscriptions-data.ts",
+        "src/components/admin/analytics/subscriptions-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/subscriptions/page.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-subscriptions.test.ts",
+        "src/server/analytics-subscriptions-data.int.test.ts",
+        "src/components/admin/analytics/subscriptions-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152",
+      "D102"
+    ]
+  },
+  {
+    "id": "analytics.on-site-search-analytics",
+    "domain": "analytics",
+    "feature": "On-site search analytics",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Behavior reports include Searches by search query, Searches with no clicks, Searches with no results and Search conversions over time.",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/default-reports/behaviour-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Searches, no-result queries and click-through are reported (`analytics-search-data.ts`, on the Traffic page); revenue after a search is not tracked because a search is not tied to a visit or an order (`revenueTracked`).",
+    "history": [],
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "Search analytics shows orders and revenue that followed a search in the same visit, without a cookie or storage.",
+      "Zero-result and low click-through queries are listed with counts and a link to act on them.",
+      "A figure that cannot be known says so; revenue is the paid-order definition."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/analytics-search-data.ts",
+        "src/server/search.ts",
+        "src/server/search-experiment.ts",
+        "src/components/admin/analytics/traffic-view.tsx",
+        "src/app/admin/(gated)/[store]/search/page.tsx"
+      ],
+      "tests": [
+        "src/server/analytics-search-data.int.test.ts",
+        "src/server/search.int.test.ts",
+        "src/server/search-experiment.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D72",
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.targets-alerts-forecasting",
+    "domain": "analytics",
+    "feature": "Targets, alerts, forecasting",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Targets: any metric (gross sales, orders, conversion rate and more) with one optional filter, a fixed amount and a period (week, month, quarter, year or custom, up to 2 years ahead or behind), shown as a gauge; the page mentions no forecast and no alerts (alerts only through Shopify Flow).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/overview-dashboard/targets",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "One monthly net-revenue target; alerts and the forecast exist (`alertsFor()`, `forecastMonth()`) but alerts are only visible in the admin and are never emailed or pushed; the forecast covers month revenue only.",
+    "history": [],
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "An owner can opt in to alert emails, sent once per alert per day to chosen staff, with the same minimum-volume rules as the page. (Beyond Shopify's native Targets, which have no alerts.)",
+      "Targets can be set for orders, conversion or AOV as well as net revenue, with progress against the weekday-weighted expectation.",
+      "The forecast says it is an estimate, gives a range and says too little history under 14 days; more than revenue is forecast. (Beyond Shopify's native Targets, which have no forecast.)",
+      "No alert email is sent for a small number or a copied or host order."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-alerts.ts",
+        "src/lib/analytics-targets.ts",
+        "src/lib/analytics-forecast.ts",
+        "src/server/analytics-insights.ts",
+        "src/components/admin/analytics/alerts.tsx",
+        "src/components/admin/analytics/home-alerts.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-alerts.test.ts",
+        "src/lib/analytics-targets.test.ts",
+        "src/lib/analytics-forecast.test.ts",
+        "src/server/analytics-insights.int.test.ts",
+        "src/components/admin/analytics/alerts.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.explaining-why-sales-changed",
+    "domain": "analytics",
+    "feature": "Explaining why sales changed",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Lifetimely (a paid analytics app, free plan with daily P&L, paid from 49 USD a month) offers LTV and cohort reports, profit dashboards, AI insights and a Profit Agent that points out what needs attention; its page does not say it explains why sales changed.",
+      "url": "https://apps.shopify.com/lifetimely-lifetime-value-and-profit-analytics",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "history": [],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "The explanation splits a revenue change into traffic, conversion and basket (orders times AOV without visits) and names the segment that moved most (device, channel, market, product) and when it started.",
+      "Words are templates over numbers computed in code; a model is never involved.",
+      "A period with fewer than 10 orders carries a chance warning.",
+      "The AI manager's `explain_change` repeats the same result."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-diagnosis.ts",
+        "src/server/analytics-tools.ts",
+        "src/server/analytics-insights.ts",
+        "src/components/admin/analytics/overview-sections.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-diagnosis.test.ts",
+        "src/server/analytics-tools.int.test.ts",
+        "src/server/analytics-insights.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ]
+  },
+  {
+    "id": "analytics.export-reports-to-csv",
+    "domain": "analytics",
+    "feature": "Export reports to CSV",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Reports export for use in spreadsheets, and the finance reports state that all reports support CSV export beyond on-screen row limits (pages read 2026-10-03).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/finances-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "No analytics, order or customer export: CSV exists only for the Work module's reports and invoices and the DAC7 report (`toCsv()`).",
+    "history": [],
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "Every analytics table can be downloaded as CSV for the chosen period and comparison, matching what the page shows.",
+      "Orders and customers can be exported as a store-scoped job (full export beyond screen limits), with a header row and the store's main currency stated.",
+      "Spreadsheet text goes through `toCsv()` so a cell starting with =, +, - or @ cannot run as a formula.",
+      "An export refuses members without access and never includes another store's rows."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": []
+  },
+  {
+    "id": "analytics.scheduled-report-emails",
+    "domain": "analytics",
+    "feature": "Scheduled report emails",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify has no native scheduled report email: community threads and app listings (searched 2026-10-03) say reports are exported by hand and apps such as Data Export IO, Report Toaster and Shop Reports schedule them; the row's link is an app page read in the first report.",
+      "url": "https://apps.shopify.com/betterreports",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "None: no report email exists; the five-minute cron has no report job.",
+    "history": [],
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "An owner schedules a daily, weekly or monthly email of a chosen report to chosen staff, sent in the store's time zone.",
+      "The email holds the figures worked out in code, with what is missing said plainly, and a link to the page.",
+      "A send is idempotent per report and period, never twice, and a failure never blocks other reports.",
+      "Recipients are staff of the store only."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D41"
+    ]
+  },
+  {
+    "id": "analytics.accounting-integrations",
+    "domain": "analytics",
+    "feature": "Accounting integrations",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Accounting connectors are App Store apps; the row's link is an app page read in the first report.",
+      "url": "https://apps.shopify.com/advanced-reports",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Webhooks to Zapier, Make and Slack send order, customer and subscription events (D41, D101); Tripletex is listed as coming soon and exists only as the design proposal `docs/tripletex.md` (nothing built); no ledger export.",
+    "history": [],
+    "bucket": "B",
+    "wave": 2,
+    "criteria": [
+      "Orders, refunds and (for Work) invoices reach an accounting system as vouchers with the gap-free document number, idempotent and retried.",
+      "VAT is mapped per rate to the accounting system's codes, confirmed by the owner.",
+      "A failed sync is shown per object with Sync again, and never double-books.",
+      "A sandbox test covers the connector; it is live only with the vendor's credential."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/integrations.ts",
+        "src/server/integrations.ts",
+        "docs/tripletex.md",
+        "src/components/admin/integration-mark.tsx"
+      ],
+      "tests": [
+        "src/lib/integrations.test.ts",
+        "src/server/integrations.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D41",
+      "D101"
+    ]
+  },
+  {
+    "id": "analytics.third-party-analytics-and-pixels-with-consent",
+    "domain": "analytics",
+    "feature": "Third-party analytics and pixels with consent",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Pixels are JavaScript snippets that run on the store, customer accounts pages or checkout and pass customer events (page views, product views, cart updates, purchases, searches) to marketing and analytics tools, added as app pixels or custom pixels; in the EEA and UK they run only once the visitor has given the permissions the pixel needs (Marketing and Analytics by default), and the merchant stays responsible for privacy compliance. The pages read do not say how Google, Meta or TikTok pixels receive events.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/pixels/overview",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 4,
+    "gap": "Consent-gated loading works (GA4, GTM, Meta Pixel, store custom code, Consent Mode v2), but no ecommerce events (view item, add to cart, checkout, purchase) are sent and no server-side conversion events exist.",
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Read the loader: `ConsentManager` loads GA4, GTM and the Meta Pixel only after consent and sets Google Consent Mode v2, and a store's own code is added after consent (D61), but the site pushes no commerce events anywhere: the only calls are gtag consent, gtag config, the GTM start event and fbq init and PageView, with no view_item, add_to_cart, begin_checkout, purchase or Meta Purchase event and no server-side events. A pixel that sees page views but no purchases cannot measure ads, so the row is partial."
+      }
+    ],
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "With consent, the storefront sends view item, add to cart, begin checkout and purchase events to GA4 or GTM's data layer and to the Meta Pixel, with item, value and currency from the order.",
+      "Nothing is sent, and no script loads, before the category is accepted; withdrawing consent stops it.",
+      "The purchase event fires once per order and carries the order's amount without a personal detail.",
+      "Server-side conversion events are sent only for visitors who consented, and never for copied or host orders."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/consent/consent-manager.tsx",
+        "src/components/consent/site-consent.tsx",
+        "src/components/consent/store-custom-code.tsx",
+        "src/lib/cookie-consent.ts",
+        "src/lib/custom-code.ts",
+        "src/server/consents.ts"
+      ],
+      "tests": [
+        "src/lib/cookie-consent.test.ts",
+        "src/lib/custom-code.test.ts",
+        "src/server/consents.int.test.ts",
+        "e2e/cookies.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D58",
+      "D61",
+      "D14"
+    ]
+  },
+  {
+    "id": "analytics.industry-benchmarks",
+    "domain": "analytics",
+    "feature": "Industry benchmarks",
+    "shopify": {
+      "tier": "native",
+      "text": "Native in the past (the Benchmarks report); the page read on 2026-10-03 no longer describes a benchmarks report and mentions a session benchmark only as an example of a target, consistent with the deprecation of 19 May 2026 noted earlier (not stated on that page).",
+      "url": "https://help.shopify.com/en/manual/reports-and-analytics/shopify-reports/report-types/custom-reports/benchmarks",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 1,
+    "gap": "None. Needs other merchants' data, which Kaizen does not have; Shopify deprecated its own benchmarks on 19 May 2026.",
+    "history": [],
+    "bucket": "D",
+    "wave": null,
+    "criteria": [
+      "Declared not applicable with reasons: Kaizen compares a store with its own history and last year, never with other stores' data, and says so.",
+      "No figure is shown as a benchmark unless its source is named."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": []
+  },
+  {
+    "id": "analytics.shopify-audiences",
+    "domain": "analytics",
+    "feature": "Shopify Audiences",
+    "shopify": {
+      "tier": "plus",
+      "text": "Plus. Shopify Audiences is available only on Shopify Plus and generates targeted audience lists for external ad platforms such as Meta and Google.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/audiences",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 1,
+    "gap": "Not available to EU merchants on Shopify either; it rests on Shopify's own network data.",
+    "history": [],
+    "bucket": "D",
+    "wave": null,
+    "criteria": [
+      "Declared not applicable with reasons: it needs a cross-merchant network Kaizen does not have and is Plus-only on Shopify.",
+      "Kaizen offers no audience-sharing feature that moves a shopper's data to a third party without consent."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": []
+  }
+]

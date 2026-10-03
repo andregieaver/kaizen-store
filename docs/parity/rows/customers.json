@@ -1,0 +1,1311 @@
+[
+  {
+    "id": "customers.customer-profiles-notes-csv-import-and-export",
+    "domain": "customers",
+    "feature": "Customer profiles, notes, CSV import and export",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Create and edit profiles (name, email, phone, address, tax settings, marketing preferences), internal notes and tags, merge duplicates, delete (not with pending orders or subscriptions), bulk edit of names, tags, marketing subscriptions and metafields, CSV import and export, GDPR erasure requests. A merge keeps notes up to 5,000 characters and tags up to 250; profiles with subscription contracts, vaulted cards or store credit cannot be merged. The page gives no CSV size limits or plan differences.",
+      "url": "https://help.shopify.com/en/manual/customers/manage-customers",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Verified at HEAD: an admin list (search by name or email) and a read-mostly customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120) and manual bonus adjustments (D130). No add or edit of a customer's own details, no notes or tags (custom fields are the nearest thing), no merge, no customer CSV import or export (`customerFieldExport()` is only called from a test), no staff GDPR export or erasure; a customer can delete their own account (D28).",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "Staff add a customer and edit name, email, phone, address and company details; an email already in the store is refused, every change is written to the audit log, and nothing leaks to another store (integration test).",
+      "Staff add and remove notes and tags on a customer; the list filters by tag and the page shows notes with author and time.",
+      "Staff merge two customers: orders, subscriptions, wishlists and the bonus ledger move to the one kept, order numbers are untouched, and a merge that would lose a company or subscription link is refused with the reason.",
+      "Customers export to CSV and import from CSV through the shared import and export pipeline (dry run, per-line errors, resumable), with spreadsheet formulas neutralised by `toCsv()`.",
+      "Staff export one customer's data and erase them (orders kept as bookkeeping law requires, without the link to the person), each logged."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/customer-admin.ts",
+        "src/app/admin/(gated)/[store]/customers/page.tsx",
+        "src/app/admin/(gated)/[store]/customers/[customerId]/page.tsx",
+        "src/app/admin/(gated)/[store]/customers/[customerId]/actions.ts",
+        "src/components/admin/customer-bar.tsx",
+        "src/server/field-entities.ts",
+        "src/server/customer-tiers.ts"
+      ],
+      "tests": [
+        "src/server/customer-admin.int.test.ts",
+        "src/server/customers.int.test.ts",
+        "src/server/custom-fields-store.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D28",
+      "D35",
+      "D108",
+      "D120",
+      "D130"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.customer-segments-and-tags",
+    "domain": "customers",
+    "feature": "Customer segments and tags",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Segments are dynamic, rule-based customer lists (a segment query with filters such as predicted spend tier and email subscription status) that update as customers change; they target Shopify Messaging campaigns. The Winter '26 Edition added segmenting by product categories viewed or purchased. Customer tags are separate and editable on the profile.",
+      "url": "https://help.shopify.com/en/manual/customers/customer-segmentation",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "gap": "Nothing here is a segment or a tag. RFM groups, cohorts and lifetime value are computed as counts and advice in analytics (D152) and discount groups (D108) are assigned by hand. No customer tags, no saved rule-based segment, no member list, and nothing (discounts, campaigns, emails) can target a segment.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "Customers carry tags that staff add and remove one by one or in bulk, and the customer list filters by tag (store-scoped, integration test).",
+      "An owner saves a segment from rules (orders, total spent, last order date, country, discount group, tag, RFM group, marketing consent) joined by all or any; it shows a live count and a member list.",
+      "The RFM rule uses the same function as the analytics page, so a segment 'Champions' has exactly the count the Customers analytics shows (test).",
+      "A segment can be chosen as the audience of a campaign, a discount or an email send; a customer who stops matching leaves the audience at send time."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-customers.ts",
+        "src/server/analytics-customers-data.ts",
+        "src/components/admin/analytics/customers-view.tsx",
+        "src/lib/customer-tiers.ts",
+        "src/server/customer-tiers.ts"
+      ],
+      "tests": [
+        "src/lib/analytics-customers.test.ts",
+        "src/server/analytics-customers-data.int.test.ts",
+        "src/components/admin/analytics/customers-view.test.ts",
+        "src/lib/customer-tiers.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D108",
+      "D152"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "Skeptic recheck: no tags, no saved segments and no audience; RFM counts are the analytics rows and discount groups are assigned by hand; same capability is missing in analytics.dynamic-segments-for-marketing."
+      }
+    ]
+  },
+  {
+    "id": "customers.email-marketing-broadcasts-and-lifecycle-automations",
+    "domain": "customers",
+    "feature": "Email marketing: broadcasts and lifecycle automations",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Shopify Email, now in the Shopify Messaging app). The first 10,000 emails each month are free, then $1 per 1,000. Templates, segments, and automations for welcome, abandoned cart, browse abandonment, follow-up, win-back and drip sequences. The Winter '26 Edition adds best-seller blocks in emails.",
+      "url": "https://apps.shopify.com/shopify-email",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "gap": "Verified: only transactional email, cart reminders (D33) and the AI manager's one-customer `email_customer` (gated). D93 newsletter sign-ups are emailed to the owner and not stored; there is no subscriber list or marketing-consent field on customers, no composer, no send to a segment and no lifecycle automation beyond cart reminders (welcome, post-purchase, win-back).",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A subscriber list with consent (source, consent text, time, double opt-in time, language) is kept apart from order customers; one-click unsubscribe with List-Unsubscribe headers; export and erase.",
+      "An owner writes an email in the store's languages from a template, sends a test to staff, and sends now or later to a segment or all subscribers; only subscribed addresses receive it, once each (idempotency key).",
+      "Bounced or complaining addresses are suppressed from later sends (uses the email event log), and each send reports sent, delivered, bounced and unsubscribed.",
+      "Lifecycle automations (welcome, post-purchase, win-back) are switched on per store and fire once per person per trigger; cart reminders stay as they are.",
+      "No AI-written text reaches a subscriber without passing `findClaims()` and a person's approval (gated send)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/cart-reminders.ts",
+        "src/lib/cart-reminders.ts",
+        "src/server/forms.ts",
+        "src/server/email.ts",
+        "src/server/email-events.ts",
+        "src/server/owner-tools.ts",
+        "src/app/api/cron/cart-reminders/route.ts"
+      ],
+      "tests": [
+        "src/server/cart-reminders.int.test.ts",
+        "src/lib/cart-reminders.test.ts",
+        "src/server/forms.int.test.ts",
+        "src/server/email-events.int.test.ts",
+        "src/server/email.test.ts",
+        "e2e/cart-reminders.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D33",
+      "D93",
+      "D104"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: abandoned-cart reminders (D33) are real automation and the AI manager can email one customer, so not missing; still no subscriber list, composer or send to a segment. Entry written in wave 0 from the first report, which did not log it."
+      }
+    ]
+  },
+  {
+    "id": "customers.workflow-automation-flow",
+    "domain": "customers",
+    "feature": "Workflow automation (Flow)",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Shopify Flow, free app). An automation platform of triggers, conditions and actions across the store and its apps. Free on Basic, Grow, Advanced and Plus; advanced actions such as Send HTTP Request need Grow or above, custom partner tasks are Plus only, and usage limits follow the plan's API rate limits.",
+      "url": "https://help.shopify.com/en/manual/shopify-flow",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Outbound event webhooks to Zapier and Make (D41) and event messages to Slack (D101), with a queue and retries, are the only automation. No trigger-condition-action builder in the product, no inbound triggers, no internal actions (tag a customer, create a task).",
+    "bucket": "A",
+    "wave": 9,
+    "criteria": [
+      "An owner builds a workflow in the admin from one trigger (order paid, customer created, low stock, return requested), conditions on the event's fields and one or more actions (tag a customer, email staff, post to Slack, send a webhook).",
+      "A workflow runs once per event (idempotency key), its runs and outcomes are logged with retries, and a loop or runaway is stopped by a depth and rate cap (test).",
+      "An action that emails a customer or moves money is gated and waits for a person's yes, like the AI manager's gated tools.",
+      "A workflow never sees another store's events, and is not copied with a store (`never` in `COPY_RULES`)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/integrations.ts",
+        "src/lib/integrations.ts",
+        "src/server/slack.ts",
+        "src/lib/slack.ts",
+        "src/app/admin/(gated)/[store]/integrations/page.tsx"
+      ],
+      "tests": [
+        "src/server/integrations.int.test.ts",
+        "src/lib/integrations.test.ts",
+        "src/lib/slack.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D41",
+      "D101"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.abandoned-checkout-recovery-emails",
+    "domain": "customers",
+    "feature": "Abandoned checkout recovery emails",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. One automated email a chosen time after the checkout was abandoned, with a link back to the cart; not sent after a purchase, with a payment error, for a phone-only checkout, an unshippable address, free or unavailable products, or a high-risk Shopify Payments attempt. The article describes no discount code and no SMS (SMS abandoned-checkout automations are in Shopify Messaging).",
+      "url": "https://help.shopify.com/en/manual/orders/abandoned-checkouts",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Caveat, not a gap: email only, like the article. Whether a reminder is marketing needs each store's own consent decision (D33 gives the notice and the opt-out).",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store starts with three reminders (after an hour, a day and three days), each editable in timing, text per language and an optional discount code, and can switch them on or off.",
+      "A shopper's email is kept at checkout only after a valid address is typed, with a notice and a way to say no; signed-in customers are not captured.",
+      "At most one reminder per cart per run, claimed before it is sent, so none goes twice; reminders stop when the cart is paid, when the same email buys, on opt-out and after 30 days.",
+      "The reminder's button puts the same cart back in the shopper's browser; the email and cart are erased on opt-out and 60 days after capture."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/cart-reminders.ts",
+        "src/lib/cart-reminders.ts",
+        "src/app/admin/(gated)/[store]/cart-reminders/page.tsx",
+        "src/app/admin/(gated)/[store]/cart-reminders/reminder-form.tsx",
+        "src/app/api/cron/cart-reminders/route.ts",
+        "src/app/s/[store]/[market]/unsubscribe/[token]/page.tsx"
+      ],
+      "tests": [
+        "src/server/cart-reminders.int.test.ts",
+        "src/lib/cart-reminders.test.ts",
+        "e2e/cart-reminders.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D33"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.sms-marketing",
+    "domain": "customers",
+    "feature": "SMS marketing",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Shopify Messaging), pay per send, but limited by country. Recipient countries: Austria (paused from 1 October 2026), Canada, Denmark, Finland, Italy, Luxembourg, Poland, Portugal, Spain (paused from 15 September 2026), Sweden, United Kingdom, United States. Norway is not on the list. Campaigns plus abandoned cart, abandoned checkout and browse abandonment automations.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/create-marketing/shopify-messaging/sms/requirements",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No SMS channel: no provider, no phone-number consent, no sender id. Plan section 5, decision 5: integrate one EU-hosted provider after email broadcasts. Shopify's own SMS marketing does not reach Norway.",
+    "bucket": "C",
+    "wave": 5,
+    "criteria": [
+      "A decision is recorded (docs/parity-plan.md section 5, decision 5) to integrate one EU-hosted SMS provider or to skip it.",
+      "If built: a phone number is collected with explicit SMS consent text, time and source; STOP unsubscribes at once; nothing is sent to a number without consent (test).",
+      "Sends respect quiet hours in the recipient's time zone and the country's sender rules, go through the same segments as email, and show their cost, never above an owner-set cap."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "customers.signup-forms-and-popups-building-a-list",
+    "domain": "customers",
+    "feature": "Signup forms and popups building a list",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Shopify Forms, a free app installed by the merchant). Several forms build the subscriber list, can approve wholesale retailers and learn about visitors; a new or existing discount can be added as an incentive to sign up for email, SMS or WhatsApp; subscribers can be tagged to build segments; analytics and automation triggers. The page does not describe popups, consent or double opt-in.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/create-marketing/forms-app",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "D93 forms email the owner (up to five recipients kept in the page) with double opt-in for sign-ups and the consent in the email; D121 modal rows can hold a form and open on a timer, exit intent or click. `form_submissions` is a throttle and confirmation log pruned after 30 days, not a list: no subscriber record, no incentive discount, no tags.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A confirmed newsletter sign-up creates or updates a subscriber (store, email, source form, consent text and time, language, double opt-in time), not only an email to the owner.",
+      "A sign-up form or popup can give an incentive: after confirmation a single-use discount code is emailed once per address.",
+      "A form can tag its subscribers and the tags are selectable in segments.",
+      "A popup built as a modal row opens by its trigger, respects the visitor's remembered choice only after consent, and never shows over a working page."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/forms.ts",
+        "src/server/forms.ts",
+        "src/components/form-section.tsx",
+        "src/components/site-form.tsx",
+        "src/app/api/forms/route.ts",
+        "src/app/api/forms/confirm/route.ts",
+        "src/components/page-modal.tsx",
+        "src/lib/page-modal.ts"
+      ],
+      "tests": [
+        "src/lib/forms.test.ts",
+        "src/server/forms.int.test.ts",
+        "e2e/modals.spec.ts",
+        "e2e/ab-form-goal.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D93",
+      "D121"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.discount-codes",
+    "domain": "customers",
+    "feature": "Discount codes",
+    "weight": 5,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Discount types: amount off products or the order (percentage or fixed), Buy X get Y, free shipping; customers enter codes at checkout (or in Shopify POS); discounts can be scheduled. Combinations are chosen per discount: up to 5 product or order codes and 1 shipping code per order. The overview pages read give no limit on codes, customer eligibility or bulk generation.",
+      "url": "https://help.shopify.com/en/manual/discounts",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Verified `discount_codes` (D31): percentage, fixed amount per market or free shipping; all products or chosen product ids only (no category or tag scope); minimum order per market; start and end; total uses; once per customer (signed in). One code per order; no eligibility by group, customer or segment, no minimum quantity, no bulk or unique code generation.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A code applies to chosen products, categories or tags, and can require a minimum quantity as well as a minimum amount.",
+      "A code can be limited to customer groups or chosen customers; one outside the limit is refused with the reason.",
+      "An owner generates up to a stated number of unique single-use codes from a pattern and exports them as CSV; each code has its own use count under a row lock.",
+      "More than one code per order is allowed within the owner's combination rules, and `cartSummary()` and `placeOrder()` agree to the minor unit, in a NOK and a euro scenario (`checkout-kinds.int.test.ts`)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/discounts.ts",
+        "src/server/discounts.ts",
+        "src/components/admin/discount-editor.tsx",
+        "src/app/admin/(gated)/[store]/discounts/page.tsx",
+        "src/app/admin/(gated)/[store]/discounts/discount-form.tsx",
+        "src/components/discount-code-form.tsx",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts"
+      ],
+      "tests": [
+        "src/lib/discounts.test.ts",
+        "src/server/discounts.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "e2e/discounts.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D31"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.automatic-discounts",
+    "domain": "customers",
+    "feature": "Automatic discounts",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Automatic discounts apply without a code (amount off, Buy X get Y, free shipping); up to 25 active automatic discounts per store; each discount sets which classes (product, order, shipping) it combines with, and when they cannot combine the best for the customer is chosen.",
+      "url": "https://help.shopify.com/en/manual/discounts/discount-combinations",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Verified `campaigns` (D114 to D116): percentage off, buy N pay for M and a free product over a basket amount, by product, category or tag, customer group, market and limits, with a stacking flag. No automatic fixed-amount discount, no automatic free-shipping discount (free shipping above a basket value is only a shipping-rate setting), no spend tiers.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "An owner makes an automatic discount of a fixed amount per market off chosen products or the order, and an automatic free-shipping discount above a basket value per market.",
+      "An automatic discount can be tiered by spend (spend X get a % off), applied without a code.",
+      "`cartSummary()` and `placeOrder()` agree to the minor unit for each new kind, in a NOK and a euro scenario (`checkout-kinds.int.test.ts`).",
+      "A product page and card announce the offer from the cached `campaignNotices()` read without a per-request query."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/campaigns.ts",
+        "src/server/campaigns.ts",
+        "src/components/admin/campaign-editor.tsx",
+        "src/app/admin/(gated)/[store]/campaigns/page.tsx",
+        "src/app/admin/(gated)/[store]/campaigns/campaign-form.tsx",
+        "src/lib/campaign-notices.ts",
+        "src/server/cart-summary.ts"
+      ],
+      "tests": [
+        "src/lib/campaigns.test.ts",
+        "src/server/campaigns.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/lib/campaign-notices.test.ts",
+        "e2e/campaigns.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D114",
+      "D115",
+      "D116"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.buy-x-get-y",
+    "domain": "customers",
+    "feature": "Buy X get Y",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native, as a code or automatic. The customer buys a minimum quantity or a minimum amount of chosen products or collections and gets a quantity free, a percentage off or an amount off each; a maximum number of uses per order can be set. The free or discounted item is never added to the cart automatically.",
+      "url": "https://help.shopify.com/en/manual/discounts/discount-types/buy-x-get-y",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Verified: 'buy N pay for M' (the cheapest N minus M units free) and a free product over a basket amount only. No 'buy X of these, get Y of those at 50 % or an amount off', no buy-amount trigger, no limit on uses per order.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "An owner defines a buy set (a quantity or an amount of chosen products, categories or tags) and a get set (a quantity of chosen products) that is free, a percentage off or an amount off, with a maximum number of uses per order.",
+      "Buy and get sets may be different products; which units are discounted is stated and tested (cheapest first); each discounted unit's share is on its own order line so VAT and refunds agree.",
+      "`cartSummary()` and `placeOrder()` agree to the minor unit, in a NOK and a euro scenario (`checkout-kinds.int.test.ts`), and the offer is left off subscriptions, bookings and appointments as other campaigns are."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/campaigns.ts",
+        "src/server/campaigns.ts",
+        "src/components/admin/campaign-editor.tsx",
+        "src/server/cart-summary.ts"
+      ],
+      "tests": [
+        "src/lib/campaigns.test.ts",
+        "src/server/campaigns.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D114",
+      "D115",
+      "D116"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.tiered-and-volume-discounts",
+    "domain": "customers",
+    "feature": "Tiered and volume discounts",
+    "weight": 3,
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify's discount types are amount off, Buy X get Y and free shipping; the page says tiered, volume or spend-more-save-more discounts are not native and need an app from the App Store, Checkout Blocks (Plus only) or a custom app. (The first report's tier was from memory and is confirmed.)",
+      "url": "https://help.shopify.com/en/manual/discounts/discount-types",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "gap": "Several overlapping multi-buy campaigns and a stacking percentage approximate a ladder, but no single discount has tiers (buy 3 or more save a %, spend X save b %), and no ladder is shown on the product page.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "An owner defines tiers on one discount from quantity or spend thresholds, each with a percentage or amount; the highest tier reached applies, never the sum of tiers.",
+      "The product page shows the ladder for that product and the cart says how far the next tier is.",
+      "`cartSummary()` and `placeOrder()` agree to the minor unit, in a NOK and a euro scenario, with each line's VAT worked out on what is paid."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/campaigns.ts",
+        "src/server/campaigns.ts",
+        "src/lib/campaign-notices.ts"
+      ],
+      "tests": [
+        "src/lib/campaigns.test.ts",
+        "src/server/campaigns.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D114",
+      "D115"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: overlapping multi-buy campaigns and a stacking percentage approximate a ladder, so not missing; no true spend-more-save-more discount. Entry written in wave 0 from the first report, which did not log it."
+      }
+    ]
+  },
+  {
+    "id": "customers.discount-stacking-and-customer-targeted-discounts",
+    "domain": "customers",
+    "feature": "Discount stacking and customer-targeted discounts",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Three classes (product, order, shipping); most pairs can combine and two shipping discounts cannot; a customer may use up to 5 product or order codes and 1 shipping code per order; discounts apply product first, then order, then shipping; the merchant sets per discount which classes it combines with, and when they cannot combine the best for the customer wins with the message 'Discount couldn't be used with your existing discounts'. Only Plus can combine several product discounts on one line. Customer targeting by segment is not on the page read.",
+      "url": "https://help.shopify.com/en/manual/discounts/discount-combinations",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "The order is fixed in code: campaigns, then group discount (D108), then referral welcome discount (D131), then one code (D31), then bonus credits (D130). The owner cannot choose which discounts combine, only one code applies, and codes are not limited to groups or segments. Campaigns can be limited per group and per customer (D115, D116).",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "An owner chooses per discount which kinds it may combine with (campaign, code, shipping); the defaults equal today's fixed order so nothing changes unasked.",
+      "When discounts cannot combine, the one best for the shopper is applied and the cart says why another was not.",
+      "A code can be limited to customer groups, chosen customers or a segment, and a shopper outside it is told so.",
+      "`cartSummary()` and `placeOrder()` agree to the minor unit for every allowed combination, in a NOK and a euro scenario."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/discounts.ts",
+        "src/lib/campaigns.ts",
+        "src/lib/customer-tiers.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/server/discounts.ts"
+      ],
+      "tests": [
+        "src/lib/discounts.test.ts",
+        "src/lib/campaigns.test.ts",
+        "src/server/campaigns.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D31",
+      "D108",
+      "D114",
+      "D115",
+      "D116"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.omnibus-30-day-lowest-price-reference",
+    "domain": "customers",
+    "feature": "Omnibus 30-day lowest-price reference",
+    "weight": 4,
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify has no built-in 30-day lowest-price display; the listing at this address (Complimus) saves every price daily and shows the lowest price of the last 30 days on discounted products, with Markets and multi-currency support; free for up to 100 products, then from $14.99 a month.",
+      "url": "https://apps.shopify.com/omnibus-price",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Caveat: the reference shows only where the current price is below the lowest price in the previous 30 days of that market (`prior_30d_minor`); campaign and code discounts are not advertised against a was-price, so they raise no reference-price question.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A price changes only through `commerce.set_price`, which keeps the history per variant and market.",
+      "`commerce.current_prices.prior_30d_minor` is the lowest price that applied in the 30 days before the current price began; a first price has none.",
+      "`<Price>` shows the reference only when the current price is lower than it, with the label, in the market's currency and VAT display."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/pricing.ts",
+        "src/components/price.tsx",
+        "src/server/catalog.ts",
+        "supabase/migrations/20260923235847_platform_rules.sql"
+      ],
+      "tests": [
+        "src/lib/pricing.test.ts",
+        "src/db/commerce.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "customers.gift-cards",
+    "domain": "customers",
+    "feature": "Gift cards",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. 'Sell gift cards' is listed on every plan (Basic, Grow, Advanced, Plus).",
+      "url": "https://www.shopify.com/pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No gift cards: no card product, code, balance or liability. `docs/bonus.md` lists credits as gift cards among what the bonus program does not do. One row for the one Shopify feature (it replaces catalogue.gift-cards).",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A store sells gift cards in fixed amounts (and an optional custom amount within limits) as a product kind; once paid, a unique code goes by email to the recipient on the chosen day with the sender's message.",
+      "A code pays part or all of an order at checkout, the rest of the balance stays, and `cartSummary()` and `placeOrder()` agree to the minor unit, in a NOK and a euro scenario; a gift card is never bought with a gift card.",
+      "The balance is only ever read from an append-only ledger function like the bonus program's; a refund goes back to the card balance or the original method, never both.",
+      "A liability report shows the outstanding balance per currency and equals the ledger's sum (test); expiry is never sooner than the law allows and the VAT treatment is written in the spec."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D130"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.loyalty-and-rewards",
+    "domain": "customers",
+    "feature": "Loyalty and rewards",
+    "weight": 3,
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify has no native loyalty program (store credit is the built-in nearest thing; the Winter '26 Edition announcement does not mention loyalty, so the first report's source did not support the tier). Smile, a typical app, offers points on purchases, VIP tiers, referrals and points for actions such as account creation and birthdays, redeemed as discounts, free shipping, free products or gift cards; free up to 200 orders a month.",
+      "url": "https://apps.shopify.com/smile-io",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "gap": "The bonus program (D130) earns credits on paid goods (5 % by default) for signed-in customers, holds them pending then usable, expires them, redeems them as a last price reduction and keeps an append-only ledger with refund reversals and manual adjustment. Missing next to a loyalty app: VIP tiers or tier multipliers (listed as not built in `docs/bonus.md`), points for actions (account creation, birthday, review, sign-up) and reward kinds beyond a price reduction (free shipping, free product).",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "An owner defines tiers by spend over a window, each with a higher earn rate; a customer sees their tier and the way to the next in My account.",
+      "Points are given for actions (account creation, birthday, newsletter confirmation, review when reviews exist), each once per customer through an idempotent ledger key.",
+      "A reward can be free shipping or a free product as well as a price reduction, and `cartSummary()` and `placeOrder()` agree on it (`checkout-kinds.int.test.ts`).",
+      "The ledger stays append-only and balances come only from `commerce.bonus_balance()`."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/bonus.ts",
+        "src/server/bonus.ts",
+        "src/server/bonus-emails.ts",
+        "src/lib/bonus-admin.ts",
+        "src/lib/bonus-shopper.ts",
+        "src/components/admin/bonus-overview.tsx",
+        "src/components/admin/bonus-settings-form.tsx",
+        "src/components/bonus-credits.tsx",
+        "src/app/admin/(gated)/[store]/bonus/page.tsx",
+        "src/app/s/[store]/[market]/account/bonus/page.tsx"
+      ],
+      "tests": [
+        "src/lib/bonus.test.ts",
+        "src/server/bonus.int.test.ts",
+        "src/server/bonus-subscription.int.test.ts",
+        "src/lib/bonus-admin.test.ts",
+        "src/lib/bonus-shopper.test.ts",
+        "src/components/admin/bonus-ui.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D130"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Skeptic recheck against the app side: Smile's listing offers VIP tiers and points for actions, and docs/bonus.md lists tier multipliers as not built; D130 covers earn, redeem, expiry and ledger only. The first report's own gap text already said 'no tiers or action points'."
+      }
+    ]
+  },
+  {
+    "id": "customers.customer-referral-program",
+    "domain": "customers",
+    "feature": "Customer referral program",
+    "weight": 2,
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify has no native customer-to-customer referral feature (its own Partner and affiliate programmes reward referring merchants). Apps such as ReferTech add refer-a-friend campaigns on the thank-you page and a referral page, a customer dashboard with links and rewards, and fraud checks against self-referral; free for 1 campaign and 50 referrals a year. (The first report's tier was from memory and is confirmed.)",
+      "url": "https://apps.shopify.com/refertech",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Caveat: rewards are bonus credits, not cash; the friend's welcome discount applies to the first paid order of a signed-in customer; the program works only while the bonus program is on.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A signed-in customer gets a code and a link; a friend arriving by it gets the welcome discount on a first paid order only, and self-referral or a customer who has ordered before is refused (SQL guards, integration test).",
+      "The referrer's reward is a bonus credit lot, pending then usable, reversed on refund or cancellation and cut by the monthly cap.",
+      "`cartSummary()` and `placeOrder()` agree on the welcome discount to the minor unit, euro scenario included.",
+      "A referrer never sees who a friend is, and a staff block stops new earnings without taking back old ones."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/affiliates.ts",
+        "src/server/affiliates.ts",
+        "src/server/affiliate-emails.ts",
+        "src/lib/affiliate-capture.ts",
+        "src/components/affiliate-capture.tsx",
+        "src/components/referrals-account-view.tsx",
+        "src/app/s/[store]/[market]/account/referrals/page.tsx",
+        "src/app/admin/(gated)/[store]/affiliates/page.tsx"
+      ],
+      "tests": [
+        "src/lib/affiliates.test.ts",
+        "src/server/affiliates.int.test.ts",
+        "src/db/affiliates.test.ts",
+        "src/lib/affiliate-capture.test.ts",
+        "src/components/admin/affiliate-ui.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D131"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.affiliate-and-creator-programme",
+    "domain": "customers",
+    "feature": "Affiliate and creator programme",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Shopify Collabs, a Shopify-built app, free to install). Creator application pages, personalised gifts and discount codes, unique referral links and codes, conversion and commission tracking with tiered, custom and per-product commissions, and automatic payouts through Shopify Billing with a 2.9 % processing fee. The listing is a US company and English; it names no country restrictions, so EU availability is not confirmed.",
+      "url": "https://apps.shopify.com/collabs",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "D131's store program is customers referring friends for a welcome discount and bonus credits, with no approval. Missing: a creator or affiliate application and approval, per-affiliate commission rates paid in money, a commission ledger with payouts, and a dashboard of clicks and sales for the creator.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A creator applies on a store page (name, email, channel link, consent) and the owner approves or declines; an approved creator gets a code and a link.",
+      "A commission (a percentage of paid goods without VAT, optionally per product or category) accrues on paid orders, is reversed on refund and cancellation, and never accrues on copied or host orders (integration test, euro scenario).",
+      "The commission ledger is append-only, per currency and never converted; the owner records payouts (Kaizen moves no money) and exports them as CSV.",
+      "The creator's dashboard shows clicks, orders and earnings and never a buyer's identity."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/affiliates.ts",
+        "src/server/affiliates.ts",
+        "src/lib/affiliate-admin.ts",
+        "src/components/admin/affiliate-overview.tsx",
+        "src/app/admin/(gated)/[store]/affiliates/page.tsx",
+        "src/app/s/[store]/[market]/account/referrals/page.tsx"
+      ],
+      "tests": [
+        "src/lib/affiliates.test.ts",
+        "src/server/affiliates.int.test.ts",
+        "src/db/affiliates.test.ts",
+        "src/components/admin/affiliate-ui.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D131"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.social-channels-facebook-instagram-tiktok-pinterest",
+    "domain": "customers",
+    "feature": "Social channels (Facebook, Instagram, TikTok, Pinterest)",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native for Facebook and Instagram (Shopify's channel: catalogue sync for Facebook Shop and Instagram Shopping, Meta Pixel and Conversions API with a chosen data-sharing level, ads). TikTok and Pinterest are free apps built by TikTok Inc. and Pinterest (catalogue sync, TikTok Pixel or Pinterest tag, ads, TikTok Shop orders); their listings name no EU restriction.",
+      "url": "https://help.shopify.com/en/manual/online-sales-channels/facebook",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Profile links only (the social media buttons block, D91). No catalogue sync, no Meta Shops or Instagram Shopping feed, no TikTok or Pinterest catalogue.",
+    "bucket": "B",
+    "wave": 5,
+    "criteria": [
+      "One normalised product list produces a Meta catalogue feed, a TikTok catalogue feed and a Pinterest catalogue feed with price with VAT in the market's currency, availability and images; unit-tested against each format.",
+      "Products not for sale (draft, unavailable, no price, restricted) are left out with a report of why.",
+      "Each feed is a tokenised address per store, market and language, rate-limited and cached, and shows price and stock changes within its stated refresh time.",
+      "Live only once the store has connected the channel account and the platform has approved it (bucket B)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/social-links.ts",
+        "src/lib/page-content.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D91"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.ad-pixels-and-conversion-events",
+    "domain": "customers",
+    "feature": "Ad pixels and conversion events",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The Facebook & Instagram channel creates and adds the Meta Pixel, lets the merchant choose the customer data-sharing level and sends events through the Conversions API; the Google & YouTube app adds a conversion-tracking pixel; the TikTok app a TikTok Pixel and the Pinterest app a Pinterest tag.",
+      "url": "https://help.shopify.com/en/manual/online-sales-channels/facebook",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "GA4, GTM and Meta Pixel load only after consent (D58, `ConsentManager`) and send page views only (gtag config, `fbq('track','PageView')`): no view-item, add-to-cart, begin-checkout or purchase events, no server-side Conversions API, no TikTok or Pinterest tags. The owner's own code (D61) can add more, after consent.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "With consent, the storefront sends view-item, add-to-cart, begin-checkout and purchase events to GA4, GTM's data layer and Meta Pixel with product ids, quantity and value in the order's currency, once per order; before consent nothing is sent (e2e).",
+      "A purchase also goes server-side (Meta Conversions API, GA4 Measurement Protocol) with the same event id so it is not counted twice, only for orders whose visitor consented, with hashed email only, never for copied or host orders; the owner's tokens are encrypted.",
+      "TikTok and Pinterest tags can be switched on in the tracking settings and are listed in `KNOWN_COOKIES` and loaded only after consent."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/consent/consent-manager.tsx",
+        "src/lib/cookie-consent.ts",
+        "src/server/consents.ts",
+        "src/components/consent/store-custom-code.tsx"
+      ],
+      "tests": [
+        "src/lib/cookie-consent.test.ts",
+        "src/server/consents.int.test.ts",
+        "e2e/cookies.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D58",
+      "D61"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.marketing-campaign-tracking-and-attribution",
+    "domain": "customers",
+    "feature": "Marketing campaign tracking and attribution",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Campaigns and activities are created, and their results reviewed, from the Growth page; Shop Campaigns, SEO tools, Collabs and Audiences are listed as ways to market. The page read does not describe UTM setup, attribution windows or spend tracking.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/managing-marketing/marketing-campaigns",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "D152 (Analytics, Marketing) sorts each visit into a channel with its source and `utm_campaign` and reports channels with sessions, orders, revenue, CAC and ROAS. Spend is typed by hand per day, channel and campaign; a visit counts only for a cart made the same store day (cookieless), and sales are reported per channel, not per named campaign.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A campaign link builder makes UTM-tagged addresses, and visits with `utm_campaign` are reported per named campaign with sessions, orders, revenue and spend.",
+      "For visitors who accepted marketing or statistics cookies, attribution covers a stated lookback window through a cookie listed in `KNOWN_COOKIES`; without consent it stays same-day and the report says which it used.",
+      "Revenue per campaign is without VAT, in the store's main currency, from paid orders only, never copied or host orders (integration test, euro scenario).",
+      "Ad spend can be imported from a CSV; syncing it from an ad platform is bucket B."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/analytics-traffic.ts",
+        "src/lib/analytics-channels.ts",
+        "src/server/analytics-traffic-data.ts",
+        "src/server/analytics-visits.ts",
+        "src/server/analytics-settings.ts",
+        "src/components/admin/analytics/marketing-view.tsx",
+        "src/components/admin/analytics/spend-form.tsx",
+        "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx"
+      ],
+      "tests": [
+        "src/lib/analytics-traffic.test.ts",
+        "src/server/analytics-traffic-data.int.test.ts",
+        "src/server/analytics-visits.int.test.ts",
+        "src/server/analytics-settings.int.test.ts",
+        "src/components/admin/analytics/marketing-view.test.ts",
+        "src/components/admin/analytics/spend-form.test.ts",
+        "src/lib/visit-record.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D152"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.product-reviews-and-ugc",
+    "domain": "customers",
+    "feature": "Product reviews and UGC",
+    "weight": 4,
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify's own Product Reviews app was discontinued on 6 May 2024 (existing reviews were removed unless exported as CSV); Shopify points merchants to apps such as Judge.me, AirReviews, Ali Reviews, Kooee Reviews, Vitals and Stamped. (The first report's tier is confirmed.)",
+      "url": "https://community.shopify.com/t/shopify-product-reviews-app-discontinued/262560",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "None: no reviews table, form or rating (verified); only a Google Places testimonials component for the business's own Google reviews (D91, `google-reviews.ts`), which is neither product reviews nor user-submitted content. One row for the one Shopify feature (it replaces catalogue.product-reviews-and-ratings).",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A shopper reviews a product with a rating and text; a review is marked verified only when the same account or order email has a paid, delivered order for it (integration test).",
+      "New reviews wait in a moderation queue; the owner approves, hides or answers them; nothing is published unmoderated unless the owner chose so.",
+      "`aggregateRating` in JSON-LD and any star display count only published reviews of the product, never AI text (unit test).",
+      "A review-request email goes out once after delivery, with the store's consent rules and an unsubscribe link; reviews can be imported from CSV."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/google-reviews.ts",
+        "src/lib/google-reviews.ts"
+      ],
+      "tests": [
+        "src/server/google-reviews.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D91"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.wishlists",
+    "domain": "customers",
+    "feature": "Wishlists",
+    "weight": 2,
+    "shopify": {
+      "tier": "app",
+      "text": "App. A community answer says Shopify has not announced a native wishlist; merchants use apps such as Wishlist Guru, Advanced Wishlist and Wishlist Monk (guest wishlists, back-in-stock notifications). (The first report's tier is confirmed.)",
+      "url": "https://community.shopify.com/t/will-shopify-launch-a-native-wishlist-app-soon/159761",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Caveat: lists are private, with no way to share one, and nothing is emailed from them (no price-drop or back-in-stock mail); at most 20 lists and 200 items per list.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A heart on every product card and product page saves the product in the shopper's first list (made on the first save) and, tapped again, takes it out of every list.",
+      "A shopper keeps several lists, renames and deletes them, and moves all or some of a list into the cart.",
+      "A shopper need not sign in: a guest's lists belong to the browser (a hashed token) and join the account at sign-in, merging a list with the same name; lists are visible to no one else.",
+      "Staff see every list, what is in it and what went from a list to the cart and was bought (D36)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/wishlists.ts",
+        "src/server/wishlist-admin.ts",
+        "src/components/wishlist-heart.tsx",
+        "src/components/wishlist-view.tsx",
+        "src/components/admin/wishlist-admin.tsx",
+        "src/app/s/[store]/[market]/wishlist/page.tsx",
+        "src/app/s/[store]/[market]/wishlist/actions.ts",
+        "src/app/admin/(gated)/[store]/wishlists/page.tsx"
+      ],
+      "tests": [
+        "src/server/wishlists.int.test.ts",
+        "src/server/wishlist-admin.int.test.ts",
+        "e2e/wishlist.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D34",
+      "D36"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.back-in-stock-notifications",
+    "domain": "customers",
+    "feature": "Back-in-stock notifications",
+    "weight": 3,
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify does not email shoppers when a product is back in stock; apps do (for example Amp Back in Stock, which auto-notifies by email, SMS and push; free for 10 notifications a month, from $19 a month). The first report's source (a changelog about SMS automations) does not mention back-in-stock and has been replaced.",
+      "url": "https://apps.shopify.com/back-in-stock",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "None: no notify-me form, no waiting list and no restock trigger (verified: no back-in-stock code under `src`).",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A sold-out variant shows a notify-me form for an email address with a consent text and double opt-in; one waiting request per email and variant per store.",
+      "When a variant's stock rises from 0 above 0 by any path (restock, return, cancelled order), each waiting address gets one email, keyed so none goes twice, showing the live price and stock read at send time.",
+      "One-click unsubscribe; a request is erased after it is sent or after 12 months; requests are store-scoped (integration test).",
+      "Staff see how many are waiting per product, and an AI-manager or analytics reading of demand uses the same count."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "customers.customer-accounts",
+    "domain": "customers",
+    "feature": "Customer accounts",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Passwordless sign-in by emailed code, Shop Pay, and Google and Facebook sign-in (external identity provider on Plus only); order history and status, self-serve returns, profile editing with shipping addresses, sessions up to 365 days, auto-filled checkout.",
+      "url": "https://help.shopify.com/en/manual/customers/customer-accounts",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Verified at HEAD (D28, D153): sign-in by emailed code or password; orders, subscriptions, one saved address, company, bonus and referral pages, wishlist, account deletion; from D153 the account's order page also shows the order's withdrawals and returns and links to the withdrawal function, so the first report's 'no self-serve returns' is closed. Still missing: several saved addresses, social sign-in, data export, order-history search.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A customer keeps several saved addresses (add, edit, delete, default), checkout offers them, and they are per customer and store.",
+      "A customer downloads their own data (profile, addresses, orders, subscriptions, bonus ledger, wishlists, consents) as a machine-readable file after proving it is them again.",
+      "Order history is searchable by order number, product and date and shows only the customer's own orders.",
+      "A customer can sign in with Google by a verified email matched to the account, never linking an unverified address (tested against a stubbed provider; live once the OAuth client exists).",
+      "A signed-in customer starts a withdrawal or return from the order page (holds today, D153)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/customers.ts",
+        "src/app/s/[store]/[market]/account/page.tsx",
+        "src/app/s/[store]/[market]/account/account-section.tsx",
+        "src/app/s/[store]/[market]/account/actions.ts",
+        "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
+        "src/components/withdraw/order-returns.tsx"
+      ],
+      "tests": [
+        "src/server/customers.int.test.ts",
+        "e2e/account.spec.ts",
+        "e2e/withdrawal.spec.ts",
+        "src/app/s/[store]/[market]/withdraw/actions.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D28",
+      "D32",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.blog-and-content-marketing",
+    "domain": "customers",
+    "feature": "Blog and content marketing",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Several blogs per store (the help centre has 'Manage blogs'), a built-in blogging engine, and customer comments that can be disabled, held for moderation or auto-published, with automatic spam flagging (replying to comments needs an app).",
+      "url": "https://help.shopify.com/en/manual/online-store/blogs/managing-comments",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "gap": "Verified: one blog per store (`/blog`, articles are pages of type `article`, D57) with author name, categories, tags, search texts, JSON-LD `Article`, translations and draft or publish. Missing against Shopify's page: customer comments with moderation and more than one blog; also no RSS or Atom feed and no scheduled publishing (verified in code; not claims about Shopify).",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "A store can have several blogs, each with its own address, listing, categories and tags.",
+      "Readers can comment on an article when the owner allows it (off, moderated or automatic); comments set no cookie, are rate-limited by hashed keys, pass a spam check and appear only when approved in the default setting.",
+      "Each blog has an RSS or Atom feed that lists only published articles, linked from the page head.",
+      "An article can be scheduled to publish at a set time in the store's time zone and is not visible, in sitemaps or in the feed before it."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/pages.ts",
+        "src/components/page-article.tsx",
+        "src/app/s/[store]/[market]/blog/page.tsx",
+        "src/app/s/[store]/[market]/blog/blog-listing.tsx",
+        "src/app/s/[store]/[market]/blog/[slug]/page.tsx",
+        "src/lib/structured-data.ts",
+        "src/server/taxonomy.ts",
+        "src/lib/taxonomy.ts"
+      ],
+      "tests": [
+        "src/server/pages.int.test.ts",
+        "src/server/taxonomy.int.test.ts",
+        "src/lib/structured-data.test.ts",
+        "e2e/blog.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D50",
+      "D57",
+      "D112"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Skeptic recheck against Shopify's blog help page: comments with moderation and several blogs are native, and the code has neither (nor an RSS feed or scheduled publishing); docs/parity-plan.md wave 7 lists them as blog depth still to build. The first report's gap text already said 'no comments'."
+      }
+    ]
+  },
+  {
+    "id": "customers.seo-fundamentals",
+    "domain": "customers",
+    "feature": "SEO fundamentals",
+    "weight": 5,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. sitemap.xml and robots.txt are generated automatically, canonical tags are added automatically, themes generate title tags with the store name and include product structured data; merchants edit title tags, meta descriptions and URLs for products, collections, blog posts and pages, and image alt text in the media library; page titles up to 70 characters (60 recommended) and descriptions of about 160.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/seo/seo-overview",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Caveat: changing a product's or category's address leaves no redirect (own row, 'URL redirect manager'). Evidence debt: e2e holds the description, canonical, hreflang and og:image output (`e2e/smoke.spec.ts`, `e2e/store-pages.spec.ts`), but nothing asserts the empty-SEO-field fallback to the product's own title and description (`productText()`) or the X (twitter) tags from `storeShareTags()`.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every public page has a title, meta description, canonical and hreflang links for the store's markets, and Open Graph and X tags; a product with empty SEO fields falls back to its own title and description (unit tests).",
+      "The sitemap, robots.txt and llms.txt are generated per store, list only an open store's published pages and active products, and follow the owner's crawler rules, which are checked line by line when saved (integration test).",
+      "Products, product groups, the store, market home pages and articles carry schema.org JSON-LD (Product or ProductGroup with offers and return policy, WebSite, Article) from the page's own data (unit tests).",
+      "A hidden or template store is left out of sitemaps and llms.txt; withdrawal and return-status pages are for no search engine."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/seo.ts",
+        "src/lib/structured-data.ts",
+        "src/server/seo.ts",
+        "src/app/sitemap.xml/route.ts",
+        "src/app/robots.txt/route.ts",
+        "src/app/llms.txt/route.ts",
+        "src/app/s/[store]/llms.txt/route.ts",
+        "src/lib/product-input.ts"
+      ],
+      "tests": [
+        "src/lib/seo.test.ts",
+        "src/lib/structured-data.test.ts",
+        "src/server/seo.int.test.ts",
+        "e2e/withdrawal.spec.ts",
+        "e2e/smoke.spec.ts",
+        "e2e/store-pages.spec.ts"
+      ],
+      "untested": true
+    },
+    "decisions": [
+      "D21"
+    ],
+    "history": []
+  },
+  {
+    "id": "customers.ai-assistant-discoverability-and-agentic-commerce",
+    "domain": "customers",
+    "feature": "AI-assistant discoverability and agentic commerce",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native (the Agentic Storefronts sales channel, Winter '26 Edition). Shopify Catalog syndicates products (title, description, options, images, price, availability) to AI shopping channels with no app and no transaction fee beyond payment fees; ChatGPT is live for US buyers, Microsoft Copilot with Copilot Checkout, and Google AI Mode and Gemini for select US brands; the merchant can remove Catalog access per channel.",
+      "url": "https://help.shopify.com/en/manual/online-sales-channels/agentic-storefronts/products",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "`llms.txt`, per-store switches for AI assistant and training bots in robots.txt, and JSON-LD (D21). No product feed or syndication to AI shopping channels, and no shopper-facing MCP or checkout protocol (the `/api/mcp` server is for the owner's assistant only, D96).",
+    "bucket": "B",
+    "wave": 8,
+    "criteria": [
+      "A product feed for AI shopping channels is built from the same normalised list as the Merchant Center feed: price with VAT in the market's currency, availability and images; products not for sale are left out.",
+      "A read-only shopper-facing endpoint (MCP or the channels' own protocol) answers catalogue search and product details from the store's own data, without personal data, rate-limited, with checkout staying on the store.",
+      "The owner switches each channel off; a switched-off channel gets nothing and robots.txt says so.",
+      "Live only once each channel's programme accepts the store (bucket B)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/seo.ts",
+        "src/server/seo.ts",
+        "src/app/llms.txt/route.ts",
+        "src/app/s/[store]/llms.txt/route.ts",
+        "src/app/robots.txt/route.ts",
+        "src/lib/structured-data.ts",
+        "src/app/api/mcp/route.ts"
+      ],
+      "tests": [
+        "src/lib/seo.test.ts",
+        "src/server/seo.int.test.ts",
+        "src/lib/structured-data.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21",
+      "D96"
+    ],
+    "history": []
+  }
+]

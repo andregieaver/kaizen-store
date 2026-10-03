@@ -1,8 +1,10 @@
 # Plan: Shopify parity (target 100%)
 
-Starting point: `docs/shopify-parity.md` (2 October 2026): **59.5% weighted core parity, 69.1% on the must-haves**; of 232
-core rows 80 are Full, 100 Partial, 52 Missing. Returns and withdrawal (D153) is in flight and lifts the legal rows.
-This plan is the route from there to "every core row Full", and says honestly which rows cannot be got there by code.
+Starting point: `docs/shopify-parity.md` (first written 2 October 2026), now generated from the tracker in `docs/parity/`.
+The current score, the evidence still owed, and the score each wave would reach are produced by `pnpm parity` from that
+data, so none of them is copied into this plan where it would go stale. Returns and withdrawal (D153) and the analytics
+cockpit (D152) have shipped and are already in the figures. This plan is the route from there to "every core row Full",
+and says honestly which rows cannot be got there by code.
 
 ## 1. What "100%" means (the scoring rule)
 
@@ -12,36 +14,45 @@ merchant can use. "A table exists" or "code exists" is not Full. Every wave ends
 touched (as the parity check did: a different agent tries to show the row is still short), and the headline is
 recomputed from a machine-readable tracker, not edited by hand.
 
-The 152 rows that are Partial or Missing fall in four buckets. The first is the plan; the others need a decision or
-leave a ceiling.
+Every row that is Partial or Missing sits in one of four buckets (the `bucket` field of its row; `pnpm parity` counts them
+and shows how many headline points each holds). The first is the plan; the others need a decision or leave a ceiling.
 
-| Bucket | Rows (approx.) | What it means |
-|---|---|---|
-| **A. Build in-house** | ~115 | Code, schema, screens, tests. Everything in waves 1 to 9. |
-| **B. Build, but depends on a third party** | ~20 | Needs an agreement, approval or credential Kaizen does not control: Klarna, Apple Pay and Google Pay domain verification, Google Merchant Center, Meta, TikTok and Pinterest catalogues, Swish and Vipps (blocked on Stripe, D23), carrier labels beyond Norway, an IOSS intermediary, accounting vendors. Built and tested against sandboxes; "Full" only once the live approval exists. |
-| **C. Strategy decision first** | ~10 | PayPal (needs a second payment provider), POS, extension/app platform, headless Storefront API, SMS, mobile admin app, marketplace. See section 5. |
-| **D. Not reachable by code** | ~8 | Support channel and uptime promise, recorded data-processing agreements, accessibility audit evidence, human legal review of every legal text, industry benchmarks and Shopify Audiences (need Shopify's own network data), the Shop app and Shop Pay consumer network (proprietary). These are done as far as software goes, then declared *equivalent or not applicable* with reasons. They never count as Full. |
+| Bucket | What it means |
+|---|---|
+| **A. Build in-house** | Code, schema, screens, tests. Everything in waves 1 to 9. |
+| **B. Build, but depends on a third party** | Needs an agreement, approval or credential Kaizen does not control: Klarna, Apple Pay and Google Pay domain verification, Google Merchant Center, Meta, TikTok and Pinterest catalogues, Swish and Vipps (blocked on Stripe, D23), carrier labels beyond Norway, an IOSS intermediary, accounting vendors. Built and tested against sandboxes; "Full" only once the live approval exists. |
+| **C. Strategy decision first** | PayPal (needs a second payment provider), POS, extension/app platform, headless Storefront API, SMS, mobile admin app, marketplace. See section 5. |
+| **D. Not reachable by code** | Support channel and uptime promise, recorded data-processing agreements, accessibility audit evidence, human legal review of every legal text, industry benchmarks and Shopify Audiences (need Shopify's own network data), the Shop app and Shop Pay consumer network (proprietary). These are done as far as software goes, then declared *equivalent or not applicable* with reasons. They never count as Full. |
 
-Realistic ceiling: **all of A and B built, C as decided, D declared**. If C is chosen as "yes" and B approvals land, the
-weighted score reaches the mid-to-high 90s; the last points are bucket D and Shopify's network effects, which no feature
-list closes. The plan reports both numbers: *built* (rows passing tests) and *live* (also approved and operated).
+Realistic ceiling: **all of A and B built, C as decided, D declared**. `pnpm parity` prints it from the data: the score
+with every bucket A row Full and B, C and D as they are, and the score with B built and approved as well. The last
+points are bucket D and Shopify's network effects, which no feature list closes. The plan reports both numbers: *built*
+(rows passing tests) and *live* (also approved and operated).
 
 ## 2. Wave 0: before the first parity wave (about 2 workflow runs)
 
-1. Ship D153 (returns and withdrawal) and finish its review and fixes. Ship D152 analytics (done).
-2. **Parity tracker as data**: `docs/parity/rows.json` with an id, domain, weight, rating, bucket, acceptance criteria and
-   the test names for each of the 232 core rows (plus the app-only rows as stretch). A script computes the headline and
-   per-domain scores and fails CI if a row rated Full has no test listed. `docs/shopify-parity.md` is generated from it.
-3. Re-fetch the 36 rows whose Shopify side rests on memory, so the target itself is right.
+1. Ship D153 (returns and withdrawal) and finish its review and fixes. Ship D152 analytics. **Done.**
+2. **Parity tracker as data** (**done**): `docs/parity/rows/*.json`, one file per domain, with an id, weight, rating,
+   bucket, wave, acceptance criteria, evidence (files and tests) and a history of rating changes for every Shopify row,
+   core and app-only. `src/lib/parity.ts` holds the rules and the arithmetic, and `pnpm parity` prints the headline, the
+   per-domain scores, the evidence still owed and the projection per wave. `pnpm parity:check` and a unit test fail when a
+   row breaks a rule (a Full row with no existing test file, a changed rating with no history) or when
+   `docs/shopify-parity.md`, which `pnpm parity:write` generates from the rows, is out of date.
+3. Re-fetch the rows whose Shopify side rests on memory, so the target itself is right. **Done**; the rows that still
+   could not be read are counted by `pnpm parity`.
 4. A **wave template**: the workflow used for D153 (spec, foundation, server, surfaces in parallel, gates, adversarial
    review in three lenses, fix, then production migration and push), saved as a named workflow so every wave starts the
-   same way.
+   same way. **Done**: `.claude/workflows/parity-wave.js`, described in `docs/parity/WAVES.md`.
 
 ## 3. The waves
 
 Order: legal exposure first, then how many rows one piece closes, then dependencies (data in and out before bulk tools;
 payments abstraction before new methods; the extension model last because it rests on everything else). Sizes are in
 **workflow runs** (one run is roughly one D-numbered feature, as D139 or D152 were), my estimate, not research.
+
+The score each wave would reach is not written here: `pnpm parity` prints the projection per wave (every row planned for
+waves 1 to N becoming Full, and the same with only the bucket A rows), computed from each row's `wave` and `bucket`, and
+`docs/shopify-parity.md` carries the same table, generated. Moving a row between waves is an edit to its `wave`.
 
 ### Wave 1: Compliance and money correctness (6 to 8 runs)
 - **VAT depth and reporting**: reduced-rate categories and rates editable in the admin (today they live in
@@ -69,7 +80,8 @@ payments abstraction before new methods; the extension model last because it res
   pre-orders, transfers and purchase orders, routing between locations.
 - **Orders**: search, filters, saved views, tags, archive, bulk actions, **draft orders and payment links**, order editing
   after purchase (add and remove lines, reprice, re-take payment or refund the difference), **partial fulfilment**,
-  gift receipts and messages, staff alerts and order automation rules.
+  gift receipts and messages, staff alerts, **editable notification email templates** (subject and body per event and language, with
+  switches; legally required mails stay on) and order automation rules.
 - **Shipping**: rate tables by weight and value, zones inside a country, per-product profiles, local pickup at a store
   location, local delivery by postal code, tracking page and delivery notifications, carrier labels for the carriers
   already connected (D133 to D138) with return labels (builds on D153), exchanges (refund plus new order, linked).
@@ -111,7 +123,7 @@ payments abstraction before new methods; the extension model last because it res
 - Live view, a **report builder** over a safe query layer (never free SQL), natural-language analytics on top of it,
   payments and attribution reports, targets and forecast completion, on-site search analytics depth.
 - AI: image editing, the chat agent with **order and return lookup and human handoff**, the manager gaining product, page
-  and menu editing tools (all gated), a **workflow builder** with AI generation (the same engine as wave 9's Flow), AI marketing
+  and menu editing tools (all gated), the AI half of the **workflow builder** (the engine itself is wave 9's Flow, so this row is tracked in wave 9), AI marketing
   email, agentic storefront endpoints (UCP/MCP and feeds for ChatGPT, Gemini and Copilot shopping).
 
 ### Wave 9: Platform and extensibility (6 to 8 runs, after the decisions in section 5)
@@ -173,8 +185,8 @@ D) run on other people's clocks.
 
 ## 7. First three steps
 
-1. Finish and ship D153 (running now).
-2. Wave 0: the tracker, the 36 re-fetches, the saved wave workflow.
+1. Finish and ship D153 (done).
+2. Wave 0: the tracker (done), the re-fetches (done), the saved wave workflow (`docs/parity/WAVES.md`).
 3. Wave 1 starts with **VAT depth and reporting** and **invoices and credit notes** (one spec, one run each), because
    they are the largest weighted gap after returns and every later money feature (draft orders, order editing, gift
    cards, payouts) depends on correct VAT and invoicing.

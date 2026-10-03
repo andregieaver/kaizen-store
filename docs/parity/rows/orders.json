@@ -1,0 +1,1487 @@
+[
+  {
+    "id": "orders.order-list-search-filters-saved-views-bulk",
+    "domain": "orders",
+    "feature": "Order list: search, filters, saved views, bulk",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The Orders page has keyword search and filters, six default views (All, Unfulfilled, Unpaid, Open, Archived, Local Delivery) plus custom saved views (filters, columns, sort; saved on desktop only), and bulk actions on selected orders: fulfil, print packing slips, capture payment, archive, cancel (up to 250 at once), tags, labels, run a Flow workflow.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/managing-orders/viewing-orders/searching-orders",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Three tabs (Orders, To send, Unfinished checkouts) and the newest 200 orders (`listOrders()`, `limit 200`); no text, date, status or payment search, no paging, no saved views, no bulk actions. D153 added the returns queue next to it but nothing to the list itself.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Searching an order number, customer name, email or product title finds the matching orders of this store and no other store's (integration test).",
+      "The list filters by status, payment, fulfilment and a date range, all in the address, and pages through more than 200 orders without losing any (integration test with 250 orders).",
+      "A staff member saves a filter and column choice as a named view and reopens it (integration test; views are per store).",
+      "Selecting several orders offers bulk actions: add and remove tags, archive, print packing slips and mark sent; each is applied to every selected order or reports which one it refused (integration test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/admin/(gated)/[store]/orders/page.tsx",
+        "src/server/orders.ts"
+      ],
+      "tests": [
+        "src/server/store-copy.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.order-statuses-timeline-notes",
+    "domain": "orders",
+    "feature": "Order statuses, timeline, notes",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The order details page has a timeline of events and staff comments that are internal and never shown to the customer; payment and fulfilment statuses are tracked per order.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/managing-orders/managing-order-details",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every order event (placed, paid, sent, refunded, restocked, cancelled, edited, note, return steps) is stored append-only and cannot be edited or deleted (database test).",
+      "The order page lists the events and every email the customer got in one history, newest first, with return steps in plain words and a link to the return.",
+      "A staff note is added to the history, is visible only to staff, and is refused on copied history.",
+      "The order's status label follows its payment and shipments, and an order cancelled after payment stays listed as cancelled and refunded."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/orders.ts",
+        "src/server/order-admin.ts",
+        "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx",
+        "src/app/admin/(gated)/[store]/orders/actions.ts",
+        "src/lib/return-admin.ts",
+        "src/lib/order-status.ts"
+      ],
+      "tests": [
+        "src/db/commerce.test.ts",
+        "src/lib/return-admin.test.ts",
+        "src/server/store-copy.int.test.ts"
+      ],
+      "untested": true
+    },
+    "decisions": [
+      "D27",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.order-tags-and-archiving",
+    "domain": "orders",
+    "feature": "Order tags and archiving",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Order tags (up to 250 per order, 40 characters each) can be added one by one or in bulk; most finished orders are archived automatically and can be archived or unarchived by hand; both are bulk actions and filters.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/using-tags",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "No tags or archive state on orders (no column, no UI); the only status split is the three list tabs.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Staff add and remove tags on an order and on a selection of orders; tags are per store, case-insensitive, at most 40 characters, at most 250 per order (unit and integration tests).",
+      "The order list filters by tag and the tag shows on the order page and in its history (integration test).",
+      "Staff archive and unarchive orders singly and in bulk; archived orders leave the default list, stay reachable in an Archived view and keep their numbers and sequence (integration test, `order_number_audit` unchanged).",
+      "A copied order (D129) can be tagged and archived but nothing else about it changes."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "orders.edit-an-order-after-placement",
+    "domain": "orders",
+    "feature": "Edit an order after placement",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. After purchase staff can add or remove products, change quantities, change shipping fees, apply or remove manual discounts and edit customer details; extra payment is collected with an updated invoice and a lower total is refunded.",
+      "url": "https://help.shopify.com/en/manual/orders/edit-orders",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Staff can change the customer's email and delivery address (`updateOrderContact()`, event `order.edited`) and nothing else: no add or remove of lines, quantities, discounts or shipping, and no collecting or refunding the difference.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Staff add a line, remove a line and change a quantity on a paid, unsent order; the total, VAT, discounts and stock holds are recalculated by the same functions as checkout and agree with `cartSummary()` (integration test in two currencies).",
+      "A higher total gives a pay link for the difference; a lower total refunds the difference through `refundOrder()` and returns the stock (integration test with faked Stripe).",
+      "Every edit is one event in the order history with before and after, and the order number and sequence do not change (D141).",
+      "A sent, cancelled or copied order refuses line edits with a plain message."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/order-admin.ts",
+        "src/app/admin/(gated)/[store]/orders/actions.ts",
+        "src/components/admin/order-actions.tsx",
+        "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx"
+      ],
+      "tests": [
+        "src/server/store-copy.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.cancel-order-with-refund-and-restock",
+    "domain": "orders",
+    "feature": "Cancel order with refund and restock",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. A paid, unfulfilled order can be cancelled with a refund to the original method, as store credit or later; items are restocked by default and the customer is notified by default; a partially fulfilled order cannot be cancelled; bulk cancel is limited to 250 orders.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/managing-orders/canceling-orders",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "Evidence debt: no test covers cancelling an unpaid weekly delivery without a refund (`cancelOrder()`, `src/server/order-admin.ts`) or the download links ending; the core path (refund, restock, close, refuse after sent) is tested in `order-admin.int.test.ts`. The cancel event stores the reason, not the account. Shopify also cancels with a refund as store credit; Kaizen has none, counted once in checkout.refunds-and-cancellation.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Cancelling a paid, unsent order refunds everything left through Stripe on the store's account, puts every physical unit back in stock, closes the order and stops its download links (integration test).",
+      "An order that is already sent cannot be cancelled and the message says to refund instead (integration test).",
+      "An unpaid weekly delivery is cancelled without a refund and its stock is released.",
+      "The history says that staff cancelled and why; the customer is emailed when the box is ticked (ticked by default)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/order-admin.ts",
+        "src/app/admin/(gated)/[store]/orders/actions.ts",
+        "src/components/admin/order-actions.tsx",
+        "src/server/shopper-emails.ts"
+      ],
+      "tests": [
+        "src/server/order-admin.int.test.ts",
+        "src/server/store-copy.int.test.ts"
+      ],
+      "untested": true
+    },
+    "decisions": [
+      "D27",
+      "D102"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.partial-and-full-refunds-with-restocking",
+    "domain": "orders",
+    "feature": "Partial and full refunds with restocking",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Full or partial refunds per line item with quantities, optional restocking (on by default when inventory is tracked), refundable shipping, status Partially refunded; no stated time limit.",
+      "url": "https://help.shopify.com/en/manual/orders/refund-cancel-order",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A refund of any amount up to what is left goes through Stripe on the store's account with Kaizen's fee on the refunded part returned, and more than is left is refused (integration test).",
+      "Staff choose which units go back in stock, with or without money back, never more than were bought or already restocked (integration test).",
+      "A return's refund is worked out once by `refundFor()` from what was paid after every discount, the delivery only for a whole-order withdrawal and minus return shipping the shopper pays, and is claimed before Stripe is called so two staff cannot pay it twice (unit and integration tests).",
+      "An order paid outside Kaizen's Stripe records the refund as made outside and still restocks (integration test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/order-admin.ts",
+        "src/lib/return-refund.ts",
+        "src/server/returns.ts",
+        "src/components/admin/order-actions.tsx",
+        "src/app/admin/(gated)/[store]/orders/actions.ts"
+      ],
+      "tests": [
+        "src/server/order-admin.int.test.ts",
+        "src/server/returns.int.test.ts",
+        "src/server/returns-money-review.int.test.ts",
+        "src/lib/return-refund.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.draft-and-manual-orders",
+    "domain": "orders",
+    "feature": "Draft and manual orders",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Draft orders let staff create orders for phone, in-person or email sales, with custom pricing, and send an invoice with a secure checkout link, take a card manually or mark the order paid; drafts created from 1 April 2025 are deleted after a year of inactivity.",
+      "url": "https://help.shopify.com/en/manual/orders/create-orders",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Orders come only from carts (`placeOrder()`) and subscription renewals; staff cannot create an order, set a custom price, send a pay link or mark a manual order paid. One row for the one Shopify feature (it replaces checkout.draft-orders-and-payment-links).",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Staff create a draft with products, quantities, a customer, address, shipping and a discount; totals and VAT come from the checkout's own functions (integration test in two currencies).",
+      "Sending the draft emails a pay link; paying it makes a normal order with a number from the store's gap-free sequence (D141) and holds stock only when the draft is sent (integration test).",
+      "A draft can be marked paid for money taken outside Kaizen (cash, bank transfer) with the method recorded, and such an order refunds as an outside payment.",
+      "An unpaid draft that expires leaves no number gap and releases its stock.",
+      "Draft-created orders count in sales and in the customer's history and are marked as staff-made."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "orders.fulfilment-workflow-partial-fulfilment",
+    "domain": "orders",
+    "feature": "Fulfilment workflow, partial fulfilment",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Orders are fulfilled singly, in bulk or in batches that pick, pack and print; an order can be partly fulfilled by entering item quantities, each fulfilment with its own tracking number and notification, and the order status page shows a section per fulfilment.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/single-fulfillment",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Staff can add more parcels (`shipments`) to an order, but the first one flips the order to Sent (`markSent()` sets `fulfilled`), a shipment is not tied to order lines or quantities, and there is no bulk fulfil, pick list or batch. D153 added that goods sent in parts reopen a recorded receipt, which is a legal rule, not partial fulfilment.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Staff mark chosen lines and quantities as sent in one shipment; the order shows Partly sent until every physical unit is in a shipment and Sent after (integration test).",
+      "Each shipment has its own carrier, tracking and email; the shopper's order page lists them with their lines.",
+      "Selecting several orders marks them sent in one action, reporting any that were refused (integration test).",
+      "Units withdrawn before sending (D153) are left out of what can be fulfilled."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/order-admin.ts",
+        "src/db/schema.ts",
+        "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx",
+        "src/components/admin/order-actions.tsx"
+      ],
+      "tests": [
+        "src/server/order-admin.int.test.ts",
+        "src/server/returns.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.flat-shipping-rate-with-free-threshold",
+    "domain": "orders",
+    "feature": "Flat shipping rate with free threshold",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Flat rates, order-amount and weight-based rates, free shipping, per zone and per profile, set under Settings > Shipping and delivery.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/shipping-rates/setting-up-shipping-rates",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Each market has one flat shipping price, VAT-inclusive, with an optional basket value over which shipping is free; the charge is the flat price below the threshold and zero at or over it (unit test).",
+      "The cart, checkout and the placed order charge the same shipping, in the shopper's currency, and a market with no price refuses checkout with a message (integration test).",
+      "The owner edits the rates per market on the shipping settings page.",
+      "The flat rate stays as the default and the fallback when a carrier does not answer."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "src/lib/checkout.ts",
+        "src/server/checkout.ts",
+        "src/server/settings.ts",
+        "src/app/admin/(gated)/[store]/settings/shipping/page.tsx"
+      ],
+      "tests": [
+        "src/lib/checkout.test.ts",
+        "src/server/checkout.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/delivery-options.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D135"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.weight-or-price-rate-tables-zones-profiles",
+    "domain": "orders",
+    "feature": "Weight or price rate tables, zones, profiles",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Flat rates can carry conditions on order amount or on total weight (tiers), set per shipping zone (groups of countries or regions) and per shipping profile (rules for chosen products and locations); transit-time display and backup rates are native too.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/shipping-rates/setting-up-shipping-rates",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 4,
+    "gap": "Flat rate per market with a free-above threshold, carrier-quoted weight pricing for connected carriers and a per-service weight limit; no merchant-defined weight or price tiers, no regions inside a country and no per-product shipping profiles. Rechecked at HEAD: unchanged.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "An owner defines tiers by basket weight and by basket value per market; the charge is the tier that matches, and a basket in no tier is refused or falls to a stated default (unit test).",
+      "A zone groups postal-code ranges inside a country, with its own rates (unit test of matching, integration test of checkout).",
+      "A shipping profile assigns products to rates, and a mixed basket is charged by the stated rule (the dearest profile, or the sum), the same in `cartSummary()` and `placeOrder()` (integration test, euro scenario).",
+      "A product with no weight uses the store's default weight."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/delivery-options.ts",
+        "src/server/delivery-options.ts",
+        "src/lib/helthjem.ts",
+        "src/lib/shipping-carriers.ts",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/lib/delivery-options.test.ts",
+        "src/lib/helthjem.test.ts",
+        "src/server/delivery-options.int.test.ts",
+        "src/server/helthjem-shipping.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D135",
+      "D138"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: carrier-quoted weight pricing and per-service weight limits exist for connected carriers, so not missing; no merchant-defined weight or price tiers, zones or profiles. Entry written in wave 0 from the first report, which did not log it."
+      }
+    ]
+  },
+  {
+    "id": "orders.carrier-calculated-live-rates",
+    "domain": "orders",
+    "feature": "Carrier-calculated live rates",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, but conditional: third-party carrier-calculated shipping (UPS, FedEx, USPS, Canada Post, Australia Post) is included on Advanced and Plus; Grow adds it for an extra monthly fee or with annual billing. None of the Nordic carriers is among them.",
+      "url": "https://help.shopify.com/en/manual/shipping/setting-up-and-managing-your-shipping/enabling-shipping-carriers",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Live prices from Bring and Porterbuddy for Norway (D135, D137); PostNord and Helthjem services are priced by the store, not by the carrier; Sweden and Denmark have no live rates. Nothing has been checked against a real carrier's production service.",
+    "bucket": "B",
+    "wave": 3,
+    "criteria": [
+      "At checkout a Norwegian address gets the carrier's own price for each service, with VAT and the store's markup, shown in the shopper's currency (integration test with a faked carrier).",
+      "A carrier that does not answer within the timeout leaves the flat rate and the checkout works (integration test).",
+      "A carrier with a price service for Sweden and Denmark quotes there too, behind a sandbox check of the credentials.",
+      "`cartSummary()` and `placeOrder()` agree on the chosen service's price, in the euro view too."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/carriers/bring.ts",
+        "src/server/carriers/porterbuddy.ts",
+        "src/lib/bring.ts",
+        "src/lib/porterbuddy.ts",
+        "src/server/delivery-options.ts",
+        "src/server/delivery-choice.ts"
+      ],
+      "tests": [
+        "src/lib/bring.test.ts",
+        "src/lib/porterbuddy.test.ts",
+        "src/server/carriers/bring.test.ts",
+        "src/server/carriers/porterbuddy.test.ts",
+        "src/server/delivery-options.int.test.ts",
+        "src/server/porterbuddy-shipping.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D133",
+      "D134",
+      "D135",
+      "D136",
+      "D137",
+      "D138"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.shipping-label-purchase-and-printing",
+    "domain": "orders",
+    "feature": "Shipping label purchase and printing",
+    "shopify": {
+      "tier": "native",
+      "text": "Native in ten countries: labels are bought and printed in the admin with carriers in the US, Canada, Australia, the UK, France, Germany, Italy, the Netherlands, Poland and Spain; none in Norway, Sweden or Denmark. International labels need HS codes and a declared value under 2,500 USD; bulk label purchase exists.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/buying-labels",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Booking with Bring (D134), Porterbuddy (D137) and Helthjem (D138), for parcels to Norway, with the label fetched from the carrier when printed and never stored; PostNord cannot book (D136, waiting for its EDI specification); in the store's test environment nothing real is booked; no bulk booking or printing; nothing verified against a carrier's live service.",
+    "bucket": "B",
+    "wave": 3,
+    "criteria": [
+      "From an order staff book a parcel with a connected carrier and the tracking number, consignment number and label address are kept on a shipment and the order is marked sent (integration tests with faked carriers).",
+      "The label is fetched from the carrier's own host with the store's key when printed and never kept (test).",
+      "Selecting several orders books and prints their labels in one action, reporting any that failed.",
+      "PostNord books once its specification is available, in its sandbox first."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/bring-shipping.ts",
+        "src/server/porterbuddy-shipping.ts",
+        "src/server/helthjem-shipping.ts",
+        "src/server/carrier-label.ts",
+        "src/app/admin/(gated)/[store]/orders/[orderId]/label/[shipmentId]/route.ts",
+        "src/server/carriers/index.ts"
+      ],
+      "tests": [
+        "src/server/bring-shipping.int.test.ts",
+        "src/server/porterbuddy-shipping.int.test.ts",
+        "src/server/helthjem-shipping.int.test.ts",
+        "src/server/carriers/bring.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D134",
+      "D137",
+      "D138"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.pickup-points-and-lockers-at-checkout",
+    "domain": "orders",
+    "feature": "Pickup points and lockers at checkout",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, for a few carriers and countries: pickup points (post offices, partner shops, lockers) are enabled per location in Settings > Shipping and delivery for Chronopost, Evri, Colissimo, Correos, Mondial Relay, Poste Italiane and Royal Mail (France, Italy, Spain, UK); on Plus a custom app can add others through the Pickup Point Delivery Option Generator API. Elsewhere, including the Nordics, merchants use carrier apps. First report had this as app-only.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/delivery-methods/pickup-points",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Pickup points for Bring (service 5800), PostNord and Helthjem collect (D135, D136, D138), chosen at checkout and kept on the order; Nordic only, nothing for DPD, InPost, Packeta or GLS. Criteria 1 and 2 are held by `delivery-options.int.test.ts`; criterion 3 is breadth beyond Shopify and needs no new agreement to be left out.",
+    "bucket": "B",
+    "wave": 3,
+    "criteria": [
+      "At checkout the shopper gives a postal code and picks one of the nearest points; the choice is kept on the order and shown in the admin, the order page and the emails (integration test).",
+      "A carrier that does not answer leaves the flat rate and no point is required.",
+      "Optional breadth beyond Shopify's own list (Chronopost, Evri, Colissimo, Correos, Mondial Relay, Poste Italiane, Royal Mail): a further carrier (DPD, InPost, Packeta or GLS) adds points through its adapter and the same piece, behind its own agreement and a sandbox test."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/delivery-options.ts",
+        "src/server/delivery-options.ts",
+        "src/server/carriers/postnord.ts",
+        "src/server/carriers/helthjem.ts",
+        "src/server/carriers/bring.ts",
+        "src/lib/postnord.ts"
+      ],
+      "tests": [
+        "src/server/delivery-options.int.test.ts",
+        "src/lib/postnord.test.ts",
+        "src/server/carriers/postnord.test.ts",
+        "src/server/shipping-carriers.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D135",
+      "D136",
+      "D138"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.local-pickup-at-own-location",
+    "domain": "orders",
+    "feature": "Local pickup at own location",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Pickup in store is switched on per location; a Ready for pickup email goes to the customer when the order is marked ready, with the store's pickup instructions; available on standard plans.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/delivery-methods/pickup-in-store",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "A store can list its shops and pickup places with address and opening hours (`store_locations`, kind `pickup`, D40), but they are information only: checkout offers no collect-from-store method, orders have no ready-for-pickup state and no email.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "An owner switches pickup on for a store location with instructions and a price (free by default); checkout offers it as a delivery method for that market and `cartSummary()` and `placeOrder()` agree (integration test, euro scenario).",
+      "The order keeps the chosen location; staff mark it ready for pickup, which sends the customer an email in the order's language with the address, hours and instructions, once (integration test).",
+      "Marking it collected closes the order without a shipment, and the order is excluded from To send."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "orders.local-delivery",
+    "domain": "orders",
+    "feature": "Local delivery",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Local delivery is set per location with a radius (up to 160 km) or a list of postal codes, up to 10 zones per location with up to 3 price rules each, a minimum order amount and a delivery price (0 for free).",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/delivery-methods/local-delivery",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Porterbuddy's delivery windows for Norway (D137) and the subscription boxes' delivery rounds with a cutoff (D102); no merchant-defined delivery zones by radius or postal code, no minimum order amount, no own-driver route.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "An owner defines a local delivery area by postal codes or a radius from a store location, with a price, a minimum basket and a free-above value; checkout offers it only inside the area (unit test of matching, integration test of checkout).",
+      "`cartSummary()` and `placeOrder()` agree on its price in the euro view too.",
+      "Orders for local delivery list apart for staff, with the address and any delivery note."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/carriers/porterbuddy.ts",
+        "src/lib/porterbuddy.ts",
+        "src/server/porterbuddy-shipping.ts",
+        "src/server/standing-orders.ts",
+        "src/lib/standing-orders.ts"
+      ],
+      "tests": [
+        "src/server/porterbuddy-shipping.int.test.ts",
+        "src/server/standing-orders.int.test.ts",
+        "src/lib/porterbuddy.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D102",
+      "D137"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.packing-slips-and-pick-lists",
+    "domain": "orders",
+    "feature": "Packing slips and pick lists",
+    "shopify": {
+      "tier": "native",
+      "text": "Native packing slips (single and bulk print from the Orders page) and pick lists, invoices and receipts through the free Order Printer app that Shopify builds and maintains; bulk printing up to 50 orders without opening the app; templates in HTML, CSS and Liquid.",
+      "url": "https://apps.shopify.com/shopify-order-printer",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 3,
+    "gap": "Single-order printable packing slip only (`packing-slip/page.tsx`); no bulk print of several orders, no pick list of the items to collect, no template choice, and no test holds the slip.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Selecting several orders prints their packing slips in one document, one per page, in each order's language, without prices (integration test of the data, render test of the page).",
+      "A pick list adds up the items of the selected orders by product, variant, SKU and quantity, leaving out digital and service lines and units withdrawn before sending (unit test).",
+      "A slip shows a gift message when the order has one (with wave 3's gift rows).",
+      "Slips of orders of another store are never printed (integration test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/admin/(gated)/[store]/orders/[orderId]/packing-slip/page.tsx",
+        "src/components/admin/print-button.tsx"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D27"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Re-read at HEAD: one printable packing slip per order, in the customer's language and without prices, and nothing else. Shopify prints packing slips in bulk (up to 50 orders) and has pick lists; with no bulk print and no pick list the row's own gap text contradicts Full (README rule 1: the criteria must hold). Not new code: the first report knew this and still rated it Full."
+      }
+    ]
+  },
+  {
+    "id": "orders.shipping-confirmation-email-with-tracking",
+    "domain": "orders",
+    "feature": "Shipping confirmation email with tracking",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. A Shipping confirmation email goes with each fulfilment; each fulfilment has its own tracking number, link and notification; the template is editable in Settings > Notifications.",
+      "url": "https://help.shopify.com/en/manual/orders/notifications/edit-template",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Marking an order sent emails the customer once, in the order's language, with the carrier, tracking number, a tracking button and the delivery address, and sending it again is refused as a duplicate unless staff ask for a resend (integration test).",
+      "The tracking link is the carrier's own page for Posten, Bring, PostNord, DHL and UPS, a pasted https link otherwise, and never a non-https address (unit test).",
+      "The email carries the right to withdraw and who pays return shipping as the order was sold (D153)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/shopper-emails.ts",
+        "src/lib/email-text.ts",
+        "src/server/order-admin.ts",
+        "src/lib/email-layout.ts"
+      ],
+      "tests": [
+        "src/server/order-admin.int.test.ts",
+        "src/server/returns.int.test.ts",
+        "src/lib/email-layout.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.delivery-status-notifications-tracking-page",
+    "domain": "orders",
+    "feature": "Delivery-status notifications, tracking page",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Customers follow a parcel on the order status page (Confirmed, On its way, Out for delivery, Delivered, Attempted delivery) with a map for integrated carriers and a section per shipment; shipping update emails exist as templates; the Shop app also tracks.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/order-status-page/understanding-order-status-pages",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "The shopper's order page shows each shipment's carrier and a tracking link; the carrier's latest event is shown to staff only (`carrierTracking()` for Bring, PostNord, Porterbuddy and Helthjem); no out-for-delivery or delivered email, no delivery timeline for the shopper, and a delivery is recorded only when staff press Mark received (D153, `delivered_at`).",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "The shopper's order page shows a parcel's events from the carrier (unit test of the mapping, integration test with a faked carrier) and says plainly when the carrier gives none.",
+      "A carrier's delivered event records `delivered_at` once, never earlier than the order and never over a staff date, and it starts the 14-day count of D153 (integration test).",
+      "Out-for-delivery and delivered emails go once per shipment, only when the store switched them on, in the order's language.",
+      "A carrier that does not answer leaves the tracking link and no error."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/carrier-tracking.ts",
+        "src/server/order-delivery.ts",
+        "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx"
+      ],
+      "tests": [
+        "src/server/bring-shipping.int.test.ts",
+        "src/server/porterbuddy-shipping.int.test.ts",
+        "src/server/helthjem-shipping.int.test.ts",
+        "src/server/returns.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D134",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.editable-notification-email-templates",
+    "domain": "orders",
+    "feature": "Editable notification email templates",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Each customer notification template (order confirmation, shipping confirmation, shipping update, refund, ready for pickup and more) is editable under Settings > Notifications: subject and HTML body with Liquid variables, logo and brand colours, and each can be switched off.",
+      "url": "https://help.shopify.com/en/manual/orders/notifications/edit-template",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "Wording and layout are fixed in code (`email-text.ts`, `email-layout.ts`; nb, sv, da, en by hand, other languages through the catalogue, D111); switches are per action, not per event; the store's logo and colours reach the layout but the owner cannot edit a subject or body. Rechecked at HEAD; D153 added its return emails to the same fixed set.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "An owner edits the subject and a text block of an order email per language, with named placeholders only (no code), and a preview shows it with a sample order (unit and render tests).",
+      "Every order email can be switched off or on per event, and legally required ones (the withdrawal acknowledgement, the order confirmation) cannot be switched off.",
+      "An edited text passes the claims filter and the placeholder check before it is saved; a missing translation falls back to the fixed text.",
+      "Emails keep the order's language and currency, and edits are copied with a store only if the owner chooses."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/email-text.ts",
+        "src/lib/email-layout.ts",
+        "src/server/email.ts",
+        "src/server/shopper-emails.ts",
+        "src/server/return-emails.ts"
+      ],
+      "tests": [
+        "src/lib/email-layout.test.ts",
+        "src/server/email.test.ts",
+        "src/lib/email-text.returns.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D111"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "partial",
+        "to": "missing",
+        "why": "First report's skeptic recheck: wording and layout are fixed in code and an owner cannot edit a subject or body; switches are per action, not per event. Entry written in wave 0 from the first report, which did not log it."
+      }
+    ]
+  },
+  {
+    "id": "orders.staff-alerts-for-new-orders-order-automation",
+    "domain": "orders",
+    "feature": "Staff alerts for new orders, order automation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Staff notifications (new order, store order summary daily or weekly, return requests, draft orders, disputes) go by email to the owner by default and to chosen staff or addresses, with push on the mobile app and an editable new-order template; Shopify Flow adds workflow automation.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/notifications/staff-notifications",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Order and customer events go to Slack, Zapier and Make (D41, D101); the store's contact address gets an email once per return whose refund is overdue (D153) and the store Home lists what needs attention; no new-order email or push to staff, no order summary, no rule builder.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Each paid order emails the staff the owner chose (default the owners) once, with the order number, total and a link; a retried webhook sends no second email (integration test).",
+      "Owners choose recipients and events (new order, return requested, refund overdue, low stock) and a daily or weekly summary (integration test).",
+      "A rule `when {event} and {condition} then {action}` (tag, notify, hold) is stored per store, runs once per event and is logged (unit test of matching, integration test).",
+      "Nothing in a staff email names a shopper's phone or full address."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/integrations.ts",
+        "src/lib/integrations.ts",
+        "src/server/slack.ts",
+        "src/lib/slack.ts",
+        "src/server/return-jobs.ts",
+        "src/server/return-attention.ts"
+      ],
+      "tests": [
+        "src/server/integrations.int.test.ts",
+        "src/lib/integrations.test.ts",
+        "src/lib/slack.test.ts",
+        "src/server/returns.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D41",
+      "D101",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.self-serve-withdrawal-and-return-requests",
+    "domain": "orders",
+    "feature": "Self-serve withdrawal and return requests",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Self-serve returns let customers request a return or cancellation from their account or the order status page; the merchant reviews it from the Orders page (Customer request filter), approves or declines with a message, and can add exchange items, fees and a return label. No EU withdrawal button as such: Shopify's page describes returns, not the directive's two-step function.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/self-serve-returns/management",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A shopper withdraws in two steps (Withdraw from contract here, then Confirm withdrawal) with no reason asked; nothing is a withdrawal before the second press, and an unconfirmed request expires after 24 hours (integration test).",
+      "A wrong email, an unknown number and another store's order give the same answer after the same delay, and guesses are limited by hashed keys, never IP or cookie (integration test).",
+      "Confirming records the statement, creates the return, and emails the acknowledgement with date, time, lines and reference, kept in `email_messages`; a failing email leaves the withdrawal standing as not sent, resent by staff or the job (integration test).",
+      "Per line `lineEligibility()` says whether the right applies and why not (excluded goods, digital content with consent, business, booking, already returned); the 14 days count only from a recorded receipt (unit test).",
+      "The function sets no cookie or storage, is linked from the footer, the order page and the order emails, and a store's longer window offers a return request the store may decline (unit tests, e2e)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/withdrawals.ts",
+        "src/lib/withdrawal.ts",
+        "src/app/s/[store]/[market]/withdraw/page.tsx",
+        "src/app/s/[store]/[market]/withdraw/actions.ts",
+        "src/app/s/[store]/[market]/withdraw/withdraw-flow.tsx",
+        "src/components/withdraw/withdraw-parts.tsx",
+        "src/components/withdraw/order-returns.tsx",
+        "src/server/return-emails.ts",
+        "src/server/withdraw-link.ts",
+        "docs/returns.md"
+      ],
+      "tests": [
+        "src/server/returns.int.test.ts",
+        "src/app/s/[store]/[market]/withdraw/actions.int.test.ts",
+        "src/server/returns-security.int.test.ts",
+        "src/lib/withdrawal.test.ts",
+        "src/lib/withdraw-form.test.ts",
+        "src/lib/withdraw-no-storage.test.ts",
+        "src/components/withdraw/withdraw-parts.test.ts",
+        "e2e/withdrawal.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D153"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "full",
+        "why": "D153 shipped (commit 4ae6222, migrations applied to production and recorded in docs/decisions.md): the withdrawal function at /s/{store}/{market}/withdraw, return requests inside the store's own window, the status page, the acknowledgement on a durable medium; the tables the first report found unused are now read and written. Tests read: returns.int.test.ts, withdraw/actions.int.test.ts, withdrawal.test.ts, e2e/withdrawal.spec.ts."
+      }
+    ]
+  },
+  {
+    "id": "orders.returns-management-rma-inspect-restock-fees",
+    "domain": "orders",
+    "feature": "Returns management (RMA, inspect, restock, fees)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Merchants create returns from a fulfilled order or approve customer requests, with return rules (window, return shipping cost, restocking fee as a percentage); the financial outcome is worked out from fees and exchange items; return fees are not deducted from the refund automatically, staff do it by hand.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/return-rules",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A return moves forward only (requested, approved, in transit, received, inspected, closed; declined and cancelled end it), enforced by the database and the pure table alike (database test over every move).",
+      "Inspection records per line a condition, restock yes or no and a deduction with a note never above the line's value; the refund is `refundFor()` of what was paid, minus deductions, minus return shipping the shopper pays (unit and integration tests).",
+      "A withdrawal return is never declined or cancelled and its refund cannot be lowered by staff; a voluntary return can be declined with a reason or refunded at a lower amount with a reason (integration tests).",
+      "The queue filters by status, kind and overdue, oldest first, and an overdue refund reaches the store Home and the control center (integration test).",
+      "Returns show in analytics (rate, reasons, products, time to refund) and the AI manager reads them; approve and decline are gated (tests)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/returns.ts",
+        "src/server/return-settings.ts",
+        "src/server/return-jobs.ts",
+        "src/server/return-attention.ts",
+        "src/lib/return-status.ts",
+        "src/lib/return-refund.ts",
+        "src/lib/return-admin.ts",
+        "src/app/admin/(gated)/[store]/returns/page.tsx",
+        "src/app/admin/(gated)/[store]/returns/[returnId]/page.tsx",
+        "src/components/admin/returns/detail-view.tsx",
+        "src/server/analytics-returns-data.ts",
+        "src/server/return-tools.ts"
+      ],
+      "tests": [
+        "src/server/returns.int.test.ts",
+        "src/server/returns-admin.int.test.ts",
+        "src/server/returns-actions.int.test.ts",
+        "src/server/returns-money-review.int.test.ts",
+        "src/server/returns-fixes.int.test.ts",
+        "src/db/returns.test.ts",
+        "src/lib/return-status.test.ts",
+        "src/lib/return-refund.test.ts",
+        "src/server/analytics-returns-data.int.test.ts",
+        "src/server/return-tools.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D153",
+      "D152"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "full",
+        "why": "D153 shipped the return object: `returns`/`return_lines`, numbers `{order}-R{n}`, lifecycle requested to closed enforced in SQL, reasons, inspection per line (condition, restock, deduction with note), return shipping, a refund worked out once and paid through `refundOrder()`, queue and detail screens, analytics. First report: refund-and-restock only. Read the code and tests at HEAD (returns.int.test.ts, returns-admin, returns-actions, src/db/returns.test.ts). Return labels and exchanges are separate rows and stay open."
+      }
+    ]
+  },
+  {
+    "id": "orders.return-labels",
+    "domain": "orders",
+    "feature": "Return labels",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, narrowly: return labels can be bought in the admin only for US domestic orders (USPS, FedEx, UPS); elsewhere merchants buy from a carrier or an app. When approving a self-serve return the merchant can create a label in Shopify, upload an existing label or choose no shipping; the label goes in the confirmation email.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/fulfilling-orders/shipping-labels/buying-labels/return-labels",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 3,
+    "gap": "Staff paste a label address for a return (D153) and the shopper gets it; no return label is bought from a connected carrier, and none is created for the shopper to print on a self-serve request.",
+    "bucket": "B",
+    "wave": 3,
+    "criteria": [
+      "Approving a return with a connected carrier books a return shipment from the shopper's address to the return address and keeps its label address on the return (integration test with a faked carrier).",
+      "The label reaches the shopper by email and on the status page, fetched from the carrier's own host and never stored (test).",
+      "Who pays is the order's return cost payer: a label the shopper pays for is taken off the refund as return shipping (unit test with `refundFor()`).",
+      "A carrier that cannot book leaves the pasted-address path working."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/return-emails.ts",
+        "src/lib/return-input.ts",
+        "src/server/returns.ts",
+        "src/components/withdraw/return-status-view.tsx",
+        "src/server/carriers/index.ts"
+      ],
+      "tests": [
+        "src/server/returns.int.test.ts",
+        "src/server/returns-actions.int.test.ts",
+        "src/lib/return-input.test.ts",
+        "src/components/withdraw/return-status-view.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D153",
+      "D134"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "partial",
+        "why": "D153 lets staff attach a return label address (https only, pasted) when approving or later; it is shown on the shopper's status page and emailed as a button, and tests hold it (returns.int.test.ts, returns-actions.int.test.ts, return-input.test.ts, return-status-view.test.ts). That matches Shopify's own 'upload an existing label' path, not its label purchase. Weak partial: Kaizen's carrier modules still book outbound only."
+      }
+    ]
+  },
+  {
+    "id": "orders.exchanges",
+    "domain": "orders",
+    "feature": "Exchanges",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Staff add exchange items to a return (not custom items; stock is not reserved until the return is processed); fees and exchange items are netted so the system shows a refund due or a payment to collect; the exchanged items have their own return window.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/managing-orders/returns/creating-returns",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Not built (D153 deliberately leaves exchanges out of `docs/returns.md`): a return refunds, nothing creates a replacement order or nets the difference.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Staff add replacement products to a return; the system shows the difference (refund due or payment to collect) from the same pricing functions as checkout, in two currencies (unit and integration tests).",
+      "Processing the return creates a linked new order for the replacements with a number from the store's sequence (D141), holding stock only then.",
+      "A difference owed by the shopper goes out as a pay link; one owed to the shopper is refunded through `refundOrder()` (integration test).",
+      "A withdrawal's legal refund is never reduced by choosing an exchange without the shopper's own statement."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.3pl-and-fulfilment-network",
+    "domain": "orders",
+    "feature": "3PL and fulfilment network",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Orders are fulfilled by the merchant, by a third-party fulfilment app or by Shopify Fulfillment Network, and the Help Center says only that merchants can use any of these; availability of the Network by country was not on the page read.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setting-up-fulfillment/fulfillment-network",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 2,
+    "gap": "Only outbound order events through Zapier, Make and Slack (D41, D101); a warehouse cannot send tracking or stock levels back, because there is no public API. Weak partial.",
+    "bucket": "C",
+    "wave": 9,
+    "criteria": [
+      "A warehouse provider with a scoped token reads paid orders to fulfil and posts a shipment with tracking, which marks lines sent and emails the customer (integration test; needs the Admin API of wave 9).",
+      "A provider posts stock levels per SKU, which update the inventory with an adjustment reason (integration test).",
+      "Events are signed and retried and a provider sees only its own store's data."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/integrations.ts",
+        "src/lib/integrations.ts"
+      ],
+      "tests": [
+        "src/server/integrations.int.test.ts",
+        "src/lib/integrations.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D41"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: outbound order events through Zapier, Make and Slack (D41, D101) make it a weak partial, not missing; a warehouse cannot send anything back without a public API. Entry written in wave 0 from the first report, which did not log it."
+      }
+    ]
+  },
+  {
+    "id": "orders.customs-and-duties",
+    "domain": "orders",
+    "feature": "Customs and duties",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, conditional: duties and import taxes can be collected at checkout (DDP) when the store uses a carrier that supports DDP labels (Canada Post to the US, DHL Express, DHL eCommerce), products have HS codes and Shopify Fulfillment Network is not used; Managed Markets (Global-e as merchant of record, per-order fee) takes over customs entirely.",
+      "url": "https://help.shopify.com/en/manual/international/duties-and-import-taxes/charging-duties",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "No duty collection: HS code and country of origin are stored per variant (`product_variants.hs_code`, `origin_country`, edited in the product editor) but nothing uses them: no duty or import-VAT estimate at checkout, no customs data in carrier bookings, no IOSS. The fields are the prerequisite, not partial credit.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "For a non-EU destination the checkout shows an estimated duty and import VAT from HS code, origin and value, worked out in code from a rates table the platform keeps, labelled as an estimate (unit and integration tests, euro scenario).",
+      "A booking to a non-EU country carries the customs lines (HS code, origin, value, description) and refuses to book without them (adapter test).",
+      "Whether duties are collected at checkout (DDP) or by the carrier (DAP) is the store's choice per market and is stated on the order and the emails.",
+      "IOSS registration is recorded per store and used only through an intermediary (bucket B part)."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/lib/product-input.ts",
+        "src/server/products.ts"
+      ],
+      "tests": [
+        "src/lib/product-input.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "Skeptic recheck: HS code and origin are captured fields only; nothing computes, collects or transmits duties."
+      }
+    ]
+  },
+  {
+    "id": "orders.multi-location-inventory-and-routing",
+    "domain": "orders",
+    "feature": "Multi-location inventory and routing",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Inventory is tracked per location, orders can be fulfilled from the location closest to the customer by routing rules based on availability and proximity, and locations also serve POS, pickup and fulfilment apps; the number of locations depends on the plan.",
+      "url": "https://help.shopify.com/en/manual/locations/enabling-locations",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "`inventory_locations` and `inventory_levels` are per location and the cart, checkout, campaigns and analytics sum and allocate across active locations, but one location is auto-created per store, the product editor writes one number to the store's first active location (`stockLocation()` in `src/server/products.ts`) and refunds restock there; no locations screen, no stock per location in the editor, no routing rule or routing of orders between locations. One row for the one Shopify feature (it replaces catalogue.multi-location-inventory).",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "An owner adds, renames and deactivates stock locations; each variant's stock is held per location and the storefront sells the sum of the active ones (integration test).",
+      "An order's lines are assigned to locations by a stated rule (stock available, then priority) and holds are taken there under row locks (integration test).",
+      "A refund restocks to the location the line was taken from, or the one staff choose.",
+      "Stock reads and holds stay within the existing performance guard.",
+      "Deactivating a location removes its stock from what is sellable and tells the owner how much was held there."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "src/server/order-admin.ts",
+        "src/server/checkout.ts",
+        "src/server/analytics-inventory-data.ts",
+        "src/server/products.ts",
+        "src/server/cart.ts"
+      ],
+      "tests": [
+        "src/server/analytics-inventory-data.int.test.ts",
+        "src/server/checkout.int.test.ts",
+        "src/server/order-admin.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "orders.order-export-to-csv",
+    "domain": "orders",
+    "feature": "Order export to CSV",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Orders export to CSV from the Orders page (selected, current page or a date range; up to 50 orders download directly, larger exports are emailed), with customer, financial, fulfilment, line item, address, payment and tag columns, UTF-8.",
+      "url": "https://help.shopify.com/en/manual/orders/export-orders",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "No orders export for stores. Only DAC7 reports for hosts and Work invoices have CSV (`toCsv()`); Tripletex is a proposal (`docs/tripletex.md`).",
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "Staff export the orders of a date range or a selection as UTF-8 CSV with one row per line, in the order's own currency and the store's main currency, VAT split out (unit test of the columns, integration test of the rows).",
+      "A large export runs as a job and is delivered by a link to the signed-in staff member, not emailed as an attachment (integration test).",
+      "Fields that start with = + - or @ are escaped against spreadsheet formulas, and copied history is marked as such (unit test).",
+      "An export contains only the signed-in member's store."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/dac7.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "orders.customer-order-status-page-and-order-history",
+    "domain": "orders",
+    "feature": "Customer order status page and order history",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The order status page shows live shipping status and a section per shipment; customer accounts list the order history and let customers start returns where self-serve returns are on.",
+      "url": "https://help.shopify.com/en/manual/fulfillment/setup/order-status-page/understanding-order-status-pages",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "The order page shows lines, totals with VAT and every discount kind, payment state, delivery and pickup point, shipments with tracking links and bookings, in the order's language and currency (render tests).",
+      "The page is a page-builder role with pieces (D113, D117) and falls back to the standard page; it needs the order's own key or the signed-in customer and is not indexed.",
+      "A signed-in customer sees their orders in My account, each with the same detail page.",
+      "A paid order of goods offers the withdrawal and the order's returns with their status page (D153)."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/s/[store]/[market]/order/[orderId]/page.tsx",
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
+        "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
+        "src/app/s/[store]/[market]/account/page.tsx",
+        "src/server/orders.ts",
+        "src/components/withdraw/order-returns.tsx"
+      ],
+      "tests": [
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/checkout-stripe.int.test.ts",
+        "src/components/withdraw/withdraw-parts.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D113",
+      "D117",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.invoices-and-vat-receipts-for-orders",
+    "domain": "orders",
+    "feature": "Invoices and VAT receipts for orders",
+    "shopify": {
+      "tier": "app",
+      "text": "App: only through the free Order Printer app that Shopify builds (invoice, packing slip, pick list, receipt templates in HTML, CSS and Liquid, with invoice numbers, printed singly or up to 50 at a time); legal invoicing and credit notes are done by invoicing apps.",
+      "url": "https://apps.shopify.com/shopify-order-printer",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Optional Stripe invoice per order with Stripe's numbering (`orderInvoices`), 'of which VAT' on the order page and emails, gap-free order numbers (D141); no invoice issued in Kaizen's own series, no invoice PDF, no legal invoice layout for the shopper to download.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "A paid order gets an invoice in the store's own gap-free invoice series, issued once and immutable, with seller and buyer details, VAT per rate and the order's currency (database and integration tests, as `issue_work_invoice`).",
+      "The shopper downloads a legal invoice PDF from the order page and the order email, and staff can reprint it (render and integration tests).",
+      "A business order carries the buyer's company and VAT number and the reverse-charge note when it applies.",
+      "Copied history and hosts' orders never get an invoice from this store."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/server/order-numbers.ts",
+        "src/lib/order-numbers.ts",
+        "src/server/work-invoices.ts"
+      ],
+      "tests": [
+        "src/server/checkout-stripe.int.test.ts",
+        "src/lib/order-numbers.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D141"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.credit-notes-for-refunds",
+    "domain": "orders",
+    "feature": "Credit notes for refunds",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify issues no credit note natively, and the free Order Printer app does not support credit notes, gift receipts or draft orders; invoicing apps from the App Store do.",
+      "url": "https://apps.shopify.com/shopify-order-printer",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Credit notes exist only for Work invoices (`credit_work_invoice()`); a shop order's refund produces a refund email and a Stripe refund, not a credit note.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "Every refund of a paid order can produce a credit note in the store's gap-free credit-note series, linked to the invoice, with the refunded amount and VAT per rate (database and integration tests).",
+      "A return's refund (D153) produces one credit note with its working; the shopper gets the PDF with the refund email.",
+      "A credit note is immutable and cannot exceed what the invoice left uncredited."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/work-invoices.ts"
+      ],
+      "tests": [
+        "src/server/work-invoices.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D122"
+    ],
+    "history": []
+  },
+  {
+    "id": "orders.gift-receipts-and-messages",
+    "domain": "orders",
+    "feature": "Gift receipts and messages",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify's own gift receipts exist only for POS sales; online, gift messages and printed gift receipts come from App Store apps (Giftnote, Gift Ship, Wrapit and others); the free Order Printer app does not do gift receipts.",
+      "url": "https://help.shopify.com/en/manual/sell-in-person/shopify-pos/receipt-management/managing-receipts",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 1,
+    "gap": "None: no gift message at checkout and no price-free gift slip.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "At checkout the shopper marks an order as a gift with a message of at most a stated length; it is kept on the order and shown to staff (integration test).",
+      "The packing slip of a gift order shows the message and no prices, and an email to the buyer never prints the message in a shipping notice to the recipient.",
+      "The message passes through the same output cleaning as other shopper text and is never rendered as HTML."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  }
+]

@@ -1,0 +1,1359 @@
+[
+  {
+    "id": "catalogue.products-with-variants-and-options-limits",
+    "domain": "catalogue",
+    "feature": "Products with variants and options (limits)",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native, 3 options and 2,048 variants.",
+      "url": "https://changelog.shopify.com/posts/we-ve-increased-the-product-variant-limit-to-2048",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Same 3 options but 100 variants (`MAX_VARIANTS` in `src/lib/product-input.ts`), so large matrices do not fit; the editor offers every combination of option values but has no matrix grid for thousands of rows.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "A product saves with up to 2,048 variants over at most 3 options; the 2,049th is refused with a plain message (unit test on `productInput`).",
+      "The product editor edits a 2,048-variant matrix without freezing (paged or virtualised grid, bulk fill of price, stock and SKU per option value) and saves it in one transaction within a stated time budget (integration test).",
+      "Cart, listing, search, JSON-LD and stock reads still answer for a 2,048-variant product without a query per variant (integration test).",
+      "The storefront variant picker stays usable for a large matrix (option dropdowns, unavailable combinations marked)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/product-input.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/server/products.ts"
+      ],
+      "tests": [
+        "src/lib/product-input.test.ts",
+        "src/server/products.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D82"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.product-data-fields-sku-barcode-weight-cost-hs-code-origin",
+    "domain": "catalogue",
+    "feature": "Product data fields (SKU, barcode, weight, cost, HS code, origin)",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Per product or variant: SKU (unique), barcode (up to 20 per product or variant), weight (physical products, used for shipping rates), cost per item (optional; gives projected profit and margin), HS code and country/region of origin (physical products; origin when customs information is on).",
+      "url": "https://help.shopify.com/en/manual/products/details/product-details-page",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "SKU is unique per store (a duplicate is refused with the SKU named).",
+      "GTIN is 8 to 14 digits, weight is a positive whole number of grams, HS code is 6 to 10 digits and origin is a two-letter country; anything else is refused with a plain message.",
+      "HS code, origin and weight belong to shipped variants only: a download keeps none (`products.ts` writes null for non-physical).",
+      "A variant's cost is typed like a price in the store's main currency, may stay empty, and is copied to the order line when sold so later changes never rewrite history (D152)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/product-input.ts",
+        "src/server/products.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/lib/product-input.test.ts",
+        "src/server/products.int.test.ts",
+        "src/db/commerce.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D24",
+      "D152"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.collections-manual",
+    "domain": "catalogue",
+    "feature": "Collections, manual",
+    "weight": 5,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/collections",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "gap": "Staff put products into nested categories and flat tags by hand (`product_terms`) and shoppers browse, filter and sort them, but a term is only a name, a slug, a parent and a position (`commerce.terms`): no description, picture or SEO title and description of its own (the page's `<title>` is the name, `term-listing.tsx`), no translation of the name (the store translation worklist has no terms scope), and no manual order of products inside one (`product_terms` has no position; sorts are featured, newest, price, title). A description or picture is possible only through a custom field on the term bound to a block (D119). Rated Full in the first report; re-rated Partial because collection content, SEO and manual ordering are what a merchant uses a collection for.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "A category or tag has its own description, picture and SEO title and description, kept per language, shown on its page and in its metadata (e2e).",
+      "Category and tag names are translatable per language and appear in the store translation worklist (integration test).",
+      "Products can be put in a manual order inside a category or tag, and a 'manual' sort follows it on the listing (integration test).",
+      "Still holds: staff assign products to nested categories and tags, menus link to them, and the listing filters and sorts (existing tests)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/taxonomy.ts",
+        "src/server/taxonomy.ts",
+        "src/components/admin/terms.tsx",
+        "src/app/s/[store]/[market]/term-listing.tsx",
+        "src/app/s/[store]/[market]/category/[slug]/page.tsx",
+        "src/lib/page-roles.ts",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/lib/taxonomy.test.ts",
+        "src/server/taxonomy.int.test.ts",
+        "e2e/terms.spec.ts",
+        "e2e/page-roles.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D50",
+      "D52",
+      "D119",
+      "D140"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Read the schema and storefront: a category or tag is a name, slug, parent and position; no own description, picture, SEO text, translation or manual product order. Staff can still group products by hand, so Partial, not Missing."
+      }
+    ]
+  },
+  {
+    "id": "catalogue.smart-rule-based-collections",
+    "domain": "catalogue",
+    "feature": "Smart (rule-based) collections",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/collections",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No rules fill a category or tag; terms are set by hand (verified: `product_terms` is the only membership, no rule table); shopper filters (D78) are applied per request, not saved as a collection.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "An owner defines a collection by rules (product category, tag, price range, availability, manufacturer, variant option, a public custom field) joined by all or any, with a live preview count.",
+      "Membership follows product changes (price, stock, tags, status) without anyone re-running it, and unpublished or archived products are never members (integration test).",
+      "A rule collection can be a category or tag page, a menu link and a content grid source, like a manual one.",
+      "Rules are checked per store: a rule cannot read another store's data (integration test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/listing.ts",
+        "src/lib/listing-filters.ts",
+        "src/server/product-conditions.ts"
+      ],
+      "tests": [
+        "src/server/listing.int.test.ts",
+        "src/lib/listing-filters.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D78"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.bundles",
+    "domain": "catalogue",
+    "feature": "Bundles",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native, free Bundles app.",
+      "url": "https://help.shopify.com/en/manual/products/bundles/shopify-bundles",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Only campaigns (D114): percentage off, 'buy N pay for M' and a free product over an amount, applied to ordinary products. There is no bundle product with components, no fixed bundle price and no stock tied to its parts (verified: no bundle table or kind in `src/db/schema.ts`).",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "A bundle is a product made of components (variants with quantities) with a fixed or computed price; its stock is the lowest sellable amount of its components.",
+      "Placing an order reserves each component's stock and records the components on the order line; a return or refund puts the right components back (integration test).",
+      "`cartSummary()` and `placeOrder()` agree on a bundle's price, VAT and discounts, in a euro scenario too (`checkout-kinds.int.test.ts`).",
+      "A bundle with a sold-out component shows as unavailable instead of overselling."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/campaigns.ts",
+        "src/server/campaigns.ts"
+      ],
+      "tests": [
+        "src/lib/campaigns.test.ts",
+        "src/server/campaigns.int.test.ts",
+        "e2e/campaigns.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D114",
+      "D115",
+      "D116"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.digital-products-and-downloads",
+    "domain": "catalogue",
+    "feature": "Digital products and downloads",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/digital-service-product/selling-services-or-digital-products",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Delivery is chosen per variant (shipped, downloaded or a booked service); a download variant on sale needs a file, and keeps no stock, weight or manufacturer.",
+      "The shopper's consent to an immediate start is recorded before a download is bought.",
+      "A paid order gets download links from a private bucket that stop at the product's download limit and expiry (`order_downloads`).",
+      "A file belongs to its store: another store's file is refused, and a removed file stays for earlier buyers."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/product-input.ts",
+        "src/server/products.ts",
+        "src/server/orders.ts",
+        "src/server/order-admin.ts",
+        "src/app/s/[store]/[market]/download/[token]/route.ts"
+      ],
+      "tests": [
+        "src/server/checkout.int.test.ts",
+        "src/server/products.int.test.ts",
+        "src/lib/product-input.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D24"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.sell-when-out-of-stock",
+    "domain": "catalogue",
+    "feature": "Sell when out of stock",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/inventory/setup/continue-selling",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "The cart caps the quantity to live stock (`available_stock` in `src/server/cart.ts`) and the database refuses negative stock (`inventory_levels_on_hand_non_negative`); there is no allow-oversell flag. Comments in `src/lib/analytics-inventory.ts` mention overselling and untracked variants, but `tracked` is always true in `analytics-inventory-data.ts`.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "A variant (or product) can be set to keep selling at zero stock; the cart then accepts any quantity for it and the product page says it is on backorder (e2e).",
+      "An order for such a variant is placed and its lines are marked backordered; stock may go below zero only for flagged variants (database rule and integration test).",
+      "Variants not flagged still refuse more than is in stock and write nothing (existing test `refuses more than is in stock`).",
+      "Inventory analytics and the admin handle negative stock (days of stock, alerts) and `checkout-kinds.int.test.ts` has a scenario."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/cart.ts",
+        "src/server/checkout.ts",
+        "src/db/schema.ts",
+        "src/lib/analytics-inventory.ts"
+      ],
+      "tests": [
+        "src/server/checkout.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "catalogue.pre-orders",
+    "domain": "catalogue",
+    "feature": "Pre-orders",
+    "weight": 2,
+    "shopify": {
+      "tier": "app",
+      "text": "App.",
+      "url": "https://shopify.dev/docs/storefronts/themes/pricing-payments/preorder-tbyb",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No pre-order mode, release date or back-in-stock list (verified: no such table, column or route). Shopify itself offers pre-orders only through apps, so this is stretch.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "A variant can be a pre-order with a release date and optional deposit or pay-now rule; cards, product page, cart and the order say so (e2e).",
+      "Pre-order orders are flagged, kept apart from shippable stock, and listed for the owner by expected date (integration test).",
+      "A shopper can ask to be told when an out-of-stock variant is back: consent recorded, one email when stock is added, unsubscribe link, no email to a typed-in address of another person (integration test).",
+      "`cartSummary()` and `placeOrder()` agree for a pre-order, euro included."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "catalogue.product-media-video-and-3d",
+    "domain": "catalogue",
+    "feature": "Product media: video and 3D",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/product-media",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "The product gallery takes pictures only, 12 at most (`MAX_MEDIA`, `product_media` has a url, thumbnail and alt). Video reaches a product page through a 'Video' custom field (YouTube or Vimeo embed, D119) or a video block in a product layout; there is no 3D model support and no uploaded video in the gallery.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "The gallery takes pictures and videos (uploaded, with a poster, or YouTube and Vimeo) in an order the owner sets, and shows them in that order on the product page (e2e).",
+      "A 3D model (glTF or GLB) can be added to a product and is viewable in the gallery with a picture fallback for browsers without support.",
+      "Every media item has alt or description text per language, and the library lists where each is used (D88).",
+      "The media limit and the file size limits are stated in the editor and enforced on the server (unit test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/product-input.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/lib/custom-fields.ts",
+        "src/lib/video-embed.ts",
+        "src/components/video-view.tsx"
+      ],
+      "tests": [
+        "src/lib/product-input.test.ts",
+        "e2e/custom-fields.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D88",
+      "D91",
+      "D119"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.metafields",
+    "domain": "catalogue",
+    "feature": "Metafields",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Metafields extend products, variants, customers, orders and collections with custom data; the help page states no plan limit.",
+      "url": "https://help.shopify.com/en/manual/custom-data/metafields",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "An owner defines groups of typed fields (23 types: text, number, measurement, money, link, relation, file, video, group, repeater, flexible content and more) and places them on products, variants, categories and tags, pages, articles, the store, customers and orders.",
+      "Values are kept per language where the type is text, checked on the server against the groups the finished thing gets, and are private until the owner makes them public.",
+      "Public values are shown by layouts, blocks and bindings, usable as listing filters and in search, and never rendered as HTML.",
+      "Customer and order fields are never readable on the shopper's side (a test lists the modules that may read `field_values`)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/custom-fields.ts",
+        "src/server/custom-fields.ts",
+        "src/components/admin/fields-form.tsx",
+        "docs/custom-fields.md"
+      ],
+      "tests": [
+        "src/lib/custom-fields.test.ts",
+        "src/server/custom-fields.int.test.ts",
+        "src/server/custom-fields-types.int.test.ts",
+        "src/server/custom-fields-entities.int.test.ts",
+        "e2e/custom-fields.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D118",
+      "D119",
+      "D120"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.metaobjects",
+    "domain": "catalogue",
+    "feature": "Metaobjects",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/custom-data/metaobjects",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Repeaters, flexible content and relation fields exist (D119, D120), so structured data can sit inside a thing; there are no standalone entries of a defined type with their own admin list, publishing state and public pages or templates.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "An owner defines a content type (fields) and creates entries of it in a list of their own, with draft and published states and per-language texts.",
+      "An entry can be referenced from fields and builder blocks and drawn by a content grid or its own page template.",
+      "Entries are per store, included in the store translation worklist, and in store copies per `COPY_RULES` (test).",
+      "An entry's public page is in the sitemap only when published."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/custom-fields.ts",
+        "src/server/custom-fields.ts"
+      ],
+      "tests": [
+        "src/server/custom-fields-flexible.int.test.ts",
+        "src/lib/custom-fields-flexible.test.ts",
+        "e2e/custom-fields-flexible.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D119",
+      "D120"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.seo-fields-title-description-handle-sitemap-hreflang",
+    "domain": "catalogue",
+    "feature": "SEO fields: title, description, handle, sitemap, hreflang",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/seo/url-redirect",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Per-locale SEO title and description on products and pages, editable handle, sitemaps with hreflang and pictures, canonical links and JSON-LD all exist (`src/server/seo.ts`, `structured-data.ts`). Changing a product or category address leaves the old one dead: `page_redirects` is for pages only (verified in `src/db/schema.ts`; no product or term redirect), there is no redirect manager and no 404 report. Categories and tags have no SEO fields (`termMetadata` uses the name).",
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "Changing a product, category, tag or page address creates a permanent redirect from the old one automatically, collapsing chains and refusing loops (integration test).",
+      "Owners add, edit, import and export redirects, and see a 404 report of what shoppers and crawlers asked for (integration test).",
+      "Categories and tags carry their own SEO title and description per language (see collections).",
+      "The sitemap lists only live addresses with hreflang alternates and never a redirected one (existing sitemap tests extended)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/seo.ts",
+        "src/lib/seo.ts",
+        "src/lib/structured-data.ts",
+        "src/server/products.ts",
+        "src/server/pages.ts"
+      ],
+      "tests": [
+        "src/server/seo.int.test.ts",
+        "src/lib/seo.test.ts",
+        "src/lib/structured-data.test.ts",
+        "src/server/pages.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21",
+      "D54",
+      "D109"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.bulk-product-import-and-export-csv",
+    "domain": "catalogue",
+    "feature": "Bulk product import and export (CSV)",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/import-export/using-csv",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No product import or export route, action or job (verified: `toCsv` is used by Work exports and DAC7 only); products are made one at a time in the editor.",
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "Export writes every product and variant to CSV (handle, translations, options, SKU, GTIN, prices per market, stock, cost, HS code, origin, media addresses, categories, tags) as a job for large stores.",
+      "Import reads a Shopify-format and Kaizen-format file with a dry run that lists each row's problem, then creates or updates by handle and SKU through `saveProduct()` and `commerce.set_price`, resumable after a failure (integration test).",
+      "Export then import round-trips a product without change (integration test); cells are escaped against spreadsheet formula injection.",
+      "Every import is per store with a size limit and an audit entry; archived variants are switched off, never deleted."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "catalogue.bulk-editing",
+    "domain": "catalogue",
+    "feature": "Bulk editing",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The bulk editor changes many products and variants in a table (a column per property such as price, SKU, compare-at price; a row per item), and also collections, customers and metafields; variant inventory is bulk edited from the Inventory page. The help page states no item limit or plan restriction and recommends CSV import for large volumes.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/bulk-editing",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No multi-select or grid editor in the product list; `setArchived()` in `src/server/products.ts` is per product (verified).",
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "The product list selects many products and applies a bulk action (status, archive, add or remove categories and tags, price change by percentage or amount, stock set) in one confirmed step.",
+      "A grid edits price, SKU, stock and cost across variants in a table with a preview and undo; every change goes through the same validation as the editor and `commerce.set_price` (integration test).",
+      "A bulk change is limited per request, runs per store, writes one audit entry per batch, and reports which items failed and why."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/products.ts"
+      ],
+      "tests": [
+        "src/server/products.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "catalogue.inventory-tracking-with-reservations",
+    "domain": "catalogue",
+    "feature": "Inventory tracking with reservations",
+    "weight": 5,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Tracking is switched on per product or variant (Inventory section, \"Track quantity\"). Inventory states: on hand is every unit at a location and is the sum of committed, unavailable and available; committed is set aside and cannot be sold (an unfulfilled order, a draft order reservation, a transfer ready to ship); available is what can be sold; unavailable (damaged, quality control, safety stock) and incoming are the other states.",
+      "url": "https://help.shopify.com/en/manual/products/inventory/fundamentals/inventory-states",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Per-variant stock in `inventory_levels`, row-locked reservations at checkout (`inventory_reservations`), restock on refund (D27) and on an inspected return (D153), and a read-only inventory analytics page (D152: days of stock, stock-out alerts, dead stock) exist, and the control center and the AI manager show low stock. There is no inventory page to adjust levels, no adjustment history with reasons (no movements table: verified), no bulk stock update and no low-stock email.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "An inventory page lists variants per location with on hand, committed (reserved) and available, and staff adjust a level with a reason (received, damaged, correction, recount).",
+      "Every change to a level, from an adjustment, sale, cancellation, refund or return, is an append-only history row with who, when, reason and the order (integration test).",
+      "Stock can be updated in bulk from the page or a file with a dry run.",
+      "A variant crosses its low-stock threshold once: the owner gets one notification per crossing, not one per sale (integration test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/cart.ts",
+        "src/server/checkout.ts",
+        "src/server/order-admin.ts",
+        "src/server/returns.ts",
+        "src/server/analytics-inventory-data.ts",
+        "src/lib/analytics-inventory.ts",
+        "src/server/control-center.ts",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/server/checkout.int.test.ts",
+        "src/server/order-admin.int.test.ts",
+        "src/server/returns.int.test.ts",
+        "src/server/analytics-inventory-data.int.test.ts",
+        "src/lib/analytics-inventory.test.ts",
+        "src/db/commerce.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27",
+      "D152",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.inventory-transfers-and-purchase-orders",
+    "domain": "catalogue",
+    "feature": "Inventory transfers and purchase orders",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Inventory transfers move stock between locations or to and from external locations, created from Products > Transfers (draft, ready to ship, in progress, transferred, cancelled) with bulk CSV import, receiving per line, and purchase orders linked to transfers.",
+      "url": "https://help.shopify.com/en/manual/products/inventory/inventory-transfers/creating-and-managing-transfers",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No transfers and no purchase orders: no transfer or purchase order table or screen (verified); Kaizen has one stock location per store. One row for the one Shopify feature (it replaces orders.inventory-transfers).",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Staff create a transfer between two locations; sending reduces the origin and shows incoming stock at the destination, receiving adds it (partial receipt supported, integration test).",
+      "A purchase order to a supplier lists variants, quantities and cost, is received in parts, and updates stock and variant cost history without rewriting earlier orders' cost.",
+      "Both write to the inventory history with their reference.",
+      "A cancelled transfer returns committed stock to the origin, and a transfer never takes a location below zero (integration test)."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "catalogue.selling-plans-and-subscriptions",
+    "domain": "catalogue",
+    "feature": "Selling plans and subscriptions",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://shopify.dev/docs/apps/build/purchase-options/subscriptions/selling-plans",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A product has up to five purchase options (intervals) charged by Stripe Billing on the store's own account, with free trial, sign-up fee and commitment.",
+      "Subscribers pause, skip and change their subscription themselves and are reminded before a charge.",
+      "Weekly subscription boxes (D102) become orders through `placeOrder()` at the cutoff and are charged when sent."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/subscriptions.ts",
+        "src/server/subscriptions.ts",
+        "src/lib/standing-orders.ts",
+        "src/server/standing-orders.ts",
+        "src/lib/subscription-form.ts"
+      ],
+      "tests": [
+        "src/lib/subscriptions.test.ts",
+        "src/server/subscriptions.int.test.ts",
+        "src/server/subscription-changes.int.test.ts",
+        "src/server/standing-orders.int.test.ts",
+        "src/lib/standing-orders.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D25",
+      "D29",
+      "D102"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.per-market-pricing-and-currencies",
+    "domain": "catalogue",
+    "feature": "Per-market pricing and currencies",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/markets/pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A variant has a price per market in the country's own currency, VAT-inclusive, changed only through `commerce.set_price` (history kept; an empty price means not sold there).",
+      "A shopper can see amounts in another currency the store offers, converted at the store's rate and rounded to its step; amounts are written to the database in the country's own currency (euro scenario in `checkout-kinds.int.test.ts`).",
+      "Advertised reductions use the 30-day reference from `commerce.current_prices` (Omnibus).",
+      "Not covered and not claimed: percentage price adjustments per market; prices are set per market, conversion applies only for the shopper's chosen currency."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/money.ts",
+        "src/lib/currency.ts",
+        "src/lib/market-slug.ts",
+        "src/lib/markets.ts",
+        "src/server/products.ts",
+        "src/server/catalog.ts"
+      ],
+      "tests": [
+        "src/lib/money.test.ts",
+        "src/lib/currency.test.ts",
+        "src/lib/markets.test.ts",
+        "src/db/commerce.test.ts",
+        "src/server/products.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D109"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.b2b-company-accounts",
+    "domain": "catalogue",
+    "feature": "B2B company accounts",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://changelog.shopify.com/posts/key-b2b-features-now-available-on-non-plus-plans",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "Companies with a customer group, invited employees, a company number filled in at checkout and a group discount (D108, D63) exist (`customer_companies` has name, tier, employee share, member cap). No company locations, no buyer roles beyond owner and employee, no order approvals and no PO number at checkout (verified in `src/db/schema.ts`). Net payment terms are the row checkout.b2b-payment-terms (wave 4) and are not counted here.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "A company has several locations (billing and shipping addresses), and a buyer is assigned to locations and a role.",
+      "An order over a company-set limit waits for an approver before payment (integration test).",
+      "A buyer's PO number is asked at checkout and kept on the order and its documents (integration test, euro scenario)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/customer-tiers.ts",
+        "src/server/customer-tiers.ts",
+        "src/server/companies.ts",
+        "src/server/company.ts",
+        "src/lib/b2b.ts",
+        "src/server/b2b.ts"
+      ],
+      "tests": [
+        "src/server/companies.int.test.ts",
+        "src/server/company.int.test.ts",
+        "src/lib/b2b.test.ts",
+        "src/lib/customer-tiers.test.ts",
+        "e2e/company.spec.ts",
+        "e2e/b2b.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D63",
+      "D108"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.b2b-catalogs-and-price-lists",
+    "domain": "catalogue",
+    "feature": "B2B catalogs and price lists",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native, on every plan. Companies, company locations, net payment terms, quantity rules and quantity price breaks are on Basic, Grow, Advanced and Plus; Basic, Grow and Advanced allow 3 active B2B market catalogs, Plus unlimited; direct company catalogs and deposit, partial and per-fulfillment payment requests are Plus only.",
+      "url": "https://help.shopify.com/en/manual/b2b/getting-started/plan-features",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "One whole percentage per customer group, off what is bought once (`customer_tiers.percent`, `memberLineOff()`); no price lists with their own prices, no per-group product visibility, no wholesale price per variant (verified). The umbrella row platform.b2b-companies-catalogs-terms is removed: its four parts are this row (price lists), catalogue.b2b-company-accounts (companies, locations, PO number), checkout.b2b-payment-terms (net terms) and catalogue.volume-pricing-and-quantity-rules (quantity rules and breaks).",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "A price list holds its own prices (fixed or a percentage on the market price) per currency and is assigned to a customer group or company; the shopper sees and pays it when signed in (integration test).",
+      "A catalogue limits which products or categories a group sees; a hidden product is not in listings, search, sitemap or recommendations for others, and a direct link answers not found.",
+      "`cartSummary()` and `placeOrder()` agree on list prices with VAT, in a euro scenario (`checkout-kinds.int.test.ts`)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/customer-tiers.ts",
+        "src/server/customer-tiers.ts",
+        "src/server/cart-summary.ts"
+      ],
+      "tests": [
+        "src/lib/customer-tiers.test.ts",
+        "src/server/companies.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D108"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.volume-pricing-and-quantity-rules",
+    "domain": "catalogue",
+    "feature": "Volume pricing and quantity rules",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://changelog.shopify.com/posts/key-b2b-features-now-available-on-non-plus-plans",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "No quantity breaks, minimums, maximums or increments (verified: the cart only caps to stock and `MAX_LINE_QUANTITY`); 'buy N pay for M' campaigns (D114) are the nearest thing.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "A variant (or price list) has quantity breaks (from N units, price or percentage) and the product page shows them.",
+      "A variant can have a minimum, maximum and increment per order; the cart refuses and explains a quantity that breaks them (integration test).",
+      "`cartSummary()` and `placeOrder()` agree on tier prices, euro included."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D114"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.product-recommendations",
+    "domain": "catalogue",
+    "feature": "Product recommendations",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native in the sense of Shopify's own free Search & Discovery app: related and complementary product recommendations on product pages. (The app is installed from the App Store.)",
+      "url": "https://apps.shopify.com/search-and-discovery",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A product grid with a recommend source shows a cached stand-in for everyone and the browser swaps in the shopper's own, without cookies or AI needed.",
+      "Candidates come only from the store's data and pass `recommendable()`; anchors, the cart, purchased products and never-with rules are excluded (unit and integration tests).",
+      "AI only re-orders ids from that list, kept in the search cache, under the owner's cap, never for the held-out arm; its result is judged on tabs, not impressions.",
+      "Category and tag pages are page roles so recommendations work around them (D140)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/recommend.ts",
+        "src/lib/recommendations.ts",
+        "src/server/recommend-settings.ts",
+        "src/server/recommend-events.ts",
+        "src/server/recommend-grid.ts",
+        "src/components/recommended-grid.tsx",
+        "docs/recommendations.md"
+      ],
+      "tests": [
+        "src/lib/recommendations.test.ts",
+        "src/server/recommend.int.test.ts",
+        "src/lib/recommend-eval.test.ts",
+        "src/lib/recommend-session.test.ts",
+        "e2e/recommendations.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D139",
+      "D140"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.storefront-filtering-and-sorting",
+    "domain": "catalogue",
+    "feature": "Storefront filtering and sorting",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native in the sense of the free Search & Discovery app: filters shoppers refine a collection or search by, and sorting. (The app is installed from the App Store.)",
+      "url": "https://apps.shopify.com/search-and-discovery",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Products, category, tag and search pages take sort and filters from the address (kinds, categories, tags, variant options, price range, public custom fields) and show matching facets.",
+      "Prices are compared as shown (without VAT for businesses, in the shown currency).",
+      "The unfiltered grid stays prerendered and the dialog follows each choice live on listing pages."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/listing-filters.ts",
+        "src/server/listing.ts",
+        "src/components/filter-dialog.tsx",
+        "src/components/product-listing.tsx",
+        "src/server/product-conditions.ts",
+        "src/lib/field-filters.ts"
+      ],
+      "tests": [
+        "src/lib/listing-filters.test.ts",
+        "src/server/listing.int.test.ts",
+        "src/lib/field-filters.test.ts",
+        "e2e/listing.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D78",
+      "D83",
+      "D119"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.search-quality-type-ahead-typos-stemming",
+    "domain": "catalogue",
+    "feature": "Search quality: type-ahead, typos, stemming",
+    "weight": 4,
+    "shopify": {
+      "tier": "native",
+      "text": "Native in the sense of the free Search & Discovery app: autocomplete, instant search, typo tolerance, multi-language support. (The app is installed from the App Store.)",
+      "url": "https://apps.shopify.com/search-and-discovery",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Search stems per language (plural and definite forms find the singular), finds misspellings and parts of compound words by trigram similarity, and suggests as the shopper types.",
+      "Search by meaning is merged by reciprocal rank fusion and falls back to keywords when the model is unavailable.",
+      "A search that holds filters ('lampe under 500 kr') is read into filters by the model, cleaned in code; the model never names products or prices."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/search.ts",
+        "src/lib/search.ts",
+        "src/server/embeddings.ts",
+        "src/server/query-understanding.ts",
+        "src/lib/query-understanding.ts",
+        "src/components/search-box.tsx"
+      ],
+      "tests": [
+        "src/server/search.int.test.ts",
+        "src/lib/search.test.ts",
+        "src/server/embeddings.int.test.ts",
+        "src/server/query-understanding.int.test.ts",
+        "src/lib/query-understanding.test.ts",
+        "e2e/search.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D72",
+      "D74",
+      "D75"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.search-merchandising-synonyms-boosts-pins",
+    "domain": "catalogue",
+    "feature": "Search merchandising: synonyms, boosts, pins",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native, as the free Shopify-built Search & Discovery app: synonym groups and product boosts (up to 10 search terms per boost), filters, and control of result types and out-of-stock visibility.",
+      "url": "https://help.shopify.com/manual/online-store/search-and-discovery/search",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "`/admin/{store}/search` shows counts, zero-result queries and meaning help only (verified, `src/app/admin/(gated)/[store]/search/page.tsx`); no synonym, boost, bury or pin controls and none in `src/server/search.ts`. Listing filters and sorting (D78) are other rows. One row for the one Shopify feature (it replaces ai.search-merchandising, which was rated partial for filters only).",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "An owner defines synonym groups per language (one-way and two-way) and keyword search uses them (integration test).",
+      "An owner boosts, buries or pins products or categories, for all searches or for a query, and the result order follows it (integration test).",
+      "A zero-result query in the report offers to add a synonym or a redirect to a page.",
+      "Merchandising applies within the search cache's key (a change shows without stale results), is per store (store id on every query) and is copied by the store-copy rules (`COPY_RULES`)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/search.ts",
+        "src/lib/search.ts",
+        "src/server/search-cache.ts"
+      ],
+      "tests": [
+        "src/server/search.int.test.ts",
+        "src/server/search-cache.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D72"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.search-analytics",
+    "domain": "catalogue",
+    "feature": "Search analytics",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native in the sense of the free Search & Discovery app: analytics on the store's search and discovery performance. (The app is installed from the App Store.)",
+      "url": "https://apps.shopify.com/search-and-discovery",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every page search is logged (kept 90 days) with its result count and, when a result is opened, the click and its position.",
+      "The owner sees searches, share that found nothing, the terms ranked with results and clicks, and the zero-result terms with when they last happened (store search page and Analytics, D152).",
+      "Revenue after a search is stated as not tracked rather than guessed."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/search.ts",
+        "src/server/analytics-search-data.ts",
+        "src/app/admin/(gated)/[store]/search/page.tsx",
+        "src/app/s/[store]/[market]/search/go/route.ts"
+      ],
+      "tests": [
+        "src/server/search.int.test.ts",
+        "src/server/analytics-search-data.int.test.ts",
+        "src/server/embeddings.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D72",
+      "D77",
+      "D152"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.product-feeds-to-google-and-other-channels",
+    "domain": "catalogue",
+    "feature": "Product feeds to Google and other channels",
+    "weight": 3,
+    "shopify": {
+      "tier": "native",
+      "text": "Native, through the Google & YouTube sales channel (installed from the App Store, managed by Google): automatically syncs products and store information to Google Merchant Center; available only for certain countries and currencies; free Shopping listings for eligible US merchants.",
+      "url": "https://help.shopify.com/en/manual/online-sales-channels/google",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "gap": "No feed route, no channel admin and no sync (verified: no feed or merchant route under `src/app`). Credit elsewhere is only GTIN data on variants and product JSON-LD (`structured-data.ts`) that Google can read from the page, which is not a feed. One row for the one Shopify feature: it replaces the two feed rows in the AI and Customers domains. Planned in `docs/plan.md` (Phase 4, channels).",
+    "bucket": "B",
+    "wave": 5,
+    "criteria": [
+      "A tokenised feed address per market and language serves published products in Google Merchant Center format (id, title, description, link, image link, GTIN, brand, price with VAT in the market's currency, availability from stock, shipping and tax by country, 30-day price reference), validated against Google's required attributes in a unit test.",
+      "A euro scenario proves the feed's price equals the storefront's `shown()` price.",
+      "Products that may not be advertised (restricted, unavailable, no price) are left out and the admin lists each with the missing attribute; custom label fields can be mapped.",
+      "Meta, TikTok and Pinterest catalogue formats come from the same normalised product list.",
+      "Price and stock changes show in the feed within its stated refresh time. Live only once the Merchant Center account is connected (bucket B)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/structured-data.ts",
+        "src/server/seo.ts"
+      ],
+      "tests": [
+        "src/lib/structured-data.test.ts",
+        "src/server/seo.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: credit for GTIN data and product JSON-LD only; the recheck's own text said 'partial leaning missing'. Entry written in wave 0 from the first report, which did not log it."
+      },
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "No feed exists; JSON-LD is not a feed. Merged with ai.product-feed-to-merchant-center and customers.google-shopping-and-merchant-center-feed (same Shopify feature), both already rated missing"
+      }
+    ]
+  },
+  {
+    "id": "catalogue.standard-product-taxonomy",
+    "domain": "catalogue",
+    "feature": "Standard product taxonomy",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/details/product-category",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "gap": "No standard product category or attributes: nothing exists that Shopify's or Google's taxonomy would map to. Kaizen has its own categories and tags (D50) and a Stripe product tax code per product (`txcd_…`), which classifies for tax and is not a browse taxonomy; no standard category list with attributes, so nothing to map to channels.",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "A product can be given a category from a standard taxonomy (searchable picker, stable ids) kept apart from the store's own categories and from the tax code.",
+      "The category's attributes are offered as fields and as filters; values are checked against the category.",
+      "The standard category and attributes reach the feeds (see the feeds row); a model may only suggest a category, which staff accept."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/product-input.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/lib/taxonomy.ts"
+      ],
+      "tests": [
+        "src/lib/product-input.test.ts",
+        "src/lib/taxonomy.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D50"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "Tax code is a tax classification, not a product taxonomy; no criterion met"
+      }
+    ]
+  },
+  {
+    "id": "catalogue.ai-product-descriptions",
+    "domain": "catalogue",
+    "feature": "AI product descriptions",
+    "weight": 2,
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/products/details/product-descriptions/shopify-magic",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "In the product editor staff ask the store's text model to write or improve a description, write search texts, or translate from the main language; the suggestion is shown for staff to edit and copy in and is never written to the product directly.",
+      "The model gets the product's own words and never prices or stock; its copy passes `findClaims()` (generic green claims, urgency, best price, money, stock) before it can be used.",
+      "Without an AI connection the editor works and the feature says so; usage is metered for the store."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/product-writer.ts",
+        "src/lib/product-writing.ts",
+        "src/components/admin/ai-writer.tsx",
+        "src/lib/claims.ts"
+      ],
+      "tests": [
+        "src/lib/product-writing.test.ts",
+        "src/server/product-writer.int.test.ts",
+        "src/lib/claims.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D73",
+      "D76",
+      "D106"
+    ],
+    "history": []
+  },
+  {
+    "id": "catalogue.combined-listings",
+    "domain": "catalogue",
+    "feature": "Combined listings",
+    "weight": 1,
+    "shopify": {
+      "tier": "plus",
+      "text": "Plus. The Combined Listings app is available only on Plus and enterprise commerce plans.",
+      "url": "https://help.shopify.com/en/manual/products/combined-listings-app",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "gap": "None: no way to show separate products as one listing with shared options (verified: variants live inside one product only).",
+    "bucket": "A",
+    "wave": 6,
+    "criteria": [
+      "Separate products can be grouped into one listing with a shared option (for example colour); the listing card and page link to each product.",
+      "Each product keeps its own stock, price, SEO address and reviews; the cart holds the chosen product.",
+      "Search and feeds list the products once, with the canonical pointing to the right address."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  }
+]

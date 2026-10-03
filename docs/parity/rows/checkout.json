@@ -1,0 +1,1104 @@
+[
+  {
+    "id": "checkout.checkout-branding",
+    "domain": "checkout",
+    "feature": "Checkout branding",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The checkout editor (colours, fonts, logo, corners, layout) is available on every plan; only the Checkout Branding API and apps that customise the information, shipping and payment pages are Plus.",
+      "url": "https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 3,
+    "gap": "The page around the payment form is the store's own: theme, header and footer, builder pieces, custom CSS (D60, D100, D113, D117). But Stripe's payment form is drawn by `appearance()` in `src/components/checkout-form.tsx` with fixed light and dark colours, a system font and a 6 px radius, so the store's accent colour, fonts and corner style stop at the payment fields; there is no checkout-specific logo, background or button setting. Rated partial on re-reading the code (first report: full, not rechecked).",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "Stripe's payment form takes its primary colour, text colours, font family and corner radius from the store's theme, in the light and the dark set (a unit test of the appearance function for two themes).",
+      "The checkout page shows the store's logo and the header and footer the owner chose, in the shopper's market and language.",
+      "A checkout laid out in the page builder keeps the store's own look in the admin preview and on the site.",
+      "The owner can change the checkout's look in one place without writing CSS."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/checkout-form.tsx",
+        "src/lib/theme.ts",
+        "src/lib/store-parts.ts",
+        "src/components/role-page.tsx",
+        "src/components/store-part-section.tsx",
+        "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
+        "src/lib/custom-css.ts"
+      ],
+      "tests": [
+        "src/lib/theme.test.ts",
+        "src/lib/store-parts.test.ts",
+        "src/app/s/[store]/[market]/checkout/checkout-section.test.ts",
+        "e2e/page-roles.spec.ts",
+        "e2e/custom-css.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D22",
+      "D60",
+      "D100",
+      "D113",
+      "D117"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Re-read at HEAD: the surroundings follow the theme, but Stripe's payment form uses fixed colours, font and radius (`appearance()` in checkout-form.tsx), so the claim 'checkout branding' does not hold for the payment fields."
+      }
+    ]
+  },
+  {
+    "id": "checkout.checkout-extensibility-ui-extensions-functions",
+    "domain": "checkout",
+    "feature": "Checkout extensibility (UI extensions, Functions)",
+    "shopify": {
+      "tier": "plus",
+      "text": "Plus. UI extensions on the information, shipping and payment pages, and the Checkout Branding API, need Plus; the checkout editor, and apps on the thank-you and order status pages, are on every plan.",
+      "url": "https://help.shopify.com/en/manual/checkout-settings/checkout-extensibility",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "The checkout's layout is editable and testable (cart, checkout and order are page roles split into pieces, D113 and D117, A/B tested, D148). There is no extension API, no store-defined fields collected from the shopper at checkout and no hook for rules (shipping, payment or discount logic). Fields (D118) are never shown to the shopper at checkout.",
+    "bucket": "C",
+    "wave": 9,
+    "criteria": [
+      "An owner defines a checkout field (text or checkbox); the shopper fills it in at checkout and staff see the answer on the order.",
+      "A sandboxed rule can hide or reorder shipping options or payment methods for a basket, tested with one rule per kind.",
+      "Scoped tokens let an outside app read and change checkout settings through the Admin API (wave 9).",
+      "A rule or extension that fails never stops a shopper from paying: the checkout falls back to its standard behaviour."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/store-parts.ts",
+        "src/lib/ab-site.ts",
+        "src/components/store-part-section.tsx",
+        "src/app/s/[store]/[market]/checkout/checkout-section.tsx"
+      ],
+      "tests": [
+        "src/lib/store-parts.test.ts",
+        "e2e/ab-working-pages.spec.ts",
+        "e2e/page-roles.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D113",
+      "D117",
+      "D118",
+      "D148"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.guest-checkout-and-optional-account",
+    "domain": "checkout",
+    "feature": "Guest checkout and optional account",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Customer accounts can be required, optional or off; guests check out with an email address.",
+      "url": "https://help.shopify.com/en/manual/checkout-settings",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 5,
+    "gap": "Guest checkout and optional account creation work; no store setting to require sign-in or disable accounts, and no configurable checkout contact fields.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A shopper pays with only an email address and delivery details, no account.",
+      "A shopper not signed in may tick 'create an account' and choose a password at checkout; the account opens when the order is paid, with that order.",
+      "An email that already has an account is not told so; it is asked to choose a new password instead.",
+      "Signed-in shoppers' orders join their account, and guest orders with the same email join once the address is proven.",
+      "An owner switches accounts to required or off, and checkout, express payment and the cart obey it (integration test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/server/customers.ts",
+        "src/components/checkout-form.tsx",
+        "src/app/s/[store]/[market]/account/actions.ts"
+      ],
+      "tests": [
+        "src/server/customers.int.test.ts",
+        "src/server/checkout.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "e2e/account.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D28",
+      "D32"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Shopify lets an owner set accounts to required, optional or off; Kaizen offers optional accounts only, with no store setting and no configurable contact fields"
+      }
+    ]
+  },
+  {
+    "id": "checkout.accelerated-checkout-apple-pay-google-pay-shop-pay",
+    "domain": "checkout",
+    "feature": "Accelerated checkout (Apple Pay, Google Pay, Shop Pay)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Shop Pay is part of Shopify Payments (the buyer's email saves their details); Apple Pay and Google Pay are accelerated buttons on cart, product and checkout.",
+      "url": "https://help.shopify.com/en/manual/payments/shop-pay",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Stripe's `ExpressCheckoutElement` (Apple Pay, Google Pay, Link, Klarna where Stripe offers them) is drawn at the top of Kaizen's checkout page only (D22), and each store host's domain is registered with Stripe once (`ensurePaymentDomain()`), tested. No express buttons on the product page or the cart, no admin view of which wallets are live for a store, no test that the buttons confirm an order, and no cross-store wallet network like Shop Pay (bucket D for that part).",
+    "bucket": "B",
+    "wave": 4,
+    "criteria": [
+      "Express buttons are on the cart and product page as well as the checkout, and an express payment ends as a paid order (integration test with a fake Stripe).",
+      "The store's domain is registered for Apple Pay and Google Pay on every host it is served from, and the admin shows the status per domain.",
+      "The admin lists which wallets Stripe offers this store, and says why one is off.",
+      "A wallet payment carries the shopper's shipping address and chosen delivery option into the order."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/checkout-form.tsx",
+        "src/server/connect.ts",
+        "src/server/checkout.ts"
+      ],
+      "tests": [
+        "src/server/checkout-stripe.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D22",
+      "D23"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.integrated-payments-provider-in-the-nordics-and-eu",
+    "domain": "checkout",
+    "feature": "Integrated payments provider in the Nordics and EU",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Shopify Payments is available in a list of countries by store location.",
+      "url": "https://help.shopify.com/en/manual/payments/shopify-payments/supported-countries",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every store gets its own Stripe connected account (Accounts v2, direct charges) with Kaizen's fee as the application fee.",
+      "Test payments work with nothing set up by the owner; live needs the owner's Stripe onboarding, done in the admin with embedded components.",
+      "Checkout is refused until Stripe has approved the account for card payments.",
+      "The Connect webhooks find the store from the event's account and ignore accounts that are not Kaizen stores."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/connect.ts",
+        "src/lib/stripe-account.ts",
+        "src/server/stripe.ts",
+        "src/server/stripe-webhooks.ts",
+        "src/server/checkout.ts",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx"
+      ],
+      "tests": [
+        "src/lib/stripe-account.test.ts",
+        "src/server/billing.int.test.ts",
+        "src/server/checkout.int.test.ts",
+        "src/server/checkout-stripe.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D16",
+      "D17",
+      "D20"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.third-party-and-multiple-payment-gateways",
+    "domain": "checkout",
+    "feature": "Third-party and multiple payment gateways",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Dozens of third-party gateways can be added on every plan, with a transaction fee (waived for PayPal when Shopify Payments is on).",
+      "url": "https://www.shopify.com/pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 3,
+    "gap": "One gateway only: Stripe (`payment_providers.provider` is always 'stripe' in code). Several methods through it are scored in the local-methods, Klarna and MobilePay rows, not here. No Mollie, Adyen, Nets, Paytrail or bank transfer; stores Stripe does not serve cannot sell.",
+    "bucket": "C",
+    "wave": 4,
+    "criteria": [
+      "A `PaymentProvider` adapter sits next to the Stripe code; checkout, webhooks and refunds go through it.",
+      "A store chooses its provider in the admin, and a second provider takes an order to paid with the same tests as Stripe.",
+      "The decision on a second provider (docs/parity-plan.md section 5, decision 1) is made and recorded."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/server/stripe.ts",
+        "src/server/stripe-webhooks.ts",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/server/checkout-stripe.int.test.ts",
+        "src/server/checkout.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D15",
+      "D17",
+      "D23"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: was missing, several methods work through Stripe."
+      },
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "missing",
+        "why": "One gateway only; method breadth is scored in the local-methods, Klarna and MobilePay rows"
+      }
+    ]
+  },
+  {
+    "id": "checkout.klarna",
+    "domain": "checkout",
+    "feature": "Klarna",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Klarna is offered through Shopify Payments in several European countries.",
+      "url": "https://docs.klarna.com/platform-solutions/e-commerce-platforms/shopify/payments/shopify-payments",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Kaizen requests `klarna_payments` for every store account, switches Klarna on in Kaizen-made test accounts (`ensureStorePaymentMethods()`), and Stripe's form and express buttons show it where it fits. Live accounts: the owner enables it in their own Stripe Dashboard. No Kaizen-side switch or per-market control, no Klarna messaging on product pages, no test that a checkout offers it.",
+    "bucket": "B",
+    "wave": 4,
+    "criteria": [
+      "The admin shows whether Klarna is requested, active or held back for the store, with Stripe's reason.",
+      "An owner switches Klarna on or off per market from Kaizen, and checkout offers it only where on.",
+      "Product and cart pages show Klarna's payment messaging where the store has it active.",
+      "A checkout session for an eligible country and currency offers Klarna (integration test)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/connect.ts",
+        "src/lib/stripe-account.ts",
+        "src/server/checkout.ts",
+        "src/app/admin/(gated)/[store]/settings/payments/page.tsx"
+      ],
+      "tests": [
+        "src/server/billing.int.test.ts",
+        "src/lib/stripe-account.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D22",
+      "D23"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.vipps",
+    "domain": "checkout",
+    "feature": "Vipps",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Vipps MobilePay is a Shopify-listed integration, not part of Shopify Payments (its page is not in Shopify Payments' list of local methods).",
+      "url": "https://developer.vippsmobilepay.com/docs/plugins-ext/shopify",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Not offered: not yet available for Stripe Accounts v2 (D23). Needs Stripe's access, or a second provider.",
+    "bucket": "B",
+    "wave": 4,
+    "criteria": [
+      "Vipps is offered at checkout for Norwegian shoppers in NOK once the provider enables it for the store's account.",
+      "The admin shows Vipps's state and what is needed to switch it on.",
+      "A Vipps payment, and its refund, end as a paid and a refunded order (tested against the provider's sandbox)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/connect.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D23"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.mobilepay",
+    "domain": "checkout",
+    "feature": "MobilePay",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. MobilePay is a local method of Shopify Payments for shoppers in Denmark and Finland.",
+      "url": "https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 3,
+    "gap": "Kaizen requests `mobilepay_payments` and switches MobilePay on, with the test organisation number it asks for, in the test accounts it makes (D23), and Stripe's form shows it to Danish and Finnish shoppers; a test holds the request and the display settings. Live accounts: the owner enables it in their own Stripe Dashboard; there is no Kaizen switch or per-market control, no test that a DKK or EUR checkout offers it, and subscriptions and boxes are card-only. Rated like Klarna, which is requested the same way (first report: full, not rechecked).",
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "The admin shows MobilePay's state for the store (requested, active, held back and why).",
+      "A checkout in DKK or EUR for a Danish or Finnish shopper offers MobilePay, and one for other countries does not (integration test).",
+      "A MobilePay payment ends as a paid order, and its refund is recorded.",
+      "The owner switches it off per market from Kaizen."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/connect.ts",
+        "src/lib/stripe-account.ts",
+        "src/server/checkout.ts"
+      ],
+      "tests": [
+        "src/server/billing.int.test.ts",
+        "src/lib/stripe-account.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D23"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Re-read at HEAD: the same code and tests hold Klarna (partial); nothing tests that a checkout offers MobilePay, there is no Kaizen switch and live availability rests on the owner's Stripe Dashboard."
+      }
+    ]
+  },
+  {
+    "id": "checkout.swish",
+    "domain": "checkout",
+    "feature": "Swish",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Swish is a local method of Shopify Payments for shoppers in Sweden.",
+      "url": "https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "In private preview at Stripe: Kaizen's platform account must be given access first (D23); not requested or shown.",
+    "bucket": "B",
+    "wave": 4,
+    "criteria": [
+      "Swish is offered at checkout to Swedish shoppers in SEK once Stripe (or another provider) enables it for the store's account.",
+      "The admin shows Swish's state and what is needed.",
+      "A Swish payment and its refund are recorded on the order (provider sandbox)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/connect.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D23"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.ideal-bancontact-sepa-blik-eps-p24-and-other-local-methods",
+    "domain": "checkout",
+    "feature": "iDEAL, Bancontact, SEPA, BLIK, EPS, P24 and other local methods",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Shopify Payments lists BLIK, Bancontact, EPS, iDEAL | Wero, Przelewy24, MobilePay, Swish, TWINT, Klarna and others by country; SEPA is not in that list.",
+      "url": "https://help.shopify.com/en/manual/payments/shopify-payments/local-payment-methods",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 4,
+    "gap": "Checkout sends no `payment_method_types` (tested), so methods the owner enables in their own Stripe Dashboard can appear. Kaizen requests no capability for iDEAL, Bancontact, BLIK, EPS or P24, has no admin switch or per-market control, no test that any is offered, and subscriptions and boxes are card-only.",
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "Kaizen requests capabilities for iDEAL, Bancontact, BLIK, EPS, P24 and SEPA debit for every store account and shows each one's state in the admin.",
+      "An owner switches each method on or off per market; a checkout for a country offers only the methods on and suited to it (integration tests per method and currency).",
+      "Delayed methods (SEPA, bank transfer) keep the order unpaid and its stock held until Stripe confirms, or release both when it fails.",
+      "Subscriptions offer the methods Stripe supports for recurring payments, and say which they do not."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/server/connect.ts",
+        "src/lib/stripe-account.ts"
+      ],
+      "tests": [
+        "src/server/checkout-stripe.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D23"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "First report's skeptic recheck: was missing, owner-enabled Stripe methods can appear."
+      }
+    ]
+  },
+  {
+    "id": "checkout.paypal",
+    "domain": "checkout",
+    "feature": "PayPal",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. PayPal Express Checkout is set up from the payment settings; with Shopify Payments on, PayPal carries no third-party fee.",
+      "url": "https://help.shopify.com/en/manual/payments/shopify-payments",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Not allowed by Stripe for platforms taking direct charges (D23); needs a second payment provider (docs/parity-plan.md section 5, decision 1).",
+    "bucket": "C",
+    "wave": 4,
+    "criteria": [
+      "A store chooses PayPal as a payment method and a shopper pays with it at checkout (provider sandbox).",
+      "A PayPal payment ends as a paid order, and a refund from the order page goes back through PayPal.",
+      "Orders, stock and VAT behave as for card payments (a scenario in checkout-kinds.int.test.ts)."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D23"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.authorize-then-capture",
+    "domain": "checkout",
+    "feature": "Authorize then capture",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Manual capture is on every plan; cards must be captured within the authorisation period (7 days with Shopify Payments, a longer period for Plus, with a fee after 7 days).",
+      "url": "https://help.shopify.com/en/manual/payments/payment-authorization",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Sessions capture automatically: no `capture_method` anywhere in `src/server/checkout.ts`; a payment is `captured` the moment the session is complete.",
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "A store can switch to manual capture; a paid session then leaves the order authorised, not paid, with the stock held.",
+      "Staff capture the amount (or less) from the order page before the authorisation expires; the order then becomes paid and counts in sales.",
+      "An authorisation that expires or is voided releases the stock and cancels the order.",
+      "Analytics and refunds treat an uncaptured payment as not paid."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/server/stripe-webhooks.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D16",
+      "D22"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.fraud-analysis-and-risk-flags",
+    "domain": "checkout",
+    "feature": "Fraud analysis and risk flags",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Shopify Payments runs fraud analysis on every order and flags medium and high risk with a warning on the Orders list.",
+      "url": "https://help.shopify.com/en/manual/orders/fraud-analysis",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Stripe Radar runs on the store's own Stripe account (direct charges), so card fraud screening exists, and live owners see it in their Stripe Dashboard. Kaizen records no risk outcome: nothing is shown on orders, there is no review queue, rule or hold. The first report's url pointed at a page that is not about fraud.",
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "A paid order shows Stripe's risk outcome (normal, elevated, highest) read from the charge, in the order list and on the order page.",
+      "Staff filter orders by risk and can hold fulfilment on an elevated one.",
+      "The risk shown is only what Stripe reported; none is invented when Stripe gave none.",
+      "A flagged order that is refunded or disputed is visible as such."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/server/stripe-webhooks.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "checkout.chargeback-and-dispute-handling",
+    "domain": "checkout",
+    "feature": "Chargeback and dispute handling",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Chargebacks under Shopify Payments are managed in the admin (evidence-submission window; the amount is taken from the next payout, plus the bank's fee).",
+      "url": "https://help.shopify.com/en/manual/payments/chargebacks",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "`handleStripeEvent()` handles only `checkout.session.*`, `invoice.paid` and `customer.subscription.*`: no `charge.dispute.*` or refund events, so disputes live only in Stripe and Kaizen's orders and analytics never see them.",
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "A dispute opened in Stripe appears on the order with its amount, reason and the evidence deadline.",
+      "Staff are emailed once when a dispute opens and again before the deadline.",
+      "A lost dispute is recorded as money out in the order and the finance analytics, once; a won one clears the flag.",
+      "A refund made in the Stripe Dashboard is recorded on the order through the same webhook (idempotent)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/stripe-webhooks.ts",
+        "src/app/api/stripe/connect/[mode]/route.ts"
+      ],
+      "tests": [
+        "src/server/checkout.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "checkout.multi-currency-pricing-and-checkout",
+    "domain": "checkout",
+    "feature": "Multi-currency pricing and checkout",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Presentment currencies per market with exchange-rate settings and rounding.",
+      "url": "https://help.shopify.com/en/manual/markets/pricing/exchange-rates",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store offers any currencies it sets a rate for; a shopper views and pays in the one shown, and the order is placed and charged in that currency (`\"currency\":\"eur\"` in the Stripe session).",
+      "Amounts convert through the euro at the store's rates and round to the currency's step; a currency without a rate is not converted.",
+      "Every money read has a euro scenario: cart, discounts, shipping, deposits and refunds agree with what is charged.",
+      "Rates come from the ECB and can be edited per store."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/currency.ts",
+        "src/lib/ecb.ts",
+        "src/lib/market-slug.ts",
+        "src/server/localization.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts"
+      ],
+      "tests": [
+        "src/lib/currency.test.ts",
+        "src/lib/ecb.test.ts",
+        "src/server/localization.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D109"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.eu-vat-by-destination-vat-inclusive-prices-reduced-rates",
+    "domain": "checkout",
+    "feature": "EU VAT by destination, VAT-inclusive prices, reduced rates",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Shopify sets tax rates automatically (Shopify Tax, or manual settings; Basic Tax in the EU only for stores set up before 13 May 2026) and lets the merchant set tax overrides for products with special rates. Shopify does not remit or file tax. Tax-inclusive pricing is not described on the pages read.",
+      "url": "https://help.shopify.com/en/manual/taxes/eu",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "`commerce.vat_rate(country, category)` takes the country's standard rate, or accommodation's reduced rate where a row exists, or none for exempt (D65). The database refuses any other category (`vat_rates_category` allows only 'accommodation', held by a test), so no reduced rates for food, books or children's items; rates and categories are not editable in the admin; standard and accommodation rates are marked 'to verify with an accountant' in migrations; Stripe Tax is not used. No VAT-by-country-and-rate report or OSS export; orders keep `tax_minor` but not a per-country, per-rate summary. One row for the one Shopify feature (it replaces international.eu-vat-per-country-rates-oss-ready).",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "An owner puts a product in a reduced-rate category (food, books, children's goods, others) and the cart, order and invoice take that country's rate (a scenario in checkout-kinds.int.test.ts).",
+      "Platform admins edit categories and per-country rates in the admin, with history; a rate is only ever read through `commerce.vat_rate()`.",
+      "Shipping takes the rate the law requires for the goods, or the standard rate where stated.",
+      "Every seeded rate carries its source and the date it was checked.",
+      "A VAT report per country and rate for a period (net, VAT, gross, refunds netted) can be exported as CSV in the layout an OSS return needs; refunds and credit notes reduce it.",
+      "The report agrees with the sum of orders' `tax_minor` for the period (a test holds it) and leaves out copied and host orders; edits to categories and rates are audit-logged and apply to new carts and orders only."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/vat.ts",
+        "supabase/migrations/20260926205250_vat_categories.sql",
+        "supabase/migrations/20260926205252_vat_categories_rules.sql",
+        "src/server/checkout.ts",
+        "src/db/schema.ts",
+        "src/server/catalog.ts"
+      ],
+      "tests": [
+        "src/db/commerce.test.ts",
+        "src/server/checkout.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D16",
+      "D63",
+      "D65"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.oss-and-ioss-support",
+    "domain": "checkout",
+    "feature": "OSS and IOSS support",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Merchants register their OSS credentials (EU-based) or IOSS number (outside the EU, consignments up to 150 euro) in tax settings and Shopify collects VAT by destination; OSS needs Shopify Tax or Basic Tax, and does not apply when the fulfilment location is outside the EU. Shopify does not file the return.",
+      "url": "https://help.shopify.com/en/manual/taxes/eu/eu-tax-reference",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "No OSS or IOSS number is stored, there is no VAT-by-country-and-rate report and no export for the return; only an analysis of the options in docs/plan.md.",
+    "bucket": "B",
+    "wave": 1,
+    "criteria": [
+      "An owner enters an OSS or IOSS registration; checkout uses destination VAT as the registration requires.",
+      "A quarterly (OSS) and monthly (IOSS) report gives sales, VAT base and VAT by country and rate, ready to file, as a CSV export.",
+      "A consignment of 150 euro or less from outside the EU is charged destination VAT at checkout and marked IOSS on the order and invoice.",
+      "A refund reduces the period's VAT in the report."
+    ],
+    "evidence": {
+      "files": [
+        "docs/plan.md"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "checkout.b2b-vat-id-reverse-charge-exemption",
+    "domain": "checkout",
+    "feature": "B2B VAT ID, reverse charge, exemption",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, with conditions. Since February 2026 checkout can validate a company VAT number and apply the reverse charge for EU to EU and EU to UK orders; it needs Shopify Tax in the EU or UK and an EU fulfilment location, and the Company VAT number field set to optional.",
+      "url": "https://changelog.shopify.com/posts/vat-number-validation-available-in-checkout",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "D63: every order charges the market's VAT, no reverse charge; no EU VAT ID field at checkout and no VIES check. Reverse charge exists only in the Work module's invoices. One row for the one Shopify feature (it replaces international.b2b-vat-id-validation-and-reverse-charge).",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "A business shopper enters an EU VAT number at checkout; it is checked against VIES, and a valid one for another member state takes the VAT off the order.",
+      "The number, the check's result and its time are kept on the order; an unavailable VIES service never blocks the sale and never silently exempts it.",
+      "The invoice and order email say 'reverse charge' with both numbers.",
+      "Exemption never applies to consumers or to the seller's own country."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/b2b.ts",
+        "src/server/b2b.ts",
+        "src/server/companies.ts"
+      ],
+      "tests": [
+        "src/server/companies.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D63"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.b2b-payment-terms",
+    "domain": "checkout",
+    "feature": "B2B payment terms",
+    "shopify": {
+      "tier": "native",
+      "text": "Native on Basic, Grow and Advanced (payment terms moved from Plus to all plans); partial payments and deposits stay Plus.",
+      "url": "https://changelog.shopify.com/posts/key-b2b-features-now-available-on-non-plus-plans",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Every store order is paid online at checkout. D66 lets an appointment be paid at the venue or with a deposit, which is not payment terms: no due date, no invoice, no reminder.",
+    "bucket": "A",
+    "wave": 4,
+    "criteria": [
+      "A company account has payment terms (net 15, 30, 60); its checkout places the order unpaid with a due date and holds stock.",
+      "Staff or the customer see the due date; a reminder goes before it and an overdue mark after.",
+      "Marking it paid, or paying by a link, makes the order paid and counts it in sales on that day.",
+      "An overdue order shows in the control center and the analytics."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/companies.ts",
+        "src/server/order-admin.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D66"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.abandoned-checkout-recovery",
+    "domain": "checkout",
+    "feature": "Abandoned checkout recovery",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Abandoned checkout emails with a recovery link and optional discount.",
+      "url": "https://help.shopify.com/en/manual/orders/abandoned-checkouts",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Evidence debt: the erasure after 60 days (`KEEP_DAYS` in `sendDueCartReminders()`) and the admin figures from `cartReminderStats()` are in the code but no listed test asserts them.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "With reminders on, a typed email captures the cart, and up to three reminders go at the owner's delays, each with its own optional code, words per language and a button that restores the cart.",
+      "At most one reminder per cart per run, none after the cart is paid, the same email buys, or the shopper opts out; each is claimed before it is sent.",
+      "Every email has a one-click unsubscribe (List-Unsubscribe headers) and the data is erased on opt-out and after 60 days.",
+      "The admin shows carts captured, reminded and recovered, with the sales."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/cart-reminders.ts",
+        "src/lib/cart-reminders.ts",
+        "src/server/checkout.ts",
+        "src/server/stripe-webhooks.ts"
+      ],
+      "tests": [
+        "src/lib/cart-reminders.test.ts",
+        "src/server/cart-reminders.int.test.ts",
+        "e2e/cart-reminders.spec.ts"
+      ],
+      "untested": true
+    },
+    "decisions": [
+      "D33"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.order-editing-after-purchase",
+    "domain": "checkout",
+    "feature": "Order editing after purchase",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Add or remove products, change quantities, update shipping and apply discounts after purchase; collect the difference with an invoice or refund it.",
+      "url": "https://help.shopify.com/en/manual/orders/edit-orders",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Only email and address (`updateOrderContact()`), notes, and refunds and restocking (D27) can change on a placed order; no line or quantity edits, no repricing, no taking an extra payment. Orders are numbered without gaps and may not be renumbered (D141), so an edit would have to keep the number and the books.",
+    "bucket": "A",
+    "wave": 3,
+    "criteria": [
+      "Staff add, remove or change the quantity of a line on an unshipped order; stock and VAT follow, and the order keeps its number.",
+      "A higher total sends the customer a payment link for the difference; a lower one refunds it through the existing refund path.",
+      "Every edit is logged with who and when, and the customer is emailed a revised confirmation.",
+      "A shipped, copied or host order cannot be edited."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/order-admin.ts",
+        "src/app/admin/(gated)/[store]/orders/actions.ts"
+      ],
+      "tests": [
+        "src/server/order-admin.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27",
+      "D141"
+    ],
+    "history": []
+  },
+  {
+    "id": "checkout.discount-codes-and-automatic-discounts",
+    "domain": "checkout",
+    "feature": "Discount codes and automatic discounts",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Monetary, percentage, buy X get Y and free-shipping discounts, as codes or automatic; combinations and eligibility are set per discount.",
+      "url": "https://help.shopify.com/en/manual/discounts",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 4,
+    "gap": "Both mechanisms work: codes (percent, fixed amount per market, free shipping, minimum order, dates, total and per-customer limits, recurring) and automatic campaigns (D114 to D116: percentage, buy N pay M, free product, categories and tags, customer groups, stacking). A code reaches only chosen products (no category or tag), one code per order, no customer or group eligibility, no minimum quantity, no bulk code generation. Rated partial to agree with the Customers domain (discount codes partial w5, automatic discounts partial w4); first report: full here.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A code can be limited to categories and tags, to a customer group or named customers, and to a minimum quantity.",
+      "A store generates a batch of unique codes and exports them.",
+      "An owner chooses which discounts combine; the cart and `placeOrder()` agree on the result.",
+      "Every new kind has scenarios in checkout-kinds.int.test.ts, one of them in euro."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/discounts.ts",
+        "src/server/discounts.ts",
+        "src/lib/campaigns.ts",
+        "src/server/campaigns.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts"
+      ],
+      "tests": [
+        "src/lib/discounts.test.ts",
+        "src/server/discounts.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "e2e/discounts.spec.ts",
+        "e2e/campaigns.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D31",
+      "D38",
+      "D108",
+      "D114",
+      "D115",
+      "D116"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Re-read at HEAD: codes reach products only (`discount_codes.product_ids`), one code per order, no customer eligibility or bulk generation; the Customers domain rates the same two features partial."
+      }
+    ]
+  },
+  {
+    "id": "checkout.refunds-and-cancellation",
+    "domain": "checkout",
+    "feature": "Refunds and cancellation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Cancel an order, refund in full or in part to the original method or store credit, restock items, notify the customer.",
+      "url": "https://help.shopify.com/en/manual/orders/refund-cancel-order",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 5,
+    "gap": "Refund, restock, partial refund, cancel and customer email work (order-admin.int.test.ts); no refund as store credit.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "Staff refund any amount up to what is left through Stripe on the store's account, with Kaizen's fee on that part returned (`refund_application_fee`); more than is left is refused.",
+      "Chosen items go back in stock, with or without money back; only physical lines, and never more than were bought.",
+      "Cancelling a paid, unsent order refunds everything left, restocks and closes it; a sent order cannot be cancelled.",
+      "The customer is emailed once per refund; returns and withdrawals refund through the same path (D153).",
+      "Staff can refund to a store credit balance the shopper can use at checkout, recorded in an append-only ledger (integration test, euro scenario)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/order-admin.ts",
+        "src/server/shopper-emails.ts",
+        "src/lib/return-refund.ts",
+        "src/server/order-returns.ts"
+      ],
+      "tests": [
+        "src/server/order-admin.int.test.ts",
+        "src/lib/return-refund.test.ts",
+        "src/server/returns-money-review.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D27",
+      "D153"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Shopify refunds to store credit; Kaizen refunds to the original method only"
+      }
+    ]
+  }
+]

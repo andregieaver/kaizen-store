@@ -1,0 +1,1269 @@
+[
+  {
+    "id": "international.markets",
+    "domain": "international",
+    "feature": "Markets",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. A market is a set of customers the merchant defines: countries or regions, company locations (B2B), retail locations or channels. The page states no per-plan market count.",
+      "url": "https://help.shopify.com/manual/markets/managing-markets",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store lists the countries it sells to as markets, each with its own currency, default language, shipping rate, VAT rate and prices.",
+      "A market address is {country}[-{lang}][-{currency}] and a language or currency the store does not offer is not found.",
+      "A visitor's country is matched to the store's market for a suggestion; a country the store does not sell to gives none."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/markets.ts",
+        "src/lib/market-slug.ts",
+        "src/server/stores.ts",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/lib/markets.test.ts",
+        "src/server/localization.int.test.ts",
+        "e2e/localization.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D109"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.market-specific-catalogs",
+    "domain": "international",
+    "feature": "Market-specific catalogs",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/markets/customizations/catalogs",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Availability is implied by a price row (the product editor says: leave a country empty to not sell there); there is no catalog object, no per-market switch that keeps the price, and no per-market product set shared across countries.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "An owner can switch a product (or a variant) off in one market without deleting its price, and back on.",
+      "A product switched off in a market is absent from that market's listings, search, product page, chat, sitemap and structured data, and a cart line for it is refused.",
+      "The switch is read by cartSummary() and placeOrder() alike, and a checkout-kinds scenario (euro view included) holds that they agree.",
+      "A store copy (duplicate_store) carries the availability."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/catalog.ts",
+        "src/server/listing.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/server/listing.int.test.ts",
+        "src/server/products.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.fixed-per-market-prices-and-adjustment-rules",
+    "domain": "international",
+    "feature": "Fixed per-market prices and adjustment rules",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/international/pricing/currency-rounding",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Prices are entered by hand per country (and converted per D109 when shown in another currency, rounded to the store's step); there is no percentage rule per market and no bulk adjustment.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "An owner sets a market rule (percentage up or down, rounding step) that derives that market's prices from a base price; a fixed price on a product overrides the rule.",
+      "Derived prices are written through commerce.set_price, so prior_30d_minor and the 30-day reference stay genuine.",
+      "A bulk change over a chosen set of products shows a preview (old and new price) before it is applied and is written to the audit log.",
+      "A euro-view scenario in checkout-kinds.int.test.ts holds that the shown price equals the charged price."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/admin/product-editor.tsx",
+        "src/db/schema.ts",
+        "src/lib/currency.ts",
+        "src/lib/markets.ts"
+      ],
+      "tests": [
+        "src/db/commerce.test.ts",
+        "src/lib/currency.test.ts",
+        "src/server/checkout-kinds.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D109"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.domains-and-subfolders-per-market",
+    "domain": "international",
+    "feature": "Domains and subfolders per market",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/international/managing-international-domains",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Path-per-market (/s/{store}/{market}) and up to 5 domains per store with one primary (P7, P8); a market cannot have its own domain or ccTLD, so no.example.com and de.example.com cannot be set per country.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "An owner assigns a domain (or subdomain) to a market, verified like the store's domains, and the market's pages are served on it.",
+      "The other addresses of that market redirect to its domain, and hreflang and canonical links point to the chosen domain of each market.",
+      "Links built by paths.ts, emails and Stripe return URLs use the market's domain.",
+      "A store with no per-market domain behaves exactly as today."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/domains.ts",
+        "src/lib/custom-domains.ts",
+        "src/lib/store-hosts.ts",
+        "src/lib/store-hosts-build.ts",
+        "src/lib/paths.ts"
+      ],
+      "tests": [
+        "src/lib/custom-domains.test.ts",
+        "src/lib/store-hosts.test.ts",
+        "src/server/domains.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.multi-language-storefront-and-ai-translation",
+    "domain": "international",
+    "feature": "Multi-language storefront and AI translation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/manual/markets/languages/translate-adapt-app",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store offers any language from the platform's registry, independent of its countries, and a shopper chooses language and currency apart.",
+      "Interface text falls back to English key by key; Norwegian, Swedish, Danish and English are hand-written, other languages are AI-translated into data and read by key.",
+      "Products, menus and pages are translated in one run, a person ticks each suggestion before it is saved, legal texts start unticked and pages are saved as drafts.",
+      "Every AI translation passes validation (shape, length, claims filter) and the product, page and store texts fall back to the main language when no translation exists."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/i18n.ts",
+        "src/lib/ui-catalog.ts",
+        "src/lib/icu-lite.ts",
+        "src/lib/ui-translate.ts",
+        "src/server/ui-text.ts",
+        "src/server/languages.ts",
+        "src/lib/store-translate.ts",
+        "src/server/store-translate.ts",
+        "src/lib/page-translation.ts",
+        "src/lib/page-translate-ai.ts"
+      ],
+      "tests": [
+        "src/lib/ui-catalog.test.ts",
+        "src/lib/ui-translate.test.ts",
+        "src/lib/store-translate.test.ts",
+        "src/lib/page-translation.test.ts",
+        "src/lib/languages.test.ts",
+        "src/server/store-translate.int.test.ts",
+        "src/server/languages.int.test.ts",
+        "e2e/localization.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D55",
+      "D109",
+      "D110",
+      "D111"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.market-specific-content-adaptation",
+    "domain": "international",
+    "feature": "Market-specific content adaptation",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/manual/markets/languages/translate-adapt-app",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "A store's pages, menus and product texts vary by language, not by country: a German-speaking shopper in Austria and in Germany sees the same page. Only campaigns can be limited to some countries (D116).",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "A page, row or block can be limited to chosen markets (countries) and is not drawn, and not in the sitemap, for the others.",
+      "A product text or a menu can differ by market on top of its language, falling back to the language's text.",
+      "The builder shows which market a visitor view is for, and the store translation worklist counts per-market overrides."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/page-translation.ts",
+        "src/lib/page-content.ts",
+        "src/lib/campaigns.ts"
+      ],
+      "tests": [
+        "src/lib/page-translation.test.ts",
+        "src/lib/campaigns.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.multi-currency-display-and-checkout",
+    "domain": "international",
+    "feature": "Multi-currency display and checkout",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/international/pricing/currency-rounding",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A shopper sees prices in a currency the store offers at the store's rate (ECB rates refreshed daily when automatic), rounded to the store's step.",
+      "Amounts are stored in the country's own currency; what is shown is converted when read and what is written (order, subscription, delivery) is in nativeCurrency.",
+      "cartSummary() and placeOrder() agree in the euro view (checkout-kinds scenario).",
+      "A currency with no rate is not offered."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/currency.ts",
+        "src/lib/ecb.ts",
+        "src/lib/localization.ts",
+        "src/lib/money.ts",
+        "src/server/localization.ts"
+      ],
+      "tests": [
+        "src/lib/currency.test.ts",
+        "src/lib/ecb.test.ts",
+        "src/lib/localization.test.ts",
+        "src/server/localization.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "e2e/localization.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D109"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.currency-rounding-rules",
+    "domain": "international",
+    "feature": "Currency rounding rules",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Rounding to each currency's most common denominator; the page says rules cannot be customised, and only stores on Shopify Payments can use it.",
+      "url": "https://help.shopify.com/en/manual/international/pricing/rounding",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A converted amount is rounded to a multiple of the store's step per currency (0, 0.05, 0.1, 0.5, 1, 5, 10 in major units), with a default per currency (HUF whole forints).",
+      "Rounding applies to the shown and the charged amount alike."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/currency.ts",
+        "src/server/localization.ts"
+      ],
+      "tests": [
+        "src/lib/currency.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D109"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.geolocation-suggestion",
+    "domain": "international",
+    "feature": "Geolocation suggestion",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/international/localization-tools/geolocation-app",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "A visitor's country (x-vercel-ip-country) is suggested only on the store's country chooser; no banner or popup on other pages, and it never redirects, by design (Geo-blocking Regulation).",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "A visitor whose country has a market other than the one shown sees a dismissible suggestion on any store page, linking to that market on the same page.",
+      "The suggestion never redirects and is not shown to crawlers; dismissal is kept only after consent (KNOWN_COOKIES entry) or in memory.",
+      "A country the store does not sell to gets no suggestion; the text is in the shopper's language."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/markets.ts",
+        "src/app/s/[store]/(chooser)/page.tsx"
+      ],
+      "tests": [
+        "src/lib/markets.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.ioss",
+    "domain": "international",
+    "feature": "IOSS",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/taxes/eu/eu-tax-reference",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Documented decision only (docs/plan.md scenario C, R2 in docs/decisions.md): no IOSS number on the store, no IOSS-aware pricing or reporting, no €150 split, and no handling of the EU flat customs duty on low-value parcels.",
+    "bucket": "B",
+    "wave": 1,
+    "criteria": [
+      "A store can record an IOSS identification number (and its intermediary) and the markets it applies to.",
+      "A consignment of at most 150 EUR sent from outside the EU into an EU market is charged destination VAT at checkout and the order records the IOSS number; above 150 EUR it is not an IOSS sale.",
+      "A monthly IOSS report per member state and rate can be exported.",
+      "Live only with a registered IOSS number or intermediary agreement (bucket B); until then the feature is off and says why."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.customs-duties-hs-codes-landed-cost",
+    "domain": "international",
+    "feature": "Customs duties, HS codes, landed cost",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/manual/markets/markets-pro/overview",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Variants store an HS code and country of origin (validated digits); nothing is calculated: no duty or import VAT estimate, no DDP quote at checkout, no customs data on documents.",
+    "bucket": "B",
+    "wave": 7,
+    "criteria": [
+      "For a shipment from the store's origin to a destination outside its customs area, checkout shows an estimated duty and import VAT (landed cost) from a duty-rate source, or says it cannot.",
+      "The estimate comes from the variant's HS code and origin and is the same in the cart and the placed order (euro scenario in checkout-kinds).",
+      "The order keeps the duties and VAT collected and who pays (DDP or DAP) and customs data reaches the carrier booking where the carrier takes it.",
+      "A missing HS code blocks a DDP quote with a plain message, never a zero duty."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "src/lib/product-input.ts",
+        "src/components/admin/product-editor.tsx"
+      ],
+      "tests": [
+        "src/lib/product-input.test.ts",
+        "src/db/commerce.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D12"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.legal-page-templates-and-policy-generator",
+    "domain": "international",
+    "feature": "Legal page templates and policy generator",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/checkout-settings/refund-privacy-tos",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "No starter privacy, terms, returns, shipping or imprint pages in any language (legal texts \"need human review\", src/lib/i18n.ts, and are not in the repo); no terms-acceptance link or checkbox at checkout. D153 added hand-written withdrawal and return texts (flagged for review) but those are interface texts, not store policy pages.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "A store can create starter pages for privacy, terms, shipping, returns and withdrawal information and an imprint, in nb, sv, da and en, filled from the store's business details and settings (return window, who pays return shipping).",
+      "Every starter is hand-written, marked draft and carries a visible notice that it needs legal review before use; none is machine-translated.",
+      "Checkout can show a terms and privacy link (or a required checkbox when the owner chooses) that points to the store's chosen pages and records the acceptance on the order.",
+      "A starter is never published automatically and is left out of the sitemap until the owner publishes it."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D112"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.cookie-consent-banner-and-api",
+    "domain": "international",
+    "feature": "Cookie consent banner and API",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/privacy-and-security/privacy/customer-privacy-settings",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every cookie or storage item a site sets is listed in KNOWN_COOKIES with category and purpose; a site that sets only necessary ones shows no banner, only a Cookies page.",
+      "A site using an optional category (a tracking tool) asks first, loads third-party scripts only after consent, and re-asks when the categories change.",
+      "Each choice is logged (commerce.consents, 12 months) through /api/consent; the Cookies page lists what the latest scan found."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/cookie-consent.ts",
+        "src/server/consents.ts",
+        "src/app/api/consent/route.ts",
+        "src/components/consent/site-consent.tsx",
+        "src/components/consent/consent-manager.tsx",
+        "src/lib/cookie-scan.ts"
+      ],
+      "tests": [
+        "src/lib/cookie-consent.test.ts",
+        "src/server/consents.int.test.ts",
+        "e2e/cookies.spec.ts",
+        "src/lib/cookie-scan.test.ts",
+        "e2e/cookie-scan.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D58"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.gdpr-data-export-and-erasure",
+    "domain": "international",
+    "feature": "GDPR data export and erasure",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/your-account/privacy/processing-customer-data-requests",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "A shopper can delete their own account (details, password, picture, sessions, standing orders go; orders stay but lose the account link), but order rows keep name, address and email; there is no export of a customer's data (only custom-field values have customerFieldExport()), no staff-triggered erase or anonymise with the bookkeeping exceptions, and no retention schedule.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "Staff (and the shopper from My account) can download a customer's data as a machine-readable file: profile, addresses, orders and lines, returns, consents, wishlists, reviews-to-be, custom-field values, emails sent.",
+      "Staff can erase a customer on request: the account and personal fields go, and orders under the bookkeeping duty are anonymised or restricted (name, address, email removed after the retention period) with the reason logged in the audit log.",
+      "A retention schedule (orders, emails, search queries, carts) runs from the cron and a test shows what it removes and what it keeps.",
+      "Another store's data is never in an export (multi-tenant test); the export and the erasure are audit-logged."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/customers.ts",
+        "src/app/s/[store]/[market]/account/actions.ts",
+        "src/components/account-forms.tsx",
+        "src/server/field-entities.ts"
+      ],
+      "tests": [
+        "src/server/avatars.int.test.ts",
+        "src/server/affiliates.int.test.ts",
+        "src/server/custom-fields-store.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D28"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.eu-withdrawal-function-and-self-service-returns",
+    "domain": "international",
+    "feature": "EU withdrawal function and self-service returns",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, partly. Shopify's page says merchants can use Shopify's return and cancellation rules to help meet the electronic withdrawal function requirement, and must set up the clearly labelled button or link, two-step confirmation and email confirmations themselves; Managed Markets orders get compliant policies automatically. No plan tiers are named. Apps also sell a withdrawal button.",
+      "url": "https://help.shopify.com/en/manual/compliance/legal/eu-right-of-withdrawal",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": "partial"
+    },
+    "weight": 5,
+    "gap": "",
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "full",
+        "why": "D153 shipped the function: /withdraw in two steps with a confirmation (unconfirmed requests expire in 24 hours), the same reply for a wrong email or order number, an acknowledgement email on a durable medium (stored in email_messages, retried by the job), returns with a forward-only lifecycle, a staff queue and refund through refundOrder(), the 14-day clock from recorded receipt, and shopper status pages. Read the code and the integration, unit and e2e tests (returns*.int.test.ts, withdrawal.test.ts, e2e/withdrawal.spec.ts)."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A shopper withdraws at /s/{store}/{market}/withdraw in two steps (Withdraw from contract here, then Confirm withdrawal) without giving a reason; nothing is a withdrawal until the second step, and an unconfirmed request expires after 24 hours.",
+      "The reply is the same for a wrong email, an unknown order number and another store's order, and requests are limited by hashed keys, never by IP.",
+      "Confirming records the statement, creates a return and sends an acknowledgement on a durable medium with date and time; a failed email never undoes the withdrawal and is retried.",
+      "Eligibility and the 14-day period come only from lineEligibility() and withdrawalWindow(); the period counts from a recorded receipt, never an estimate, and excluded goods, companies, digital content and copied orders are refused with a reason.",
+      "Staff work a queue (receive, inspect, refund through refundOrder()); the refund amount comes only from refundFor() and never exceeds what was captured; a withdrawal return is never declined or cancelled.",
+      "Known limits, stated in docs/returns.md and not counted here: texts need human legal review; no carrier return labels, exchanges, or photos (separate rows)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/withdrawals.ts",
+        "src/server/returns.ts",
+        "src/lib/withdrawal.ts",
+        "src/lib/return-refund.ts",
+        "src/lib/return-status.ts",
+        "src/server/return-emails.ts",
+        "src/server/return-jobs.ts",
+        "src/app/s/[store]/[market]/withdraw/page.tsx",
+        "src/app/s/[store]/[market]/withdraw/actions.ts",
+        "src/app/s/[store]/[market]/returns/[token]/page.tsx",
+        "src/app/admin/(gated)/[store]/returns/page.tsx",
+        "docs/returns.md"
+      ],
+      "tests": [
+        "src/server/returns.int.test.ts",
+        "src/server/returns-security.int.test.ts",
+        "src/server/returns-actions.int.test.ts",
+        "src/server/returns-admin.int.test.ts",
+        "src/server/returns-fixes.int.test.ts",
+        "src/server/returns-money-review.int.test.ts",
+        "src/lib/withdrawal.test.ts",
+        "src/lib/withdraw-form.test.ts",
+        "src/lib/withdraw-no-storage.test.ts",
+        "src/lib/return-refund.test.ts",
+        "src/lib/return-status.test.ts",
+        "src/app/s/[store]/[market]/withdraw/actions.int.test.ts",
+        "e2e/withdrawal.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D153"
+    ]
+  },
+  {
+    "id": "international.withdrawal-exclusions-and-digital-waiver",
+    "domain": "international",
+    "feature": "Withdrawal exclusions and digital waiver",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Shopify's own withdrawal page says nothing about exclusions or a digital-content waiver. Apps such as EU Withdrawal Form let merchants exclude items (hygiene, personalised) and the listing does not mention a digital waiver; community threads say the waiver checkbox needs checkout customisation, which Shopify Basic does not allow.",
+      "url": "https://apps.shopify.com/eu-cancellation-button",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Each variant carries one of the statutory exclusions (custom made, perishable, sealed hygiene, sealed media, mixed inseparably, price fluctuation, alcohol for future delivery, periodicals, digital content, dated service) or none, and the product editor offers them.",
+      "A download is bought only after the shopper ticks the digital-content consent at checkout; the consent time is stored on the order and the lines become digital_content.",
+      "The withdrawal function refuses an excluded line with its reason (sealed goods keep the right until unsealed) and never refuses a line that has the right."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "src/lib/withdrawal.ts",
+        "src/lib/product-input.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/components/checkout-button.tsx",
+        "src/server/checkout.ts"
+      ],
+      "tests": [
+        "src/lib/withdrawal.test.ts",
+        "src/server/checkout.int.test.ts",
+        "src/db/returns.test.ts",
+        "src/lib/product-input.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D24",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.accessibility-wcag-eaa-and-statement",
+    "domain": "international",
+    "feature": "Accessibility (WCAG, EAA) and statement",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://shopify.com/accessibility",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "D11 sets WCAG 2.2 AA as the target and theme colours are checked for contrast (contrastRatio() in src/lib/theme.ts, theme.test.ts), but there is no automated accessibility test (no axe or similar in package.json or e2e), no audit result and no accessibility statement template or generator.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "CI runs an automated WCAG check (for example axe through Playwright) over the main storefront pages (home, product, cart, checkout, order, account, withdraw) and admin entry pages and fails on serious violations.",
+      "A store can generate an accessibility statement from a template (conformance status, known issues, contact, enforcement body per country) in nb, sv, da and en, marked as needing review before publication.",
+      "Theme settings that fail the AA contrast ratio are refused or flagged in the theme editor (already partly true, held by a test).",
+      "Outside this row, and never counted as Full by code: an independent audit result."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/theme.ts"
+      ],
+      "tests": [
+        "src/lib/theme.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D11"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.gpsr-safety-information",
+    "domain": "international",
+    "feature": "GPSR safety information",
+    "shopify": {
+      "tier": "app",
+      "text": "App.",
+      "url": "https://apps.shopify.com/gpsrkit",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A product cannot be active without a manufacturer (name, postal and electronic address, country) and, when the manufacturer is outside the EU, an EU responsible person.",
+      "Safety information is stored per language on the listing and shown on the product page.",
+      "The database refuses to activate a product that lacks these, and the editor says why before saving; downloads need none."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "supabase/migrations/20260923235847_platform_rules.sql",
+        "src/lib/product-input.ts",
+        "src/server/products.ts",
+        "src/components/admin/product-editor.tsx",
+        "src/components/product-parts.tsx"
+      ],
+      "tests": [
+        "src/db/commerce.test.ts",
+        "src/lib/product-input.test.ts",
+        "src/server/products.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D12"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.packaging-and-epr-registers",
+    "domain": "international",
+    "feature": "Packaging and EPR registers",
+    "shopify": {
+      "tier": "app",
+      "text": "App.",
+      "url": "https://ecommercegermany.com/blog/the-german-packaging-act-verpackg-how-to-get-your-online-shop-compliant",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Schemes are tracked per product and registrations per market (product_schemes, producer_registrations) and the SQL view commerce.missing_registrations lists what is unregistered, but there is no admin screen to enter schemes or registrations, nothing reads the view in the app, and nothing blocks selling a product whose scheme has no registration.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "An owner records producer-responsibility registrations (scheme, market, number, valid from and to) in the admin and tags products with schemes.",
+      "A product under a scheme with no valid registration in a market cannot be bought there: it is refused in the cart and in placeOrder() with a plain reason, and staff see a list of what is blocked.",
+      "The registration number is shown where the law asks (the product page or documents) and a registration that expires blocks sales from the next day.",
+      "The unregistered view is covered by a test through the app's reader, not only in SQL."
+    ],
+    "evidence": {
+      "files": [
+        "src/db/schema.ts",
+        "supabase/migrations/20260923235847_platform_rules.sql",
+        "src/lib/store-copy-rules.ts"
+      ],
+      "tests": [
+        "src/db/commerce.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D12"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.unit-price-indication",
+    "domain": "international",
+    "feature": "Unit price indication",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Merchants enter a total measurement and optional base measure per product or variant; the unit price shows on product, collection, cart, checkout and order-confirmation notifications; Online Store 2.0 themes need no change. The page notes it is a legal requirement in some regions, that the unit type is the same across all markets, and that some units (t, cg, st) are not offered.",
+      "url": "https://help.shopify.com/manual/products/details/product-pricing/unit-pricing",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "No field, display or structured data: variants carry no content or measure and the storefront shows no price per kg, litre or metre (Price Indication Directive; Norwegian rules).",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "A variant can carry a total measure and unit (g, kg, ml, l, cm, m, m2, piece) and a reference quantity (default 1 kg, 1 l, 1 m, 1 m2, 1 piece, or 100 g and 100 ml where allowed).",
+      "The product page, listing cards, cart, checkout and order confirmation show the unit price with the shown VAT treatment, converted per market currency like the price, and computed in code from the shown price.",
+      "A reduced price shows the unit price of the price charged; the 30-day reference is not misused for it.",
+      "Unit price appears in the product's JSON-LD (unitPricingMeasure and unitPricingBaseMeasure) and a unit price is refused when the measure is missing for a category the owner marked as requiring it.",
+      "A euro-view scenario in checkout-kinds.int.test.ts holds that the unit price shown equals the one computed from the charged price."
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.vipps-and-mobilepay",
+    "domain": "international",
+    "feature": "Vipps and MobilePay",
+    "shopify": {
+      "tier": "app",
+      "text": "App.",
+      "url": "https://developer.vippsmobilepay.com/docs/plugins-ext/shopify",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Kaizen asks Stripe for MobilePay on every store's account (D23) and Stripe shows it in Denmark and Finland where the account qualifies; Vipps (Norway) and Swish are in private preview at Stripe, not available for Accounts v2, so Vipps cannot be offered, and an owner cannot see or switch the method from Kaizen.",
+    "bucket": "B",
+    "wave": 4,
+    "criteria": [
+      "Every store account requests MobilePay and the admin shows per method whether it is on and why not (requirements), already true for MobilePay.",
+      "When Stripe opens Vipps to Kaizen's platform account, the capability is requested and the method is offered to Norwegian shoppers without code outside the payment list.",
+      "A payment-method switch per market is shown in the admin and never uses payment_method_types.",
+      "Live only after Stripe grants access (bucket B); alternatively through a second payment provider if the strategy decision allows it."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/connect.ts",
+        "src/lib/stripe-account.ts"
+      ],
+      "tests": [
+        "src/lib/stripe-account.test.ts",
+        "src/server/checkout-stripe.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D23"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.br-nn-ysund-lookup-and-angrerett",
+    "domain": "international",
+    "feature": "Brønnøysund lookup and angrerett",
+    "shopify": {
+      "tier": "app",
+      "text": "App. Not confirmed: searching Shopify's help centre, community and app store found no Brønnøysund company lookup; the Norwegian right of withdrawal falls under the EU withdrawal page's apps and rules. Tier left as app from memory.",
+      "url": null,
+      "fetched": false
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A Norwegian organisation number (mod-11 checked before any call) or a company name fills a Work client's or a shop company account's legal name, address and VAT number from Enhetsregisteret; only the typed number or words are sent and nothing is saved from the lookup.",
+      "Norway's right of withdrawal (angrerettloven section 22) is served by the same withdrawal function as the EU's (D153)."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/brreg.ts",
+        "src/server/brreg.ts",
+        "src/components/admin/brreg-lookup.tsx",
+        "src/components/admin/company-fields.tsx",
+        "src/components/admin/work/client-form.tsx"
+      ],
+      "tests": [
+        "src/lib/brreg.test.ts",
+        "src/server/brreg.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D124",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.eu-data-residency-and-sub-processors",
+    "domain": "international",
+    "feature": "EU data residency and sub-processors",
+    "shopify": {
+      "tier": "plus",
+      "text": "Plus. , secondary",
+      "url": "https://community.shopify.com/t/gdpr-data-processing-only-in-eu/266838",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Database and functions are pinned to Ireland and Dublin (D10, vercel.json) and every vendor is listed in docs/residency-register.md, but the register shows DPAs for Supabase, Vercel, Resend, OpenAI and the gateway as still to accept in the vendors' dashboards, and OpenAI (api.openai.com, US) and Resend's account data and logs are outside the EU.",
+    "bucket": "D",
+    "wave": null,
+    "criteria": [
+      "Every vendor that touches personal data is in docs/residency-register.md with region and DPA status before production use.",
+      "AI calls go to an EU-pinned provider or the store is told they do not (the provider's region is shown on the AI settings page).",
+      "Outside code: each DPA accepted and recorded with date; a sub-processor list a store can show its customers."
+    ],
+    "evidence": {
+      "files": [
+        "docs/residency-register.md",
+        "src/server/ai.ts",
+        "src/lib/ai-provider.ts",
+        "vercel.json"
+      ],
+      "tests": [
+        "src/server/ai.int.test.ts",
+        "src/lib/ai-provider.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D10"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.pci-dss",
+    "domain": "international",
+    "feature": "PCI DSS",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. shopify.com/security states Shopify is certified Level 1 PCI DSS compliant; the compliance reports help page lets logged-in merchants view Shopify's PCI Attestation of Compliance.",
+      "url": "https://www.shopify.com/security",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 5,
+    "gap": "Card entry is in Stripe's Payment Element and no Kaizen route receives card data (true), but the revised SAQ A (docs/plan.md) needs a site not susceptible to attacks from scripts, and nothing keeps third-party or owner scripts, the chat widget or tag code off the checkout routes: there is no Content-Security-Policy in `src` or `next.config.ts`, `StoreChat` is mounted in the market layout (`layout.tsx:171`) and `SiteConsent` loads owners' custom code and tracking tools on every store page. The SAQ A attestation itself is a company task, not software.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "Card details are entered only in Stripe's payment form on Kaizen's checkout page (Stripe Elements, ui_mode elements) or on Stripe's hosted pages; no Kaizen route receives, logs or stores a card number, expiry or security code.",
+      "Payments are direct charges on the store's connected account, so the card data's scope is Stripe's (SAQ A style).",
+      "A strict Content-Security-Policy is sent on the checkout, order and cart routes (test of the header).",
+      "`liveCustomCode()`, `ConsentManager` scripts and the chat widget are not drawn on checkout routes, and a test fails if a checkout route imports them."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/components/checkout-form.tsx",
+        "src/server/connect.ts",
+        "src/server/stripe.ts"
+      ],
+      "tests": [
+        "src/server/checkout-stripe.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D16",
+      "D17",
+      "D22"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "No CSP; the chat widget and owner/tracking scripts load on /checkout, against the plan's own SAQ A gate (docs/plan.md)"
+      }
+    ]
+  },
+  {
+    "id": "international.staff-two-step-authentication",
+    "domain": "international",
+    "feature": "Staff two-step authentication",
+    "shopify": {
+      "tier": "native",
+      "text": "Native: two-step authentication and passkeys are open to every staff user, who set it up for their own account; the owner cannot activate it for others and only Plus can require a secure sign-in for all users.",
+      "url": "https://help.shopify.com/en/manual/your-account/staff-accounts/two-step-authentication",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Staff sign in with a password or a Supabase magic link only; no authenticator app or other second factor, and no way for an owner to require one.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "A staff member enrols an authenticator app (TOTP) with recovery codes from Your account and is asked for the code at sign-in after the password or magic link.",
+      "An owner can require two-step sign-in for the store's staff; a member without it is held at enrolment before reaching the admin. (Beyond Shopify's native, which only Plus has.)",
+      "Enrolling, removing a factor and a failed second step are written to the audit log; recovery codes are single-use.",
+      "Platform admins are required to use it. (Beyond Shopify's native, which only Plus has.)"
+    ],
+    "evidence": {
+      "files": [],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.staff-roles-and-permissions",
+    "domain": "international",
+    "feature": "Staff roles and permissions",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/your-account/staff-accounts/create-staff-accounts",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Two roles (owner, admin; enum member_role); every admin can reach every page except owner-only staff and payment keys; no per-section permissions and no custom roles. Hosts are separate, with their own area (D71).",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "An owner defines roles (at least: orders, products, marketing, content, analytics, read-only) as sets of per-section permissions and assigns one to each staff member.",
+      "Every admin page and server action checks the permission through requireMember(); a member without it gets a 404 or a refusal, and the navigation hides what they cannot use.",
+      "The AI manager's tools and the store's MCP server respect the signed-in member's permissions.",
+      "A store always keeps one active owner (already held by a trigger test); a role change is audit-logged."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/settings.ts",
+        "src/server/auth.ts",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/db/commerce.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.audit-log-of-admin-changes",
+    "domain": "international",
+    "feature": "Audit log of admin changes",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (corrected from Plus). The Shopify help page for the store activity log names no plan restriction: it lists recent actions by the owner or staff in the admin (deleting a product, changing settings, granting app access), up to 250 results, view-only and not exportable. Whether Plus has a longer or exportable log was not found.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/activity-logs",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "commerce.audit_log is written by audit() (staff, settings, payments, many pages) but the only screen is the last 20 entries on the Payments settings page; no store-wide log page with filters, no history of who changed a product or price, no export.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "An owner opens an Activity log page listing who did what and when across the store, filterable by person, area and period, paged.",
+      "Product, price, page, discount, shipping, staff and payment-setting changes each write an entry with the account and the changed fields (never secrets).",
+      "The log can be exported as CSV by owners; staff see only what their role allows; another store's entries never appear. (CSV export goes beyond Shopify's activity log, which cannot be exported.)",
+      "Entries cannot be edited or deleted through the app, and the log is kept for a stated period."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/auth.ts",
+        "src/server/settings.ts",
+        "src/lib/store-copy-rules.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [],
+    "history": []
+  },
+  {
+    "id": "international.legal-invoices-and-credit-notes-for-orders",
+    "domain": "international",
+    "feature": "Legal invoices and credit notes for orders",
+    "shopify": {
+      "tier": "app",
+      "text": "App. , secondary",
+      "url": "https://sufio.com/blog/order-printer-apps-vs-invoicing-apps/",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Orders have gap-free numbers (D141) and, when the store switches it on, Stripe creates an invoice for a single payment (numbered and hosted by Stripe, not in Kaizen's series, none for subscriptions' parts or host orders); there is no Kaizen invoice document, no PDF, and no credit note for a refund. The gap-free invoice and credit-note machinery exists only in the Work module (issue_work_invoice).",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "A paid shop order gets a legal invoice in the store's own gap-free series (seller and buyer details, VAT per rate, VAT number, payment, date) issued once by an SQL function and immutable afterwards, with a PDF and a link in the order email and account.",
+      "A refund or a withdrawal refund produces a credit note in its own gap-free series that references the invoice and lists the refunded lines and VAT.",
+      "Invoice and credit-note totals equal the order's and the refunds' (including bonus credit, group and code discounts, multi-currency) and are held by scenarios in checkout-kinds.int.test.ts.",
+      "Copied and host orders get none; the numbers cannot be skipped, lowered or deleted."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/checkout.ts",
+        "src/server/order-numbers.ts",
+        "src/lib/order-numbers.ts",
+        "src/server/settings.ts"
+      ],
+      "tests": [
+        "src/lib/order-numbers.test.ts",
+        "src/server/checkout-stripe.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D141",
+      "D27"
+    ],
+    "history": []
+  },
+  {
+    "id": "international.dac7-reporting",
+    "domain": "international",
+    "feature": "DAC7 reporting",
+    "shopify": {
+      "tier": "app",
+      "text": "No Shopify DAC7 tool found (claim changed from App). A community thread says Shopify operates as software, not a marketplace, and has no integration with a tax authority for DAC7; merchants export order data for their accountant. A search of apps.shopify.com found tax-reporting apps (VAT, EPR) but none named for DAC7, so the app tier is not confirmed.",
+      "url": "https://community.shopify.com/c/shopify-payments/direttiva-eu-dac-7-e-shopify/td-p/2022560",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 1,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store with hosts collects each host's tax details (IBAN check digits, birth date for a person, business number for a business) and each home's address, and shows whose are missing.",
+      "The year's report lists sellers and properties with payments per quarter (by the order's paid event in the store's time zone) and downloads as CSV for owners only, with spreadsheet-safe text."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/dac7.ts",
+        "src/lib/dac7.ts",
+        "src/app/admin/(gated)/[store]/hosts/dac7/page.tsx"
+      ],
+      "tests": [
+        "src/lib/dac7.test.ts",
+        "src/server/host-payments.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D71"
+    ],
+    "history": []
+  }
+]

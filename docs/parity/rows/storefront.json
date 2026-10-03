@@ -1,0 +1,1631 @@
+[
+  {
+    "id": "storefront.theme-store-free-and-paid-themes",
+    "domain": "storefront",
+    "feature": "Theme store (free and paid themes)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Free themes by Shopify and paid themes from third parties in the Theme Store (hundreds; paid examples $100 to $420); Basic, Grow and Advanced stores can add up to 20 themes, Plus up to 100, Starter only Spotlight.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/adding-themes",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Three built-in looks (`THEME_TEMPLATES`: Minimal, Warm classic, Bold modern) plus the store's own saved themes (D60); the marketplace (D125, D127) shares rows, columns, components and whole page layouts, never a whole theme (settings, header, footer and product layout together). No theme listing, preview or switch between published themes.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "An owner can publish a whole theme (look settings, header, footer, product layout, saved parts) to the marketplace, and another store can preview it, inert and without saving, before using it.",
+      "Using a marketplace theme copies it into the store (pictures and parts included) without touching the store's products or pages, and the store's previous look stays as a saved theme.",
+      "A platform admin can hide or remove a shared theme, and a hidden theme is in no store's list (as templates are, D125).",
+      "A store can hold several saved themes and switch the live one without losing the others; a test covers the switch."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/theme.ts",
+        "src/server/themes.ts",
+        "src/components/admin/theme-editor.tsx",
+        "src/lib/templates.ts",
+        "src/server/templates.ts",
+        "src/lib/page-layout.ts"
+      ],
+      "tests": [
+        "src/lib/theme.test.ts",
+        "src/server/themes.int.test.ts",
+        "src/server/templates.int.test.ts",
+        "e2e/themes.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D60",
+      "D125",
+      "D127"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.visual-drag-and-drop-editor",
+    "domain": "storefront",
+    "feature": "Visual drag-and-drop editor",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Sections and blocks in the theme editor: up to 25 sections and 1,250 blocks per template, nested blocks up to eight levels where the theme supports them.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections-and-blocks",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "Caveat, not a gap in the editor: nesting is fixed at three levels (row, column, block), with at most 50 rows and 100 blocks per page (`ROWS_MAX`, `BLOCKS_MAX`); Shopify allows 25 sections, 1,250 blocks and up to eight nested levels per template.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Rows, columns and blocks are added from the palette and moved by dragging, and the canvas draws the page as the site does.",
+      "Every row, column and block takes spacing, border, background, width and responsive settings from its settings dialog.",
+      "A page over the row or block cap is refused with a plain message when saved.",
+      "Saved and global parts can be reused across pages, and a change to a global part is written to every page that uses it."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/admin/page-builder.tsx",
+        "src/components/admin/page-editor.tsx",
+        "src/components/admin/block-fields.tsx",
+        "src/lib/page-rows.ts",
+        "src/lib/page-content.ts",
+        "src/lib/global-parts.ts",
+        "src/server/pages.ts"
+      ],
+      "tests": [
+        "src/lib/page-rows.test.ts",
+        "src/lib/page-content.test.ts",
+        "src/lib/page-components.test.ts",
+        "src/lib/global-parts.test.ts",
+        "src/server/global-parts.int.test.ts",
+        "e2e/pages.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D43",
+      "D44",
+      "D45",
+      "D46",
+      "D47",
+      "D48",
+      "D49",
+      "D91",
+      "D98",
+      "D151"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.templates-per-page-type",
+    "domain": "storefront",
+    "feature": "Templates per page type",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store chooses which of its pages draws the cart, checkout, order, account, sign-in, wishlist, subscription, deliveries, cookies, blog, search, 404, category and tag places, each with a starter page.",
+      "A working page keeps the shop's own component on its route, and a route draws the standard page when none is chosen.",
+      "Product pages use a layout chosen by product, category, tag or store, else the default layout.",
+      "Cart, checkout and order come apart into pieces that draw nothing when they have nothing to show."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/page-roles.ts",
+        "src/server/page-roles.ts",
+        "src/server/role-pages.ts",
+        "src/lib/store-parts.ts",
+        "src/components/role-page.tsx",
+        "src/components/store-part-section.tsx",
+        "src/lib/product-layout.ts",
+        "src/server/product-layouts.ts"
+      ],
+      "tests": [
+        "src/lib/page-roles.test.ts",
+        "src/server/page-roles.int.test.ts",
+        "src/lib/store-parts.test.ts",
+        "e2e/page-roles.spec.ts",
+        "e2e/product-layouts.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D79",
+      "D112",
+      "D113",
+      "D117",
+      "D140"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.global-theme-settings",
+    "domain": "storefront",
+    "feature": "Global theme settings",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/customizing-themes/theme-settings/typography",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store's colours (light and dark sets), fonts, buttons, corners, content width and header style are one theme, edited in one place and applied to every page without fixed colours.",
+      "Colour pairs below WCAG AA contrast are warned about in the editor.",
+      "A theme can be saved, applied and deleted, and the visitor's light or dark choice follows the theme."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/theme.ts",
+        "src/server/themes.ts",
+        "src/components/admin/theme-editor.tsx",
+        "src/components/store-theme.tsx",
+        "src/lib/color-mode.ts",
+        "src/lib/custom-css.ts"
+      ],
+      "tests": [
+        "src/lib/theme.test.ts",
+        "src/server/themes.int.test.ts",
+        "e2e/themes.spec.ts",
+        "src/lib/custom-css.test.ts",
+        "e2e/custom-css.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D60",
+      "D99",
+      "D100"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.custom-pages-and-front-page-selection",
+    "domain": "storefront",
+    "feature": "Custom pages and front page selection",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "An owner builds a page in the page builder, publishes it at its own address in every market, and links it from menus by address.",
+      "One page can be the store's front page and one its All products page; their own addresses redirect to the place.",
+      "A page is duplicated as an unpublished draft, and a published page's address moves only on publish, leaving a redirect.",
+      "The AI page studio builds a page as a draft from an interview."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/pages.ts",
+        "src/components/store-page-article.tsx",
+        "src/lib/page-duplicate.ts",
+        "src/server/page-duplicate.ts",
+        "src/lib/page-roles.ts",
+        "src/server/page-ai.ts"
+      ],
+      "tests": [
+        "src/server/pages.int.test.ts",
+        "src/server/page-duplicate.int.test.ts",
+        "src/server/page-roles.int.test.ts",
+        "src/server/page-ai.int.test.ts",
+        "e2e/store-pages.spec.ts",
+        "e2e/pages.spec.ts",
+        "e2e/page-roles.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D53",
+      "D54",
+      "D83",
+      "D92",
+      "D112",
+      "D126"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.blog-multiple-blogs-authors-comments-rss",
+    "domain": "storefront",
+    "feature": "Blog (multiple blogs, authors, comments, RSS)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Several blogs per store; comments off, held for moderation or auto-published, with a spam filter; an Atom feed generated for every blog at the blog's address with .atom appended.",
+      "url": "https://help.shopify.com/manual/online-store/blogs/publishing-blogs",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "Articles are pages of type `article` built in the full page builder (D57), with a free-text author name, categories and tags, `Article` JSON-LD, one `/blog` per store (a page role, D112). No second blog, no author records, no comments, and no RSS or Atom feed route exists.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "A store can have several blogs, each with its own address, title, listing page and sitemap entries.",
+      "Each blog has a feed (Atom or RSS) at a stable address, listing published articles with title, summary, date and author; a test parses it.",
+      "Authors are records (name, picture, short text, link) chosen on an article and shown on it and in its JSON-LD.",
+      "Visitors can comment on an article when the blog allows it; comments are held for moderation, checked for spam, and shown only when approved, with consent and erasure rules honoured."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/page-article.tsx",
+        "src/components/article-view.tsx",
+        "src/app/s/[store]/[market]/blog/page.tsx",
+        "src/app/s/[store]/[market]/blog/blog-listing.tsx",
+        "src/lib/taxonomy.ts",
+        "src/server/taxonomy.ts",
+        "src/lib/structured-data.ts",
+        "src/lib/page-roles.ts"
+      ],
+      "tests": [
+        "e2e/blog.spec.ts",
+        "src/server/seo.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D57",
+      "D112",
+      "D143"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.navigation-menus-and-mega-menus",
+    "domain": "storefront",
+    "feature": "Navigation menus and mega menus",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Menus with up to two levels of drop-down under a top item (three in all), each menu up to 10,000 items and 1,000 menus per store; mega menus are theme-dependent.",
+      "url": "https://help.shopify.com/en/manual/online-store/menus-and-links/drop-down-menus",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "An owner builds named menus of links to pages, products, categories, tags, articles, the site's own links or any address, nested to three levels by dragging.",
+      "A top link can be a mega menu with columns and pictures, drawn across the header's width; the phone's drawer shows nested links.",
+      "A menu is shown wherever it is chosen (header, footer or a menu block) and moves between stores with the store copy."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/menus.ts",
+        "src/lib/menu-structure.ts",
+        "src/lib/navigation.ts",
+        "src/components/menu-view.tsx",
+        "src/components/admin/menu-editor.tsx",
+        "src/components/menu-section.tsx"
+      ],
+      "tests": [
+        "src/lib/menu-structure.test.ts",
+        "src/lib/navigation.test.ts",
+        "e2e/menus.spec.ts",
+        "e2e/navigation.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D52",
+      "D85",
+      "D87"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.customizable-header-and-footer",
+    "domain": "storefront",
+    "feature": "Customizable header and footer",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/theme-structure/sections",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store builds its header and footer in the page builder from site parts and menus, with an overlay header over pages that start with a background.",
+      "A store footer always carries the business details, the cookies link and the withdrawal link, which cannot be hidden on phones (D153); a layout without them is refused.",
+      "Announcement bars and other overlays are modal rows (D121), and a header or footer can be A/B tested."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/site-layout.ts",
+        "src/server/site-layouts.ts",
+        "src/components/site-parts.tsx",
+        "src/components/admin/site-layouts.tsx",
+        "src/lib/page-modal.ts"
+      ],
+      "tests": [
+        "src/lib/site-layout.test.ts",
+        "src/server/site-layouts.int.test.ts",
+        "e2e/site-layouts.spec.ts",
+        "e2e/modals.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D80",
+      "D121",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.theme-code-access-liquid-and-files",
+    "domain": "storefront",
+    "feature": "Theme code access (Liquid and files)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/theme-structure/extend/edit-theme-code",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Owner CSS for a page and for the whole site, checked by `cssProblem()` (D100), a sandboxed HTML block (`HtmlFrame`) and consent-gated head and body snippets (D61, only on a store's own host). No templating language, no file editing, no custom sections or JavaScript of the owner's own in the page. Whether to offer one is a security and product decision, not a missing form.",
+    "bucket": "C",
+    "wave": null,
+    "criteria": [
+      "Decision recorded: either owners get a safe extension surface (a sandboxed templating or component language) or the row is declared out of scope with the reason.",
+      "If built: an owner's custom section is validated, sandboxed (no script access to cookies, storage or the admin) and rendered through the same page and theme system, with a test that a hostile section cannot read other stores' data.",
+      "A change to custom code is versioned and revertible, and goes through the consent rules for any script it loads."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/custom-css.ts",
+        "src/components/custom-css.tsx",
+        "src/lib/custom-code.ts",
+        "src/components/html-frame.tsx"
+      ],
+      "tests": [
+        "src/lib/custom-css.test.ts",
+        "src/lib/custom-code.test.ts",
+        "e2e/custom-css.spec.ts",
+        "src/lib/page-components.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D61",
+      "D91",
+      "D100"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.fonts-library-and-custom-fonts",
+    "domain": "storefront",
+    "feature": "Fonts: library and custom fonts",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. The theme editor's font library holds Monotype fonts, Google Fonts and web-safe fonts; the pages read say nothing of uploading own font files (third-party guides say that needs the code editor).",
+      "url": "https://www.shopify.com/partners/blog/font-picker",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Caveat: no upload of an owner's own font files; about 1,800 Google families are self-hosted. Shopify's picker also offers licensed Monotype fonts, which Kaizen does not.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store chooses a heading and a body font from the catalogue; the family is downloaded once and served from Kaizen, never from Google.",
+      "A block can take its own font, installed before it is used."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/fonts.ts",
+        "src/server/fonts.ts",
+        "src/components/admin/font-picker.tsx",
+        "src/components/font-links.tsx",
+        "src/app/api/fonts/css/[slug]/route.ts"
+      ],
+      "tests": [
+        "src/lib/fonts.test.ts",
+        "src/server/fonts.int.test.ts",
+        "e2e/fonts.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D59"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.animations-and-motion-effects",
+    "domain": "storefront",
+    "feature": "Animations and motion effects",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://themes.shopify.com/themes/horizon",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Owners choose entrance, hover, scroll and background effects from curated lists; owner data never becomes CSS or script.",
+      "All content is present without JavaScript, with reduced motion and after the failsafe; the first row never starts transparent.",
+      "A 'Make my page cool' plan is validated in code and falls back to rules without AI."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/motion.ts",
+        "src/lib/motion-attrs.ts",
+        "src/lib/motion-runtime.ts",
+        "src/lib/motion-plan.ts",
+        "src/lib/motion-edit.ts",
+        "src/app/motion.css",
+        "src/server/motion-ai.ts"
+      ],
+      "tests": [
+        "src/lib/motion-attrs.test.ts",
+        "src/lib/motion-css.test.ts",
+        "src/lib/motion-schema.test.ts",
+        "src/lib/motion-plan.test.ts",
+        "src/server/motion-ai.test.ts",
+        "e2e/motion.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D128"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.mobile-responsive-storefront-per-device-editing",
+    "domain": "storefront",
+    "feature": "Mobile-responsive storefront, per-device editing",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Responsive themes; the theme editor has a mobile preview toggle (desktop and mobile; the page read names no tablet toggle and no per-device settings).",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/customizing-themes/theme-editor/features-overview",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Responsive storefront with phone controls (hide a menu on phones, side by side or reversed columns, tiles per screen size, text alignment by screen) but no phone or tablet preview in the builder's canvas and no per-device overrides of spacing, backgrounds or visibility for ordinary blocks.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "The builder has a device toggle (computer, tablet, phone) that redraws the canvas at that width.",
+      "Spacing, visibility, alignment, order and column counts can be set per device on rows, columns and blocks, and the site honours them with CSS only, so the first paint is right.",
+      "A setting made for phones does not change the computer view; a test renders both."
+    ],
+    "evidence": {
+      "files": [
+        "src/components/admin/page-builder.tsx",
+        "src/lib/page-content.ts",
+        "src/components/page-parts.tsx",
+        "src/components/menu-view.tsx"
+      ],
+      "tests": [
+        "e2e/pages.spec.ts",
+        "e2e/navigation.spec.ts",
+        "e2e/menus.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D48"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.media-library",
+    "domain": "storefront",
+    "feature": "Media library",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Content > Files: images, videos and other files with search, size, type and 'Used in' filters, alt text and multi-delete; images up to 20 MB, videos up to 1 GB, 200 files per upload.",
+      "url": "https://help.shopify.com/en/manual/shopify-admin/productivity-tools/file-uploads",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every uploaded picture and video is registered once per store; the library shows where each is used and deletes the file from storage.",
+      "Search finds a file by name alone and pictures by their alt texts in every language, with AI alt texts that never overwrite staff's.",
+      "The site shows library alt texts where a picture has none of its own."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/media-library.ts",
+        "src/server/media.ts",
+        "src/server/media-alts.ts",
+        "src/server/alt-texts.ts",
+        "src/lib/alt-text.ts",
+        "src/lib/media-query.ts",
+        "src/components/admin/media-library.tsx"
+      ],
+      "tests": [
+        "src/server/media-library.int.test.ts",
+        "src/server/alt-texts.int.test.ts",
+        "src/lib/media-query.test.ts",
+        "src/lib/alt-text.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D88",
+      "D89",
+      "D90"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.page-speed-cdn-image-optimisation-report",
+    "domain": "storefront",
+    "feature": "Page speed: CDN, image optimisation, report",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Online store speed report in the admin: Lighthouse scores of the home page and the highest-traffic collection and product pages combined into one score, compared with similar stores; Shopify serves themes and images from its CDN.",
+      "url": "https://changelog.shopify.com/posts/find-out-how-fast-your-store-is-with-a-new-online-store-speed-report",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Prerendered Next.js pages on Vercel's network, functions pinned to Dublin next to the database, and a few guarded budgets (campaign notices cached under 0.5 s, A/B proxy overhead measured by `scripts/ab-ttfb.mjs`). No merchant-facing speed report, and pictures are shrunk once in the browser and drawn `unoptimized` (no AVIF or WebP per device, no responsive `srcset`).",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "A speed report in the store admin shows lab scores (or measured Core Web Vitals) for the front page and a top product and category page, with the date of the run and what to fix.",
+      "Pictures are served in a modern format at the visitor's device size with `srcset`, and a test checks the markup of a product card and a page picture.",
+      "A performance budget (page weight, largest image, time to first byte) is checked in CI for the demo store's home and product pages.",
+      "The report says what it cannot measure, never a score from nothing."
+    ],
+    "evidence": {
+      "files": [
+        "vercel.json",
+        "next.config.ts",
+        "src/components/product-card.tsx",
+        "src/components/page-parts.tsx",
+        "scripts/ab-ttfb.mjs",
+        "src/lib/health.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D115"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.headless-storefront-api-hydrogen",
+    "domain": "storefront",
+    "feature": "Headless: Storefront API, Hydrogen",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://shopify.dev/docs/storefronts/headless/hydrogen/fundamentals",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "No public catalogue, cart or checkout API: the storefront reads its own database server-side. The only machine interfaces are the owner MCP server (`/api/mcp`, for the owner's assistant) and internal routes. Plan section 5 decision 4: build a read API after the Admin API exists.",
+    "bucket": "C",
+    "wave": 9,
+    "criteria": [
+      "Decision recorded (docs/parity-plan.md section 5, decision 4) to build or skip.",
+      "If built: a read API for catalogue, prices (per market, VAT-inclusive), stock and a cart, behind per-store public tokens, rate-limited and cached, with the same prices as the storefront (euro scenario).",
+      "A cart created by the API reaches checkout through `placeOrder()` and agrees with `cartSummary()`."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/api/mcp/route.ts",
+        "src/server/store-mcp.ts"
+      ],
+      "tests": [],
+      "untested": false
+    },
+    "decisions": [
+      "D96"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.customer-account-pages",
+    "domain": "storefront",
+    "feature": "Customer account pages",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://changelog.shopify.com/posts/draft-unified-branding-customization-across-checkout-and-customer-accounts",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "Caveat: one saved address (the last order's until saved); no returns list in My account (a withdrawal or return is reached from the order page and email, D153). Account depth is its own row in the customers domain.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A shopper signs in with an emailed code or a password, sees orders, details, subscriptions and weekly deliveries, and can delete the account.",
+      "The account page is a page-builder role, so its layout and theme follow the store's.",
+      "Company, bonus and referral pages appear only where the store uses them.",
+      "Sign-in answers the same whether or not an address has an account."
+    ],
+    "evidence": {
+      "files": [
+        "src/app/s/[store]/[market]/account/account-section.tsx",
+        "src/app/s/[store]/[market]/account/page.tsx",
+        "src/components/account-forms.tsx",
+        "src/server/customers.ts",
+        "src/lib/store-parts.ts"
+      ],
+      "tests": [
+        "e2e/account.spec.ts",
+        "e2e/wishlist.spec.ts",
+        "e2e/company.spec.ts",
+        "e2e/deliveries.spec.ts",
+        "e2e/page-roles.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D28",
+      "D66",
+      "D102",
+      "D108",
+      "D113",
+      "D130",
+      "D131"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.store-level-a-b-testing",
+    "domain": "storefront",
+    "feature": "Store-level A/B testing",
+    "shopify": {
+      "tier": "native",
+      "text": "Native (Grow and above, theme-wide).",
+      "url": "https://changelog.shopify.com/posts/schedule-and-test-storefront-changes-with-rollouts",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "An owner tests a page, a row or block of it, the header, footer, a product layout, a modal or a working page, with a split of visitors who accepted statistics.",
+      "Results are computed on read with the verdict only after the minimum, a guardrail stops a harmful test and emails the owners, and the winner is applied by the owner.",
+      "A test is scheduled to start by itself, and no price, shipping or legal page is ever tested."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/experiments.ts",
+        "src/server/experiments.ts",
+        "src/server/experiment-admin.ts",
+        "src/server/experiment-jobs.ts",
+        "src/server/experiment-results.ts",
+        "src/lib/ab-site.ts",
+        "src/proxy.ts",
+        "docs/ab-testing.md"
+      ],
+      "tests": [
+        "src/lib/experiments.test.ts",
+        "src/server/experiments.int.test.ts",
+        "src/lib/ab-site.test.ts",
+        "src/lib/experiment-stats.test.ts",
+        "src/lib/experiment-parts.test.ts",
+        "src/lib/ab-routing.test.ts",
+        "e2e/ab-tests.spec.ts",
+        "e2e/ab-site-tests.spec.ts",
+        "e2e/ab-working-pages.spec.ts",
+        "e2e/ab-front-pages.spec.ts",
+        "e2e/ab-form-goal.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D148"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.scheduled-storefront-changes-with-auto-revert",
+    "domain": "storefront",
+    "feature": "Scheduled storefront changes with auto-revert",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://changelog.shopify.com/posts/schedule-and-test-storefront-changes-with-rollouts",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "missing",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "Pages, headers, footers and themes have draft and published only (`pages.published_at`); scheduling exists for A/B tests (`experiments.scheduled_start`, started by `runExperimentJobs()`) and campaigns, not for content or the look. No end time and no automatic revert.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "A page, header, footer or theme change can be scheduled for a date and time in the store's time zone and goes live by itself from a job, with nobody signed in.",
+      "An optional end time puts the previous published version back by itself.",
+      "The schedule, its result and any failure show in the page list and the audit log; a failed start leaves the page as it was.",
+      "A scheduled change to a page in a running A/B test is refused at scheduling time, as publishing is."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/pages.ts",
+        "src/server/experiment-jobs.ts",
+        "src/db/schema.ts"
+      ],
+      "tests": [
+        "src/server/pages.int.test.ts",
+        "src/server/experiments.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D53",
+      "D148"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.version-history-restore-shareable-preview",
+    "domain": "storefront",
+    "feature": "Version history, restore, shareable preview",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Preview links for any added theme (visitor previews expire after 2 days, merchant previews after 30) and a finite Timeline of older versions of theme files in the code editor.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/adding-themes",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "A page keeps one draft and one published copy, with an admin preview and saved themes as snapshots of the look; the replicator's preview takes a token for one job's draft only (D150). No revision history, no restore, no undo stack in the builder and no link a client can open without signing in.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "Each publish (and each theme save) keeps a revision with author and time, and the last N are listed.",
+      "An owner restores a revision as the new draft, never silently over the published page.",
+      "The builder has undo and redo for the current session.",
+      "A preview link opens an unpublished page or theme without signing in, expires, can be revoked, is noindex and exposes nothing else (token like `replicate-token.ts`)."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/pages.ts",
+        "src/server/themes.ts",
+        "src/lib/replicate-token.ts",
+        "src/components/admin/page-editor.tsx"
+      ],
+      "tests": [
+        "src/server/pages.int.test.ts",
+        "src/server/themes.int.test.ts",
+        "src/lib/replicate-token.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D53",
+      "D60",
+      "D150"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.per-page-seo-fields",
+    "domain": "storefront",
+    "feature": "Per-page SEO fields",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://help.shopify.com/en/manual/promoting-marketing/seo/adding-keywords",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Every page, article and product has a title and description with length advice, a noindex switch (left out of the sitemap too) and its own address.",
+      "A page's changed address redirects the old one for good.",
+      "A store's home title and description are per language, and verification codes for search consoles can be set."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/seo.ts",
+        "src/server/seo.ts",
+        "src/components/admin/seo-fields.tsx",
+        "src/lib/page-content.ts",
+        "src/lib/product-input.ts",
+        "src/app/s/[store]/[market]/layout.tsx"
+      ],
+      "tests": [
+        "src/lib/seo.test.ts",
+        "src/server/seo.int.test.ts",
+        "src/lib/product-input.test.ts",
+        "e2e/pages.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21",
+      "D53"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.automatic-sitemap-xml",
+    "domain": "storefront",
+    "feature": "Automatic sitemap.xml",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. sitemap.xml is generated for products with their primary image, pages, collections and blog posts; languages are added for each domain.",
+      "url": "https://help.shopify.com/manual/using-themes/find-site-map",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "Evidence debt: `storeSitemap()` writes `xhtml:link` hreflang alternates, x-default and `image:image` entries (`src/server/seo.ts`), but no listed test asserts x-default or the picture entries (only hreflang da-DK is asserted in `e2e/smoke.spec.ts`).",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Each store has a sitemap listing its products, pages and articles in every market with hreflang alternates, x-default and picture entries, linked from the platform's sitemap index.",
+      "A hidden store, a noindex page and a page chosen for a working role are left out."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/seo.ts",
+        "src/app/sitemap.xml/route.ts",
+        "src/app/s/[store]/store-sitemap.xml/route.ts",
+        "src/app/robots.txt/route.ts"
+      ],
+      "tests": [
+        "src/server/seo.int.test.ts",
+        "e2e/smoke.spec.ts"
+      ],
+      "untested": true
+    },
+    "decisions": [
+      "D21",
+      "D56"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.structured-data-json-ld",
+    "domain": "storefront",
+    "feature": "Structured data (JSON-LD)",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, theme-dependent: themes emit schema.org JSON-LD through the structured_data Liquid filter (Product, or ProductGroup with variants); it is not a platform setting.",
+      "url": "https://shopify.dev/docs/api/liquid/filters/structured_data",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Product pages carry Product JSON-LD with price, availability, brand, picture, shipping and return policy (the store's own 14-day or longer policy, D153); variants group under one product.",
+      "Pages carry breadcrumbs and articles carry Article data; the store carries its business node.",
+      "Downloads are always in stock with no shipping or returns."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/structured-data.ts",
+        "src/server/seo.ts",
+        "src/lib/custom-fields.ts"
+      ],
+      "tests": [
+        "src/lib/structured-data.test.ts",
+        "e2e/smoke.spec.ts",
+        "e2e/blog.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21",
+      "D118",
+      "D153"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.robots-txt-control",
+    "domain": "storefront",
+    "feature": "robots.txt control",
+    "shopify": {
+      "tier": "native",
+      "text": "Native via the theme: a default robots.txt, customised by adding robots.txt.liquid in the code editor (add or remove rules, host-specific rules, extra sitemaps).",
+      "url": "https://shopify.dev/docs/storefronts/themes/seo/robots-txt",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "The platform's robots.txt lists each open store's rules under its address; an owner adds crawler rules that are parsed and refused with the line number when unreadable.",
+      "AI assistants and AI training have their own switches, and a page can be closed to AI crawlers one by one.",
+      "A hidden store is left out of the sitemap index and llms.txt and its pages ask not to be indexed."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/seo.ts",
+        "src/lib/seo.ts",
+        "src/app/robots.txt/route.ts",
+        "src/app/s/[store]/robots.txt/route.ts"
+      ],
+      "tests": [
+        "src/lib/seo.test.ts",
+        "src/server/seo.int.test.ts",
+        "e2e/smoke.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.url-redirect-manager",
+    "domain": "storefront",
+    "feature": "URL redirect manager",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Content > Menus > URL redirects: create manually, import and export CSV, up to 100,000 redirects (Plus 20,000,000); the page read does not describe automatic prompts on handle changes.",
+      "url": "https://help.shopify.com/en/manual/online-store/menus-and-links/url-redirect",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 4,
+    "gap": "`page_redirects` for pages only, left by the database when a published page's address moves. No redirect when a product, category, tag or article address changes, no manual redirect, no CSV import or export, no 404 report. One row for the one Shopify feature (it replaces customers.url-redirect-manager).",
+    "bucket": "A",
+    "wave": 2,
+    "criteria": [
+      "Changing the address of a product, category, tag or article leaves a permanent redirect from the old one, as pages do now, and a later page taking that address replaces it.",
+      "An owner adds, edits, deletes and searches manual redirects from a path to a path or address, scoped to the store.",
+      "CSV import and export with validation: loops, chains, duplicates and external hosts are reported per line; an import is a resumable job.",
+      "A 404 report lists the most requested missing paths, each with a one-click redirect."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/pages.ts",
+        "src/db/schema.ts",
+        "src/server/menus.ts"
+      ],
+      "tests": [
+        "src/server/pages.int.test.ts",
+        "e2e/pages.spec.ts",
+        "src/db/commerce.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D53",
+      "D54"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.favicon-logos-branding",
+    "domain": "storefront",
+    "feature": "Favicon, logos, branding",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Logo and favicon in theme settings; a favicon needs the Basic plan or higher (16x16 or 32x32 px, larger images reduced to 32).",
+      "url": "https://help.shopify.com/en/manual/online-store/images/add-favicon",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store uploads logos (with a variant for dark backgrounds) and an icon; the browser makes a 64 and a 512 pixel PNG, and every layout links them.",
+      "/favicon.ico redirects to the site's icon, and Kaizen's icon is the default.",
+      "A share image is used when a page has none of its own."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/site-icons.ts",
+        "src/components/logo-picture.tsx",
+        "src/components/admin/navigation-editor.tsx",
+        "src/app/favicon.ico/route.ts",
+        "src/app/s/[store]/favicon.ico/route.ts",
+        "src/lib/theme.ts"
+      ],
+      "tests": [
+        "src/lib/site-icons.test.ts",
+        "e2e/icons.spec.ts",
+        "e2e/themes.spec.ts",
+        "src/lib/navigation.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D62",
+      "D60"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.popups-and-modal-offers",
+    "domain": "storefront",
+    "feature": "Popups and modal offers",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://apps.shopify.com/shopify-forms",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A row set as a modal opens from a link, hash, element class, timer or exit intent; it opens by itself at most once per page view, never over another modal or on working pages.",
+      "Frequency memory is a preferences item written only after consent, and without consent nothing is stored.",
+      "Focus is trapped and returned, Escape closes it, and a sign-up form inside works."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/page-modal.ts",
+        "src/components/page-modal.tsx",
+        "src/components/admin/modal-fields.tsx",
+        "src/components/admin/modal-preview.tsx",
+        "src/lib/cookie-consent.ts"
+      ],
+      "tests": [
+        "src/lib/page-modal.test.ts",
+        "src/lib/page-modal-content.test.ts",
+        "src/components/page-modal.test.ts",
+        "src/components/admin/modal-fields.test.ts",
+        "src/lib/cookie-consent-modals.test.ts",
+        "e2e/modals.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D121"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.signup-and-contact-forms-feeding-customers-and-consent",
+    "domain": "storefront",
+    "feature": "Signup and contact forms feeding customers and consent",
+    "shopify": {
+      "tier": "native",
+      "text": "Native.",
+      "url": "https://apps.shopify.com/shopify-forms",
+      "fetched": true,
+      "checkedOn": "2026-10-02"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "D93 forms email the owner (up to five recipients kept in the page) with double opt-in for sign-ups and a consent record in the email; `form_submissions` is a throttle and confirmation log (pruned after 30 days), not a subscriber list. No subscriber or customer record, no list in the admin, no tags or segments, no unsubscribe record.",
+    "bucket": "A",
+    "wave": 5,
+    "criteria": [
+      "A confirmed newsletter sign-up creates or updates a subscriber (store, email, source form, consent text and time, language, double opt-in time), not only an email to the owner.",
+      "A subscriber unsubscribes by a signed link, the record shows it, and it can be exported and erased.",
+      "A contact message appears in an admin inbox with a status and links to the customer with the same email.",
+      "A form can tag its subscribers, and tags are selectable in segments."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/forms.ts",
+        "src/server/forms.ts",
+        "src/components/form-section.tsx",
+        "src/components/site-form.tsx",
+        "src/app/api/forms/route.ts",
+        "src/app/api/forms/confirm/route.ts"
+      ],
+      "tests": [
+        "src/lib/forms.test.ts",
+        "src/server/forms.int.test.ts",
+        "e2e/modals.spec.ts",
+        "e2e/ab-form-goal.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D93",
+      "D148"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.multilingual-storefront-content",
+    "domain": "storefront",
+    "feature": "Multilingual storefront content",
+    "shopify": {
+      "tier": "native",
+      "text": "Native via the Translate & Adapt app: products, collections, blog posts, policies and pages; automatic translation for at most two languages, manual translation without a limit, policies never automatic.",
+      "url": "https://help.shopify.com/manual/markets/languages/translate-adapt-app",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "Caveat: category and tag names are not translatable yet (`commerce.terms.name`; `TRANSLATE_SCOPES` are products, menus, pages, fields and returns), so a category page, breadcrumb or filter facet name stays in the main language (see catalogue.collections-manual).",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A page is built once in the store's main language with texts in other languages over it; the site shows the shopper's language with hreflang alternates.",
+      "A language and a currency are chosen apart from the country, and the store's languages come from `store.localization`.",
+      "A whole store is translated with AI from one worklist, a person reads every text before it is saved, and legal pages start unticked.",
+      "Interface text of added languages is translated into data and read key by key, with English as the fallback."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/localization.ts",
+        "src/server/localization.ts",
+        "src/lib/page-translation.ts",
+        "src/lib/store-translate.ts",
+        "src/server/store-translate.ts",
+        "src/lib/ui-translate.ts",
+        "src/lib/ui-catalog.ts",
+        "src/server/ui-text.ts",
+        "src/server/languages.ts",
+        "src/lib/page-translate-ai.ts"
+      ],
+      "tests": [
+        "src/lib/localization.test.ts",
+        "src/server/localization.int.test.ts",
+        "src/lib/page-translation.test.ts",
+        "src/lib/store-translate.test.ts",
+        "src/server/store-translate.int.test.ts",
+        "src/lib/ui-catalog.test.ts",
+        "src/lib/page-translate-ai.test.ts",
+        "e2e/localization.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D55",
+      "D109",
+      "D110",
+      "D111"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.custom-data-rendered-in-the-theme",
+    "domain": "storefront",
+    "feature": "Custom data rendered in the theme",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Metafields connect to theme settings through dynamic sources in the theme editor (Text and Rich text settings; up to 20 metafields per template).",
+      "url": "https://help.shopify.com/en/manual/custom-data/metafields/displaying-metafields-on-your-online-store",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "Owners define field groups with location rules and conditional logic for products, variants, categories, tags, pages, articles and the store, and values are shown only when the owner makes them public.",
+      "A heading, rich text, image or button block can be bound to a field, and a repeater draws as cards, a list or a grid.",
+      "A field can be a listing filter, part of search and a fact for the chat agent."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/custom-fields.ts",
+        "src/server/custom-fields.ts",
+        "src/lib/field-binding.ts",
+        "src/server/field-binding.ts",
+        "src/components/custom-fields-view.tsx",
+        "src/lib/field-filters.ts",
+        "src/lib/field-search.ts",
+        "src/server/field-search.ts"
+      ],
+      "tests": [
+        "src/lib/custom-fields.test.ts",
+        "src/server/custom-fields.int.test.ts",
+        "src/lib/field-binding.test.ts",
+        "src/lib/field-filters.test.ts",
+        "src/lib/field-search.test.ts",
+        "src/server/custom-fields-search.int.test.ts",
+        "e2e/custom-fields.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D118",
+      "D119",
+      "D120"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.cookie-consent-banner-and-log",
+    "domain": "storefront",
+    "feature": "Cookie consent banner and log",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, narrow: a cookie banner governing Shopify's own cookies and pixels, set up automatically for UK and EEA visitors with active markets there; third-party trackers need a separate banner, and the page names no consent log or cookie scan.",
+      "url": "https://help.shopify.com/en/manual/privacy-and-security/privacy/customer-privacy-settings/privacy-settings",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "full",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 5,
+    "gap": "Caveat: the Consent Mode v2 signals sent by `consent-manager.tsx` are read from the code and held by no test.",
+    "bucket": null,
+    "wave": null,
+    "criteria": [
+      "A store with only necessary cookies shows no banner; one with a tracking tool asks first, loads the tool only after consent and logs each choice for 12 months.",
+      "Every cookie or storage item is declared with category and purpose, and the cookies page lists what the latest scan found.",
+      "A store's own code runs only after consent unless it is necessary."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/cookie-consent.ts",
+        "src/server/consents.ts",
+        "src/lib/cookie-scan.ts",
+        "src/server/cookie-scans.ts",
+        "src/server/site-cookies.ts",
+        "src/components/consent/consent-manager.tsx",
+        "src/app/api/consent/route.ts",
+        "src/lib/custom-code.ts"
+      ],
+      "tests": [
+        "src/lib/cookie-consent.test.ts",
+        "src/server/consents.int.test.ts",
+        "src/lib/cookie-scan.test.ts",
+        "src/server/cookie-scans.int.test.ts",
+        "e2e/cookies.spec.ts",
+        "e2e/cookie-scan.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D58",
+      "D61"
+    ],
+    "history": []
+  },
+  {
+    "id": "storefront.ai-store-and-page-building",
+    "domain": "storefront",
+    "feature": "AI store and page building",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Sidekick adjusts a theme from a description and creates custom blocks in any Theme Store theme; AI generates a whole store from a description of what to sell.",
+      "url": "https://www.shopify.com/editions/winter2026",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "full"
+    },
+    "weight": 2,
+    "gap": "AI builds pages: the page studio interviews, plans, writes and makes pictures into a draft (D92), the replicator copies another site's page (D150), translation and motion plans are suggestions. It has no tool for the look (theme colours, fonts), the header or footer, or menus (`OWNER_TOOLS` has none), and nothing builds a whole store from one description.",
+    "bucket": "A",
+    "wave": 8,
+    "criteria": [
+      "The AI manager can propose a theme change (colours, fonts, buttons) from a description as a gated change the owner approves, with contrast warnings applied.",
+      "The AI can draft a header, footer and menus as drafts, linking only to the store's real pages.",
+      "A store setup from one description produces theme, front page, a few pages and menus as drafts for the owner to read; nothing is published without a yes.",
+      "Every AI text passes the claims filter and the feature falls back with a plain message when no model is set."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/page-ai.ts",
+        "src/lib/page-ai.ts",
+        "src/components/admin/page-studio.tsx",
+        "src/lib/replicate.ts",
+        "src/server/replicate.ts",
+        "src/lib/motion-plan.ts",
+        "src/server/page-translate.ts"
+      ],
+      "tests": [
+        "src/lib/page-ai.test.ts",
+        "src/server/page-ai.int.test.ts",
+        "src/server/replicate.int.test.ts",
+        "src/lib/replicate-build.test.ts",
+        "e2e/replicate.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D92",
+      "D94",
+      "D110",
+      "D128",
+      "D150"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Read Shopify's Winter '26 edition page (Sidekick edits themes and builds blocks; AI generates a whole store) and the code: Kaizen's AI builds page drafts only, with no AI path to the theme, header, footer or menus and no whole-store generation. The first report's own caveat ('not whole-store redesigns') now matters because Shopify's claim is store-wide."
+      }
+    ]
+  },
+  {
+    "id": "storefront.storefront-password-or-pre-launch-page",
+    "domain": "storefront",
+    "feature": "Storefront password or pre-launch page",
+    "shopify": {
+      "tier": "native",
+      "text": "Native. Private mode hides every page from visitors and search engines behind a customisable password landing page (password header, footer and email sign-up sections); new stores start private.",
+      "url": "https://help.shopify.com/en/manual/online-store/themes/password-page",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": "missing"
+    },
+    "weight": 2,
+    "gap": "A store whose setup is not finished (or with `seo.hidden`) is noindexed and left out of sitemaps and llms.txt, but anyone with the address can view it. No password, no coming-soon landing page, and no way to put an open store back in private mode.",
+    "bucket": "A",
+    "wave": 7,
+    "criteria": [
+      "An owner switches a store to private mode with a password; visitors see a landing page built in the page builder until they enter it, and the unlock cookie is declared necessary in `KNOWN_COOKIES`.",
+      "In private mode no page, sitemap, llms.txt or feed lists the store, crawlers get noindex and disallow, and signed-in staff preview without the password.",
+      "An owner can re-hide an open store; the change is in the audit log, and orders already placed keep working (webhooks, order pages).",
+      "A store that has not finished setup is private by default."
+    ],
+    "evidence": {
+      "files": [
+        "src/server/stores.ts",
+        "src/server/seo.ts",
+        "src/app/s/[store]/[market]/layout.tsx"
+      ],
+      "tests": [
+        "src/server/seo.int.test.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D21"
+    ],
+    "history": [
+      {
+        "on": "2026-10-02",
+        "from": "missing",
+        "to": "partial",
+        "why": "The first report's recheck: unopened stores are viewable by address, noindexed and left out of sitemaps; there is still no password or landing page."
+      }
+    ]
+  },
+  {
+    "id": "storefront.accessibility-and-theme-quality-guarantees",
+    "domain": "storefront",
+    "feature": "Accessibility and theme quality guarantees",
+    "shopify": {
+      "tier": "native",
+      "text": "Native, as a theme requirement: Theme Store themes need a minimum average Lighthouse accessibility score of 90 over the home, product, collection and cart pages; no merchant-facing accessibility checker is described.",
+      "url": "https://www.shopify.com/partners/blog/theme-store-accessibility-requirements",
+      "fetched": true,
+      "checkedOn": "2026-10-03"
+    },
+    "kaizen": {
+      "rating": "partial",
+      "rechecked": true,
+      "was": null
+    },
+    "weight": 3,
+    "gap": "WCAG 2.2 AA is the intent (D11): theme colour pairs are checked against 4.5:1 and warned about (`themeWarnings()`), alt texts in every language (D89), motion stops under reduced motion (D128). No automated accessibility run in CI, and no checker for pages owners build (heading order, empty links, contrast of owner backgrounds and CSS). The audit evidence itself is bucket D.",
+    "bucket": "A",
+    "wave": 1,
+    "criteria": [
+      "An automated WCAG check (axe or equivalent) runs in CI over the storefront's key pages (front, product, cart, checkout, account) in light and dark and fails on serious or critical violations.",
+      "The page builder lists issues in a page's draft: pictures without alt text, heading order, empty links or buttons, text over a background below 4.5:1, with a link to the block.",
+      "Publishing a page with an unresolved blocking issue shows a warning and records the owner's choice.",
+      "An accessibility statement can be generated from facts the site holds, flagged for review."
+    ],
+    "evidence": {
+      "files": [
+        "src/lib/theme.ts",
+        "src/lib/alt-text.ts",
+        "src/server/alt-texts.ts",
+        "src/app/globals.css",
+        "src/lib/motion-attrs.ts"
+      ],
+      "tests": [
+        "src/lib/theme.test.ts",
+        "src/lib/alt-text.test.ts",
+        "src/server/alt-texts.int.test.ts",
+        "e2e/motion.spec.ts"
+      ],
+      "untested": false
+    },
+    "decisions": [
+      "D11",
+      "D89",
+      "D128"
+    ],
+    "history": []
+  }
+]
