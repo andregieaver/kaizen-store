@@ -64,7 +64,8 @@ test("a copy built from a page's measurements looks like the page, and measuring
 
     // Build the copy: pictures are the same files, kept under the site's own address; icons are photographs.
     const own = (url: string) => (url.endsWith("hero.png") ? { url: `${baseURL}/demo/cabin.svg`, width: 800, height: 600 } : url.endsWith("roastery.png") ? { url: `${baseURL}/demo/lamp.svg`, width: 800, height: 600 } : null);
-    const shots = new Map([...desktop.elements.keys()].map((key, i) => [key, { url: `${baseURL}/demo/${["bike", "mug", "notebook-open"][i % 3]}.svg`, width: 44, height: 44 }]));
+    // The icons are the site's own files by their path: a grid of custom items (D155) takes only the library's or the site's own pictures.
+    const shots = new Map([...desktop.elements.keys()].map((key, i) => [key, { url: `/demo/${["bike", "mug", "notebook-open"][i % 3]}.svg`, width: 44, height: 44 }]));
     const built = buildReplica(
       { desktop: desktop.capture, mobile: mobile.capture, picture: own, shot: (key) => shots.get(key) ?? null, video: () => null, font: () => null },
       randomUUID,

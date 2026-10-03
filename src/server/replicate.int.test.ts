@@ -28,7 +28,56 @@ const text = (tag: string, box: Box, t: string, s: Record<string, string> = {}, 
   children: [],
 });
 
+/** What the original is: the hero page, or (for the grid tests) a heading over four of the same card. */
+const mode = vi.hoisted(() => ({ grid: false, right: false }));
+
+/** A heading over four cards: a picture, a title, words and a button each, side by side at computers' width and one under another on phones. */
+function gridOriginal(width: number): PageCapture {
+  const phone = width < 700;
+  const w = phone ? 358 : 290;
+  const card = (i: number): CaptureNode => {
+    const x = phone ? 16 : 110 + i * (w + 20);
+    const y = phone ? 170 + i * 440 : 170;
+    const p = `0/1/${i}`;
+    return {
+      p,
+      tag: "div",
+      sel: "div.card",
+      box: [x, y, w, 420],
+      s: { display: "block", backgroundColor: "rgb(245, 245, 250)", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", borderBottomRightRadius: "12px", borderBottomLeftRadius: "12px" },
+      children: [
+        { p: `${p}/0`, tag: "img", box: [x, y, w, 200], s: { display: "block", objectFit: "cover" }, media: { kind: "img", url: `https://source.test/card-${i}.jpg`, width: 800, height: 600, alt: `Card ${i}` }, children: [] },
+        text("h3", [x + 16, y + 216, w - 32, 28], `Card ${i}`, { fontSize: "22px", lineHeight: "28px", fontWeight: "600" }, `${p}/1`),
+        text("p", [x + 16, y + 252, w - 32, 72], `Words on card ${i}.`, {}, `${p}/2`),
+        { ...text("a", [x + 16, y + 348, 110, 44], "Read it", { color: "rgb(255, 255, 255)", backgroundColor: "rgb(79, 70, 229)", paddingTop: "10px", paddingBottom: "10px", paddingLeft: "16px", paddingRight: "16px", textAlign: "center" }, `${p}/3`), button: true, href: `https://source.test/cards/${i}` },
+      ],
+    };
+  };
+  const cards = [0, 1, 2, 3].map(card);
+  const section: CaptureNode = {
+    p: "0",
+    tag: "section",
+    box: [0, 100, width, phone ? 1900 : 520],
+    s: { display: "block" },
+    children: [text("h2", [phone ? 16 : 110, 110, 600, 40], "Our cards", { fontSize: "32px", lineHeight: "40px", fontWeight: "700" }, "0/0"), { p: "0/1", tag: "div", sel: "div.cards", box: [phone ? 16 : 110, 170, phone ? 358 : 1220, phone ? 1740 : 420], s: { display: "flex" }, children: cards }],
+  };
+  return {
+    viewport: { w: width, h: 900 },
+    url: "https://source.test/",
+    title: "Source page",
+    lang: "en",
+    description: "A page to copy",
+    docWidth: width,
+    docHeight: 1000,
+    background: "rgb(255, 255, 255)",
+    fonts: [{ family: "Arial", weight: "400", style: "normal", chars: 200 }],
+    left: { fixed: [], hidden: 0, capped: false },
+    root: { p: "", tag: "body", box: [0, 0, width, 1000], s: { display: "block" }, children: [section] },
+  };
+}
+
 function original(width: number): PageCapture {
+  if (mode.grid) return gridOriginal(width);
   const mobile = width < 700;
   const left = mobile ? 20 : 320;
   const w = mobile ? 350 : 800;
@@ -60,9 +109,9 @@ function original(width: number): PageCapture {
   };
 }
 
-const png = (width: number, height: number, band: number | null) =>
+const png = (width: number, height: number, band: number | null, bandHeight = 200) =>
   sharp({ create: { width, height, channels: 3, background: "#ffffff" } })
-    .composite(band === null ? [] : [{ input: { create: { width, height: 200, channels: 3, background: "#ee2244" } }, left: 0, top: band }])
+    .composite(band === null ? [] : [{ input: { create: { width, height: bandHeight, channels: 3, background: "#ee2244" } }, left: 0, top: band }])
     .png()
     .toBuffer();
 
@@ -85,19 +134,22 @@ vi.mock("./replicate-browser", () => ({
     const parts = ((row.work as { parts: { id: string; target: Box | null; targetM: Box | null }[] }).parts ?? []).filter((p) => (viewport === "desktop" ? p.target : p.targetM));
     if (viewport === "desktop") opened.copies += 1;
     // The first time, the copy's blocks sit 30 px too low and it is wrong in a band; later it is right.
-    const wrong = opened.copies === 1;
+    const wrong = opened.copies === 1 && !mode.right;
     const children: CaptureNode[] = parts.map((p, i) => {
       const box = (viewport === "desktop" ? p.target : p.targetM)!;
       return { p: String(i), tag: "div", id: p.id, box: [box[0], box[1] + (wrong ? 30 : 0), box[2], box[3]], s: {}, children: [] };
     });
     const w = viewport === "desktop" ? 1440 : 390;
     const capture: PageCapture = { ...original(w), root: { p: "", tag: "body", box: [0, 0, w, 1000], s: {}, children } };
-    return { capture, screenshot: await png(w, 1000, wrong ? 300 : null), elements: new Map<string, Buffer>() };
+    return { capture, screenshot: await png(w, 1000, wrong ? (mode.grid ? 100 : 300) : null, mode.grid ? 600 : 200), elements: new Map<string, Buffer>() };
   },
 }));
 vi.mock("./replicate-assets", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./replicate-assets")>()),
-  savePicture: async (_owner: unknown, url: string) => (url.endsWith("gone.jpg") ? { ok: false, problem: "The site answered 404." } : { ok: true, picture: { url: "https://files.test/demo/cabin.svg", width: 800, height: 600 } }),
+  savePicture: async (_owner: unknown, url: string) =>
+    url.endsWith("gone.jpg")
+      ? { ok: false, problem: "The site answered 404." }
+      : { ok: true, picture: { url: mode.grid ? `https://files.test/storage/v1/object/public/media/${url.split("/").pop()}` : "https://files.test/demo/cabin.svg", width: 800, height: 600 } },
   saveShot: async () => ({ ok: false, problem: "none" }),
   saveVideo: async () => ({ ok: false, problem: "none" }),
   installFamily: async () => ({ ok: false, problem: "It is not in Google Fonts." }),
@@ -152,6 +204,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  mode.grid = false;
+  mode.right = false;
   opened.copies = 0;
   ai.calls.length = 0;
   ai.connection = { textModel: "test-model", provider: "openai" };
@@ -328,6 +382,72 @@ describe("copying a page, from the address to the summary", () => {
     expect(await engine.replicationStatus(other, started.job.id)).toBeNull();
     expect(await engine.tickReplication(other, started.job.id)).toBeNull();
     expect(await engine.abortReplication(other, started.job.id)).toBeNull();
+  });
+});
+
+describe("repeated cards, as a grid of custom items (D155)", () => {
+  const draftOf = async (pageId: string) => {
+    const [page] = await db().execute<Row>(sql`select draft from commerce.pages where id = ${pageId}::uuid and store_id = ${storeId}::uuid`);
+    return page.draft as { rows: { columns: { blocks: { type: string; items?: { title: string; text: string; link: { url: string } | null; picture: { url: string } | null }[] }[] }[] }[]; css: string };
+  };
+  const gridBlocks = (draft: Awaited<ReturnType<typeof draftOf>>) => (draft.rows as { columns: { blocks: { type: string; items?: { title: string; text: string; link: { url: string } | null; picture: { url: string } | null }[] }[] }[] }[]).flatMap((r) => r.columns.flatMap((c) => c.blocks)).filter((b) => b.type === "contentGrid");
+
+  it("builds four cards as one grid block that the builder accepts, and says so in the summary and the report", async () => {
+    mode.grid = true;
+    mode.right = true;
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://files.test");
+    ai.connection = null;
+    const started = await engine.startReplication(owner, "https://source.test/", 1, true);
+    if (!started.ok) throw new Error(started.problem);
+    const job = (await runToEnd(started.job.id))!;
+    expect(job.status).toBe("done");
+    const draft = await draftOf(job.pageId!);
+    const [grid] = gridBlocks(draft);
+    expect(grid.items!.map((i) => i.title)).toEqual(["Card 0", "Card 1", "Card 2", "Card 3"]);
+    expect(grid.items![2]).toMatchObject({ text: "Words on card 2.", link: { url: "https://source.test/cards/2" }, picture: { url: "https://files.test/storage/v1/object/public/media/card-2.jpg" } });
+    // The grid's rules are in the page's own CSS, on the grid part.
+    expect(draft.css).toMatch(/li\[data-item-id\] :is\(h2,h3,h4,h5,h6\)\{/);
+    expect(job.log.map((l) => l.text).join("\n")).toMatch(/1 grid of 4 custom items/);
+    expect(job.summary!.wentWell.join("\n")).toMatch(/4 repeated cards .* became one grid of 4 items/);
+    expect(job.summary!.counts).toMatchObject({ grids: 1, items: 4 });
+    expect(job.summary!.report!.grids?.built).toHaveLength(1);
+    expect(reportMarkdown(job.summary!.report!)).toContain("## Grids and carousels (repeated cards)");
+    expect(job.summary!.report!.findings.some((f) => f.id === "grids-kept" || f.id === "grids-reverted")).toBe(false);
+    vi.unstubAllEnvs();
+    vi.stubEnv("REPLICATE_ALLOW_PRIVATE", "1");
+  });
+
+  it("tries a grid as columns when a pass finds it among the weakest stretches under 60 %, keeps the columns when they match clearly better, and keeps the evidence", async () => {
+    mode.grid = true;
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://files.test");
+    ai.connection = null;
+    const started = await engine.startReplication(owner, "https://source.test/", 3, true);
+    if (!started.ok) throw new Error(started.problem);
+    const job = (await runToEnd(started.job.id))!;
+    expect(job.status).toBe("done");
+    // The first copy was wrong over the whole grid: it was sent back to columns and measured over the same stretch, and the columns were far better.
+    const log = job.log.map((l) => l.text).join("\n");
+    expect(log).toMatch(/Tried a grid as columns/);
+    expect(log).toMatch(/The columns matched better than the grid over its stretch/);
+    // The columns are as the original, so the job ended with its first copy: the trial spent no pass and left no second entry for the same pass.
+    expect(job.passes.map((p) => p.iteration)).toEqual([0]);
+    expect(job.passes[0].desktop.match).toBeGreaterThan(99);
+    const draft = await draftOf(job.pageId!);
+    expect(gridBlocks(draft)).toHaveLength(0);
+    // Four columns of picture, heading, text and button: every word is still there.
+    const blocks = (draft.rows as { columns: { blocks: { type: string }[] }[] }[]).flatMap((r) => r.columns.flatMap((c) => c.blocks)).map((b) => b.type);
+    expect(blocks.filter((t) => t === "button")).toHaveLength(4);
+    const report = job.summary!.report!;
+    expect(report.grids?.kept[0]).toMatchObject({ reverted: { pass: 0 } });
+    expect(report.grids?.kept[0].reverted?.columns).toBeGreaterThan(report.grids!.kept[0].reverted!.match);
+    expect(report.findings.find((f) => f.id === "grids-reverted")!.evidence[0]).toMatch(/the grid matched \d+(?:\.\d+)?% over its stretch and the columns \d+(?:\.\d+)?%, measured in pass 0/);
+    expect(job.summary!.problems.join("\n")).toMatch(/was rebuilt as columns after pass 0/);
+    // The trial is kept for the job: the page is not built as a grid again by a later pass.
+    const [row] = await db().execute<Row>(sql`select work from commerce.page_replications where id = ${job.id}::uuid`);
+    expect((row.work as { reverted: { path: string }[] }).reverted).toHaveLength(1);
+    expect((row.work as { trial: unknown }).trial).toBeNull();
+    vi.unstubAllEnvs();
+    vi.stubEnv("REPLICATE_ALLOW_PRIVATE", "1");
   });
 });
 

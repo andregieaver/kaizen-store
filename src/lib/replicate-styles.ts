@@ -131,8 +131,12 @@ export function cleanDecls(decl: Record<string, string>): Decl {
   return out;
 }
 
-/** What a selector suffix may hold: the places the converter makes (descendant and child combinators, tags, `:is()`, `:nth-child()`, classes of the page's own blocks). */
-const SUFFIX = /^(?:\s*>?\s*(?:\*|[a-z][a-z0-9]*|:last-child|:first-child|:nth-child\(\d{1,3}\)|\.rich-text|:is\([a-z0-9,]{1,60}\)|\+\s*li))*$/;
+/**
+ * What a selector suffix may hold: the places the converter makes (descendant and child combinators, tags, `:is()`, `:nth-child()`, classes
+ * of the page's own blocks). A grid of custom items (D155) adds the tile (`[data-item-id]`, so a detail line's own `li` is not it) and the
+ * few classes its parts carry (`replicate-grid.test.ts` draws a grid and checks every rule's selector finds its element).
+ */
+const SUFFIX = /^(?:\s*>?\s*(?:\*|[a-z][a-z0-9]*|:last-child|:first-child|:nth-child\(\d{1,3}\)|\.rich-text|\.(?:font-medium|text-muted|bg-accent|mt-auto)|\[data-item-id\]|:is\([a-z0-9,]{1,60}\)|\+\s*li))*$/;
 export const suffixOk = (suffix: string): boolean => suffix.length <= 120 && SUFFIX.test(suffix);
 
 /** A row's padding is drawn inline (20 px until it is set), which a rule beats only by being important. */

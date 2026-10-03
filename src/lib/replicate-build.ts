@@ -1,12 +1,16 @@
 import { findClaims } from "./claims";
 import { allowedCssUrl } from "./custom-css";
+import { isCustomPicture } from "./custom-picture";
 import {
   BLOCKS_MAX,
+  CUSTOM_ITEMS_MAX,
   ROWS_MAX,
   ROW_LAYOUTS,
   VIDEO_RATIOS,
   type Background,
   type ButtonBlock,
+  type ContentGridBlock,
+  type CustomGridItem,
   type HeadingBlock,
   type HeadingLevel,
   type ImageBlock,
@@ -29,16 +33,19 @@ import {
   firstFamily,
   hexOf,
   indexByPath,
+  isExtraTile,
   paints,
   px,
   rightOf,
   runsText,
   walk,
+  walkLive,
   type Box,
   type CaptureNode,
   type PageCapture,
 } from "./replicate-capture";
 import { docOf, isTextList, wordsOf } from "./replicate-richtext";
+import { TRACK_TILES_READ, boxOfTrack, builtOf, contextOf, controlFor, emptyGridReport, isTinyPicture, mobileTiles, planGrid, readSlider, styleGrid, type GridContext, type GridEnv, type GridPlan, type GridReport, type SliderRead, type StyleEnv } from "./replicate-grid";
 import { cleanDecls, ruleOf, type Decl, type StyleModel } from "./replicate-styles";
 
 /**
@@ -62,6 +69,8 @@ export type BuildInput = {
   video: (url: string) => { url: string } | null;
   /** The Google Fonts family a font of the original is installed as, or null. */
   font: (family: string) => string | null;
+  /** Groups of cards (by the path of the box holding them) that were built as a grid and matched worse than columns would: built as columns now (D155). */
+  reverted?: { path: string; match: number; pass: number; /** How the same cards matched as columns, when they were measured. */ columns?: number }[];
 };
 
 /** What a part of the copy answers to in the original, so a pass can compare them. */
@@ -72,13 +81,15 @@ export type PartInfo = {
   row: string;
   /** What the part is, in a few words, for the AI that looks at the copy ("heading: Make it better"). */
   label?: string;
+  /** For a grid of custom items: the original's box that held its cards, to rebuild that group as columns if the grid matches worse (D155). */
+  grid?: string;
   /** The box the original has for this part, at computers' width and at the phones'; a pass compares the copy with it. */
   target: Box | null;
   targetM: Box | null;
 };
 
 /** Something in the original that the copy does not have, or has only in part, named so a developer can find it. */
-export type DroppedKind = "form-field" | "shape" | "picture-missing" | "graphic-unphotographed" | "video-missing" | "video-still-only" | "nested-boxes" | "background-layers" | "rows-cut" | "blocks-cut" | "columns-cut";
+export type DroppedKind = "form-field" | "shape" | "picture-missing" | "graphic-unphotographed" | "video-missing" | "video-still-only" | "nested-boxes" | "background-layers" | "rows-cut" | "blocks-cut" | "columns-cut" | "grid-columns" | "grid-card" | "grid-items-cut" | "grid-reverted" | "grid-simplified" | "generated-text";
 export type Dropped = { kind: DroppedKind; sel: string; y: number; box: Box | null; text?: string };
 export const DROPPED_MAX = 80;
 
@@ -91,9 +102,11 @@ export type BuildOutput = {
   description: string;
   notes: ReplicaNote[];
   parts: PartInfo[];
-  counts: { rows: number; blocks: number; headings: number; texts: number; pictures: number; buttons: number; videos: number };
+  counts: { rows: number; blocks: number; headings: number; texts: number; pictures: number; buttons: number; videos: number; grids?: number; items?: number };
   /** What was left out or made simpler, with where it was in the original. */
   dropped: Dropped[];
+  /** The groups of repeated cards: the grids built, and the groups kept as columns with why (D155). */
+  grids: GridReport;
 };
 
 /** The page's own gap between rows (`gap-8` of `PageArticle`): a row's margin is what it needs beyond it, so down to this much less. */
@@ -145,15 +158,63 @@ function significant(n: CaptureNode): boolean {
   return paintsBox(n) || n.children.some(significant);
 }
 
-const kids = (n: CaptureNode) => n.children.filter(significant);
+/** Whether a box or something in it has words or a picture (what a copy has to keep), as opposed to only paint. */
+function holdsContent(n: CaptureNode): boolean {
+  if (n.runs !== undefined) return runsText(n.runs) !== "";
+  if (n.media) return n.media.kind !== "control";
+  if (isTextList(n)) return true;
+  return n.children.some(holdsContent);
+}
+
+/**
+ * A "skip to content" link: placed absolutely over the page's start and shown only to a keyboard (the capture cannot always tell how a page hides it:
+ * behind the header, clipped, parked by a class), a link to a place on the same page by words that say so. It is no part of the page as it is seen.
+ */
+function skipLink(n: CaptureNode): boolean {
+  if (n.s.position !== "absolute" || n.runs === undefined) return false;
+  const text = runsText(n.runs).trim();
+  return text.length <= 40 && /^(skip|jump|go) to (the )?(main |primary )?(content|navigation|menu|body)\b/i.test(text) && n.runs.every((run) => run.href === undefined || run.href.includes("#"));
+}
+
+/**
+ * Decoration laid beside or over a section's content, which would make a grid in it unseen: a box taken out of the flow (positioned absolutely) that holds no
+ * words or pictures (a layer of column rules, a hatched or coloured plate, a darkening layer), or a tall thin strip down the page's side (a gutter's rule or
+ * hatching: under 65 px across, 400 px or more tall, no words or pictures). As a sibling it would make the section's content a second column of a "row"
+ * and keep the cards in it from being seen. It is left out of the flow, and named (`shape`), only where leaving it out lets repeated cards be seen
+ * (`flow()` tries a box without it first and keeps that only when it finds a grid): everywhere else it is a box of the page as it was before D155, which
+ * `rowSpecs()` makes a separator or a painted column.
+ */
+function decoration(n: CaptureNode): boolean {
+  if (!hasSize(n) || holdsContent(n)) return false;
+  if (n.s.position === "absolute") return true;
+  // Vertical only: a horizontal strip is a rule or a spacer, which the builder has a block for.
+  return n.box[2] <= 64 && n.box[3] >= 400;
+}
+
+/**
+ * What a box holds that shows: the slides of a script slider that are copies, hidden, or beyond its box are only read (D155, C2), never laid out; and a "skip to
+ * content" link, which is no part of the page as it is seen (named, `shape`, wherever it is).
+ */
+const kids = (n: CaptureNode) => n.children.filter((c) => significant(c) && !isExtraTile(c) && !skipLink(c));
+
+/** What a box holds that shows, without the decoration that would hide a grid from `flow()`. */
+const kidsWithoutDecoration = (n: CaptureNode) => kids(n).filter((c) => !decoration(c));
 
 /** Boxes side by side share a stretch of height: they are on one line. */
 function lines(nodes: CaptureNode[]): CaptureNode[][] {
   const sorted = [...nodes].sort((a, b) => a.box[1] - b.box[1] || a.box[0] - b.box[0]);
-  const result: { items: CaptureNode[]; top: number; bottom: number }[] = [];
+  const result: { items: CaptureNode[]; top: number; bottom: number; fixed?: true }[] = [];
   for (const node of sorted) {
     const line = result[result.length - 1];
-    if (line) {
+    // A bar fixed to the screen (a site's top bar) lies over the page's start: it is a line of its own, never a column beside the page.
+    // A sticky bar the page's first section is drawn under (a header with no room of its own) is the same: a bar is a box across the line, not tall.
+    const widest = Math.max(...nodes.map((c) => c.box[2]));
+    const fixed = node.s.position === "fixed" || (node.s.position === "sticky" && node.box[2] >= widest * 0.8 && node.box[3] <= 220 && nodes.length > 1);
+    if (fixed) {
+      result.push({ items: [node], top: node.box[1], bottom: bottomOf(node.box), fixed: true });
+      continue;
+    }
+    if (line && !line.fixed) {
       const overlap = Math.min(bottomOf(node.box), line.bottom) - Math.max(node.box[1], line.top);
       if (overlap > 2 && overlap > 0.3 * Math.min(node.box[3], line.bottom - line.top)) {
         line.items.push(node);
@@ -167,20 +228,66 @@ function lines(nodes: CaptureNode[]): CaptureNode[][] {
   return result.map((line) => line.items.sort((a, b) => a.box[0] - b.box[0]));
 }
 
-type Item = { kind: "leaf"; node: CaptureNode } | { kind: "split"; cols: CaptureNode[]; scroller?: CaptureNode } | { kind: "box"; node: CaptureNode; items: Item[] };
+type Item =
+  | { kind: "leaf"; node: CaptureNode }
+  | { kind: "split"; cols: CaptureNode[]; scroller?: CaptureNode }
+  | { kind: "box"; node: CaptureNode; items: Item[] }
+  /** Repeated cards that become one grid of custom items (D155). */
+  | { kind: "grid"; node: CaptureNode; plan: GridPlan };
+
+/**
+ * What lets `flow()` find a group of the same card: it asks `detect` at each box with the context (a footer, a menu) it stands in.
+ * Only the page's own sections are asked (depth 0 and 1): a card inside a painted box inside a section is flattened as before.
+ */
+type FlowCtx = { depth: number; context: GridContext; detect: (parent: CaptureNode, kids: CaptureNode[], context: GridContext) => Item | null; /** Decoration left out of a box so that its cards could be seen: named. */ leftOut: (nodes: CaptureNode[]) => void };
+
+/** Whether some items hold a grid, in a box that paints or not. */
+const holdsGrid = (items: Item[]): boolean => items.some((item) => item.kind === "grid" || (item.kind === "box" && holdsGrid(item.items)));
 
 /** What is in a box, top to bottom: pieces of content, boxes side by side, and boxes that paint. */
-function flow(node: CaptureNode): Item[] {
+function flow(node: CaptureNode, ctx?: FlowCtx): Item[] {
   if (isLeaf(node)) return hasContent(node) ? [{ kind: "leaf", node }] : [];
+  const here = ctx ? { ...ctx, context: contextOf(ctx.context, node) } : undefined;
+  const all = kids(node);
+  // Decoration beside the cards (a layer of rules, a plate) is looked past first: if the box is then a grid, or holds one, the decoration is left out and named;
+  // if not, the box is read exactly as it was before grids were looked for.
+  if (here && here.depth <= 1) {
+    const clear = all.filter((c) => !decoration(c));
+    if (clear.length < all.length && clear.length > 0) {
+      const items = flowOf(node, clear, here);
+      if (holdsGrid(items)) {
+        here.leftOut(all.filter((c) => decoration(c)));
+        return items;
+      }
+    }
+  }
+  return flowOf(node, all, here);
+}
+
+/** The items of a box with these children (`visible`), asking at each box of the page's own sections whether its children are one card repeated. */
+function flowOf(node: CaptureNode, visible: CaptureNode[], here: FlowCtx | undefined): Item[] {
+  if (here && here.depth <= 1) {
+    const grid = here.detect(node, visible, here.context);
+    if (grid) return [grid];
+  }
+  // A track that scrolls by itself with its previous and next buttons (and dots) beside it: those are the carousel's own, and the
+  // track's cards are the group (D155). When the cards are not a grid, the buttons stand where they did, as columns, as before.
+  if (here && here.depth <= 1 && visible.length > 1) {
+    const track = visible.map((kid) => scrollTrackIn(kid)).find((found) => found !== null) ?? null;
+    if (track && visible.every((kid) => scrollTrackIn(kid) === track || controlFor(track, kid))) {
+      const grid = here.detect(track, kidsWithoutDecoration(track), contextOf(here.context, track));
+      if (grid) return [grid];
+    }
+  }
   const items: Item[] = [];
-  for (const line of lines(kids(node))) {
+  for (const line of lines(visible)) {
     if (line.length === 1) {
       const child = line[0];
       if (isLeaf(child)) items.push({ kind: "leaf", node: child });
-      else if (paintsBox(child)) items.push({ kind: "box", node: child, items: flow(child) });
-      else items.push(...flow(child));
+      else if (paintsBox(child)) items.push({ kind: "box", node: child, items: flow(child, here && { ...here, depth: here.depth + 1 }) });
+      else items.push(...flow(child, here));
     } else {
-      items.push({ kind: "split", cols: line, ...(node.scroll ? { scroller: node } : {}) });
+      items.push({ kind: "split", cols: line, ...(node.scroll && !node.slider ? { scroller: node } : {}) });
     }
   }
   return items;
@@ -192,6 +299,7 @@ function leavesOf(items: Item[]): CaptureNode[] {
   for (const item of items) {
     if (item.kind === "leaf") out.push(item.node);
     else if (item.kind === "box") out.push(...leavesOf(item.items));
+    else if (item.kind === "grid") out.push(...item.plan.group.leaves.flat());
     else for (const col of item.cols) out.push(...leavesOf(flow(col)));
   }
   return out;
@@ -209,13 +317,34 @@ function descend(node: CaptureNode): CaptureNode {
   return current;
 }
 
+/** The box that scrolls sideways in a box, or in the one box it holds (a wrapper round a track), or null. */
+function scrollTrackIn(node: CaptureNode): CaptureNode | null {
+  let current = node;
+  for (let guard = 0; guard < 4; guard++) {
+    if (current.scroll && !isLeaf(current)) return current;
+    const next = kids(current);
+    if (next.length !== 1 || isLeaf(current)) return null;
+    current = next[0];
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Rows: what the builder will hold
 // ---------------------------------------------------------------------------
 
 type ColSpec = { path: string | null; paint: boolean; leaves: CaptureNode[]; /** Its content is one line of pieces (a menu, a row of buttons): the builder's side by side column. */ inline?: boolean };
 /** `stack`: content one under another; `split`: boxes side by side; `card`: one painted box. */
-type RowSpec = { frame: CaptureNode | null; kind: "stack" | "split" | "card"; cols: ColSpec[]; nested: boolean; /** The box whose cards scroll sideways: the row is a track, not a grid that fits. */ scroller?: CaptureNode };
+type RowSpec = {
+  frame: CaptureNode | null;
+  kind: "stack" | "split" | "card" | "grid";
+  cols: ColSpec[];
+  nested: boolean;
+  /** The box whose cards scroll sideways: the row is a track, not a grid that fits. */
+  scroller?: CaptureNode;
+  /** Repeated cards built as one grid block: `cols` are the cards, one each. */
+  grid?: GridPlan;
+};
 
 function rowSpecs(items: Item[], frame: CaptureNode | null): RowSpec[] {
   const specs: RowSpec[] = [];
@@ -227,7 +356,18 @@ function rowSpecs(items: Item[], frame: CaptureNode | null): RowSpec[] {
   };
   for (const item of items) {
     if (item.kind === "leaf") stack.push(item.node);
-    else if (item.kind === "box") {
+    else if (item.kind === "grid") {
+      flush();
+      const { group } = item.plan;
+      specs.push({
+        frame,
+        kind: "grid",
+        cols: group.cards.map((card, i) => ({ path: card.p, paint: false, leaves: group.leaves[i] })),
+        nested: false,
+        grid: item.plan,
+        ...(group.track === "scroller" ? { scroller: group.parent } : {}),
+      });
+    } else if (item.kind === "box") {
       flush();
       specs.push({ frame, kind: "card", cols: [{ path: item.node.p, paint: true, leaves: leavesOf(item.items) }], nested: item.items.some((i) => i.kind !== "leaf") });
     } else {
@@ -432,13 +572,14 @@ function bands(specs: RowSpec[], get: Get, docWidth: number): (Band | null)[] {
     if (boxes.length === 0 || (spec.kind !== "stack" && found.length === 0)) return null;
     // A track's cards run past its edge: its content is as wide as the track shows.
     const track = spec.scroller ? get(spec.scroller.p) : null;
+    const trackBox = track ? boxOfTrack(track) : null;
     return {
       cols,
       leaves,
       top: Math.min(...boxes.map((b) => b.box[1])),
       bottom: Math.max(...boxes.map((b) => bottomOf(b.box))),
-      contentLeft: track ? Math.max(track.box[0], Math.min(...boxes.map((b) => b.box[0]))) : Math.min(...boxes.map((b) => b.box[0])),
-      contentRight: track ? Math.min(rightOf(track.box), Math.max(...boxes.map((b) => rightOf(b.box)))) : Math.max(...boxes.map((b) => rightOf(b.box))),
+      contentLeft: trackBox ? Math.max(trackBox[0], Math.min(...boxes.map((b) => b.box[0]))) : Math.min(...boxes.map((b) => b.box[0])),
+      contentRight: trackBox ? Math.min(rightOf(trackBox), Math.max(...boxes.map((b) => rightOf(b.box)))) : Math.max(...boxes.map((b) => rightOf(b.box))),
     };
   });
   const result: (Band | null)[] = [];
@@ -576,12 +717,37 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   const mobile = input.mobile ? prepared(input.mobile) : null;
   const dIndex = indexByPath(desktop.root);
   const mIndex = mobile ? indexByPath(mobile.root) : null;
+  // Script sliders (D155, C2): each track's real slides, and where they stand at phones' width. A library clones a different number of
+  // slides at each width, so a slide's place among the track's children is not the same at both: the same slide is found by its place among the real ones.
+  const sliderReads = new Map<string, SliderRead>();
+  for (const n of walk(desktop.root)) {
+    const read = readSlider(n);
+    if (read) sliderReads.set(n.p, read);
+  }
+  const phoneTile = new Map<string, string>();
+  if (mIndex) {
+    for (const [path, read] of sliderReads) {
+      const there = mIndex.get(path);
+      const phoneRead = there ? readSlider(there) : null;
+      if (phoneRead) for (const [from, to] of mobileTiles(read, phoneRead)) phoneTile.set(from, to);
+    }
+  }
+  const phonePath = (p: string): string => {
+    if (phoneTile.size === 0) return p;
+    for (let q = p; ; ) {
+      const hit = phoneTile.get(q);
+      if (hit !== undefined) return hit + p.slice(q.length);
+      const cut = q.lastIndexOf("/");
+      if (cut < 0) return p;
+      q = q.slice(0, cut);
+    }
+  };
   const getD: Get = (p) => dIndex.get(p);
-  const getM: Get | null = mIndex ? (p) => mIndex.get(p) : null;
+  const getM: Get | null = mIndex ? (p) => mIndex.get(phonePath(p)) : null;
   const notes: ReplicaNote[] = [];
   const model: StyleModel = { rules: [] };
   const parts: PartInfo[] = [];
-  const counts = { rows: 0, blocks: 0, headings: 0, texts: 0, pictures: 0, buttons: 0, videos: 0 };
+  const counts: BuildOutput["counts"] = { rows: 0, blocks: 0, headings: 0, texts: 0, pictures: 0, buttons: 0, videos: 0 };
   let seq = 0;
   const nextId = () => `rp${++seq}`;
   const skipped = { controls: 0, shapes: 0, missing: new Set<string>(), nested: 0 };
@@ -619,6 +785,53 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
 
   /** The page's own colour behind a row that paints none, so what shows through is as the original's. */
   const pageColour = hexOf(desktop.background) ?? "#ffffff";
+
+  // -- repeated cards as a grid of custom items (D155) ---------------------------------------------
+  const grids = emptyGridReport();
+  /**
+   * The grids built, by their block's id, with what the report says of each: counted, and their drops made, only for the grids that are still in the page after the builder's
+   * limits (fifty rows, a hundred blocks) have cut it, so the counts and the report never speak of a grid the draft does not hold.
+   */
+  const gridRecords = new Map<string, { path: string; colId: string; items: number; built: ReturnType<typeof builtOf>; emit: () => void }>();
+  const gridEnv: GridEnv = { leaves: (card) => leavesOf(flow(card)), getD, getM, desktop, mobile };
+  const styleEnv: StyleEnv = { typeDecl: (n) => typeDecl(n), fontOf, paintsBox, borderOf };
+  const seenGroups = new Set<string>();
+  /** Every box a group of cards was asked of, so a track that was never asked can be said not to have been looked at. */
+  const asked = new Set<string>();
+  const detect: FlowCtx["detect"] = (parent, visible, context) => {
+    asked.add(parent.p);
+    if (seenGroups.has(parent.p)) return null;
+    // A script slider's group is its real slides, hidden ones and ones beyond its box included, never its copies.
+    const read = sliderReads.get(parent.p) ?? null;
+    const verdict = planGrid(parent, read ? read.real.filter(significant) : visible, gridEnv, context, read);
+    if (verdict.kind === "none") return null;
+    seenGroups.add(parent.p);
+    const sel = parent.sel ?? parent.tag;
+    const y = Math.round(parent.box[1]);
+    if (verdict.kind === "kept") {
+      const entry = { path: parent.p, sel, y, cards: verdict.cards, reason: verdict.reason, ...(read ? { slider: true } : {}) };
+      if (verdict.noteworthy) {
+        drop("grid-columns", parent, verdict.reason);
+        grids.kept.push(entry);
+      } else (grids.quiet ??= []).push(entry);
+      return null;
+    }
+    const undone = input.reverted?.find((r) => r.path === parent.p);
+    if (undone) {
+      const reason = `rebuilt as columns after pass ${undone.pass}: the grid matched the original ${undone.match}% there${undone.columns === undefined ? "" : `, the columns ${undone.columns}%`}`;
+      drop("grid-reverted", parent, reason);
+      grids.kept.push({ path: parent.p, sel, y, cards: verdict.plan.group.cards.length, reason, reverted: { match: undone.match, pass: undone.pass, ...(undone.columns === undefined ? {} : { columns: undone.columns }) }, ...(read ? { slider: true } : {}) });
+      return null;
+    }
+    return { kind: "grid", node: parent, plan: verdict.plan };
+  };
+  /** Decoration left out of a box so its cards could be seen (`flow()`): named. */
+  const leftOutDecoration = (nodes: CaptureNode[]) => {
+    for (const c of nodes) {
+      skipped.shapes += 1;
+      drop("shape", c, `decoration beside the content, ${Math.round(c.box[2])}×${Math.round(c.box[3])}px`);
+    }
+  };
 
   /** A box's own paint as declarations, and the native background where a simple one will do. */
   function paintDecl(n: CaptureNode, native?: { background?: Background }): Decl {
@@ -908,12 +1121,90 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     return null;
   }
 
+  // -- a grid of custom items ---------------------------------------------------
+  /** The column of a row that holds one grid block: the cards' words as items, their look as rules on the block. */
+  function makeGrid(plan: GridPlan, rowId: string): PageColumn {
+    const { group } = plan;
+    const colId = nextId();
+    const id = nextId();
+    const parent = group.parent;
+    const style = styleGrid(plan, gridEnv, styleEnv);
+    const items: CustomGridItem[] = plan.drafts.map((draft) => {
+      let picture: CustomGridItem["picture"] = null;
+      if (draft.picture) {
+        const leaf = draft.picture.leaf;
+        // A file the page names (an `img`, or a box's background) is the library's copy of it; a graphic with no file is its photograph.
+        const copy = draft.picture.url !== "" ? input.picture(draft.picture.url) : input.shot(leaf.p);
+        if (copy && isCustomPicture(copy.url)) picture = { url: copy.url, width: copy.width, height: copy.height, alt: draft.picture.alt };
+        else if (draft.picture.url !== "") {
+          skipped.missing.add(draft.picture.url);
+          drop("picture-missing", leaf, draft.picture.url);
+        } else drop("graphic-unphotographed", leaf, leaf.media?.kind ?? "graphic");
+      }
+      return {
+        id: newId(),
+        title: draft.title,
+        text: draft.text,
+        picture,
+        link: draft.link ? { kind: "url", url: draft.link } : null,
+        buttonLabel: draft.buttonLabel,
+        date: draft.date,
+        badge: draft.badge,
+        priceText: draft.priceText,
+        details: draft.details.map((line) => ({ id: newId(), label: line.label, text: line.text })),
+      };
+    });
+    const block: ContentGridBlock = { id: newId(), htmlId: id, className: "rp", type: "contentGrid", source: { type: "custom" }, categories: [], tags: [], sort: "newest", limit: CUSTOM_ITEMS_MAX, items, ...style.block };
+    put(id, "", { "margin-top": "0px" });
+    for (const rule of style.rules) put(id, rule.suffix, rule.desktop, rule.mobile);
+    const union = (get: Get, clip: boolean): Box | null => {
+      const found = group.cards.map((c) => get(c.p)).filter((c): c is CaptureNode => Boolean(c));
+      if (found.length === 0) return null;
+      const tracked = clip && group.track === "scroller" ? get(parent.p) : null;
+      const track = tracked ? boxOfTrack(tracked) : null;
+      const left = Math.min(...found.map((f) => f.box[0]));
+      const right = Math.max(...found.map((f) => rightOf(f.box)));
+      const x0 = track ? Math.max(left, track[0]) : left;
+      const x1 = track ? Math.min(right, rightOf(track)) : right;
+      const top = Math.min(...found.map((f) => f.box[1]));
+      return [x0, top, Math.max(0, x1 - x0), Math.max(...found.map((f) => bottomOf(f.box))) - top];
+    };
+    const target = union(getD, true);
+    const targetM = getM ? union(getM, true) : null;
+    parts.push({ id: colId, path: parent.p, kind: "column", row: rowId, label: "column 1 of 1", target, targetM });
+    parts.push({ id, path: parent.p, kind: "block", row: rowId, label: describeBlock(block), grid: parent.p, target, targetM });
+    put(colId, "", { gap: "0px", "padding-top": "0px", "padding-right": "0px", "padding-bottom": "0px", "padding-left": "0px", "margin-top": "0px", "min-height": "0px" }, getM ? { "padding-top": "0px", "padding-right": "0px", "padding-bottom": "0px", "padding-left": "0px", "margin-top": "0px", "min-height": "0px" } : {});
+    const built = builtOf(plan, items, style);
+    gridRecords.set(id, {
+      path: parent.p,
+      colId,
+      items: items.length,
+      built,
+      emit: () => {
+        if (plan.cut > 0) drop("grid-items-cut", parent, `${plan.cut} cards beyond the ${CUSTOM_ITEMS_MAX} an item list holds`);
+        if (plan.unread > 0) drop("grid-items-cut", parent, `${plan.unread} slides never read (the browser reads a track's first ${TRACK_TILES_READ})`);
+        for (const failed of plan.failed) drop("grid-card", group.cards.find((c) => c.p === failed.card) ?? parent, `card ${group.cards.findIndex((c) => c.p === failed.card) + 1} of ${group.cards.length} holds ${failed.what.join("; ")}`);
+        if (plan.simplified.length > 0) drop("grid-simplified", parent, plan.simplified.map((x) => `${x.what} in ${x.cards} of ${group.cards.length} cards`).join(", "));
+        // A picture too small to be seen (a tracking pixel, a spacer) is no picture of a card's: left out, and named.
+        for (const leaves of group.leaves) for (const leaf of leaves) if (isTinyPicture(leaf)) drop("shape", leaf, `a picture of ${Math.round(leaf.box[2])}×${Math.round(leaf.box[3])}px (a tracking pixel or a spacer) in a card`);
+      },
+    });
+    return { id: newId(), htmlId: colId, blocks: [block] };
+  }
+
   // -- rows ------------------------------------------------------------------
   // Form fields have no block (a form needs its own recipient): counted where they stand, as no row holds them.
-  for (const n of walk(desktop.root)) {
+  for (const n of walkLive(desktop.root)) {
     if (n.media?.kind === "control" && hasSize(n)) {
       skipped.controls += 1;
       drop("form-field", n, `${n.media.type}${n.media.label ? `: ${n.media.label.slice(0, 40)}` : ""}`);
+    }
+  }
+  // A "skip to content" link is no part of the page as it is seen: named, so the report can say it is left out.
+  for (const n of walkLive(desktop.root)) {
+    for (const c of n.children) if (significant(c) && skipLink(c)) {
+      skipped.shapes += 1;
+      drop("shape", c, `decoration beside the content (a skip link), ${Math.round(c.box[2])}×${Math.round(c.box[3])}px`);
     }
   }
   const specs: RowSpec[] = [];
@@ -923,8 +1214,9 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     pending = [];
   };
   const top = descend(desktop.root);
+  const start: FlowCtx = { depth: 0, context: { footer: false, nav: false }, detect, leftOut: leftOutDecoration };
   // Where the descent stopped at a box that paints (the only section of the page, say), that box is the section.
-  const topItems: Item[] = top !== desktop.root && paintsBox(top) && !isLeaf(top) ? [{ kind: "box", node: top, items: flow(top) }] : flow(top);
+  const topItems: Item[] = top !== desktop.root && paintsBox(top) && !isLeaf(top) ? [{ kind: "box", node: top, items: flow(top, { ...start, depth: 1, context: contextOf(start.context, top) }) }] : flow(top, start);
   for (const item of topItems) {
     if (item.kind === "box") {
       flushPending();
@@ -1079,7 +1371,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     }
     put(rowId, " > :last-child > :first-child", gridD, gridM);
 
-    const columns: PageColumn[] = spec.cols.map((col, colIndex) => {
+    const columns: PageColumn[] = spec.grid ? [makeGrid(spec.grid, rowId)] : spec.cols.map((col, colIndex) => {
       const colNode = colBoxes[colIndex];
       const colId = nextId();
       const nativeCol: { background?: Background } = {};
@@ -1219,6 +1511,36 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   }
   counts.rows = limited.length;
   counts.blocks = blockCount;
+  // The grids that are still in the page: counted and reported; those the limits cut away are not (the summary must not claim a grid the draft lacks).
+  const surviving = new Set(limited.flatMap((row) => row.columns.flatMap((column) => column.blocks.map((block) => block.htmlId ?? ""))));
+  const gone = new Set<string>();
+  const insideGrids: string[] = [];
+  for (const [blockId, record] of gridRecords) {
+    if (!surviving.has(blockId)) {
+      gone.add(blockId);
+      gone.add(record.colId);
+      continue;
+    }
+    counts.grids = (counts.grids ?? 0) + 1;
+    counts.items = (counts.items ?? 0) + record.items;
+    grids.built.push(record.built);
+    record.emit();
+    insideGrids.push(record.path);
+  }
+  const keptParts = gone.size > 0 ? parts.filter((p) => !gone.has(p.id)) : parts;
+  const within = (n: CaptureNode) => insideGrids.some((path) => n.p === path || n.p.startsWith(`${path}/`));
+  // Words the page draws with CSS (a `::before` that says NEW) are in no run of text: they cannot be copied, and are said to be left out where they stood.
+  const generated = [...walkLive(desktop.root)].filter((n) => (n.gen?.length ?? 0) > 0 && hasSize(n) && !within(n));
+  for (const n of generated) drop("generated-text", n, n.gen!.join(" "));
+  if (generated.length > 0) note("warn", `${generated.length} piece${generated.length === 1 ? "" : "s"} of text the page draws with CSS (a ::before or ::after, such as “${generated[0].gen![0]}”) ${generated.length === 1 ? "is" : "are"} not in the page's words, and so not in the copy.`);
+  // Tracks that scroll sideways that no one asked for cards: in a column of a side-by-side layout, or deeper than a section's own boxes (D155 looks at those only).
+  const unasked = [...walkLive(desktop.root)].filter((n) => (n.scroll || n.slider) && n.children.length >= 2 && hasSize(n) && !asked.has(n.p) && !within(n));
+  if (unasked.length > 0) {
+    const reason = "not looked at for repeated cards: it is in a column of a side-by-side layout, or deeper than a section's own boxes, where cards are not looked for, so it stays as it was";
+    for (const n of unasked) drop("grid-columns", n, reason);
+    const first = unasked[0];
+    grids.kept.push({ path: first.p, sel: first.sel ?? first.tag, y: Math.round(first.box[1]), cards: unasked.reduce((sum, n) => sum + n.children.length, 0), reason: `${unasked.length === 1 ? "a track that scrolls sideways was" : `${unasked.length} tracks that scroll sideways were`} ${reason}` });
+  }
 
   if (skipped.controls > 0) note("warn", `${skipped.controls} form field${skipped.controls === 1 ? " was" : "s were"} not copied: a form needs an email form block with its own recipient.`);
   if (skipped.missing.size > 0) note("warn", `${skipped.missing.size} picture${skipped.missing.size === 1 ? " could" : "s could"} not be downloaded and ${skipped.missing.size === 1 ? "is" : "are"} left out.`);
@@ -1227,7 +1549,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   if (desktop.left.fixed.length > 0) note("warn", `Left out because they float over the page: ${desktop.left.fixed.slice(0, 6).join(", ")}.`);
   if (desktop.left.capped) note("warn", "The page is very large; only its first part was looked at.");
 
-  return { rows: limited, model, shared: SHARED_CSS, title: desktop.title, description: desktop.description, notes, parts, counts, dropped };
+  return { rows: limited, model, shared: SHARED_CSS, title: desktop.title, description: desktop.description, notes, parts: keptParts, counts, dropped, grids };
 }
 
 /**
@@ -1281,6 +1603,8 @@ export function describeBlock(block: PageBlock): string {
     }
     case "image":
       return `picture${block.image?.alt ? `: ${block.image.alt.slice(0, 40)}` : ""}`;
+    case "contentGrid":
+      return `grid of ${block.items?.length ?? 0} custom items${block.display === "carousel" ? " (a carousel)" : ""}`;
     default:
       return block.type;
   }

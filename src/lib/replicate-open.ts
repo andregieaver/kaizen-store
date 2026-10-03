@@ -1,7 +1,8 @@
 import type { Browser, BrowserContext, Page } from "playwright-core";
 
-import { CAPTURE_NODES_MAX, CAPTURE_STYLES, SHOT_HEIGHT_MAX, VIEWPORTS, walk, type PageCapture, type ViewportName } from "./replicate-capture";
+import { CAPTURE_NODES_MAX, CAPTURE_STYLES, SHOT_HEIGHT_MAX, VIEWPORTS, walkLive, type PageCapture, type ViewportName } from "./replicate-capture";
 import { extractPage } from "./replicate-extract";
+import { NO_ANSWER, WATCH, applyWatch, trackPaths, watchTracks, within } from "./replicate-watch";
 
 
 /**
@@ -15,7 +16,14 @@ const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, l
 /** Elements photographed for want of a file, at most per page. */
 const ELEMENT_SHOTS_MAX = 60;
 
-const STILL = `*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;scroll-behavior:auto!important}html{scroll-snap-type:none!important}`;
+const STILL_HEAD = "*,*::before,*::after{animation-duration:0s";
+const STILL = `${STILL_HEAD}!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important;scroll-behavior:auto!important}html{scroll-snap-type:none!important}`;
+
+/** What a caller may ask of opening the original. */
+export type OpenOptions = {
+  /** Watch the page's sliders and scrolling tracks for autoplay after the capture (computers' width only, bounded: `WATCH`). On unless false. */
+  watch?: boolean;
+};
 
 export type Opened = {
   capture: PageCapture;
@@ -105,8 +113,81 @@ async function photograph(page: Page, height: number, width: number): Promise<Bu
   return page.screenshot({ type: "png", fullPage: true, clip: { x: 0, y: 0, width, height: Math.max(1, Math.min(height, SHOT_HEIGHT_MAX)) }, animations: "disabled" });
 }
 
+/**
+ * One sample of each track being watched, in the page: where it is (its transform, its first tile's place, how far it is scrolled) and
+ * which of its tiles show. Runs in the page, so it uses nothing from outside itself.
+ */
+function sampleTracks(paths: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const path of paths) {
+    const el = document.querySelector(`[data-rp-track="${path}"]`);
+    if (!el) {
+      out[path] = "gone";
+      continue;
+    }
+    const cs = getComputedStyle(el);
+    const kids = Array.from(el.children)
+      .filter((child) => ["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT"].indexOf(child.tagName) < 0)
+      .slice(0, 60);
+    const first = kids[0] ? Math.round(kids[0].getBoundingClientRect().left * 10) / 10 : 0;
+    const shown = kids
+      .map((child, index) => {
+        const style = getComputedStyle(child);
+        return style.display !== "none" && style.visibility === "visible" && Number(style.opacity) > 0.5 ? index : -1;
+      })
+      .filter((index) => index >= 0)
+      .join(",");
+    out[path] = `${cs.transform}|${first}|${Math.round((el as HTMLElement).scrollLeft)}|${shown}`;
+  }
+  return out;
+}
+
+/**
+ * Watches the page's tracks for autoplay, after everything else is read: the stilling style is taken off and motion allowed so the
+ * page's own timers and transitions run as a visitor's would, then the tracks are sampled with nobody touching the page. Bounded by
+ * `WATCH` (one window, one retry, a hard total) and skipped when opening the page already took long, as the tick has a limit of its own.
+ */
+async function watchSliders(page: Page, capture: PageCapture, openedAt: number, signal?: AbortSignal): Promise<void> {
+  const paths = trackPaths(capture);
+  if (paths.length === 0) return;
+  if (Date.now() - openedAt > WATCH.skipAfterMs) {
+    applyWatch(capture, Object.fromEntries(paths.map((path) => [path, { observed: false as const, watchedMs: 0, why: "the page took too long to open to spare the time" }])));
+    return;
+  }
+  // Every call to the page is bounded (`within`), the whole step by the watch's own total: a page that stops answering after it was read (its main thread
+  // busy for good) must not hold the open, and so the tick, to its limit.
+  const call = <T,>(promise: Promise<T>, ms: number = WATCH.callMs) => within(promise, ms);
+  const stilled = await call(
+    page
+      .evaluate((head) => {
+        for (const style of Array.from(document.querySelectorAll("style"))) if ((style.textContent || "").startsWith(head)) style.remove();
+      }, STILL_HEAD)
+      .catch(() => {}),
+  );
+  const moving = stilled === NO_ANSWER ? NO_ANSWER : await call(page.emulateMedia({ reducedMotion: "no-preference" }).catch(() => {}));
+  if (stilled === NO_ANSWER || moving === NO_ANSWER) {
+    applyWatch(capture, Object.fromEntries(paths.map((path) => [path, { observed: false as const, watchedMs: 0, why: "the page stopped answering" }])));
+    return;
+  }
+  const result = await watchTracks(paths, {
+    read: () => page.evaluate(sampleTracks, paths).catch(() => null),
+    sleep: (ms) => page.waitForTimeout(ms),
+    now: () => Date.now(),
+    prepare: async (attempt) => {
+      // The first track in view (the last, the second time), and the pointer out of the way: a track that waits for the visitor looks away.
+      const path = paths[attempt === 0 ? 0 : paths.length - 1];
+      await page.evaluate((p) => document.querySelector(`[data-rp-track="${p}"]`)?.scrollIntoView({ block: "center" }), path).catch(() => {});
+      await page.mouse.move(0, 0).catch(() => {});
+    },
+    aborted: () => Boolean(signal?.aborted),
+    retry: (paths.sliders?.length ?? 0) > 0,
+  });
+  applyWatch(capture, result.watches);
+}
+
 /** Opens the original at one width: its photograph, its boxes, and photographs of what is drawn rather than a file. */
-export async function openOriginal(browser: Browser, url: string, viewport: ViewportName, allow: Allow, signal?: AbortSignal): Promise<Opened> {
+export async function openOriginal(browser: Browser, url: string, viewport: ViewportName, allow: Allow, signal?: AbortSignal, options: OpenOptions = {}): Promise<Opened> {
+  const openedAt = Date.now();
   const { page, context } = await newPage(browser, viewport, allow);
   try {
     if (signal?.aborted) throw new Error("Stopped.");
@@ -124,7 +205,8 @@ export async function openOriginal(browser: Browser, url: string, viewport: View
     const screenshot = await photograph(page, capture.docHeight, size.w);
     const elements = new Map<string, Buffer>();
     if (viewport === "desktop") {
-      for (const node of walk(capture.root)) {
+      // What lies in a slide that is not in view cannot be scrolled to and photographed; it is left to be named as not photographed.
+      for (const node of walkLive(capture.root)) {
         if (elements.size >= ELEMENT_SHOTS_MAX) break;
         const media = node.media;
         const drawn = media?.kind === "svg" || media?.kind === "canvas" || (media?.kind === "embed" && !/youtube|vimeo/i.test(media.url));
@@ -137,9 +219,11 @@ export async function openOriginal(browser: Browser, url: string, viewport: View
         if (picture) elements.set(node.p, picture);
       }
     }
+    if (viewport === "desktop" && options.watch !== false) await watchSliders(page, capture, openedAt, signal);
     return { capture, screenshot, elements };
   } finally {
-    await context.close().catch(() => {});
+    // A page whose main thread is busy for good may not close at once: it is given a few seconds, and the browser itself is closed by whoever opened it.
+    await within(context.close().catch(() => {}), 8000);
   }
 }
 

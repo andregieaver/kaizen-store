@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<title>Sliderbutikken</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1d2630; background: #f6f7f9; line-height: 1.5; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  h1 { font-size: 40px; line-height: 48px; margin: 0; padding: 40px 0 16px; }
+  h2 { font-size: 28px; line-height: 36px; margin: 0 0 16px; }
+  section { padding: 20px 0 32px; }
+  .card { background: #fff; border: 1px solid #dde1e7; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .card img { display: block; width: 100%; height: 150px; object-fit: cover; }
+  .card .body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card h3 { font-size: 20px; line-height: 26px; margin: 0; }
+  .card p { margin: 0; font-size: 15px; line-height: 22px; color: #4a5562; }
+  .btn { display: inline-block; align-self: flex-start; background: #1f5eff; color: #fff; text-decoration: none; font-weight: 700; font-size: 15px; padding: 10px 16px; border-radius: 8px; }
+
+  /* A fade slider: the slides lie on top of each other, one has opacity. */
+  .fader { position: relative; width: 700px; max-width: 100%; }
+  .fade-stage { position: relative; height: 130px; }
+  .quote { position: absolute; inset: 0; margin: 0; display: flex; gap: 16px; align-items: center; background: #fff; border: 1px solid #dde1e7; border-radius: 12px; padding: 16px; opacity: 0; }
+  .quote.active { opacity: 1; }
+  .quote img { width: 64px; height: 64px; border-radius: 32px; object-fit: cover; }
+  .quote blockquote { margin: 0; font-size: 20px; line-height: 26px; }
+  .quote figcaption { font-size: 14px; line-height: 20px; font-weight: 700; margin-top: 6px; }
+  .fader .prev, .fader .next { position: absolute; top: 45px; width: 36px; height: 36px; border-radius: 18px; border: 1px solid #dde1e7; background: #fff; cursor: pointer; padding: 0; }
+  .fader .prev { left: -46px; }
+  .fader .next { right: -46px; }
+  .fade-dots { display: flex; gap: 8px; padding-top: 10px; }
+  .fade-dots button { width: 10px; height: 10px; border-radius: 5px; border: 0; background: #b7bec9; padding: 0; }
+
+  /* A Bootstrap-like carousel: every item but the active one is display: none, and they are floated over each other. */
+  .carousel { position: relative; width: 700px; max-width: 100%; }
+  .carousel-inner { position: relative; overflow: hidden; width: 100%; }
+  .carousel-item { display: none; float: left; width: 100%; margin-right: -100%; }
+  .carousel-item.active { display: block; }
+  .carousel-control-prev, .carousel-control-next { position: absolute; top: 90px; width: 40px; height: 40px; border: 0; border-radius: 20px; background: #fff; cursor: pointer; }
+  .carousel-control-prev { left: 8px; }
+  .carousel-control-next { right: 8px; }
+  .carousel-indicators { display: flex; gap: 6px; padding-top: 8px; }
+  .carousel-indicators button { width: 30px; height: 4px; border: 0; background: #b7bec9; padding: 0; }
+
+  /* A hero slider: the slides are not one kind of card, and a transform moves the track. */
+  .hero { position: relative; width: 700px; max-width: 100%; overflow: hidden; }
+  .hero-track { display: flex; transform: translate3d(0, 0, 0); }
+  .hero-slide { flex: 0 0 100%; min-height: 170px; padding: 20px; background: #1d2630; color: #fff; }
+  .hero-slide h3 { font-size: 26px; line-height: 32px; margin: 0 0 8px; }
+  .hero-slide p { margin: 0 0 10px; }
+  @media (max-width: 700px) {
+    .fader .prev, .fader .next { display: none; }
+    .quote blockquote { font-size: 16px; line-height: 22px; }
+    .fade-stage { height: 160px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Sliderbutikken</h1>
+
+  <section id="fade">
+    <h2>Kundene sier</h2>
+    <div class="fader" id="fader">
+      <div class="fade-stage">
+        <figure class="quote active"><img src="/img/a.svg" alt="Kari"><div><blockquote>Rask levering og fint pakket.</blockquote><figcaption>Kari fra Bergen</figcaption></div></figure>
+        <figure class="quote"><img src="/img/b.svg" alt="Ola"><div><blockquote>Lampen ble stuens midtpunkt.</blockquote><figcaption>Ola fra Tromsø</figcaption></div></figure>
+        <figure class="quote"><img src="/img/c.svg" alt="Siri"><div><blockquote>Notatboken holder hele året.</blockquote><figcaption>Siri fra Oslo</figcaption></div></figure>
+        <figure class="quote"><img src="/img/d.svg" alt="Per"><div><blockquote>Posen tåler alt jeg legger i den.</blockquote><figcaption>Per fra Stavanger</figcaption></div></figure>
+      </div>
+      <button class="prev" type="button" aria-label="Forrige sitat">&#8249;</button>
+      <button class="next" type="button" aria-label="Neste sitat">&#8250;</button>
+      <div class="fade-dots"><button type="button"></button><button type="button"></button><button type="button"></button><button type="button"></button></div>
+    </div>
+  </section>
+
+  <section id="boot">
+    <h2>Anmeldelser</h2>
+    <div class="carousel" id="bs">
+      <div class="carousel-inner">
+        <div class="carousel-item active"><div class="card"><img src="/img/a.svg" alt="Krus"><div class="body"><h3>Krus</h3><p>Fem stjerner fra Mia.</p><a class="btn" href="/anmeldelse/krus">Les mer</a></div></div></div>
+        <div class="carousel-item"><div class="card"><img src="/img/b.svg" alt="Lampe"><div class="body"><h3>Lampe</h3><p>Fire stjerner fra Jon.</p><a class="btn" href="/anmeldelse/lampe">Les mer</a></div></div></div>
+        <div class="carousel-item"><div class="card"><img src="/img/c.svg" alt="Bok"><div class="body"><h3>Bok</h3><p>Fem stjerner fra Eli.</p><a class="btn" href="/anmeldelse/bok">Les mer</a></div></div></div>
+      </div>
+      <button class="carousel-control-prev" type="button" aria-label="Previous"><span>&#8249;</span></button>
+      <button class="carousel-control-next" type="button" aria-label="Next"><span>&#8250;</span></button>
+      <div class="carousel-indicators"><button type="button" aria-label="Slide 1"></button><button type="button" aria-label="Slide 2"></button><button type="button" aria-label="Slide 3"></button></div>
+    </div>
+  </section>
+
+  <section id="heroes">
+    <h2>Siste nytt</h2>
+    <div class="hero" id="hero">
+      <div class="hero-track">
+        <div class="hero-slide"><img src="/img/d.svg" alt="Vår" width="120" height="90"><h3>Våren er her</h3></div>
+        <div class="hero-slide"><h3>Sommerutsalg</h3><p>Alt er satt ned med en tredjedel denne uken.</p><a class="btn" href="/utsalg">Se utsalget</a></div>
+        <div class="hero-slide"><p>Gratis frakt over femhundre kroner.</p></div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+// The fade slider changes its active slide every two and a half seconds.
+(function () {
+  var slides = [].slice.call(document.querySelectorAll('#fader .quote'));
+  var at = 0;
+  setInterval(function () {
+    slides[at].classList.remove('active');
+    at = (at + 1) % slides.length;
+    slides[at].classList.add('active');
+  }, 2500);
+})();
+</script>
+</body>
+</html>

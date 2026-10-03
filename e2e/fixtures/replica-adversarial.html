@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Adversarial cards</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/24px Arial, sans-serif; color: #1d2630; }
+  .row { display: flex; gap: 20px; padding: 20px; width: 1200px; }
+  .card { width: 280px; border: 1px solid #ccc; padding: 12px; }
+  .card img { width: 100%; height: 150px; display: block; }
+  .card h3 { margin: 8px 0; font-size: 20px; line-height: 26px; }
+  .card p { margin: 0; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .gone { visibility: hidden; }
+  .zero { font-size: 0; }
+  .tag h3::before { content: "NEW "; }
+</style>
+</head>
+<body>
+<div class="row" id="seen">
+  <div class="card"><img src="/img/a.svg" alt="A"><h3>Lamp <span class="gone">Sold out</span></h3><p>Warm light <span style="opacity:0">transparent1</span></p></div>
+  <div class="card"><img src="/img/b.svg" alt="B"><h3>Mug <span class="gone">Sold out</span></h3><p>Warm drink <span style="opacity:0">transparent2</span></p></div>
+  <div class="card"><img src="/img/c.svg" alt="C"><h3>Bag <span class="gone">Sold out</span></h3><p>Big bag <span class="zero">zerofont3</span></p></div>
+</div>
+<div class="row" id="split">
+  <div class="card"><img src="/img/a.svg" alt="A"><h3>Socks</h3><p>Fine <span class="sr-only">(secret)</span>print one</p></div>
+  <div class="card"><img src="/img/b.svg" alt="B"><h3>Gloves</h3><p>Fine <span class="sr-only">(secret)</span>print two</p></div>
+  <div class="card"><img src="/img/c.svg" alt="C"><h3>Scarf</h3><p>Fine <span class="sr-only">(secret)</span>print three</p></div>
+</div>
+<div class="row tag" id="generated">
+  <div class="card"><img src="/img/a.svg" alt="A"><h3>Shirt</h3><p>Soft</p></div>
+  <div class="card"><img src="/img/b.svg" alt="B"><h3>Shoe</h3><p>Hard</p></div>
+  <div class="card"><img src="/img/c.svg" alt="C"><h3>Hat</h3><p>Round</p></div>
+</div>
+</body>
+</html>

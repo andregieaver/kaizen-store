@@ -105,7 +105,9 @@ describe("converting a captured page into rows and blocks", () => {
     const section = node({ p: "1", tag: "section", box: [0, 500, 1440, 300], s: { display: "block" } }, [
       node({ p: "1/c", tag: "div", box: [120, 500, 1200, 300], s: { display: "flex" } }, [card(0, 120), card(1, 540), card(2, 960)]),
     ]);
-    const built = buildReplica(input(capture(page(section))), newId);
+    // Three cards of one shape are a grid of custom items now (D155, `replicate-grid.test.ts`); the columns are what a group becomes
+    // when it is refused or when a pass finds the grid matched worse, which is what this keeps under test.
+    const built = buildReplica({ ...input(capture(page(section))), reverted: [{ path: "1/c", match: 40, pass: 1 }] }, newId);
     const row = built.rows[0];
     expect(row.layout).toBe("3");
     expect(row.columns).toHaveLength(3);

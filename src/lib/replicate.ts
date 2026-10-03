@@ -69,7 +69,7 @@ export type ReplicaSummary = {
   /** Match of the last copy against the original, per width. */
   finalMatch: { desktop: number | null; mobile: number | null };
   passes: { iteration: number; desktop: number; mobile: number | null }[];
-  counts: { rows: number; blocks: number; headings: number; texts: number; pictures: number; buttons: number; videos: number };
+  counts: { rows: number; blocks: number; headings: number; texts: number; pictures: number; buttons: number; videos: number; /** Grids of custom items built from repeated cards, and their items (D155). */ grids?: number; items?: number };
   /** What the AI understood of the original's design, in a few sentences; null if it did not look. */
   design: string | null;
   /** The draft page, to preview and edit; null when none was made. */

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<title>Fjordbutikken</title>
+<meta name="description" content="Handlaget og lokalt.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, Helvetica, sans-serif; color: #1d2630; background: #f6f7f9; line-height: 1.5; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  h1 { font-size: 44px; line-height: 52px; margin: 0; padding: 56px 0 24px; }
+  section { padding: 24px 0 40px; }
+  h2 { font-size: 30px; line-height: 38px; margin: 0 0 20px; }
+  .cards { display: flex; gap: 20px; }
+  .card { flex: 1; min-width: 0; background: #fff; border: 1px solid #dde1e7; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+  .card img { display: block; width: 100%; height: 170px; object-fit: cover; }
+  .card .body { padding: 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .card h3 { font-size: 20px; line-height: 26px; margin: 0; }
+  .card p { margin: 0; font-size: 15px; line-height: 22px; color: #4a5562; }
+  .card .price { font-weight: 700; color: #1d2630; }
+  .btn { display: inline-block; align-self: flex-start; margin-top: auto; background: #1f5eff; color: #fff; text-decoration: none; font-weight: 700; font-size: 15px; padding: 10px 16px; border-radius: 8px; }
+  .btn2 { background: #fff; color: #1f5eff; border: 1px solid #1f5eff; padding: 9px 15px; margin-left: 8px; }
+  .actions { margin-top: auto; }
+  .carousel { position: relative; }
+  .track { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; width: 940px; max-width: 100%; }
+  .track .card { flex: 0 0 300px; scroll-snap-align: start; }
+  .carousel button.prev, .carousel button.next { position: absolute; top: 90px; width: 40px; height: 40px; border-radius: 20px; border: 1px solid #dde1e7; background: #fff; font-size: 22px; line-height: 1; cursor: pointer; }
+  .carousel button.prev { left: -52px; }
+  .carousel button.next { left: 952px; }
+  .dots { display: flex; gap: 8px; justify-content: flex-start; padding: 12px 0 0 440px; }
+  .dots button { width: 10px; height: 10px; border-radius: 5px; border: 0; background: #b7bec9; padding: 0; }
+  /* A script slider after Swiper's markup: .swiper clips .swiper-wrapper, which a script moves with a transform; the script makes copies to loop. */
+  .swiper { position: relative; overflow: hidden; width: 940px; max-width: 100%; }
+  .swiper-wrapper { display: flex; }
+  .swiper-slide { flex: 0 0 auto; }
+  .swiper-button-prev, .swiper-button-next { position: absolute; top: 70px; z-index: 2; width: 40px; height: 40px; border-radius: 20px; border: 1px solid #dde1e7; background: #fff; font-size: 22px; line-height: 1; cursor: pointer; padding: 0; }
+  .swiper-button-prev { left: 8px; }
+  .swiper-button-next { right: 8px; }
+  .swiper-pagination { display: flex; gap: 8px; justify-content: center; padding: 14px 0 4px; }
+  .swiper-pagination-bullet { width: 10px; height: 10px; border-radius: 5px; background: #b7bec9; display: block; }
+  @media (max-width: 700px) {
+    h1 { font-size: 32px; line-height: 40px; padding-top: 32px; }
+    .cards { flex-direction: column; }
+    .carousel button.prev, .carousel button.next { display: none; }
+    .dots { padding-left: 0; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Fjordbutikken</h1>
+
+  <section id="grid">
+    <h2>Våre produkter</h2>
+    <div class="cards">
+      <div class="card"><img src="/img/a.svg" alt="Krus"><div class="body"><h3>Håndlaget krus</h3><p>Drei i Hardanger, glassert for hånd.</p><p class="price">249 kr</p><a class="btn" href="/p/krus">Les mer</a></div></div>
+      <div class="card"><img src="/img/b.svg" alt="Lampe"><div class="body"><h3>Lampe i eik</h3><p>Varmt lys til stuen din.</p><p class="price">1 290 kr</p><a class="btn" href="/p/lampe">Les mer</a></div></div>
+      <div class="card"><img src="/img/c.svg" alt="Notatbok"><div class="body"><h3>Notatbok</h3><p>Hundre sider av resirkulert papir.</p><p class="price">129 kr</p><a class="btn" href="/p/notatbok">Les mer</a></div></div>
+      <div class="card"><img src="/img/d.svg" alt="Bærepose"><div class="body"><h3>Bærepose</h3><p>Sterk bomull som varer i årevis.</p><p class="price">99 kr</p><a class="btn" href="/p/barepose">Les mer</a></div></div>
+    </div>
+  </section>
+
+  <section id="slider">
+    <h2>Populære nå</h2>
+    <div class="carousel">
+      <button class="prev" type="button">‹</button>
+      <div class="track">
+        <div class="card"><img src="/img/a.svg" alt="Sykkel"><div class="body"><h3>Sykkel</h3><p>Til byen og fjellet.</p><a class="btn" href="/p/sykkel">Se sykkel</a></div></div>
+        <div class="card"><img src="/img/b.svg" alt="Kopp"><div class="body"><h3>Kopp</h3><p>Rommer et halvt kilo kaffe.</p><a class="btn" href="/p/kopp">Se kopp</a></div></div>
+        <div class="card"><img src="/img/c.svg" alt="Bok"><div class="body"><h3>Bok</h3><p>Fortellinger fra kysten.</p><a class="btn" href="/p/bok">Se bok</a></div></div>
+        <div class="card"><img src="/img/d.svg" alt="Hytte"><div class="body"><h3>Hytte</h3><p>Fire senger ved fjorden.</p><a class="btn" href="/p/hytte">Se hytte</a></div></div>
+        <div class="card"><img src="/img/a.svg" alt="Tre"><div class="body"><h3>Tre</h3><p>Furu fra egen skog.</p><a class="btn" href="/p/tre">Se tre</a></div></div>
+        <div class="card"><img src="/img/b.svg" alt="Garn"><div class="body"><h3>Garn</h3><p>Ull fra lokale sauer.</p><a class="btn" href="/p/garn">Se garn</a></div></div>
+      </div>
+      <button class="next" type="button">›</button>
+      <div class="dots"><button type="button"></button><button type="button"></button></div>
+    </div>
+  </section>
+
+  <section id="swiper">
+    <h2>Sesongens favoritter</h2>
+    <div class="swiper" id="sw">
+      <div class="swiper-wrapper">
+        <div class="card"><img src="/img/b.svg" alt="Ull"><div class="body"><h3>Ullsokker</h3><p>Varme tær hele vinteren.</p><a class="btn" href="/p/ullsokker">Se sokker</a></div></div>
+        <div class="card"><img src="/img/c.svg" alt="Bok"><div class="body"><h3>Skissebok</h3><p>Tykt papir til blyant og blekk.</p><a class="btn" href="/p/skissebok">Se skissebok</a></div></div>
+        <div class="card"><img src="/img/d.svg" alt="Sekk"><div class="body"><h3>Dagstursekk</h3><p>Lett og vanntett på tur.</p><a class="btn" href="/p/sekk">Se sekk</a></div></div>
+        <div class="card"><img src="/img/a.svg" alt="Termos"><div class="body"><h3>Termos</h3><p>Holder kaffen varm i åtte timer.</p><a class="btn" href="/p/termos">Se termos</a></div></div>
+        <div class="card"><img src="/img/b.svg" alt="Lykt"><div class="body"><h3>Lykt</h3><p>Lys som varer hele kvelden.</p><a class="btn" href="/p/lykt">Se lykt</a></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="deals">
+    <h2>Tilbud</h2>
+    <div class="cards">
+      <div class="card"><div class="body"><h3>Sommerpakke</h3><p>Tre produkter til en pris.</p><div class="actions"><a class="btn" href="/p/sommer">Les mer</a><a class="btn btn2" href="/kjop/sommer">Kjøp nå</a></div></div></div>
+      <div class="card"><div class="body"><h3>Vinterpakke</h3><p>Varme ting til kalde dager.</p><div class="actions"><a class="btn" href="/p/vinter">Les mer</a><a class="btn btn2" href="/kjop/vinter">Kjøp nå</a></div></div></div>
+      <div class="card"><div class="body"><h3>Gavepakke</h3><p>Pakket inn og klar til å gi bort.</p><div class="actions"><a class="btn" href="/p/gave">Les mer</a><a class="btn btn2" href="/kjop/gave">Kjøp nå</a></div></div></div>
+    </div>
+  </section>
+</div>
+<script>
+// A small slider written the way Swiper draws one (not Swiper): the slides are cloned to loop (head and tail copies marked
+// `swiper-slide-duplicate`, every slide numbered by `data-swiper-slide-index`), the wrapper is moved by a transform, previous and next
+// buttons and bullets are added, and it plays by itself every three seconds, going round through the copies.
+(function () {
+  var root = document.getElementById('sw');
+  var wrapper = root.querySelector('.swiper-wrapper');
+  var real = [].slice.call(wrapper.children);
+  var n = real.length;
+  var per = window.innerWidth <= 700 ? 1 : 3;
+  var gap = 20;
+  var width = (root.clientWidth - (per - 1) * gap) / per;
+  real.forEach(function (slide, i) { slide.classList.add('swiper-slide'); slide.setAttribute('data-swiper-slide-index', String(i)); });
+  function copy(slide) { var c = slide.cloneNode(true); c.classList.add('swiper-slide-duplicate'); c.setAttribute('aria-hidden', 'true'); return c; }
+  for (var i = 0; i < per; i++) {
+    wrapper.insertBefore(copy(real[n - 1 - i]), wrapper.firstChild);
+    wrapper.appendChild(copy(real[i]));
+  }
+  [].forEach.call(wrapper.children, function (slide) { slide.style.width = width + 'px'; slide.style.marginRight = gap + 'px'; });
+  var pitch = width + gap;
+  var index = per;
+  function go() { wrapper.style.transform = 'translate3d(' + (-index * pitch) + 'px, 0, 0)'; }
+  function step(by) {
+    index += by;
+    go();
+    if (index >= per + n || index < per) {
+      setTimeout(function () { wrapper.style.transition = 'none'; index = index >= per + n ? per : per + n - 1; go(); }, 10);
+    }
+  }
+  var prev = document.createElement('button');
+  prev.className = 'swiper-button-prev'; prev.type = 'button'; prev.setAttribute('aria-label', 'Previous slide'); prev.textContent = '\u2039';
+  var next = document.createElement('button');
+  next.className = 'swiper-button-next'; next.type = 'button'; next.setAttribute('aria-label', 'Next slide'); next.textContent = '\u203a';
+  var bullets = document.createElement('div');
+  bullets.className = 'swiper-pagination';
+  for (var b = 0; b < n; b++) { var dot = document.createElement('span'); dot.className = 'swiper-pagination-bullet'; bullets.appendChild(dot); }
+  root.appendChild(prev); root.appendChild(next); root.appendChild(bullets);
+  prev.addEventListener('click', function () { step(-1); });
+  next.addEventListener('click', function () { step(1); });
+  go();
+  setInterval(function () { step(1); }, 3000);
+})();
+</script>
+</body>
+</html>

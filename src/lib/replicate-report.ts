@@ -1,9 +1,11 @@
 import { CSS_MAX } from "./custom-css";
-import { BLOCKS_MAX, ROWS_MAX, pageBlockSchema } from "./page-content";
+import { BLOCKS_MAX, CUSTOM_ITEMS_MAX, ROWS_MAX, pageBlockSchema } from "./page-content";
 import type { ReplicaLogEntry, ReplicaNote, ReplicaPass, ReplicaSummary } from "./replicate";
 import type { Dropped, PartInfo } from "./replicate-build";
-import { indexByPath, walk, type Box, type CaptureHit, type CaptureNode, type PageCapture } from "./replicate-capture";
+import { indexByPath, walk, walkLive, type Box, type CaptureHit, type CaptureNode, type PageCapture } from "./replicate-capture";
 import { BAND, stretchMatch, TOLERANCE, type Raster } from "./replicate-diff";
+import { autoplayWords, type GridReport } from "./replicate-grid";
+import { WATCH } from "./replicate-watch";
 import type { Analysis } from "./replicate-prompts";
 
 /**
@@ -90,6 +92,8 @@ export type ReplicaReport = {
   rows: ReportRow[];
   deviations: ReportDeviation[];
   dropped: Dropped[];
+  /** The grids of custom items built from repeated cards, and the groups kept as columns with why (D155); absent on older reports. */
+  grids?: GridReport;
   assets: {
     pictures: { found: number; kept: number; failed: { url: string; why: string }[] };
     videos: { found: number; kept: number; failed: { url: string; why: string }[] };
@@ -111,7 +115,7 @@ export type ReplicaReport = {
 const SPECIAL_BLOCKS = new Set(["product", "site", "storePart", "plans", "search", "customField", "fieldLoop"]);
 export const BUILDER_BLOCKS: readonly string[] = pageBlockSchema.options.map((option) => String(option.shape.type.value)).filter((type) => !SPECIAL_BLOCKS.has(type));
 /** What `buildReplica()` makes. A block the builder has and this list lacks is one the converter could use but does not. */
-export const CONVERTER_BLOCKS: readonly string[] = ["heading", "richText", "button", "image", "video", "separator"];
+export const CONVERTER_BLOCKS: readonly string[] = ["heading", "richText", "button", "image", "video", "separator", "contentGrid"];
 
 // ---------------------------------------------------------------------------
 // The original, counted
@@ -144,7 +148,7 @@ export function censusOf(desktop: PageCapture, mobile: PageCapture | null): Cens
   let nodes = 0;
   let links = 0;
   let buttons = 0;
-  for (const n of walk(desktop.root)) {
+  for (const n of walkLive(desktop.root)) {
     nodes += 1;
     tags[n.tag] = (tags[n.tag] ?? 0) + 1;
     if (/^h[1-6]$/.test(n.tag)) headings[Number(n.tag[1]) - 1] += 1;
@@ -279,6 +283,8 @@ export type ReportFacts = {
   words: number;
   notes: ReplicaNote[];
   dropped: Dropped[];
+  /** What the converter did with repeated cards (D155). */
+  grids?: GridReport;
   passes: ReplicaPass[];
   finalDiff: FinalDiff | null;
   assets: {
@@ -299,6 +305,7 @@ const F = {
   extract: "src/lib/replicate-extract.ts",
   capture: "src/lib/replicate-capture.ts",
   styles: "src/lib/replicate-styles.ts",
+  grid: "src/lib/replicate-grid.ts",
   patches: "src/lib/replicate-patches.ts",
   prompts: "src/lib/replicate-prompts.ts",
   calibrate: "src/lib/replicate-calibrate.ts",
@@ -437,7 +444,10 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
   }
   const carousel = census.hints["carousel"]?.total ?? 0;
   const scrollers = census.extras?.total.scrollers ?? 0;
-  if (carousel > 0) {
+  const scriptBuilt = (f.grids?.built ?? []).filter((g) => g.carousel?.script).length;
+  const scriptKept = (f.grids?.kept ?? []).filter((k) => k.slider).length;
+  // Sliders that were all built as cards leave nothing the builder lacks to say.
+  if (carousel > 0 && (scriptKept > 0 || scriptBuilt === 0)) {
     add({
       id: "carousel",
       severity: "medium",
@@ -445,11 +455,105 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
       title: "Sliders that move by script have no component",
       evidence: [
         `Slider-like boxes by class: ${examples(census.hints["carousel"].samples)}.`,
-        ...(scrollers > 0 ? [`${plural(scrollers, "box")} scroll sideways by themselves and are copied as scrolling rows (the cards keep their widths): ${examples(census.extras!.scrollers)}.`] : []),
-        `A slider that is moved by script (a transform, not scrolling) shows only the slide in view; arrows, dots and autoplay are not copied. The builder has no slider block (blocks: ${BUILDER_BLOCKS.join(", ")}).`,
+        ...(scrollers > 0 ? [`${plural(scrollers, "box")} scroll sideways by themselves${(f.grids?.built.filter((g) => g.carousel).length ?? 0) > 0 ? `; ${f.grids!.built.filter((g) => g.carousel).length} became carousels of custom items, the rest are` : " and are"} copied as scrolling rows (the cards keep their widths): ${examples(census.extras!.scrollers)}.`] : []),
+        ...(() => {
+          const built = (f.grids?.built ?? []).filter((g) => g.carousel?.script);
+          const kept = (f.grids?.kept ?? []).filter((k) => k.slider);
+          const lines: string[] = [];
+          if (built.length > 0) lines.push(`${plural(built.length, "slider")} moved by script became ${built.length === 1 ? "a carousel" : "carousels"} of custom items, with the copies the library made to loop left out and the slides out of view read from the page: ${built.slice(0, 4).map((g) => `${g.sel} (${g.y}px down)`).join("; ")}.`);
+          if (kept.length > 0) lines.push(`${plural(kept.length, "slider")} moved by script could not be built as cards and ${kept.length === 1 ? "is" : "are"} copied as it was, showing the slide${kept.length === 1 ? "" : "s"} in view only: ${kept.slice(0, 4).map((k) => `${k.sel} (${k.y}px down: ${k.reason})`).join("; ")}.`);
+          if (built.length + kept.length === 0) lines.push(`A slider that is moved by script (a transform, not scrolling) shows only the slide in view when it is not read as a slider; arrows, dots and autoplay are not copied then. The builder has no slider block (blocks: ${BUILDER_BLOCKS.join(", ")}).`);
+          return lines;
+        })(),
       ],
-      change: "Add a `carousel` (slider) block to the builder: a list of slides (picture, heading, text, button), arrows and dots, swipe on phones, optional autoplay that respects reduced motion. In the extractor keep the boxes of slides that are translated out of view (they are skipped as off-screen unless the box scrolls by itself), so the converter can fill the block's slides from them.",
-      where: [F.content + " (a new block type)", F.builder, "src/components/page-block.tsx", F.extract + " (the off-screen skip in nodeOf)", F.build + " (makeBlock, the scroller track in the row loop)"],
+      change: "A slider whose slides are not the same card (a hero with a picture, words and buttons on each slide, a fade between whole sections) needs a `slider` block whose slides are rows: a list of slides with arrows and dots, swipe on phones and an optional autoplay that respects reduced motion. Slides of one kind of card are already a grid of custom items (see the grids findings); the extractor keeps every slide a script slider has, so the converter can fill the new block's slides from `CaptureNode.slide`.",
+      where: [F.content + " (a new block type)", F.builder, "src/components/page-block.tsx", F.extract + " (sliderOf, tileNodes)", F.grid + " (readSlider)", F.build + " (makeBlock, the scroller track in the row loop)"],
+    });
+  }
+  // -- Repeated cards and carousels (D155) --------------------------------------------------------------
+  const gridKept = (f.grids?.kept ?? []).filter((k) => !k.reverted);
+  if (gridKept.length > 0) {
+    add({
+      id: "grids-kept",
+      severity: "medium",
+      area: "both",
+      title: "Groups of the same card that were kept as columns, not a grid of custom items",
+      evidence: gridKept.slice(0, 8).map((k) => `${plural(k.cards, "box", "boxes")} at ${k.sel} (${k.y}px down): ${k.reason}.`),
+      change:
+        "Each group looked like repeated cards but the converter would have lost words or built something other than the original, so it stayed as columns (which keep every word, but cannot be edited as a set and cost a block each). Read the reason: 'a second button or link' needs an item with a second action (or the second as a detail line); 'differ in height' or 'gaps not equal' may be a rule that is too strict for this page; 'structurally different' may be one optional piece the signature should tolerate; 'a footer' or 'a menu' is right and needs nothing.",
+      where: [F.grid + " (detectGroup, mapCard, planGrid)", F.content + " (CustomGridItem)", F.build + " (flow, makeGrid)"],
+    });
+  }
+  const gridFailed = (f.grids?.built ?? []).filter((g) => g.failed.length > 0);
+  if (gridFailed.length > 0) {
+    add({
+      id: "grid-cards",
+      severity: "low",
+      area: "both",
+      title: "Cards whose pictures or icons an item does not hold",
+      evidence: gridFailed.slice(0, 6).map((g) => `${g.sel} (${g.y}px down): ${plural(g.failed.length, "card")} of ${g.cards} had ${[...new Set(g.failed.flatMap((x) => x.what))].slice(0, 3).join("; ")}; no words were lost.`),
+      change: "An item holds one picture. A second picture, an icon set, a rating widget, a video or a link to an address an item may not hold is left out, in at most a fifth of the cards (more keeps the group as columns). Hold them by letting an item have an icon or a second picture, or by mapping a rating to a detail line.",
+      where: [F.grid + " (mapCard)", F.content + " (CustomGridItem)"],
+    });
+  }
+  const gridCut = (f.grids?.built ?? []).filter((g) => g.cut > 0);
+  if (gridCut.length > 0) {
+    add({
+      id: "grid-items-cut",
+      severity: "medium",
+      area: "builder",
+      title: "A grid holds fewer cards than the original",
+      evidence: gridCut.map((g) => `${g.sel} (${g.y}px down): ${plural(g.cut, "card")} of ${g.cards} left out; a grid of custom items holds at most ${CUSTOM_ITEMS_MAX}.`),
+      change: "These words are lost, which is the one place the converter does so knowingly. Split the cards over two grids (the first 60 and the rest), or raise the limit of custom items if the builder and the page's size allow it.",
+      where: [F.content + " (CUSTOM_ITEMS_MAX)", F.build + " (makeGrid)"],
+    });
+  }
+  const gridReverted = (f.grids?.kept ?? []).filter((k) => k.reverted);
+  if (gridReverted.length > 0) {
+    add({
+      id: "grids-reverted",
+      severity: "medium",
+      area: "replicator",
+      title: "A grid matched the original worse than the same cards as columns, and was rebuilt as columns",
+      evidence: gridReverted.map((k) => `${k.sel} (${k.y}px down): ${plural(k.cards, "card")}; the grid matched ${k.reverted!.match}% over its stretch${k.reverted!.columns === undefined ? "" : ` and the columns ${k.reverted!.columns}%`}, measured in pass ${k.reverted!.pass}.`),
+      change: "The grid was under 60% over its stretch, the same cards were built as columns and measured over the same stretch, and the columns were clearly better, so they stayed. The grid's rules (the part's `li[data-item-id]`, `img`, heading and text rules) did not reproduce the cards' look. Open the copy with the grid kept (run the probe with it) and compare the tile's padding, the picture's ratio, the text's wrap and the carousel's width with the original; fix the reading in `styleGrid()` so the next page keeps its grid.",
+      where: [F.grid + " (styleGrid, weakGrids)", F.engine + " (stepRefine)"],
+    });
+  }
+  const gridWeak = (f.grids?.built ?? []).filter((g) => g.weak || g.tried);
+  if (gridWeak.length > 0) {
+    add({
+      id: "grids-weak",
+      severity: "medium",
+      area: "replicator",
+      title: "A grid matched the original poorly, and columns did no better",
+      evidence: gridWeak.map((g) => (g.tried ? `${g.sel} (${g.y}px down): the grid matched ${g.tried.grid}% over its stretch; the same cards as columns were tried in pass ${g.tried.pass} and matched ${g.tried.columns}%, so the grid stays.` : `${g.sel} (${g.y}px down): ${g.weak!.match}% after pass ${g.weak!.pass}, under the 60% a grid should reach, and columns were not tried against it.`)),
+      change: "A grid under 60% over its stretch is rebuilt as columns and measured again there, and the columns stay only if they match clearly better; a grid they do not beat is put back exactly as it was. So this stretch is hard for either build (a font, a picture or a background that is not carried, rather than the grid): look at it in the pictures, and fix the cause in `styleGrid()` or the converter.",
+      where: [F.grid + " (styleGrid, weakGrids, columnsBeatGrid)", F.engine + " (stepRefine, startTrial, settleTrial)"],
+    });
+  }
+  const gridSimplified = (f.grids?.built ?? []).filter((g) => (g.simplified ?? []).length > 0);
+  if (gridSimplified.length > 0) {
+    add({
+      id: "grid-simplified",
+      severity: "low",
+      area: "builder",
+      title: "Words in a grid lost their marks: an item's text is plain",
+      evidence: gridSimplified.slice(0, 6).map((g) => `${g.sel} (${g.y}px down): ${g.simplified!.map((x) => `${x.what} in ${plural(x.cards, "card")}`).join(", ")}; the words are kept.`),
+      change: "An item's text is one plain paragraph: bold, italic, underline and line breaks inside it are not kept. Give the item's text a rich-text form, or keep the group as columns when the marks matter.",
+      where: [F.grid + " (mapCard, marksOf)", F.content + " (CustomGridItem)"],
+    });
+  }
+  const carousels = (f.grids?.built ?? []).filter((g) => g.carousel);
+  if (carousels.length > 0) {
+    add({
+      id: "grid-carousels",
+      severity: "low",
+      area: "replicator",
+      title: "Carousels were read from one look at the page",
+      evidence: carousels.slice(0, 6).map((g) => `${g.sel} (${g.y}px down): ${g.carousel!.arrows ? "arrows" : "no arrows"}, ${g.carousel!.dots ? "dots" : "no dots"}, snap ${g.carousel!.snap}, ${g.carousel!.perScreen.desktop} in view on computers; ${autoplayWords(g.carousel!)}, ${plural(g.carousel!.clones, "clone")} dropped.`),
+      change: `Autoplay is only what watching saw: each track at computers' width is sampled for up to ${WATCH.windowMs / 1000} s with nobody touching the page, once more for up to ${WATCH.retryMs / 1000} s if nothing moved, and never more than ${WATCH.totalMs / 1000} s in all (the tick has a limit of its own). A period longer than the window reads as "not observed", one move gives only a lower bound, and a library that waits for the visitor, or reads reduced motion once at its start, looks still. The settings are read from one look at the page at two widths (tablets' are the computers' and phones' between); a script library's own options are not read.`,
+      where: [F.grid + " (readCarousel)", "src/lib/replicate-watch.ts", "src/lib/replicate-open.ts (watchSliders)", F.extract],
     });
   }
   const modals = census.hints["modal"]?.total ?? 0;
@@ -797,6 +901,7 @@ export function buildReport(f: ReportFacts): ReplicaReport {
     rows,
     deviations: f.finalDiff?.off ?? [],
     dropped: f.dropped,
+    ...(f.grids ? { grids: f.grids } : {}),
     assets: {
       pictures: { found: pictures.length, kept: pictures.filter(Boolean).length, failed: Object.entries(failures).filter(([url]) => f.assets && url in f.assets.pictures && f.assets.pictures[url] === null).slice(0, 15).map(([url, why]) => ({ url, why })) },
       videos: { found: videos.length, kept: videos.filter(Boolean).length, failed: Object.entries(failures).filter(([url]) => f.assets && url in f.assets.videos && f.assets.videos[url] === null).slice(0, 10).map(([url, why]) => ({ url, why })) },
@@ -869,6 +974,28 @@ export function reportMarkdown(r: ReplicaReport): string {
   if (r.dropped.length > 0) {
     out("## Left out or simplified (where in the original)", "");
     for (const d of r.dropped.slice(0, 40)) out(`- ${d.kind}: \`${d.sel || "—"}\` at ${d.y}px${d.text ? ` — ${d.text}` : ""}`);
+    out("");
+  }
+
+  if (r.grids && (r.grids.built.length > 0 || r.grids.kept.length > 0 || (r.grids.quiet ?? []).length > 0)) {
+    out("## Grids and carousels (repeated cards)", "");
+    for (const g of r.grids.built) {
+      out(`- Built at \`${g.sel}\` (${g.y}px): ${g.cards} cards → ${g.items} items; pictures ${g.fields.pictures}, titles ${g.fields.titles}, texts ${g.fields.texts}, links ${g.fields.links}, buttons ${g.fields.buttons}, badges ${g.fields.badges}, price texts ${g.fields.prices}, dates ${g.fields.dates}, detail lines ${g.fields.details}. Columns ${g.columns.desktop}/${g.columns.tablet}/${g.columns.mobile} (computers/tablets/phones).`);
+      if (g.carousel) out(`  - carousel: arrows ${g.carousel.arrows ? "yes" : "no"}, dots ${g.carousel.dots ? "yes" : "no"}, snap ${g.carousel.snap}${g.carousel.rewind ? ", rewind" : ""}, ${g.carousel.perScreen.desktop} in view on computers${g.carousel.perScreen.phone === null ? "" : `, ${g.carousel.perScreen.phone} on phones`}; ${autoplayWords(g.carousel)}; ${g.carousel.clones} clones dropped.`);
+      if (g.carousel?.script) {
+        const sc = g.carousel.script;
+        out(`  - script slider (${sc.kind}${sc.hints.length > 0 ? `; ${sc.hints.join(", ")}` : ""}): copies left out ${sc.clonesBy.markers} by marker, ${sc.clonesBy.keys} by a number seen again, ${sc.clonesBy.hashes} by content; ${sc.hidden} slides out of view read from the page${sc.order === "numbers" ? "; ordered by the library's own numbers" : ""}.`);
+      }
+      if (g.cut > 0) out(`  - ${g.cut} cards beyond ${CUSTOM_ITEMS_MAX} left out.`);
+      if (g.unread) out(`  - ${g.unread} slides were never read.`);
+      for (const x of g.simplified ?? []) out(`  - ${x.what} in ${x.cards} cards is plain text in the items (the words are kept).`);
+      if (g.tried) out(`  - weak: matched ${g.tried.grid}% over its stretch; as columns ${g.tried.columns}% (tried in pass ${g.tried.pass}), so the grid stays.`);
+      for (const x of g.failed.slice(0, 4)) out(`  - a card at ${x.y}px had ${x.what.join("; ")} (left out; no words lost).`);
+      for (const n of g.notes) out(`  - note: ${n}.`);
+    }
+    for (const k of r.grids.kept) out(`- Kept as columns at \`${k.sel}\` (${k.y}px): ${k.cards} boxes — ${k.reason}${k.reverted ? ` (the grid matched ${k.reverted.match}% in pass ${k.reverted.pass}${k.reverted.columns === undefined ? "" : `, the columns ${k.reverted.columns}%`})` : ""}.`);
+    // Boxes that looked like cards and are rightly not (a footer's columns, a menu, a form) are no problem of the copy: here only.
+    for (const k of r.grids.quiet ?? []) out(`- Looked like cards, rightly not: \`${k.sel}\` (${k.y}px): ${k.cards} boxes — ${k.reason}.`);
     out("");
   }
 

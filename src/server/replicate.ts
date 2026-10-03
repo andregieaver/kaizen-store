@@ -7,17 +7,19 @@ import sharp from "sharp";
 
 import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
-import { newPageContent, reservedPageSlugs } from "@/lib/page-content";
+import { newPageContent, pageInput, reservedPageSlugs } from "@/lib/page-content";
 import { ITERATIONS, type LogLevel, type ReplicaJob, type ReplicaNote, type ReplicaPass, type ReplicaSummary } from "@/lib/replicate";
 import { buildReplica, type BuildInput } from "@/lib/replicate-build";
 import { calibrate, calibrationWords } from "@/lib/replicate-calibrate";
 import { hexOf, runsText, walk, type PageCapture } from "@/lib/replicate-capture";
-import { compareRasters, isPerfect } from "@/lib/replicate-diff";
+import { compareRasters, isPerfect, stretchMatch, type Raster } from "@/lib/replicate-diff";
+import { columnsBeatGrid, stretchesOf, weakGrids, type GridStretch } from "@/lib/replicate-grid";
 import { applyPatchPlan } from "@/lib/replicate-patches";
 import { digestOf, partLine, textNodes } from "@/lib/replicate-prompts";
 import { fontRelation } from "@/lib/replicate-fonts";
 import { buildReport, finalDiffOf } from "@/lib/replicate-report";
 import { buildSummary } from "@/lib/replicate-summary";
+import { watchLine } from "@/lib/replicate-watch";
 import { renderStyles } from "@/lib/replicate-styles";
 import { parseReplicaUrl } from "@/lib/replicate-url";
 import { slugify } from "@/lib/slug";
@@ -50,6 +52,8 @@ import {
   setPhase,
   unlockRow,
   viewOf,
+  type GridSnapshot,
+  type GridTrial,
   type ReplicaRow,
   type ReplicaWork,
 } from "./replicate-store";
@@ -234,6 +238,8 @@ async function stepOpen(tick: Tick): Promise<void> {
     if (empty) throw new Failed("The page shows nothing a copy could be made from (it may need a sign-in, or draw itself with scripts that did not run).");
     await say("ok", `Loaded “${desktop.capture.title || host}”: ${desktop.capture.docWidth} × ${desktop.capture.docHeight} px at computers' width, ${desktop.capture.fonts.length} typefaces in use.`);
     if (desktop.capture.left.fixed.length > 0) await say("info", `Left out because they float over the page: ${desktop.capture.left.fixed.slice(0, 4).join(", ")}.`);
+    const watched = watchLine(desktop.capture);
+    if (watched) await say("info", watched);
     let mobile = null;
     let phoneProblem = "";
     // Twice: a second visit often meets a site's bot protection or a slow start that the first did not.
@@ -465,19 +471,25 @@ async function freeSlug(storeId: string, title: string, host: string): Promise<s
   return `${base}-${randomUUID().slice(0, 6)}`;
 }
 
-async function stepBuild(tick: Tick): Promise<void> {
-  const { row, say, owner } = tick;
-  const capture = await readCapture(row.id);
-  if (!capture) throw new Failed("What was read from the page was lost. Start again.");
-  const assets = row.work.assets!;
-  const input: BuildInput = {
+/** What the converter is given: the capture, the assets kept for it, and the grids a pass has already sent back to columns. */
+function buildInputOf(work: ReplicaWork, capture: { desktop: PageCapture; mobile: PageCapture | null }): BuildInput {
+  const assets = work.assets!;
+  return {
     desktop: capture.desktop,
     mobile: capture.mobile,
     picture: (url) => assets.pictures[url] ?? null,
     shot: (path) => assets.shots[path] ?? null,
     video: (url) => assets.videos[url] ?? null,
     font: (family) => assets.fonts[family] ?? null,
+    reverted: work.reverted ?? [],
   };
+}
+
+async function stepBuild(tick: Tick): Promise<void> {
+  const { row, say, owner } = tick;
+  const capture = await readCapture(row.id);
+  if (!capture) throw new Failed("What was read from the page was lost. Start again.");
+  const input = buildInputOf(row.work, capture);
   await say("info", "Building the page in the page builder from what was measured.");
   const built = buildReplica(input, randomUUID);
   if (built.rows.length === 0) throw new Failed("Nothing on the page could be turned into rows of the builder.");
@@ -506,9 +518,10 @@ async function stepBuild(tick: Tick): Promise<void> {
   }
   if (!saved.ok) throw new Failed(`The builder did not accept the page: ${saved.problems.slice(0, 3).join(" ")}`);
   await setPage(row.id, saved.id);
-  await say("ok", `Built the page as a draft: ${built.counts.rows} rows and ${built.counts.blocks} blocks (${built.counts.headings} headings, ${built.counts.texts} text blocks, ${built.counts.pictures} pictures, ${built.counts.buttons} buttons, ${built.counts.videos} videos).`);
+  await say("ok", `Built the page as a draft: ${built.counts.rows} rows and ${built.counts.blocks} blocks (${built.counts.headings} headings, ${built.counts.texts} text blocks, ${built.counts.pictures} pictures, ${built.counts.buttons} buttons, ${built.counts.videos} videos${built.counts.grids ? `, ${built.counts.grids} grid${built.counts.grids === 1 ? "" : "s"} of ${built.counts.items} custom items` : ""}).`);
+  for (const kept of built.grids.kept.slice(0, 4)) await say("info", `${kept.cards} boxes at ${kept.sel} kept as columns: ${kept.reason}.`);
   for (const note of notes.slice(0, 8)) await say(note.level === "ok" ? "ok" : "warn", note.text);
-  await patchWork(row.id, { model: built.model, parts: built.parts, shared: built.shared, notes, counts: built.counts, dropped: built.dropped, cssLength: styled.css.length, cssTrimmed: styled.trimmed ?? null, passes: [] });
+  await patchWork(row.id, { model: built.model, parts: built.parts, shared: built.shared, notes, counts: built.counts, dropped: built.dropped, grids: built.grids, reverted: [], cssLength: styled.css.length, cssTrimmed: styled.trimmed ?? null, passes: [] });
   await setPhase(row.id, "refine", 0);
 }
 
@@ -530,7 +543,8 @@ async function stepRefine(tick: Tick): Promise<void> {
   const k = row.iteration;
   const max = row.iterationsMax;
   if (!row.pageId) throw new Failed("The draft page is gone.");
-  const work = row.work;
+  // What a trial of columns changes in the middle of the pass (D155) is merged into this copy of the job's work, so what follows reads it as it is.
+  const work: ReplicaWork = { ...row.work };
   const model = work.model!;
   const parts = work.parts!;
   const originals = work.originals ?? { desktop: null, mobile: null };
@@ -567,7 +581,16 @@ async function stepRefine(tick: Tick): Promise<void> {
       phoneSide = { original: om.raster, copy: cm.raster, scale: om.scale, capture: mobile.capture };
     }
     const pass: ReplicaPass = { iteration: k, desktop: scoreDesktop, mobile: scoreMobile, changes: [] };
-    const passes = [...(work.passes ?? []), pass];
+    // A page rebuilt at this same pass (a trial of columns against a grid, or its end) is measured again at the same pass: its score replaces the one before, and no pass is spent.
+    const passes = [...(work.remeasure ? (work.passes ?? []).slice(0, -1) : (work.passes ?? [])), pass];
+    const sides: Sides = { desktop: { original: od.raster, copy: cd.raster, scale: od.scale }, phone: phoneSide ? { original: phoneSide.original, copy: phoneSide.copy, scale: phoneSide.scale } : null };
+
+    // The columns of a trial are judged now, over the same stretch the grid stood in: they stay only if they match clearly better, else the grid comes back.
+    if (work.trial) {
+      const ended = await settleTrial(tick, work, work.trial, sides, k);
+      if (ended.rebuilt) return;
+      Object.assign(work, ended.patch);
+    }
 
     // What the owner watches: the draft as it is now.
     const previews = JSON.parse(JSON.stringify(work.previews ?? { original: { desktop: null, mobile: null }, copy: { desktop: null, mobile: null, iteration: null } })) as NonNullable<ReplicaWork["previews"]>;
@@ -592,11 +615,19 @@ async function stepRefine(tick: Tick): Promise<void> {
     if (mobile) await keepPreview("mobile", mobile.screenshot, 300);
     previews.copy.iteration = k;
     await say("ok", `${k === 0 ? "The first copy" : `After pass ${k}, the copy`} matches the original ${scoreDesktop.match}% on computers${scoreMobile ? ` and ${scoreMobile.match}% on phones` : ""}. It is ${desktop.capture.docHeight} px tall; the original is ${scoreDesktop.heights.original} px.`);
-    await patchWork(row.id, { passes, previews, files });
+    await patchWork(row.id, { passes, previews, files, remeasure: false });
+    work.remeasure = false;
 
     const perfect = isPerfect(scoreDesktop) && isPerfect(scoreMobile);
+    // A grid that is weak (under 60 % over its stretch, at computers' or at phones' width) is tried as columns: the page is rebuilt with those groups as columns and measured again at
+    // this same pass, and the columns stay only if they match clearly better there; otherwise the grid is put back. Nothing is decided on the grid's score alone (D155).
+    const weak = perfect ? [] : weakNow(work, parts, scoreDesktop, scoreMobile);
+    if (weak.length > 0 && (work.trials ?? 0) < TRIALS_MAX && (await startTrial(tick, work, weak, k, sides, passes, pass))) return;
+
     if (k >= max || perfect) {
-      await patchWork(row.id, { ...(perfect && k < max ? { stoppedEarly: true } : {}), finalDiff: finalDiffOf(parts, { original: od.raster, copy: cd.raster, scale: od.scale, capture: desktop.capture }, phoneSide) });
+      // A grid that was weak and matched no better as columns says both figures; one that was weak and could not be tried (the job's trials were spent, or the page would not be rebuilt) says so.
+      const grids = work.grids ? { ...work.grids, built: work.grids.built.map((g) => annotated(g, work, weak, k)) } : work.grids;
+      await patchWork(row.id, { ...(grids ? { grids } : {}), ...(perfect && k < max ? { stoppedEarly: true } : {}), finalDiff: finalDiffOf(parts, { original: od.raster, copy: cd.raster, scale: od.scale, capture: desktop.capture }, phoneSide) });
       await conclude(owner, (await getRow(row.id, owner.storeId)) ?? row, "done", null);
       return;
     }
@@ -674,10 +705,182 @@ async function stepRefine(tick: Tick): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// A grid that may be worse than columns (D155)
+// ---------------------------------------------------------------------------
+
+/** Trials of columns against weak grids one job may start: each costs the copy being opened and measured again. */
+const TRIALS_MAX = 2;
+
+/** The photograph of the original and of the copy at each width, as small pictures, to measure one stretch of the page. */
+type Sides = { desktop: { original: Raster; copy: Raster; scale: number }; phone: { original: Raster; copy: Raster; scale: number } | null };
+
+/** How a stretch of the original matched in the copy, at each width measured. */
+function stretchScores(stretch: GridStretch, sides: Sides): { desktop: number | null; phone: number | null } {
+  const at = (side: Sides["desktop"] | null, place: { y: number; height: number } | null) => (side && place ? stretchMatch(side.original, side.copy, side.scale, place.y, place.height) : null);
+  return { desktop: at(sides.desktop, stretch.desktop), phone: at(sides.phone, stretch.phone) };
+}
+
+/** The grids this measurement names weak, at computers' or at phones' width, that have not been tried against columns: the least match of the two. */
+function weakNow(work: ReplicaWork, parts: NonNullable<ReplicaWork["parts"]>, desktop: ReplicaPass["desktop"], mobile: ReplicaPass["mobile"]): { path: string; match: number }[] {
+  const found = new Map<string, number>();
+  for (const w of weakGrids(parts, desktop.weakest)) found.set(w.path, w.match);
+  if (mobile) for (const w of weakGrids(parts, mobile.weakest, 60, "phone")) found.set(w.path, Math.min(w.match, found.get(w.path) ?? 100));
+  const done = new Set([...(work.settled ?? []), ...(work.reverted ?? []).map((r) => r.path)]);
+  return [...found.entries()].filter(([path]) => !done.has(path)).map(([path, match]) => ({ path, match }));
+}
+
+/** What the report says of a grid at the end: that columns were tried and did no better, or that it was weak and was not tried. */
+function annotated(g: NonNullable<ReplicaWork["grids"]>["built"][number], work: ReplicaWork, weak: { path: string; match: number }[], pass: number) {
+  const tried = (work.tried ?? []).find((t) => t.path === g.path);
+  if (tried) return { ...g, tried: { grid: tried.grid, columns: tried.columns, pass: tried.pass } };
+  const w = weak.find((x) => x.path === g.path);
+  return w ? { ...g, weak: { match: w.match, pass } } : g;
+}
+
+/** The draft's rows and style as they are, with what the converter said of them, so a grid can be put back exactly. */
+async function snapshotOf(row: ReplicaRow, work: ReplicaWork): Promise<GridSnapshot | null> {
+  const [draft] = await db().execute<Row>(sql`select draft->'rows' as rows, draft->>'css' as css from commerce.pages where id = ${row.pageId}::uuid and store_id = ${row.storeId}::uuid`);
+  if (!draft || !work.model || !work.parts || !work.grids || !work.counts) return null;
+  return { rows: draft.rows, css: String(draft.css ?? ""), model: work.model, parts: work.parts, shared: work.shared ?? "", notes: work.notes ?? [], counts: work.counts, dropped: work.dropped ?? [], grids: work.grids, cssLength: work.cssLength ?? 0, cssTrimmed: work.cssTrimmed ?? null, reverted: work.reverted ?? [] };
+}
+
+/** Writes rows and style into the draft. */
+async function writeDraft(row: ReplicaRow, accountId: string, rows: unknown, css: string): Promise<void> {
+  await db().execute(sql`
+    update commerce.pages set draft = jsonb_set(jsonb_set(draft, '{rows}', ${JSON.stringify(rows)}::jsonb), '{css}', to_jsonb(${css}::text)), updated_at = now(), updated_by = ${accountId}::uuid
+    where id = ${row.pageId}::uuid and store_id = ${row.storeId}::uuid
+  `);
+}
+
+/**
+ * The page built again from the captured original with some groups as columns, as the draft: the converter's output and the draft's style, or null when the builder
+ * would not accept it (the draft is then left as it was). What earlier passes corrected by measuring is measured again; what the AI changed by hand is not carried over.
+ */
+async function rebuildWith(tick: Tick, work: ReplicaWork, reverted: NonNullable<ReplicaWork["reverted"]>): Promise<{ patch: Partial<ReplicaWork> } | null> {
+  const { row, owner } = tick;
+  const capture = await readCapture(row.id);
+  if (!capture) return null;
+  const built = buildReplica(buildInputOf({ ...work, reverted }, capture), randomUUID);
+  const styled = renderStyles(built.model, built.shared);
+  const [draft] = await db().execute<Row>(sql`select draft->>'title' as title, draft->>'slug' as slug from commerce.pages where id = ${row.pageId}::uuid and store_id = ${row.storeId}::uuid`);
+  const parsed = pageInput.safeParse({ ...newPageContent(), title: String(draft?.title ?? "Copy"), slug: String(draft?.slug ?? "copy"), rows: built.rows, css: styled.css });
+  if (!draft || built.rows.length === 0 || cssProblem(styled.css) || !parsed.success) return null;
+  await writeDraft(row, owner.account.id, built.rows, styled.css);
+  const notes: ReplicaNote[] = [...built.notes];
+  if (styled.trimmed) notes.push({ level: "warn", text: styled.trimmed });
+  return { patch: { model: built.model, parts: built.parts, shared: built.shared, notes, counts: built.counts, dropped: built.dropped, grids: built.grids, reverted, cssLength: styled.css.length, cssTrimmed: styled.trimmed ?? null } };
+}
+
+/**
+ * Weak grids are tried as columns (D155). A grid may never make a copy worse than columns were, but nothing says how columns would have matched until they are built and
+ * measured, so: the draft is kept as it is, the page is rebuilt with those groups as columns, and the next measurement (at this same pass, spending none) compares the two over
+ * the stretch the grid stood in (`settleTrial()`). Returns whether the page was rebuilt for the trial; a rebuild the builder would not accept leaves the grid, and is not tried again.
+ */
+async function startTrial(tick: Tick, work: ReplicaWork, weak: { path: string; match: number }[], k: number, sides: Sides, passes: ReplicaPass[], pass: ReplicaPass): Promise<boolean> {
+  const { row, say } = tick;
+  const snapshot = await snapshotOf(row, work);
+  const sels = new Map((work.grids?.built ?? []).map((g) => [g.path, g] as const));
+  const paths = weak.map((w) => w.path);
+  const stretches = stretchesOf(work.parts ?? [], paths);
+  const reverted = [...(work.reverted ?? []), ...weak.map((w) => ({ path: w.path, match: w.match, pass: k }))];
+  const rebuilt = snapshot && stretches.length > 0 ? await rebuildWith(tick, work, reverted) : null;
+  if (!snapshot || !rebuilt) {
+    await say("warn", "A grid matched the original poorly, but the page could not be rebuilt as columns to try them, so the grid stays.");
+    await patchWork(row.id, { settled: [...(work.settled ?? []), ...paths] });
+    Object.assign(work, { settled: [...(work.settled ?? []), ...paths] });
+    return false;
+  }
+  const groups: GridTrial["groups"] = stretches.map((stretch) => ({ path: stretch.path, sel: sels.get(stretch.path)?.sel ?? stretch.path, y: Math.round(stretch.desktop?.y ?? sels.get(stretch.path)?.y ?? 0), grid: stretchScores(stretch, sides), stretch }));
+  const words = groups.map((g) => `${g.sel} matched ${g.grid.desktop ?? g.grid.phone ?? "?"}%`);
+  const change = `Tried ${groups.length === 1 ? "a grid" : `${groups.length} grids`} as columns (${words.join("; ")}): the page is measured again, and the columns stay only if they match clearly better where the grid stood.`;
+  await say("warn", change);
+  passes[passes.length - 1] = { ...pass, changes: [change] };
+  await patchWork(row.id, { ...rebuilt.patch, passes, trial: { pass: k, groups, snapshot }, trials: (work.trials ?? 0) + 1, remeasure: true });
+  await setPhase(row.id, "refine", k);
+  return true;
+}
+
+/**
+ * Judges a trial: over each group's stretch the columns' match is set against the grid's. Columns that are clearly better (`columnsBeatGrid()`) stay, with both figures kept
+ * for the report; a grid they did not beat comes back: exactly as it was (its rows and style as saved before the trial) when no group's columns won, else the page is built again
+ * with only the winners as columns. Either way the grid is never tried again. `rebuilt`: the draft was changed and the next tick measures it, at the same pass.
+ */
+async function settleTrial(tick: Tick, work: ReplicaWork, trial: GridTrial, sides: Sides, k: number): Promise<{ rebuilt: true } | { rebuilt: false; patch: Partial<ReplicaWork> }> {
+  const { row, say, owner } = tick;
+  const verdicts = trial.groups.map((g) => ({ g, ...columnsBeatGrid(g.grid, stretchScores(g.stretch, sides)) }));
+  const winners = verdicts.filter((v) => v.columnsWin);
+  const losers = verdicts.filter((v) => !v.columnsWin);
+  const figures = (v: (typeof verdicts)[number]) => `${v.g.sel}: grid ${v.grid ?? "?"}%, columns ${v.columns ?? "?"}%`;
+  const evidence = (r: NonNullable<ReplicaWork["reverted"]>[number]) => {
+    const v = winners.find((x) => x.g.path === r.path);
+    return v ? { ...r, match: v.grid ?? r.match, ...(v.columns === null ? {} : { columns: v.columns }) } : r;
+  };
+  const tried = [...(work.tried ?? []), ...losers.map((v) => ({ path: v.g.path, grid: v.grid ?? 0, columns: v.columns ?? 0, pass: trial.pass }))];
+  const settled = [...new Set([...(work.settled ?? []), ...trial.groups.map((g) => g.path)])];
+  const keepColumns = (work.reverted ?? []).filter((r) => !losers.some((v) => v.g.path === r.path)).map(evidence);
+
+  /** The report's lines for the groups kept as columns say how each matched, now that the columns are measured. */
+  const withFigures = (grids: ReplicaWork["grids"]): ReplicaWork["grids"] =>
+    grids && {
+      ...grids,
+      kept: grids.kept.map((entry) => {
+        const r = keepColumns.find((x) => x.path === entry.path);
+        return r && entry.reverted ? { ...entry, reason: `rebuilt as columns after pass ${r.pass}: the grid matched the original ${r.match}% there${r.columns === undefined ? "" : `, the columns ${r.columns}%`}`, reverted: { match: r.match, pass: r.pass, ...(r.columns === undefined ? {} : { columns: r.columns }) } } : entry;
+      }),
+    };
+
+  if (losers.length === 0) {
+    await say("ok", `The columns matched better than the ${trial.groups.length === 1 ? "grid" : "grids"} over ${trial.groups.length === 1 ? "its" : "their"} stretch (${verdicts.map(figures).join("; ")}), so they stay.`);
+    const grids = withFigures(work.grids);
+    const patch: Partial<ReplicaWork> = { reverted: keepColumns, ...(grids ? { grids } : {}), trial: null, settled, remeasure: false };
+    await patchWork(row.id, patch);
+    return { rebuilt: false, patch };
+  }
+  if (winners.length === 0) {
+    // No columns were better: the grid goes back exactly as it was, with its earlier corrections, and is measured again at this pass.
+    const back = trial.snapshot;
+    await writeDraft(row, owner.account.id, back.rows, back.css);
+    await say("warn", `The columns did not match the original better than the ${trial.groups.length === 1 ? "grid" : "grids"} did (${verdicts.map(figures).join("; ")}), so the ${trial.groups.length === 1 ? "grid is" : "grids are"} put back.`);
+    await patchWork(row.id, { model: back.model, parts: back.parts, shared: back.shared, notes: back.notes, counts: back.counts, dropped: back.dropped, grids: back.grids, reverted: back.reverted, cssLength: back.cssLength, cssTrimmed: back.cssTrimmed, trial: null, settled, tried, remeasure: true });
+    await setPhase(row.id, "refine", k);
+    return { rebuilt: true };
+  }
+  // Some columns won and some did not: the page is built again with the winners as columns and the others as grids.
+  const rebuilt = await rebuildWith(tick, work, keepColumns);
+  if (!rebuilt) {
+    // It would not be accepted: the columns of this trial stay as they are, and the losers with them.
+    await say("warn", "Some grids matched better as columns and some did not, but the page could not be rebuilt to keep only the better ones, so the columns of this trial stay.");
+    const grids = withFigures(work.grids);
+    const patch: Partial<ReplicaWork> = { reverted: (work.reverted ?? []).map(evidence), ...(grids ? { grids } : {}), trial: null, settled, remeasure: false };
+    await patchWork(row.id, patch);
+    return { rebuilt: false, patch };
+  }
+  await say("warn", `Some groups matched better as columns and some as grids (${verdicts.map(figures).join("; ")}): the page is built again with only the better ones as columns.`);
+  await patchWork(row.id, { ...rebuilt.patch, trial: null, settled, tried, remeasure: true });
+  await setPhase(row.id, "refine", k);
+  return { rebuilt: true };
+}
+
+// ---------------------------------------------------------------------------
 // The end
 // ---------------------------------------------------------------------------
 
-async function conclude(owner: ReplicaOwner, row: ReplicaRow, outcome: "done" | "failed" | "aborted", problem: string | null): Promise<void> {
+/**
+ * A job that ends while a trial of columns is running (it was stopped, or failed) leaves the page as it was before the trial: the columns were never measured, and the grid
+ * was, so the page is not left worse than the one that is known. Returns the job as it is then.
+ */
+async function endTrial(owner: ReplicaOwner, row: ReplicaRow): Promise<ReplicaRow> {
+  const trial = row.work.trial;
+  if (!trial || !row.pageId) return row;
+  const back = trial.snapshot;
+  await writeDraft(row, owner.account.id, back.rows, back.css);
+  await patchWork(row.id, { model: back.model, parts: back.parts, shared: back.shared, notes: back.notes, counts: back.counts, dropped: back.dropped, grids: back.grids, reverted: back.reverted, cssLength: back.cssLength, cssTrimmed: back.cssTrimmed, trial: null, remeasure: false });
+  await writeLog(row.id, "refine", "warn", "The job ended while columns were being tried against a grid, so the grid, which was measured, is put back.");
+  return (await getRow(row.id, owner.storeId)) ?? row;
+}
+
+async function conclude(owner: ReplicaOwner, started: ReplicaRow, outcome: "done" | "failed" | "aborted", problem: string | null): Promise<void> {
+  const row = await endTrial(owner, started);
   const work = row.work;
   const assets = work.assets;
   const pictures = Object.values(assets?.pictures ?? {});
@@ -705,6 +908,7 @@ async function conclude(owner: ReplicaOwner, row: ReplicaRow, outcome: "done" | 
     vision: { used: work.vision?.used ?? false, why: work.vision?.why ?? null },
     page,
     analysis: work.analysis ? { summary: work.analysis.summary, hard: work.analysis.hard } : null,
+    ...(work.grids ? { grids: work.grids } : {}),
   });
   const captured = await readCapture(row.id).catch(() => null);
   if (captured) {
@@ -723,6 +927,7 @@ async function conclude(owner: ReplicaOwner, row: ReplicaRow, outcome: "done" | 
       words: work.words ?? 0,
       notes: work.notes ?? [],
       dropped: work.dropped ?? [],
+      ...(work.grids ? { grids: work.grids } : {}),
       passes: work.passes ?? [],
       finalDiff: work.finalDiff ?? null,
       assets: assets ? { pictures: assets.pictures, videos: assets.videos, shots: assets.shots, fonts: assets.fonts, failures: assets.failures } : null,

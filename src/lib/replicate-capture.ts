@@ -37,6 +37,64 @@ export type CaptureExtras = {
   total: { pseudo: number; animated: number; sticky: number; scrollers: number; roles: number };
 };
 
+/** Why a slide of a script slider is not on the page as a visitor sees it first. `outside`: laid out beyond the box that clips the track. */
+export type SlideHide = "none" | "visibility" | "opacity" | "outside";
+
+/**
+ * What the browser read of one tile of a script slider (D155, C2), shown or not: a library parks slides out of sight (beyond the clipping box,
+ * `display: none`, `visibility: hidden`, see-through) and makes copies of them to loop, so the tiles on screen are not all the tiles there are.
+ */
+export type SlideMark = {
+  /** Why it is not in view; absent when it shows. */
+  hide?: SlideHide;
+  /** The marker that says it is a copy made to loop (`swiper-slide-duplicate`, `slick-cloned`, `splide__slide--clone`, `cloned`); absent on the real ones. */
+  clone?: string;
+  /** The library's own number for the slide (`data-swiper-slide-index`, `data-slick-index`), as it wrote it. */
+  key?: string;
+  /** The words it holds, shown or not, as the page draws them (the words of a hidden part inside it are left out). */
+  text: string;
+  /** The pictures it holds, as absolute addresses, loaded or not (src, a lazy-loading attribute, the first of a srcset). */
+  imgs: string[];
+  /** Where it links: the addresses of its links, in order, so two slides that say the same and go to different places are two. Absent on older captures. */
+  links?: string[];
+  /** Its parts in order, by what they are and not where they are, so a hidden slide has one: `I` picture, `H` heading, `B` link or button, `T` text. */
+  sig: string;
+};
+
+/** A previous or next button the browser found by its label, role or class near a track. */
+export type SliderControl = { dir: "prev" | "next" | ""; label: string; sel: string; box: Box };
+
+/** What the browser found of a script slider round its track. */
+export type CaptureSlider = {
+  /** How the slides move: `transform` (the track is moved by a transform), `flex` (a row that does not wrap, clipped by its box), `stack` (slides on top of each other, one showing). */
+  kind: "transform" | "flex" | "stack";
+  /** The box that clips the track: what a visitor sees of the slides. */
+  clip: Box;
+  /** How many children the track has, all of them, whether they were kept or not. */
+  tiles: number;
+  /** Tiles never read: past the most one track has read (200), or once the page's node budget was spent. Absent when all were read. */
+  unread?: number;
+  /** Library class names found on the track and the boxes round it: hints only, never what decides. */
+  hints: string[];
+  /** Previous and next buttons near the track. */
+  arrows: SliderControl[];
+  /** The pagination the page marks as such (a tablist, or a box named for dots), with as many buttons as it has. */
+  dots: { count: number; role: "tablist" | "named"; sel: string; box: Box } | null;
+};
+
+/** What watching a track for some seconds, with nobody touching the page, showed (D155, C2). */
+export type SliderWatch =
+  | { observed: false; /** How long it was watched, in milliseconds. */ watchedMs: number; why?: string }
+  | {
+      observed: true;
+      watchedMs: number;
+      /** The seconds on each slide, clamped to a carousel's 3 to 15. */
+      seconds: number;
+      moves: number;
+      /** `interval`: two or more moves, the gap between them; `once`: one move, so the period is at least this. */
+      basis: "interval" | "once";
+    };
+
 export type CaptureNode = {
   /** Where it is in the page: its element-child indexes from the body, `0/3/1`. The same page gives the same key at every width. */
   p: string;
@@ -53,12 +111,22 @@ export type CaptureNode = {
   /** An `a`'s address, made absolute. */
   href?: string;
   media?: NodeMedia;
-  /** A box that scrolls sideways inside itself (a carousel's track): its children may lie beyond the screen and are kept. */
+  /** A box that scrolls sideways inside itself, or a script slider's track (D155, C2): its children may lie beyond the screen and are kept. */
   scroll?: true;
+  /** A script slider's track: what the browser read round it. */
+  slider?: CaptureSlider;
+  /** A tile of a script slider, whether it shows or not. */
+  slide?: SlideMark;
+  /** What watching this track showed: whether it moved by itself. Only desktop captures of tracks that were watched have it. */
+  watch?: SliderWatch;
   /** A link or button that looks like a button. */
   button?: true;
   /** The addresses of its background pictures, made absolute. */
   bg?: string[];
+  /** What a box that scrolls sideways has round it: previous and next buttons and dots the browser found by label, role or class (script sliders have `slider`). */
+  controls?: Pick<CaptureSlider, "arrows" | "dots">;
+  /** Words the page draws with `::before` and `::after` (`content: "NEW "`): they are not in `runs`, so a copy lacks them, and the converter names them as left out. */
+  gen?: string[];
   children: CaptureNode[];
 };
 
@@ -150,6 +218,9 @@ export const CAPTURE_STYLES = [
   "filter",
   "listStyleType",
   "textShadow",
+  // What a native carousel snaps to (D155, C): read off the track and its tiles.
+  "scrollSnapType",
+  "scrollSnapAlign",
 ] as const;
 export type CaptureStyle = (typeof CAPTURE_STYLES)[number];
 
@@ -226,6 +297,18 @@ export function* walk(node: CaptureNode): Generator<CaptureNode> {
   yield node;
   for (const child of node.children) yield* walk(child);
 }
+
+/**
+ * Every node of a tree, leaving out the tiles a script slider holds that the page does not show first (copies made to loop, hidden slides and
+ * slides beyond the box) and what is in them: the page as it was before those were captured, for counting what a visitor sees.
+ */
+export function* walkLive(node: CaptureNode): Generator<CaptureNode> {
+  yield node;
+  for (const child of node.children) if (!isExtraTile(child)) yield* walkLive(child);
+}
+
+/** Whether a node is a slide the page does not show first: a copy for looping, a hidden one, or one beyond the clipping box. */
+export const isExtraTile = (n: CaptureNode): boolean => n.slide !== undefined && (n.slide.clone !== undefined || n.slide.hide !== undefined);
 
 /** A node by its path key. */
 export function indexByPath(root: CaptureNode): Map<string, CaptureNode> {

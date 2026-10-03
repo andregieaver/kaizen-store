@@ -1,4 +1,5 @@
 import type { ReplicaNote, ReplicaPass, ReplicaSummary } from "./replicate";
+import { gridLines, type GridReport } from "./replicate-grid";
 
 /**
  * What the replicator says when it is done (D150): what went well and what did not, in plain sentences, from the numbers
@@ -20,6 +21,8 @@ export type SummaryFacts = {
   vision: { used: boolean; why: string | null };
   page: { id: string; title: string } | null;
   analysis: { summary: string; hard: string[] } | null;
+  /** What the converter did with repeated cards (D155): grids built, groups kept as columns and why, grids reverted. */
+  grids?: GridReport;
 };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -49,6 +52,12 @@ export function buildSummary(f: SummaryFacts): ReplicaSummary {
   if (f.assets.videosOk > 0) well.push(`${plural(f.assets.videosOk, "video")} ${were(f.assets.videosOk)} copied.`);
   if (f.assets.fontsInstalled.length > 0) well.push(`${plural(f.assets.fontsInstalled.length, "font")} found in Google Fonts and installed: ${f.assets.fontsInstalled.join(", ")}.`);
   if (f.counts.rows > 0) well.push(`The page was built from ${plural(f.counts.rows, "row")} and ${plural(f.counts.blocks, "block")} (${plural(f.counts.headings, "heading")}, ${plural(f.counts.texts, "text block")}, ${plural(f.counts.pictures, "picture")}, ${plural(f.counts.buttons, "button")}, ${plural(f.counts.videos, "video")}), with every size, space and colour measured from the original.`);
+
+  if (f.grids) {
+    const lines = gridLines(f.grids);
+    well.push(...lines.well);
+    problems.push(...lines.problems);
+  }
 
   if (last) {
     const phone = last.mobile ? ` and ${last.mobile.match}% on phones` : "";

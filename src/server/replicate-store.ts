@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import type { Dropped, PartInfo } from "@/lib/replicate-build";
 import type { PageCapture } from "@/lib/replicate-capture";
 import { LOG_MAX, appendLog, finished, progressOf, type LogLevel, type ReplicaJob, type ReplicaLogEntry, type ReplicaNote, type ReplicaPass, type ReplicaPhase, type ReplicaPreviews, type ReplicaStatus, type ReplicaSummary } from "@/lib/replicate";
+import type { GridReport, GridStretch } from "@/lib/replicate-grid";
 import type { Analysis } from "@/lib/replicate-prompts";
 import type { FinalDiff } from "@/lib/replicate-report";
 import { frameTokenValid, signFrame } from "@/lib/replicate-token";
@@ -56,6 +57,20 @@ export type ReplicaWork = {
   notes?: ReplicaNote[];
   /** What the converter left out or simplified, with where it was in the original (for the report). */
   dropped?: Dropped[];
+  /** What the converter did with repeated cards: the grids built and the groups kept as columns (D155, for the summary and the report). */
+  grids?: GridReport;
+  /** Groups of cards built as a grid that were weak and, tried as columns, matched clearly better over the same stretch: columns now, never a grid again (D155). `match`: how the grid matched there, `columns`: how the columns did. */
+  reverted?: { path: string; match: number; pass: number; columns?: number }[];
+  /** Grids that were weak, tried as columns, and matched no better: the grid stays, and is not tried again; both figures are said in the report. */
+  tried?: { path: string; grid: number; columns: number; pass: number }[];
+  /** A trial of columns against weak grids that is running: the copy was rebuilt with those groups as columns, and the next measurement judges it (D155). */
+  trial?: GridTrial | null;
+  /** Groups whose trial is over, whichever way: never tried again. */
+  settled?: string[];
+  /** The next measurement is of a page rebuilt at the same pass (a trial's start or end): its score replaces the pass's, and no improving pass is spent on it. */
+  remeasure?: boolean;
+  /** How many trials of columns the job has started (at most two: each costs a measurement). */
+  trials?: number;
   /** How each row and part of the last copy compares with the original (for the report). */
   finalDiff?: FinalDiff;
   /** What the style came to, and what was cut from it to fit. */
@@ -66,6 +81,31 @@ export type ReplicaWork = {
   stoppedEarly?: boolean;
   /** The page's CSS as last saved, to see if a pass changed anything. */
   cssLength?: number;
+};
+
+/** What was built, as it stood, kept for a trial of columns so the grid can be put back exactly (rows and style as saved, and what the converter said of them). */
+export type GridSnapshot = {
+  rows: unknown;
+  css: string;
+  model: StyleModel;
+  parts: PartInfo[];
+  shared: string;
+  notes: ReplicaNote[];
+  counts: ReplicaSummary["counts"];
+  dropped: Dropped[];
+  grids: GridReport;
+  cssLength: number;
+  cssTrimmed: string | null;
+  reverted: NonNullable<ReplicaWork["reverted"]>;
+};
+
+/** Weak grids sent back to columns, to see whether the columns match better where the grids stood (D155: a grid may never make a copy worse than columns were). */
+export type GridTrial = {
+  /** The pass it was started in. */
+  pass: number;
+  /** Each group, and how the grid matched over its stretch of the original at each width measured. */
+  groups: { path: string; sel: string; y: number; grid: { desktop: number | null; phone: number | null }; stretch: GridStretch }[];
+  snapshot: GridSnapshot;
 };
 
 export type ReplicaRow = {

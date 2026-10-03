@@ -15,7 +15,8 @@ export function pictureAddresses(captures: (PageCapture | null)[]): { urls: stri
   for (const capture of captures) {
     if (!capture) continue;
     for (const node of walk(capture.root)) {
-      if (node.media?.kind === "img") seen.add(node.media.url);
+      // A picture too small to be seen (a tracking pixel, a spacer) is not worth a place in the library.
+      if (node.media?.kind === "img" && !(node.box[2] < 8 && node.box[3] < 8)) seen.add(node.media.url);
       if (node.media?.kind === "video" && node.media.poster) seen.add(node.media.poster);
       for (const url of node.bg ?? []) seen.add(url);
       for (const url of backgroundUrls(node.s.backgroundImage)) if (/^https?:/i.test(url)) seen.add(url);

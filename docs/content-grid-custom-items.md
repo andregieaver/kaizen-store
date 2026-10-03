@@ -216,8 +216,9 @@ a picture's `maxWidth` or `align` (D150 rules stand).
 ### 5. Caps and fallbacks
 
 Items are limited to `CUSTOM_ITEMS_MAX` (the rest are dropped and counted in the report). The grid is one block against `BLOCKS_MAX`. After a pass, if the
-diff score for the grid's rows is clearly worse than the columns would have been (the pass's `weakest` list names the grid under 60 %), the next iteration
-**rebuilds that group as columns** and records "grid reverted" with the evidence, so a grid can never make a copy worse than before. Pictures follow the assets plan
+diff score for the grid's rows is clearly worse than the columns would have been (the pass's `weakest` list names the grid under 60 %, at computers' or at phones' width), the
+group is **tried as columns** (rebuilt and measured over the same stretch, at the same pass, spending none of the owner's improving passes): columns stay only if they match clearly
+better, else the grid comes back exactly as it was; the report says both figures ("grid reverted" with the evidence, or "grid weak, columns no better"), so a grid can never make a copy worse than before. Pictures follow the assets plan
 (`replicate-assets-plan.ts`) into the media library as image blocks' do.
 
 ### 6. The report (D150 rule: written in code from facts, never flattering)
@@ -228,7 +229,8 @@ cards that failed mapping, autoplay observed or not, grids reverted. A new unmap
 ### Acceptance (C)
 
 Unit (fixtures are captured trees, no browser): a static 4-card grid; a 6-card native scroller with arrows; a Swiper-shaped track with clones; a Slick-shaped track with
-cloned and hidden slides; a fade slider (kept as columns with the reason); cards with a badge, a price, a date; cards with a second button (kept as columns);
+cloned and hidden slides; a fade slider (settled by the review, see "Decisions": built as a one-per-screen carousel when its slides are one kind of card, without the source's autoplay, and
+kept as columns with the reason when they are not); cards with a badge, a price, a date; cards with a second button (kept as columns);
 equal cards of different heights (refused); a footer's column set (refused); the style model for the grid is deterministic; items equal the cards' words
 exactly (a property test: no word in an item that is not in the capture). Integration: `replicate-oda`-style test that a page with two grids and one carousel builds
 three grid blocks and the block count drops against the columns' version. E2E: a local fixture page (handwritten markup and a small script that mimics a Swiper-like
@@ -251,6 +253,10 @@ sites reports item-count equality, field-mapping coverage and carousel detection
 | Copying current items into custom ones | included, prices dropped |
 | Testimonials | shares the new carousel settings, otherwise unchanged; a replica never makes a testimonials block (a quote grid is a custom grid) |
 | Hero sliders, tabs, accordions | not in this decision; a Slider block (slides are rows) is the follow-up |
+| A fade slider (slides on top of each other) | C4 and the acceptance disagreed (hidden slides are read and built; "kept as columns with the reason"). Settled after review: C4 stands, because reading the hidden slides is what keeps their words. One kind of card is a one-per-screen carousel, the effect replaced by scrolling and the report saying so; the source's autoplay is not carried over (a fade is not a scroll); slides of different kinds stay columns with the reason. Slides on top of each other count as a slider only when the page says so (a library's name, previous/next buttons, dots): tabs look the same by geometry |
+| A date in an item | A date field is drawn in the shopper's language from its day (`12.03.2024` becomes `12. mars 2024`), so its words are the capture's date words by the date they came to: the one exception to "every word of an item is a word of the capture". Only a text that is nothing but a date (a weekday's name allowed) becomes one; `Published 12 March 2024` and a date with a weekday in front stay words |
+| Autoplay of a track that never rests | A track that changes at nearly every sample (a ticker moved by script) is moving all the time, not resting on a slide: autoplay stays off and the report says why |
+| A grid that matches worse than columns | Under 60 % over its stretch it is tried as columns at the same pass (no improving pass spent), compared over that stretch, and kept as columns only if they match clearly better; otherwise the grid is put back exactly as it was. Both figures are in the report |
 
 ## How it is built
 

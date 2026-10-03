@@ -1,5 +1,5 @@
 import type { PartInfo } from "./replicate-build";
-import { cssColour, firstFamily, runsText, walk, type CaptureNode, type PageCapture } from "./replicate-capture";
+import { cssColour, firstFamily, runsText, walkLive, type CaptureNode, type PageCapture } from "./replicate-capture";
 import { jsonOf } from "./replicate-patches";
 import type { ReplicaScore } from "./replicate";
 import type { StyleModel } from "./replicate-styles";
@@ -15,7 +15,7 @@ export type ChatTextPart = { type: "text"; text: string };
 
 /** What the browser measured of the original, in a few lines for the model. */
 export function digestOf(capture: PageCapture): string {
-  const nodes = [...walk(capture.root)];
+  const nodes = [...walkLive(capture.root)];
   const colours = new Map<string, number>();
   for (const node of nodes) {
     const colour = cssColour(node.s.backgroundColor);
@@ -150,5 +150,5 @@ export function familiesOf(capture: PageCapture): string[] {
 
 /** The text nodes of a capture, in reading order, for counting and for the copy step's log. */
 export function textNodes(capture: PageCapture): CaptureNode[] {
-  return [...walk(capture.root)].filter((n) => n.runs !== undefined && runsText(n.runs) !== "");
+  return [...walkLive(capture.root)].filter((n) => n.runs !== undefined && runsText(n.runs) !== "");
 }
