@@ -1,4 +1,5 @@
 import type { FieldDef, FieldEntity, FieldGroup, ShownField, ShownGroup } from "./custom-fields";
+import { sourceTraits } from "./grid-source";
 import { TILE_FIELDS_MAX, type ContentGridBlock } from "./page-content";
 
 /**
@@ -35,9 +36,9 @@ export const isTileFieldType = (type: string): boolean => TILE_FIELD_TYPES.inclu
 /** The longest a line on a tile is. */
 export const TILE_TEXT_MAX = 120;
 
-/** The kind of thing a grid's tiles are, for the fields that can be on them. */
-export const tileEntity = (source: ContentGridBlock["source"]): Extract<FieldEntity, "product" | "page" | "article"> =>
-  source.type === "products" ? "product" : source.type === "articles" ? "article" : "page";
+/** The kind of thing a grid's tiles are, for the fields that can be on them; null for custom items (D155), which have no fields of their own. */
+export const tileEntity = (source: ContentGridBlock["source"]): Extract<FieldEntity, "product" | "page" | "article"> | null =>
+  sourceTraits(source).fieldEntity;
 
 /** The plain top-level fields of the groups that can be on the tiles' kind of thing, by group, for choosing. */
 export function tileFieldOptions(groups: readonly FieldGroup[]): { group: FieldGroup; fields: FieldDef[] }[] {

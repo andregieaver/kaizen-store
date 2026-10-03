@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { t } from "@/lib/i18n";
+import { sourceTraits } from "@/lib/grid-source";
 import { chosenFilters, parseListingParams } from "@/lib/listing-filters";
 import type { ContentGridBlock } from "@/lib/page-content";
 import { tileFieldIds } from "@/lib/tile-fields";
@@ -28,8 +29,9 @@ export async function ContentGridSection({ block, place }: { block: ContentGridB
   if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} />;
   const data = await gridData(block, place);
   const { listing } = place;
-  const notices = block.source.type === "products" && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
-  if (block.filters && block.source.type === "products" && place.owner && listing) {
+  const products = sourceTraits(block.source).products;
+  const notices = products && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
+  if (block.filters && products && place.owner && listing) {
     return (
       <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} />}>
         <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} />

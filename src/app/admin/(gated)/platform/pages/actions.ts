@@ -16,6 +16,7 @@ import { saveSiteCss } from "@/server/site-css";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { gridData } from "@/server/content-grid";
+import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import type { GridData } from "@/lib/content-grid";
 import { PAGE_TYPES, pageBlockSchema, type PageType, termContentOf } from "@/lib/page-content";
 import type { Term } from "@/lib/taxonomy";
@@ -160,6 +161,12 @@ export async function gridTermsAction(storeId: string): Promise<Term[]> {
   await requirePlatformAdmin();
   if (!isId(storeId)) return [];
   return listTerms({ storeId, contentType: "product" });
+}
+
+/** What a custom grid item's link can point at (D155): Kaizen's own pages, articles, categories and tags, by address. */
+export async function platformLinkTargetsAction(): Promise<ItemLinkTargets> {
+  await requirePlatformAdmin();
+  return itemLinkTargets(null);
 }
 
 /** Which of Kaizen's headers or footers its pages show (D80), or the standard one. */

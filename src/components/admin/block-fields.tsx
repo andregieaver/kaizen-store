@@ -1,5 +1,8 @@
 "use client";
 
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
@@ -7,6 +10,7 @@ import { ListIcon } from "@/components/list-icon";
 import { type FieldDef, type FieldEntity, type FieldGroup } from "@/lib/custom-fields";
 import { bindable, canBind } from "@/lib/field-binding";
 import { LOOP_SLOT_KEYS, isLoopable, slotChoices, suggestSlots, validSlots } from "@/lib/field-loop";
+import { AUTOPLAY_SECONDS, CAROUSEL_SNAPS, cleanCarousel, normalizeSeconds, resolveCarousel, type CarouselSettings, type CarouselSnap } from "@/lib/carousel-settings";
 import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
@@ -594,8 +598,9 @@ export function LinkFields({
 
 /**
  * A component's list of items (tabs, questions, testimonials …): each shown
- * folded under its name, opened to edit; added, removed and moved up or
- * down. Items keep their ids, which their texts' translations are kept by.
+ * folded under its name, opened to edit; added, removed, duplicated and
+ * moved by dragging its handle or with the arrows (the keyboard's way too).
+ * Items keep their ids, which their texts' translations are kept by.
  */
 export function ItemsEditor<T extends { id: string }>({
   label,
@@ -604,6 +609,7 @@ export function ItemsEditor<T extends { id: string }>({
   addLabel,
   nameOf,
   newItem,
+  duplicate,
   onChange,
   children,
 }: {
@@ -614,66 +620,96 @@ export function ItemsEditor<T extends { id: string }>({
   /** What an item is called in the list. */
   nameOf: (item: T, index: number) => string;
   newItem: () => T;
+  /** A copy of an item with an id of its own: gives each item a Duplicate button. */
+  duplicate?: (item: T) => T;
   onChange: (items: T[]) => void;
   /** An item's own fields. */
   children: (item: T, change: (patch: Partial<T>) => void) => ReactNode;
 }) {
   const [open, setOpen] = useState<string | null>(items[0]?.id ?? null);
   const change = (id: string, patch: Partial<T>) => onChange(items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
-  const move = (index: number, by: number) => {
-    const next = [...items];
-    const [item] = next.splice(index, 1);
-    next.splice(index + by, 0, item);
-    onChange(next);
+  const move = (index: number, by: number) => onChange(arrayMove(items, index, index + by));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const dropped = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = items.findIndex((item) => item.id === active.id);
+    const to = items.findIndex((item) => item.id === over.id);
+    if (from >= 0 && to >= 0) onChange(arrayMove(items, from, to));
   };
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-sm font-medium">{label}</legend>
       {items.length === 0 && <p className="text-sm text-muted">None yet.</p>}
-      <ol className="flex flex-col gap-2">
-        {items.map((item, index) => {
-          const name = nameOf(item, index);
-          const expanded = open === item.id;
-          return (
-            <li key={item.id} className="rounded-md border border-border">
-              <div className="flex items-center gap-1 p-1">
-                <button
-                  type="button"
-                  aria-expanded={expanded}
-                  onClick={() => setOpen(expanded ? null : item.id)}
-                  className="min-h-9 flex-1 truncate rounded px-2 text-left text-sm font-medium hover:bg-surface"
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={dropped}>
+        <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+          <ol className="flex flex-col gap-2">
+            {items.map((item, index) => {
+              const name = nameOf(item, index);
+              const expanded = open === item.id;
+              return (
+                <SortableItem
+                  key={item.id}
+                  id={item.id}
+                  name={name}
+                  body={expanded ? children(item, (patch) => change(item.id, patch)) : null}
                 >
-                  <span aria-hidden className="mr-2 inline-block w-3 text-muted">
-                    {expanded ? "▾" : "▸"}
-                  </span>
-                  {name}
-                </button>
-                <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${name} up`} className={smallButton}>
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(index, 1)}
-                  disabled={index === items.length - 1}
-                  aria-label={`Move ${name} down`}
-                  className={smallButton}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChange(items.filter((i) => i.id !== item.id))}
-                  aria-label={`Remove ${name}`}
-                  className={`${smallButton} text-red-700 dark:text-red-400`}
-                >
-                  Remove
-                </button>
-              </div>
-              {expanded && <div className="flex flex-col gap-4 border-t border-border p-3">{children(item, (patch) => change(item.id, patch))}</div>}
-            </li>
-          );
-        })}
-      </ol>
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    onClick={() => setOpen(expanded ? null : item.id)}
+                    className="min-h-9 flex-1 truncate rounded px-2 text-left text-sm font-medium hover:bg-surface"
+                  >
+                    <span aria-hidden className="mr-2 inline-block w-3 text-muted">
+                      {expanded ? "▾" : "▸"}
+                    </span>
+                    {name}
+                  </button>
+                  <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={`Move ${name} up`} className={smallButton}>
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(index, 1)}
+                    disabled={index === items.length - 1}
+                    aria-label={`Move ${name} down`}
+                    className={smallButton}
+                  >
+                    ↓
+                  </button>
+                  {duplicate && (
+                    <button
+                      type="button"
+                      disabled={items.length >= max}
+                      onClick={() => {
+                        const copy = duplicate(item);
+                        const next = [...items];
+                        next.splice(index + 1, 0, copy);
+                        onChange(next);
+                        setOpen(copy.id);
+                      }}
+                      aria-label={`Duplicate ${name}`}
+                      className={smallButton}
+                    >
+                      Duplicate
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onChange(items.filter((i) => i.id !== item.id))}
+                    aria-label={`Remove ${name}`}
+                    className={`${smallButton} text-red-700 dark:text-red-400`}
+                  >
+                    Remove
+                  </button>
+                </SortableItem>
+              );
+            })}
+          </ol>
+        </SortableContext>
+      </DndContext>
       <button
         type="button"
         disabled={items.length >= max}
@@ -688,6 +724,35 @@ export function ItemsEditor<T extends { id: string }>({
       </button>
       {items.length >= max && <p className="text-xs text-muted">At most {max}.</p>}
     </fieldset>
+  );
+}
+
+/**
+ * One item in the list: its row of buttons (the children), with a handle to drag it by, and its fields under them while
+ * it is open. The handle is a button too, so a keyboard moves it (Space to pick up, the arrows, Space to drop).
+ */
+function SortableItem({ id, name, body, children }: { id: string; name: string; body: ReactNode; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`rounded-md border border-border bg-background ${isDragging ? "relative z-10 shadow-lg" : ""}`}
+    >
+      <div className="flex items-center gap-1 p-1">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag ${name} to move it`}
+          className="min-h-9 cursor-grab touch-none rounded px-1.5 text-muted hover:bg-surface active:cursor-grabbing"
+        >
+          <span aria-hidden>⠿</span>
+        </button>
+        {children}
+      </div>
+      {body && <div className="flex flex-col gap-4 border-t border-border p-3">{body}</div>}
+    </li>
   );
 }
 
@@ -1166,6 +1231,87 @@ function TestimonialsFields({ block, onChange, context }: BlockEditorProps<Testi
   );
 }
 
+/**
+ * What a carousel does besides scrolling (D155, B): the same fields for a
+ * content grid and for testimonials shown as a carousel. Only what differs
+ * from the default is kept (`cleanCarousel`), so a carousel left alone stays
+ * a block without settings.
+ */
+export function CarouselFields({ value, onChange }: { value: CarouselSettings | undefined; onChange: (settings: CarouselSettings | undefined) => void }) {
+  const resolved = resolveCarousel(value);
+  const set = (patch: Partial<CarouselSettings>) => onChange(cleanCarousel({ ...resolved, ...patch, autoplay: "autoplay" in patch ? patch.autoplay : (resolved.autoplay ?? undefined) }));
+  const seconds = resolved.autoplay?.seconds;
+  const id = useId();
+  // What is typed in the seconds field until it is a number in range; it settles on leaving the field.
+  const [typed, setTyped] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col gap-4">
+      <Check label="Arrows" hint="Previous and next buttons under the tiles." checked={resolved.arrows} onChange={(arrows) => set({ arrows })} />
+      <Check label="Dots" hint="One dot for each page of tiles, each a button. Left out when everything fits on one page." checked={resolved.dots} onChange={(dots) => set({ dots })} />
+      <Choices<CarouselSnap>
+        legend="Where a tile rests"
+        options={(Object.keys(CAROUSEL_SNAPS) as CarouselSnap[]).map((snap) => ({ value: snap, label: CAROUSEL_SNAPS[snap] }))}
+        value={resolved.snap}
+        onChange={(snap) => set({ snap })}
+      />
+      <Check
+        label="Go back to the first tile"
+        hint="Past the last tile, the next arrow returns to the first. The tiles are not copied, so nothing is read twice."
+        checked={resolved.rewind}
+        onChange={(rewind) => set({ rewind })}
+      />
+      <Check
+        label="Move by itself"
+        hint="Automatic movement is unwelcome to many visitors, so leave it off unless the page needs it."
+        checked={seconds !== undefined}
+        onChange={(on) => {
+          setTyped(null);
+          set({ autoplay: on ? { seconds: AUTOPLAY_SECONDS.fallback } : undefined });
+        }}
+      />
+      {seconds !== undefined && (
+        <div className="flex flex-col gap-2 pl-7">
+          <div className="flex items-center gap-2 text-sm">
+            <label htmlFor={`${id}-seconds`} className="font-medium">
+              Seconds on each page
+            </label>
+            <input
+              id={`${id}-seconds`}
+              type="number"
+              inputMode="numeric"
+              min={AUTOPLAY_SECONDS.min}
+              max={AUTOPLAY_SECONDS.max}
+              value={typed ?? String(seconds)}
+              onChange={(event) => {
+                setTyped(event.target.value);
+                const n = Number(event.target.value);
+                if (event.target.value !== "" && Number.isInteger(n) && n >= AUTOPLAY_SECONDS.min && n <= AUTOPLAY_SECONDS.max) set({ autoplay: { seconds: n } });
+              }}
+              onBlur={() => {
+                if (typed !== null) set({ autoplay: { seconds: normalizeSeconds(typed === "" ? seconds : Number(typed)) } });
+                setTyped(null);
+              }}
+              className="min-h-10 w-20 rounded-md border border-border bg-background px-2 text-sm"
+            />
+            <span className="text-muted">
+              ({AUTOPLAY_SECONDS.min} to {AUTOPLAY_SECONDS.max})
+            </span>
+          </div>
+          <p className="text-xs text-muted">
+            It never moves for visitors who ask their device for less motion. It stops for good when a visitor scrolls, drags, clicks or tabs into it, waits while the
+            pointer is over it or the tab is hidden, and always has a Pause button.
+            {resolved.rewind ? "" : " Without going back to the first tile, it stops at the last."}
+          </p>
+        </div>
+      )}
+      <p className="text-xs text-muted">
+        A carousel scrolls its tiles sideways. Not included: slides laid out freely (a hero slider with text and buttons over a picture), vertical sliders, fade or
+        cube effects, thumbnails and video slides. With the arrows and dots both off, visitors scroll with touch, the wheel or the arrow keys.
+      </p>
+    </div>
+  );
+}
+
 /** How testimonials are laid out and look (D91). */
 function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<TestimonialsBlock>) {
   return (
@@ -1186,6 +1332,7 @@ function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<Testimoni
         value={String(block.columns ?? 3)}
         onChange={(value) => onChange({ columns: value === "3" ? undefined : (Number(value) as TestimonialsBlock["columns"]) })}
       />
+      {block.display === "carousel" && <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />}
       <Choices legend="Look" options={optionsOf(TESTIMONIAL_LOOKS)} value={block.look ?? "cards"} onChange={(look) => onChange({ look: look === "cards" ? undefined : look })} />
       <Check label="Show stars" checked={block.showRating !== false} onChange={(show) => onChange({ showRating: show ? undefined : false })} />
     </>

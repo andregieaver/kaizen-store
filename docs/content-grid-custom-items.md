@@ -47,7 +47,7 @@ export type CustomGridItem = {
   date: string | null;                          // YYYY-MM-DD, drawn like an article's date
   badge: string;                                // 40, e.g. "New", "-20 %": the owner's words, over the picture
   priceText: string;                            // 60, plain text, e.g. "From 199 kr": NOT a price (see rules)
-  details: { label: string; text: string }[];   // at most TILE_FIELDS_MAX (3), one line each, as custom-field tile lines
+  details: { id: string; label: string; text: string }[];   // at most TILE_FIELDS_MAX (3), one line each; each line's id (unique in the item) keys its translations
 };
 export type ContentGridBlock = PartBase & { /* … as today … */ source: GridSource; items?: CustomGridItem[] };
 ```
@@ -67,9 +67,14 @@ do not invent a second one.)
    `limit` if smaller). The editor hides those controls for this source; `pageInput` requires `categories` and `tags` empty.
    `filters` (D83) is refused: they filter products.
 3. **Items show once they have something to show**: a title, a picture or text; an empty item is skipped, not drawn as a gap.
-4. **Pictures** are the library's (same validation as the image block, same size limits); alt text is typed per item
-   (empty = decorative, said in the editor) and passes the claims filter when written by AI. Pictures go through `uploadToLibrary()` like every
-   upload.
+4. **Pictures** are the library's or the site's own, never another site's (`src/lib/custom-picture.ts`: an `https:` file in this project's
+   Storage public buckets, or a path on the site such as `/demo/mug.svg`; stricter than the image block, whose any-host rule would let every
+   visitor's browser fetch from a third party with no consent: a tracking pixel, and `http:` is mixed content). The schema refuses the rest, the
+   copy of a template leaves a foreign picture out, and **Copy current items** leaves one out and says so. Same size limits as the image block.
+   Alt text is typed per item (empty = decorative, said in the editor) and passes the claims filter when written by AI; **custom items are
+   exempt from the media library's alt-text fallback (D89)**, because empty means decorative here and the fallback would override that. A linked
+   item with no heading and no button to carry its link makes the picture the link (named by its alt text, else the title or the button's words).
+   Pictures go through `uploadToLibrary()` like every upload.
 5. **Words by AI** (the page studio, the replicator's describe step): every item text passes `findClaims()`; a replica's text is
    the source's own words as measured, never invented.
 6. **No cookie, no storage, no third-party script.**
@@ -87,13 +92,16 @@ item's, else the grid's, else "Read more" (`m.readMore`). The grid is drawn on t
 `ItemsEditor` (D91) for the list: add (up to `CUSTOM_ITEMS_MAX`), drag to order, duplicate, delete, collapse. Per item: picture
 (`ImageUploadButton` and the library), alt, title, text, link picker, button label, date, badge, price text, details. A button
 **Copy current items** on a pages, articles or products grid turns what it shows now into custom items (a snapshot, titles,
-excerpts, pictures and links by slug; a product's price becomes nothing, never text) so an owner can start from real content.
+excerpts, pictures and links by slug; a product's price becomes nothing, never text; products for one kind of buyer only, D63, are left out,
+as a custom item shows to everyone) so an owner can start from real content. Choosing another source keeps the items in the editor (choosing
+Custom items again brings them back) and saving drops them (`withoutStrandedItems()`).
 `BLOCK_EDITORS` gets the source choice and the item fields; `newBlock()` has no default items.
 
 ### Everywhere an item-based block is wired (testimonials is the model; every site below needs the new source)
 
 `PageBlock`/`pageInput` (zod, limits, refinements), `blockHasContent()`, `blockText()`, `mapBlockTexts()` (`page-translation.ts`:
-title 200, text 600, badge 40, priceText 60, buttonLabel 60, details label and text, picture alt 200, each keyed `${item.id}.…`),
+title 200, text 600, badge 40, priceText 60, buttonLabel 60, details label and text, picture alt 200, each keyed `${item.id}.…`, a detail line's
+`${item.id}.detail-${line.id}.label|text`, never by its place),
 the store translation worklist (`store-translate.ts`), `template-content.ts` (`mapTemplateMedia()` resolves every item picture; a link
 by slug needs no swapping), `mediaUses()` (`media-library.ts`: a picture used by a custom item is "used"), `copyRow()` and `copyBlock()`
 (fresh item ids, as testimonials), the page AI studio (`page-ai.ts`: `PATTERNS` may use a custom grid for feature cards and

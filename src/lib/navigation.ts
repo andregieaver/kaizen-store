@@ -87,7 +87,8 @@ function termSlug(kind: "category" | "tag") {
 
 const label = z.record(z.string(), z.string().trim().max(LABEL_MAX, `Keep menu texts under ${LABEL_MAX} characters.`));
 
-const link = z.discriminatedUnion("kind", [
+/** A store's menu link as the editor saves it; a custom grid item's link (D155) is the same shape. */
+export const menuLinkSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("home") }),
   z.object({ kind: z.literal("products") }),
   z.object({ kind: z.literal("account") }),
@@ -119,6 +120,7 @@ const link = z.discriminatedUnion("kind", [
   }),
 ]);
 
+const link = menuLinkSchema;
 const item = z.object({ label, link });
 
 /** Where an item sits: how deep under the items before it (0 at the top), and whether it opens in a new tab. */

@@ -192,6 +192,9 @@ import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { productLoopConfig, productLoopPatch } from "@/lib/field-loop";
 import { tileEntity } from "@/lib/tile-fields";
+import { copiedItems, customGridData, sourceChoice } from "@/lib/custom-grid";
+import { sourceTraits } from "@/lib/grid-source";
+import { CopyCurrentItems, CustomItemsEditor } from "./custom-items-editor";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
 import type { PartSharing, TemplateActions, TemplateItem, TemplateSource } from "@/lib/templates";
@@ -205,6 +208,7 @@ import {
   BindEntitiesContext,
   BindFields,
   ButtonLookFields,
+  CarouselFields,
   Check,
   Choices,
   ColorField,
@@ -2297,7 +2301,7 @@ function BlockItem({
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
         {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
         {block.type === "contentGrid" ? (
-          <GridPreview block={block} grid={actions.grid} />
+          <GridPreview block={block} grid={actions.grid} lang={actions.lang} />
         ) : block.type === "product" ? (
           <ProductStandIn block={block} />
         ) : block.type === "site" ? (
@@ -3004,6 +3008,7 @@ function Dialogs({
               <ContentGridFields
                 block={block}
                 grid={grid}
+                upload={upload}
                 onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
               />
             }
@@ -3420,6 +3425,10 @@ function TranslateDialogs({
           </div>
         );
       case "contentGrid":
+        // A grid of custom items (D155) has its items' words to translate: the generic list has them all, with the grid's own.
+        if (!sourceTraits(b.source).lookedUp) {
+          return <TranslateBlockTexts block={b} original={o ?? null} name={name} mainName={mainName} onChange={(next) => onRows((current) => updateBlock(current, b.id, () => next))} />;
+        }
         return (
           <div className="flex flex-col gap-5">
             <p className="text-sm text-muted">
@@ -4430,39 +4439,47 @@ function mergeOptional<T extends object>(current: T | undefined, patch: Partial<
  * A content grid on the canvas (D51): its items as the site will show them,
  * asked of the server again when what it shows changes (not its look).
  */
-function GridPreview({ block, grid }: { block: ContentGridBlock; grid: GridContext }) {
+function GridPreview({ block, grid, lang }: { block: ContentGridBlock; grid: GridContext; lang: string | undefined }) {
   const pageId = grid.pageId;
-  const key = JSON.stringify([block.source, block.categories, block.tags, block.sort, block.limit]);
+  const custom = !sourceTraits(block.source).lookedUp;
+  // A grid of custom items (D155) is its block's own items: drawn here as they are typed, with no trip to the server.
+  const key = JSON.stringify(custom ? [block.source, block.items, block.limit] : [block.source, block.categories, block.tags, block.sort, block.limit]);
   const [result, setResult] = useState<{ key: string; data: GridData | { problem: string } } | null>(null);
   const load = useEffectEvent((forKey: string) => {
+    if (custom) return;
     void grid.actions.gridPreview(block, pageId).then((data) => setResult({ key: forKey, data }));
   });
   useEffect(() => load(key), [key]);
+  const own = custom ? { key, data: customGridData(block, { base: grid.owner ? "" : null, lang: lang ?? "en", locale: lang ?? "en-GB" }) } : null;
 
   const note = (text: string) => <p className="rounded-md bg-surface p-3 text-sm text-muted">{text}</p>;
-  if (!result) return note("Content grid: finding what it shows …");
-  if ("problem" in result.data) return note(`Content grid: ${result.data.problem}`);
-  const stale = result.key !== key;
-  if (result.data.items.length === 0) {
+  const shown = own ?? result;
+  if (!shown) return note("Content grid: finding what it shows …");
+  const data = shown.data;
+  if ("problem" in data) return note(`Content grid: ${data.problem}`);
+  const stale = shown.key !== key;
+  if (data.items.length === 0) {
     return note(
-      block.emptyText
-        ? `Content grid: nothing matches yet, so the site shows “${block.emptyText}”.`
-        : "Content grid: nothing matches yet, so the site shows nothing here. Double-click to change what it shows.",
+      custom
+        ? "Content grid: no item has a title, picture or text yet, so the site shows nothing here. Double-click to add items."
+        : block.emptyText
+          ? `Content grid: nothing matches yet, so the site shows “${block.emptyText}”.`
+          : "Content grid: nothing matches yet, so the site shows nothing here. Double-click to change what it shows.",
     );
   }
-  const m = t(result.data.lang);
+  const m = t(data.lang);
   return (
     <div className={stale ? "opacity-60 transition-opacity" : undefined}>
       {/* The site's controls over a grid shoppers filter (D83), as they will look; they work on the site. */}
-      {block.filters && block.source.type === "products" && (
+      {block.filters && sourceTraits(block.source).products && (
         <div aria-hidden className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted">{m.listing.count(result.data.items.length)}</p>
+          <p className="text-sm text-muted">{m.listing.count(data.items.length)}</p>
           <span className="inline-flex min-h-11 items-center gap-2 rounded-button border border-border px-4 text-sm font-medium">
             {m.listing.open}
           </span>
         </div>
       )}
-      <ContentGridView block={block} data={result.data} />
+      <ContentGridView block={block} data={data} />
     </div>
   );
 }
@@ -4542,10 +4559,13 @@ const gridField = "min-h-10 rounded-md border border-border bg-background px-3 t
 function ContentGridFields({
   block,
   grid,
+  upload,
   onChange,
 }: {
   block: ContentGridBlock;
   grid: GridContext;
+  /** Uploads a custom item's picture into the media library (D155); null where uploads are not set up. */
+  upload: Upload | null;
   onChange: (patch: BlockPatch<ContentGridBlock>) => void;
 }) {
   const id = useId();
@@ -4560,6 +4580,8 @@ function ContentGridFields({
   useEffect(() => {
     if (storeId) loadTerms(storeId);
   }, [storeId]);
+  const traits = sourceTraits(source);
+  const custom = !traits.lookedUp;
   const terms =
     source.type === "pages"
       ? grid.pageTerms
@@ -4569,7 +4591,7 @@ function ContentGridFields({
           ? storeTerms.terms
           : [];
   const store = source.type === "products" ? grid.stores.find((s) => s.id === source.storeId) : undefined;
-  const products = source.type === "products";
+  const products = traits.products;
   const recommend = source.type === "products" ? source.recommend : undefined;
   const sorts = (Object.keys(GRID_SORTS) as GridSort[]).filter((sort) => products || !PRICE_SORTS.includes(sort));
   const productsOf = (s: GridStore | undefined): GridSource => ({
@@ -4584,14 +4606,24 @@ function ContentGridFields({
         legend="Show"
         options={(Object.keys(GRID_CONTENT) as GridContent[]).map((type) => ({ value: type, label: GRID_CONTENT[type] }))}
         value={source.type}
-        onChange={(type) =>
-          onChange(
-            type === "pages" || type === "articles"
-              ? { source: { type }, categories: [], tags: [], sort: PRICE_SORTS.includes(block.sort) ? "newest" : block.sort }
-              : { source: own ? { type: "products" } : productsOf(grid.stores[0]), categories: [], tags: [] },
-          )
-        }
+        onChange={(type) => onChange(sourceChoice(block, type, own ? { type: "products" } : productsOf(grid.stores[0])))}
       />
+      {custom && (
+        <CustomItemsEditor
+          items={block.items ?? []}
+          onChange={(items) => onChange({ items })}
+          upload={upload}
+          linkTargets={grid.actions.linkTargets}
+        />
+      )}
+      {!custom && (
+        <CopyCurrentItems
+          block={block}
+          platform={!own}
+          load={() => grid.actions.gridPreview(block, grid.pageId)}
+          onCopied={(items) => onChange(copiedItems(items))}
+        />
+      )}
       {products && own && (
         <p className="text-sm text-muted">
           The store&apos;s own products, priced in the market of the shopper viewing the page, in its language.
@@ -4640,6 +4672,7 @@ function ContentGridFields({
             </div>
           </div>
         ))}
+      {traits.terms && (
       <div className="flex flex-col gap-2 border-t border-border pt-4">
         <p className="text-sm font-medium">Only these</p>
         <p className="text-xs text-muted">
@@ -4648,6 +4681,8 @@ function ContentGridFields({
         </p>
         <TermChecks terms={terms} value={{ categories: block.categories, tags: block.tags }} onChange={(ids) => onChange(ids)} />
       </div>
+      )}
+      {!custom && (
       <div className="flex flex-wrap items-end gap-4 border-t border-border pt-4">
         {!recommend && (
         <div className="flex flex-col gap-1">
@@ -4676,6 +4711,7 @@ function ContentGridFields({
           onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
         />
       </div>
+      )}
       {products && own && source.type === "products" && (
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <Check
@@ -4742,9 +4778,10 @@ function ContentGridFields({
         {block.display === "carousel" && (
           <>
             <p className="text-xs text-muted">
-              The tiles in one row that scrolls sideways, with arrows; as many to a screen as the columns below. Nothing moves by itself.
+              The tiles in one row that scrolls sideways; as many to a screen as the columns below. Nothing moves by itself unless you turn that on.
             </p>
             <Check label="Show part of the next tile" checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
+            <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />
           </>
         )}
         <ColumnsFields value={block.columns} onChange={(columns) => onChange({ columns })} />
@@ -4753,7 +4790,7 @@ function ContentGridFields({
         <legend className="float-left mb-2 w-full text-sm font-medium">In each tile</legend>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {(Object.keys(GRID_ELEMENTS) as GridElement[])
-            .filter((element) => element !== "price" || products)
+            .filter((element) => element !== "price" || products || custom)
             .map((element) => (
               <label key={element} className="flex min-h-8 items-center gap-2 text-sm">
                 <input
@@ -4762,16 +4799,18 @@ function ContentGridFields({
                   onChange={(event) => onChange({ show: { ...block.show, [element]: event.target.checked } })}
                   className="size-4"
                 />
-                {GRID_ELEMENTS[element]}
+                {custom && element === "price" ? "Price text" : GRID_ELEMENTS[element]}
               </label>
             ))}
         </div>
       </fieldset>
-      <TileFieldsPicker
-        entity={tileEntity(block.source)}
-        value={block.tileFields ?? []}
-        onChange={(tileFields) => onChange({ tileFields })}
-      />
+      {tileEntity(block.source) && (
+        <TileFieldsPicker
+          entity={tileEntity(block.source)!}
+          value={block.tileFields ?? []}
+          onChange={(tileFields) => onChange({ tileFields })}
+        />
+      )}
       {block.show.button && (
         <div className="flex flex-col gap-1">
           <label htmlFor={`${id}-button`} className="text-sm font-medium">
@@ -4782,6 +4821,7 @@ function ContentGridFields({
             value={block.buttonLabel}
             maxLength={BUTTON_LABEL_MAX}
             placeholder={products ? "View product (in the market's language)" : "Read more"}
+            // Custom items can also have a button text each (D155): this one is for those that do not.
             onChange={(event) => onChange({ buttonLabel: event.target.value })}
             className={gridField}
           />
@@ -4816,14 +4856,14 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
         hint="cropped alike, so tiles line up"
         options={[
           // Products can follow the store theme's product cards (D60), their default.
-          ...(block.source.type === "products" ? [{ value: "theme" as const, label: "Theme's product cards" }] : []),
+          ...(sourceTraits(block.source).products ? [{ value: "theme" as const, label: "Theme's product cards" }] : []),
           ...(["original", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])] as const).map((shape) => ({
             value: shape,
             label: shape === "original" ? "Original" : IMAGE_SHAPES[shape],
             picture: <span aria-hidden className={`inline-block border-2 border-current ${SHAPE_PICTURES[shape]}`} />,
           })),
         ]}
-        value={gridImageShape(block) === "theme" && block.source.type !== "products" ? "landscape" : gridImageShape(block)}
+        value={gridImageShape(block) === "theme" && !sourceTraits(block.source).products ? "landscape" : gridImageShape(block)}
         onChange={(shape) => onChange({ imageShape: shape === gridImageShape({ source: block.source }) ? undefined : shape })}
       />
       <Choices

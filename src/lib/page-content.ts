@@ -14,6 +14,11 @@ import {
   type PartMotion,
 } from "./motion";
 import { fontFamily } from "./fonts";
+import { carouselSettingsSchema, type CarouselSettings } from "./carousel-settings";
+import { customPictureProblem } from "./custom-picture";
+import { isSafeAddress } from "./field-parts";
+import { sourceTraits } from "./grid-source";
+import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
@@ -520,7 +525,7 @@ export type ButtonBlock = PartBase & BlockFont & Bindable & {
 };
 
 /** What a content grid shows (D51): its kinds of content; articles come with the articles themselves. */
-export const GRID_CONTENT = { pages: "Pages", articles: "Articles", products: "Products" } as const;
+export const GRID_CONTENT = { pages: "Pages", articles: "Articles", products: "Products", custom: "Custom items" } as const;
 export type GridContent = keyof typeof GRID_CONTENT;
 /**
  * Where a grid's items come from: the pages of the page's owner, or
@@ -530,6 +535,8 @@ export type GridContent = keyof typeof GRID_CONTENT;
 export type GridSource =
   | { type: "pages" }
   | { type: "articles" }
+  /** Items the owner writes by hand (D155): they live in the block (`ContentGridBlock.items`), as testimonials' do. */
+  | { type: "custom" }
   | { type: "products"; storeId?: string; market?: string; /** Products picked for each shopper by the store's recommendations (D139), on a store's own pages. */ recommend?: GridRecommend };
 
 /**
@@ -562,6 +569,51 @@ export const GRID_ELEMENTS = { image: "Picture", heading: "Heading", excerpt: "E
 export type GridElement = keyof typeof GRID_ELEMENTS;
 /** A tile's own box: background, padding, border, corners and shadow. */
 export type GridTile = { background?: Color; padding?: number; border?: Border; radius?: number; shadow?: Shadow };
+
+/** Custom grid items (D155): the most one grid holds, beyond `ITEMS_MAX` because a copied grid can be large; still one block. */
+export const CUSTOM_ITEMS_MAX = 60;
+export const CUSTOM_TITLE_MAX = 200;
+export const CUSTOM_TEXT_MAX = 600;
+export const CUSTOM_ALT_MAX = 200;
+export const CUSTOM_BUTTON_MAX = 60;
+export const CUSTOM_BADGE_MAX = 40;
+export const CUSTOM_PRICE_TEXT_MAX = 60;
+export const CUSTOM_DETAIL_LABEL_MAX = 60;
+export const CUSTOM_DETAIL_TEXT_MAX = 120;
+
+/** Where a custom item goes: the menu link shape (D52, D85), by slug, resolved where it is shown so a copy never carries another store's ids. */
+export type ItemLink = MenuLink;
+
+/**
+ * One item of a grid of custom items (D155): the fields a tile of a page, an article or a product shows, in the owner's own
+ * words. `priceText` is plain text, never a price: no VAT label, no cart, nothing a shopper pays.
+ */
+export type CustomGridItem = {
+  /** Keeps the item's texts' translations. */
+  id: string;
+  title: string;
+  /** Plain text, clamped by the grid's `excerptLines`. */
+  text: string;
+  picture: { url: string; width: number; height: number; alt: string } | null;
+  link: ItemLink | null;
+  /** Empty uses the grid's, then "Read more". */
+  buttonLabel: string;
+  /** YYYY-MM-DD, drawn like an article's date. */
+  date: string | null;
+  /** The owner's words over the picture ("New", "-20 %"). */
+  badge: string;
+  /** Plain text in a price's place ("From 199 kr"): not a live price. */
+  priceText: string;
+  /**
+   * At most `TILE_FIELDS_MAX` lines, one each, as custom fields' tile lines. Each has an id of its own (unique in the item),
+   * which its translations are kept by, so taking a line out or moving one never puts a translation on another line.
+   */
+  details: { id: string; label: string; text: string }[];
+};
+
+/** An item shows once it has something to show: a title, a picture or text. */
+export const customItemShows = (item: CustomGridItem): boolean =>
+  item.title.trim() !== "" || item.text.trim() !== "" || item.picture !== null;
 
 /**
  * A content grid (D51): items of one kind, chosen by categories and tags
@@ -618,6 +670,10 @@ export type ContentGridBlock = PartBase & {
   display?: "carousel";
   /** A carousel shows part of the next tile, so it is seen to scroll. */
   peek?: boolean;
+  /** What a carousel does besides scrolling (D155, B): arrows, dots, where a tile rests, going round, autoplay. The default is arrows only. */
+  carousel?: CarouselSettings;
+  /** The items of a grid of custom items (D155; `source.type` "custom"), in the owner's order; never with another source. */
+  items?: CustomGridItem[];
 };
 
 /**
@@ -1092,6 +1148,8 @@ export type TestimonialsBlock = PartBase & {
   showRating?: boolean;
   /** Side by side in a row that scrolls sideways (`Carousel`), the columns as many to a screen. */
   display?: "carousel";
+  /** What the carousel does besides scrolling (D155, B), as a content grid's. */
+  carousel?: CarouselSettings;
   font?: string;
 };
 
@@ -1381,8 +1439,8 @@ export function blockOwnContent(block: PageBlock): boolean {
     case "button":
       return block.label.trim() !== "" && block.href.trim() !== "";
     case "contentGrid":
-      // Its items are looked up when it is shown; with none, it says so (or nothing).
-      return true;
+      // Its items are looked up when it is shown; with none, it says so (or nothing). Custom items (D155) are the block's own words.
+      return block.source.type !== "custom" || (block.items ?? []).some(customItemShows);
     case "product":
       // The product decides what shows: a part it has nothing for draws nothing.
       return true;
@@ -1588,7 +1646,7 @@ export function repeatedHtmlId(rows: PageRow[]): string | null {
 
 /** How a grid's pictures are cropped: its own choice, else the theme's cards for products (D60) and landscape for the rest. */
 export const gridImageShape = (block: Pick<ContentGridBlock, "imageShape" | "source">) =>
-  block.imageShape ?? (block.source.type === "products" ? "theme" : "landscape");
+  block.imageShape ?? (sourceTraits(block.source).products ? "theme" : "landscape");
 
 /** The Google Fonts families a block uses (D59). */
 export function blockFonts(block: PageBlock): string[] {
@@ -1916,7 +1974,58 @@ const buttonBlock = z.object({
 
 const count = (max: number) => z.number().int().min(1).max(max);
 
-const contentGridBlock = z.object({
+/** A custom item's text: trimmed, at most `max` characters. */
+const customText = (what: string, max: number) => z.string().trim().max(max, `Keep ${what} under ${max} characters.`).default("");
+
+/** A custom grid item (D155): checked here and again where it is drawn. A link is the menu link's shape; a web address passes `isSafeAddress()`. */
+export const customGridItemSchema = z.object({
+  id: itemId,
+  title: customText("an item's title", CUSTOM_TITLE_MAX),
+  text: customText("an item's text", CUSTOM_TEXT_MAX),
+  picture: z
+    .object({
+      // The library's or the site's own (`custom-picture.ts`): another site's would be fetched by every visitor's browser, with no consent.
+      url: z
+        .string()
+        .max(1000, "An item's picture has an invalid address.")
+        .superRefine((url, ctx) => {
+          const problem = customPictureProblem(url);
+          if (problem) ctx.addIssue({ code: "custom", message: problem });
+        }),
+      width: z.number().int().min(1).max(10_000),
+      height: z.number().int().min(1).max(10_000),
+      alt: z.string().trim().max(CUSTOM_ALT_MAX, `Keep a picture's description under ${CUSTOM_ALT_MAX} characters.`),
+    })
+    .nullable()
+    .default(null),
+  link: menuLinkSchema
+    .refine((link) => link.kind !== "url" || isSafeAddress(link.url), "An item's link has an unsafe address.")
+    .nullable()
+    .default(null),
+  buttonLabel: customText("an item's button text", CUSTOM_BUTTON_MAX),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "An item's date is written year-month-day.")
+    .refine((day) => !Number.isNaN(Date.parse(`${day}T00:00:00Z`)) && new Date(`${day}T00:00:00Z`).toISOString().startsWith(day), "An item's date is not a real day.")
+    .nullable()
+    .default(null),
+  badge: customText("an item's badge", CUSTOM_BADGE_MAX),
+  priceText: customText("an item's price text", CUSTOM_PRICE_TEXT_MAX),
+  details: z
+    .array(
+      z.object({
+        id: itemId,
+        label: customText("a detail's label", CUSTOM_DETAIL_LABEL_MAX),
+        text: customText("a detail's text", CUSTOM_DETAIL_TEXT_MAX),
+      }),
+    )
+    .max(TILE_FIELDS_MAX, `An item shows at most ${TILE_FIELDS_MAX} detail lines.`)
+    .refine((lines) => new Set(lines.map((line) => line.id)).size === lines.length, "Two detail lines have the same id. Reload the page and try again.")
+    .default([]),
+});
+
+const contentGridBlock = z
+  .object({
   id: itemId,
   type: z.literal("contentGrid"),
   source: z.discriminatedUnion(
@@ -1924,6 +2033,7 @@ const contentGridBlock = z.object({
     [
       z.object({ type: z.literal("pages") }),
       z.object({ type: z.literal("articles") }),
+      z.object({ type: z.literal("custom") }),
       z.object({
         type: z.literal("products"),
         storeId: z.uuid("Choose the store whose products the grid shows.").optional(),
@@ -1940,7 +2050,8 @@ const contentGridBlock = z.object({
   ),
   ...termIdsSchema.shape,
   sort: z.enum(Object.keys(GRID_SORTS) as [GridSort, ...GridSort[]]).default("newest"),
-  limit: z.number().int().min(1, "A grid shows at least one item.").max(GRID_LIMIT_MAX, `A grid shows at most ${GRID_LIMIT_MAX} items.`),
+  // A grid of custom items may show as many as it can hold; one that looks its items up, `GRID_LIMIT_MAX` (checked below).
+  limit: z.number().int().min(1, "A grid shows at least one item.").max(CUSTOM_ITEMS_MAX, `A grid shows at most ${GRID_LIMIT_MAX} items.`),
   columns: z.object({
     mobile: count(GRID_COLUMNS_MAX.mobile),
     tablet: count(GRID_COLUMNS_MAX.tablet),
@@ -1958,6 +2069,7 @@ const contentGridBlock = z.object({
   filters: z.boolean().optional(),
   display: z.literal("carousel", "A content grid is shown in an unknown way.").optional(),
   peek: z.boolean().optional(),
+  carousel: carouselSettingsSchema.optional(),
   imageShape: z.enum(["original", "theme", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
   headingLevel: z.literal([2, 3, 4, 5, 6], "A tile's heading has an unknown level."),
   headingSize: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
@@ -1987,8 +2099,25 @@ const contentGridBlock = z.object({
   gap: z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space between tiles at ${GRID_GAP_MAX} pixels or less.`),
   font: blockFont,
   headingFont: blockFont,
+  items: z
+    .array(customGridItemSchema)
+    .max(CUSTOM_ITEMS_MAX, `A grid holds at most ${CUSTOM_ITEMS_MAX} custom items.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again.")
+    .optional(),
   ...partBase,
-});
+  })
+  .superRefine((block, ctx) => {
+    const issue = (message: string, path: (string | number)[]) => ctx.addIssue({ code: "custom", message, path });
+    if (block.source.type === "custom") {
+      // The owner's order and all of it: nothing to choose or sort (D155), and filters are for products.
+      if (block.categories.length > 0 || block.tags.length > 0) issue("A grid of custom items has no categories or tags.", ["categories"]);
+      if (block.filters) issue("Filters are for grids of products.", ["filters"]);
+      if (block.tileFields && block.tileFields.length > 0) issue("A grid of custom items has no custom fields on its tiles.", ["tileFields"]);
+    } else {
+      if (block.items && block.items.length > 0) issue("Custom items belong to a grid of custom items.", ["items"]);
+      if (block.limit > GRID_LIMIT_MAX) issue(`A grid shows at most ${GRID_LIMIT_MAX} items.`, ["limit"]);
+    }
+  });
 
 const fieldDisplay = z.enum(Object.keys(FIELD_DISPLAYS) as [FieldDisplay, ...FieldDisplay[]]);
 
@@ -2275,6 +2404,7 @@ const testimonialsBlock = z.object({
   look: z.enum(Object.keys(TESTIMONIAL_LOOKS) as [TestimonialLook, ...TestimonialLook[]]).optional(),
   showRating: z.boolean().optional(),
   display: z.literal("carousel", "Testimonials are shown in an unknown way.").optional(),
+  carousel: carouselSettingsSchema.optional(),
   font: blockFont,
   ...partBase,
 });
@@ -2437,9 +2567,25 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   newsletterBlock,
 ]);
 
+/**
+ * A grid that no longer shows custom items (the owner chose Pages, Articles or Products after writing some) keeps them in the
+ * editor while the page is open, so choosing Custom items again brings them back; saving drops them, as nothing shows them
+ * and the schema refuses items on any other source.
+ */
+export function withoutStrandedItems(block: unknown): unknown {
+  if (typeof block !== "object" || block === null) return block;
+  const grid = block as { type?: unknown; source?: { type?: unknown }; items?: unknown };
+  if (grid.type !== "contentGrid" || grid.items === undefined || grid.source?.type === "custom") return block;
+  const { items, ...rest } = grid;
+  void items;
+  return rest;
+}
+
+const dropStrandedItems = (blocks: unknown): unknown => (Array.isArray(blocks) ? blocks.map(withoutStrandedItems) : blocks);
+
 export const pageColumnSchema = z.object({
   id: itemId,
-  blocks: z.array(pageBlockSchema),
+  blocks: z.preprocess(dropStrandedItems, z.array(pageBlockSchema)),
   background,
   backgroundMotion: backgroundMotionSchema,
   backdropBlur,

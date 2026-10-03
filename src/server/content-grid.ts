@@ -5,6 +5,8 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
 import { EMPTY_GRID, type GridData, type GridItem } from "@/lib/content-grid";
+import { customGridData } from "@/lib/custom-grid";
+import { assertNever, sourceTraits } from "@/lib/grid-source";
 import { tileFieldIds } from "@/lib/tile-fields";
 import { pageExcerpt, parsePageContent, type ContentGridBlock, type PageType, termContentOf } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
@@ -18,7 +20,7 @@ import { listGridProducts, type GridProduct } from "./catalog";
 import { fieldsTag } from "./custom-fields";
 import { shownFieldsForItems } from "./field-tiles";
 import { pagesTag } from "./pages";
-import { getOpenStore } from "./stores";
+import { getOpenStore, storeTag } from "./stores";
 import { currentTerms, termsTag } from "./taxonomy";
 
 /**
@@ -63,15 +65,55 @@ export type ListingPlace = { query: Promise<Record<string, string | string[] | u
 
 /** A grid's items where it is shown. */
 export async function gridData(block: ContentGridBlock, place: GridPlace): Promise<GridData> {
+  const source = block.source;
+  // The owner's own items (D155) are answered from the block itself, in the order written: no query, no catalogue cache.
+  if (!sourceTraits(source).lookedUp) return gridCustom(block, place);
   const filter = { categories: block.categories, tags: block.tags, sort: block.sort, limit: block.limit, tileFields: tileFieldIds(block) };
-  if (block.source.type === "pages") return gridPages(place.owner, place.market ?? null, filter, place.pageId);
-  // The owner's blog articles (D57), newest first unless chosen.
-  if (block.source.type === "articles") return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article");
-  // On a store's page, its own products in the shopper's market (D53); on Kaizen's, the store and market chosen.
-  const storeId = place.owner ?? block.source.storeId;
-  const market = place.owner ? (place.market ?? block.source.market) : block.source.market;
-  if (!storeId) return { ...EMPTY_GRID };
-  return gridProducts(storeId, market ?? null, filter);
+  // Every source is answered here, so a new one is a compile error until it is.
+  switch (source.type) {
+    case "pages":
+      return gridPages(place.owner, place.market ?? null, filter, place.pageId);
+    case "articles":
+      // The owner's blog articles (D57), newest first unless chosen.
+      return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article");
+    case "products": {
+      // On a store's page, its own products in the shopper's market (D53); on Kaizen's, the store and market chosen.
+      const storeId = place.owner ?? source.storeId;
+      const market = place.owner ? (place.market ?? source.market) : source.market;
+      if (!storeId) return { ...EMPTY_GRID };
+      return gridProducts(storeId, market ?? null, filter);
+    }
+    case "custom":
+      return gridCustom(block, place);
+    default:
+      return assertNever(source);
+  }
+}
+
+/**
+ * What a grid of custom items needs to know about where it is shown (D155): the market's front page to link from and
+ * its language, kept with the store (the block's items are not cached: they are the page's own words). On Kaizen's
+ * pages (no owner) there is no market: English, and links from the site's root.
+ */
+async function customWhere(owner: string | null, marketCode: string | null): Promise<{ base: string | null; lang: string; locale: string } | null> {
+  "use cache";
+  cacheLife("hours");
+  if (!owner) return { base: null, lang: "en", locale: "en-GB" };
+  const [row] = await readDb().execute<Row>(sql`select slug from commerce.stores where id = ${owner}::uuid`);
+  if (!row) return null;
+  const slug = String(row.slug);
+  // Tagged before anything can come out empty: a store that is not open yet, or has no such market, must be asked again when it changes.
+  cacheTag(storeTag(slug));
+  const store = await getOpenStore(slug);
+  const market = store && marketIn(store, marketCode);
+  if (!store || !market) return null;
+  return { base: marketPath(store.slug, market.slug), lang: market.lang, locale: market.locale };
+}
+
+/** A grid of custom items (D155): the block's own items, with their links made in the shopper's market. */
+async function gridCustom(block: ContentGridBlock, place: GridPlace): Promise<GridData> {
+  const where = await customWhere(place.owner, place.market ?? null);
+  return where ? customGridData(block, where) : { ...EMPTY_GRID };
 }
 
 /** An open store by id, and one of its markets (by code or by the address of a view, else its first). */

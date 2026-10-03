@@ -1,3 +1,4 @@
+import { isCustomPicture } from "./custom-picture";
 import { cssProblem } from "./custom-css";
 import { withoutRecipients } from "./forms";
 import { withoutUses } from "./global-parts";
@@ -210,6 +211,16 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
         source: ownProducts(block.source),
         categories: [],
         tags: [],
+        // A custom item's link is by slug (a page, a product, a category) and needs no swapping; a web address or a path goes
+        // through the same check as any link, and a link that has to go leaves the item without one (D155).
+        ...(block.items && {
+          items: block.items.map((item) => ({
+            ...item,
+            link: item.link?.kind === "url" ? (href(item.link.url) === "" ? null : { kind: "url" as const, url: href(item.link.url) }) : item.link,
+            // A picture on another site (never one the library or this site holds) does not come along: the page would not be saved with it.
+            picture: item.picture && isCustomPicture(item.picture.url) ? item.picture : null,
+          })),
+        }),
       };
     case "menu":
       return without(block, ["menuId"]) as PageBlock;
@@ -301,7 +312,7 @@ function editBackground<T extends Background | undefined>(background: T, resolve
 }
 
 /**
- * A part with each picture and video address (block pictures, video blocks and their stills, testimonials' pictures,
+ * A part with each picture and video address (block pictures, video blocks and their stills, testimonials' and custom grid items' pictures,
  * row and column backgrounds) through `resolve`. What resolves to null is left out: a picture becomes none, a
  * background goes. The order the addresses are asked in is the order they are read, and one asked twice is asked twice.
  */
@@ -315,6 +326,9 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
           video: block.video ? resolved(block.video, resolve) : null,
           poster: block.poster ? resolved(block.poster, resolve) : null,
         };
+      }
+      if (block.type === "contentGrid" && block.items) {
+        return { ...block, items: block.items.map((item) => ({ ...item, picture: item.picture ? resolved(item.picture, resolve) : null })) };
       }
       if (block.type === "testimonials") {
         return {

@@ -251,7 +251,12 @@ function keepHtmlId<T extends PartBase>(part: T, taken: Set<string>): T {
  * global's own.
  */
 export const copyBlock = (block: PageBlock, id: NewId, taken = new Set<string>()): PageBlock =>
-  block.global ? copyWithUses("block", structuredClone(block), id) : keepHtmlId({ ...structuredClone(block), id: id() }, taken);
+  block.global ? copyWithUses("block", structuredClone(block), id) : keepHtmlId(withFreshItems({ ...structuredClone(block), id: id() }, id), taken);
+
+/** A copy of a grid of custom items (D155) gives each item an id of its own, which keeps that item's texts' translations apart from the original's. */
+function withFreshItems<T extends PageBlock>(block: T, id: NewId): T {
+  return block.type === "contentGrid" && block.items ? { ...block, items: block.items.map((item) => ({ ...item, id: id() })) } : block;
+}
 export const copyColumn = (column: PageColumn, id: NewId, taken = new Set<string>()): PageColumn =>
   column.global
     ? copyWithUses("column", structuredClone(column), id)

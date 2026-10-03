@@ -67,6 +67,16 @@ export function formsWithin(kind: PartKind, node: PartNode): { id: string; label
 /** What to call a form in a list: "Newsletter sign-up “Join”" or "Email form “Send”". */
 export const formLabel = (b: { type: string; submitLabel?: string }): string => `${b.type === "newsletter" ? "Newsletter sign-up" : "Email form"}${b.submitLabel?.trim() ? ` “${clip(b.submitLabel.trim(), 24)}”` : ""}`;
 
+/** A block's words for naming it in a test: its text, and for a grid of custom items (D155; not the page's words elsewhere) its first titles. */
+const partWords = (block: PageBlock): string =>
+  block.type === "contentGrid" && block.source.type === "custom"
+    ? (block.items ?? [])
+        .map((item) => item.title.trim())
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(", ")
+    : blockText(block);
+
 const clip = (text: string, max = 40) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 
 export type PartInfo = {
@@ -94,7 +104,7 @@ export function describePart(content: Pick<PageContent, "rows">, target: PartTar
     const columnIndex = content.rows[rowIndex].columns.findIndex((c) => c.id === target.id);
     label = `Column ${columnIndex + 1} of row ${rowIndex + 1}`;
   } else {
-    const text = blockText(found.node as PageBlock).replace(/\s+/g, " ").trim();
+    const text = partWords(found.node as PageBlock).replace(/\s+/g, " ").trim();
     label = `${blockWord((found.node as PageBlock).type)}${text ? ` “${clip(text)}”` : ""} in row ${rowIndex + 1}`;
   }
   const modal = found.kind === "row" ? (found.node as PageRow).modal : undefined;

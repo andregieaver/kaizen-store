@@ -55,6 +55,18 @@ export const PLATFORM_KINDS: KindOption[] = [
   { kind: "url", label: "Custom link" },
 ];
 
+/** The link kinds a custom grid item on Kaizen's own pages offers (D155): pages and articles by address, no store's products, account or cart. */
+export const PLATFORM_ITEM_KINDS: KindOption[] = [
+  { kind: "home", label: "Front page" },
+  { kind: "page", label: "Page", pageBy: "slug" },
+  { kind: "category", label: "Category" },
+  { kind: "tag", label: "Tag" },
+  { kind: "blog", label: "Blog" },
+  { kind: "article", label: "Article", pageBy: "slug" },
+  { kind: "blogCategory", label: "Blog category" },
+  { kind: "url", label: "Custom link" },
+];
+
 /** The page, product, category or tag a link points at, if the link has one. */
 export function targetOf(link: AnyMenuLink): { kind: TargetKind; value: string } | null {
   if (link.kind === "product") return { kind: "product", value: link.handle };

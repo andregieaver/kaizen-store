@@ -59,6 +59,7 @@ export async function GoogleReviewsSection({ block, place }: { block: Testimonia
         look={block.look}
         showRating={block.showRating !== false}
         carousel={block.display === "carousel"}
+        carouselSettings={block.carousel}
       />
     </div>
   );

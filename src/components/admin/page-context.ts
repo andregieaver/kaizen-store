@@ -12,6 +12,7 @@ import type { TemplateActions } from "@/lib/templates";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { StandardMenus } from "@/lib/site-layout";
 import type { GridStore } from "@/server/content-grid";
+import type { ItemLinkTargets } from "@/server/link-targets";
 import type { PlanChoice } from "@/lib/plan-offer";
 import type { MenuPreview } from "@/server/menus";
 import type { EditablePage } from "@/server/pages";
@@ -100,6 +101,8 @@ export type PageOwnerContext = {
     gridPreview: (block: unknown, pageId: string | null) => Promise<GridData | { problem: string }>;
     /** A store's product categories and tags, for a grid of its products. */
     gridTerms: (storeId: string) => Promise<Term[]>;
+    /** What a custom grid item's link can point at (D155): the owner's pages, products, articles, categories and tags, by address. */
+    linkTargets: () => Promise<ItemLinkTargets>;
     /** Saves the owner's CSS for every page (D100); it is live at once. */
     saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
     /** Copies a Google Fonts family to Kaizen before a block uses it (D59). */

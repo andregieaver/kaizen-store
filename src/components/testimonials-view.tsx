@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import { snapAttribute, type CarouselSettings } from "@/lib/carousel-settings";
 import type { TestimonialColumns, TestimonialLook } from "@/lib/page-content";
 
 import { Carousel } from "./carousel";
@@ -41,6 +42,7 @@ export function TestimonialCards({
   look = "cards",
   showRating = true,
   carousel = false,
+  carouselSettings,
 }: {
   entries: TestimonialEntry[];
   columns?: TestimonialColumns;
@@ -48,10 +50,13 @@ export function TestimonialCards({
   showRating?: boolean;
   /** In a row that scrolls sideways, the columns as many to a screen. */
   carousel?: boolean;
+  /** What the carousel does besides scrolling (D155): arrows only unless set. */
+  carouselSettings?: CarouselSettings;
 }) {
   const list = (
     <div
       data-carousel-track={carousel ? "" : undefined}
+      data-snap={carousel ? snapAttribute(carouselSettings) : undefined}
       className={carousel ? undefined : `grid grid-cols-1 gap-6 ${COLUMNS[columns]}`}
       style={
         carousel
@@ -93,5 +98,5 @@ export function TestimonialCards({
       ))}
     </div>
   );
-  return carousel ? <Carousel>{list}</Carousel> : list;
+  return carousel ? <Carousel settings={carouselSettings}>{list}</Carousel> : list;
 }

@@ -16,6 +16,7 @@ import { AiError, aiFor } from "@/server/ai";
 import { db } from "@/db/client";
 import { requireMember, type Membership } from "@/server/auth";
 import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
+import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { recommendedGridData } from "@/server/recommend-grid";
 import { translatePageTexts } from "@/server/page-translate";
 import { deletePage, getPageForEdit, pagesTag, savePage, setFrontPage, setPageRole, setProductsPage, unpublishPage } from "@/server/pages";
@@ -310,6 +311,12 @@ export async function storeGridTermsAction(storeSlug: string, _storeId: string):
   void _storeId;
   const member = await requireMember(storeSlug);
   return listTerms({ storeId: member.store.id, contentType: "product" });
+}
+
+/** What a custom grid item's link can point at (D155): the store's own pages, products, articles, categories and tags, by address. */
+export async function storeLinkTargetsAction(storeSlug: string): Promise<ItemLinkTargets> {
+  const member = await requireMember(storeSlug);
+  return itemLinkTargets(member.store.id, member.store.localization.locales[0] ?? "en-GB");
 }
 
 /**

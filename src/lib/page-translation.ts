@@ -55,6 +55,29 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         ...b,
         buttonLabel: str("buttonLabel", b.buttonLabel, 100, "Button text"),
         emptyText: str("emptyText", b.emptyText, 300, "Text when nothing matches"),
+        // The items a grid of custom items holds (D155), each text by the item's id; links and numbers are the same in every language.
+        // (Items left over from before another source was chosen are not shown and not translated.)
+        ...(b.items && b.source.type === "custom" && {
+          items: b.items.map((item, index) => {
+            const at = `Item ${index + 1}`;
+            const slot = (field: string) => `${item.id}.${field}`;
+            return {
+              ...item,
+              title: str(slot("title"), item.title, 200, `${at}: title`),
+              text: str(slot("text"), item.text, 600, `${at}: text`),
+              badge: str(slot("badge"), item.badge, 40, `${at}: badge`),
+              priceText: str(slot("priceText"), item.priceText, 60, `${at}: price text`),
+              buttonLabel: str(slot("buttonLabel"), item.buttonLabel, 60, `${at}: button text`),
+              picture: item.picture && { ...item.picture, alt: str(slot("alt"), item.picture.alt, 200, `${at}: description of the picture`) },
+              // By the line's own id, never its place: taking a line out or moving one must not put its translation on another.
+              details: item.details.map((line, n) => ({
+                ...line,
+                label: str(slot(`detail-${line.id}.label`), line.label, 60, `${at}: detail ${n + 1} label`),
+                text: str(slot(`detail-${line.id}.text`), line.text, 120, `${at}: detail ${n + 1}`),
+              })),
+            };
+          }),
+        }),
       };
     case "product":
     case "customField":

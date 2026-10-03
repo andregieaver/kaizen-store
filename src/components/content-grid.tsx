@@ -2,10 +2,12 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 
 import { audienceClass } from "@/lib/b2b";
+import { snapAttribute } from "@/lib/carousel-settings";
 import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { fontClass } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
+import { sourceTraits } from "@/lib/grid-source";
 import { frameStyle, gridImageShape, type ContentGridBlock } from "@/lib/page-content";
 
 import { Carousel } from "./carousel";
@@ -25,9 +27,11 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
   const m = t(data.lang);
   const shape = gridImageShape(block);
   // Product tiles drawn as the theme's cards (D60), unless the grid styles its tiles itself.
-  const themed = shape === "theme" && block.source.type === "products";
+  const traits = sourceTraits(block.source);
+  const themed = shape === "theme" && traits.products;
   const Heading = `h${block.headingLevel}` as const;
-  const label = block.buttonLabel || (block.source.type === "products" ? m.viewProduct : m.readMore);
+  // The item's own button text (custom items, D155), else the grid's, else the kind of content's.
+  const label = block.buttonLabel || (traits.button === "viewProduct" ? m.viewProduct : m.readMore);
   const button = buttonLook(block.button);
   const tile = block.tile;
   // Articles show the day they appeared (D57), in the grid's language.
@@ -41,6 +45,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
   const list = (
     <ul
       data-carousel-track={carousel ? "" : undefined}
+      data-snap={carousel ? snapAttribute(block.carousel) : undefined}
       className={
         carousel
           ? undefined
@@ -67,30 +72,32 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
           }`}
         >
           {block.show.image && item.image && (
-            // The heading and button are the links for keyboards and screen readers; the picture is for pointing.
-            <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block">
-              {block.source.type === "products" && <CampaignBadge notices={noticesFor(notices, item.id)} m={m} />}
-              <Image
-                src={item.image.url}
-                alt=""
-                width={800}
-                height={600}
-                unoptimized
-                className={`h-auto w-full bg-surface ${
-                  shape === "original" ? "rounded-lg" : shape === "theme" ? "product-card-image rounded-lg object-cover" : SHAPES[shape]
-                }`}
-              />
-            </a>
+            <TileImage
+              item={item}
+              image={item.image}
+              shape={shape}
+              isProduct={traits.products}
+              notices={notices}
+              m={m}
+              // Without a heading or a button to link, the picture is the item's link for everyone (a logo strip, picture-only cards).
+              only={item.href !== "" && !(block.show.heading && item.title) && !block.show.button}
+              fallbackName={item.title || item.buttonLabel || label}
+            />
           )}
-          {block.show.heading && (
+          {item.badge && !(block.show.image && item.image) && <ItemBadge text={item.badge} />}
+          {block.show.heading && item.title && (
             <Heading
               className={`leading-snug font-heading text-balance ${HEADING_SIZES[block.headingSize ?? "sm"]} ${
                 block.headingFont ? fontClass(block.headingFont) : ""
               }`}
             >
-              <a href={item.href} className="relative z-[2] hover:underline focus-visible:outline-2">
-                {item.title}
-              </a>
+              {item.href !== "" ? (
+                <a href={item.href} className="relative z-[2] hover:underline focus-visible:outline-2" {...externalAttributes(item)}>
+                  {item.title}
+                </a>
+              ) : (
+                item.title
+              )}
             </Heading>
           )}
           {item.note && (
@@ -102,7 +109,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
             <ul className="flex flex-col gap-0.5 text-sm text-muted">
               {item.fields.map((field, index) => (
                 <li key={`${field.label}-${index}`}>
-                  <span className="font-medium">{`${field.label}:`}</span> {field.text}
+                  {field.label !== "" && <span className="font-medium">{`${field.label}:`}</span>} {field.text}
                 </li>
               ))}
             </ul>
@@ -128,11 +135,22 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
           {block.show.price && item.price && (
             <Price price={item.price.view} locale={data.locale} m={m} from={item.price.from} />
           )}
-          {block.show.button && (
+          {block.show.price && item.priceText && (
+            // A custom item's price is the owner's own words (D155): plain text, no VAT label, no reference price, nothing to buy.
+            <p className="font-medium">{item.priceText}</p>
+          )}
+          {block.show.button && item.href !== "" && (
             <div className="mt-auto pt-1">
               {/* Named with the item, so "Read more" links are told apart; the visible text starts the name. */}
-              <a href={item.href} aria-label={`${label}: ${item.title}`} className={button.className} style={button.style}>
-                {label}
+              <a
+                href={item.href}
+                // Named with the item; with no title, with what its picture shows, so the buttons are still told apart.
+                aria-label={itemName(block, item) ? `${item.buttonLabel || label}: ${itemName(block, item)}` : undefined}
+                className={button.className}
+                style={button.style}
+                {...externalAttributes(item)}
+              >
+                {item.buttonLabel || label}
               </a>
             </div>
           )}
@@ -140,5 +158,94 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
       ))}
     </ul>
   );
-  return carousel ? <Carousel>{list}</Carousel> : list;
+  return carousel ? <Carousel settings={block.carousel}>{list}</Carousel> : list;
+}
+
+/** What names an item for a screen reader: its title, else the description of the picture the tile shows. */
+const itemName = (block: ContentGridBlock, item: GridData["items"][number]): string => item.title || (block.show.image ? (item.image?.alt ?? "") : "");
+
+/** A link that leaves the site (a custom item's web address) opens as any other link, but without handing the other site the page's address. */
+const externalAttributes = (item: { external?: boolean }) => (item.external ? { rel: "noopener noreferrer" } : {});
+
+/**
+ * A tile's picture: a link for pointing (the heading and button are the links for keyboards and screen readers), or, for
+ * a custom item without a link, a picture that says what it shows (D155; empty alt text: decoration). When the tile has no
+ * heading or button to link (`only`: a logo strip, picture-only cards), the picture is the link for everyone: it can be
+ * tabbed to, and named by its description, else the title or the button's words. A badge sits over it.
+ */
+function TileImage({
+  item,
+  image,
+  shape,
+  isProduct,
+  notices,
+  m,
+  only,
+  fallbackName,
+}: {
+  item: GridData["items"][number];
+  image: { url: string; alt: string; width?: number; height?: number };
+  shape: ReturnType<typeof gridImageShape>;
+  isProduct: boolean;
+  notices?: CampaignNotices;
+  m: ReturnType<typeof t>;
+  only: boolean;
+  fallbackName: string;
+}) {
+  const picture =
+    item.href === "" ? (
+      <TilePicture image={image} alt={image.alt} shape={shape} />
+    ) : only ? (
+      <a
+        href={item.href}
+        // The picture's own description names the link; without one, the item's title (or the button's words) does.
+        aria-label={image.alt.trim() === "" ? fallbackName : undefined}
+        className="relative z-[2] block focus-visible:outline-2"
+        {...externalAttributes(item)}
+      >
+        <TilePicture image={image} alt={image.alt} shape={shape} />
+      </a>
+    ) : (
+      <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block" {...externalAttributes(item)}>
+        {isProduct && <CampaignBadge notices={noticesFor(notices, item.id)} m={m} />}
+        <TilePicture image={image} alt="" shape={shape} />
+      </a>
+    );
+  return item.badge ? (
+    <div className="relative">
+      {picture}
+      <ItemBadge text={item.badge} over />
+    </div>
+  ) : (
+    picture
+  );
+}
+
+/** A tile's picture, at its own size when the item has one (custom items, D155), else the usual 800 by 600. */
+function TilePicture({ image, alt, shape }: { image: { url: string; width?: number; height?: number }; alt: string; shape: ReturnType<typeof gridImageShape> }) {
+  return (
+    <Image
+      src={image.url}
+      alt={alt}
+      width={image.width ?? 800}
+      height={image.height ?? 600}
+      unoptimized
+      className={`h-auto w-full bg-surface ${
+        shape === "original" ? "rounded-lg" : shape === "theme" ? "product-card-image rounded-lg object-cover" : SHAPES[shape]
+      }`}
+    />
+  );
+}
+
+/** A custom item's badge (D155): the owner's words, over the picture's corner, or above the title when there is no picture. */
+function ItemBadge({ text, over = false }: { text: string; over?: boolean }) {
+  return (
+    <span
+      className={`rounded-button bg-accent px-2 py-1 text-xs font-medium text-accent-foreground ${
+        over ? "pointer-events-none absolute top-2 left-2 z-10" : "self-start"
+      }`}
+    >
+      {text}
+    </span>
+  );
 }

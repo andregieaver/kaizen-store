@@ -379,6 +379,7 @@ function Testimonials({ block }: { block: TestimonialsBlock }) {
       look={block.look}
       showRating={block.showRating !== false}
       carousel={block.display === "carousel"}
+      carouselSettings={block.carousel}
     />
   );
 }

@@ -360,6 +360,18 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
   flex: 0 0 calc((100% - (var(--cols) - 1 + var(--peek, 0)) * var(--gap, 0px)) / (var(--cols) + var(--peek, 0)));
   scroll-snap-align: start;
 }
+/* Where a tile rests (D155, `CarouselSettings.snap`): "start" is the above; scroll only, nothing is moved by script. */
+[data-carousel-track][data-snap="center"] > * {
+  scroll-snap-align: center;
+}
+[data-carousel-track][data-snap="none"] {
+  scroll-snap-type: none;
+}
+/* A row with no link, arrow or dot to tab to is itself a tab stop (`keepRowReachable()`): the focus shows. */
+[data-carousel-track][data-carousel-focus]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
 @media (width >= 48rem) {
   [data-carousel-track] {
     --cols: var(--grid-tablet, 2);
