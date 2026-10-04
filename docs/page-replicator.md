@@ -170,6 +170,22 @@ measures and calibrates, and writes `test-results/probe/`: both photographs, the
 CSS, and `report.md`. In a sandbox the browser goes through the proxy (the spec sets it up). Find the cause in the pictures,
 fix it in the converter, add a case to `replicate-oda.test.ts`, run the probe again.
 
+### The browser on the server (found on kia.no)
+
+On Vercel Chromium runs as one process (`@sparticuz/chromium`: `--single-process`, software GL). Measured with those very flags on
+kia.no: the computers' width took 13 s, and then **the phone's width in the same browser never answered**, and `page.evaluate` has
+no time limit, so the tick waited until the platform killed it at 300 s, its lock (290 s) held the job still, and the next tick
+started over and met a browser that could not photograph (`Protocol error (Page.captureScreenshot)`). Each look in a browser of
+its own takes 7 to 12 s. So (`src/lib/replicate-look.ts`):
+
+- **one browser for one look** (`looking()`): the original at each width, the copy at each width, in the open step and in every
+  pass; never open a second page in a browser that has had a first;
+- **a limit on each look** (`LOOK`): the browser is closed under work that does not answer, and the owner is told in a sentence
+  (`lookProblem()`), never the browser's own message. The limits add up to less than the request's: 100 s, then two tries of 55 s
+  at a phone's width (which is optional: the copy goes on without it);
+- to reproduce on a machine: launch `@sparticuz/chromium`'s `executablePath()` and `args` with `setGraphicsMode = false`, and run the
+  steps in the order the server does. Bundle the script with esbuild first: `tsx` adds a `__name` helper that does not exist in the page.
+
 What copying oda.com's front page taught (D150):
 
 - a zero-size holder (`picture`, `display: contents`) hid the image laid out inside it: the extractor now flattens holders

@@ -19,6 +19,7 @@ import { digestOf, partLine, textNodes } from "@/lib/replicate-prompts";
 import { fontRelation } from "@/lib/replicate-fonts";
 import { buildReport, finalDiffOf } from "@/lib/replicate-report";
 import { buildSummary } from "@/lib/replicate-summary";
+import { LOOK, looking, lookProblem } from "@/lib/replicate-look";
 import { watchLine } from "@/lib/replicate-watch";
 import { renderStyles } from "@/lib/replicate-styles";
 import { parseReplicaUrl } from "@/lib/replicate-url";
@@ -215,92 +216,94 @@ function browserReason(error: unknown): string {
   return clean ? ` (${clean}).` : ".";
 }
 
-async function stepOpen(tick: Tick): Promise<void> {
-  const { row, say, owner } = tick;
-  const host = new URL(row.url).hostname;
-  await say("info", `Opening ${host} in a browser, at computers' and at a phone's width.`);
-  let browser;
+/** Starts a browser for one look at a page (`looking()` closes it): never one browser for several, see `replicate-look.ts`. */
+async function startBrowser() {
   try {
-    browser = await launchBrowser();
+    return await launchBrowser();
   } catch (error) {
     console.error("[replicate] browser", error);
     throw new Failed(`The browser that looks at pages could not be started on this server${browserReason(error)}`);
   }
+}
+
+async function stepOpen(tick: Tick): Promise<void> {
+  const { row, say, owner } = tick;
+  const host = new URL(row.url).hostname;
+  await say("info", `Opening ${host} in a browser, at computers' and at a phone's width.`);
+  let desktop;
   try {
-    let desktop;
-    try {
-      desktop = await openOriginal(browser, row.url, "desktop", tick.signal);
-    } catch (error) {
-      throw new Failed(error instanceof Error && error.message !== "Stopped." ? error.message : "The page could not be opened.");
-    }
-    stopIfAsked(tick);
-    const empty = walk(desktop.capture.root).next().done || desktop.capture.docHeight < 80 || desktop.capture.root.children.length === 0;
-    if (empty) throw new Failed("The page shows nothing a copy could be made from (it may need a sign-in, or draw itself with scripts that did not run).");
-    await say("ok", `Loaded “${desktop.capture.title || host}”: ${desktop.capture.docWidth} × ${desktop.capture.docHeight} px at computers' width, ${desktop.capture.fonts.length} typefaces in use.`);
-    if (desktop.capture.left.fixed.length > 0) await say("info", `Left out because they float over the page: ${desktop.capture.left.fixed.slice(0, 4).join(", ")}.`);
-    const watched = watchLine(desktop.capture);
-    if (watched) await say("info", watched);
-    let mobile = null;
-    let phoneProblem = "";
-    // Twice: a second visit often meets a site's bot protection or a slow start that the first did not.
-    for (let attempt = 1; attempt <= 2 && !mobile; attempt++) {
-      try {
-        mobile = await openOriginal(browser, row.url, "mobile", tick.signal);
-        await say("ok", `Looked at it at a phone's width too: ${mobile.capture.docHeight} px tall.`);
-      } catch (error) {
-        phoneProblem = error instanceof Error ? error.message : "It could not be opened.";
-        if (phoneProblem === "Stopped.") throw error;
-        console.error("[replicate] phone width", attempt, error);
-        if (attempt === 1) await say("info", `Opening the page at a phone's width did not work (${phoneProblem}); trying once more.`);
-      }
-    }
-    if (!mobile) await say("warn", `The page could not be looked at at a phone's width (${phoneProblem}); the copy will use the builder's own phone layout.`);
-    stopIfAsked(tick);
-
-    // Photographs: the originals to compare with, and small ones for the owner's panel.
-    const files: string[] = [];
-    const originals: ReplicaWork["originals"] = { desktop: null, mobile: null };
-    const previews = { original: { desktop: null as string | null, mobile: null as string | null }, copy: { desktop: null, mobile: null, iteration: null } };
-    for (const [name, opened, width] of [["desktop", desktop, 720], ["mobile", mobile, 300]] as const) {
-      if (!opened) continue;
-      const full = await sharp(opened.screenshot).flatten({ background: "#ffffff" }).jpeg({ quality: 86 }).toBuffer();
-      const kept = await putFile(row.storeId, row.id, `original-${name}.jpg`, full, "image/jpeg");
-      const small = await putFile(row.storeId, row.id, `original-${name}-preview.jpg`, await previewJpeg(opened.screenshot, width, 5000), "image/jpeg");
-      if (kept) {
-        originals[name] = kept.url;
-        files.push(kept.path);
-      }
-      if (small) {
-        previews.original[name] = small.url;
-        files.push(small.path);
-      }
-    }
-
-    // What is drawn, not a file: kept as pictures of their own.
-    const shots: Record<string, { url: string; width: number; height: number } | null> = {};
-    let taken = 0;
-    for (const [path, png] of desktop.elements) {
-      const saved = await saveShot(tick.assets, png, `part-${path.replace(/\//g, "-")}`);
-      shots[path] = saved.ok ? saved.picture : null;
-      if (saved.ok) taken += 1;
-    }
-    if (desktop.elements.size > 0) await say("ok", `Photographed ${taken} of ${desktop.elements.size} icons, graphics and widgets that are drawn on the page rather than stored as files.`);
-
-    await saveCapture(row.id, { desktop: desktop.capture, mobile: mobile?.capture ?? null });
-    await patchWork(row.id, {
-      originals,
-      previews,
-      files,
-      title: desktop.capture.title,
-      description: desktop.capture.description,
-      background: hexOf(desktop.capture.background) ?? "#ffffff",
-      assets: { pictures: {}, pictureQueue: [], videos: {}, videoQueue: [], shots, fonts: {}, fontQueue: [], failures: {}, total: 0 },
-    });
-    void owner;
-    await setPhase(row.id, "examine");
-  } finally {
-    await browser.close().catch(() => {});
+    desktop = await looking(startBrowser, LOOK.desktopMs, (browser) => openOriginal(browser, row.url, "desktop", tick.signal));
+  } catch (error) {
+    if (error instanceof Failed) throw error;
+    if (!(error instanceof Error) || error.message !== "Stopped.") console.error("[replicate] desktop width", error);
+    throw new Failed(lookProblem(error));
   }
+  stopIfAsked(tick);
+  const empty = walk(desktop.capture.root).next().done || desktop.capture.docHeight < 80 || desktop.capture.root.children.length === 0;
+  if (empty) throw new Failed("The page shows nothing a copy could be made from (it may need a sign-in, or draw itself with scripts that did not run).");
+  await say("ok", `Loaded “${desktop.capture.title || host}”: ${desktop.capture.docWidth} × ${desktop.capture.docHeight} px at computers' width, ${desktop.capture.fonts.length} typefaces in use.`);
+  if (desktop.capture.left.fixed.length > 0) await say("info", `Left out because they float over the page: ${desktop.capture.left.fixed.slice(0, 4).join(", ")}.`);
+  const watched = watchLine(desktop.capture);
+  if (watched) await say("info", watched);
+  let mobile = null;
+  let phoneProblem = "";
+  // Twice: a second visit often meets a site's bot protection or a slow start that the first did not.
+  for (let attempt = 1; attempt <= 2 && !mobile; attempt++) {
+    try {
+      mobile = await looking(startBrowser, LOOK.phoneMs, (browser) => openOriginal(browser, row.url, "mobile", tick.signal));
+      await say("ok", `Looked at it at a phone's width too: ${mobile.capture.docHeight} px tall.`);
+    } catch (error) {
+      if (error instanceof Error && error.message === "Stopped.") throw error;
+      if (error instanceof Failed) throw error;
+      phoneProblem = lookProblem(error);
+      console.error("[replicate] phone width", attempt, error);
+      if (attempt === 1) await say("info", `Opening the page at a phone's width did not work (${phoneProblem}); trying once more.`);
+    }
+  }
+  if (!mobile) await say("warn", `The page could not be looked at at a phone's width (${phoneProblem}); the copy will use the builder's own phone layout.`);
+  stopIfAsked(tick);
+
+  // Photographs: the originals to compare with, and small ones for the owner's panel.
+  const files: string[] = [];
+  const originals: ReplicaWork["originals"] = { desktop: null, mobile: null };
+  const previews = { original: { desktop: null as string | null, mobile: null as string | null }, copy: { desktop: null, mobile: null, iteration: null } };
+  for (const [name, opened, width] of [["desktop", desktop, 720], ["mobile", mobile, 300]] as const) {
+    if (!opened) continue;
+    const full = await sharp(opened.screenshot).flatten({ background: "#ffffff" }).jpeg({ quality: 86 }).toBuffer();
+    const kept = await putFile(row.storeId, row.id, `original-${name}.jpg`, full, "image/jpeg");
+    const small = await putFile(row.storeId, row.id, `original-${name}-preview.jpg`, await previewJpeg(opened.screenshot, width, 5000), "image/jpeg");
+    if (kept) {
+      originals[name] = kept.url;
+      files.push(kept.path);
+    }
+    if (small) {
+      previews.original[name] = small.url;
+      files.push(small.path);
+    }
+  }
+
+  // What is drawn, not a file: kept as pictures of their own.
+  const shots: Record<string, { url: string; width: number; height: number } | null> = {};
+  let taken = 0;
+  for (const [path, png] of desktop.elements) {
+    const saved = await saveShot(tick.assets, png, `part-${path.replace(/\//g, "-")}`);
+    shots[path] = saved.ok ? saved.picture : null;
+    if (saved.ok) taken += 1;
+  }
+  if (desktop.elements.size > 0) await say("ok", `Photographed ${taken} of ${desktop.elements.size} icons, graphics and widgets that are drawn on the page rather than stored as files.`);
+
+  await saveCapture(row.id, { desktop: desktop.capture, mobile: mobile?.capture ?? null });
+  await patchWork(row.id, {
+    originals,
+    previews,
+    files,
+    title: desktop.capture.title,
+    description: desktop.capture.description,
+    background: hexOf(desktop.capture.background) ?? "#ffffff",
+    assets: { pictures: {}, pictureQueue: [], videos: {}, videoQueue: [], shots, fonts: {}, fontQueue: [], failures: {}, total: 0 },
+  });
+  void owner;
+  await setPhase(row.id, "examine");
 }
 
 // ---------------------------------------------------------------------------
@@ -551,157 +554,148 @@ async function stepRefine(tick: Tick): Promise<void> {
   const frameUrl = `${owner.origin}/admin/account/replica/${row.id}?t=${encodeURIComponent(frameToken(row.id))}`;
 
   await say("info", k === 0 ? "Checking the first copy against the original, at both widths." : `Pass ${k} of ${max}: checking the draft against the original.`);
-  let browser;
-  try {
-    browser = await launchBrowser();
-  } catch (error) {
-    console.error("[replicate] browser", error);
-    throw new Failed(`The browser that looks at pages could not be started on this server${browserReason(error)}`);
+  const desktop = await looking(startBrowser, LOOK.copyMs, (browser) => openCopy(browser, frameUrl, "desktop")).catch((error: Error) => {
+    if (error instanceof Failed) throw error;
+    console.error("[replicate] copy at computers' width", error);
+    throw new Failed(lookProblem(error));
+  });
+  stopIfAsked(tick);
+  const mobile = originals.mobile ? await looking(startBrowser, LOOK.copyMs, (browser) => openCopy(browser, frameUrl, "mobile")).catch(() => null) : null;
+  stopIfAsked(tick);
+
+  // The scores.
+  const originalDesktop = originals.desktop ? await fetchBytes(originals.desktop) : null;
+  const originalMobile = originals.mobile ? await fetchBytes(originals.mobile) : null;
+  if (!originalDesktop) throw new Failed("The photograph of the original was lost. Start again.");
+  const width = 360;
+  const [od, cd] = await Promise.all([rasterOf(originalDesktop, width), rasterOf(desktop.screenshot, width)]);
+  const scoreDesktop = compareRasters(od.raster, cd.raster, od.scale);
+  let scoreMobile = null;
+  let phoneSide: Parameters<typeof finalDiffOf>[2] = null;
+  if (mobile && originalMobile) {
+    const [om, cm] = await Promise.all([rasterOf(originalMobile, 130), rasterOf(mobile.screenshot, 130)]);
+    scoreMobile = compareRasters(om.raster, cm.raster, om.scale);
+    phoneSide = { original: om.raster, copy: cm.raster, scale: om.scale, capture: mobile.capture };
   }
-  try {
-    const desktop = await openCopy(browser, frameUrl, "desktop").catch((error: Error) => {
-      throw new Failed(error.message);
-    });
-    stopIfAsked(tick);
-    const mobile = originals.mobile ? await openCopy(browser, frameUrl, "mobile").catch(() => null) : null;
-    stopIfAsked(tick);
+  const pass: ReplicaPass = { iteration: k, desktop: scoreDesktop, mobile: scoreMobile, changes: [] };
+  // A page rebuilt at this same pass (a trial of columns against a grid, or its end) is measured again at the same pass: its score replaces the one before, and no pass is spent.
+  const passes = [...(work.remeasure ? (work.passes ?? []).slice(0, -1) : (work.passes ?? [])), pass];
+  const sides: Sides = { desktop: { original: od.raster, copy: cd.raster, scale: od.scale }, phone: phoneSide ? { original: phoneSide.original, copy: phoneSide.copy, scale: phoneSide.scale } : null };
 
-    // The scores.
-    const originalDesktop = originals.desktop ? await fetchBytes(originals.desktop) : null;
-    const originalMobile = originals.mobile ? await fetchBytes(originals.mobile) : null;
-    if (!originalDesktop) throw new Failed("The photograph of the original was lost. Start again.");
-    const width = 360;
-    const [od, cd] = await Promise.all([rasterOf(originalDesktop, width), rasterOf(desktop.screenshot, width)]);
-    const scoreDesktop = compareRasters(od.raster, cd.raster, od.scale);
-    let scoreMobile = null;
-    let phoneSide: Parameters<typeof finalDiffOf>[2] = null;
-    if (mobile && originalMobile) {
-      const [om, cm] = await Promise.all([rasterOf(originalMobile, 130), rasterOf(mobile.screenshot, 130)]);
-      scoreMobile = compareRasters(om.raster, cm.raster, om.scale);
-      phoneSide = { original: om.raster, copy: cm.raster, scale: om.scale, capture: mobile.capture };
+  // The columns of a trial are judged now, over the same stretch the grid stood in: they stay only if they match clearly better, else the grid comes back.
+  if (work.trial) {
+    const ended = await settleTrial(tick, work, work.trial, sides, k);
+    if (ended.rebuilt) return;
+    Object.assign(work, ended.patch);
+  }
+
+  // What the owner watches: the draft as it is now.
+  const previews = JSON.parse(JSON.stringify(work.previews ?? { original: { desktop: null, mobile: null }, copy: { desktop: null, mobile: null, iteration: null } })) as NonNullable<ReplicaWork["previews"]>;
+  const files = [...(work.files ?? [])];
+  const keepPreview = async (name: "desktop" | "mobile", png: Buffer, width: number) => {
+    const stored = await putFile(row.storeId, row.id, `copy-${name}-${k}.jpg`, await previewJpeg(png, width, 5000), "image/jpeg");
+    if (stored) {
+      const old = previews.copy[name];
+      previews.copy[name] = stored.url;
+      files.push(stored.path);
+      // The picture before this one is no longer needed.
+      if (old) {
+        const oldPath = files.find((f) => old.endsWith(f));
+        if (oldPath) {
+          files.splice(files.indexOf(oldPath), 1);
+          void removeFiles([oldPath]);
+        }
+      }
     }
-    const pass: ReplicaPass = { iteration: k, desktop: scoreDesktop, mobile: scoreMobile, changes: [] };
-    // A page rebuilt at this same pass (a trial of columns against a grid, or its end) is measured again at the same pass: its score replaces the one before, and no pass is spent.
-    const passes = [...(work.remeasure ? (work.passes ?? []).slice(0, -1) : (work.passes ?? [])), pass];
-    const sides: Sides = { desktop: { original: od.raster, copy: cd.raster, scale: od.scale }, phone: phoneSide ? { original: phoneSide.original, copy: phoneSide.copy, scale: phoneSide.scale } : null };
+  };
+  await keepPreview("desktop", desktop.screenshot, 720);
+  if (mobile) await keepPreview("mobile", mobile.screenshot, 300);
+  previews.copy.iteration = k;
+  await say("ok", `${k === 0 ? "The first copy" : `After pass ${k}, the copy`} matches the original ${scoreDesktop.match}% on computers${scoreMobile ? ` and ${scoreMobile.match}% on phones` : ""}. It is ${desktop.capture.docHeight} px tall; the original is ${scoreDesktop.heights.original} px.`);
+  await patchWork(row.id, { passes, previews, files, remeasure: false });
+  work.remeasure = false;
 
-    // The columns of a trial are judged now, over the same stretch the grid stood in: they stay only if they match clearly better, else the grid comes back.
-    if (work.trial) {
-      const ended = await settleTrial(tick, work, work.trial, sides, k);
-      if (ended.rebuilt) return;
-      Object.assign(work, ended.patch);
-    }
+  const perfect = isPerfect(scoreDesktop) && isPerfect(scoreMobile);
+  // A grid that is weak (under 60 % over its stretch, at computers' or at phones' width) is tried as columns: the page is rebuilt with those groups as columns and measured again at
+  // this same pass, and the columns stay only if they match clearly better there; otherwise the grid is put back. Nothing is decided on the grid's score alone (D155).
+  const weak = perfect ? [] : weakNow(work, parts, scoreDesktop, scoreMobile);
+  if (weak.length > 0 && (work.trials ?? 0) < TRIALS_MAX && (await startTrial(tick, work, weak, k, sides, passes, pass))) return;
 
-    // What the owner watches: the draft as it is now.
-    const previews = JSON.parse(JSON.stringify(work.previews ?? { original: { desktop: null, mobile: null }, copy: { desktop: null, mobile: null, iteration: null } })) as NonNullable<ReplicaWork["previews"]>;
-    const files = [...(work.files ?? [])];
-    const keepPreview = async (name: "desktop" | "mobile", png: Buffer, width: number) => {
-      const stored = await putFile(row.storeId, row.id, `copy-${name}-${k}.jpg`, await previewJpeg(png, width, 5000), "image/jpeg");
-      if (stored) {
-        const old = previews.copy[name];
-        previews.copy[name] = stored.url;
-        files.push(stored.path);
-        // The picture before this one is no longer needed.
-        if (old) {
-          const oldPath = files.find((f) => old.endsWith(f));
-          if (oldPath) {
-            files.splice(files.indexOf(oldPath), 1);
-            void removeFiles([oldPath]);
+  if (k >= max || perfect) {
+    // A grid that was weak and matched no better as columns says both figures; one that was weak and could not be tried (the job's trials were spent, or the page would not be rebuilt) says so.
+    const grids = work.grids ? { ...work.grids, built: work.grids.built.map((g) => annotated(g, work, weak, k)) } : work.grids;
+    await patchWork(row.id, { ...(grids ? { grids } : {}), ...(perfect && k < max ? { stoppedEarly: true } : {}), finalDiff: finalDiffOf(parts, { original: od.raster, copy: cd.raster, scale: od.scale, capture: desktop.capture }, phoneSide) });
+    await conclude(owner, (await getRow(row.id, owner.storeId)) ?? row, "done", null);
+    return;
+  }
+
+  // Improve: first by measuring, then by what the AI sees.
+  const changes: string[] = [];
+  const calibratedDesktop = calibrate(model, parts, desktop.capture, false);
+  const sayDesktop = calibrationWords(calibratedDesktop, "computers");
+  if (sayDesktop) changes.push(sayDesktop);
+  if (mobile) {
+    const calibratedMobile = calibrate(model, parts, mobile.capture, true);
+    const sayMobile = calibrationWords(calibratedMobile, "phones");
+    if (sayMobile) changes.push(sayMobile);
+  }
+  for (const change of changes) await say("info", change);
+  stopIfAsked(tick);
+
+  const connection = await tick.connection();
+  const vision = work.vision?.used !== false && connection?.textModel ? connection : null;
+  let blind = false;
+  let observed: ReplicaPass["ai"] | undefined;
+  if (vision && originalDesktop) {
+    const regions = scoreDesktop.weakest.slice(0, 2).map((w) => ({ ...w, y: Math.max(0, w.y - 20), height: Math.min(900, w.height + 40) }));
+    const phoneRegion = scoreMobile?.weakest[0] ? { y: Math.max(0, scoreMobile.weakest[0].y - 20), height: Math.min(1000, scoreMobile.weakest[0].height + 40) } : null;
+    if (regions.length > 0 || phoneRegion) {
+      await say("info", "The AI is comparing the original and the copy where they differ most.");
+      const images: Buffer[] = [];
+      for (const region of regions) images.push(await pairImage(originalDesktop, desktop.screenshot, region, 1440, 1500, true));
+      if (phoneRegion && originalMobile && mobile) images.push(await pairImage(originalMobile, mobile.screenshot, phoneRegion, 390, 1200, true));
+      const near = new Set<string>();
+      const lines: string[] = [];
+      for (const region of regions) {
+        for (const part of parts) {
+          if (!part.target || near.has(part.id) || lines.length >= 40) continue;
+          if (part.target[1] + part.target[3] >= region.y && part.target[1] <= region.y + region.height && part.kind !== "row") {
+            near.add(part.id);
+            lines.push(partLine(part, model));
           }
         }
       }
-    };
-    await keepPreview("desktop", desktop.screenshot, 720);
-    if (mobile) await keepPreview("mobile", mobile.screenshot, 300);
-    previews.copy.iteration = k;
-    await say("ok", `${k === 0 ? "The first copy" : `After pass ${k}, the copy`} matches the original ${scoreDesktop.match}% on computers${scoreMobile ? ` and ${scoreMobile.match}% on phones` : ""}. It is ${desktop.capture.docHeight} px tall; the original is ${scoreDesktop.heights.original} px.`);
-    await patchWork(row.id, { passes, previews, files, remeasure: false });
-    work.remeasure = false;
-
-    const perfect = isPerfect(scoreDesktop) && isPerfect(scoreMobile);
-    // A grid that is weak (under 60 % over its stretch, at computers' or at phones' width) is tried as columns: the page is rebuilt with those groups as columns and measured again at
-    // this same pass, and the columns stay only if they match clearly better there; otherwise the grid is put back. Nothing is decided on the grid's score alone (D155).
-    const weak = perfect ? [] : weakNow(work, parts, scoreDesktop, scoreMobile);
-    if (weak.length > 0 && (work.trials ?? 0) < TRIALS_MAX && (await startTrial(tick, work, weak, k, sides, passes, pass))) return;
-
-    if (k >= max || perfect) {
-      // A grid that was weak and matched no better as columns says both figures; one that was weak and could not be tried (the job's trials were spent, or the page would not be rebuilt) says so.
-      const grids = work.grids ? { ...work.grids, built: work.grids.built.map((g) => annotated(g, work, weak, k)) } : work.grids;
-      await patchWork(row.id, { ...(grids ? { grids } : {}), ...(perfect && k < max ? { stoppedEarly: true } : {}), finalDiff: finalDiffOf(parts, { original: od.raster, copy: cd.raster, scale: od.scale, capture: desktop.capture }, phoneSide) });
-      await conclude(owner, (await getRow(row.id, owner.storeId)) ?? row, "done", null);
-      return;
-    }
-
-    // Improve: first by measuring, then by what the AI sees.
-    const changes: string[] = [];
-    const calibratedDesktop = calibrate(model, parts, desktop.capture, false);
-    const sayDesktop = calibrationWords(calibratedDesktop, "computers");
-    if (sayDesktop) changes.push(sayDesktop);
-    if (mobile) {
-      const calibratedMobile = calibrate(model, parts, mobile.capture, true);
-      const sayMobile = calibrationWords(calibratedMobile, "phones");
-      if (sayMobile) changes.push(sayMobile);
-    }
-    for (const change of changes) await say("info", change);
-    stopIfAsked(tick);
-
-    const connection = await tick.connection();
-    const vision = work.vision?.used !== false && connection?.textModel ? connection : null;
-    let blind = false;
-    let observed: ReplicaPass["ai"] | undefined;
-    if (vision && originalDesktop) {
-      const regions = scoreDesktop.weakest.slice(0, 2).map((w) => ({ ...w, y: Math.max(0, w.y - 20), height: Math.min(900, w.height + 40) }));
-      const phoneRegion = scoreMobile?.weakest[0] ? { y: Math.max(0, scoreMobile.weakest[0].y - 20), height: Math.min(1000, scoreMobile.weakest[0].height + 40) } : null;
-      if (regions.length > 0 || phoneRegion) {
-        await say("info", "The AI is comparing the original and the copy where they differ most.");
-        const images: Buffer[] = [];
-        for (const region of regions) images.push(await pairImage(originalDesktop, desktop.screenshot, region, 1440, 1500, true));
-        if (phoneRegion && originalMobile && mobile) images.push(await pairImage(originalMobile, mobile.screenshot, phoneRegion, 390, 1200, true));
-        const near = new Set<string>();
-        const lines: string[] = [];
-        for (const region of regions) {
-          for (const part of parts) {
-            if (!part.target || near.has(part.id) || lines.length >= 40) continue;
-            if (part.target[1] + part.target[3] >= region.y && part.target[1] <= region.y + region.height && part.kind !== "row") {
-              near.add(part.id);
-              lines.push(partLine(part, model));
-            }
-          }
-        }
-        stopIfAsked(tick);
-        const answer = await assess(vision, { analysis: work.analysis ?? null, iteration: k + 1, scores: { desktop: scoreDesktop, mobile: scoreMobile }, parts: lines, calibrated: changes }, images);
-        stopIfAsked(tick);
-        if (answer.ok) {
-          const applied = applyPatchPlan(model, parts, answer.value);
-          if (answer.value.summary) await say("info", `The AI sees: ${answer.value.summary}`);
-          for (const line of applied.applied.slice(0, 10)) await say("ok", `Changed ${line}`);
-          if (applied.applied.length > 10) await say("info", `…and ${applied.applied.length - 10} more changes.`);
-          if (applied.refused.length > 0) await say("warn", `${applied.refused.length} suggested change${applied.refused.length === 1 ? " was" : "s were"} not allowed and left out.`);
-          for (const note of answer.value.notes.slice(0, 3)) await say("info", `The AI could not fix: ${note}`);
-          changes.push(...applied.applied.slice(0, 20));
-          observed = { summary: answer.value.summary ?? "", couldNotFix: answer.value.notes.slice(0, 8), refused: applied.refused.slice(0, 15), applied: applied.applied.length };
-        } else {
-          await say("warn", answer.problem);
-          if (answer.blind) {
-            blind = true;
-            await patchWork(row.id, { vision: { used: false, why: answer.problem } });
-          }
+      stopIfAsked(tick);
+      const answer = await assess(vision, { analysis: work.analysis ?? null, iteration: k + 1, scores: { desktop: scoreDesktop, mobile: scoreMobile }, parts: lines, calibrated: changes }, images);
+      stopIfAsked(tick);
+      if (answer.ok) {
+        const applied = applyPatchPlan(model, parts, answer.value);
+        if (answer.value.summary) await say("info", `The AI sees: ${answer.value.summary}`);
+        for (const line of applied.applied.slice(0, 10)) await say("ok", `Changed ${line}`);
+        if (applied.applied.length > 10) await say("info", `…and ${applied.applied.length - 10} more changes.`);
+        if (applied.refused.length > 0) await say("warn", `${applied.refused.length} suggested change${applied.refused.length === 1 ? " was" : "s were"} not allowed and left out.`);
+        for (const note of answer.value.notes.slice(0, 3)) await say("info", `The AI could not fix: ${note}`);
+        changes.push(...applied.applied.slice(0, 20));
+        observed = { summary: answer.value.summary ?? "", couldNotFix: answer.value.notes.slice(0, 8), refused: applied.refused.slice(0, 15), applied: applied.applied.length };
+      } else {
+        await say("warn", answer.problem);
+        if (answer.blind) {
+          blind = true;
+          await patchWork(row.id, { vision: { used: false, why: answer.problem } });
         }
       }
-    } else if (!vision && k === 0) {
-      await say("info", "The AI does not look at the copy (no text model that sees pictures); spacing is corrected by measuring.");
     }
-    void blind;
-
-    // Save the page's CSS as it is now, and move on to the next pass.
-    const styled = renderStyles(model, work.shared ?? "");
-    await saveDraftCss(row, owner.account.id, styled.css);
-    passes[passes.length - 1] = { ...pass, changes, ...(observed ? { ai: observed } : {}) };
-    await patchWork(row.id, { model, passes, cssLength: styled.css.length });
-    await setPhase(row.id, "refine", k + 1);
-  } finally {
-    await browser.close().catch(() => {});
+  } else if (!vision && k === 0) {
+    await say("info", "The AI does not look at the copy (no text model that sees pictures); spacing is corrected by measuring.");
   }
+  void blind;
+
+  // Save the page's CSS as it is now, and move on to the next pass.
+  const styled = renderStyles(model, work.shared ?? "");
+  await saveDraftCss(row, owner.account.id, styled.css);
+  passes[passes.length - 1] = { ...pass, changes, ...(observed ? { ai: observed } : {}) };
+  await patchWork(row.id, { model, passes, cssLength: styled.css.length });
+  await setPhase(row.id, "refine", k + 1);
 }
 
 // ---------------------------------------------------------------------------
