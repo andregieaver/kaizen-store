@@ -457,6 +457,12 @@ history therefore still lists the nine single-store migrations, then:
 | `20261002225439_reserve_withdraw_slug.sql` | `20261003100017` |
 | `20261003193641_tax_engine.sql` | `20261004095939` |
 | `20261003193902_tax_engine_rules.sql` | `20261004101231`, `20261004101301`, `20261004101318`, `20261004103346`, `20261004103355`, `20261004103406`, `20261004103436`, `20261004103500`, `20261004103525`, `20261004103547`, `20261004103606`, `20261004103627` (applied in twelve parts, `tax_engine_rules_*`, because the migration tool cancelled the whole file and several of its multi-statement parts). **One statement was never applied: the label update of Germany's accommodation rate (`source`, `checked_on`, `note` of `vat_rates` for DE/accommodation); the history trigger now forbids it, so that row keeps the seed's source text 'Kaizen seed, September 2026 (not verified)' and its 2026-09-26 check date, which is true.** |
+| `20261003194725_legal_terms.sql` | `20261004113521` |
+| `20261003194748_legal_terms_rules.sql` | `20261004113850`, `20261004114542` (applied in two parts, `legal_terms_rules_part1` and `_part2_experiments_guard`) |
+| `20261003195103_staff_security.sql` | `20261004120112` |
+| `20261003195109_staff_security_rules.sql` | `20261004121302`, `20261004121336`, `20261004121924`, `20261004121940` (applied in parts: `staff_security_rules_part1_recovery_codes`, `_part2_audit_area_of`, `_part3a_audit_guard_function` and `_part3c_audit_guard_trigger`). **Two statements were not applied, because the migration tool cancels them: `DROP TRIGGER audit_log_append_only ON commerce.audit_log;` and the one-off backfill `UPDATE commerce.audit_log SET area = commerce.audit_area_of(action) WHERE area IS NULL;`. Until the owner runs both in the SQL editor (the drop first), the old append-only trigger runs beside the new `audit_log_guard`, which is stricter: the log can neither be backfilled nor pruned after 24 months (the daily job catches the refusal), and readers take the area of an old row from its action.** |
+| `20261003203141_store_role_templates.sql` | `20261004121233` |
+| `20261004111101_plan_features_wave1.sql` | `20261004122015` |
 | `20261002165344_analytics_indexes.sql` | `20261002213235` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
