@@ -283,18 +283,18 @@ async function loadBundles(
   // lines are summed per bucket and currency in two small aggregates (a line-level one, an order-level one), never per order.
   const main = setBased<Row>(sql`
     with po0 as materialized (
-      select o.id, o.store_id, o.customer_id, o.email, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor,
-        coalesce(cn.standard_vat_rate, 0) as ship_rate,
+      select o.id, o.store_id, o.customer_id, o.email, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
+        coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as ship_rate,
         (o.currency = any(${known})) as ok, (${bucketOf(grain, period, placed)})::text as bk
       from commerce.orders o
-      left join commerce.countries cn on cn.code = o.market_code
       where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
     ),
     pl as materialized (
       select po0.id, po0.bk, po0.currency,
         round(ol.unit_price_minor::numeric * ol.quantity / (1 + ol.tax_rate)) as gross,
-        round(ol.discount_minor::numeric / (1 + ol.tax_rate)) as disc,
-        ol.discount_minor as raw_disc,
+        round((ol.discount_minor - ol.vat_relief_minor)::numeric / (1 + ol.tax_rate)) as disc,
+        (ol.discount_minor - ol.vat_relief_minor) as raw_disc,
+        ol.vat_relief_minor as line_relief,
         ol.tax_minor as line_tax,
         case when ol.variant_id is not null and ol.delivery <> 'service' then ol.quantity else 0 end as units,
         ol.unit_cost_minor * ol.quantity as cogs,
@@ -308,14 +308,16 @@ async function loadBundles(
     -- Each order's lines once: an order's discount beyond its lines' is a discount of its shipping (a free-shipping code), taken
     -- with VAT off the total and off the shipping's VAT (placeOrder()), so shipping income must be worked out around it.
     lo as (
-      select id, sum(raw_disc) as line_disc from pl group by id
+      select id, sum(raw_disc) as line_disc, sum(line_relief) as line_relief from pl group by id
     ),
     by_order as (
       select bk, currency::text as currency, count(*) as orders, sum(tax_minor) as vat, sum(total_minor - tax_minor) as revenue,
-        sum(shipping_minor) as shipping_in, sum(ship_disc) as ship_disc, sum(round(ship_disc::numeric / (1 + ship_rate))) as ship_disc_ex,
+        sum(shipping_minor) as shipping_in, sum(ship_disc) as ship_disc, sum(ship_relief) as ship_relief, sum(round(ship_disc::numeric / (1 + ship_rate))) as ship_disc_ex,
         sum(case when has_lines then 0 else total_minor - tax_minor end) as lineless_rev
       from (
-        select po0.*, (lo.id is not null) as has_lines, least(po0.shipping_minor, greatest(0, po0.discount_minor - coalesce(lo.line_disc, 0))) as ship_disc
+        select po0.*, (lo.id is not null) as has_lines,
+          least(po0.shipping_minor, greatest(0, po0.discount_minor - po0.vat_relief_minor - coalesce(lo.line_disc, 0))) as ship_disc,
+          po0.vat_relief_minor - coalesce(lo.line_relief, 0) as ship_relief
         from po0 left join lo on lo.id = po0.id
         where po0.ok
       ) o
@@ -335,7 +337,7 @@ async function loadBundles(
       select o.bk, o.currency, o.orders,
         coalesce(l.gross, 0) as gross,
         coalesce(l.disc, 0) + o.ship_disc_ex as disc,
-        o.shipping_in - o.ship_disc - (o.vat - coalesce(l.line_tax, 0)) + o.ship_disc_ex as shipping,
+        o.shipping_in - o.ship_disc - o.ship_relief - (o.vat - coalesce(l.line_tax, 0)) + o.ship_disc_ex as shipping,
         o.vat, o.revenue,
         coalesce(l.units, 0) as units,
         coalesce(l.cogs, 0) as cogs,

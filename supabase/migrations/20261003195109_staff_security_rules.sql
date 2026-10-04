@@ -65,6 +65,7 @@ LANGUAGE sql IMMUTABLE SET search_path = '' AS $$
     WHEN starts_with(p_action, 'recommendations.') THEN 'marketing'
     WHEN starts_with(p_action, 'cart_reminders.') THEN 'marketing'
     WHEN starts_with(p_action, 'plan_reminders.') THEN 'platform'
+    WHEN starts_with(p_action, 'vat.') THEN 'platform'
     WHEN starts_with(p_action, 'product_layout.') THEN 'products'
     WHEN starts_with(p_action, 'resource_block.') THEN 'bookings'
     WHEN starts_with(p_action, 'store.template_') THEN 'website'

@@ -11,7 +11,8 @@ import type { CreditsState } from "@/lib/bonus-shopper";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import { rememberAffiliate } from "@/server/affiliates";
-import { changeLine, readCartId, setCartCompany } from "@/server/cart";
+import { changeLine, readCartId, setCartCompany, setCartVatNumber } from "@/server/cart";
+import { viesClientKey } from "@/server/vat-checks";
 import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
 import { recordExperimentCart } from "@/server/experiments";
@@ -177,6 +178,44 @@ export async function checkoutAction(
   if (result.ok) return { problem: null, to: result.url };
   refresh();
   return { problem: result.problem };
+}
+
+/**
+ * What a shopper's EU VAT number came to (D157), for the cart to word in their language: `cleared` (taken off), `valid` (checked
+ * valid: whether it takes the VAT off is `cartSummary()`'s, by the delivery country and the rest), `invalid`, `unavailable` (VIES
+ * could not answer: VAT is charged and nothing is blocked), `not_eu`, `own_number`, or a problem with what was typed
+ * (`empty`, `no_country`, `characters`, `shape`) or the cart (`no_cart`, `no_company`).
+ */
+export type VatNumberState = {
+  outcome: "idle" | "cleared" | "valid" | "invalid" | "unavailable" | "not_eu" | "own_number" | "empty" | "no_country" | "characters" | "shape" | "no_cart" | "no_company" | "company" | "company_number";
+};
+
+/**
+ * Checks the VAT number a business shopper typed for their cart and keeps it with the answer. The company typed beside it
+ * (the cart holds its fields until checkout starts) is kept first, as `checkoutAction()` keeps it. Sets no cookie and uses no
+ * storage: the number is on the cart row. Nothing is blocked: VIES being down only charges VAT.
+ */
+export async function vatNumberAction(
+  storeSlug: string,
+  marketSlug: string,
+  typed: string,
+  company?: { name: string; number: string } | null,
+): Promise<VatNumberState> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) return { outcome: "no_cart" };
+  const cartShop = { storeId: shop.store.id, market: shop.market };
+  let kept: { name: string; number: string } | null | undefined;
+  if (company) {
+    const name = company.name.trim().slice(0, COMPANY_NAME_MAX);
+    const number = organisationNumber(shop.market.code, company.number.trim().slice(0, 40));
+    if (!name) return { outcome: "company" };
+    if (!number) return { outcome: "company_number" };
+    kept = { name, number };
+  }
+  // The VIES limit knows the shopper by a keyed hash of their address for the day (kept in a counter, never the address).
+  const result = await setCartVatNumber(cartShop, typed.slice(0, 40), kept, { clientKey: viesClientKey(shop.store.id, await headers()) });
+  refresh();
+  return { outcome: result.ok ? result.outcome : result.problem };
 }
 
 export type CodeState = { tried: string | null };

@@ -116,6 +116,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "ai.platform_": "platform",
   "google.platform_": "platform",
   "plan_reminders.": "platform",
+  "vat.": "platform",
   // A person's own account
   "account.": "account",
   // Settings: what is left, named so that a new action under one of them needs no decision but a new prefix does.

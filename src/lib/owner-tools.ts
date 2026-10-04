@@ -153,6 +153,16 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "get_tax_profile",
+    "The store's tax registration: whether it is registered for VAT and under which number, whether that number has been checked valid with VIES (and when), where goods are sent from, the OSS scheme and the IOSS number, intermediary and markets. Read only: a VAT number, a registration or a rate is changed by a person on the Tax page, never by the assistant.",
+    z.object({}),
+  ),
+  tool(
+    "tax_readiness",
+    "What the store's VAT features need: for VAT registration, reverse charge for businesses in other EU countries, OSS and IOSS, whether each is on or off and what is missing, worked out in code, with the Tax page to fix it. Use it for 'can I sell VAT-free to a business in Germany' and 'why was this order charged VAT'.",
+    z.object({}),
+  ),
+  tool(
     "store_checkup",
     "A check of the store's health worked out in code: orders waiting too long to be sent, stock running out, searches finding nothing, setup left to do, integrations failing, changes waiting for approval. Each finding comes with the page to fix it. Use it for 'how is my store doing' and to suggest what to do next.",
     z.object({}),

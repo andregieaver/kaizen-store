@@ -204,7 +204,7 @@ export const FINANCE_DEFINITIONS: readonly { term: string; text: string }[] = [
   { term: "Contribution profit and margin", text: "Net revenue less the cost of goods, payment fees, platform fees, shipping costs and marketing: what each sale leaves before fixed costs. The margin is that as a share of net revenue." },
   { term: "Fixed costs (pro rata)", text: "The monthly amount in Analytics settings (rent, salaries and the like) spread evenly over the days of the period." },
   { term: "Operating profit (estimate)", text: "Contribution profit less fixed costs. It rests on estimates, so treat it as a guide." },
-  { term: "VAT", text: "Tax collected on orders, including shipping. It is passed on to the tax authorities and is not income; every other figure here is without it." },
+  { term: "VAT", text: "Tax charged on orders, including shipping (VAT not charged under reverse charge is not counted, and is not a discount). It is passed on to the tax authorities and is not income; every other figure here is without it." },
   { term: "Currencies", text: "Amounts in another currency are converted into the store's main currency at today's rates, so history is valued at today's rates. An order in a currency with no rate is left out and counted." },
 ];
 
@@ -510,7 +510,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
     state: t.orders > 0 ? "ok" : "missing",
     missing: { text: "No orders were paid in this period." },
     good: "neutral",
-    help: "Tax collected on paid orders, including shipping.",
+    help: "Tax charged on paid orders, including shipping. VAT not charged on a sale to a business in another EU country (reverse charge) is not counted here and is not a discount.",
     hint: "Passed on to the tax authorities. Not income, and left out of every other figure on this page.",
     ...compared("money", "neutral", t.vatMinor, prior ? prior.totals.vatMinor : null),
   };

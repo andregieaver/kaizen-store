@@ -190,20 +190,20 @@ async function loadLines(store: Store, period: Pick<AnalyticsPeriod, "from" | "t
 async function loadPeriodFigures(store: Store, period: AnalyticsPeriod, convertible: Set<string>) {
   const rows = await setBased<Row>(sql`
     with po as materialized (
-      select o.id, o.currency::text as currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor
+      select o.id, o.currency::text as currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
     ),
     -- Each order's lines once, so an order's discount beyond them (a free-shipping code's) can be taken off its shipping.
     lo as (
-      select po.id, sum(ol.tax_minor) as line_tax, sum(ol.discount_minor) as line_disc
+      select po.id, sum(ol.tax_minor) as line_tax, sum(ol.discount_minor - ol.vat_relief_minor) as line_disc, sum(ol.vat_relief_minor) as line_relief
       from po
       join commerce.order_lines ol on ol.order_id = po.id
       where ol.store_id = ${store.id}::uuid
       group by po.id
     )
     select o.currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue,
-      sum(o.shipping_minor - least(o.shipping_minor, greatest(0, o.discount_minor - coalesce(l.line_disc, 0))) - (o.tax_minor - coalesce(l.line_tax, 0))) as shipping
+      sum(o.shipping_minor - least(o.shipping_minor, greatest(0, o.discount_minor - o.vat_relief_minor - coalesce(l.line_disc, 0))) - (o.vat_relief_minor - coalesce(l.line_relief, 0)) - (o.tax_minor - coalesce(l.line_tax, 0))) as shipping
     from po o
     left join lo l on l.id = o.id
     group by o.currency

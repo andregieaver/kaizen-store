@@ -5521,6 +5521,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "vat_number": {
+          "name": "vat_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_check_id": {
+          "name": "vat_check_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "bonus_request_minor": {
           "name": "bonus_request_minor",
           "type": "bigint",
@@ -5582,6 +5594,27 @@
         }
       },
       "indexes": {
+        "carts_vat_check_idx": {
+          "name": "carts_vat_check_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vat_check_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "carts_visit_idx": {
           "name": "carts_visit_idx",
           "columns": [
@@ -5661,6 +5694,22 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
+        "carts_vat_check_fk": {
+          "name": "carts_vat_check_fk",
+          "tableFrom": "carts",
+          "tableTo": "vat_checks",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "vat_check_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "carts_market_fk": {
           "name": "carts_market_fk",
           "tableFrom": "carts",
@@ -5710,6 +5759,10 @@
         "carts_bonus_request": {
           "name": "carts_bonus_request",
           "value": "\"commerce\".\"carts\".\"bonus_request_minor\" >= 0"
+        },
+        "carts_vat_number": {
+          "name": "carts_vat_number",
+          "value": "\"commerce\".\"carts\".\"vat_number\" is null or \"commerce\".\"carts\".\"vat_number\" ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$'"
         }
       },
       "isRLSEnabled": false
@@ -6739,6 +6792,12 @@
         "standard_vat_rate": {
           "name": "standard_vat_rate",
           "type": "numeric(5, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         }
@@ -13590,6 +13649,13 @@
           "notNull": true,
           "default": 0
         },
+        "vat_relief_minor": {
+          "name": "vat_relief_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "campaign_id": {
           "name": "campaign_id",
           "type": "uuid",
@@ -13832,6 +13898,10 @@
         "order_lines_referral_discount": {
           "name": "order_lines_referral_discount",
           "value": "\"commerce\".\"order_lines\".\"referral_discount_minor\" between 0 and \"commerce\".\"order_lines\".\"discount_minor\""
+        },
+        "order_lines_vat_relief": {
+          "name": "order_lines_vat_relief",
+          "value": "\"commerce\".\"order_lines\".\"vat_relief_minor\" between 0 and \"commerce\".\"order_lines\".\"discount_minor\""
         },
         "order_lines_venue": {
           "name": "order_lines_venue",
@@ -14107,6 +14177,38 @@
           "primaryKey": false,
           "notNull": false
         },
+        "vat_kind": {
+          "name": "vat_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'standard'"
+        },
+        "vat_relief_minor": {
+          "name": "vat_relief_minor",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "shipping_tax_rate": {
+          "name": "shipping_tax_rate",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_treatment": {
+          "name": "vat_treatment",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_check_id": {
+          "name": "vat_check_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "tax_minor": {
           "name": "tax_minor",
           "type": "bigint",
@@ -14245,6 +14347,27 @@
           ],
           "isUnique": true,
           "where": "\"commerce\".\"orders\".\"copied_from\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "orders_vat_check_idx": {
+          "name": "orders_vat_check_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vat_check_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -14446,6 +14569,22 @@
         }
       },
       "foreignKeys": {
+        "orders_vat_check_fk": {
+          "name": "orders_vat_check_fk",
+          "tableFrom": "orders",
+          "tableTo": "vat_checks",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "vat_check_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
         "orders_host_fk": {
           "name": "orders_host_fk",
           "tableFrom": "orders",
@@ -14555,6 +14694,22 @@
         "orders_credit": {
           "name": "orders_credit",
           "value": "\"commerce\".\"orders\".\"credit_minor\" between 0 and \"commerce\".\"orders\".\"discount_minor\""
+        },
+        "orders_vat_kind": {
+          "name": "orders_vat_kind",
+          "value": "\"commerce\".\"orders\".\"vat_kind\" in ('standard', 'reverse_charge', 'ioss')"
+        },
+        "orders_vat_relief": {
+          "name": "orders_vat_relief",
+          "value": "\"commerce\".\"orders\".\"vat_relief_minor\" between 0 and \"commerce\".\"orders\".\"discount_minor\""
+        },
+        "orders_vat_kind_relief": {
+          "name": "orders_vat_kind_relief",
+          "value": "(\"commerce\".\"orders\".\"vat_kind\" = 'reverse_charge' and \"commerce\".\"orders\".\"tax_minor\" = 0 and \"commerce\".\"orders\".\"vat_relief_minor\" > 0) or (\"commerce\".\"orders\".\"vat_kind\" <> 'reverse_charge' and \"commerce\".\"orders\".\"vat_relief_minor\" = 0)"
+        },
+        "orders_shipping_tax_rate": {
+          "name": "orders_shipping_tax_rate",
+          "value": "\"commerce\".\"orders\".\"shipping_tax_rate\" is null or (\"commerce\".\"orders\".\"shipping_tax_rate\" >= 0 and \"commerce\".\"orders\".\"shipping_tax_rate\" < 1)"
         },
         "orders_return_cost_payer": {
           "name": "orders_return_cost_payer",
@@ -18509,6 +18664,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "products_vat_category_idx": {
+          "name": "products_vat_category_idx",
+          "columns": [
+            {
+              "expression": "vat_category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -18573,6 +18743,20 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "products_vat_category_fk": {
+          "name": "products_vat_category_fk",
+          "tableFrom": "products",
+          "tableTo": "vat_categories",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "vat_category"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -18599,10 +18783,6 @@
         "products_audience": {
           "name": "products_audience",
           "value": "\"commerce\".\"products\".\"audience\" in ('all', 'consumers', 'businesses')"
-        },
-        "products_vat_category": {
-          "name": "products_vat_category",
-          "value": "\"commerce\".\"products\".\"vat_category\" in ('standard', 'accommodation', 'exempt')"
         },
         "products_kind": {
           "name": "products_kind",
@@ -22677,6 +22857,125 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.shipping_vat_rules": {
+      "name": "shipping_vat_rules",
+      "schema": "commerce",
+      "columns": {
+        "country_code": {
+          "name": "country_code",
+          "type": "char(2)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "rule": {
+          "name": "rule",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'standard'"
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "checked_on": {
+          "name": "checked_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_by": {
+          "name": "verified_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_at": {
+          "name": "verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "shipping_vat_rules_verified_by_idx": {
+          "name": "shipping_vat_rules_verified_by_idx",
+          "columns": [
+            {
+              "expression": "verified_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "shipping_vat_rules_country_code_countries_code_fk": {
+          "name": "shipping_vat_rules_country_code_countries_code_fk",
+          "tableFrom": "shipping_vat_rules",
+          "tableTo": "countries",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "country_code"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "shipping_vat_rules_verified_by_accounts_id_fk": {
+          "name": "shipping_vat_rules_verified_by_accounts_id_fk",
+          "tableFrom": "shipping_vat_rules",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "verified_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "shipping_vat_rules_rule": {
+          "name": "shipping_vat_rules_rule",
+          "value": "\"commerce\".\"shipping_vat_rules\".\"rule\" in ('standard', 'follows_goods', 'highest')"
+        },
+        "shipping_vat_rules_source": {
+          "name": "shipping_vat_rules_source",
+          "value": "length(\"commerce\".\"shipping_vat_rules\".\"source\") <= 400"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.standing_deliveries": {
       "name": "standing_deliveries",
       "schema": "commerce",
@@ -24772,6 +25071,269 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.store_tax_profile": {
+      "name": "store_tax_profile",
+      "schema": "commerce",
+      "columns": {
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "vat_registered": {
+          "name": "vat_registered",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "vat_number": {
+          "name": "vat_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_number_check_id": {
+          "name": "vat_number_check_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_number_checked_at": {
+          "name": "vat_number_checked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vat_number_valid": {
+          "name": "vat_number_valid",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dispatch_country": {
+          "name": "dispatch_country",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oss_scheme": {
+          "name": "oss_scheme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'none'"
+        },
+        "oss_member_state": {
+          "name": "oss_member_state",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oss_number": {
+          "name": "oss_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "oss_registered_on": {
+          "name": "oss_registered_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ioss_number": {
+          "name": "ioss_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ioss_intermediary": {
+          "name": "ioss_intermediary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ioss_markets": {
+          "name": "ioss_markets",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::text[]"
+        },
+        "ioss_registered_on": {
+          "name": "ioss_registered_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "store_tax_profile_updated_by_idx": {
+          "name": "store_tax_profile_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "store_tax_profile_oss_member_state_idx": {
+          "name": "store_tax_profile_oss_member_state_idx",
+          "columns": [
+            {
+              "expression": "oss_member_state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "store_tax_profile_vat_check_idx": {
+          "name": "store_tax_profile_vat_check_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vat_number_check_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "store_tax_profile_store_id_stores_id_fk": {
+          "name": "store_tax_profile_store_id_stores_id_fk",
+          "tableFrom": "store_tax_profile",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "store_tax_profile_oss_member_state_countries_code_fk": {
+          "name": "store_tax_profile_oss_member_state_countries_code_fk",
+          "tableFrom": "store_tax_profile",
+          "tableTo": "countries",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "oss_member_state"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "store_tax_profile_updated_by_accounts_id_fk": {
+          "name": "store_tax_profile_updated_by_accounts_id_fk",
+          "tableFrom": "store_tax_profile",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "store_tax_profile_vat_check_fk": {
+          "name": "store_tax_profile_vat_check_fk",
+          "tableFrom": "store_tax_profile",
+          "tableTo": "vat_checks",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id",
+            "vat_number_check_id"
+          ],
+          "columnsTo": [
+            "store_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "store_tax_profile_vat_number": {
+          "name": "store_tax_profile_vat_number",
+          "value": "\"commerce\".\"store_tax_profile\".\"vat_number\" is null or \"commerce\".\"store_tax_profile\".\"vat_number\" ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$'"
+        },
+        "store_tax_profile_vat_check": {
+          "name": "store_tax_profile_vat_check",
+          "value": "\"commerce\".\"store_tax_profile\".\"vat_number\" is not null or (\"commerce\".\"store_tax_profile\".\"vat_number_check_id\" is null and \"commerce\".\"store_tax_profile\".\"vat_number_checked_at\" is null and \"commerce\".\"store_tax_profile\".\"vat_number_valid\" is null)"
+        },
+        "store_tax_profile_dispatch": {
+          "name": "store_tax_profile_dispatch",
+          "value": "\"commerce\".\"store_tax_profile\".\"dispatch_country\" is null or \"commerce\".\"store_tax_profile\".\"dispatch_country\" ~ '^[A-Z]{2}$'"
+        },
+        "store_tax_profile_oss_scheme": {
+          "name": "store_tax_profile_oss_scheme",
+          "value": "\"commerce\".\"store_tax_profile\".\"oss_scheme\" in ('none', 'union', 'non_union')"
+        },
+        "store_tax_profile_oss_union": {
+          "name": "store_tax_profile_oss_union",
+          "value": "\"commerce\".\"store_tax_profile\".\"oss_scheme\" <> 'union' or \"commerce\".\"store_tax_profile\".\"oss_member_state\" is not null"
+        },
+        "store_tax_profile_oss_number": {
+          "name": "store_tax_profile_oss_number",
+          "value": "\"commerce\".\"store_tax_profile\".\"oss_number\" is null or (\"commerce\".\"store_tax_profile\".\"oss_scheme\" = 'non_union' and \"commerce\".\"store_tax_profile\".\"oss_number\" ~ '^EU[0-9]{9}$')"
+        },
+        "store_tax_profile_ioss_number": {
+          "name": "store_tax_profile_ioss_number",
+          "value": "\"commerce\".\"store_tax_profile\".\"ioss_number\" is null or \"commerce\".\"store_tax_profile\".\"ioss_number\" ~ '^IM[0-9]{10}$'"
+        },
+        "store_tax_profile_ioss_intermediary": {
+          "name": "store_tax_profile_ioss_intermediary",
+          "value": "\"commerce\".\"store_tax_profile\".\"ioss_intermediary\" is null or length(\"commerce\".\"store_tax_profile\".\"ioss_intermediary\") between 1 and 120"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.store_themes": {
       "name": "store_themes",
       "schema": "commerce",
@@ -26642,6 +27204,313 @@
       },
       "isRLSEnabled": false
     },
+    "commerce.vat_categories": {
+      "name": "vat_categories",
+      "schema": "commerce",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "sort": {
+          "name": "sort",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "active": {
+          "name": "active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "built_in": {
+          "name": "built_in",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "vat_categories_updated_by_idx": {
+          "name": "vat_categories_updated_by_idx",
+          "columns": [
+            {
+              "expression": "updated_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vat_categories_updated_by_accounts_id_fk": {
+          "name": "vat_categories_updated_by_accounts_id_fk",
+          "tableFrom": "vat_categories",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "vat_categories_code": {
+          "name": "vat_categories_code",
+          "value": "\"commerce\".\"vat_categories\".\"code\" ~ '^[a-z][a-z0-9_]{1,30}$'"
+        },
+        "vat_categories_name": {
+          "name": "vat_categories_name",
+          "value": "length(\"commerce\".\"vat_categories\".\"name_en\") between 1 and 60"
+        },
+        "vat_categories_description": {
+          "name": "vat_categories_description",
+          "value": "length(\"commerce\".\"vat_categories\".\"description\") <= 200"
+        },
+        "vat_categories_built_in": {
+          "name": "vat_categories_built_in",
+          "value": "not \"commerce\".\"vat_categories\".\"built_in\" or \"commerce\".\"vat_categories\".\"code\" in ('standard', 'exempt', 'accommodation')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "commerce.vat_checks": {
+      "name": "vat_checks",
+      "schema": "commerce",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cart_id": {
+          "name": "cart_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "number": {
+          "name": "number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "country_prefix": {
+          "name": "country_prefix",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_identifier": {
+          "name": "request_identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "vat_checks_number_idx": {
+          "name": "vat_checks_number_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "requested_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "vat_checks_cart_idx": {
+          "name": "vat_checks_cart_idx",
+          "columns": [
+            {
+              "expression": "store_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cart_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "requested_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vat_checks_store_id_stores_id_fk": {
+          "name": "vat_checks_store_id_stores_id_fk",
+          "tableFrom": "vat_checks",
+          "tableTo": "stores",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "store_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "vat_checks_store_id_key": {
+          "name": "vat_checks_store_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "store_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "vat_checks_purpose": {
+          "name": "vat_checks_purpose",
+          "value": "\"commerce\".\"vat_checks\".\"purpose\" in ('buyer', 'seller')"
+        },
+        "vat_checks_status": {
+          "name": "vat_checks_status",
+          "value": "\"commerce\".\"vat_checks\".\"status\" in ('valid', 'invalid', 'unavailable')"
+        },
+        "vat_checks_source": {
+          "name": "vat_checks_source",
+          "value": "\"commerce\".\"vat_checks\".\"source\" in ('vies', 'brreg')"
+        },
+        "vat_checks_number": {
+          "name": "vat_checks_number",
+          "value": "\"commerce\".\"vat_checks\".\"number\" ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$' and left(\"commerce\".\"vat_checks\".\"number\", 2) = \"commerce\".\"vat_checks\".\"country_prefix\""
+        },
+        "vat_checks_error": {
+          "name": "vat_checks_error",
+          "value": "\"commerce\".\"vat_checks\".\"error\" is null or length(\"commerce\".\"vat_checks\".\"error\") <= 80"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "commerce.vat_rates": {
       "name": "vat_rates",
       "schema": "commerce",
@@ -26663,9 +27532,111 @@
           "type": "numeric(5, 4)",
           "primaryKey": false,
           "notNull": true
+        },
+        "valid_from": {
+          "name": "valid_from",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valid_to": {
+          "name": "valid_to",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checked_on": {
+          "name": "checked_on",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "verified_by": {
+          "name": "verified_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verified_at": {
+          "name": "verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "vat_rates_category_idx": {
+          "name": "vat_rates_category_idx",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "vat_rates_verified_by_idx": {
+          "name": "vat_rates_verified_by_idx",
+          "columns": [
+            {
+              "expression": "verified_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "vat_rates_created_by_idx": {
+          "name": "vat_rates_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "vat_rates_country_code_countries_code_fk": {
           "name": "vat_rates_country_code_countries_code_fk",
@@ -26680,27 +27651,82 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "vat_rates_category_vat_categories_code_fk": {
+          "name": "vat_rates_category_vat_categories_code_fk",
+          "tableFrom": "vat_rates",
+          "tableTo": "vat_categories",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "category"
+          ],
+          "columnsTo": [
+            "code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vat_rates_verified_by_accounts_id_fk": {
+          "name": "vat_rates_verified_by_accounts_id_fk",
+          "tableFrom": "vat_rates",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "verified_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vat_rates_created_by_accounts_id_fk": {
+          "name": "vat_rates_created_by_accounts_id_fk",
+          "tableFrom": "vat_rates",
+          "tableTo": "accounts",
+          "schemaTo": "commerce",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "vat_rates_country_code_category_pk": {
-          "name": "vat_rates_country_code_category_pk",
+        "vat_rates_country_code_category_valid_from_pk": {
+          "name": "vat_rates_country_code_category_valid_from_pk",
           "columns": [
             "country_code",
-            "category"
+            "category",
+            "valid_from"
           ]
         }
       },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "vat_rates_category": {
-          "name": "vat_rates_category",
-          "value": "\"commerce\".\"vat_rates\".\"category\" in ('accommodation')"
-        },
         "vat_rates_rate": {
           "name": "vat_rates_rate",
           "value": "\"commerce\".\"vat_rates\".\"rate\" >= 0 and \"commerce\".\"vat_rates\".\"rate\" < 1"
+        },
+        "vat_rates_period": {
+          "name": "vat_rates_period",
+          "value": "\"commerce\".\"vat_rates\".\"valid_to\" is null or \"commerce\".\"vat_rates\".\"valid_to\" > \"commerce\".\"vat_rates\".\"valid_from\""
+        },
+        "vat_rates_source": {
+          "name": "vat_rates_source",
+          "value": "length(\"commerce\".\"vat_rates\".\"source\") between 8 and 400"
+        },
+        "vat_rates_not_exempt": {
+          "name": "vat_rates_not_exempt",
+          "value": "\"commerce\".\"vat_rates\".\"category\" <> 'exempt'"
+        },
+        "vat_rates_verified": {
+          "name": "vat_rates_verified",
+          "value": "(\"commerce\".\"vat_rates\".\"verified_at\" is null) = (\"commerce\".\"vat_rates\".\"verified_by\" is null)"
         }
       },
       "isRLSEnabled": false

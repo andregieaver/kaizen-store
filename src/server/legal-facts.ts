@@ -15,14 +15,16 @@ import type { Store } from "./stores";
 type Row = Record<string, unknown>;
 
 /**
- * The store's tax facts for the legal texts: its VAT number and whether it is registered for VAT. Unit 1a adds the store's tax
- * profile (`commerce.store_tax_profile`) in the other lane; this lane does not depend on its schema, so the one place that reads it
- * is this function, which answers null until the lead replaces its body at the merge with that read (one query). Until then
- * the imprint and the terms show `[[Add: VAT number]]`, unless the store is known to be unregistered.
+ * The store's tax facts for the legal texts: its VAT number and whether it is registered for VAT, from its tax profile
+ * (`commerce.store_tax_profile`, D157). A store that has not filled the profile in has no row and is not known either way (null):
+ * the imprint and the terms then show `[[Add: VAT number]]`; one that says it is not registered is known to be unregistered.
  */
 export async function taxFactsOf(storeId: string): Promise<{ vatNumber: string | null; registered: boolean | null } | null> {
-  void storeId;
-  return null;
+  const [row] = await db().execute<Row>(sql`
+    select vat_registered, vat_number from commerce.store_tax_profile where store_id = ${storeId}::uuid
+  `);
+  if (!row) return null;
+  return { vatNumber: row.vat_number === null ? null : String(row.vat_number), registered: row.vat_registered === true };
 }
 
 /**

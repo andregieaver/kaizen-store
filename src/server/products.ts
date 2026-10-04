@@ -8,7 +8,7 @@ import { parseProductAudience, withVat, withoutVat, type StoreAudience } from "@
 import { feeFor, parseSeason } from "@/lib/booking-prices";
 import { parseRentalPeriod } from "@/lib/booking-ranges";
 import { mainCurrency } from "@/lib/markets";
-import { parseVatCategory, type VatCategory } from "@/lib/vat";
+import { parseVatCategory, type VatCategory, type VatCategoryRow } from "@/lib/vat";
 import {
   combineOptions,
   formatPriceInput,
@@ -32,6 +32,7 @@ import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
 import { auditProductSave, productSnapshot } from "./product-audit";
 import { listLayoutChoices } from "./product-layouts";
+import { listVatCategories, ratesNow } from "./vat-categories";
 import type { Store } from "./stores";
 import { listTerms, scopedTermIds } from "./taxonomy";
 
@@ -51,8 +52,14 @@ export type EditorContext = {
   /** The store's languages, primary first. */
   locales: string[];
   primaryLocale: string;
-  /** Each market's VAT rate per category (D65), e.g. `{ standard: 0.25, accommodation: 0.12, exempt: 0 }`. */
-  markets: { code: string; currency: string; name: string; vatRates: Record<VatCategory, number> }[];
+  /**
+   * Each market's VAT rate per category now (D65, D157), e.g. `{ standard: 0.25, accommodation: 0.12, food: 0.15, exempt: 0 }`,
+   * and whether the country has a rate of its own for it (`vatRows`): a category with none takes the standard rate, which the
+   * editor says ("no reduced rate known here", `describeRate()`).
+   */
+  markets: { code: string; currency: string; name: string; vatRates: Record<VatCategory, number>; vatRows: Record<VatCategory, boolean> }[];
+  /** The VAT categories (platform admins keep them): the editor offers `categoriesFor()` of them. */
+  vatCategories: VatCategoryRow[];
   /** Who the store sells to (B2B): a store selling only to businesses enters its prices without VAT. */
   audience: StoreAudience;
   /** The store's main currency (D152): what a variant's cost is entered in. */
@@ -76,7 +83,7 @@ export type EditorContext = {
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location], terms, rates, staff, places, hosts, layouts] = await Promise.all([
+  const [operators, [location], terms, rates, staff, places, hosts, layouts, vatCategories] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -87,14 +94,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       where store_id = ${store.id}::uuid and active order by created_at limit 1
     `),
     listTerms({ storeId: store.id, contentType: "product" }),
-    db().execute<Row>(sql`
-      select code, json_build_object(
-        'standard', commerce.vat_rate(code, 'standard'),
-        'accommodation', commerce.vat_rate(code, 'accommodation'),
-        'exempt', commerce.vat_rate(code, 'exempt')
-      ) as rates
-      from commerce.countries
-    `),
+    ratesNow(),
     db().execute<Row>(sql`
       select id, name, active, kind from commerce.booking_resources
       where store_id = ${store.id}::uuid order by active desc, position, name
@@ -109,20 +109,21 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       where store_id = ${store.id}::uuid and disabled_at is null order by lower(name)
     `),
     listLayoutChoices(store.id),
+    listVatCategories(),
   ]);
   const noVat: Record<VatCategory, number> = { standard: 0, accommodation: 0, exempt: 0 };
-  const vatRates = new Map(
-    rates.map((row) => [
-      String(row.code),
-      Object.fromEntries(Object.entries(row.rates as Record<string, unknown>).map(([k, v]) => [k, Number(v ?? 0)])) as Record<VatCategory, number>,
-    ]),
-  );
+  const ratesOf = (code: string): Record<VatCategory, number> =>
+    rates[code] ? Object.fromEntries(Object.entries(rates[code]).map(([category, cell]) => [category, cell.rate])) : noVat;
+  /** Whether the country has a rate of its own for the category (else it is the standard rate: the editor says so). */
+  const rowsOf = (code: string): Record<VatCategory, boolean> =>
+    rates[code] ? Object.fromEntries(Object.entries(rates[code]).map(([category, cell]) => [category, cell.hasRow])) : {};
   const locales = store.localization.locales;
   return {
     locales,
     primaryLocale: locales[0] ?? "en",
     terms,
-    markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name, vatRates: vatRates.get(m.code) ?? noVat })),
+    markets: store.markets.map((m) => ({ code: m.code, currency: m.currency, name: m.name, vatRates: ratesOf(m.code), vatRows: rowsOf(m.code) })),
+    vatCategories,
     audience: store.audience,
     mainCurrency: mainCurrency(store),
     operators: operators.map((row) => ({
@@ -752,6 +753,14 @@ async function upsertProduct(
   manufacturerId: string | null,
   responsibleId: string | null,
 ): Promise<string> {
+  // A category switched off is kept by the products that already have it and cannot be newly chosen; an unknown one is refused (D157).
+  const [category] = await tx.execute<Row>(sql`
+    select k.active, (select p.vat_category = k.code from commerce.products p where p.store_id = ${storeId}::uuid and p.id = ${productId}::uuid) as kept
+    from commerce.vat_categories k where k.code = ${input.vatCategory}
+  `);
+  if (!category || (category.active !== true && category.kept !== true)) {
+    throw new FieldProblems(["That VAT category is not available: it does not exist or has been switched off. Choose another."]);
+  }
   if (productId) {
     const [row] = await tx.execute<Row>(sql`
       update commerce.products set

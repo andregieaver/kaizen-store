@@ -63,7 +63,7 @@ export function visitSecret(env: string | undefined = process.env.SETTINGS_ENCRY
 }
 
 /** The client's address as the platform reports it; only ever fed to the hash, never stored. */
-const addressOf = (h: Headers): string => h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim() || "";
+export const addressOf = (h: Headers): string => h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim() || "";
 
 /** Global Privacy Control or Do Not Track sent with the request: the visit is not counted. */
 export const wantsPrivacy = (h: Headers): boolean => h.get("sec-gpc") === "1" || h.get("dnt") === "1";

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
+import { VatNotes } from "@/components/vat-notes";
 import { discountNote } from "@/lib/customer-tiers";
 import { companyRequired, withoutVat } from "@/lib/b2b";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
@@ -15,6 +16,8 @@ import { optionLabel, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { formatMoney } from "@/lib/money";
+import { countryOfVatPrefix } from "@/lib/vat-number";
+import { countryName, vatNumberMessage, vatProblemTexts, vatText } from "@/lib/vat-text";
 import { getBuyer } from "@/server/b2b";
 import { getCart } from "@/server/cart";
 import { perRequest } from "@/server/request-memo";
@@ -40,6 +43,8 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
 
   const [summary, bonus] = await Promise.all([cartSummary({ storeId: store.id, market }, cart), readCartBonus(store, market)]);
   const { plan, checkout, renewal } = summary;
+  // The VAT wording (D157): hand-written, so apart from the interface texts the AI translates.
+  const vatWords = vatText(market.lang);
   const every = plan ? m.planEvery(plan.interval, plan.intervalCount) : "";
   // Businesses see amounts without VAT, and the VAT on its own line (B2B); they pay the total with it.
   const business = buyer === "business";
@@ -83,6 +88,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     companyNeeded,
     company,
     terms,
+    vatWords,
   };
 }
 
@@ -336,10 +342,10 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
 }
 
 function summaryList({ store, market, m, view }: Draw) {
-  const { summary, business, money, net, sumNet } = view;
+  const { summary, business, money, net, sumNet, vatWords } = view;
+  const { tax } = summary;
   const {
     payable,
-    checkout,
     fees,
     feeMinor,
     ships,
@@ -388,7 +394,7 @@ function summaryList({ store, market, m, view }: Draw) {
               {summary.delivery?.delivery.label ?? m.shipping}
               {basket.renewal > 0 && <span className="text-sm text-muted"> {m.perDelivery}</span>}
             </dt>
-            <dd>{shipping === 0 ? m.freeShipping : net(shipping)}</dd>
+            <dd>{shipping === 0 ? m.freeShipping : net(shipping, tax.shippingRate)}</dd>
           </div>
         )}
         {discountMinor > 0 && (
@@ -416,7 +422,7 @@ function summaryList({ store, market, m, view }: Draw) {
                   minor: lineDiscount(i),
                   rate: line.vatRate,
                 })),
-                { minor: applied?.shippingMinor ?? 0, rate: checkout.vatRate },
+                { minor: applied?.shippingMinor ?? 0, rate: tax.shippingRate },
               ])}
             </dd>
           </div>
@@ -444,6 +450,13 @@ function summaryList({ store, market, m, view }: Draw) {
             </dd>
           </div>
         )}
+        {tax.reverseCharge && !business && (
+          // Reverse charge (D157) for a shopper who sees prices with VAT: the VAT not charged comes off before the total.
+          <div className="flex justify-between gap-4">
+            <dt>{vatWords.reliefRow}</dt>
+            <dd>−{money(tax.reliefMinor)}</dd>
+          </div>
+        )}
         {business && (
           <>
             <div className="flex justify-between gap-4 border-t border-border pt-2">
@@ -451,7 +464,7 @@ function summaryList({ store, market, m, view }: Draw) {
               <dd>{money(total - vat)}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt>{m.vatLine}</dt>
+              <dt>{tax.reverseCharge ? vatWords.vatLineReverse : m.vatLine}</dt>
               <dd>{money(vat)}</dd>
             </div>
           </>
@@ -473,11 +486,21 @@ function summaryList({ store, market, m, view }: Draw) {
           </>
         )}
       </dl>
-      {(!business || shipping === null) && (
+      {((!business && !tax.reverseCharge) || shipping === null) && (
         <p className="text-sm text-muted">
-          {[!business && m.vatIncluded, shipping === null && m.shippingAtCheckout].filter(Boolean).join(" · ")}
+          {[!business && !tax.reverseCharge && m.vatIncluded, shipping === null && m.shippingAtCheckout]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       )}
+      <VatNotes
+        text={vatWords}
+        reverseCharge={tax.reverseCharge}
+        sellerNumber={tax.sellerVatNumber}
+        buyerNumber={tax.buyerVatNumber}
+        iossNumber={null}
+        importNotice={tax.importNotice}
+      />
       {terms && <p className="text-sm">{terms}</p>}
       {applied && Object.keys(applied.renewalUnits).length > 0 && <p className="text-sm">{m.discountRenews}</p>}
       {referral.state === "guest" && (
@@ -533,8 +556,41 @@ function creditsForm({ store, market, m, view }: Draw) {
 }
 
 function checkoutAction({ store, market, m, view }: Draw) {
-  const { summary, business, money, saved, companyNeeded, company, every } = view;
-  const { checkout, blocked, atVenueOnly, digital, renewal, plan } = summary;
+  const { summary, business, money, saved, companyNeeded, company, every, cart, vatWords } = view;
+  const { checkout, blocked, atVenueOnly, digital, renewal, plan, tax } = summary;
+  const asksCompany = business || companyNeeded;
+  // The EU VAT number (D157): offered under the company's fields when the cart could take the VAT off; the sentence under
+  // it is what the server worked out for the number on the cart, and a basket with a booking or a subscription says why not.
+  const numberTyped = cart.company?.vatNumber ?? "";
+  const fieldFor = tax.fieldIfBusiness;
+  const vat = !asksCompany
+    ? undefined
+    : fieldFor.offered
+      ? {
+          offered: true,
+          initial: numberTyped,
+          message: vatNumberMessage(
+            {
+              reason: tax.reason,
+              buyerVatNumber: tax.buyerVatNumber,
+              numberCountry: countryName(countryOfVatPrefix(numberTyped.slice(0, 2)) ?? "", market.locale),
+              deliveryCountry: countryName(market.code, market.locale),
+            },
+            vatWords,
+          ),
+          labels: { label: vatWords.label, help: vatWords.help, check: vatWords.check, checking: vatWords.checking },
+          problems: vatProblemTexts(vatWords),
+        }
+      : fieldFor.reason === "has_service" || fieldFor.reason === "has_subscription"
+        ? {
+            offered: false,
+            initial: "",
+            message: null,
+            labels: { label: "", help: "", check: "", checking: "" },
+            problems: {},
+            note: fieldFor.reason === "has_service" ? vatWords.basketService : vatWords.basketSubscription,
+          }
+        : undefined;
   return (
     <>
       {checkout.paymentsOn ? (
@@ -560,12 +616,13 @@ function checkoutAction({ store, market, m, view }: Draw) {
           }
           company={{
             // Asked of businesses, and of anyone whose order needs it.
-            ask: business || companyNeeded,
+            ask: asksCompany,
             required: companyNeeded,
             name: company.name,
             number: company.number,
             labels: m.company,
           }}
+          vat={vat}
           consents={{
             digital: digital ? m.digitalConsent : undefined,
             subscription:

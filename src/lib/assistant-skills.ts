@@ -252,6 +252,20 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "vat-and-reverse-charge",
+    area: "store",
+    title: "Understand how the store charges VAT",
+    when: "The owner asks about VAT, a VAT number, selling VAT-free to a business in another EU country, OSS or IOSS, or why an order was charged VAT.",
+    steps: [
+      "Call tax_readiness and get_tax_profile: they say what is on and what is missing, worked out in code. Repeat their words; never guess a rule.",
+      "Prices include VAT and each sale is charged the VAT of the country it goes to. Reverse charge needs the store's own VAT number to be checked valid, and then only goods and downloads sold to a business in another EU country that gives a valid VAT number for the country the goods go to.",
+      "To fix what is missing, open the Tax page (tax); only an owner changes it. You never change a VAT number, a registration or a rate: say the owner does it there.",
+      "For why an order was charged VAT, open the order (order, with orderId): its VAT treatment says the reason in plain words.",
+      "A reduced rate for a product (food, books and so on) is the product's VAT category in the product editor; the rate comes from the platform's table, which says where no reduced rate is known and the standard rate applies.",
+      "Say plainly that this is not tax advice and that an accountant should confirm anything about OSS, IOSS or thresholds.",
+    ],
+  },
+  {
     id: "grow-sales",
     area: "store",
     title: "Sell more",

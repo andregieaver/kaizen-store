@@ -222,12 +222,16 @@ async function orderData(storeId: string, storeSlug: string, orderId: string) {
     customer_name: order.billingAddress.name || order.shippingAddress.name || "",
     subtotal: money(order.subtotalMinor),
     shipping: money(order.shippingMinor),
-    // Bonus credits used (D130) and the friend's welcome discount (D131) are part of the discount, so subtotal + shipping - discount is still the total.
-    discount: money(order.discountMinor + order.referralDiscountMinor + order.creditMinor),
+    // Bonus credits used (D130), the friend's welcome discount (D131) and the VAT a reverse-charge order did not charge (D157) are
+    // part of the discount, so subtotal + shipping - discount is still the total.
+    discount: money(order.discountMinor + order.referralDiscountMinor + order.creditMinor + order.vatReliefMinor),
     credits_used: money(order.creditMinor),
     referral_discount: money(order.referralDiscountMinor),
     discount_code: order.discountCode ?? "",
     vat: money(order.taxMinor),
+    // The VAT treatment (D157): its kind and the VAT not charged. Never a VAT number or VIES's answer.
+    vat_kind: order.vatKind,
+    vat_relief: money(order.vatReliefMinor),
     total: money(order.totalMinor),
     refunded: money(Number(extra?.refunded ?? 0)),
     shipping_address: address(order.shippingAddress),

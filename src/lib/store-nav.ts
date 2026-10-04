@@ -201,6 +201,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers."),
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get."),
           item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms."),
+          item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT."),
           item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services."),
         ],
       },

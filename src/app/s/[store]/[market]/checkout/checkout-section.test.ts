@@ -51,6 +51,7 @@ const order = (over: Record<string, unknown> = {}) => ({
       quantity: 2,
       unitPriceMinor: 5000,
       taxRate: 0.25,
+      taxMinor: 1700,
       gift: false,
       image: null,
       booking: null,
@@ -70,6 +71,9 @@ const order = (over: Record<string, unknown> = {}) => ({
   referralDiscountMinor: 0,
   totalMinor: 8500,
   taxMinor: 1700,
+  vatKind: "standard",
+  vatReliefMinor: 0,
+  vat: null,
   balanceMinor: 0,
   company: null,
   bonus: null,
@@ -250,5 +254,28 @@ describe("the checkout's terms piece (wave 1, 1e)", () => {
     termsNow.display = { mode: "link", kind: "both", pages };
     stripeNow.key = null;
     expect(renderToString(await CheckoutTerms({ store, market }))).toBe("");
+  });
+});
+
+describe("the checkout's totals with reverse charge (D157)", () => {
+  it("say reverse charge on the VAT row and under the totals, with both VAT numbers, before the shopper pays", async () => {
+    getOrder.mockResolvedValue(
+      order({
+        vatKind: "reverse_charge",
+        vatReliefMinor: 1700,
+        taxMinor: 0,
+        totalMinor: 6800,
+        company: { name: "Kunde GmbH", number: "123456789" },
+        vat: { reason: "reverse_charge", sellerVatNumber: "SE556677889901", buyerVatNumber: "DE123456789", buyerCountry: "DE", iossNumber: null, viesStatus: "valid", viesCheckedAt: null },
+      }),
+    );
+    const text = words(renderToString(await CheckoutTotals({ store, market })));
+    expect(text).toContain("VAT (reverse charge) €0.00");
+    expect(text).toContain("Total excl. VAT €68.00");
+    expect(text).toContain("Reverse charge: VAT has not been charged.");
+    expect(text).toContain("Seller's VAT number: SE556677889901");
+    expect(text).toContain("Buyer's VAT number: DE123456789");
+    // Collected under IOSS is only said once it has been (the order page and the email).
+    expect(text).not.toContain("under IOSS");
   });
 });

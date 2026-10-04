@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import type { OrderBonus } from "@/lib/bonus-shopper";
 import { readOrderDelivery, type OrderDelivery } from "@/lib/delivery-options";
 import { shown, type Market } from "@/lib/markets";
+import { parseOrderTreatment, shopperTreatment, type OrderVatTreatment, type VatKind, type VatReason } from "@/lib/vat-treatment";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
@@ -66,6 +67,25 @@ export type OrderView = {
    */
   bonus: OrderBonus | null;
   taxMinor: number;
+  /**
+   * Which VAT the order carries (D157): `standard`, `reverse_charge` or `ioss`. With reverse charge the VAT not charged
+   * (`vatReliefMinor`, its shipping's part `shippingReliefMinor`) is inside the database's discount, left out of
+   * `discountMinor` as credits are, and the lines and the total are net. `vat` is what a shopper may see of the treatment
+   * (both VAT numbers, the IOSS number and the VIES verdict, never VIES's registered name or address); null for a host's
+   * order, a copied one or one placed before it existed. Staff read the whole of it with `getOrderTreatment()`.
+   */
+  vatKind: VatKind;
+  vatReliefMinor: number;
+  shippingReliefMinor: number;
+  vat: {
+    reason: VatReason;
+    sellerVatNumber: string | null;
+    buyerVatNumber: string | null;
+    buyerCountry: string | null;
+    iossNumber: string | null;
+    viesStatus: "valid" | "invalid" | "unavailable" | "not_checked";
+    viesCheckedAt: string | null;
+  } | null;
   totalMinor: number;
   /** Still to be paid at the venue (D66); 0 once staff mark it paid. */
   balanceMinor: number;
@@ -84,8 +104,12 @@ export type OrderView = {
     delivery: Delivery;
     /** The product's first picture, small, as it is now: a path on the store's host or a full address; null for fees. */
     image: string | null;
-    /** The VAT rate it was sold at (D65). */
+    /** The VAT rate it was sold at (D65); with reverse charge the rate that would have applied. */
     taxRate: number;
+    /** The VAT in it as charged (0 with reverse charge), for the order page's VAT per rate. */
+    taxMinor: number;
+    /** The VAT a reverse-charge order did not charge on it (D157): inside its discount, its total is net. */
+    vatReliefMinor: number;
     /** A free product a campaign gave (D114): its price is all taken off. */
     gift: boolean;
     /** The part of its total paid at the venue (D66). */
@@ -101,7 +125,7 @@ export type OrderView = {
   subscriptionId: string | null;
   /** The company it was bought for (B2B), shown with the order and on its invoice. */
   company: { name: string; number: string } | null;
-  /** The market's standard VAT rate, which shipping takes, for showing businesses amounts without VAT. */
+  /** The VAT rate the shipping was charged at, as it was then (`orders.shipping_tax_rate`; the country's rate for an order that has none), for showing businesses amounts without VAT. */
   shippingVatRate: number;
   /**
    * History copied from another store (D129): numbered `C-{original number}`, read-only. Nothing can be paid, sent, refunded,
@@ -155,6 +179,22 @@ export function orderBonus(row: Row): OrderBonus | null {
   };
 }
 
+/** What a shopper may see of an order's frozen treatment: never VIES's registered name or address. */
+function shopperVat(value: unknown): OrderView["vat"] {
+  const t = parseOrderTreatment(value);
+  if (!t) return null;
+  const s = shopperTreatment(t);
+  return {
+    reason: s.reason,
+    sellerVatNumber: s.sellerVatNumber,
+    buyerVatNumber: s.buyerVatNumber,
+    buyerCountry: s.buyerCountry,
+    iossNumber: s.iossNumber,
+    viesStatus: s.vies.status,
+    viesCheckedAt: s.vies.checkedAt,
+  };
+}
+
 const toOrder = (row: Row, lines: Row[]): OrderView => ({
   id: String(row.id),
   number: String(row.number),
@@ -167,7 +207,8 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   subtotalMinor: Number(row.subtotal_minor),
   shippingMinor: Number(row.shipping_minor),
   delivery: readOrderDelivery(row.delivery),
-  discountMinor: Number(row.discount_minor ?? 0) - Number(row.credit_minor ?? 0) - Number(row.referral_discount_minor ?? 0),
+  discountMinor:
+    Number(row.discount_minor ?? 0) - Number(row.credit_minor ?? 0) - Number(row.referral_discount_minor ?? 0) - Number(row.vat_relief_minor ?? 0),
   discountCode: row.discount_code ? String(row.discount_code) : null,
   memberDiscountMinor: Number(row.member_discount_minor ?? 0),
   memberLabel: row.member_label ? String(row.member_label) : null,
@@ -178,6 +219,10 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   creditMinor: Number(row.credit_minor ?? 0),
   bonus: orderBonus(row),
   taxMinor: Number(row.tax_minor),
+  vatKind: row.vat_kind === "reverse_charge" ? "reverse_charge" : row.vat_kind === "ioss" ? "ioss" : "standard",
+  vatReliefMinor: Number(row.vat_relief_minor ?? 0),
+  shippingReliefMinor: Number(row.vat_relief_minor ?? 0) - lines.reduce((sum, line) => sum + Number(line.vat_relief_minor ?? 0), 0),
+  vat: shopperVat(row.vat_treatment),
   totalMinor: Number(row.total_minor),
   balanceMinor: Number(row.balance_minor ?? 0),
   wasPaid: Boolean(row.was_paid),
@@ -194,6 +239,8 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     delivery: parseDelivery(line.delivery),
     image: line.image ? String(line.image) : null,
     taxRate: Number(line.tax_rate ?? 0),
+    taxMinor: Number(line.tax_minor ?? 0),
+    vatReliefMinor: Number(line.vat_relief_minor ?? 0),
     gift: Boolean(line.gift),
     venueMinor: Number(line.venue_minor ?? 0),
     booking: line.starts_at
@@ -226,12 +273,12 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
 export async function getOrder(storeId: string, orderId: string): Promise<OrderView | null> {
   const [[order], lines] = await Promise.all([
     db().execute<Row>(sql`
-      select o.*, (select c.standard_vat_rate from commerce.countries c where c.code = o.market_code) as shipping_vat_rate,
+      select o.*, coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as shipping_vat_rate,
         exists (select 1 from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid') as was_paid
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
-      select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.gift,
+      select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.tax_minor, ol.gift, ol.vat_relief_minor,
         (select coalesce(m.thumbnail_url, m.url)
           from commerce.product_variants v
           join commerce.product_media m on m.product_id = v.product_id
@@ -379,7 +426,7 @@ export async function getCheckoutInfo(storeId: string, marketCode: string, view?
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as amount_minor,
       (select free_over_minor from commerce.shipping_rates
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as free_over_minor,
-      (select standard_vat_rate from commerce.countries where code = ${marketCode}) as vat_rate
+      commerce.vat_rate(${marketCode}, 'standard') as vat_rate
   `);
   return {
     /** The market's VAT rate, for showing businesses amounts without it (B2B). */
@@ -394,6 +441,18 @@ export async function getCheckoutInfo(storeId: string, marketCode: string, view?
             freeOverMinor: row.free_over_minor == null ? null : view ? shown(view, Number(row.free_over_minor)) : Number(row.free_over_minor),
           },
   };
+}
+
+/**
+ * The whole of an order's VAT treatment for staff with access to the order (D157): the kind and why, both VAT numbers, the
+ * VIES verdict with its registered name and address and its consultation number, and the IOSS number. Null for a host's
+ * order, a copied one or one placed before the treatment was kept. Never for a shopper's page (`OrderView.vat`).
+ */
+export async function getOrderTreatment(storeId: string, orderId: string): Promise<OrderVatTreatment | null> {
+  const [row] = await db().execute<Row>(sql`
+    select vat_treatment from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+  `);
+  return parseOrderTreatment(row?.vat_treatment);
 }
 
 export type OrderListRow = {

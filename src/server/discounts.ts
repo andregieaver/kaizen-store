@@ -81,7 +81,7 @@ export async function listDiscounts(storeId: string): Promise<DiscountListRow[]>
   const rows = await db().execute<Row>(sql`
     select d.*, ${used(null)},
       (select coalesce(jsonb_object_agg(currency, total), '{}'::jsonb) from (
-        select o.currency, sum(o.discount_minor - o.credit_minor - o.referral_discount_minor)::bigint as total from commerce.orders o
+        select o.currency, sum(o.discount_minor - o.credit_minor - o.referral_discount_minor - o.vat_relief_minor)::bigint as total from commerce.orders o
         where o.store_id = d.store_id and o.discount_code_id = d.id and o.copied_from is null
           and o.status not in ('cancelled', 'pending_payment')
         group by o.currency) g) as given

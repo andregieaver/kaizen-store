@@ -1,9 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 
-import { checkoutAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
+import { checkoutAction, vatNumberAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
+import type { VatNumberMessage } from "@/lib/vat-text";
 import type { CheckoutProblem } from "@/server/checkout";
+
+import { VatNumberField, type VatNumberFieldLabels } from "./vat-number-field";
 
 export type CheckoutLabels = {
   checkout: string;
@@ -26,6 +29,25 @@ export type CheckoutCompany = {
   number: string;
   labels: { legend: string; name: string; number: string; required: string; optional: string };
 };
+
+/**
+ * The EU VAT number a business may give for reverse charge (D157), asked for under the company's fields where the cart
+ * offers it. `initial` is the number as the cart holds it and `message` what the server says of it; `problems` are the
+ * texts for what the action can refuse (`vatProblemTexts()`), `unsaved` for a number left unchecked that cannot be.
+ */
+export type CheckoutVat = {
+  /** The field is drawn; false when only `note` is (the goods cannot take a number). */
+  offered: boolean;
+  initial: string;
+  message: VatNumberMessage | null;
+  labels: VatNumberFieldLabels;
+  problems: Record<string, string>;
+  /** One line when the cart's goods cannot take a number (a booking, a subscription): instead of the field. */
+  note?: string | null;
+};
+
+const sameNumber = (a: string, b: string) =>
+  a.replace(/[^0-9A-Za-z+*]/g, "").toUpperCase() === b.replace(/[^0-9A-Za-z+*]/g, "").toUpperCase();
 
 /**
  * Who books, asked for when nothing is paid online (D66): Stripe asks
@@ -52,6 +74,7 @@ export function CheckoutButton({
   consents = {},
   company,
   contact,
+  vat,
 }: {
   store: string;
   market: string;
@@ -62,10 +85,34 @@ export function CheckoutButton({
   company?: CheckoutCompany;
   /** When the order is paid entirely at the venue (D66). */
   contact?: CheckoutContactFields;
+  /** Where the cart offers a business's EU VAT number (D157); only with `company.ask`. */
+  vat?: CheckoutVat;
 }) {
+  // Kept as typed: a form action resets its fields, and a mistyped number should not be lost.
+  const [companyName, setCompanyName] = useState(company?.name ?? "");
+  const [companyNumber, setCompanyNumber] = useState(company?.number ?? "");
+  const [vatNumber, setVatNumber] = useState(vat?.initial ?? "");
+  const [vatChecked, setVatChecked] = useState(vat?.initial ?? "");
+  const [vatProblem, setVatProblem] = useState<string | null>(null);
+  const [checkingVat, startVatCheck] = useTransition();
+  const offersVat = Boolean(vat?.offered && company?.ask);
+
+  /** Asks the server about the typed number (the company typed beside it is kept first); false when it could not be kept. */
+  async function checkVat(): Promise<boolean> {
+    if (!vat) return true;
+    const result = await vatNumberAction(store, market, vatNumber, { name: companyName, number: companyNumber });
+    const problem = vat.problems[result.outcome] ?? null;
+    setVatProblem(problem);
+    if (!problem) setVatChecked(vatNumber);
+    return problem === null;
+  }
+
   const [state, action, pending] = useActionState(
-    async (_: CheckoutState, form: FormData): Promise<CheckoutState> =>
-      checkoutAction(
+    async (_: CheckoutState, form: FormData): Promise<CheckoutState> => {
+      // A number typed and not checked is checked first, so pressing pay never leaves it out. VIES being down is not a
+      // problem here (VAT is charged and the sale goes on); only a number that cannot be asked about stops it.
+      if (offersVat && !sameNumber(vatNumber, vatChecked) && !(await checkVat())) return { problem: null };
+      return checkoutAction(
         store,
         market,
         {
@@ -84,7 +131,8 @@ export function CheckoutButton({
               phone: String(form.get("contactPhone") ?? ""),
             }
           : null,
-      ),
+      );
+    },
     { problem: null },
   );
   // On to payment with a full page load (wave 1, 1e): nothing a page added earlier may be in the document where a card is typed.
@@ -93,9 +141,6 @@ export function CheckoutButton({
     if (to) window.location.assign(to);
   }, [to]);
   const [who, setWho] = useState({ name: contact?.name ?? "", email: contact?.email ?? "", phone: contact?.phone ?? "" });
-  // Kept as typed: a form action resets its fields, and a mistyped number should not be lost.
-  const [companyName, setCompanyName] = useState(company?.name ?? "");
-  const [companyNumber, setCompanyNumber] = useState(company?.number ?? "");
   const field = "min-h-11 w-full rounded-md border border-border bg-background px-3";
   return (
     <form action={action} className="flex flex-col gap-3">
@@ -126,6 +171,21 @@ export function CheckoutButton({
               className={field}
             />
           </label>
+          {offersVat && vat && (
+            <VatNumberField
+              value={vatNumber}
+              onChange={(value) => {
+                setVatNumber(value);
+                setVatProblem(null);
+              }}
+              onCheck={() => startVatCheck(async () => void (await checkVat()))}
+              checking={checkingVat}
+              message={sameNumber(vatNumber, vat.initial) ? vat.message : null}
+              problem={vatProblem}
+              labels={vat.labels}
+            />
+          )}
+          {company?.ask && vat?.note && <p className="text-muted">{vat.note}</p>}
         </fieldset>
       )}
       {contact && (

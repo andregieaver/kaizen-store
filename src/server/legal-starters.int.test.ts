@@ -120,9 +120,14 @@ describe("making a starter", () => {
     expect(f.returns).toMatchObject({ windowDays: 30, whoPays: "store", refundWhen: "request" });
     expect(f.legalName).toBe("Kaizen Keramikk AS");
     expect(f.links.withdraw).toMatch(/\/no\/withdraw$/);
-    // The VAT number is the hook the lead replaces at the merge: no tax profile in this lane.
+    // No tax profile yet: the VAT number is not known either way.
     expect(f.vat).toEqual({ number: null, registered: null });
     expect(await facts.taxFactsOf(store.id)).toBeNull();
+    // Once the store records its registration (D157) the texts have it.
+    await db().execute(sql`insert into commerce.store_tax_profile (store_id, vat_registered, vat_number) values (${store.id}::uuid, true, 'NO123456789MVA')`);
+    expect(await facts.taxFactsOf(store.id)).toEqual({ vatNumber: "NO123456789MVA", registered: true });
+    expect((await facts.legalFacts((await stores.getStore(store.slug))!)).vat).toEqual({ number: "NO123456789MVA", registered: true });
+    await db().execute(sql`delete from commerce.store_tax_profile where store_id = ${store.id}::uuid`);
     const shipping = await ls.createLegalStarter(await reload(), "shipping_policy");
     const returns = await ls.createLegalStarter(owner, "returns_policy");
     if (!shipping.ok || !returns.ok) throw new Error("starter");

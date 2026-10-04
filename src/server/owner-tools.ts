@@ -95,6 +95,7 @@ import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { listDiscounts, saveDiscount } from "./discounts";
 import { orderNumberAudit } from "./order-numbers";
+import { taxCheckupFindings, taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
 import { listOrders } from "./orders";
 import { listPages, pagesTag, unpublishPage } from "./pages";
@@ -286,6 +287,8 @@ async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInp
     shipping: m(view.shippingMinor),
     discount: view.discountMinor ? { code: view.discountCode, off: m(view.discountMinor) } : null,
     vat: m(view.taxMinor),
+    // The VAT treatment (D157): its kind and the VAT not charged; never a buyer's VAT number or VIES's answer.
+    vat_treatment: view.vatKind === "standard" ? null : { kind: view.vatKind, relief: m(view.vatReliefMinor) },
     total: m(view.totalMinor),
     paid: m(view.paidMinor),
     refunded: m(view.refundedMinor),
@@ -555,7 +558,7 @@ async function setupProgressTool({ store }: OwnerToolContext) {
 
 async function storeCheckup(ctx: OwnerToolContext) {
   const { store } = ctx;
-  const [[counts], [low], progress, integrations, restock, numbering] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock, numbering, taxFindings] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
@@ -579,6 +582,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
     listIntegrations(store.id),
     restockSuggestions({ store }, { days: 30, cover_days: 30, lead_days: 7 }),
     orderNumberAudit(store.id),
+    taxCheckupFindings(store.id),
   ]);
   const findings: { what: string; page: string }[] = [];
   const add = (when: boolean, what: string, page: string) => when && findings.push({ what, page: adminLink(store, page) });
@@ -590,10 +594,40 @@ async function storeCheckup(ctx: OwnerToolContext) {
   add(Number(counts.searches_missed) > 0, `${counts.searches_missed} different search(es) found nothing this week.`, "/search");
   add(Number(counts.approvals) > 0, `${counts.approvals} change(s) you asked me for are waiting for your approval.`, "/assistant");
   for (const problem of auditProblems(numbering)) add(true, `Order numbering is not in sequence: ${problem}`, "/orders");
+  // The tax profile (D157): registered without a number, a number never checked valid, IOSS or OSS half filled in.
+  for (const finding of taxFindings) add(true, finding.message, "/settings/tax");
   add(Number(counts.drafts) > 0, `${counts.drafts} product(s) are drafts, not on the site.`, "/products");
   add(store.paymentsTest && store.paymentsOn, "Payments are in test mode: shoppers cannot really pay yet.", "/settings/payments");
   for (const i of integrations) add(i.enabled && i.recentFailures > 0, `${i.provider} failed ${i.recentFailures} send(s) this week.`, `/integrations/${i.provider}`);
   return { findings, all_good: findings.length === 0 };
+}
+
+/** The store's tax registration (D157), read only. The seller's own number is on its documents; no buyer's is ever here. */
+async function getTaxProfileTool({ store }: OwnerToolContext) {
+  const { profile, country, check } = await taxProfileView(store.id);
+  return {
+    store_country: country,
+    registered_for_vat: profile.vatRegistered,
+    vat_number: profile.vatNumber,
+    vat_number_checked: profile.vatNumberValid === null ? "not checked, or the check could not be made" : profile.vatNumberValid ? "valid" : "not valid",
+    checked_at: profile.vatNumberCheckedAt,
+    checked_with: check ? (check.source === "vies" ? "VIES" : "the open company register") : null,
+    goods_sent_from: profile.dispatchCountry ?? country,
+    oss: { scheme: profile.ossScheme, member_state: profile.ossMemberState, number: profile.ossNumber, registered_on: profile.ossRegisteredOn },
+    ioss: { number: profile.iossNumber, intermediary: profile.iossIntermediary, markets: profile.iossMarkets, registered_on: profile.iossRegisteredOn },
+    page: adminLink(store, "/settings/tax"),
+    note: "Only a person changes a VAT number, a registration or a rate, on the Tax page. This is not tax advice.",
+  };
+}
+
+/** What the VAT features need (D157): on or off, and what is missing, from `readiness()`. */
+async function taxReadinessTool({ store }: OwnerToolContext) {
+  const { readiness: lines } = await taxProfileView(store.id);
+  return {
+    features: lines.map((line) => ({ feature: line.key, on: line.on, needs: line.needs, text: line.text })),
+    page: adminLink(store, "/settings/tax"),
+    note: "A valid answer from VIES says that a number is registered; it does not say that a sale is exempt. Destination VAT is charged on consumer sales. Ask an accountant for anything beyond that.",
+  };
 }
 
 async function listCustomersTool({ store }: OwnerToolContext, { search, limit }: OwnerToolInput<"list_customers">) {
@@ -1553,6 +1587,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   unpublish_page: unpublishPageTool,
   setup_progress: setupProgressTool,
   store_checkup: storeCheckup,
+  get_tax_profile: getTaxProfileTool,
+  tax_readiness: taxReadinessTool,
   list_customers: listCustomersTool,
   get_customer: getCustomerTool,
   list_subscriptions: listSubscriptionsTool,

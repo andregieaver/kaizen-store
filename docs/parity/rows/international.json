@@ -411,12 +411,12 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "Documented decision only (docs/plan.md scenario C, R2 in docs/decisions.md): no IOSS number on the store, no IOSS-aware pricing or reporting, no €150 split, and no handling of the EU flat customs duty on low-value parcels.",
+    "gap": "Unit 1a (D157 proposed) built criteria 1, 2 and the 'off and says why' half of 4: a store records its IOSS number (`IM` plus ten digits), the intermediary's name, the markets it applies to and the registration date (`commerce.store_tax_profile`, `/admin/{store}/settings/tax`); a consignment of at most 150.00 EUR sent from outside the EU to a private buyer in a listed EU market is charged destination VAT as before and the order records `vat_kind = 'ioss'` and the number; above 150 EUR (`ioss_over_limit`), for a business buyer, outside the listed markets, from an EU dispatch country, for downloads, or where the currency has no euro rate it is not an IOSS sale and the buyer is told import VAT may be collected on delivery; without a number or markets the screen's readiness line says IOSS is off and what it needs. Tests: `ioss.test.ts` (150.00 versus 150.01, conversion, no rate), `vat-treatment.test.ts`, `tax-profile.int.test.ts`, `vat-engine.int.test.ts` (IOSS marking in euro and koruna views). Still missing: (1) criterion 3, the monthly IOSS report per member state and rate as CSV: unit 1c; the invoice does not yet carry the IOSS marking (unit 1b); (2) bucket B: live only with a registered IOSS number or intermediary agreement the owner holds, which nothing here checks; (3) the 150 EUR test uses the basket's shipped lines, not a proper intrinsic-value definition (not read), and the EU's removal of the customs-duty exemption from 1 July 2026 (Shopify's page, read 2026-10-03) is not handled; (4) the IOSS statement, the import notice and the admin help text are hand-written, unreviewed and need a tax accountant (including whether a Norwegian store may register directly, marked verify); (5) the tax screen was checked by render and action tests, no browser test opens it.",
     "bucket": "B",
     "wave": 1,
     "criteria": [
@@ -426,12 +426,42 @@
       "Live only with a registered IOSS number or intermediary agreement (bucket B); until then the feature is off and says why."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/ioss.ts",
+        "src/lib/tax-profile.ts",
+        "src/lib/vat-treatment.ts",
+        "src/lib/vat-text.ts",
+        "src/server/tax-profile.ts",
+        "src/server/tax-treatment.ts",
+        "src/components/admin/tax-profile-form.tsx",
+        "src/components/order-vat.tsx",
+        "src/db/schema.ts",
+        "supabase/migrations/20261003193641_tax_engine.sql",
+        "supabase/migrations/20261003193902_tax_engine_rules.sql",
+        "docs/wave-1a-tax.md"
+      ],
+      "tests": [
+        "src/lib/ioss.test.ts",
+        "src/lib/tax-profile.test.ts",
+        "src/lib/vat-treatment.test.ts",
+        "src/server/tax-profile.int.test.ts",
+        "src/server/vat-engine.int.test.ts",
+        "src/server/vat-money-review.int.test.ts",
+        "src/components/admin/tax-profile-form.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D157"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "partial",
+        "why": "Unit 1a (docs/wave-1a-tax.md): read the code and ran ioss, tax-profile and vat-engine tests: the IOSS number, intermediary and markets are recorded, an order of at most 150 EUR from outside the EU is marked IOSS in the cart and order, above 150 EUR and every other case is not, the screen says what is missing. Kept partial and not Full: the monthly IOSS report (1c) and the invoice marking (1b) do not exist, and bucket B needs a registration the owner holds."
+      }
+    ]
   },
   {
     "id": "international.customs-duties-hs-codes-landed-cost",
@@ -535,7 +565,8 @@
       "untested": false
     },
     "decisions": [
-      "D112"
+      "D112",
+      "D158"
     ],
     "history": [
       {
@@ -806,7 +837,8 @@
       "untested": false
     },
     "decisions": [
-      "D11"
+      "D11",
+      "D158"
     ],
     "history": []
   },
@@ -1116,6 +1148,7 @@
       "untested": false
     },
     "decisions": [
+      "D158",
       "D16",
       "D17",
       "D22"
@@ -1182,87 +1215,15 @@
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D158"
+    ],
     "history": [
       {
         "on": "2026-10-03",
         "from": "missing",
         "to": "partial",
         "why": "Read src/server/two-step.ts, src/lib/two-step.ts, the account gate in src/server/auth.ts and the pages under /admin/sign-in/two-step; ran two-step.test.ts, two-step.int.test.ts, account-gate.int.test.ts, security-review.int.test.ts, store-mcp.int.test.ts (pass). All four criteria are built and tested with an injected Supabase client, but nothing has run against a real Supabase Auth, so not Full"
-      }
-    ]
-  },
-  {
-    "id": "international.staff-roles-and-permissions",
-    "domain": "international",
-    "feature": "Staff roles and permissions",
-    "shopify": {
-      "tier": "native",
-      "text": "Native.",
-      "url": "https://help.shopify.com/en/manual/your-account/staff-accounts/create-staff-accounts",
-      "fetched": true,
-      "checkedOn": "2026-10-02"
-    },
-    "kaizen": {
-      "rating": "full",
-      "rechecked": true,
-      "was": "partial"
-    },
-    "weight": 3,
-    "gap": "",
-    "bucket": null,
-    "wave": null,
-    "criteria": [
-      "An owner defines roles (at least: orders, products, marketing, content, analytics, read-only) as sets of per-section permissions and assigns one to each staff member.",
-      "Every admin page and server action checks the permission through requireMember(); a member without it gets a 404 or a refusal, and the navigation hides what they cannot use.",
-      "The AI manager's tools and the store's MCP server respect the signed-in member's permissions.",
-      "A store always keeps one active owner (already held by a trigger test); a role change is audit-logged."
-    ],
-    "evidence": {
-      "files": [
-        "src/lib/permissions.ts",
-        "src/lib/permission-keys.ts",
-        "src/lib/permission-guards.ts",
-        "src/lib/permissions.baseline.json",
-        "src/server/permissions.ts",
-        "src/server/store-roles.ts",
-        "src/server/team.ts",
-        "src/server/auth.ts",
-        "src/lib/owner-tool-permissions.ts",
-        "src/lib/store-nav.ts",
-        "src/components/admin/role-editor.tsx",
-        "src/components/admin/team-view.tsx",
-        "src/app/admin/(gated)/[store]/staff/roles/page.tsx",
-        "src/server/control-center.ts",
-        "supabase/migrations/20261003195103_staff_security.sql",
-        "supabase/migrations/20261003195109_staff_security_rules.sql",
-        "supabase/migrations/20261003203141_store_role_templates.sql"
-      ],
-      "tests": [
-        "src/lib/permissions.scan.test.ts",
-        "src/lib/permissions.matrix.test.ts",
-        "src/lib/permissions.test.ts",
-        "src/lib/store-nav.test.ts",
-        "src/lib/owner-tool-permissions.test.ts",
-        "src/server/permissions.int.test.ts",
-        "src/server/store-roles.int.test.ts",
-        "src/server/owner-tool-permissions.int.test.ts",
-        "src/server/store-mcp.int.test.ts",
-        "src/server/security-review.int.test.ts",
-        "src/server/store-members-expiry.test.ts",
-        "src/components/admin/team-and-roles.test.ts",
-        "src/db/commerce.test.ts",
-        "src/db/trust.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [],
-    "history": [
-      {
-        "on": "2026-10-03",
-        "from": "partial",
-        "to": "full",
-        "why": "Read src/lib/permissions.ts, src/server/permissions.ts, src/server/store-roles.ts and the scan tests; ran permissions.scan.test.ts (every admin page, action and route asks a guard, literal keys, baseline oracle), permissions.matrix.test.ts, permissions.test.ts, store-nav.test.ts, owner-tool-permissions.test.ts, permissions.int.test.ts, store-roles.int.test.ts, owner-tool-permissions.int.test.ts, store-mcp.int.test.ts, src/db/trust.test.ts (all pass); review findings on the control center and collaborator expiry were fixed with regression tests"
       }
     ]
   },
@@ -1322,7 +1283,9 @@
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D158"
+    ],
     "history": [
       {
         "on": "2026-10-03",

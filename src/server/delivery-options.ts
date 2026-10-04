@@ -278,8 +278,10 @@ export async function quoteDelivery(
     select 1 from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' and market_code = ${market.code}
   `);
   if (!cart) return { ok: false, problem: "unavailable" };
-  const [country] = await db().execute<Row>(sql`select standard_vat_rate from commerce.countries where code = ${market.code}`);
-  const vatRate = Number(country?.standard_vat_rate ?? 0);
+  // A carrier's price takes the destination's standard VAT rate (D157: read through `commerce.vat_rate()`, like every rate); how the
+  // order splits the shipping's VAT is the shipping rule's (`placeOrder()`), which never changes the price.
+  const [country] = await db().execute<Row>(sql`select commerce.vat_rate(${market.code}, 'standard') as standard_rate`);
+  const vatRate = Number(country?.standard_rate ?? 0);
 
   const answers = await Promise.all(active.map((a) => offersFrom(a, shop, cartId, postalCode, vatRate)));
   const offers = answers.flatMap((answer) => answer ?? []);

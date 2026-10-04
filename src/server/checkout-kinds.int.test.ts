@@ -1737,6 +1737,108 @@ describe("checkout with a friend's welcome discount (D131)", () => {
   });
 });
 
+describe("VAT categories and rates, D157", () => {
+  const vatOf = (total: number, rate: number) => Math.round((total * rate) / (1 + rate));
+  /** Norway's rates today for the demo categories: seeded `food` 15 %, `culture_events` 12 %, `books` and `periodicals` 0 (exempt); no row for the rest, so the standard rate. */
+  const categories: [string, number][] = [
+    ["standard", 0.25],
+    ["food", 0.15],
+    ["culture_events", 0.12],
+    ["books", 0],
+    ["periodicals", 0],
+    ["medicines", 0.25],
+    ["children_goods", 0.25],
+    ["exempt", 0],
+  ];
+  const setCategory = (handle: string, category: string) =>
+    db().execute(sql`update commerce.products set vat_category = ${category} where store_id = ${storeId}::uuid and id = ${product[handle]}::uuid`);
+
+  /** Cart page, checkout and Stripe for what is in the cart: the order, held to what the cart showed. */
+  async function placed(consent: { digital?: boolean } = {}) {
+    const cart = await getCart(shop());
+    const summary = await cartSummary(shop(), cart);
+    expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", consent, {})).toMatchObject({ ok: true });
+    const open = await getOpenCheckout(storeId, cartId());
+    expect(open).toMatchObject({ changed: false });
+    const order = (await getOrder(storeId, open!.orderId))!;
+    expect({ total: order.totalMinor, vat: order.taxMinor, shipping: order.shippingMinor }).toEqual({ total: summary.total, vat: summary.vat, shipping: summary.shipping });
+    expect(chargedNow(fake.created.at(-1)!.params)).toBe(summary.dueNowMinor);
+    return { cart, summary, order };
+  }
+
+  it.each(categories.flatMap(([category, rate]) => [[category, rate, false] as const, [category, rate, true] as const]))(
+    "a product in %s is taken at %s, shown in euro: %s, in the cart, the order and the order's line",
+    async (category, rate, euro) => {
+      jar.clear();
+      view = euro ? noInEuro : no;
+      await setCategory("demo-keramikkopp", category);
+      try {
+        await add("DEMO-MUG-WHITE", 2);
+        const { cart, summary, order } = await placed();
+        expect(cart.lines[0].vatRate).toBe(rate);
+        const [line] = order.lines;
+        expect(line.taxRate).toBe(rate);
+        // The line's VAT is its total's, and the order's is the line's and the shipping's (the standard rate, as always).
+        expect(summary.vat).toBe(vatOf(line.totalMinor, rate) + vatOf(order.shippingMinor, 0.25));
+        expect(order.shippingVatRate).toBe(0.25);
+        expect(order.vatKind).toBe("standard");
+        expect(order.vatReliefMinor).toBe(0);
+      } finally {
+        await setCategory("demo-keramikkopp", "standard");
+      }
+    },
+  );
+
+  it.each([false, true])("a basket with food, a book-like exempt product and a standard one carries each at its own rate, shown in euro: %s", async (euro) => {
+    jar.clear();
+    view = euro ? noInEuro : no;
+    await setCategory("demo-keramikkopp", "food");
+    await setCategory("demo-notatbok", "exempt");
+    try {
+      await add("DEMO-MUG-WHITE", 2);
+      await add("DEMO-NOTEBOOK-LINED", 3);
+      await add("DEMO-LAMP", 1);
+      const { summary, order } = await placed({ digital: true });
+      const byRate = new Map(order.lines.map((l) => [l.sku, l.taxRate]));
+      expect(byRate.get("DEMO-MUG-WHITE")).toBe(0.15);
+      expect(byRate.get("DEMO-NOTEBOOK-LINED")).toBe(0);
+      expect(byRate.get("DEMO-LAMP")).toBe(0.25);
+      expect(summary.vat).toBe(order.lines.reduce((sum, l) => sum + vatOf(l.totalMinor, l.taxRate), 0) + vatOf(order.shippingMinor, 0.25));
+      expect(order.taxMinor).toBe(summary.vat);
+    } finally {
+      await setCategory("demo-keramikkopp", "standard");
+      await setCategory("demo-notatbok", "standard");
+    }
+  });
+
+  it("keeps the rate an order was placed at when the rate changes, and the next cart takes the new one", async () => {
+    // A category of this run's own: the seeded rates are shared reference data and are never changed by a test.
+    const code = `t${run}`.slice(0, 20);
+    await db().execute(sql`insert into commerce.vat_categories (code, name_en, sort, active) values (${code}, 'Test goods', 999, true)`);
+    const [{ today }] = await db().execute<Row>(sql`select (now() at time zone 'Europe/Oslo')::date::text as today`);
+    await db().execute(sql`select commerce.set_vat_rate('NO', ${code}, 0.10, date '2026-01-01', 'Kaizen test data, not a rate', date '2026-10-03', '', ${member.account.id}::uuid)`);
+    await setCategory("demo-keramikkopp", code);
+    try {
+      jar.clear();
+      view = no;
+      await add("DEMO-MUG-WHITE", 2);
+      const first = await placed();
+      expect(first.order.lines[0].taxRate).toBe(0.1);
+      await db().execute(sql`select commerce.set_vat_rate('NO', ${code}, 0.18, ${String(today)}::date, 'Kaizen test data, not a rate', date '2026-10-03', '', ${member.account.id}::uuid)`);
+      // The order that was placed keeps its rate...
+      expect((await getOrder(storeId, first.order.id))!.lines[0].taxRate).toBe(0.1);
+      // ...and the next cart takes the new one.
+      jar.clear();
+      await add("DEMO-MUG-WHITE", 2);
+      const second = await placed();
+      expect(second.order.lines[0].taxRate).toBe(0.18);
+      expect(second.summary.vat).toBe(vatOf(second.order.lines[0].totalMinor, 0.18) + vatOf(second.order.shippingMinor, 0.25));
+    } finally {
+      await setCategory("demo-keramikkopp", "standard");
+    }
+  });
+});
+
 describe("order numbering (D141)", () => {
   it("runs in one sequence after every kind of checkout, with the cancelled ones included", async () => {
     const audit = await orderNumberAudit(storeId);

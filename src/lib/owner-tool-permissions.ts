@@ -49,6 +49,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   analytics_alerts: "analytics:read",
   restock_suggestions: "products:read",
   list_integrations: "settings:read",
+  // The tax settings are the owner's alone (D157), like the page they stand in for.
+  get_tax_profile: "owner",
+  tax_readiness: "owner",
   ai_usage: "owner",
   get_recommendations: "marketing:read",
   check_recommendations: "marketing:read",

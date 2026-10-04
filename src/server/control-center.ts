@@ -10,6 +10,7 @@ import { can, type PermissionKey } from "@/lib/permissions";
 import { usageRows } from "./ai-usage";
 import type { Account } from "./auth";
 import { returnAttention } from "./return-attention";
+import { taxAttention } from "./tax-attention";
 import { workAttention } from "./work-attention";
 
 type Row = Record<string, unknown>;
@@ -75,7 +76,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     .map((r) => ({ id: String(r.id), slug: String(r.slug), name: String(r.name), timeZone: String(r.time_zone ?? "Europe/Oslo") }));
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, latestRows, usage, workItems, returnItems] = await Promise.all([
+  const [salesRows, sendRows, stockRows, latestRows, usage, workItems, returnItems, taxItems] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -119,6 +120,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     workAttention(workStores),
     // Withdrawals waiting for a refund, an acknowledgement or an answer (D153).
     returnAttention(orderIds),
+    // A VAT number not checked, or an IOSS or OSS registration left half done (D157).
+    taxAttention(ids),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -159,6 +162,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(orderSet.has(id) && productSet.has(id) && billingIds.has(id) ? {} : { hides: [...(orderSet.has(id) ? [] : (["sales"] as const)), ...(productSet.has(id) ? [] : (["stock"] as const)), ...(billingIds.has(id) ? [] : (["plan"] as const))] }),
       ...(workItems.has(id) ? { work: workItems.get(id) } : {}),
       ...(returnItems.has(id) ? { returns: returnItems.get(id) } : {}),
+      ...(taxItems.has(id) ? { tax: taxItems.get(id) } : {}),
     };
   });
 

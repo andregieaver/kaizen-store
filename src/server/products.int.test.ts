@@ -304,14 +304,66 @@ describe("saving a product", () => {
   });
 });
 
+describe("a product's VAT category (D157)", () => {
+  const category = (code: string, active: boolean) =>
+    db().execute(sql`
+      insert into commerce.vat_categories (code, name_en, sort, active) values (${code}, 'Test category', 998, ${active})
+      on conflict (code) do update set active = ${active}
+    `);
+  const inactive = `off${run}`.slice(0, 20);
+
+  it("saves a reduced-rate category and reads it back, with the editor offering the categories and each market's rate", async () => {
+    context = await getEditorContext(store);
+    expect(context.vatCategories.filter((c) => c.active).map((c) => c.code)).toEqual(expect.arrayContaining(["standard", "accommodation", "exempt", "food", "books", "periodicals", "medicines", "culture_events", "children_goods"]));
+    const result = await saveProduct(store, context, null, mug({ handle: "mat", vatCategory: "food", variants: mug().variants.map((v, i) => ({ ...v, sku: `MAT-${i}-${run}` })) }));
+    expect(result).toMatchObject({ ok: true });
+    const saved = await getProductForEdit(store, context, (result as { productId: string }).productId);
+    expect(saved?.vatCategory).toBe("food");
+    const [row] = await db().execute<Row>(sql`select commerce.vat_rate('NO', p.vat_category) as rate from commerce.products p where p.id = ${(result as { productId: string }).productId}::uuid`);
+    expect(Number(row.rate)).toBe(0.15);
+  });
+
+  it("refuses a category that does not exist, saving nothing", async () => {
+    const result = await saveProduct(store, context, null, mug({ handle: "ukjent", vatCategory: "no_such_category", variants: mug().variants.map((v, i) => ({ ...v, sku: `UK-${i}-${run}` })) }));
+    expect(result).toMatchObject({ ok: false, problems: [expect.stringContaining("VAT category")] });
+    const [row] = await db().execute<Row>(sql`select count(*)::int as n from commerce.products where store_id = ${store.id}::uuid and handle = 'ukjent'`);
+    expect(Number(row.n)).toBe(0);
+  });
+
+  it("keeps a category that was switched off on the products that have it, and does not offer it to a new one", async () => {
+    await category(inactive, true);
+    context = await getEditorContext(store);
+    const made = await saveProduct(store, context, null, mug({ handle: "gammel", vatCategory: inactive, variants: mug().variants.map((v, i) => ({ ...v, sku: `GM-${i}-${run}` })) }));
+    expect(made).toMatchObject({ ok: true });
+    const productId = (made as { productId: string }).productId;
+    // The platform switches it off: the product keeps it and saves again; a new product cannot take it.
+    await category(inactive, false);
+    context = await getEditorContext(store);
+    const current = await getProductForEdit(store, context, productId);
+    const { archived: _archived, ...input } = current!;
+    void _archived;
+    expect(await saveProduct(store, context, productId, { ...input, translations: input.translations.map((t) => ({ ...t, description: "Endret." })) })).toMatchObject({ ok: true });
+    const again = await saveProduct(store, context, null, mug({ handle: "ny", vatCategory: inactive, variants: mug().variants.map((v, i) => ({ ...v, sku: `NY-${i}-${run}` })) }));
+    expect(again).toMatchObject({ ok: false, problems: [expect.stringContaining("switched off")] });
+    // Changing a product that had another category to the switched-off one is refused as well.
+    expect(await saveProduct(store, context, productId, { ...input, vatCategory: "food" })).toMatchObject({ ok: true });
+    expect(await saveProduct(store, context, productId, { ...input, vatCategory: inactive })).toMatchObject({ ok: false });
+  });
+});
+
 describe("selling to businesses (B2B)", () => {
   it("lets a store selling only to businesses type prices without VAT, and keeps them with it", async () => {
     const b2b: Store = { ...other, audience: "businesses" };
     const b2bContext = await getEditorContext(b2b);
+    // Every category's rate now (D157): the built-in three as always, and the reduced-rate categories where the country has one
+    // (Norway's food is 15 %, Sweden's 6 % since April 2026), the standard rate where it has none.
     expect(b2bContext.markets.map((m) => [m.code, m.vatRates])).toEqual([
-      ["NO", { standard: 0.25, accommodation: 0.12, exempt: 0 }],
-      ["SE", { standard: 0.25, accommodation: 0.12, exempt: 0 }],
+      ["NO", expect.objectContaining({ standard: 0.25, accommodation: 0.12, exempt: 0, food: 0.15, medicines: 0.25 })],
+      ["SE", expect.objectContaining({ standard: 0.25, accommodation: 0.12, exempt: 0, food: 0.06, medicines: 0.25 })],
     ]);
+    expect(b2bContext.markets.map((m) => m.vatRows.food)).toEqual([true, true]);
+    expect(b2bContext.markets.map((m) => m.vatRows.medicines)).toEqual([false, false]);
+    expect(b2bContext.vatCategories.map((c) => c.code)).toEqual(expect.arrayContaining(["standard", "accommodation", "exempt", "food", "books"]));
     const product = mug({ handle: "firmakopp", audience: "businesses", manufacturer: null, responsiblePerson: null, status: "draft" });
     product.variants = product.variants.map((v, i) => ({ ...v, sku: `B2B-${i}-${run}`, prices: { NO: "199,20", SE: "" } }));
     const result = await saveProduct(b2b, b2bContext, null, product);

@@ -1024,3 +1024,102 @@ export function bonusExpiryText(text: EmailText, data: BonusExpiryData) {
     button: { text: b.expiryButton, url: data.url },
   };
 }
+
+// ---------------------------------------------------------------------------
+// VAT on an order (D157)
+// ---------------------------------------------------------------------------
+
+/**
+ * What an order confirmation says about its VAT treatment: the row for the VAT not charged (reverse charge), the statement
+ * with both VAT numbers, the IOSS statement, and the refund email's note. LEGAL TEXT: hand-written in nb, sv, da and en,
+ * never machine-translated (it is not part of `text`, so the AI catalogue never sees it); every other language shows
+ * English. Not legal advice and not reviewed: it needs a lawyer's review (docs/wave-1a-tax.md section 8).
+ */
+// legal: needs review
+type VatEmail = {
+  reliefRow: string;
+  reverseCharge: string;
+  sellerNumber: string;
+  buyerNumber: string;
+  ioss: (number: string) => string;
+  importNotice: string;
+  refundNet: string;
+};
+
+const VAT_EMAIL: Record<"nb" | "sv" | "da" | "en", VatEmail> = {
+  nb: {
+    reliefRow: "Mva. ikke beregnet (omvendt avgiftsplikt)",
+    reverseCharge: "Omvendt avgiftsplikt: det er ikke beregnet merverdiavgift. Kjøperen beregner og betaler avgiften i sitt eget land.",
+    sellerNumber: "Selgers mva-nr.",
+    buyerNumber: "Kjøpers mva-nr.",
+    ioss: (number: string) => `Mva. er innkrevd i kassen under IOSS (${number}). Det skal ikke betales mer mva. ved levering.`,
+    importNotice: "Importmva. og toll kan bli krevd inn ved levering.",
+    refundNet: "Refusjonen er uten mva. (omvendt avgiftsplikt).",
+  },
+  sv: {
+    reliefRow: "Moms har inte debiterats (omvänd skattskyldighet)",
+    reverseCharge: "Omvänd skattskyldighet: ingen moms har debiterats. Köparen redovisar momsen i sitt eget land.",
+    sellerNumber: "Säljarens momsnummer",
+    buyerNumber: "Köparens momsnummer",
+    ioss: (number: string) => `Moms har tagits ut i kassan enligt IOSS (${number}). Ingen ytterligare moms ska betalas vid leverans.`,
+    importNotice: "Importmoms och tull kan tas ut vid leverans.",
+    refundNet: "Återbetalningen är utan moms (omvänd skattskyldighet).",
+  },
+  da: {
+    reliefRow: "Moms er ikke opkrævet (omvendt betalingspligt)",
+    reverseCharge: "Omvendt betalingspligt: der er ikke opkrævet moms. Køberen afregner momsen i sit eget land.",
+    sellerNumber: "Sælgers momsnr.",
+    buyerNumber: "Købers momsnr.",
+    ioss: (number: string) => `Moms er opkrævet ved kassen under IOSS (${number}). Der skal ikke betales yderligere moms ved levering.`,
+    importNotice: "Importmoms og told kan blive opkrævet ved levering.",
+    refundNet: "Refusionen er uden moms (omvendt betalingspligt).",
+  },
+  en: {
+    reliefRow: "VAT not charged (reverse charge)",
+    reverseCharge: "Reverse charge: VAT has not been charged. The buyer accounts for the VAT in their own country.",
+    sellerNumber: "Seller's VAT number",
+    buyerNumber: "Buyer's VAT number",
+    ioss: (number: string) => `VAT has been collected at checkout under IOSS (${number}). No further VAT is due on delivery.`,
+    importNotice: "Import VAT and customs charges may be collected on delivery.",
+    refundNet: "This refund is without VAT (reverse charge).",
+  },
+};
+
+export type VatEmailText = VatEmail;
+
+/** The VAT wording of an order's emails in a language: nb, sv, da or en by hand, English for every other language. */
+export const vatEmailText = (lang: string): VatEmailText => (lang in VAT_EMAIL ? VAT_EMAIL[lang as keyof typeof VAT_EMAIL] : VAT_EMAIL.en);
+
+/** The order's facts the VAT wording needs (an `OrderView` has them). */
+export type OrderVatFacts = {
+  vatKind: "standard" | "reverse_charge" | "ioss";
+  vatReliefMinor: number;
+  vat: { sellerVatNumber: string | null; buyerVatNumber: string | null; iossNumber: string | null } | null;
+};
+
+/** The row among the totals for the VAT not charged, or none. `money` formats the order's currency. */
+export function orderVatReliefRows(lang: string, order: Pick<OrderVatFacts, "vatReliefMinor">, money: (minor: number) => string): { label: string; value: string; muted: boolean }[] {
+  return order.vatReliefMinor > 0 ? [{ label: vatEmailText(lang).reliefRow, value: `−${money(order.vatReliefMinor)}`, muted: true }] : [];
+}
+
+/**
+ * The paragraph under the totals about the VAT treatment, or null for an ordinary order: the reverse-charge statement with
+ * the seller's and the buyer's VAT numbers (the shopper's own email, so the buyer's number is theirs to see), or the IOSS
+ * statement with the store's IOSS number.
+ */
+export function orderVatParagraph(lang: string, order: OrderVatFacts): string | null {
+  const t = vatEmailText(lang);
+  if (order.vatKind === "reverse_charge") {
+    const numbers = [
+      order.vat?.sellerVatNumber ? `${t.sellerNumber}: ${order.vat.sellerVatNumber}` : null,
+      order.vat?.buyerVatNumber ? `${t.buyerNumber}: ${order.vat.buyerVatNumber}` : null,
+    ].filter(Boolean);
+    return [t.reverseCharge, ...numbers].join("\n");
+  }
+  if (order.vatKind === "ioss" && order.vat?.iossNumber) return t.ioss(order.vat.iossNumber);
+  return null;
+}
+
+/** The note a refund email adds when the order's VAT was not charged, or null. */
+export const refundVatNote = (lang: string, order: Pick<OrderVatFacts, "vatKind">): string | null =>
+  order.vatKind === "reverse_charge" ? vatEmailText(lang).refundNet : null;
