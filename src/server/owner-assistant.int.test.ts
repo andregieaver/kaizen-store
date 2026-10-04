@@ -107,12 +107,13 @@ describe("the owner assistant (D94)", () => {
       get_customer: { customer: "nobody@example.com" },
       explain_results: { experiment: "nobody" },
       explain_return: { return: "NOBODY-R1" },
+      explain_privacy_request: { request: "00000000-0000-4000-8000-000000000000" },
     };
     // A draft A/B test (D148) is a write that needs no yes: its own test makes one.
     for (const tool of OWNER_TOOLS.filter((t) => !("gate" in t) && t.name !== "add_order_note" && t.name !== "draft_experiment")) {
       const result = ownerTools.runOwnerTool(ctx, tool.name, args[tool.name] ?? {});
       if (tool.name === "get_order") await expect(result).rejects.toThrow("No order 1 in this store.");
-      else if (tool.name === "get_customer" || tool.name === "explain_results" || tool.name === "explain_return") await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
+      else if (tool.name === "get_customer" || tool.name === "explain_results" || tool.name === "explain_return" || tool.name === "explain_privacy_request") await expect(result).rejects.toThrow(ownerTools.OwnerToolError);
       else await expect(result, tool.name).resolves.toBeTruthy();
     }
     expect(await ownerTools.runOwnerTool(ctx, "get_product", { product: productHandle })).toMatchObject({

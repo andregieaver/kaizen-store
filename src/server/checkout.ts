@@ -1373,7 +1373,7 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
  * and "processing" if the shopper finished but the payment (e.g. a bank
  * transfer) has not arrived yet: that order must not be replaced.
  */
-async function closeSession(
+export async function closeSession(
   stripe: Stripe,
   stripeAccount: string,
   sessionId: string,

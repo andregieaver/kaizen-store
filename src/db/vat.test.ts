@@ -798,7 +798,11 @@ describe("the tax migrations on a database that has data", () => {
     const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
     const tax = files.filter((f) => /_tax_engine(_rules)?\.sql$/.test(f));
     expect(tax).toHaveLength(2);
-    for (const file of files.filter((f) => !tax.includes(f))) await old.exec(await readFile(path.join(dir, file), "utf8"));
+    // The history as production lived it: every migration before the tax ones, then the data, then the tax ones, then the migrations after them
+    // (a later migration may patch what the tax ones made, as the privacy rules of unit 1g do with the VAT freeze).
+    const before = files.filter((f) => f < tax[0]);
+    const after = files.filter((f) => f > tax[1]);
+    for (const file of before) await old.exec(await readFile(path.join(dir, file), "utf8"));
 
     const q = async <T>(sql: string, params: unknown[] = []) => (await old.query<T>(sql, params)).rows[0];
     const store = (await q<{ id: string }>("insert into commerce.stores (slug, name, country) values ('old-shop', 'Old', 'SE') returning id")).id;
@@ -822,6 +826,7 @@ describe("the tax migrations on a database that has data", () => {
     await order("C-1003", "SE", { copied: true });
     await old.exec(await readFile(path.join(dir, tax[0]), "utf8"));
     await old.exec(await readFile(path.join(dir, tax[1]), "utf8"));
+    for (const file of after) await old.exec(await readFile(path.join(dir, file), "utf8"));
   });
 
   afterAll(async () => {

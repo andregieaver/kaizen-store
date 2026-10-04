@@ -68,6 +68,22 @@ describe("the control center (D107)", () => {
     expect(attentionFor([store({ role: "admin", returns: { overdue: 1, unacknowledged: 0, requested: 0 } })]).map((i) => i.action)).toEqual(["Refund"]);
   });
 
+  it("flags privacy requests past their one-month clock as urgent and those due this week as a heads-up, with counts only (D162)", () => {
+    const items = attentionFor([store({ slug: "a", name: "A", privacy: { overdue: 2, dueSoon: 1 } }), store({ slug: "b", name: "B", privacy: { overdue: 0, dueSoon: 3 } })]);
+    expect(items.map((i) => [i.text, i.href, i.action, Boolean(i.urgent)])).toEqual([
+      ["A: 2 privacy requests are past the one-month deadline for an answer.", "/admin/a/privacy", "Answer", true],
+      ["A: 1 privacy request is due within the week.", "/admin/a/privacy", "Open requests", false],
+      ["B: 3 privacy requests are due within the week.", "/admin/b/privacy", "Open requests", false],
+    ]);
+  });
+
+  it("says nothing about privacy requests when none is due, and names no person", () => {
+    expect(attentionFor([store({ privacy: { overdue: 0, dueSoon: 0 } })])).toEqual([]);
+    expect(attentionFor([store()])).toEqual([]);
+    // Staff with the privacy log open see the same: the clock is the store's, not the owner's.
+    expect(attentionFor([store({ role: "admin", privacy: { overdue: 1, dueSoon: 0 } })]).map((i) => i.action)).toEqual(["Answer"]);
+  });
+
   it("asks an owner, and only an owner, to look at tax settings that are half done (D157)", () => {
     const tax = ["The VAT number has not been checked valid."];
     const items = attentionFor([store({ slug: "a", name: "A", tax })]);

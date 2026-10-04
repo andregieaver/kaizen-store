@@ -52,9 +52,17 @@ export type StoreFigures = {
    * reverse-charge ones past the deadline (the 15th of the month after payment, Directive Art. 222).
    */
   invoices?: InvoiceFigures;
+  /**
+   * Privacy requests waiting (D162, wave 1g), only when one is overdue or due this week, and only for a member who may open the
+   * Privacy requests page (`customers:read`): counts, never a name or an email.
+   */
+  privacy?: PrivacyFigures;
 };
 
 export type InvoiceFigures = { waiting: number; overdue: number };
+
+/** Open privacy requests (D162) past their one-month deadline, or due within `DUE_SOON_DAYS`; counts only, never a person. */
+export type PrivacyFigures = { overdue: number; dueSoon: number };
 
 export type ReturnFigures = { overdue: number; unacknowledged: number; requested: number };
 
@@ -115,6 +123,23 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         text: `${s.name}: ${plural(returns.requested, "return request is", "return requests are")} waiting for an answer.`,
         href: `${base}/returns?status=requested`,
         action: "Answer",
+      });
+    }
+    // A privacy request has a legal clock of one month (GDPR Art. 12(3)): overdue is urgent, due this week is a heads-up.
+    const privacy = s.privacy;
+    if (privacy && privacy.overdue > 0) {
+      items.push({
+        text: `${s.name}: ${plural(privacy.overdue, "privacy request is", "privacy requests are")} past the one-month deadline for an answer.`,
+        href: `${base}/privacy`,
+        action: "Answer",
+        urgent: true,
+      });
+    }
+    if (privacy && privacy.dueSoon > 0) {
+      items.push({
+        text: `${s.name}: ${plural(privacy.dueSoon, "privacy request is", "privacy requests are")} due within the week.`,
+        href: `${base}/privacy`,
+        action: "Open requests",
       });
     }
     // A VAT number nobody has checked, or an IOSS or OSS registration left half done (D157): only an owner can change them.

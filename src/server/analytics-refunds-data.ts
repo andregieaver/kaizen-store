@@ -233,7 +233,7 @@ async function readSegments(store: Store, period: AnalyticsPeriod): Promise<Row[
         union all
         select lower(o.email), o.placed_at
         from commerce.orders o
-        where o.store_id = ${store.id}::uuid and o.customer_id is null and lower(o.email) in (select ckey from keys) and ${PAID} and o.placed_at < ${dayStart(store, period.to)}
+        where o.store_id = ${store.id}::uuid and o.customer_id is null and lower(o.email) in (select ckey from keys) and o.restricted_at is null and o.anonymised_at is null and ${PAID} and o.placed_at < ${dayStart(store, period.to)}
       ) t
       group by t.k
     )

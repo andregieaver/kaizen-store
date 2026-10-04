@@ -286,7 +286,7 @@ export async function markCheckoutRecovered(storeId: string, orderId: string): P
   await db().execute(sql`
     update commerce.abandoned_checkouts a set recovered_at = now(), recovered_order_id = o.id, updated_at = now()
     from commerce.orders o
-    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.restricted_at is null and o.anonymised_at is null
       and a.store_id = o.store_id and a.recovered_at is null
       and (a.cart_id = o.cart_id
            or (a.email is not null and o.email <> '' and lower(a.email) = lower(o.email)
@@ -348,6 +348,7 @@ export async function sendDueCartReminders(): Promise<ReminderRun> {
       select o.id from commerce.orders o
       join commerce.payments p on p.order_id = o.id and p.status = 'captured'
       where o.store_id = ${storeId}::uuid and lower(o.email) = lower(${String(row.email)})
+        and o.restricted_at is null and o.anonymised_at is null
         and o.placed_at > ${String(row.captured_at)}::timestamptz
       limit 1
     `);

@@ -1006,7 +1006,7 @@ export async function sendDueBookingReminders(limit = 100): Promise<number> {
         and s.booking_reminder_hours > 0
         and b.starts_at <= now() + make_interval(hours => s.booking_reminder_hours)
         and b.created_at <= b.starts_at - make_interval(hours => s.booking_reminder_hours)
-        and o.status in ('paid', 'fulfilled') and o.email <> ''
+        and o.status in ('paid', 'fulfilled') and o.email <> '' and o.restricted_at is null and o.anonymised_at is null
       order by b.starts_at
       limit ${limit}
       for update of b skip locked

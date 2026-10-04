@@ -1,16 +1,18 @@
 import Link from "next/link";
 
-import { DeleteAccountButton, DetailsForm, PasswordForm, SignOutButton } from "@/components/account-forms";
+import { DetailsForm, PasswordForm, SignOutButton } from "@/components/account-forms";
 import { AccountAccess } from "@/components/account-sign-in";
 import { Avatar } from "@/components/avatar";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { BonusCard } from "@/components/bonus-account-view";
+import { PrivacyCard } from "@/components/privacy-account-view";
 import { ReferralCard } from "@/components/referrals-account-view";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
+import { shopperPrivacyText } from "@/lib/privacy-text";
 import { renewalState, type PlanInterval } from "@/lib/subscriptions";
 import { avatarFor } from "@/server/avatars";
 import {
@@ -234,11 +236,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
         />
       </section>
 
-      <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-border pt-6">
-        <h2 id="delete-heading" className="font-heading">{a.deleteTitle}</h2>
-        <p className="text-sm text-muted">{a.deleteIntro}</p>
-        <DeleteAccountButton store={store.slug} market={market.slug} labels={{ button: a.deleteButton, confirm: a.deleteConfirm }} />
-      </section>
+      <PrivacyCard text={shopperPrivacyText(market.lang)} storeName={store.name} href={`${base}/account/privacy`} />
     </>
   );
 }

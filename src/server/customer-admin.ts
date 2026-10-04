@@ -39,6 +39,7 @@ export async function findCustomer(storeId: string, id: string): Promise<Custome
     select lower(coalesce(c.email, o.email)), o.customer_id from commerce.orders o
     left join commerce.customers c on c.id = o.customer_id
     where o.store_id = ${storeId}::uuid and o.id = ${id}::uuid and (o.email <> '' or c.id is not null)
+      and o.restricted_at is null and o.anonymised_at is null
     union all
     select lower(coalesce(c.email, s.email)), s.customer_id from commerce.subscriptions s
     left join commerce.customers c on c.id = s.customer_id
@@ -54,6 +55,7 @@ async function keyFor(storeId: string, email: string, customerId: string | null)
     select
       coalesce(${customerId}::uuid, (select id from commerce.customers where store_id = ${storeId}::uuid and lower(email) = ${email})) as customer_id,
       (select o.id from commerce.orders o where o.store_id = ${storeId}::uuid and lower(o.email) = ${email}
+         and o.restricted_at is null and o.anonymised_at is null
        order by ${bought} desc, o.placed_at desc limit 1) as latest_order
   `);
   const account = row?.customer_id ? String(row.customer_id) : null;
@@ -83,15 +85,17 @@ export async function customerSummary(storeId: string, id: string): Promise<Cust
       (select c.email_verified_at is not null from commerce.customers c where c.id = ${ref.customerId}::uuid) as verified,
       (select o.shipping_address ->> 'name' from commerce.orders o
        where o.store_id = ${storeId}::uuid and lower(o.email) = ${ref.email} and o.shipping_address ->> 'name' <> ''
+         and o.restricted_at is null and o.anonymised_at is null
        order by o.placed_at desc limit 1) as order_name,
       (select count(*)::int from commerce.orders o
-       where o.store_id = ${storeId}::uuid and (lower(o.email) = ${ref.email} or o.customer_id = ${ref.customerId}::uuid) and ${bought}) as orders,
+       where o.store_id = ${storeId}::uuid and (lower(o.email) = ${ref.email} or o.customer_id = ${ref.customerId}::uuid) and ${bought}
+         and o.restricted_at is null and o.anonymised_at is null) as orders,
       (select count(*)::int from commerce.subscriptions s
        where s.store_id = ${storeId}::uuid and (lower(s.email) = ${ref.email} or s.customer_id = ${ref.customerId}::uuid) and s.status in ${LIVE}) as live,
       (select coalesce(jsonb_object_agg(currency, total), '{}') from (
         select o.currency, sum(o.total_minor)::bigint as total from commerce.orders o
         where o.store_id = ${storeId}::uuid and (lower(o.email) = ${ref.email} or o.customer_id = ${ref.customerId}::uuid)
-          and o.copied_from is null and o.status in ('paid', 'fulfilled', 'closed')
+          and o.copied_from is null and o.status in ('paid', 'fulfilled', 'closed') and o.restricted_at is null and o.anonymised_at is null
         group by o.currency) t) as spent
   `);
   return {
@@ -130,7 +134,8 @@ export async function listCustomers(storeId: string, { q = "", limit = 100 }: { 
         nullif(o.shipping_address ->> 'name', '') as name
       from commerce.orders o
       left join commerce.customers c on c.id = o.customer_id
-      where o.store_id = ${storeId}::uuid and (o.email <> '' or c.id is not null) and ${bought}
+      -- A restricted order belongs to nobody any more (D162): it still counts in revenue elsewhere, never under a person.
+      where o.store_id = ${storeId}::uuid and (o.email <> '' or c.id is not null) and ${bought} and o.restricted_at is null and o.anonymised_at is null
     ),
     by_email as (
       select email, count(*)::int as orders, max(placed_at) as last_order, min(placed_at) as first_order,
@@ -213,6 +218,7 @@ export async function getCustomerDetail(storeId: string, ref: CustomerRef): Prom
       from commerce.orders o
       -- History copied from another store (D129) is listed, but never counted.
       where o.store_id = ${storeId}::uuid and ${mine("o")} and (${bought} or o.copied_from is not null)
+        and o.restricted_at is null and o.anonymised_at is null
       order by o.placed_at desc
     `),
     db().execute<Row>(sql`

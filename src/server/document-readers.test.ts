@@ -49,6 +49,9 @@ describe("who reads invoices and credit notes", () => {
         "src/server/invoice-issue.ts",
         // A refund's credit note, to announce it.
         "src/server/stripe-refunds.ts",
+        // A person's own documents in their data file (the snapshot as issued), and the count the erasure preview shows (D162).
+        "src/server/privacy-export.ts",
+        "src/server/privacy-erasure.ts",
       ].sort(),
     );
   });

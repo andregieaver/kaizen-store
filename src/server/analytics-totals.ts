@@ -236,7 +236,9 @@ async function firstOrderDays(store: Store, from: string): Promise<FirstDays> {
   // out once per group instead of once per order: `lower(coalesce(c.email, o.email))` is the customer key of the document.
   const rows = await setBased<Row>(sql`
     with g as (
-      select o.customer_id, case when o.customer_id is null then lower(o.email) end as guest, min(o.placed_at) as first_at, max(o.placed_at) as last_at
+      select o.customer_id,
+        case when o.restricted_at is not null or o.anonymised_at is not null then 'order:' || o.id::text when o.customer_id is null then lower(o.email) end as guest,
+        min(o.placed_at) as first_at, max(o.placed_at) as last_at
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and ${PAID}
       group by 1, 2
@@ -283,7 +285,7 @@ async function loadBundles(
   // lines are summed per bucket and currency in two small aggregates (a line-level one, an order-level one), never per order.
   const main = setBased<Row>(sql`
     with po0 as materialized (
-      select o.id, o.store_id, o.customer_id, o.email, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
+      select o.id, o.store_id, o.customer_id, o.email, o.restricted_at, o.anonymised_at, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
         coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as ship_rate,
         (o.currency = any(${known})) as ok, (${bucketOf(grain, period, placed)})::text as bk
       from commerce.orders o
@@ -368,9 +370,9 @@ async function loadBundles(
         : sql``
     }
     union all select 'customers', to_jsonb(t) from (
-      select o.bk, lower(coalesce(c.email, o.email)) as k
+      select o.bk, (case when o.restricted_at is not null or o.anonymised_at is not null then 'order:' || o.id::text else lower(coalesce(c.email, o.email)) end) as k
       from po0 o left join commerce.customers c on c.id = o.customer_id and c.store_id = ${id}::uuid
-      where o.ok and (coalesce(c.email, o.email) <> '') group by o.bk, 2
+      where o.ok and (o.restricted_at is not null or o.anonymised_at is not null or coalesce(c.email, o.email) <> '') group by o.bk, 2
     ) t
   `);
 

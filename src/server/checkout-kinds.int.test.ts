@@ -670,6 +670,34 @@ describe("checkout for every kind of product", () => {
       expect(mails.length).toBeGreaterThan(0);
       for (const mail of mails) expect(String(mail.html)).not.toMatch(/\/no\/(order|account)/);
       expect(mails.some((mail) => String(mail.html).includes("/no-eur/order/"))).toBe(true);
+
+      // The shopper's data (D162, G2): the order is in the file in the currency it was charged, never converted, whatever its kind of line, and
+      // erasing the person keeps the sale as it was: the amounts, VAT and discount do not move, and nothing is deleted.
+      const { exportCustomerData } = await import("./privacy-export");
+      const { eraseSubject } = await import("./privacy-erasure");
+      const address = `shopper-${run}@example.com`;
+      const exported = await exportCustomerData(storeId, { email: address }, { channel: "staff", accountId: member.account.id });
+      if (!exported.ok) throw new Error(exported.problem);
+      type Money = { amountMinor: number; currency: string };
+      const filed = (exported.file.sections.orders as unknown as { id: string; currency: string; total: Money; tax: Money; discount: Money; lines: { booked: unknown }[] }[]).find((o) => o.id === open!.orderId)!;
+      expect(filed.currency).toBe("EUR");
+      expect(filed.total).toEqual({ amountMinor: summary.total, currency: "EUR" });
+      expect(filed.tax).toEqual({ amountMinor: summary.vat, currency: "EUR" });
+      expect(filed.discount.currency).toBe("EUR");
+      expect(filed.lines.filter((l) => l.booked)).toHaveLength(scenario.bookings);
+      const before = await getOrder(storeId, open!.orderId);
+      expect(await eraseSubject(storeId, { email: address }, { channel: "staff", accountId: member.account.id })).toMatchObject({ ok: true, outcome: "erased" });
+      const after = await getOrder(storeId, open!.orderId);
+      expect({ total: after?.totalMinor, vat: after?.taxMinor, off: after?.discountMinor, currency: after?.currency, lines: after?.lines.length }).toEqual({
+        total: before?.totalMinor,
+        vat: before?.taxMinor,
+        off: before?.discountMinor,
+        currency: "EUR",
+        lines: before?.lines.length,
+      });
+      const [kept] = await db().execute<Row>(sql`select restricted_at, anonymised_at, customer_id from commerce.orders where id = ${open!.orderId}::uuid`);
+      expect(kept).toMatchObject({ anonymised_at: null, customer_id: null });
+      expect(kept.restricted_at).not.toBeNull();
     }
   });
 });

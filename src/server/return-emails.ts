@@ -335,7 +335,7 @@ async function returnMail(
     orderId: mail.facts.orderId,
     ...(documents && documents.attachments.length > 0 ? { attachments: documents.attachments } : {}),
   });
-  if (documents && outcome !== "duplicate" && outcome !== "failed") await recordDocumentDeliveries(storeId, documents.docs, { idempotencyKey });
+  if (documents && outcome !== "duplicate" && outcome !== "failed" && outcome !== "suppressed") await recordDocumentDeliveries(storeId, documents.docs, { idempotencyKey });
   return outcome;
 }
 

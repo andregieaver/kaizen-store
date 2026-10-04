@@ -756,10 +756,6 @@ const messages = {
       removePassword: "Fjern passordet",
       passwordRule: "Minst 12 tegn. Noen ord som ikke hører sammen, er både sterkt og lett å huske.",
       passwordShort: "Bruk minst 12 tegn.",
-      deleteTitle: "Slett kontoen",
-      deleteIntro: "Opplysningene dine og passordet slettes. Bestillingene beholdes av butikken, slik bokføringsloven krever, men er ikke lenger knyttet til en konto.",
-      deleteButton: "Slett kontoen min",
-      deleteConfirm: "Slette kontoen? Dette kan ikke angres.",
       /** Profile picture (D97). */
       pictureTitle: "Profilbilde",
       pictureChoose: "Velg et bilde",
@@ -1856,10 +1852,6 @@ const messages = {
       removePassword: "Ta bort lösenordet",
       passwordRule: "Minst 12 tecken. Några ord som inte hör ihop är både starkt och lätt att minnas.",
       passwordShort: "Använd minst 12 tecken.",
-      deleteTitle: "Radera kontot",
-      deleteIntro: "Dina uppgifter och ditt lösenord raderas. Beställningarna sparas av butiken enligt bokföringslagen men är inte längre kopplade till ett konto.",
-      deleteButton: "Radera mitt konto",
-      deleteConfirm: "Radera kontot? Det går inte att ångra.",
       /** Profile picture (D97). */
       pictureTitle: "Profilbild",
       pictureChoose: "Välj en bild",
@@ -2954,10 +2946,6 @@ const messages = {
       removePassword: "Fjern adgangskoden",
       passwordRule: "Mindst 12 tegn. Nogle ord, der ikke hører sammen, er både stærkt og let at huske.",
       passwordShort: "Brug mindst 12 tegn.",
-      deleteTitle: "Slet kontoen",
-      deleteIntro: "Dine oplysninger og din adgangskode slettes. Bestillingerne gemmes af butikken, som bogføringsloven kræver, men er ikke længere knyttet til en konto.",
-      deleteButton: "Slet min konto",
-      deleteConfirm: "Slette kontoen? Det kan ikke fortrydes.",
       /** Profile picture (D97). */
       pictureTitle: "Profilbillede",
       pictureChoose: "Vælg et billede",
@@ -4052,10 +4040,6 @@ const messages = {
       removePassword: "Remove the password",
       passwordRule: "At least 12 characters. A few unrelated words are strong and easy to remember.",
       passwordShort: "Use at least 12 characters.",
-      deleteTitle: "Delete the account",
-      deleteIntro: "Your details and password are deleted. The store keeps the orders, as bookkeeping law requires, but they no longer belong to an account.",
-      deleteButton: "Delete my account",
-      deleteConfirm: "Delete the account? This cannot be undone.",
       /** Profile picture (D97). */
       pictureTitle: "Profile picture",
       pictureChoose: "Choose a picture",

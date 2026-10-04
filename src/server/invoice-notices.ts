@@ -78,7 +78,7 @@ async function send(storeId: string, kind: DocumentKind, id: string, key: string
       orderId: doc.orderId,
       attachments: blocks.attachments,
     });
-    if (outcome !== "duplicate" && outcome !== "failed") await recordDocumentDeliveries(storeId, blocks.docs, { idempotencyKey: key });
+    if (outcome !== "duplicate" && outcome !== "failed" && outcome !== "suppressed") await recordDocumentDeliveries(storeId, blocks.docs, { idempotencyKey: key });
     return outcome;
   } catch {
     return null;

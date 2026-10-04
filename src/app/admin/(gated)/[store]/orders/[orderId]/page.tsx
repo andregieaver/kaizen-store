@@ -27,6 +27,7 @@ import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { DocumentsCard } from "@/components/admin/invoices/documents-card";
 import { OrderReturnsCard } from "@/components/admin/returns/order-returns-card";
 import { OrderTermsCard } from "@/components/admin/order-terms-card";
+import { OrderPrivacyBanner } from "@/components/admin/privacy/order-banner";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { VatReliefRow, VatTreatmentPanel } from "@/components/admin/vat-treatment-panel";
 import { bookingWhen } from "@/lib/booking-text";
@@ -46,6 +47,7 @@ import { listEmails } from "@/server/email";
 import { getOrderDocuments } from "@/server/invoices";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
 import { orderReturnsOverview } from "@/server/order-returns";
+import { orderPrivacy } from "@/server/privacy-pages";
 import { getCarrier } from "@/server/shipping-carriers";
 import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, getOrderTreatment, type Address, type OrderEvent } from "@/server/orders";
@@ -88,7 +90,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const member = await requirePermission(slug, "orders:read");
   const { store } = member;
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -104,6 +106,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     getOrderTreatment(store.id, orderId),
     // Its invoice and credit notes, or why it has none (D159).
     getOrderDocuments(store.id, orderId),
+    // Whether its personal data was restricted or made anonymous (D162).
+    orderPrivacy(store.id, orderId),
   ]);
   if (!order) notFound();
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
@@ -183,6 +187,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </div>
         )}
       </div>
+      <OrderPrivacyBanner privacy={privacy} />
       {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
       {events.some((e) => e.type === "stock.short") && (
         <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">

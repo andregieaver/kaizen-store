@@ -94,4 +94,34 @@ describe("the control center (D107)", () => {
     const stranger: Account = { ...account, id: "00000000-0000-4000-8000-000000000000" };
     expect((await center.controlCenter(stranger)).stores).toEqual([]);
   });
+
+  it("counts open privacy requests past their clock or due this week, per store, as counts only (D162)", async () => {
+    const insert = async (email: string, status: string, receivedAgo: number, dueIn: number) => {
+      await db().execute(sql`
+        insert into commerce.privacy_requests (store_id, kind, channel, status, subject_email, received_at, due_at, handled_by)
+        values (${storeId}::uuid, 'erasure', 'staff', ${status}, ${email}, now() - make_interval(days => ${receivedAgo}),
+          now() + make_interval(days => ${dueIn}), ${account.id}::uuid)
+      `);
+    };
+    // Overdue, due in 3 days, due in 20 days (not flagged), and one answered (never flagged).
+    await insert(`p1-${run}@example.com`, "open", 40, -9);
+    await insert(`p2-${run}@example.com`, "open", 27, 3);
+    await insert(`p3-${run}@example.com`, "open", 10, 20);
+    await db().execute(sql`
+      insert into commerce.privacy_requests (store_id, kind, channel, status, outcome, subject_email, received_at, due_at, completed_at, handled_by)
+      values (${storeId}::uuid, 'export', 'staff', 'done', 'exported', ${`p4-${run}@example.com`}, now() - interval '50 days', now() - interval '20 days', now() - interval '30 days', ${account.id}::uuid)
+    `);
+    const view = await center.controlCenter(account);
+    expect(view.stores[0].privacy).toEqual({ overdue: 1, dueSoon: 1 });
+    const items = attentionFor(view.stores);
+    expect(items.find((i) => i.text.includes("past the one-month deadline"))?.urgent).toBe(true);
+    // Counts and ids only: nothing of the requests' emails reaches the figures.
+    expect(JSON.stringify(view)).not.toContain(`p1-${run}`);
+  });
+
+  it("asks for no figures when there is no store, or for one the account has no request in", async () => {
+    const { privacyAttention } = await import("./privacy-attention");
+    expect((await privacyAttention([])).size).toBe(0);
+    expect((await privacyAttention(["00000000-0000-4000-8000-000000000000"])).size).toBe(0);
+  });
 });

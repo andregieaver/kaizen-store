@@ -84,6 +84,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers."),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount."),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it."),
+          item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock."),
         ],
       },
     ],

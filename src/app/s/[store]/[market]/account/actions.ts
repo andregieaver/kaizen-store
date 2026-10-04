@@ -17,7 +17,6 @@ import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
 import {
   createSignInCode,
-  deleteCustomer,
   endSession,
   getCustomer,
   registerCustomer,
@@ -202,15 +201,6 @@ export async function setPasswordAction(
   return { ok: true, message: found.m.saved };
 }
 
-export async function deleteAccountAction(storeSlug: string, marketSlug: string): Promise<void> {
-  const found = await signedIn(storeSlug, marketSlug);
-  if (found) {
-    await deleteCustomer(found.shop.store.id, found.customer.id);
-    await endSession(found.shop.store.id);
-  }
-  redirect(marketPath(storeSlug, marketSlug, "/account"));
-}
-
 /**
  * Opens an account with a password (D32) and signs the shopper in. An
  * email with an account or earlier purchases is sent to reset the
@@ -314,6 +304,7 @@ export async function checkoutSignInAction(
   const base = marketPath(shop.store.slug, shop.market.slug);
   const order = z.uuid().safeParse(orderId).success ? await getShopperOrder(shop.store.id, orderId, sessionId) : null;
   const customerId = order ? await takeCheckoutSignIn(shop.store.id, order.id) : null;
-  if (customerId) await startSession(shop.store.id, customerId);
+  // Not proven just now (the link on the order page is a convenience): a stale session, so downloading or deleting the account's data asks for a code or the password first (D162).
+  if (customerId) await startSession(shop.store.id, customerId, { verified: false });
   redirect(`${base}/account`);
 }

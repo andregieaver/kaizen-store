@@ -181,6 +181,8 @@ export const TOOL_WORDS: Record<string, string> = {
   get_order: "Reading the order",
   list_returns: "Looking at returns",
   explain_return: "Reading the return",
+  list_privacy_requests: "Looking at privacy requests",
+  explain_privacy_request: "Reading the privacy request",
   approve_return: "Preparing the answer",
   decline_return: "Preparing the answer",
   list_products: "Looking at products",

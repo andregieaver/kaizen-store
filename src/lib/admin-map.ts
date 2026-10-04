@@ -299,6 +299,22 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"] }),
   store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason)."),
+  store("privacy", "/privacy", "Privacy requests", "Sales", "The log of privacy requests: people asking for a copy of the data the store holds about them, or for it to be erased (GDPR). Each has the day it was received and a one-month clock with the days left, red when overdue. Log a request that came by email, post or phone, then download the data, erase it, extend the answer once, refuse it with a reason, close it as no data held, or cancel it. Filter by open or answered (?status=answered, ?status=all).", {
+    tasks: ["Log a request for a person's data", "See which privacy requests are due or overdue", "Extend or refuse a request", "Close a request as no data held", "Find a request that was answered"],
+    keywords: ["data request", "subject access request", "DSAR", "GDPR", "erase", "delete customer", "anonymise", "forget me", "right to be forgotten", "personvern", "innsyn", "sletting", "export customer data", "privacy request", "one month"],
+  }),
+  store("privacy.new", "/privacy/new", "Log a privacy request", "Sales", "Logging a request that arrived by email, post or phone: what the person asks for, the email they wrote from, the day it was received (the one-month clock runs from receipt) and a note.", {
+    tasks: ["Log a request for a copy of someone's data", "Log a request to erase someone's data"],
+    keywords: ["log request", "new privacy request", "data request", "DSAR", "forget me"],
+  }),
+  store("privacy.request", "/privacy/[requestId]", "Privacy request", "Sales", "One privacy request: the person, the clock, and what staff may do while it is open (download the data, erase it, extend the answer once, refuse it with a reason, note that the identity is in doubt, close it as no data held, cancel it), and once answered, what was done.", {
+    tasks: ["Download a customer's data", "Erase a customer's data", "Extend the answer with a reason", "Refuse a request with a reason", "Close a request as no data held"],
+    keywords: ["extend", "refuse", "identity", "no data held", "one month", "answer a data request"],
+  }),
+  store("customer.erase", "/customers/[customerId]/erase", "Erase personal data", "Sales", "Erasing one customer's personal data in two steps: a read-only preview of what happens to each kind of data (deleted, made anonymous, kept restricted until the bookkeeping period ends), what else happens (subscriptions cancelled, cards detached, credits forfeited) and warnings, then the customer's email typed again to confirm. Cannot be undone; the owners are told.", {
+    tasks: ["See what erasing a customer would do", "Erase a customer's personal data"],
+    keywords: ["erase", "delete customer", "forget me", "anonymise", "right to be forgotten", "gdpr", "slett kunde", "personvern"],
+  }),
   store("customer-groups", "/customer-groups", "Customer groups", "Sales", "Discount groups such as Wholesale: a fixed percentage off for the customers in them.", {
     keywords: ["wholesale", "b2b", "tier", "price list", "trade discount", "fixed discount", "customer roles"],
     tasks: ["Make a group with a fixed discount", "Put customers in a group"],
@@ -572,6 +588,10 @@ const PAGES: readonly AdminPage[] = [
   platform("google-reviews", "/google-reviews", "Google reviews", "Kaizen site", "Kaizen's own Google reviews for testimonials."),
   platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
     keywords: ["experiment", "a/b", "test", "split", "guardrail"],
+  }),
+  platform("retention", "/retention", "Data retention", "Platform", "How long each kind of personal data is kept (bookkeeping periods per country, and the policy periods for emails, carts, sign-in codes and more): each period's source and how much of it was read, whether a person has reviewed it, a form that starts a new period (never an edit in place), how many tables the register of personal data holds, and the daily job's last results.", {
+    keywords: ["gdpr", "retention", "keep data", "how long", "bookkeeping", "regnskap", "storage limitation", "anonymise", "register of personal data", "accountant review"],
+    tasks: ["Mark a retention period as reviewed", "Change how long a kind of data is kept", "See what the daily job removed", "See which periods nobody has reviewed"],
   }),
   platform("vat", "/vat", "VAT", "Platform", "VAT for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
     keywords: ["tax", "rates", "reduced rate", "mva", "moms", "category", "shipping vat", "verify", "oss", "ioss"],

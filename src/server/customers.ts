@@ -7,10 +7,11 @@ import { sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db/client";
+import { isFresh } from "@/lib/privacy-request";
+
 import { chooseBusinessBuyer } from "./b2b";
-import { removeAvatarFiles } from "./media";
 import type { Address } from "./orders";
-import { forgetStandingOrders } from "./standing-orders";
+import { eraseSubject } from "./privacy-erasure";
 
 type Row = Record<string, unknown>;
 
@@ -140,12 +141,14 @@ async function upsertCustomer(storeId: string, email: string): Promise<string> {
 
 /**
  * Links the store's orders and subscriptions with this email to the customer. Orders copied from another store
- * (D129) are history and stay as they are.
+ * (D129) are history and stay as they are, and so does an order the bookkeeping duty keeps for a person who was erased
+ * (`restricted_at`, D162): it is cut loose from them and never relinked, so a person who comes back starts empty.
  */
 export async function claimOrders(storeId: string, customerId: string, email: string) {
   await db().execute(sql`
     update commerce.orders set customer_id = ${customerId}::uuid
     where store_id = ${storeId}::uuid and lower(email) = ${email} and customer_id is null and copied_from is null
+      and restricted_at is null and anonymised_at is null
   `);
   await db().execute(sql`
     update commerce.subscriptions set customer_id = ${customerId}::uuid
@@ -162,6 +165,7 @@ export async function linkOrderToCustomer(storeId: string, orderId: string): Pro
     select c.id from commerce.orders o
     join commerce.customers c on c.store_id = o.store_id and lower(c.email) = lower(o.email)
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid and o.email <> ''
+      and o.restricted_at is null and o.anonymised_at is null
       and c.email_verified_at is not null
   `);
   if (row) await claimOrders(storeId, String(row.id), await emailOf(storeId, String(row.id)));
@@ -197,6 +201,7 @@ export async function emailHistory(
         select 1 from commerce.orders o
         join commerce.payments p on p.order_id = o.id and p.status = 'captured'
         where o.store_id = ${storeId}::uuid and lower(o.email) = ${address}
+          and o.restricted_at is null and o.anonymised_at is null
           and o.id is distinct from ${exceptOrderId}::uuid
       ) as purchases
   `);
@@ -386,12 +391,17 @@ export async function setPassword(storeId: string, customerId: string, password:
 
 const cookieName = (storeId: string) => `account_${storeId}`;
 
-/** Starts a session in this browser. */
-export async function startSession(storeId: string, customerId: string): Promise<void> {
+/**
+ * Starts a session in this browser. The session is fresh (`verified_at` now, D162): it was just proven by a code or a password, so the shopper
+ * may download or delete their data for `FRESH_SIGN_IN_MINUTES`. A session that was not proven just now (the one-time sign-in from the order page
+ * after checkout) passes `verified: false` and starts stale.
+ */
+export async function startSession(storeId: string, customerId: string, { verified = true }: { verified?: boolean } = {}): Promise<void> {
   const token = randomBytes(32).toString("base64url");
   await db().execute(sql`
-    insert into commerce.customer_sessions (store_id, customer_id, token_hash, expires_at)
-    values (${storeId}::uuid, ${customerId}::uuid, ${sha256(token)}, now() + make_interval(days => ${SESSION_DAYS}))
+    insert into commerce.customer_sessions (store_id, customer_id, token_hash, expires_at, verified_at)
+    values (${storeId}::uuid, ${customerId}::uuid, ${sha256(token)}, now() + make_interval(days => ${SESSION_DAYS}),
+            ${verified ? sql`now()` : sql`now() - interval '1 day'`})
   `);
   const [signedIn] = await db().execute<Row>(sql`
     update commerce.customers c set last_sign_in_at = now()
@@ -476,22 +486,67 @@ export async function updateCustomerDetails(
 }
 
 /**
- * Deletes the account: details, password, profile picture and sessions go.
- * Orders stay, as bookkeeping law requires, but no longer belong to an account.
+ * The shopper deletes their own account (D162, `eraseSubject()`): the account, sessions, wishlists, standing lists and the picture go,
+ * subscriptions end now, and orders the bookkeeping duty keeps are restricted (cut loose from the person, anonymised when the period ends), never
+ * deleted. Throws with the plain message when Stripe did not answer (nothing was changed). The caller ends the session.
  */
 export async function deleteCustomer(storeId: string, customerId: string): Promise<void> {
-  // A weekly delivery's list and saved card go too (D102); its orders stay.
-  await forgetStandingOrders(storeId, customerId);
-  const picture = await db().transaction(async (tx) => {
-    await tx.execute(sql`update commerce.orders set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);
-    await tx.execute(sql`update commerce.subscriptions set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);
-    await tx.execute(sql`update commerce.carts set customer_id = null where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid`);
-    const [row] = await tx.execute<Row>(sql`
-      delete from commerce.customers where store_id = ${storeId}::uuid and id = ${customerId}::uuid returning avatar_path
-    `);
-    return row?.avatar_path ? String(row.avatar_path) : null;
-  });
-  if (picture) await removeAvatarFiles([picture]);
+  const result = await eraseSubject(storeId, { customerId }, { channel: "shopper", accountId: null });
+  if (!result.ok) throw new Error(result.message);
+}
+
+// ---------------------------------------------------------------------------
+// A fresh sign-in (D162): downloading or deleting one's own data needs a proof within FRESH_SIGN_IN_MINUTES
+// ---------------------------------------------------------------------------
+
+/** When the signed-in browser last proved who it is (a code or a password), or null when nobody is signed in. */
+export async function sessionVerifiedAt(storeId: string): Promise<Date | null> {
+  const token = (await cookies()).get(cookieName(storeId))?.value;
+  if (!token || token.length > 100) return null;
+  const [row] = await db().execute<Row>(sql`
+    select verified_at from commerce.customer_sessions where store_id = ${storeId}::uuid and token_hash = ${sha256(token)} and expires_at > now()
+  `);
+  return row ? new Date(String(row.verified_at)) : null;
+}
+
+/** Whether this browser's session is fresh enough to download or delete the account's data. */
+export async function isSessionFresh(storeId: string, now: Date = new Date()): Promise<boolean> {
+  return isFresh(await sessionVerifiedAt(storeId), now);
+}
+
+async function markFresh(storeId: string, customerId: string): Promise<boolean> {
+  const token = (await cookies()).get(cookieName(storeId))?.value;
+  if (!token || token.length > 100) return false;
+  const rows = await db().execute(sql`
+    update commerce.customer_sessions set verified_at = now()
+    where store_id = ${storeId}::uuid and customer_id = ${customerId}::uuid and token_hash = ${sha256(token)} and expires_at > now() returning id
+  `);
+  return rows.length > 0;
+}
+
+/** Step 1 of a code step-up: a six-digit code for the account's own address (the caller emails it with `sendSignInCode()`), or null when too many were asked for. */
+export async function startFreshSignIn(storeId: string, customerId: string): Promise<{ code: string; email: string } | null> {
+  const email = await emailOf(storeId, customerId);
+  if (!email) return null;
+  const code = await createSignInCode(storeId, email);
+  return code ? { code, email } : null;
+}
+
+/** Step 2: the code proves it is the person again (and proves the address); the session becomes fresh. */
+export async function confirmFreshWithCode(storeId: string, customerId: string, code: string): Promise<boolean> {
+  const email = await emailOf(storeId, customerId);
+  if (!email) return false;
+  const proven = await verifySignInCode(storeId, email, code);
+  return proven === customerId && (await markFresh(storeId, customerId));
+}
+
+/** The password for a password account proves it too; ten wrong tries lock it as at sign-in. */
+export async function confirmFreshWithPassword(storeId: string, customerId: string, password: string): Promise<PasswordOutcome> {
+  const email = await emailOf(storeId, customerId);
+  if (!email) return { ok: false, locked: false };
+  const outcome = await signInWithPassword(storeId, email, password);
+  if (!outcome.ok || outcome.customerId !== customerId) return { ok: false, locked: !outcome.ok && outcome.locked };
+  return (await markFresh(storeId, customerId)) ? outcome : { ok: false, locked: false };
 }
 
 // ---------------------------------------------------------------------------
