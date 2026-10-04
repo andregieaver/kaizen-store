@@ -482,6 +482,10 @@ history therefore still lists the nine single-store migrations, then:
 | `20261004125337_order_invoices_rules.sql` (order_invoices_rules_p10_patch_duplicate) | `20261004162216` |
 | `20261004152302_order_invoices_fixes.sql` (order_invoices_fixes) | `20261004162227` |
 | `20261004125343_order_invoices_audit.sql` (order_invoices_audit) | `20261004162305` |
+| `20261004164607_tax_reports.sql` (tax_reports) | `20261004203138` |
+| `20261004164617_tax_reports_rules.sql` (p1, p2_document_groups) | `20261004203147`, `20261004203205` |
+| `20261004171452_unit_price.sql` (unit_price) | `20261004203226` |
+| `20261004171501_unit_price_rules.sql` (p1, p2 to p4: the three patches) | `20261004203244`, `20261004203251`, `20261004203302`, `20261004203305` |
 | `20261002165344_analytics_indexes.sql` | `20261002213235` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
