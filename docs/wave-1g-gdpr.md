@@ -758,3 +758,8 @@ The admin built section 5.4 (`src/app/admin/(gated)/[store]/privacy/…`, `custo
 5. **The register's detector A** also matches `*_name` columns (except `NOT_A_PERSON_NAME`, now `file_name`), `postal_code`, `postcode`, `zip`, `zip_code` and birth-date columns; the PGlite test has a `*_name`-only table, a postal-code-only table and a `file_name` table.
 6. **Texts**: the Norwegian texts name `bokføringsloven` (not `regnskapsloven`) as the ground for keeping orders; a Danish or Swedish store viewed in nb still names the Norwegian act (the text is chosen by language, not by the seller's country: left for the legal review). The staff clock sentence no longer states that a weekend or holiday never moves the month: it says what the system counts and sends the rule (Regulation 1182/71, unread) to a lawyer. Both stay on the legal-review list.
 
+
+
+### Merge note: OSS and IOSS stores (D161 and D162)
+
+The records of a store that uses the OSS or IOSS schemes are kept ten years (D161). `runRetention()`'s documents step honours that (`SCHEME_RETENTION_YEARS`, a store with `store_tax_profile.oss_scheme <> 'none'` or an IOSS number). The orders step, `commerce.anonymise_expired_orders()`, still uses the seller country's period (NO 5, SE 7, DK 5, DE 8 years), so an order's name, address and email of such a store go sooner than its documents' personal data. Whether the scheme's record duty reaches the buyer's personal data on the order is a question for the accountant; if it does, the scheme period moves into `order_anonymisable_on()` (a new migration).

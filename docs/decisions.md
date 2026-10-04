@@ -487,6 +487,9 @@ history therefore still lists the nine single-store migrations, then:
 | `20261004164617_tax_reports_rules.sql` (p1, p2_document_groups) | `20261004203147`, `20261004203205` |
 | `20261004171452_unit_price.sql` (unit_price) | `20261004203226` |
 | `20261004171501_unit_price_rules.sql` (p1, p2 to p4: the three patches) | `20261004203244`, `20261004203251`, `20261004203302`, `20261004203305` |
+| `20261004174355_gdpr.sql` (gdpr) | `20261004205535` |
+| `20261004174402_gdpr_rules.sql` (p1_retention_rules, p2_patches, p3_orders) | `20261004210030`, `20261004210055`, `20261004210120` |
+| `20261004174410_gdpr_audit.sql` (gdpr_audit) | `20261004210139` |
 | `20261002165344_analytics_indexes.sql` | `20261002213235` |
 
 The template store was seeded from `supabase/seed.sql`, and the existing owner
