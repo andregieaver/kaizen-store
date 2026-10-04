@@ -27,7 +27,8 @@ describe("the returns tools in the owner assistant's catalogue (D153)", () => {
   });
 
   it("has no tool that refunds a return: refunding stays on the return's page", () => {
-    expect(OWNER_TOOLS.filter((t) => /return/.test(t.name)).map((t) => t.name).sort()).toEqual([...NAMES].sort());
+    // `oss_return_data` (D161) is a tax return, not a shopper's return: it reads the OSS return's figures and has nothing to do with refunds.
+    expect(OWNER_TOOLS.filter((t) => /return/.test(t.name) && t.name !== "oss_return_data").map((t) => t.name).sort()).toEqual([...NAMES].sort());
     for (const name of NAMES) expect(OWNER_TOOLS_BY_NAME[name].description, name).not.toMatch(/\bRefunds (all|the)\b/);
     expect(OWNER_TOOLS_BY_NAME.approve_return.description).toMatch(/Receiving, inspecting and refunding are done on the return's page/);
     expect(OWNER_TOOLS_BY_NAME.explain_return.description).toMatch(/refunding and the other steps are done on the return's page/);

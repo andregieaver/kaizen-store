@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ANONYMISE_FLOOR_YEARS, FALLBACK_RETENTION_YEARS, RETENTION_RULES, retentionCutoff, retentionRuleOf } from "./invoice-retention";
+import { ANONYMISE_FLOOR_YEARS, FALLBACK_RETENTION_YEARS, RETENTION_RULES, SCHEME_RETENTION_YEARS, retentionCutoff, retentionRuleOf } from "./invoice-retention";
 
 describe("how long documents are kept", () => {
   it("is five years in Norway, seven in Sweden, five in Denmark, eight in Germany, ten for any other country", () => {
@@ -27,6 +27,19 @@ describe("how long documents are kept", () => {
     for (const c of ["NO", "SE", "DK", "DE", "XX"]) {
       const cutoff = retentionCutoff(c, "2026-10-04");
       expect(Number(cutoff.slice(0, 4))).toBeLessThanOrEqual(2026 - ANONYMISE_FLOOR_YEARS);
+    }
+  });
+
+  it("keeps the records of a store that uses an OSS or IOSS scheme at least ten years (D161)", () => {
+    expect(SCHEME_RETENTION_YEARS).toBe(10);
+    expect(retentionCutoff("NO", "2026-10-04", { scheme: true })).toBe("2016-01-01");
+    expect(retentionCutoff("NO", "2026-10-04", { scheme: false })).toBe("2021-01-01");
+    expect(retentionCutoff("NO", "2026-10-04", {})).toBe("2021-01-01");
+    // A country whose own period is longer keeps it; the scheme never shortens anything.
+    expect(retentionCutoff("FI", "2026-10-04", { scheme: true })).toBe("2016-01-01");
+    for (const c of ["NO", "SE", "DK", "DE", "XX", null]) {
+      expect(retentionCutoff(c, "2026-10-04", { scheme: true }) <= retentionCutoff(c, "2026-10-04")).toBe(true);
+      expect(Number(retentionCutoff(c, "2026-10-04", { scheme: true }).slice(0, 4))).toBeLessThanOrEqual(2026 - SCHEME_RETENTION_YEARS);
     }
   });
 });

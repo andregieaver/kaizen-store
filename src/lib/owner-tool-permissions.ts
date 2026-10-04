@@ -56,6 +56,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // Documents hold buyers' details: the list shows none, and reads like the Orders page (`orders:read`); the settings are the owner's (D159).
   list_invoices: "orders:read",
   invoice_readiness: "owner",
+  // The VAT, OSS and IOSS reports (D161) are read like the analytics pages they stand beside: figures from documents, nothing personal.
+  vat_report: "analytics:read",
+  oss_return_data: "analytics:read",
   ai_usage: "owner",
   get_recommendations: "marketing:read",
   check_recommendations: "marketing:read",

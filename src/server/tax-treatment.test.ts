@@ -102,6 +102,21 @@ describe("which VAT a basket carries (D157)", () => {
     });
   });
 
+  it("freezes where the goods were sent from on the order (D161), so the reports never reclassify it when the setting changes", () => {
+    expect(decideTax(facts(), basket()).treatment?.dispatchCountry).toBe("SE");
+    const fromNorway = facts({}, { ...profile(), dispatchCountry: "NO" });
+    expect(decideTax(fromNorway, basket()).treatment?.dispatchCountry).toBe("NO");
+    const unknown = facts({}, profile(), "SE");
+    unknown.seller = { ...unknown.seller, dispatchCountry: null, dispatchInEu: false };
+    expect(decideTax(unknown, basket()).treatment?.dispatchCountry).toBeNull();
+  });
+
+  it("freezes the seller's country and member state of identification on the order (D161), so a filed quarter is never reclassified by a later edit", () => {
+    const own = decideTax(facts({}, profile({ ossScheme: "union", ossMemberState: "DK" }), "SE"), basket()).treatment;
+    expect(own).toMatchObject({ sellerCountry: "SE", ossMemberState: "DK" });
+    expect(decideTax(facts({}, profile({ ossScheme: "none", ossMemberState: null }), "SE"), basket()).treatment).toMatchObject({ sellerCountry: "SE", ossMemberState: null });
+  });
+
   it("never reverse-charges when the check was too old, failed, or said no, and says why", () => {
     const reasons: [Partial<TaxFacts>, string][] = [
       [{ buyerState: "stale" }, "number_stale"],

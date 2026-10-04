@@ -12,6 +12,7 @@ import type { Account } from "./auth";
 import { invoiceAttention } from "./invoices";
 import { returnAttention } from "./return-attention";
 import { taxAttention } from "./tax-attention";
+import { taxReturnsAttention } from "./tax-returns-attention";
 import { workAttention } from "./work-attention";
 
 type Row = Record<string, unknown>;
@@ -80,7 +81,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const ownerIds = idsWith(storeRows, "owner");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems] = await Promise.all([
+  const [salesRows, sendRows, stockRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -128,6 +129,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     taxAttention(ids),
     // Paid orders still waiting for an invoice (D159): asked only for the stores where the member is an owner.
     invoiceAttention(ownerIds),
+    // OSS and IOSS data not yet exported (D161): the owner's too, asked only for the stores that have such a registration.
+    taxReturnsAttention(ownerIds),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -170,6 +173,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(returnItems.has(id) ? { returns: returnItems.get(id) } : {}),
       ...(taxItems.has(id) ? { tax: taxItems.get(id) } : {}),
       ...(invoiceItems.has(id) ? { invoices: invoiceItems.get(id) } : {}),
+      ...(taxReturnItems.has(id) ? { taxReturns: taxReturnItems.get(id)!.map((r) => ({ text: r.text, path: r.path })) } : {}),
     };
   });
 

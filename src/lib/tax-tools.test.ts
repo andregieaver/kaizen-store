@@ -20,8 +20,13 @@ describe("the tax tools of the owner assistant (D157)", () => {
 
   it("has no tool that changes a VAT number, a registration or a rate: a person does that", () => {
     const tax = OWNER_TOOLS.filter((t) => /vat|tax|ioss|oss/i.test(t.name)).map((t) => t.name);
-    expect(tax.sort()).toEqual([...NAMES].sort());
+    // The two reports of D161 (`vat_report`, `oss_return_data`) read the store's documents; they too change nothing and are ungated.
+    expect(tax.sort()).toEqual([...NAMES, "vat_report", "oss_return_data"].sort());
     for (const name of NAMES) expect(OWNER_TOOLS_BY_NAME[name].description).toMatch(/Read only|worked out in code/);
+    for (const name of ["vat_report", "oss_return_data"]) {
+      expect(OWNER_TOOLS_BY_NAME[name].gate, name).toBeUndefined();
+      expect(OWNER_TOOLS_BY_NAME[name].description, name).toMatch(/read only/i);
+    }
   });
 
   it("has a playbook that names the tools and pages that exist and promises no tax advice", () => {

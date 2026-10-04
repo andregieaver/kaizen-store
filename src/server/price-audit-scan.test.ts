@@ -11,7 +11,8 @@ const walk = (dir: string, found: string[] = []): string[] => {
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) walk(path, found);
-    else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) && !/\.int\.test\.ts$/.test(name)) found.push(path);
+    // Fixtures that tests build their rows with (`*-fixture.ts`, imported by tests only) are not the app, as in `document-readers.test.ts`.
+    else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) && !/\.int\.test\.ts$/.test(name) && !/-fixture\.tsx?$/.test(name)) found.push(path);
   }
   return found;
 };

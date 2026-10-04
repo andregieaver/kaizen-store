@@ -49,6 +49,9 @@ describe("who reads invoices and credit notes", () => {
         "src/server/invoice-issue.ts",
         // A refund's credit note, to announce it.
         "src/server/stripe-refunds.ts",
+        // The VAT report's reconciliation (D161): an invoice's order, supply date, VAT and currency, nothing personal. The reports themselves
+        // read documents through `commerce.tax_document_groups()` and name neither table.
+        "src/server/tax-reconciliation.ts",
       ].sort(),
     );
   });

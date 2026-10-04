@@ -21,6 +21,10 @@ export type PeriodPickerProps = {
   preserve?: Readonly<Record<string, string>>;
   /** The latest day that can be chosen (today in the store's time zone). */
   max?: string;
+  /** False for a page with nothing to compare (the VAT reports, D161): the comparison control is left out. Default true. */
+  showCompare?: boolean;
+  /** True for a page whose own default is not the default preset: every preset link then names its period, so "Last 30 days" is not read as the page's default. */
+  explicitPeriod?: boolean;
 };
 
 const inputClass = "h-9 rounded-lg border border-border bg-background px-2 text-sm";
@@ -36,7 +40,7 @@ function Hidden({ values }: { values: Readonly<Record<string, string>> }) {
   );
 }
 
-export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {}, max }: PeriodPickerProps) {
+export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {}, max, showCompare = true, explicitPeriod = false }: PeriodPickerProps) {
   const links = PRESETS.filter((p) => p.id !== "custom");
   // The current view as the compare form sends it back: the period as it is, a custom one with its dates.
   const keep: Record<string, string> = { ...preserve, period: preset };
@@ -52,7 +56,7 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
           return (
             <Link
               key={p.id}
-              href={periodHref(basePath, { period: { preset: p.id, from, to }, compare: { mode: compare } }, preserve)}
+              href={periodHref(basePath, { period: { preset: p.id, from, to }, compare: { mode: compare } }, explicitPeriod ? { ...preserve, period: p.id } : preserve)}
               aria-current={active ? "true" : undefined}
               className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${active ? "border-foreground bg-surface font-semibold" : "border-border"}`}
             >
@@ -77,6 +81,7 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
         </button>
       </form>
 
+      {showCompare ? (
       <form method="get" action={basePath} className="flex flex-wrap items-end gap-2" aria-label="Comparison">
         <Hidden values={keep} />
         <label className="flex flex-col gap-0.5 text-xs text-muted">
@@ -93,6 +98,7 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
           Update
         </button>
       </form>
+      ) : null}
     </div>
   );
 }

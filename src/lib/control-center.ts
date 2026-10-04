@@ -52,6 +52,11 @@ export type StoreFigures = {
    * reverse-charge ones past the deadline (the 15th of the month after payment, Directive Art. 222).
    */
   invoices?: InvoiceFigures;
+  /**
+   * OSS and IOSS returns whose data was not exported (D161, `returnsDue()`), only when there are some and only for the owner. Each says
+   * what is known (the period has ended, the due date is near or past, no export was made here) and never that a return is late.
+   */
+  taxReturns?: { text: string; path: string }[];
 };
 
 export type InvoiceFigures = { waiting: number; overdue: number };
@@ -131,6 +136,10 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         action: "Open invoices",
         urgent: overdue > 0,
       });
+    }
+    // OSS and IOSS data not yet exported, near its due date or just past it (D161): not urgent, and never a claim that a return is late.
+    if (owner) {
+      for (const r of s.taxReturns ?? []) items.push({ text: `${s.name}: ${r.text}`, href: `${base}${r.path}`, action: "Open VAT report" });
     }
     // Nothing of the stock is shown to a member who may not open Products.
     if (hidden(s, "stock")) {

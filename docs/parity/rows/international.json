@@ -416,7 +416,7 @@
       "was": "missing"
     },
     "weight": 3,
-    "gap": "Unit 1a (D157 proposed) built criteria 1, 2 and the 'off and says why' half of 4: a store records its IOSS number (`IM` plus ten digits), the intermediary's name, the markets it applies to and the registration date (`commerce.store_tax_profile`, `/admin/{store}/settings/tax`); a consignment of at most 150.00 EUR sent from outside the EU to a private buyer in a listed EU market is charged destination VAT as before and the order records `vat_kind = 'ioss'` and the number; above 150 EUR (`ioss_over_limit`), for a business buyer, outside the listed markets, from an EU dispatch country, for downloads, or where the currency has no euro rate it is not an IOSS sale and the buyer is told import VAT may be collected on delivery; without a number or markets the screen's readiness line says IOSS is off and what it needs. Tests: `ioss.test.ts` (150.00 versus 150.01, conversion, no rate), `vat-treatment.test.ts`, `tax-profile.int.test.ts`, `vat-engine.int.test.ts` (IOSS marking in euro and koruna views). Still missing: (1) criterion 3, the monthly IOSS report per member state and rate as CSV: unit 1c; the invoice does not yet carry the IOSS marking (unit 1b); (2) bucket B: live only with a registered IOSS number or intermediary agreement the owner holds, which nothing here checks; (3) the 150 EUR test uses the basket's shipped lines, not a proper intrinsic-value definition (not read), and the EU's removal of the customs-duty exemption from 1 July 2026 (Shopify's page, read 2026-10-03) is not handled; (4) the IOSS statement, the import notice and the admin help text are hand-written, unreviewed and need a tax accountant (including whether a Norwegian store may register directly, marked verify); (5) the tax screen was checked by render and action tests, no browser test opens it.",
+    "gap": "Unit 1a (D157 proposed) built criteria 1, 2 and the 'off and says why' half of 4: a store records its IOSS number (`IM` plus ten digits), the intermediary's name, the markets it applies to and the registration date (`commerce.store_tax_profile`, `/admin/{store}/settings/tax`); a consignment of at most 150.00 EUR sent from outside the EU to a private buyer in a listed EU market is charged destination VAT and the order records `vat_kind = 'ioss'` and the number; above 150 EUR (`ioss_over_limit`), for a business buyer, outside the listed markets, from an EU dispatch country, for downloads, or where the currency has no euro rate it is not an IOSS sale; without a number or markets the screen says IOSS is off and what it needs. Unit 1b's invoice carries the IOSS statement and the number (D159). Unit 1c (D161 proposed) built criterion 3: `/admin/{store}/analytics/tax?view=ioss` gives the monthly IOSS data per Member State of consumption and rate in euro at the ECB's reference rate of the month's last day (or the owner's audited override), as a formula-safe CSV, refused while a rate is missing, with the above-150 EUR and other unmarked orders listed with their reason and a next-month credit note as a Part 3 correction (`tax-reports.int.test.ts` IOSS scenario, `oss-return.test.ts`, `tax-csv.test.ts`, `tax-report-admin.int.test.ts`, `oss-view.test.ts`), and the off-and-says-why state is rendered. Still short of Full: (1) bucket B: live only with a registered IOSS number or intermediary agreement the owner holds, which nothing here checks, and Kaizen submits no IOSS return; (2) the 150 EUR test uses the basket's shipped lines, not a proper intrinsic-value definition (not read), and the EU's removal of the customs-duty exemption from 1 July 2026 (Shopify's page, read 2026-10-03) is not handled; (3) the IOSS statement, the import notice, the admin help text and the report's part-of-return rules are hand-written, unreviewed and need a tax accountant (including whether a Norwegian store may register directly, marked verify); (4) neither the tax screen nor the IOSS view was opened in a browser with data (render and action tests only).",
     "bucket": "B",
     "wave": 1,
     "criteria": [
@@ -438,7 +438,29 @@
         "src/db/schema.ts",
         "supabase/migrations/20261003193641_tax_engine.sql",
         "supabase/migrations/20261003193902_tax_engine_rules.sql",
-        "docs/wave-1a-tax.md"
+        "docs/wave-1a-tax.md",
+        "src/lib/tax-periods.ts",
+        "src/lib/ecb-history.ts",
+        "src/lib/tax-classes.ts",
+        "src/lib/tax-report.ts",
+        "src/lib/oss-return.ts",
+        "src/lib/tax-reconciliation.ts",
+        "src/lib/tax-csv.ts",
+        "src/lib/tax-returns-due.ts",
+        "src/server/tax-reports.ts",
+        "src/server/tax-reconciliation.ts",
+        "src/server/tax-report-exports.ts",
+        "src/server/ecb-rates.ts",
+        "src/server/ecb-fetch.ts",
+        "src/server/tax-rate-overrides.ts",
+        "src/components/admin/analytics/tax-view.tsx",
+        "src/components/admin/analytics/oss-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/tax/page.tsx",
+        "src/app/admin/(gated)/[store]/analytics/tax/actions.ts",
+        "src/app/admin/(gated)/[store]/analytics/tax/export/route.ts",
+        "supabase/migrations/20261004164607_tax_reports.sql",
+        "supabase/migrations/20261004164617_tax_reports_rules.sql",
+        "docs/wave-1c-reports.md"
       ],
       "tests": [
         "src/lib/ioss.test.ts",
@@ -447,12 +469,30 @@
         "src/server/tax-profile.int.test.ts",
         "src/server/vat-engine.int.test.ts",
         "src/server/vat-money-review.int.test.ts",
-        "src/components/admin/tax-profile-form.test.ts"
+        "src/components/admin/tax-profile-form.test.ts",
+        "src/lib/tax-periods.test.ts",
+        "src/lib/ecb-history.test.ts",
+        "src/lib/tax-classes.test.ts",
+        "src/lib/tax-report.test.ts",
+        "src/lib/oss-return.test.ts",
+        "src/lib/tax-reconciliation.test.ts",
+        "src/lib/tax-csv.test.ts",
+        "src/db/tax-reports.test.ts",
+        "src/server/tax-reports.int.test.ts",
+        "src/server/tax-reports-money-review.int.test.ts",
+        "src/server/tax-report-admin.int.test.ts",
+        "src/server/tax-report-exports.int.test.ts",
+        "src/server/ecb-rates.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/components/admin/analytics/tax-view.test.ts",
+        "src/components/admin/analytics/oss-view.test.ts",
+        "src/components/documents/order-document-view.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D157"
+      "D157",
+      "D161"
     ],
     "history": [
       {

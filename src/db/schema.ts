@@ -3290,6 +3290,7 @@ export const invoices = commerce.table(
     orderRef("invoices_order_fk", t),
     seriesRef("invoices_series_fk", t),
     index("invoices_issued_idx").on(t.storeId, t.issuedOn),
+    index("invoices_supply_idx").on(t.storeId, t.supplyDate),
     check("invoices_kind", sql`${t.kind} = 'order'`),
     check("invoices_series", sql`${t.series} = 'invoice'`),
     check("invoices_vat_kind", sql`${t.vatKind} in ('standard', 'reverse_charge', 'ioss')`),
@@ -3446,6 +3447,89 @@ export const documentPdfState = commerce.table(
     primaryKey({ columns: [t.storeId, t.documentType, t.documentId] }),
     check("document_pdf_state_type", sql`${t.documentType} in ('invoice', 'credit_note')`),
     check("document_pdf_state_error", sql`${t.lastError} is null or length(${t.lastError}) <= 200`),
+  ],
+);
+
+/**
+ * The European Central Bank's euro reference rates (D161, `docs/wave-1c-reports.md` 3.1): units of a currency per 1 EUR on a
+ * publication day, kept for the OSS and IOSS euro figures (the rate of a period's last day). Platform-wide reference data, no
+ * `store_id`. Append-only: a trigger refuses an update and a delete, because a stored rate is part of what a filed return rested
+ * on; a day already stored is never replaced (the writer inserts `on conflict do nothing`).
+ */
+export const ecbReferenceRates = commerce.table(
+  "ecb_reference_rates",
+  {
+    rateDate: date("rate_date").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    rate: numeric("rate", { precision: 18, scale: 6 }).notNull(),
+    source: text("source").notNull().default("ecb"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.rateDate, t.currency] }),
+    check("ecb_reference_rates_rate", sql`${t.rate} > 0`),
+    check("ecb_reference_rates_source", sql`${t.source} in ('ecb')`),
+    check("ecb_reference_rates_currency", sql`${t.currency} ~ '^[A-Z]{3}$' and ${t.currency} <> 'EUR'`),
+  ],
+);
+
+/**
+ * An owner's own euro rate for a currency on a day (D161, 3.2), used instead of the ECB's for that store only, with the reason
+ * (audit-logged by the action). It never changes a document. An upsert: the audit log is the history.
+ */
+export const taxRateOverrides = commerce.table(
+  "tax_rate_overrides",
+  {
+    storeId: storeId().references(() => stores.id),
+    currency: char("currency", { length: 3 }).notNull(),
+    rateDate: date("rate_date").notNull(),
+    rate: numeric("rate", { precision: 18, scale: 6 }).notNull(),
+    reason: text("reason").notNull(),
+    setBy: uuid("set_by")
+      .notNull()
+      .references(() => accounts.id),
+    setAt: timestamp("set_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.currency, t.rateDate] }),
+    index("tax_rate_overrides_set_by_idx").on(t.setBy),
+    check("tax_rate_overrides_rate", sql`${t.rate} > 0`),
+    check("tax_rate_overrides_currency", sql`${t.currency} ~ '^[A-Z]{3}$' and ${t.currency} <> 'EUR'`),
+    check("tax_rate_overrides_reason", sql`length(btrim(${t.reason})) between 10 and 300`),
+    check("tax_rate_overrides_date", sql`${t.rateDate} >= date '2021-07-01'`),
+  ],
+);
+
+/**
+ * A log of the VAT, OSS and IOSS exports a store made (D161, 3.2): what period, which view and mode, how many rows and the
+ * totals (aggregate numbers only, never a buyer or a document number), so a later change to the period shows as drift.
+ * Append-only.
+ */
+export const taxReportExports = commerce.table(
+  "tax_report_exports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    report: text("report").notNull(),
+    scheme: text("scheme"),
+    /** `2026-Q3`, `2026-09` or `2026-09-01..2026-09-30`. */
+    periodKey: text("period_key").notNull(),
+    mode: text("mode"),
+    rows: integer("rows").notNull(),
+    totals: jsonb("totals").notNull(),
+    exportedBy: uuid("exported_by")
+      .notNull()
+      .references(() => accounts.id),
+    exportedAt: timestamp("exported_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("tax_report_exports_period_idx").on(t.storeId, t.report, t.periodKey, t.exportedAt.desc()),
+    index("tax_report_exports_exported_by_idx").on(t.exportedBy),
+    check("tax_report_exports_report", sql`${t.report} in ('vat', 'oss', 'oss_detail', 'ioss', 'ioss_detail', 'reconciliation')`),
+    check("tax_report_exports_scheme", sql`${t.scheme} is null or ${t.scheme} in ('union', 'non_union', 'ioss')`),
+    check("tax_report_exports_mode", sql`${t.mode} is null or ${t.mode} in ('books', 'filing')`),
+    check("tax_report_exports_rows", sql`${t.rows} >= 0`),
+    check("tax_report_exports_totals", sql`jsonb_typeof(${t.totals}) = 'object'`),
   ],
 );
 

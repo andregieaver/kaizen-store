@@ -348,6 +348,9 @@ const PAGES: readonly AdminPage[] = [
   store("analytics.finance", "/analytics/finance", "Finance", "Analytics", "From gross sales to net revenue, contribution profit and estimated operating profit: discounts, refunds, VAT, cost of goods, payment and platform fees, shipping and marketing.", {
     keywords: ["profit", "margin", "cogs", "fees", "vat", "net sales", "contribution"],
   }),
+  store("analytics.tax", "/analytics/tax", "VAT, OSS and IOSS reports", "Analytics", "VAT by delivery country, rate and basis made from your invoices and credit notes, the quarterly OSS and monthly IOSS return data in euro at the ECB rate, how they reconcile with Finance and your orders, and CSV files for your accountant. Your own figures, never a tax return.", {
+    keywords: ["vat", "moms", "mva", "oss", "ioss", "one stop shop", "return", "rate", "country", "accountant", "reconciliation", "tax report", "ecb", "euro"],
+  }),
   store("analytics.customers", "/analytics/customers", "Customer analytics", "Analytics", "New against returning customers, repeat purchase rate, purchase frequency, lifetime value, customer segments (RFM) and cohort retention.", {
     keywords: ["ltv", "retention", "cohort", "rfm", "repeat", "loyal", "churn"],
   }),

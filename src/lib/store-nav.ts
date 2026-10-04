@@ -123,6 +123,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true }),
           item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left."),
+          item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance."),
           item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts."),
           item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves."),
           item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell."),

@@ -125,6 +125,13 @@ export type OrderSpec = {
   iossNumber?: string;
   /** What the order's frozen treatment says of the seller's number (undefined: the store's; null: none; a renewal has no treatment at all, `noTreatment`). */
   sellerVatNumber?: string | null;
+  /** Where the goods were sent from, as `placeOrder()` freezes it on the treatment (D161); undefined leaves it out, as orders from before it. */
+  dispatchCountry?: string | null;
+  /**
+   * The seller as `placeOrder()` freezes it on the treatment (D161): the store's country and the profile's member state of identification
+   * at the time. `false` leaves both out, as on orders from before D161; a string overrides the store's country.
+   */
+  frozenSeller?: false | { country?: string | null; ossMemberState?: string | null };
   noTreatment?: boolean;
   billing?: Record<string, string | null>;
   shipTo?: Record<string, string | null>;
@@ -207,13 +214,22 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
   const n = next();
   const number = spec.copied ? `C-${9000 + n}` : `FX-${1000 + n}`;
   const profileNumber = await scalar<string | null>(db, "select vat_number from commerce.store_tax_profile where store_id = $1", [store]);
+  const sellerNow = await db.query<{ country: string | null; oss: string | null }>(
+    "select s.country::text as country, p.oss_member_state::text as oss from commerce.stores s left join commerce.store_tax_profile p on p.store_id = s.id where s.id = $1",
+    [store],
+  );
+  const frozenOver = spec.frozenSeller === false || spec.frozenSeller === undefined ? {} : spec.frozenSeller;
+  const frozen = {
+    country: "country" in frozenOver ? (frozenOver.country ?? null) : (sellerNow.rows[0]?.country ?? null),
+    ossMemberState: "ossMemberState" in frozenOver ? (frozenOver.ossMemberState ?? null) : (sellerNow.rows[0]?.oss ?? null),
+  };
   const treatment = spec.noTreatment
     ? null
     : {
         kind: spec.vatKind ?? "standard",
         reason: rc ? "reverse_charge" : spec.vatKind === "ioss" ? "ioss" : "consumer",
         sellerVatNumber: spec.sellerVatNumber === undefined ? profileNumber : spec.sellerVatNumber,
-        sellerCountry: "NO",
+        ...(spec.frozenSeller === false ? {} : { sellerCountry: frozen.country, ossMemberState: frozen.ossMemberState }),
         buyerVatNumber: spec.company?.vatNumber ?? null,
         buyerCountry: spec.company?.vatNumber ? spec.company.vatNumber.slice(0, 2) : null,
         vies: { status: "valid", checkedAt: null, requestIdentifier: null, registeredName: "VIES NAME", registeredAddress: "VIES ADDRESS" },
@@ -221,6 +237,7 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
         consignmentEurMinor: null,
         shippingRule: "standard",
         shippingRate: shippingRate,
+        ...(spec.dispatchCountry === undefined ? {} : { dispatchCountry: spec.dispatchCountry }),
       };
   let hostId: string | null = null;
   if (spec.host) {

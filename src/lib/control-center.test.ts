@@ -89,6 +89,18 @@ describe("the control center (D107)", () => {
     expect(attentionFor([store({ invoices: { waiting: 0, overdue: 0 } })])).toEqual([]);
   });
 
+  it("asks an owner, and only an owner, to take the OSS or IOSS data near its due date, not urgent, never saying a return is late (D161)", () => {
+    const taxReturns = [{ text: "Your OSS data for Q3 2026 has not been exported; it is due 31 October.", path: "/analytics/tax?view=oss&quarter=2026-Q3" }];
+    const items = attentionFor([store({ slug: "a", name: "A", taxReturns })]);
+    expect(items).toEqual([
+      { text: "A: Your OSS data for Q3 2026 has not been exported; it is due 31 October.", href: "/admin/a/analytics/tax?view=oss&quarter=2026-Q3", action: "Open VAT report" },
+    ]);
+    expect(items[0].urgent).toBeUndefined();
+    expect(items[0].text).not.toMatch(/late|overdue/i);
+    expect(attentionFor([store({ role: "admin", taxReturns })])).toEqual([]);
+    expect(attentionFor([store({ taxReturns: [] })])).toEqual([]);
+  });
+
   it("adds Work's own attention items for a store that uses it, urgent first, and nothing for one that does not", () => {
     const now = Date.parse("2026-09-29T12:00:00Z");
     const workOf = (slug: string, name: string) => workOverview({

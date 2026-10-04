@@ -2138,3 +2138,122 @@ describe("order numbering (D141)", () => {
     await expect(db().execute(sql`delete from commerce.orders where id = ${String(order.id)}::uuid`)).rejects.toMatchObject({ cause: { message: expect.stringMatching(/order_number\.deleted/) } });
   });
 });
+
+describe("tax reports, D161: a store selling in kroner and, shown in euro, in euro", () => {
+  const reports = import("./tax-reports");
+  const reconciliations = import("./tax-reconciliation");
+  const totalsModule = import("./analytics-totals");
+  const csvModule = import("@/lib/tax-csv");
+  let own: Awaited<ReturnType<typeof documentFixture.makeStore>>;
+  const placed: { order: Awaited<ReturnType<typeof documentFixture.paidOrder>>; euro: boolean; kind: string }[] = [];
+  const sweden = toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" });
+  /** The store as the reports read it (this file builds its stores by hand: `getStore()` is cached for a request). */
+  const storeOf = (markets: (typeof no)[]) =>
+    ({
+      id: own.storeId,
+      slug: own.slug,
+      timeZone: "Europe/Oslo",
+      markets,
+      localization: localizationOf([], [{ currency: "NOK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], markets),
+    }) as unknown as Store;
+  const today = async () => (await reports).storeToday(storeOf([no]));
+  const range = async () => {
+    const day = await today();
+    const { addDays } = await import("@/lib/analytics-period");
+    return { from: day, to: addDays(day, 1) };
+  };
+
+  beforeAll(async () => {
+    own = await documentFixture.makeStore("kinds-tax");
+    // The demo lamp is a download here (as in the store of the checkout above).
+    await db().execute(sql`update commerce.product_variants set delivery = 'digital' where store_id = ${own.storeId}::uuid and sku = 'DEMO-LAMP'`);
+    await db().execute(sql`
+      update commerce.products p set delivery = 'digital', download_limit = 2, download_days = 7
+      from commerce.product_variants v where v.product_id = p.id and v.store_id = ${own.storeId}::uuid and v.sku = 'DEMO-LAMP'
+    `);
+    const consent = { digital: true };
+    for (const euro of [false, true]) {
+      const market = euro ? documentFixture.noInEuro : documentFixture.no;
+      placed.push({ euro, kind: "goods", order: await documentFixture.paidOrder(own, [["DEMO-MUG-WHITE", 2]], { market }) });
+      placed.push({ euro, kind: "download", order: await documentFixture.paidOrder(own, [["DEMO-LAMP", 1]], { market, consent }) });
+      placed.push({ euro, kind: "goods and download", order: await documentFixture.paidOrder(own, [["DEMO-MUG-WHITE", 1], ["DEMO-LAMP", 1]], { market, consent }) });
+    }
+  }, 90_000);
+
+  it("has an invoice for every order, in the currency shown: kroner and euro", async () => {
+    expect(placed.map((p) => p.order.currency)).toEqual(["NOK", "NOK", "NOK", "EUR", "EUR", "EUR"]);
+    const rows = await db().execute<Row>(sql`select currency, count(*)::int as n from commerce.invoices where store_id = ${own.storeId}::uuid group by currency order by currency`);
+    expect(rows.map((r) => [String(r.currency).trim(), r.n])).toEqual([["EUR", 3], ["NOK", 3]]);
+  });
+
+  it("gives the VAT per country and rate in each document currency as the orders have it, and in kroner at the rate each invoice holds", async () => {
+    const { vatReport } = await reports;
+    const store = storeOf([no]);
+    const { report } = await vatReport(store, await range());
+    expect(report.mainCurrency).toBe("NOK");
+    expect(report.rows.map((r) => [r.country, r.rate, r.currency, r.invoices, r.orders])).toEqual([["NO", 0.25, "NOK", 3, 3], ["NO", 0.25, "EUR", 3, 3]].sort((a, b) => String(b[2]).localeCompare(String(a[2]))));
+    const byCurrency = (currency: string) => placed.filter((p) => p.order.currency === currency).map((p) => p.order);
+    for (const currency of ["NOK", "EUR"]) {
+      const row = report.rows.find((r) => r.currency === currency)!;
+      expect(row.vatMinor, currency).toBe(byCurrency(currency).reduce((n, o) => n + o.tax, 0));
+      expect(row.grossMinor, currency).toBe(byCurrency(currency).reduce((n, o) => n + o.total, 0));
+      expect(row.netMinor, currency).toBe(row.grossMinor - row.vatMinor);
+    }
+    // The converted VAT of the invoices is what each invoice froze (the euro ones at 11.5 kroner), added up: never a rate of today.
+    const [stored] = await db().execute<Row>(sql`select coalesce(sum((snapshot -> 'vatMain' ->> 'vatMinor')::bigint), 0)::bigint as vat from commerce.invoices where store_id = ${own.storeId}::uuid`);
+    expect(report.totals.vatChargedMainMinor).toBe(Number(stored.vat));
+    const eur = report.rows.find((r) => r.currency === "EUR")!;
+    expect(eur.vatMainMinor).toBeGreaterThanOrEqual(Math.round(eur.vatMinor * 11.5) - 3);
+    expect(eur.vatMainMinor).toBeLessThanOrEqual(Math.round(eur.vatMinor * 11.5) + 3);
+    expect(report.notConverted).toEqual({ invoices: 0, creditNotes: 0, currencies: [], leftOut: [] });
+  });
+
+  it("writes the CSV with the document currency's columns equal to the orders', and the kroner columns beside them", async () => {
+    const { vatReport } = await reports;
+    const { vatCsv } = await csvModule;
+    const store = storeOf([no]);
+    const r = await range();
+    const { report } = await vatReport(store, r);
+    const lines = vatCsv(report, r).split("\r\n");
+    expect(lines).toHaveLength(report.rows.length + 2);
+    const decimal = (minor: number) => (minor / 100).toFixed(2);
+    for (const currency of ["NOK", "EUR"]) {
+      const orders = placed.filter((p) => p.order.currency === currency).map((p) => p.order);
+      const vat = orders.reduce((n, o) => n + o.tax, 0);
+      const gross = orders.reduce((n, o) => n + o.total, 0);
+      const line = lines.find((l) => l.includes(`,${currency},3,3,`))!;
+      expect(line, currency).toContain(`,${currency},3,3,${decimal(gross - vat)},${decimal(vat)},${decimal(gross)},0,`);
+      expect(line.endsWith(",true"), currency).toBe(true);
+      expect(line, currency).toContain(",NOK,");
+    }
+  });
+
+  it("agrees with Finance: the reconciliation is exact in kroner and in euro and its line for Finance is the Finance page's VAT figure", async () => {
+    const { reconciliation } = await reconciliations;
+    const { periodTotals } = await totalsModule;
+    const store = storeOf([no]);
+    const r = await range();
+    const view = await reconciliation(store, r);
+    expect(view.balanced).toBe(true);
+    expect(view.bridges.map((b) => [b.currency, b.differenceMinor])).toEqual([["EUR", 0], ["NOK", 0]]);
+    const finance = await periodTotals(store, { ...r, days: 1, preset: "custom", label: "today" });
+    expect(view.main.financeMainMinor).toBe(finance.totals.vatMinor);
+    expect(view.undocumented.orders).toBe(0);
+  });
+
+  it("counts a document with no conversion to the main currency instead of converting it at today's rate: a store that moved its home to Sweden", async () => {
+    const { vatReport } = await reports;
+    await db().execute(sql`update commerce.stores set country = 'SE' where id = ${own.storeId}::uuid`);
+    const store = storeOf([sweden, no]);
+    expect(store.markets[0].nativeCurrency).toBe("SEK");
+    const { report } = await vatReport(store, await range());
+    expect(report.notConverted).toMatchObject({ invoices: 6, creditNotes: 0, currencies: ["EUR", "NOK"] });
+    // What the main-currency figure leaves out is named per currency (the reconciliation shows it on its own line, never as an exchange-rate effect).
+    expect(report.notConverted.leftOut.map((o) => [o.currency, o.invoices]).sort()).toEqual([["EUR", 3], ["NOK", 3]]);
+    expect(report.totals.vatChargedMainMinor).toBe(0);
+    expect(report.rows.every((r) => !r.mainConverted && r.vatMainMinor === null)).toBe(true);
+    // The own-currency figures are all there.
+    expect(report.byCurrency.map((c) => [c.currency, c.invoices]).sort()).toEqual([["EUR", 3], ["NOK", 3]]);
+    await db().execute(sql`update commerce.stores set country = 'NO' where id = ${own.storeId}::uuid`);
+  });
+});

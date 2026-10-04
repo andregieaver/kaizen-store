@@ -102,11 +102,25 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/demo/settings/invoices",
     "/admin/demo/invoices/11111111-1111-4111-8111-111111111111/print",
     "/admin/demo/invoices/credit-notes/11111111-1111-4111-8111-111111111111/print",
+    // VAT, OSS and IOSS reports (D161).
+    "/admin/demo/analytics/tax",
+    "/admin/demo/analytics/tax?view=oss",
+    "/admin/demo/analytics/tax?view=ioss",
   ];
   for (const path of paths) {
     await page.goto(path);
     await expect(page).toHaveURL("/admin/sign-in");
   }
+});
+
+test("the VAT report's CSV export gives nothing to a visitor without a session (D161)", async ({ request }) => {
+  const fields = { kind: "vat", from: "2026-01-01", last: "2026-03-31" };
+  const answer = await request.post("/admin/demo/analytics/tax/export", { form: fields, maxRedirects: 0 });
+  expect(answer.status()).toBe(404);
+  expect(answer.headers()["content-type"] ?? "").not.toContain("text/csv");
+  expect(await answer.text()).not.toContain("country");
+  // Reading it is no export either: the route answers only to a form.
+  expect((await request.get("/admin/demo/analytics/tax/export", { maxRedirects: 0 })).status()).not.toBe(200);
 });
 
 test("admin pages send nothing of theirs to a visitor without a session, before the redirect", async ({ request }) => {
