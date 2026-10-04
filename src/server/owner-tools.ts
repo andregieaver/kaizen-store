@@ -48,6 +48,7 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
+import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
 import { deliveryRounds } from "./standing-orders";
@@ -1708,6 +1709,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   tax_readiness: taxReadinessTool,
   list_invoices: listInvoicesTool,
   invoice_readiness: invoiceReadinessTool,
+  vat_report: vatReportTool,
+  oss_return_data: ossReturnDataTool,
   list_customers: listCustomersTool,
   get_customer: getCustomerTool,
   list_subscriptions: listSubscriptionsTool,

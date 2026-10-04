@@ -238,6 +238,38 @@ never 0 %. Returns a shopper made without using Kaizen (a parcel sent back with 
 are the shopper's own choice (and never asked first for a withdrawal): they describe, they never refuse. The section is for the owner; the AI manager's
 `list_returns` and `explain_return` repeat the queue, not these figures.
 
+## Tax reports (D161)
+
+`/admin/{store}/analytics/tax` (`docs/wave-1c-reports.md`): VAT per country and rate, the quarterly OSS and monthly IOSS return data in euro, and a
+reconciliation. **These are the owner's own figures for the owner's accountant. They are never a tax return and Kaizen files nothing**; every rule
+(where a sale is reported, which date, the euro conversion, corrections) is `needs review: accountant` and lives in one pure function. The reports
+read **documents only** (the store's invoices and credit notes, D159) through the one database function `commerce.tax_document_groups()`; an order with
+no document is counted and shown on the reconciliation by its cause, never added, and VAT is never recomputed from orders for a report.
+
+| Figure | Definition |
+|---|---|
+| **Document** | An invoice or a credit note. Copied (`C-...`) and hosts' orders have none, so they are in no report and no reconciliation line. |
+| **Tax date** | An invoice's `supply_date` (the payment day in the store's time zone), a credit note's `issued_on`. A period is half open, `[from, to)`, in store days. Finance dates an order by `placed_at`, so the two differ by a named line, not an error. |
+| **Delivery country** | `orders.market_code` of the document's order (D109), never the snapshot's address (it is anonymised later). |
+| **VAT charged / Net / Gross** | Σ of the invoices' VAT buckets (`snapshot.buckets`, shipping inside the bucket of its own rate) in the document's currency. In the main currency each bucket is converted on its own with the document's **stored** rate (`snapshot.vatMain.fxRate`, the store's rate the day it was issued, `commerce.convert_with`), so an invoice's converted VAT is its stored `vatMain.vatMinor` exactly. A document with no stored rate is **not converted**: counted, left out of the main-currency figures, kept in its own currency. Nothing is converted at today's rate. |
+| **VAT credited / after credits** | Σ of the credit notes' buckets (positive amounts in the table, negative in files), converted likewise with the credit note's own stored rate (its invoice's); a credit note's converted VAT can differ from its stored `vatMain.vatMinor` by at most one minor unit per bucket. VAT after credits is charged less credited. |
+| **Orders** | Per row the distinct orders with an invoice in the period that have a bucket in the row; the total is the number of distinct orders (not the sum of rows), and likewise a document with two rates is one document. |
+| **Where it is reported** | Only `classify()` (`src/lib/tax-classes.ts`): IOSS (the invoice's `vat_kind`), the Union scheme part 2a, 2b or 2d, the non-Union scheme, the national return (a market outside the EU, or a domestic sale), or a named reason it is in no return. A row of the VAT table is one `(country, rate, basis, currency, where it is reported)`, so a row never straddles two returns. The dispatch country is frozen on the order (`orders.vat_treatment.dispatchCountry`); an order without it uses the store's live setting and is counted as assumed. A credit note is classed like its invoice's order. |
+| **Return euro amounts** | Taxable amount and VAT in euro per `(period, part, Member State, rate, document currency)`: each summed in the document currency and converted **once** at the ECB reference rate of the period's last day (or of the next publication day), `round_half_up(amount / rate)` in BigInt, kept in `commerce.ecb_reference_rates` (append-only) or the owner's override with its reason. A missing rate makes the return **incomplete**: left out of the totals, counted, and its file refused. A document in euro is not converted. |
+| **Books and filing** | *Books*: a credit note counts, negative, in the period it is issued (as Finance counts a refund), no Part 3. *Filing*: a credit note of the same period as its invoice reduces Part 2; a later one is a Part 3 correction of the period of its sale, converted at that period's rate. Part 4 is the balance per Member State (Part 2 plus Part 3, negative = the Member State reimburses it); Part 5 is the sum of the positive balances only. |
+| **Reconciliation** | Per document currency, exactly: `report = Finance + timing_in + not_captured - timing_out - invoicing_off - test_mode - waiting - other`, where Finance is `periodTotals().vatMinor`'s source (Σ `tax_minor` of `PAID` orders placed in the period). A bridge that does not balance says **Does not reconcile**. In the main currency each line is converted at today's rates as Finance does, with a named *Rounding* line and a named *Exchange-rate difference* (stored against today's). |
+| **Registration** | A warning, never a block, when the sales found do not fit the profile (Union sales with no OSS registration, goods with a non-Union registration, IOSS sales with no number). |
+
+Exports are four fixed CSV layouts (`src/lib/tax-csv.ts`), formula-safe, with no totals row, each written to `commerce.tax_report_exports` with its aggregate
+totals so that a later change to a period shows as drift ("changed since you exported this"). Not built, and said on the page: filing, the EC sales list,
+national return mapping, the 10,000 EUR threshold watch, booked services in OSS.
+
+The AI manager repeats these figures and makes none (`vat_report` and `oss_return_data`, `src/server/tax-report-tools.ts`): read only, `analytics:read`, each
+answer from the functions the page calls with the amounts written by `formatMoney`; a rate that is missing is said as not known, never as zero; every answer
+says it is not a tax return. The owner's overview and the store's Home add a not-urgent item when an OSS or IOSS return period has ended, its due date is
+within 14 days or passed in the last 45, and no Return data was exported in filing mode (`returnsDue()`, `src/lib/tax-returns-due.ts`; owners only, a registration
+with an intermediary or a period with nothing to report is left out): it says the data has not been exported and when it is due, never that a return is late.
+
 ## Not tracked (said on the pages)
 
 Refunds made only in Stripe's dashboard; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and

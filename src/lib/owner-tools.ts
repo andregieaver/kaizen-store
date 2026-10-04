@@ -179,6 +179,24 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "vat_report",
+    "The store's VAT by delivery country and rate for a period (D161), read only and made from its own invoices and credit notes, never from orders: per country, VAT rate and basis (standard, reverse charge, exempt) the net, VAT and gross of the invoices, the credit notes, and the VAT after credits, in the invoice's currency and in the store's main currency (at the rate stored on each invoice), and where each sale is reported (the store's own return, OSS, IOSS, or why it is in no return). It also gives how it agrees with Finance's VAT, with every difference named, and how many paid orders have no document and are not in it. `period` is a named period, or give `from` and `to` (the first and last day). These are the owner's own figures for the owner's accountant: they are not a tax return and nothing is filed. You cannot make a file: the owner exports the CSV on the VAT page. Not tax or accounting advice.",
+    z.object({
+      period: z.enum(["last_month", "month", "last_quarter", "quarter", "last_year", "year"]).default("last_month").describe("The whole of last month, this month so far, the whole of last quarter, this quarter so far, last year, or this year so far (the store's own days)."),
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-01.").optional().describe("The first day, as 2026-10-01; with `to` it replaces `period`."),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-31.").optional().describe("The last day included, as 2026-10-31; at most 800 days after `from`."),
+    }),
+  ),
+  tool(
+    "oss_return_data",
+    "The data an OSS return (a quarter, `scheme` oss) or an IOSS return (a month, `scheme` ioss) asks for (D161), read only, made from the store's invoices and credit notes: for each Member State of consumption and rate the taxable amount and VAT in euro, corrections of earlier periods, the balance per Member State and the total, the euro rate used for each currency (the ECB's rate of the period's last day, or the owner's own with its reason), what is left out of the return and why, whether the store's registration fits its sales, and the deadline. `mode` filing is what a return holds (a later credit note is a correction of its sale's period); books counts every credit note in the period it was made. A return with a missing euro rate is incomplete and says which rate. The period is `2026-Q3` for oss or `2026-09` for ioss; leave it out for the last completed one. These are the owner's own figures for the owner's accountant: they are not a tax return, nothing is filed and you cannot make a file (the owner exports the CSV on the VAT page). Not tax or accounting advice.",
+    z.object({
+      scheme: z.enum(["oss", "ioss"]).default("oss").describe("oss: the Union scheme's quarter. ioss: the import scheme's month."),
+      period: z.string().trim().max(10).optional().describe("The quarter such as 2026-Q3 (oss) or the month such as 2026-09 (ioss). Leave it out for the last completed one."),
+      mode: z.enum(["filing", "books"]).default("filing").describe("filing: what the return holds. books: every credit note in the period it was made."),
+    }),
+  ),
+  tool(
     "store_checkup",
     "A check of the store's health worked out in code: orders waiting too long to be sent, stock running out, searches finding nothing, setup left to do, integrations failing, changes waiting for approval. Each finding comes with the page to fix it. Use it for 'how is my store doing' and to suggest what to do next.",
     z.object({}),

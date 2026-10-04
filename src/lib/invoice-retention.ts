@@ -25,6 +25,12 @@ export const RETENTION_RULES: Record<string, RetentionRule> = {
 
 /** The longest of the four plus a margin: for a country nobody has read yet. */
 export const FALLBACK_RETENTION_YEARS = 10;
+/**
+ * The records of a store that uses the OSS or IOSS schemes are kept 10 years from the end of the year of the transaction (D161): the
+ * Commission's One Stop Shop Guidelines, Part 4, quoting Council Implementing Regulation (EU) 282/2011 Art. 63c, read 2026-10-04 in the
+ * guide, not in the regulation itself (verify). Needs review by an accountant.
+ */
+export const SCHEME_RETENTION_YEARS = 10;
 /** The database refuses a cutoff younger than this (the shortest period of the four): a floor under a wrong rule. */
 export const ANONYMISE_FLOOR_YEARS = 5;
 
@@ -34,10 +40,11 @@ export const retentionRuleOf = (country: string | null | undefined): RetentionRu
 /**
  * The date before which documents issued have passed their period, counted from the end of the calendar year of the document
  * (`YYYY-MM-DD`): a document issued in year Y is kept until the end of Y + years, so on 1 January of the year after it may go.
- * `today` is a store day. Never younger than the floor.
+ * `today` is a store day. Never younger than the floor. For a store that uses an OSS or IOSS scheme (`options.scheme`: an OSS
+ * registration or an IOSS number) the period is at least 10 years (D161); unit 1g passes it.
  */
-export function retentionCutoff(country: string | null | undefined, today: string): string {
+export function retentionCutoff(country: string | null | undefined, today: string, options: { scheme?: boolean } = {}): string {
   const year = Number(today.slice(0, 4));
-  const years = Math.max(retentionRuleOf(country).years, ANONYMISE_FLOOR_YEARS);
+  const years = Math.max(retentionRuleOf(country).years, ANONYMISE_FLOOR_YEARS, options.scheme ? SCHEME_RETENTION_YEARS : 0);
   return `${String(year - years).padStart(4, "0")}-01-01`;
 }

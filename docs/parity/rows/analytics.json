@@ -510,35 +510,69 @@
     },
     "kaizen": {
       "rating": "partial",
-      "rechecked": true,
-      "was": null
+      "rechecked": true
     },
     "weight": 5,
-    "gap": "One VAT total on Finance (VAT collected, including shipping); no VAT by country or by rate, no OSS data, no export. Confirmed: no VAT breakdown in `analytics-finance.ts` or `finance-view.tsx`.",
+    "gap": "The four criteria are built and held by tests (see the evidence), but an accountant has not read the part-assignment rules of classify(), the payment-day dating (Directive Art. 63 and 65), the euro rounding or the Part 3 handling (docs/wave-1c-reports.md section 8), so this is held at Partial like the other tax and legal rows. No browser has opened the page with data (the admin needs a sign-in; e2e/admin.spec.ts only checks the signed-out refusal). The migrations are not yet in production and the daily ECB rate job has not run there. Finance's PAID includes Stripe test-mode orders, which are never invoiced; the reconciliation names them as their own cause.",
     "history": [],
-    "bucket": "A",
-    "wave": 1,
+    "bucket": "D",
+    "wave": null,
     "criteria": [
-      "A VAT report lists, per country and VAT rate (including reduced and shipping rates), the net sales, the VAT and the number of orders for a period, reconciling to the Finance VAT total.",
-      "An OSS view groups EU B2C sales by destination country and rate per quarter, in euro at a stated rate, and exports as CSV (formula-safe).",
-      "Refunds and later credit notes reduce the period they are made in; copied and host orders are excluded.",
+      "A VAT report lists, per country and VAT rate (including reduced and shipping rates), the net sales, the VAT and the number of orders for a period; the report's VAT charged is tied to Finance's VAT total and to the sum of tax_minor of the paid orders by a bridge in which every difference is named and counted, exact in every currency; copied and host orders appear in no line.",
+      "An OSS view groups EU B2C sales by destination country and rate per quarter, in euro at a stated rate (the ECB reference rate of the period's last day or the next publication day, with its date, or the owner's override with its reason), and exports as CSV (formula-safe).",
+      "Refunds and later credit notes reduce VAT in the period they are made in (books mode); in the OSS and IOSS filing mode a later-period credit note is a Part 3 correction made in the period it is issued and referring to the period of the sale; copied and host orders are excluded.",
       "A euro scenario test covers a store selling in more than one currency."
     ],
     "evidence": {
       "files": [
-        "src/lib/analytics-finance.ts",
-        "src/components/admin/analytics/finance-view.tsx",
         "src/server/analytics-sql.ts",
+        "src/lib/tax-periods.ts",
+        "src/lib/ecb-history.ts",
+        "src/lib/tax-classes.ts",
+        "src/lib/tax-report.ts",
+        "src/lib/oss-return.ts",
+        "src/lib/tax-reconciliation.ts",
+        "src/lib/tax-csv.ts",
+        "src/lib/tax-returns-due.ts",
+        "src/server/tax-reports.ts",
+        "src/server/tax-reconciliation.ts",
+        "src/server/tax-report-exports.ts",
+        "src/server/ecb-rates.ts",
+        "src/server/ecb-fetch.ts",
+        "src/server/tax-rate-overrides.ts",
+        "src/components/admin/analytics/tax-view.tsx",
+        "src/components/admin/analytics/oss-view.tsx",
+        "src/app/admin/(gated)/[store]/analytics/tax/page.tsx",
+        "src/app/admin/(gated)/[store]/analytics/tax/actions.ts",
+        "src/app/admin/(gated)/[store]/analytics/tax/export/route.ts",
+        "supabase/migrations/20261004164607_tax_reports.sql",
+        "supabase/migrations/20261004164617_tax_reports_rules.sql",
+        "docs/wave-1c-reports.md",
         "docs/analytics.md"
       ],
       "tests": [
-        "src/lib/analytics-finance.test.ts",
-        "src/components/admin/analytics/finance-view.test.ts"
+        "src/lib/tax-periods.test.ts",
+        "src/lib/ecb-history.test.ts",
+        "src/lib/tax-classes.test.ts",
+        "src/lib/tax-report.test.ts",
+        "src/lib/oss-return.test.ts",
+        "src/lib/tax-reconciliation.test.ts",
+        "src/lib/tax-csv.test.ts",
+        "src/db/tax-reports.test.ts",
+        "src/server/tax-reports.int.test.ts",
+        "src/server/tax-reports-money-review.int.test.ts",
+        "src/server/tax-report-admin.int.test.ts",
+        "src/server/tax-report-exports.int.test.ts",
+        "src/server/ecb-rates.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/components/admin/analytics/tax-view.test.ts",
+        "src/components/admin/analytics/oss-view.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D152"
+      "D152",
+      "D161"
     ]
   },
   {

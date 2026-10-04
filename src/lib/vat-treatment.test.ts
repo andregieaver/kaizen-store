@@ -308,6 +308,8 @@ describe("what an order keeps", () => {
     consignmentEurMinor: 10_000,
     shippingRule: "standard",
     shippingRate: 0.25,
+    dispatchCountry: "SE",
+    ossMemberState: "SE",
   });
 
   it("is the decision, both numbers and what VIES said", () => {
@@ -315,8 +317,33 @@ describe("what an order keeps", () => {
     expect(t).toMatchObject({
       kind: "reverse_charge", reason: "reverse_charge", sellerVatNumber: "SE556677889901", buyerVatNumber: "DE123456789",
       vies: { status: "valid", checkedAt: "2026-10-03T10:00:00.000Z", requestIdentifier: "WAPIA1", registeredName: "Muster GmbH", registeredAddress: "Berlin" },
-      shippingRule: "standard", shippingRate: 0.25,
+      shippingRule: "standard", shippingRate: 0.25, dispatchCountry: "SE",
     });
+  });
+
+  it("freezes where the goods were sent from (D161), so a later change of the setting never reclassifies the order", () => {
+    expect(buildOrderTreatment(facts()).dispatchCountry).toBe("SE");
+    expect(buildOrderTreatment({ ...facts(), dispatchCountry: null }).dispatchCountry).toBeNull();
+    const kept = parseOrderTreatment(JSON.parse(JSON.stringify(buildOrderTreatment(facts()))));
+    expect(kept?.dispatchCountry).toBe("SE");
+  });
+
+  it("freezes the member state of identification (D161), so a later change of the store's registration never reclassifies the order", () => {
+    expect(buildOrderTreatment(facts()).ossMemberState).toBe("SE");
+    expect(buildOrderTreatment({ ...facts(), ossMemberState: null }).ossMemberState).toBeNull();
+    const kept = parseOrderTreatment(JSON.parse(JSON.stringify(buildOrderTreatment(facts()))));
+    expect(kept?.ossMemberState).toBe("SE");
+    // An order from before it was frozen reads as having none (the reports then fall back to the live profile and say so).
+    const older = JSON.parse(JSON.stringify(buildOrderTreatment(facts())));
+    delete older.ossMemberState;
+    expect(parseOrderTreatment(older)?.ossMemberState).toBeNull();
+  });
+
+  it("reads an order from before the dispatch country was frozen as having none", () => {
+    const older = { kind: "standard", reason: "consumer", shippingRule: "standard", shippingRate: 0.25 };
+    expect(parseOrderTreatment(older)?.dispatchCountry).toBeNull();
+    expect(parseOrderTreatment({ ...older, dispatchCountry: "" })?.dispatchCountry).toBeNull();
+    expect(parseOrderTreatment({ ...older, dispatchCountry: 5 })?.dispatchCountry).toBeNull();
   });
 
   it("keeps the IOSS number only on an IOSS order", () => {

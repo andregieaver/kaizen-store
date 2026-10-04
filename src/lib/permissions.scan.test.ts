@@ -42,6 +42,7 @@ const OTHERS: Record<string, "any" | "owner" | string> = {
 
 /** Files that ask for the owner role where the map would let a member in: each says why (a new file, so the baseline cannot). */
 const OWNER_ONLY_EXTRA: Record<string, string> = {
+  "src/app/admin/(gated)/[store]/analytics/tax/actions.ts": "an exchange rate changes the figures a tax return is made from (wave 1, 1c): the ECB fetch and an owner's own rate are the owner's",
   "src/app/admin/(gated)/[store]/activity/export/route.ts": "the activity log's CSV export is the owner's (wave 1, 1f 2.9); the page itself is open to every member, narrowed by what they may read",
 };
 

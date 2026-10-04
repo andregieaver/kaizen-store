@@ -262,6 +262,17 @@ export type OrderVatTreatment = {
   /** The shipping rule in force (`standard` unless a verified rule applied) and the rate shipping was charged at. */
   shippingRule: string;
   shippingRate: number | null;
+  /**
+   * Where the goods were sent from when the order was placed (D161: the VAT, OSS and IOSS reports classify a sale by it, so a later
+   * change of the store's setting never reclassifies an old order). Null when the store had not said; absent on older orders.
+   */
+  dispatchCountry: string | null;
+  /**
+   * The member state the seller was identified in for the Union scheme when the order was placed (the profile's `oss_member_state`), null
+   * when it had none; absent on orders placed before D161. With `sellerCountry` it is what the OSS return classes a sale by, so a later
+   * change of the store's country or registration never moves a filed quarter's sale to another part (`docs/wave-1c-reports.md` 4.3).
+   */
+  ossMemberState: string | null;
 };
 
 export type TreatmentFacts = {
@@ -281,6 +292,10 @@ export type TreatmentFacts = {
   consignmentEurMinor: number | null;
   shippingRule: string;
   shippingRate: number | null;
+  /** The seller's effective dispatch country at the time (`TaxFacts.seller.dispatchCountry`). */
+  dispatchCountry: string | null;
+  /** The profile's member state of identification at the time (`TaxProfile.ossMemberState`). */
+  ossMemberState: string | null;
 };
 
 /** The JSON kept on `orders.vat_treatment`, built from the decision and the facts it rested on. */
@@ -305,6 +320,8 @@ export function buildOrderTreatment(facts: TreatmentFacts): OrderVatTreatment {
     consignmentEurMinor: facts.consignmentEurMinor,
     shippingRule: facts.shippingRule,
     shippingRate: facts.shippingRate,
+    dispatchCountry: facts.dispatchCountry,
+    ossMemberState: facts.ossMemberState,
   };
 }
 
@@ -337,6 +354,8 @@ export function parseOrderTreatment(value: unknown): OrderVatTreatment | null {
     consignmentEurMinor: typeof v.consignmentEurMinor === "number" ? v.consignmentEurMinor : null,
     shippingRule: text(v.shippingRule) ?? "standard",
     shippingRate: typeof v.shippingRate === "number" ? v.shippingRate : null,
+    dispatchCountry: text(v.dispatchCountry),
+    ossMemberState: text(v.ossMemberState),
   };
 }
 

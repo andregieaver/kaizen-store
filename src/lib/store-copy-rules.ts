@@ -171,6 +171,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   credit_notes: never("Accounting documents with gap-free numbers of the original."),
   document_deliveries: never("Which emails carried which of the original's documents (D159)."),
   document_pdf_state: never("Render attempts of the original's documents (D159)."),
+  tax_rate_overrides: never("An owner's euro rate for a filed period belongs to that store's own returns (D161)."),
+  tax_report_exports: never("A log of the original's VAT, OSS and IOSS exports (D161)."),
   customer_codes: never("Sign-in codes."),
   customer_sessions: never("Sessions."),
   customer_sign_in_links: never("Sign-in links."),

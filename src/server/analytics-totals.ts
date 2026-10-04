@@ -66,6 +66,24 @@ export function setBased<TRow extends Record<string, unknown> = Record<string, u
   );
 }
 
+/** One read inside `setBasedSnapshot()`: the same planner settings, the same transaction. */
+export type SetBasedRead = <TRow extends Record<string, unknown> = Record<string, unknown>>(query: SQLWrapper) => Promise<TRow[]>;
+
+/**
+ * Several `setBased()` reads that must see one database state: a read-only `REPEATABLE READ` transaction, so a report and its
+ * reconciliation (D161) can never disagree because an invoice was issued between two of their queries. The reads run in the order
+ * `work` awaits them (one connection: never in parallel).
+ */
+export function setBasedSnapshot<T>(work: (read: SetBasedRead) => Promise<T>): Promise<T> {
+  return db().transaction(
+    async (tx) => {
+      await tx.execute(sql`select set_config('enable_nestloop', 'off', true), set_config('jit', 'off', true)`);
+      return work((query) => tx.execute(query));
+    },
+    { accessMode: "read only", isolationLevel: "repeatable read" },
+  );
+}
+
 // ---------------------------------------------------------------------------
 // What is exported
 // ---------------------------------------------------------------------------

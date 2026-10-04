@@ -17,6 +17,9 @@ export function AnalyticsHeader({
   description,
   picker = true,
   preserve,
+  showCompare = true,
+  explicitPeriod = false,
+  amountsNote,
   children,
 }: {
   ctx: AnalyticsContext;
@@ -28,6 +31,12 @@ export function AnalyticsHeader({
   picker?: boolean;
   /** Other parameters the page keeps when a period is picked (a sort, a tab). */
   preserve?: Record<string, string>;
+  /** False where there is no comparison (the VAT reports): the control, and the words about it, are left out. */
+  showCompare?: boolean;
+  /** True where the page's own default period is not the default preset (see `PeriodPicker`). */
+  explicitPeriod?: boolean;
+  /** What the amounts are in, when it is not the usual "main currency without VAT" (the VAT reports show the VAT itself, with it). */
+  amountsNote?: string;
   children?: ReactNode;
 }) {
   const { params, store } = ctx;
@@ -42,12 +51,12 @@ export function AnalyticsHeader({
       </div>
       {picker ? (
         <>
-          <PeriodPicker basePath={`${ctx.base}${path}`} preset={period.preset} from={period.from} to={lastDay} compare={compare.mode} preserve={preserve} max={today} />
+          <PeriodPicker basePath={`${ctx.base}${path}`} preset={period.preset} from={period.from} to={lastDay} compare={compare.mode} preserve={preserve} max={today} showCompare={showCompare} explicitPeriod={explicitPeriod} />
           <p className="text-sm text-muted">
             {period.label}
-            {compare.previous ? ` · compared with ${compare.previous.label}` : ""}
-            {compare.lastYear ? ` · compared with ${compare.lastYear.label}` : ""}
-            {` · amounts in ${store.markets[0]?.nativeCurrency ?? ""} without VAT`}
+            {showCompare && compare.previous ? ` · compared with ${compare.previous.label}` : ""}
+            {showCompare && compare.lastYear ? ` · compared with ${compare.lastYear.label}` : ""}
+            {amountsNote ? ` · ${amountsNote}` : ` · amounts in ${store.markets[0]?.nativeCurrency ?? ""} without VAT`}
           </p>
           {params.notice ? <Note tone="info">{params.notice}</Note> : null}
         </>

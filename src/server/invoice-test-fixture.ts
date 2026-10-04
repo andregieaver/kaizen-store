@@ -110,6 +110,8 @@ export type PayOptions = {
   billing?: Record<string, unknown>;
   shipTo?: Record<string, unknown>;
   customerId?: string | null;
+  /** The shopper's consents at checkout: a download needs `digital` (the waiver of the right to withdraw). */
+  consent?: { digital?: boolean };
 };
 
 /** An order placed from a cart of these SKUs and paid, as Checkout's session leaves it (the payment is still pending when `complete_order_payment()` runs). */
@@ -127,7 +129,7 @@ export async function paidOrder(fx: Fixture, items: [sku: string, quantity: numb
       select ${fx.storeId}::uuid, ${String(cart.id)}::uuid, id, ${quantity} from commerce.product_variants where store_id = ${fx.storeId}::uuid and sku = ${sku}
     `);
   }
-  const result = await placeOrder({ storeId: fx.storeId, market }, String(cart.id), {}, { customerId: o.customerId ?? null });
+  const result = await placeOrder({ storeId: fx.storeId, market }, String(cart.id), o.consent ?? {}, { customerId: o.customerId ?? null });
   if (!result.ok) throw new Error(`placeOrder: ${result.problem}`);
   const { orderId, totalMinor } = result.order;
   const provider = o.provider ?? "stripe";

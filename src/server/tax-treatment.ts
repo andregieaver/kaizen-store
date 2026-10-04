@@ -240,6 +240,8 @@ export function decideTax(facts: TaxFacts, basket: TaxBasket): TaxOutcome {
           consignmentEurMinor: consignment,
           shippingRule: facts.shippingRule,
           shippingRate: rate,
+          dispatchCountry: facts.seller.dispatchCountry,
+          ossMemberState: facts.profile.ossMemberState,
         }),
   };
 }

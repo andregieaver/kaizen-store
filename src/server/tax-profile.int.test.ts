@@ -295,6 +295,7 @@ describe("the AI manager reads the tax profile, and cannot change it", () => {
   it("has no tool that changes a VAT number, a registration or a rate", async () => {
     const { OWNER_TOOLS } = await import("@/lib/owner-tools");
     const taxTools = OWNER_TOOLS.filter((t) => /tax|vat|ioss|oss/.test(t.name)).map((t) => [t.name, t.gate ?? null]);
-    expect(taxTools).toEqual([["get_tax_profile", null], ["tax_readiness", null]]);
+    // The two report tools of D161 only read (ungated, analytics:read); nothing here writes a number, a registration or a rate.
+    expect(taxTools).toEqual([["get_tax_profile", null], ["tax_readiness", null], ["vat_report", null], ["oss_return_data", null]]);
   });
 });

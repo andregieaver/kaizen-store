@@ -23,6 +23,8 @@ const reverse: OrderVatTreatment = {
   consignmentEurMinor: null,
   shippingRule: "standard",
   shippingRate: 0.19,
+  dispatchCountry: "SE",
+  ossMemberState: null,
 };
 
 const panel = (treatment: OrderVatTreatment | null, extra: Partial<Parameters<typeof VatTreatmentPanel>[0]> = {}) =>

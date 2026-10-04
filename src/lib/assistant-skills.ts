@@ -263,6 +263,22 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "For why an order was charged VAT, open the order (order, with orderId): its VAT treatment says the reason in plain words.",
       "A reduced rate for a product (food, books and so on) is the product's VAT category in the product editor; the rate comes from the platform's table, which says where no reduced rate is known and the standard rate applies.",
       "Say plainly that this is not tax advice and that an accountant should confirm anything about OSS, IOSS or thresholds.",
+      "For the store's VAT by country and rate, and for what an OSS or IOSS return would hold, use the VAT, OSS and IOSS reports skill (vat-oss-ioss-reports) and the VAT page (analytics.tax).",
+    ],
+  },
+  {
+    id: "vat-oss-ioss-reports",
+    area: "store",
+    title: "Read the VAT, OSS and IOSS reports",
+    when: "The owner asks how much VAT they charged, per country or rate, what to give the accountant, what an OSS or IOSS return holds, or whether the VAT figures agree with their orders and invoices.",
+    steps: [
+      "These are the owner's own figures, made from the store's invoices and credit notes, for the owner and their accountant. Say at the start that they are not a tax return, that Kaizen files nothing, and that an accountant should read them. Never tell the owner what to file, when a return is late, or that they owe or are owed anything: the tools give figures and a deadline sentence, repeat only those.",
+      "VAT by country and rate: call vat_report (a named period such as last_month or last_quarter, or from and to). It gives, per country, rate and basis, the VAT charged, credited and after credits in the invoice's currency and the main currency, and where each sale is reported. Repeat its amounts; never add or convert them yourself.",
+      "Does it agree with Finance and the orders: vat_report also gives the reconciliation. When it says Equal, every difference is named (for example paid orders with no invoice yet, which are listed by cause). When it says Does not reconcile, say so plainly, repeat the lines, and send the owner to the VAT page (analytics.tax). Orders waiting for an invoice are fixed on the Invoices page (invoices).",
+      "OSS (a quarter) and IOSS (a month): call oss_return_data with the scheme and, if the owner names one, the period (2026-Q3 or 2026-09; leave it out for the last completed one). Mode filing is what a return holds; books counts every credit note in the period it was made. Repeat the parts, the euro rates used and the deadline sentence as they are.",
+      "A figure that says not known or a return that is not complete is missing a euro rate: say which currency and day, and that the owner fetches the ECB's rate or enters their own on the VAT page (analytics.tax). Never read a missing figure as zero. Under Not in this return, say why sales are left out (for example domestic sales belong in the store's own VAT return), using its words.",
+      "If IOSS says it is off, the store has no IOSS number: say the owner sets it on the Tax page (tax) and that nothing is reported until then. A registration that does not fit the sales is a note to repeat, never a decision.",
+      "You cannot make or send a file or change a rate, a registration or a VAT number. The CSV files are exported by the owner on the VAT page (analytics.tax), for their accountant. For anything about what a country requires, which scheme applies, or a threshold, say it is not tax advice and that an accountant should confirm it.",
     ],
   },
   {
