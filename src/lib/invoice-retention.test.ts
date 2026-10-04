@@ -13,7 +13,8 @@ describe("how long documents are kept", () => {
       expect([country, rule.source.length > 20, /^\d{4}-\d{2}-\d{2}$/.test(rule.checkedOn)]).toEqual([country, true, true]);
     }
     expect(RETENTION_RULES.NO.basis).toBe("read");
-    expect(RETENTION_RULES.SE.basis).toBe("snippet");
+    expect(RETENTION_RULES.SE.basis).toBe("read"); // 1g read the text of 7 kap. 2 § (docs/wave-1g-gdpr.md 1.3)
+    expect(RETENTION_RULES.DK.basis).toBe("snippet");
     expect(RETENTION_RULES.DE.basis).toBe("secondary");
     expect(retentionRuleOf("FI").basis).toBe("fallback");
   });

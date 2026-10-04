@@ -104,6 +104,22 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "privacy-request",
+    area: "store",
+    title: "A customer asks for their data or to be forgotten",
+    when: "A customer asks what the store knows about them, for a copy of their data, to be erased or forgotten, or the owner asks about GDPR requests, data requests or what is due.",
+    steps: [
+      "Call list_privacy_requests (which open, or overdue) for what waits: it counts the requests past the one-month deadline and those due within the week. The law gives one month from receipt to answer, free of charge; the month runs from the day the request arrived, not the day it was logged.",
+      "A request that came by email, post or phone is logged by staff first: open privacy.new (kind, the address the person wrote from, the day it arrived). Offer to open it (open_admin_page). A customer who signed in and asked from their own account page has already logged it.",
+      "Call explain_privacy_request for one: say what was asked, the clock (received, due, days left or overdue) and what can be done. Repeat what it says; never work out a date yourself.",
+      "If the identity of the sender is in doubt, the owner replies to the address on file and asks; the request page records the doubt. Do not ask for more personal data than needed.",
+      "For a copy: the owner downloads the file from the customer's page (customer, with the customer's key). It is never emailed; the owner sends it to the person themselves.",
+      "For erasure: the erase page (customer.erase) first shows a plan: what goes now and what the law makes the store keep. Accounts for sales are kept for the bookkeeping period of the store's country, with the person removed, and made anonymous when it ends. Subscriptions are cancelled without a refund, saved cards detached and bonus credits lost. Say this before the owner confirms.",
+      "If more time is needed it can be extended once, by up to two further months, but only within the first month and with a reason the person is told. A request that is unfounded or excessive can be refused with a reason; the person is told the reason and their right to complain. Neither is done by you.",
+      "You never export, erase, extend or refuse, and you never see the person's data: these are done on the pages, behind a confirmation. The periods and the texts the person receives need a person's legal review; do not give legal advice.",
+    ],
+  },
+  {
     id: "run-a-sale",
     area: "store",
     title: "Run a sale or campaign",

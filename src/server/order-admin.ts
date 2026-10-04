@@ -511,6 +511,7 @@ export async function updateOrderContact(
     update commerce.orders set email = ${input.email},
       shipping_address = shipping_address || ${JSON.stringify(input.shippingAddress)}::jsonb
     where store_id = ${storeId}::uuid and id = ${orderId}::uuid and status <> 'pending_payment' and copied_from is null
+      and anonymised_at is null
     returning id
   `);
   if (!row) return false;

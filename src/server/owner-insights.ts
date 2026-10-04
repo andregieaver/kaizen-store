@@ -51,7 +51,8 @@ type Buyer = {
 
 export async function customerInsights({ store }: Ctx, { days }: OwnerToolInput<"customer_insights">) {
   const rows = await db().execute<Row>(sql`
-    select lower(o.email) as email, nullif(o.billing_address ->> 'name', '') as name, o.currency, o.total_minor, o.placed_at
+    select lower(o.email) as email, nullif(o.billing_address ->> 'name', '') as name, o.currency, o.total_minor, o.placed_at,
+      (o.restricted_at is not null or o.anonymised_at is not null) as gone
     from commerce.orders o
     where o.store_id = ${store.id}::uuid and o.email <> '' and o.status <> 'cancelled' and ${paid}
     order by o.placed_at
@@ -62,10 +63,19 @@ export async function customerInsights({ store }: Ctx, { days }: OwnerToolInput<
   const buyers = new Map<string, Buyer>();
   const periodTotals = new Map<string, { sum: number; orders: number }>();
   for (const row of rows) {
-    const email = String(row.email);
     const at = new Date(String(row.placed_at)).getTime();
     const currency = String(row.currency);
     const total = Number(row.total_minor);
+    // An order of a person who was erased (D162) is a sale like any other: it counts in the period's average, but it is no customer here,
+    // never joined to the person's other orders and never named.
+    if (row.gone) {
+      if (at >= start) {
+        const t = periodTotals.get(currency) ?? { sum: 0, orders: 0 };
+        periodTotals.set(currency, { sum: t.sum + total, orders: t.orders + 1 });
+      }
+      continue;
+    }
+    const email = String(row.email);
     const buyer: Buyer = buyers.get(email) ?? { email, name: null, orders: 0, first: at, last: at, dates: [], spent: new Map() };
     buyer.orders += 1;
     buyer.last = Math.max(buyer.last, at);
@@ -116,7 +126,7 @@ export async function customerInsights({ store }: Ctx, { days }: OwnerToolInput<
     },
     best_customers: [...all].sort((a, b) => b.orders - a.orders || spentMain(b) - spentMain(a)).slice(0, 10).map(person),
     at_risk_customers: [...atRisk].sort((a, b) => spentMain(b) - spentMain(a)).slice(0, 15).map(person),
-    note: all.length === 0 ? "No paid orders yet." : "Customers are counted by email, guests and accounts alike. Amounts include VAT and shipping.",
+    note: all.length === 0 ? "No paid orders yet." : "Customers are counted by email, guests and accounts alike; a person who asked to be erased is no customer here, but their sales count in the average. Amounts include VAT and shipping.",
   };
 }
 

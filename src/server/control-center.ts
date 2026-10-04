@@ -10,6 +10,7 @@ import { can, type PermissionKey } from "@/lib/permissions";
 import { usageRows } from "./ai-usage";
 import type { Account } from "./auth";
 import { invoiceAttention } from "./invoices";
+import { privacyAttention } from "./privacy-attention";
 import { returnAttention } from "./return-attention";
 import { taxAttention } from "./tax-attention";
 import { taxReturnsAttention } from "./tax-returns-attention";
@@ -79,9 +80,11 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
 
   // Invoices that wait are the owner's to fix (they change the seller's details or tax profile): other roles are not asked.
   const ownerIds = idsWith(storeRows, "owner");
+  // Privacy requests (D162) are shown to those who may open the log: `customers:read`, like the page.
+  const customerIds = idsWith(storeRows, "customers:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems] = await Promise.all([
+  const [salesRows, sendRows, stockRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -131,6 +134,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     invoiceAttention(ownerIds),
     // OSS and IOSS data not yet exported (D161): the owner's too, asked only for the stores that have such a registration.
     taxReturnsAttention(ownerIds),
+    // Privacy requests past their one-month clock or due this week (D162, wave 1g): counts only.
+    privacyAttention(customerIds),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -174,6 +179,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(taxItems.has(id) ? { tax: taxItems.get(id) } : {}),
       ...(invoiceItems.has(id) ? { invoices: invoiceItems.get(id) } : {}),
       ...(taxReturnItems.has(id) ? { taxReturns: taxReturnItems.get(id)!.map((r) => ({ text: r.text, path: r.path })) } : {}),
+      ...(privacyItems.has(id) ? { privacy: privacyItems.get(id) } : {}),
     };
   });
 

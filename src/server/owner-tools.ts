@@ -26,6 +26,8 @@ import {
 } from "./experiment-tools";
 import { cancelBooking, listBookings } from "./bookings";
 import { cartReminderStats } from "./cart-reminders";
+import { orderPrivacy } from "./privacy-pages";
+import { explainPrivacyRequestTool, listPrivacyRequestsTool } from "./privacy-tools";
 import { approveReturnTool, declineReturnTool, explainReturnTool, listReturnsTool, preflightReturnTool } from "./return-tools";
 import { findCustomer, getCustomerDetail, listCustomers } from "./customer-admin";
 import { listEmails } from "./email";
@@ -250,16 +252,18 @@ async function salesSummary({ store }: OwnerToolContext, { days }: OwnerToolInpu
 async function listOrdersTool({ store }: OwnerToolContext, input: OwnerToolInput<"list_orders">) {
   const rows = await listOrders(store.id, { unpaid: input.which === "unpaid", toSend: input.which === "to_send" });
   const search = input.search?.toLowerCase();
+  // An order whose person was erased (D162) is kept for the accounts only: the model sees no name or address of it, and a search by
+  // someone's email or name never finds it.
   const found = search
-    ? rows.filter((o) => [o.number, o.email, o.name ?? ""].some((v) => v.toLowerCase().includes(search.replace(/^#/, ""))))
+    ? rows.filter((o) => (o.erased ? [o.number] : [o.number, o.email, o.name ?? ""]).some((v) => v.toLowerCase().includes(search.replace(/^#/, ""))))
     : rows;
   return {
     count: found.length,
     orders: found.slice(0, input.limit).map((o) => ({
       number: o.number,
       status: o.status,
-      customer: o.name ?? o.email,
-      email: o.email,
+      customer: o.erased ? "(personal data removed or restricted)" : (o.name ?? o.email),
+      ...(o.erased ? {} : { email: o.email }),
       placed: o.placedAt,
       total: money(store, o.totalMinor, o.currency),
       items: o.items,
@@ -273,12 +277,16 @@ async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInp
   const view = await getOrderAdmin(store.id, await findOrderId(store, order, { read: true }));
   if (!view) return fail(`No order ${order} in this store.`);
   const m = (minor: number) => money(store, minor, view.currency);
+  // Restricted or anonymous (D162): the sale is shown, the person is not: the model never reads an erased person's name or address.
+  const erased = await orderPrivacy(store.id, view.id);
   return {
     number: view.number,
     status: view.status,
     ...(view.copied ? { copied_history: "This order was copied from another store: it is read-only history." } : {}),
     placed: view.placedAt,
-    customer: { email: view.email, name: view.shippingAddress?.name ?? view.billingAddress?.name ?? null },
+    customer: erased
+      ? { removed: "The customer's personal data was erased: it is kept restricted for the accounts only, or already made anonymous. Use the order's page for the accounts." }
+      : { email: view.email, name: view.shippingAddress?.name ?? view.billingAddress?.name ?? null },
     country: view.marketCode,
     lines: view.lines.map((l) => ({
       title: l.title,
@@ -1399,6 +1407,7 @@ async function emailCustomerTool({ store }: OwnerToolContext, { to, subject, mes
         select email, id as order_id, market_code, locale from (
           select o.email, o.id, o.market_code, o.locale, o.created_at from commerce.orders o
           where o.store_id = ${store.id}::uuid and lower(o.email) = lower(${to}) and o.copied_from is null
+            and o.restricted_at is null and o.anonymised_at is null
           union all
           select c.email, null::uuid, null, c.locale, c.created_at from commerce.customers c
           where c.store_id = ${store.id}::uuid and lower(c.email) = lower(${to})
@@ -1407,6 +1416,7 @@ async function emailCustomerTool({ store }: OwnerToolContext, { to, subject, mes
     : await db().execute<Row>(sql`
         select o.email, o.id as order_id, o.market_code, o.locale from commerce.orders o
         where o.store_id = ${store.id}::uuid and o.id = ${await findOrderId(store, to)}::uuid and o.email <> ''
+          and o.restricted_at is null and o.anonymised_at is null
       `);
   if (!found) return fail(`${to} is not a customer of this store. Use list_customers or get_order.`);
   const outcome = await sendStoreMessage(store.id, {
@@ -1741,6 +1751,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   get_order: getOrderTool,
   list_returns: listReturnsTool,
   explain_return: explainReturnTool,
+  list_privacy_requests: listPrivacyRequestsTool,
+  explain_privacy_request: explainPrivacyRequestTool,
   approve_return: approveReturnTool,
   decline_return: declineReturnTool,
   list_products: listProductsTool,

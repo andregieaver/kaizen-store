@@ -327,7 +327,8 @@ export async function purchasedProductIds(
     join commerce.order_lines l on l.store_id = o.store_id and l.order_id = o.id
     join commerce.product_variants v on v.id = l.variant_id
     join commerce.products p on p.id = v.product_id and p.kind = 'goods'
-    where o.store_id = ${storeId}::uuid and o.status in ${PAID} and o.copied_from is null and (${sql.join(matches, sql` or `)})
+    where o.store_id = ${storeId}::uuid and o.status in ${PAID} and o.copied_from is null
+      and o.restricted_at is null and o.anonymised_at is null and (${sql.join(matches, sql` or `)})
   `);
   return new Set(rows.map((r) => String(r.product_id)));
 }

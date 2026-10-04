@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 
 import {
-  deleteAccountAction,
   saveDetailsAction,
   setPasswordAction,
   signOutAction,
@@ -129,19 +128,3 @@ export function SignOutButton({ store, market, label: text }: Shop & { label: st
     </form>
   );
 }
-
-export function DeleteAccountButton({ store, market, labels }: Shop & { labels: { button: string; confirm: string } }) {
-  return (
-    <form
-      action={deleteAccountAction.bind(null, store, market)}
-      onSubmit={(event) => {
-        if (!window.confirm(labels.confirm)) event.preventDefault();
-      }}
-    >
-      <button type="submit" className="text-sm text-red-700 underline dark:text-red-400">
-        {labels.button}
-      </button>
-    </form>
-  );
-}
-

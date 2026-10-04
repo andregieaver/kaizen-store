@@ -29,6 +29,12 @@ const READERS = [
   "src/server/page-duplicate.ts",
 ];
 
+/**
+ * Staff-side modules that delete the values staff entered about a customer or an order when the person is erased or the order is anonymised
+ * (D162): they name the entities and are reached by no shopper page, email, integration or feed.
+ */
+const PRIVACY = ["src/server/privacy-erasure.ts", "src/server/retention.ts"];
+
 function sources(root: string): string[] {
   const found: string[] = [];
   for (const name of readdirSync(root)) {
@@ -46,13 +52,13 @@ const mentions = (file: string) => readFileSync(path.join(root, file), "utf8");
 describe("who reads custom field values", () => {
   it("is a short list of modules, none of which is a shopper's page, an email or an integration", () => {
     const reading = all.filter((file) => /commerce\.field_values/.test(mentions(file)) && !file.startsWith("src/db/"));
-    expect(reading.sort()).toEqual([...READERS].sort());
+    expect(reading.sort()).toEqual([...READERS, ...PRIVACY].sort());
   });
 
   it("never reads customers' or orders' values by name, apart from the staff's own editors", () => {
     // The staff editors (`field-entities.ts`) reach them through `getFieldData()`, checked against the store's own thing.
     const naming = all.filter(
-      (file) => !file.startsWith("src/db/") && /field_values[\s\S]{0,300}'(customer|order)'/.test(mentions(file)) && !READERS.includes(file),
+      (file) => !file.startsWith("src/db/") && /field_values[\s\S]{0,300}'(customer|order)'/.test(mentions(file)) && !READERS.includes(file) && !PRIVACY.includes(file),
     );
     expect(naming).toEqual([]);
     for (const file of READERS.filter((f) => f !== "src/server/custom-fields.ts")) {

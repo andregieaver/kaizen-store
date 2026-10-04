@@ -21,6 +21,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   get_order: "orders:read",
   list_returns: "orders:read",
   explain_return: "orders:read",
+  // The privacy log shows no person (counts and dates), and its page needs `customers:read`: so does the tool (D162).
+  list_privacy_requests: "customers:read",
+  explain_privacy_request: "customers:read",
   list_products: "products:read",
   get_product: "products:read",
   low_stock: "products:read",

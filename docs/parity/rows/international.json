@@ -682,31 +682,64 @@
       "was": null
     },
     "weight": 4,
-    "gap": "A shopper can delete their own account (details, password, picture, sessions, standing orders go; orders stay but lose the account link), but order rows keep name, address and email; there is no export of a customer's data (only custom-field values have customerFieldExport()), no staff-triggered erase or anonymise with the bookkeeping exceptions, and no retention schedule.",
+    "gap": "Unit 1g (D162 proposed, in the working tree of lane-1g; no migration applied to production) built and tested most of it: a personal-data register whose test fails for an unclassified new table (src/lib/personal-data.ts, src/db/privacy.test.ts), one JSON export for staff and for the shopper after a fresh sign-in, erasure that restricts orders under the bookkeeping duty and anonymises them when the seller country's period ends, a one-month request clock, and a daily retention run with seeded, sourced periods. Why it is not Full: (1) the staff paths are held only at function level: staffExport()/eraseSubject() have integration tests, but no route test holds the staff download's headers, the customers:write refusal or the same-site check (spec G3 names one; only the shopper route has one), and no e2e opens the customer page, the erase preview or the privacy requests and retention pages (e2e/privacy.spec.ts is the shopper's four tests); the guards are held only by the permissions scan. (2) The retention periods (NO 5, SE 7, DK 5, DE 8, other 10 years from the end of the calendar year of the sale) are seeded with source and date but unverified by an accountant (DK snippet, DE secondary, default and DAC7 host period unread) and every consumer text in src/lib/privacy-text.ts (shopper card and delete page, erasure email, Art. 15(1) block, Art. 12 notices) is hand-written nb/sv/da/en and needs legal review; the nb texts name the Norwegian bokføringsloven even for a Danish or Swedish store viewed in nb. (3) Known edges: a payment that arrives after erasure closed the Stripe session completes an anonymised order, so an invoice for it would show '[removed]' as buyer; the shopper's export holds emails only for the proven account address (staff exports are wider); refund reasons written by code are replaced by '[removed]' on anonymisation, which analytics grouping refund reasons will show for old orders; there is no reviews table until wave 5, so reviews are not in the file. Verified on 2026-10-04 in a fresh database and a production build: privacy*, retention*, analytics-erased, owner-insights-erased and checkout-kinds integration tests, the unit and PGlite tests, pnpm build, and e2e/privacy.spec.ts (4 pass after correcting two stale Norwegian expectations that still named regnskapsloven).",
     "bucket": "A",
     "wave": 1,
     "criteria": [
-      "Staff (and the shopper from My account) can download a customer's data as a machine-readable file: profile, addresses, orders and lines, returns, consents, wishlists, reviews-to-be, custom-field values, emails sent.",
-      "Staff can erase a customer on request: the account and personal fields go, and orders under the bookkeeping duty are anonymised or restricted (name, address, email removed after the retention period) with the reason logged in the audit log.",
-      "A retention schedule (orders, emails, search queries, carts) runs from the cron and a test shows what it removes and what it keeps.",
+      "Staff (and the shopper from My account) can download a customer's data as a machine-readable file: profile, addresses, orders and lines, returns, consents the store holds under the person's email or account (marketing sign-ups, opt-outs, terms and withdrawal acknowledgements; browser cookie consent is not linkable and the file says so), wishlists, custom-field values, emails sent, and any table added later is in the register and the export (a test fails for one that is not).",
+      "Staff can erase a customer on request: the account and personal fields go, and orders under the bookkeeping duty are restricted and then anonymised (name, address, email removed) when the seller's country's retention period ends, counted from the end of the calendar year of the sale, with the reason logged in the audit log.",
+      "A retention schedule (orders, emails, search queries, carts, and customer codes, sessions, quotes and webhook payloads) runs from the cron and a test shows what it removes and what it keeps.",
       "Another store's data is never in an export (multi-tenant test); the export and the erasure are audit-logged."
     ],
     "evidence": {
       "files": [
-        "src/server/customers.ts",
-        "src/app/s/[store]/[market]/account/actions.ts",
-        "src/components/account-forms.tsx",
-        "src/server/field-entities.ts"
+        "src/lib/personal-data.ts",
+        "src/lib/privacy-export.ts",
+        "src/lib/privacy-request.ts",
+        "src/lib/retention.ts",
+        "src/lib/erasure-plan.ts",
+        "src/lib/privacy-text.ts",
+        "src/server/privacy-subject.ts",
+        "src/server/privacy-export.ts",
+        "src/server/privacy-erasure.ts",
+        "src/server/privacy-shopper.ts",
+        "src/server/privacy-admin.ts",
+        "src/server/privacy-requests.ts",
+        "src/server/retention.ts",
+        "src/app/admin/(gated)/[store]/customers/[customerId]/export/route.ts",
+        "src/app/s/[store]/[market]/account/privacy/export/route.ts",
+        "src/app/api/cron/subscription-reminders/route.ts",
+        "supabase/migrations/20261004174355_gdpr.sql",
+        "supabase/migrations/20261004174402_gdpr_rules.sql",
+        "supabase/migrations/20261004174410_gdpr_audit.sql"
       ],
       "tests": [
-        "src/server/avatars.int.test.ts",
-        "src/server/affiliates.int.test.ts",
-        "src/server/custom-fields-store.int.test.ts"
+        "src/db/privacy.test.ts",
+        "src/lib/personal-data.test.ts",
+        "src/lib/privacy-export.test.ts",
+        "src/lib/privacy-request.test.ts",
+        "src/lib/retention.test.ts",
+        "src/server/privacy-export.int.test.ts",
+        "src/server/privacy-erasure.int.test.ts",
+        "src/server/privacy-shopper.int.test.ts",
+        "src/server/privacy-requests.int.test.ts",
+        "src/server/privacy-admin.int.test.ts",
+        "src/server/retention.int.test.ts",
+        "src/server/privacy-security-review.int.test.ts",
+        "src/server/privacy-money-review.int.test.ts",
+        "src/server/analytics-erased.int.test.ts",
+        "src/server/restricted-orders.scan.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/search.int.test.ts",
+        "src/app/s/[store]/[market]/account/privacy/export/route.test.ts",
+        "src/app/api/cron/subscription-reminders/route.test.ts",
+        "e2e/privacy.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D28"
+      "D28",
+      "D162"
     ],
     "history": []
   },

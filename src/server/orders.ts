@@ -470,6 +470,8 @@ export type OrderListRow = {
   status: OrderStatus;
   /** History copied from another store (D129). */
   copied: boolean;
+  /** The person's data was restricted or made anonymous (D162): the order is kept for the accounts only. */
+  erased: boolean;
   email: string;
   name: string | null;
   placedAt: string;
@@ -490,7 +492,7 @@ export async function listOrders(
   const rows = await db().execute<Row>(sql`
     select o.id, o.number, o.status, o.email, o.shipping_address ->> 'name' as name,
            o.placed_at, o.total_minor, o.currency, o.copied_from is not null as copied,
-           o.credit_minor, o.bonus_earned_minor, o.bonus_available_at,
+           (o.restricted_at is not null or o.anonymised_at is not null) as erased, o.credit_minor, o.bonus_earned_minor, o.bonus_available_at,
            (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items
     from commerce.orders o
     where o.store_id = ${storeId}::uuid
@@ -510,6 +512,7 @@ export async function listOrders(
     number: String(row.number),
     status: row.status as OrderStatus,
     copied: Boolean(row.copied),
+    erased: Boolean(row.erased),
     email: String(row.email ?? ""),
     name: row.name ? String(row.name) : null,
     placedAt: new Date(String(row.placed_at)).toISOString(),

@@ -8,17 +8,20 @@ import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/cus
 import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
+import { PrivacyBanner, PrivacyCard } from "@/components/admin/privacy/privacy-card";
 import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
+import { exportProblemOf } from "@/lib/privacy-admin";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { customerAffiliate } from "@/server/affiliates";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { getBonusSettings, customerBonus } from "@/server/bonus";
 import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
+import { privacyCard } from "@/server/privacy-admin";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
@@ -33,18 +36,22 @@ const card = "rounded-lg border border-border bg-background p-5";
  * subscription they have, and the emails they got; each links to its own
  * page, which links back here.
  */
-export default async function CustomerPage({ params }: PageProps<"/admin/[store]/customers/[customerId]">) {
+export default async function CustomerPage({ params, searchParams }: PageProps<"/admin/[store]/customers/[customerId]">) {
   const { store: slug, customerId } = await params;
-  const { store } = await requirePermission(slug, "customers:read");
+  const member = await requirePermission(slug, "customers:read");
+  const { store } = member;
+  const exportParam = (await searchParams).export;
   if (!z.uuid().safeParse(customerId).success) notFound();
   const ref = await findCustomer(store.id, customerId);
   if (!ref) notFound();
   // An order's or subscription's id finds its customer; the page lives at the customer's own address.
   if (ref.key !== customerId) redirect(`/admin/${store.slug}/customers/${ref.key}`);
-  const [customer, emails, groups] = await Promise.all([
+  const [customer, emails, groups, privacy] = await Promise.all([
     getCustomerDetail(store.id, ref),
     listEmails({ storeId: store.id, to: ref.email, limit: 20 }),
     listTiers(store.id),
+    // What the store holds about the person, and the open privacy request if staff logged one (D162).
+    privacyCard(store.id, ref.key),
   ]);
   if (!customer) notFound();
   const access = customer.customerId ? await customerAccess(store.id, customer.customerId) : null;
@@ -83,6 +90,8 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
           {customer.lastSignInAt && ` · last signed in ${date(customer.lastSignInAt)}`}
         </p>
       </div>
+
+      {privacy && <PrivacyBanner base={base} data={privacy} />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
@@ -286,6 +295,17 @@ export default async function CustomerPage({ params }: PageProps<"/admin/[store]
                 With a company too, the better of the two discounts applies. <Link href={`${base}/customer-groups`} className="underline">Customer groups</Link>
               </p>
             </section>
+          )}
+
+          {privacy && (
+            <PrivacyCard
+              base={base}
+              customerKey={ref.key}
+              data={privacy}
+              canWrite={memberCan(member, "customers:write")}
+              timeZone={store.timeZone}
+              exportProblem={exportProblemOf(Array.isArray(exportParam) ? exportParam[0] : exportParam)}
+            />
           )}
 
           <section aria-labelledby="more" className={`${card} text-sm`}>

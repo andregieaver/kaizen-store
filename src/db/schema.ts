@@ -43,6 +43,7 @@ import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
+import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../lib/retention";
 import { RETURN_REASONS } from "../lib/withdrawal";
 
 export const commerce = pgSchema("commerce");
@@ -62,6 +63,9 @@ const channelList = sql.raw(CHANNEL_KEYS.map((k) => `'${k}'`).join(", "));
 const grantableList = sql.raw(GRANTABLE_PERMISSIONS.map((k) => `'${k}'`).join(", "));
 /** The areas an audit entry may carry (wave 1, 1f: `src/lib/audit.ts`), as a SQL list for a check. */
 const auditAreaList = sql.raw(AUDIT_AREA_KEYS.map((k) => `'${k}'`).join(", "));
+/** The kinds of data a retention rule can be for (wave 1, 1g: `src/lib/retention.ts`), as a SQL list for a check. */
+const retentionKindList = sql.raw(RETENTION_KINDS.map((k) => `'${k}'`).join(", "));
+const sqlList = (values: readonly string[]) => sql.raw(values.map((k) => `'${k}'`).join(", "));
 /** The linked legal roles (wave 1, 1e: `src/lib/legal-roles.ts`), as a SQL list for a check. */
 const legalRoleList = sql.raw(LEGAL_ROLES.map((r) => `'${r}'`).join(", "));
 
@@ -1997,6 +2001,11 @@ export const customerSessions = commerce.table(
     tokenHash: text("token_hash").notNull().unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The last proof of identity (D162): set at sign-in and again by a step-up (a code to the address on file, or the
+     * password). A shopper's download or delete of their data needs it within `FRESH_SIGN_IN_MINUTES`.
+     */
+    verifiedAt: timestamp("verified_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -2255,6 +2264,14 @@ export const orders = commerce.table(
      * triggers in the store-copy migration.
      */
     copiedFrom: uuid("copied_from"),
+    /**
+     * Set when an erasure (D162) cut the order loose from the person while the bookkeeping duty keeps it: `customer_id` is
+     * null from then on, no reader matches it to a person, it is never emailed, relinked or copied. Anonymised (see
+     * `anonymised_at`) when the seller's country's period ends. Written only by `commerce.anonymise_order()`.
+     */
+    restrictedAt: timestamp("restricted_at", { withTimezone: true }),
+    /** When the personal fields were replaced by a marker (`[removed]`); the sale itself (number, amounts, VAT, lines) stays. */
+    anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -2296,6 +2313,12 @@ export const orders = commerce.table(
     index("orders_customer_idx").on(t.storeId, t.customerId),
     index("orders_cart_idx").on(t.storeId, t.cartId),
     index("orders_store_placed_idx").on(t.storeId, t.placedAt),
+    /** The retention job's scan: orders not yet anonymised, oldest first (D162). */
+    index("orders_retention_idx").on(t.storeId, t.placedAt).where(sql`${t.anonymisedAt} is null`),
+    check(
+      "orders_anonymised",
+      sql`${t.anonymisedAt} is null or (${t.email} = '[removed]' and ${t.billingAddress} = '{}'::jsonb and ${t.shippingAddress} = '{}'::jsonb and ${t.companyName} is null and ${t.organisationNumber} is null)`,
+    ),
     index("orders_email_idx").on(t.storeId, sql`lower(${t.email})`),
     /** The withdrawal function finds an order by its number typed without spaces or case (`matchOrder()`). */
     index("orders_number_normalised_idx").on(t.storeId, sql`upper(regexp_replace(${t.number}, '\\s', '', 'g'))`),
@@ -7499,5 +7522,133 @@ export const accountRecoveryCodes = commerce.table(
     unique("account_recovery_codes_hash_key").on(t.accountId, t.codeHash),
     index("account_recovery_codes_account_idx").on(t.accountId),
     check("account_recovery_codes_hash", sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
+  ],
+);
+
+
+// ---------------------------------------------------------------------------
+// GDPR export, erasure and retention (wave 1, 1g, D162, docs/wave-1g-gdpr.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * How long a kind of data is kept (D162): the platform's schedule, with where each period comes from and when it was checked.
+ * A row is never edited in place: `commerce.set_retention_rule()` closes the old one and adds a new one (and refuses a
+ * bookkeeping period under five years); a platform admin marks a row reviewed (`verified_at`). Read only through
+ * `commerce.retention_rule(kind, country, at)` and the server's `retentionRule()`. A `country` of null is the default for every
+ * country. The seed is `RETENTION_SEED` (`src/lib/retention.ts`). Platform data: no `store_id`, not copied with a store.
+ */
+export const retentionRules = commerce.table(
+  "retention_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    country: char("country", { length: 2 }).references(() => countries.code),
+    periodValue: integer("period_value").notNull(),
+    periodUnit: text("period_unit").notNull(),
+    countsFrom: text("counts_from").notNull(),
+    source: text("source").notNull(),
+    sourceUrl: text("source_url"),
+    basis: text("basis").notNull(),
+    checkedOn: date("checked_on").notNull(),
+    validFrom: date("valid_from").notNull(),
+    /** The first day the rule no longer applies; null while it is the current one. */
+    validTo: date("valid_to"),
+    /** The job step or pruner that applies it. */
+    enforcedBy: text("enforced_by").notNull(),
+    note: text("note").notNull().default(""),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verifiedBy: uuid("verified_by").references(() => accounts.id),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("retention_rules_period_key").on(t.kind, sql`coalesce(${t.country}, '__')`, t.validFrom),
+    uniqueIndex("retention_rules_current_key").on(t.kind, sql`coalesce(${t.country}, '__')`).where(sql`${t.validTo} is null`),
+    index("retention_rules_country_idx").on(t.country),
+    index("retention_rules_verified_by_idx").on(t.verifiedBy),
+    index("retention_rules_created_by_idx").on(t.createdBy),
+    check("retention_rules_kind", sql`${t.kind} in (${retentionKindList})`),
+    check("retention_rules_value", sql`${t.periodValue} > 0`),
+    check("retention_rules_unit", sql`${t.periodUnit} in (${sqlList(PERIOD_UNITS)})`),
+    check("retention_rules_counts_from", sql`${t.countsFrom} in (${sqlList(COUNTS_FROM)})`),
+    check(
+      "retention_rules_year_end",
+      sql`${t.countsFrom} = 'event' or (${t.periodUnit} = 'months' and ${t.periodValue} % 12 = 0)`,
+    ),
+    check("retention_rules_basis", sql`${t.basis} in (${sqlList(RETENTION_BASES)})`),
+    check("retention_rules_period", sql`${t.validTo} is null or ${t.validTo} > ${t.validFrom}`),
+    check("retention_rules_source", sql`length(${t.source}) between 8 and 1000`),
+    check("retention_rules_verified", sql`(${t.verifiedAt} is null) = (${t.verifiedBy} is null)`),
+  ],
+);
+
+/**
+ * A request to see or erase a person's data, with the one-month clock of GDPR Art. 12(3) (D162): staff log one that arrives by
+ * email, post or phone (`channel = 'staff'`, `received_at` the day it arrived, because the clock runs from receipt); a shopper's
+ * own download or delete is logged by the system as a request already done. `subject_customer_id` has no foreign key: the
+ * erasure deletes the account. An erasure that is done keeps no email (`subject_email` null, a check); a finished request is
+ * kept 24 months, then deleted by the retention job (the one deletion its trigger allows). `plan_summary` and `steps` hold
+ * counts and step names only, never a value. Store-owned, never copied.
+ */
+export const privacyRequests = commerce.table(
+  "privacy_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** `export` or `erasure`. */
+    kind: text("kind").notNull(),
+    /** `shopper` (their own self-service) or `staff` (logged by a member). */
+    channel: text("channel").notNull(),
+    status: text("status").notNull().default("open"),
+    subjectCustomerId: uuid("subject_customer_id"),
+    subjectEmail: text("subject_email"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    /** Once, with a reason, before the due date, to at most received + 3 months (Art. 12(3)). */
+    extendedUntil: timestamp("extended_until", { withTimezone: true }),
+    extensionReason: text("extension_reason"),
+    /** When staff recorded a doubt about who asked; the law's pause is for staff to apply, nothing is paused here. */
+    identityDoubtAt: timestamp("identity_doubt_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    outcome: text("outcome"),
+    refusalReason: text("refusal_reason"),
+    refusalNote: text("refusal_note"),
+    note: text("note").notNull().default(""),
+    /** Counts only (per register entry and action), written by the preview. */
+    planSummary: jsonb("plan_summary"),
+    /** Which steps of an erasure ran (names and times), so a failed run is resumed where it stopped. */
+    steps: jsonb("steps").notNull().default(sql`'{}'::jsonb`),
+    handledBy: uuid("handled_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("privacy_requests_status_idx").on(t.storeId, t.status, t.dueAt),
+    index("privacy_requests_handled_by_idx").on(t.handledBy),
+    uniqueIndex("privacy_requests_open_erasure_key")
+      .on(t.storeId, t.subjectEmail)
+      .where(sql`${t.status} = 'open' and ${t.kind} = 'erasure'`),
+    check("privacy_requests_kind", sql`${t.kind} in ('export', 'erasure')`),
+    check("privacy_requests_channel", sql`${t.channel} in ('shopper', 'staff')`),
+    check("privacy_requests_status", sql`${t.status} in ('open', 'done', 'refused', 'cancelled')`),
+    check("privacy_requests_email", sql`${t.subjectEmail} is null or ${t.subjectEmail} = lower(${t.subjectEmail})`),
+    check("privacy_requests_due", sql`${t.dueAt} >= ${t.receivedAt}`),
+    check(
+      "privacy_requests_extension",
+      sql`${t.extendedUntil} is null or (${t.extendedUntil} > ${t.dueAt} and ${t.extendedUntil} <= ${t.receivedAt} + interval '3 months')`,
+    ),
+    check("privacy_requests_outcome", sql`${t.outcome} is null or ${t.outcome} in ('exported', 'erased', 'no_data', 'refused', 'cancelled')`),
+    check(
+      "privacy_requests_refusal_reason",
+      sql`${t.refusalReason} is null or ${t.refusalReason} in ('identity_not_confirmed', 'manifestly_unfounded', 'excessive', 'legal_hold', 'other')`,
+    ),
+    check(
+      "privacy_requests_state",
+      sql`(${t.status} = 'open' and ${t.completedAt} is null and ${t.outcome} is null)
+        or (${t.status} = 'done' and ${t.completedAt} is not null and coalesce(${t.outcome} in ('exported', 'erased', 'no_data'), false))
+        or (${t.status} = 'refused' and ${t.completedAt} is not null and coalesce(${t.outcome} = 'refused', false) and ${t.refusalReason} is not null)
+        or (${t.status} = 'cancelled' and ${t.completedAt} is not null and coalesce(${t.outcome} = 'cancelled', false))`,
+    ),
+    check("privacy_requests_erased_email", sql`not (${t.kind} = 'erasure' and ${t.status} = 'done') or ${t.subjectEmail} is null`),
   ],
 );

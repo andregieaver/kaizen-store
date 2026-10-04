@@ -507,7 +507,7 @@ export async function changeSubscription(
   storeId: string,
   subscriptionId: string,
   change: SubscriptionChange,
-  { periods = 1, actor = "shopper" }: { periods?: number; actor?: "shopper" | "staff" } = {},
+  { periods = 1, actor = "shopper" }: { periods?: number; actor?: "shopper" | "staff" | "privacy" } = {},
 ): Promise<ChangeResult> {
   const c = await connected(storeId, subscriptionId);
   if (!c) return { ok: false, problem: "not_found" };
@@ -519,7 +519,8 @@ export async function changeSubscription(
   const data: Record<string, unknown> = {};
   switch (change) {
     case "cancel_now":
-      if (actor !== "staff") return { ok: false, problem: "not_allowed" };
+      // Only staff end one at once, and an erasure of the person (the privacy actor, D162): no refund, no proration.
+      if (actor !== "staff" && actor !== "privacy") return { ok: false, problem: "not_allowed" };
       params = {};
       break;
     case "cancel":

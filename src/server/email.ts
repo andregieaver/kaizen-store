@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import type { RenderedEmail } from "@/lib/email-layout";
 import { emailSettings, type EmailSettings } from "@/lib/email-settings";
+import { emailClassOf } from "@/lib/personal-data";
 
 type Row = Record<string, unknown>;
 
@@ -112,20 +113,59 @@ export type OutgoingEmail = {
    * with the bytes already encoded).
    */
   attachments?: { filename: string; content: string; contentType: string; encoding?: "base64" }[];
+  /**
+   * Keep no address in the log (the row's address and subject are `[removed]`): the email that tells a person their data was erased must
+   * not put their address back (D162). It is still sent to `to`.
+   */
+  logAddress?: boolean;
 };
 
-export type SendOutcome = "sent" | "logged" | "failed" | "duplicate";
+/** `suppressed`: nothing was sent, because the email is about an order that is restricted or anonymised (D162), or the address is gone. */
+export type SendOutcome = "sent" | "logged" | "failed" | "duplicate" | "suppressed";
+
+const REMOVED = "[removed]";
+
+/**
+ * Whether an email must not be sent: it has no address left, or it is about an order or subscription whose person was erased. A restricted
+ * order is cut loose from the person and used for nothing (docs/wave-1g-gdpr.md 2.4), an anonymised order has no address. The evidence kinds
+ * (the withdrawal acknowledgement, D153) and the emails about privacy requests themselves are the person's own right and are never held back.
+ */
+async function suppressed(message: OutgoingEmail): Promise<boolean> {
+  if (!message.to || message.to === REMOVED) return true;
+  if (message.kind.startsWith("privacy.") || emailClassOf(message.kind) === "evidence") return false;
+  if (!message.orderId && !message.subscriptionId) return false;
+  const [row] = await db().execute<Row>(sql`
+    select
+      exists (select 1 from commerce.orders o where o.id = ${message.orderId ?? null}::uuid and (o.restricted_at is not null or o.anonymised_at is not null)) as order_gone,
+      exists (select 1 from commerce.subscriptions s where s.id = ${message.subscriptionId ?? null}::uuid and s.email = ${REMOVED}) as subscription_gone
+  `);
+  return Boolean(row?.order_gone || row?.subscription_gone);
+}
 
 /** Keeps the email, then sends it if email is set up. Never throws. */
 export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
   let id: string;
   try {
+    if (await suppressed(message)) {
+      // Kept as a row (its idempotency key stops a retried webhook from asking again) with nothing of the email in it.
+      await db().execute(sql`
+        insert into commerce.email_messages (
+          store_id, kind, idempotency_key, to_address, subject, html, text, order_id, subscription_id, status, error
+        ) values (
+          ${message.storeId}::uuid, ${message.kind}, ${message.idempotencyKey ?? null}, ${REMOVED}, ${REMOVED}, '', '',
+          ${message.orderId ?? null}::uuid, ${message.subscriptionId ?? null}::uuid, 'failed', 'suppressed: the order or its person was erased'
+        )
+        on conflict (idempotency_key) do nothing
+      `);
+      return "suppressed";
+    }
+    const hide = message.logAddress === false;
     const [row] = await db().execute<Row>(sql`
       insert into commerce.email_messages (
         store_id, kind, idempotency_key, to_address, subject, html, text, order_id, subscription_id
       ) values (
-        ${message.storeId}::uuid, ${message.kind}, ${message.idempotencyKey ?? null}, ${message.to},
-        ${message.email.subject}, ${message.email.html}, ${message.email.text},
+        ${message.storeId}::uuid, ${message.kind}, ${message.idempotencyKey ?? null}, ${hide ? REMOVED : message.to},
+        ${hide ? REMOVED : message.email.subject}, ${message.email.html}, ${message.email.text},
         ${message.orderId ?? null}::uuid, ${message.subscriptionId ?? null}::uuid
       )
       on conflict (idempotency_key) do nothing

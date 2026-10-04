@@ -248,6 +248,7 @@ async function readTopDetails(store: Store, keys: readonly string[]): Promise<Ma
       select lower(o.email), o.id, null::uuid, null::text, nullif(o.shipping_address ->> 'name', ''), o.placed_at
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and o.customer_id is null and lower(o.email) in (${list}) and o.email <> '' and ${PAID_BY_ORDER}
+        and o.restricted_at is null and o.anonymised_at is null
     ) t
     order by t.customer_key, t.placed_at desc, t.order_id
   `);

@@ -46,6 +46,8 @@ const fieldEntity = z.enum(TOOL_FIELD_ENTITIES).describe("What the fields are on
 const fieldThing = z.string().trim().min(1).max(200).describe("The product's id, handle or title, or the page's or article's id or address (slug). Leave it out for the store itself.");
 /** A return by its number (such as 1042-R1, as the queue shows it) or its id. */
 const returnRef = z.string().trim().min(1).max(64).describe("The return's number, such as 1042-R1, or its id; an order number works when the order has one return.");
+/** A privacy request by its id, as the log and `list_privacy_requests` give it. */
+const privacyRequestRef = z.string().trim().min(8).max(64).describe("The privacy request's id, as list_privacy_requests gives it.");
 const productRef = z.string().trim().min(1).max(200).describe("The product's id, its handle, or its title as listed.");
 
 export const OWNER_TOOLS = [
@@ -89,6 +91,19 @@ export const OWNER_TOOLS = [
     "explain_return",
     "One return in full, in words from the store's own data: what the customer asked for and why, each line with its decision and condition, where the return stands and what comes next, when the refund is due and whether it is overdue, what the refund would be now (worked out by the store, with its working) or what was refunded, and its history. It also says what can be done and where: approving or declining a return request can be done here (kept for the owner's approval); refunding and the other steps are done on the return's page. Repeat what it says and add nothing it did not give.",
     z.object({ return: returnRef }),
+  ),
+  tool(
+    "list_privacy_requests",
+    "The store's privacy requests (wave 1, GDPR): people asking for a copy of the data the store holds about them, or for it to be erased. The law gives one month from receipt to answer (extendable once, by up to two months, with reasons told within the first month). Each request has its id, kind, how it arrived, status, the day it was received, the day it is due and how many days are left or overdue; the answer also counts what waits: open, past the deadline, due within the week. It names no person: emails, notes and data are on the request's page. `which` is open (the default, soonest due first), overdue, due_soon (within seven days), answered, or all. Read-only: the dates are the log's own, never worked out by you. Exporting or erasing a person's data is not done here: it is done on their customer page, behind a confirmation.",
+    z.object({
+      which: z.enum(["open", "overdue", "due_soon", "answered", "all"]).default("open"),
+      limit: limit(50, 15),
+    }),
+  ),
+  tool(
+    "explain_privacy_request",
+    "One privacy request in words from the store's own log: what was asked, where it stands, the clock (received, due, days left or overdue, whether it was extended and until when), what can be done and where (download or erase on the customer's page, extend once, refuse with a reason, close as no data held), and for an answered request what was done, counted: how many rows of each kind were deleted, made anonymous, kept restricted or kept, and until when the kept accounts stay (the bookkeeping period). It never shows the person's name, email, notes or data. Repeat what it says and add nothing it did not give: no legal advice, no dates of your own.",
+    z.object({ request: privacyRequestRef }),
   ),
   tool(
     "list_products",

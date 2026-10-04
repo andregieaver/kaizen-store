@@ -1772,6 +1772,27 @@
       "when": 1791134101584,
       "tag": "20261004171501_unit_price_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1791135835071,
+      "tag": "20261004174355_gdpr",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1791135842985,
+      "tag": "20261004174402_gdpr_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 255,
+      "version": "7",
+      "when": 1791135850337,
+      "tag": "20261004174410_gdpr_audit",
+      "breakpoints": true
     }
   ]
 }

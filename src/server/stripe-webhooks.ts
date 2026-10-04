@@ -146,5 +146,7 @@ async function saveCustomer(storeId: string, orderId: string, session: Stripe.Ch
       billing_address = ${JSON.stringify({ ...address(details?.address, details?.name), phone: details?.phone ?? null })}::jsonb,
       shipping_address = ${JSON.stringify(address(shipping?.address ?? details?.address, shipping?.name ?? details?.name))}::jsonb
     where store_id = ${storeId}::uuid and id = ${orderId}::uuid
+      -- An order whose person was erased (D162) stays without them, even when its payment arrives afterwards: the payment still completes it.
+      and anonymised_at is null
   `);
 }

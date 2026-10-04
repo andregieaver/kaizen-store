@@ -52,6 +52,9 @@ describe("who reads invoices and credit notes", () => {
         // The VAT report's reconciliation (D161): an invoice's order, supply date, VAT and currency, nothing personal. The reports themselves
         // read documents through `commerce.tax_document_groups()` and name neither table.
         "src/server/tax-reconciliation.ts",
+        // A person's own documents in their data file (the snapshot as issued), and the count the erasure preview shows (D162).
+        "src/server/privacy-export.ts",
+        "src/server/privacy-erasure.ts",
       ].sort(),
     );
   });

@@ -70,6 +70,8 @@ const PREFIXES: Record<string, AuditArea> = {
   "store.product_layout_": "products",
   // Customers
   "customer.": "customers",
+  // Privacy requests, exports and erasures (D162); the retention schedule belongs to the platform.
+  "privacy.": "customers",
   "tier.": "customers",
   "company.": "customers",
   "company.place_": "settings",
@@ -124,6 +126,7 @@ const PREFIXES: Record<string, AuditArea> = {
   "google.platform_": "platform",
   "plan_reminders.": "platform",
   "vat.": "platform",
+  "retention.": "platform",
   // A person's own account
   "account.": "account",
   // Settings: what is left, named so that a new action under one of them needs no decision but a new prefix does.

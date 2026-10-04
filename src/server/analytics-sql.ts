@@ -33,11 +33,16 @@ export const REVENUE_EX_VAT = sql`(o.total_minor - o.tax_minor)`;
 /** An amount that includes VAT at `rate` (a fraction such as 0.25) without it, rounded the way line sums are. */
 export const exVat = (amount: SQL, rate: SQL): SQL => sql`round((${amount})::numeric / (1 + ${rate}))`;
 
-/** Joins the account behind an order, if any; `lower(coalesce(c.email, o.email))` is the customer key. */
+/**
+ * An order whose person was erased (restricted for the bookkeeping duty, or anonymised, D162) belongs to nobody: it still counts in revenue, VAT and
+ * refunds, but as its own anonymous customer, never joined to the person's other orders (an anonymised order's email is a marker, not an address).
+ */
+export const GONE = sql`(o.restricted_at is not null or o.anonymised_at is not null)`;
+/** Joins the account behind an order, if any; `lower(coalesce(c.email, o.email))` is the customer key (an erased person's order is `order:{id}`). */
 export const CUSTOMER_JOIN = sql`left join commerce.customers c on c.store_id = o.store_id and c.id = o.customer_id`;
-export const CUSTOMER_KEY = sql`lower(coalesce(c.email, o.email))`;
+export const CUSTOMER_KEY = sql`(case when ${GONE} then 'order:' || o.id::text else lower(coalesce(c.email, o.email)) end)`;
 /** Orders with no key (unpaid ones whose email was never filled in) are not customers. */
-export const HAS_CUSTOMER = sql`(coalesce(c.email, o.email) <> '')`;
+export const HAS_CUSTOMER = sql`(${GONE} or coalesce(c.email, o.email) <> '')`;
 
 /** Midnight at the start of `day` ('YYYY-MM-DD') in the store's time zone, as a timestamptz. */
 export const dayStart = (store: Store, day: string): SQL => sql`((${day}::date)::timestamp at time zone ${store.timeZone})`;
