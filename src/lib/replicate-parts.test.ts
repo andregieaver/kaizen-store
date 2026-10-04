@@ -112,7 +112,8 @@ describe("the style sheet", () => {
     const { css, trimmed } = renderStyles(model, ".rp{x:y}");
     expect(trimmed).toBeNull();
     expect(css).toBe(".rp{x:y}\n#rp1{margin-top:10px;color:#111;padding-top:8px!important}\n#rp1 img{width:100%}\n@media (max-width: 767.98px){\n#rp1{margin-top:4px}\n}");
-    const big: StyleModel = { rules: Array.from({ length: 2500 }, (_, i) => ({ id: `rp${i}`, suffix: "", desktop: { "margin-top": "10px", "font-size": "16px", "letter-spacing": "1px" }, mobile: { "margin-top": "4px", "font-size": "14px" } })) };
+    // Every rule different (rules that say the same are one rule, below), so there is more than a page may hold.
+    const big: StyleModel = { rules: Array.from({ length: 2500 }, (_, i) => ({ id: `rp${i}`, suffix: "", desktop: { "margin-top": `${i}px`, "font-size": "16px", "letter-spacing": "1px" }, mobile: { "margin-top": `${i}px`, "font-size": "14px" } })) };
     const small = renderStyles(big, ".rp{x:y}");
     expect(small.css.length).toBeLessThanOrEqual(50_000);
     expect(small.trimmed).not.toBeNull();
@@ -358,5 +359,47 @@ describe("the job's progress", () => {
     expect(log).toHaveLength(LOG_MAX);
     expect(log[log.length - 1].text).toBe(String(LOG_MAX + 1));
     expect(log[0].text).toBe("2");
+  });
+
+  it("writes rules that say the same as one rule with a list of selectors (a page's 24 product cards are not 24 rules)", () => {
+    const same = { "margin-top": "7px", "font-size": "13px" };
+    const model: StyleModel = {
+      rules: [
+        { id: "rp1", suffix: "", desktop: same, mobile: {} },
+        { id: "rp2", suffix: "", desktop: { color: "red" }, mobile: {} },
+        { id: "rp3", suffix: "", desktop: same, mobile: {} },
+        { id: "rp4", suffix: " img", desktop: { width: "100%" }, mobile: {} },
+        { id: "rp5", suffix: " img", desktop: { width: "100%" }, mobile: {} },
+        { id: "rp6", suffix: "", desktop: same, mobile: { "margin-top": "2px" } },
+      ],
+    };
+    const { css } = renderStyles(model, "");
+    expect(css).toBe("#rp1,#rp3,#rp6{margin-top:7px;font-size:13px}\n#rp2{color:red}\n#rp4 img,#rp5 img{width:100%}\n@media (max-width: 767.98px){\n#rp6{margin-top:2px}\n}");
+  });
+
+  it("merges only what cannot disagree: a part's own rule and an image's picture, never the rules for descendants of a part that may hold others", () => {
+    const body = { width: "50%" };
+    const model: StyleModel = {
+      rules: [
+        { id: "rp1", suffix: " > :last-child", desktop: body, mobile: {} },
+        { id: "rp2", suffix: " > :last-child", desktop: body, mobile: {} },
+        { id: "rp3", suffix: " a", desktop: body, mobile: {} },
+        { id: "rp4", suffix: " a", desktop: body, mobile: {} },
+      ],
+    };
+    expect(renderStyles(model, "").css).toBe("#rp1 > :last-child{width:50%}\n#rp2 > :last-child{width:50%}\n#rp3 a{width:50%}\n#rp4 a{width:50%}");
+  });
+
+  it("does not change what a rule says: the merged rules and the separate ones give every part the same declarations", () => {
+    const model: StyleModel = { rules: Array.from({ length: 60 }, (_, i) => ({ id: `rp${i}`, suffix: i % 3 === 0 ? " img" : "", desktop: { width: `${(i % 4) * 10 + 10}%`, "padding-top": "4px" }, mobile: { "font-size": `${12 + (i % 2)}px` } })) };
+    const declared = (css: string) => {
+      const out = new Map<string, string>();
+      for (const [, selectors, body] of css.matchAll(/([^{}\n@]+)\{([^{}]*)\}/g).map((m) => [m[0], m[1], m[2]])) for (const sel of selectors.split(",")) out.set(`${sel.trim()}|${body}`, body);
+      return out;
+    };
+    const merged = renderStyles(model, "").css;
+    const separate = model.rules.flatMap((r) => [`#${r.id}${r.suffix}{${Object.entries(r.desktop).map(([k, v]) => `${k}:${v}${r.suffix === "" && k.startsWith("padding-") ? "!important" : ""}`).join(";")}}`]).join("\n");
+    for (const key of declared(separate).keys()) expect(declared(merged).has(key), key).toBe(true);
+    expect(merged.length).toBeLessThan(separate.length + 1500);
   });
 });

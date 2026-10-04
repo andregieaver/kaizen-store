@@ -385,7 +385,7 @@ describe("pictures keep the size of the original (D151)", () => {
       for (const block of kept) {
         expect(block).not.toHaveProperty("maxWidth");
         expect(block).not.toHaveProperty("align");
-        expect(css).toMatch(new RegExp(`#${block.htmlId} img\\{width:100%[;}]`));
+        expect(css).toMatch(new RegExp(`#${block.htmlId} img[^{]*\\{width:100%[;}]`));
       }
     });
 

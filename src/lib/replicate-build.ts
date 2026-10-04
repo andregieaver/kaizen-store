@@ -646,13 +646,23 @@ export function liftBackdrops(capture: PageCapture): { capture: PageCapture; lif
         // From the lowest box that holds the picture outward, while the picture is nearly all of it: the first that has more in it
         // than the picture is the section the picture is behind. A picture alone in its frame stays a picture.
         for (let i = chain.length - 1; i >= 1; i--) {
-          const a = chain[i];
+          let a = chain[i];
           const holds = a.box[0] <= child.box[0] + 3 && rightOf(a.box) >= rightOf(child.box) - 3 && a.box[1] <= child.box[1] + 3 && bottomOf(a.box) >= bottomOf(child.box) - 3;
           if (!holds) continue;
           if (!(child.box[2] >= a.box[2] * 0.85 && child.box[3] >= a.box[3] * 0.85)) break;
           const via = chain[i + 1] ?? child;
           if (!overlaid(a, via, child.box)) continue;
           if (a.s.backgroundImage && a.s.backgroundImage !== "none") break;
+          // The outermost box of exactly the same size paints it: a wrapper inside a column is no part of the builder's, the column is (lampan.no: the hero
+          // pictures were lifted onto an inner `div` and the copy's heroes were blank, white words on white).
+          const same = (outer: CaptureNode) => outer.box.every((v, k) => Math.abs(v - a.box[k]) <= 3);
+          let target = a;
+          for (let j = i - 1; j >= 1; j--) {
+            const outer = chain[j];
+            if (!same(outer) || (outer.s.backgroundImage && outer.s.backgroundImage !== "none")) break;
+            target = outer;
+          }
+          a = target;
           a.s = { ...a.s, backgroundImage: `url("${m.url}")`, backgroundSize: "cover", backgroundPosition: child.s.objectPosition ?? "50% 50%", backgroundRepeat: "no-repeat" };
           a.bg = [m.url, ...(a.bg ?? [])];
           const parent = chain[chain.length - 1];

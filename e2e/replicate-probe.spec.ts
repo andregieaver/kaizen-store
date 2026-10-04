@@ -26,6 +26,7 @@ import { testDb } from "./db";
  * e2e/replicate-probe.spec.ts` runs the replicator's own pipeline (open at both widths, keep the pictures, build, save the
  * draft, measure and calibrate) without the AI, and writes what it found to `test-results/probe/`: the photographs, the
  * copy after each pass, the scores, and the report as Markdown. Skipped when no address is given.
+
  */
 
 const target = process.env.REPLICATE_PROBE_URL;
@@ -50,6 +51,18 @@ test("probe: copy a real page and report", async ({ baseURL }) => {
     ...(proxy ? { proxy: { server: proxy, bypass: "localhost,127.0.0.1" }, args: ["--ignore-certificate-errors"] } : {}),
   });
   const everything = async () => true;
+  // The media library's origin as the built app knows it (`.env`), and its files as the probe's browser is served them.
+  const libraryOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL ?? /^NEXT_PUBLIC_SUPABASE_URL=(\S+)/m.exec(fs.existsSync(".env") ? fs.readFileSync(".env", "utf8") : "")?.[1] ?? "https://library.example.supabase.co";
+  const library = new Map<string, Buffer>();
+  const newContext = browser.newContext.bind(browser);
+  browser.newContext = (async (...args: Parameters<typeof browser.newContext>) => {
+    const context = await newContext(...args);
+    await context.route(`${libraryOrigin}/storage/v1/object/public/replica-probe/**`, (route) => {
+      const file = library.get(route.request().url().split("/").pop() ?? "");
+      return file ? route.fulfill({ status: 200, contentType: "image/png", body: file, headers: { "Access-Control-Allow-Origin": "*" } }) : route.fulfill({ status: 404 });
+    });
+    return context;
+  }) as typeof browser.newContext;
   const log = (...args: unknown[]) => console.log("[probe]", ...args);
 
   const desktop = await openOriginal(browser, target!, "desktop", everything);
@@ -89,7 +102,12 @@ test("probe: copy a real page and report", async ({ baseURL }) => {
         const png = await sharp(Buffer.from(await response.arrayBuffer()), { density: 144 }).resize({ width: 2400, withoutEnlargement: true }).png().toBuffer({ resolveWithObject: true });
         const key = `/a/${++n}.png`;
         files.set(key, { bytes: png.data, type: "image/png" });
-        pictures.set(url, { url: `${assetBase}${key}`, width: png.info.width, height: png.info.height });
+        // The app draws a picture only from a site path or its own media library's address (`custom-picture.ts`), never an `http:` address, so the pictures
+        // are given the library's address and served to the probe's own browser by `serveLibrary()` below: nothing reaches the real library, and the
+        // copy is drawn as the owner sees it, with its pictures.
+        const name = `${createHash("sha1").update(url).digest("hex").slice(0, 16)}.png`;
+        library.set(name, png.data);
+        pictures.set(url, { url: `${libraryOrigin}/storage/v1/object/public/replica-probe/${name}`, width: png.info.width, height: png.info.height });
       } catch (error) {
         pictures.set(url, null);
         log("picture failed:", url.slice(0, 100), error instanceof Error ? error.message : error);
@@ -181,6 +199,8 @@ test("probe: copy a real page and report", async ({ baseURL }) => {
       const copy = await openCopy(browser, frame, "desktop");
       const phone = mobile ? await openCopy(browser, frame, "mobile").catch(() => null) : null;
       fs.writeFileSync(path.join(out, `copy-desktop-${pass}.png`), copy.screenshot);
+      fs.writeFileSync(path.join(out, `copy-capture-desktop-${pass}.json`), JSON.stringify(copy.capture));
+      if (phone) fs.writeFileSync(path.join(out, `copy-capture-mobile-${pass}.json`), JSON.stringify(phone.capture));
       if (phone) fs.writeFileSync(path.join(out, `copy-mobile-${pass}.png`), phone.screenshot);
       const [a, b] = [await raster(desktop.screenshot, 360), await raster(copy.screenshot, 360)];
       const desktopScore = compareRasters(a.raster, b.raster, a.scale);

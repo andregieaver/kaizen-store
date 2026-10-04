@@ -108,6 +108,26 @@ describe("hero art laid behind a section", () => {
     expect(blocksOf(built.rows).map((b) => b.type)).toEqual(["heading"]);
   });
 
+  it("is painted by the outermost box of the picture's own size: a column's wrapper is no part of the builder's (lampan.no: blank heroes)", () => {
+    const card = (i: number, x: number) =>
+      node({ p: `0/${i}`, tag: "div", box: [x, 100, 635, 484], s: { display: "block" } }, [
+        node({ p: `0/${i}/0`, tag: "div", box: [x, 100, 635, 484], s: { display: "block", position: "relative" } }, [
+          node({ p: `0/${i}/0/0`, tag: "p", box: [x, 100, 635, 484], s: { display: "block" } }, [
+            node({ p: `0/${i}/0/0/0`, tag: "img", box: [x, 100, 635, 484], s: { display: "block" }, media: { kind: "img", url: `https://x.test/hero-${i}.jpg`, width: 1270, height: 968, alt: "" } }),
+          ]),
+          node({ p: `0/${i}/0/1`, tag: "div", box: [x + 200, 264, 237, 120], s: { display: "block", position: "absolute" } }, [text("h2", [x + 200, 264, 237, 33], `Campaign ${i}`, { fontSize: "26px", color: "rgb(255, 255, 255)" }, { p: `0/${i}/0/1/0` })]),
+        ]),
+      ]);
+    const tree = node({ p: "0", tag: "div", box: [80, 100, 1280, 484], s: { display: "grid" } }, [card(0, 80), card(1, 725)]);
+    const { capture: lifted, lifted: n } = liftBackdrops(capture(page(tree)));
+    expect(n).toBe(2);
+    // On the column (the outer box), not the wrapper inside it.
+    expect(lifted.root.children[0].children.map((c) => c.s.backgroundImage)).toEqual(['url("https://x.test/hero-0.jpg")', 'url("https://x.test/hero-1.jpg")']);
+    expect(lifted.root.children[0].children.map((c) => c.children[0].s.backgroundImage)).toEqual([undefined, undefined]);
+    const built = buildReplica(input(capture(page(tree))), newId);
+    expect(built.rows[0].columns.map((c) => c.background)).toEqual([expect.objectContaining({ type: "image" }), expect.objectContaining({ type: "image" })]);
+  });
+
   it("is not a background when the words under it do not lie over it", () => {
     const tall = node({ p: "0", tag: "div", box: [0, 0, 1440, 700], s: { display: "block" } }, [
       node({ p: "0/0", tag: "img", box: [0, 0, 1440, 600], s: { display: "block", objectFit: "cover" }, media: { kind: "img", url: "https://x.test/a.webp", width: 1440, height: 600, alt: "" } }),

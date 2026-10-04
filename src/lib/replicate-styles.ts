@@ -140,12 +140,38 @@ const SUFFIX = /^(?:\s*>?\s*(?:\*|[a-z][a-z0-9]*|:last-child|:first-child|:nth-c
 export const suffixOk = (suffix: string): boolean => suffix.length <= 120 && SUFFIX.test(suffix);
 
 /** A row's padding is drawn inline (20 px until it is set), which a rule beats only by being important. */
-const rule = (selector: string, decl: Decl, part = false): string => {
-  const body = Object.entries(decl)
+const bodyOf = (decl: Decl, part = false): string =>
+  Object.entries(decl)
     .map(([property, value]) => `${property}:${value}${part && property.startsWith("padding-") ? "!important" : ""}`)
     .join(";");
+const rule = (selector: string, decl: Decl, part = false): string => {
+  const body = bodyOf(decl, part);
   return body === "" ? "" : `${selector}{${body}}`;
 };
+
+/**
+ * Rules with the same declarations are one rule with a list of selectors (a page's product cards say the same thing 24 times: on lampan.no
+ * 29 KB of the 47 KB were repeats, and a page's CSS may hold 50 KB, so the last parts lost their sizes and the footer was 40 px tall).
+ * Only rules that cannot disagree with each other about the same element are merged, so the order the rules stand in does not matter:
+ * a part's own rule (`#rp12`, which only its own element matches) and an image block's picture (`#rp12 img`, a leaf). The merged rule stands
+ * where its first member did.
+ */
+const MERGEABLE = new Set(["", " img"]);
+export function mergedRules(entries: { selector: string; suffix: string; body: string }[]): string[] {
+  const at = new Map<string, number>();
+  const out: { selectors: string[]; body: string }[] = [];
+  for (const { selector, suffix, body } of entries) {
+    if (body === "") continue;
+    const key = MERGEABLE.has(suffix) ? `${suffix}|${body}` : null;
+    const found = key === null ? undefined : at.get(key);
+    if (found !== undefined) out[found].selectors.push(selector);
+    else {
+      if (key !== null) at.set(key, out.length);
+      out.push({ selectors: [selector], body });
+    }
+  }
+  return out.map(({ selectors, body }) => `${selectors.join(",")}{${body}}`);
+}
 
 /** The rule for one part, found by its id and suffix; made empty if there is none. */
 export function ruleOf(model: StyleModel, id: string, suffix: string): StyleRule {
@@ -217,8 +243,9 @@ export function renderStyles(model: StyleModel, shared: string): { css: string; 
   const selectorOf = (r: StyleRule) => `#${r.id}${r.suffix}`;
   const build = (rules: StyleRule[], withMobile: boolean, skip: string[], keep: readonly string[] | null = null) => {
     const pick = (decl: Decl) => Object.fromEntries(Object.entries(decl).filter(([property]) => !skip.includes(property)));
-    const desktop = rules.map((r) => rule(selectorOf(r), saying(r, "desktop", pick), r.suffix === "")).filter(Boolean).join("\n");
-    const phones = withMobile ? rules.map((r) => rule(selectorOf(r), saying(r, "mobile", pick, keep), r.suffix === "")).filter(Boolean).join("\n") : "";
+    const entry = (r: StyleRule, which: "desktop" | "mobile") => ({ selector: selectorOf(r), suffix: r.suffix, body: bodyOf(saying(r, which, pick, which === "mobile" ? keep : null), r.suffix === "") });
+    const desktop = mergedRules(rules.map((r) => entry(r, "desktop"))).join("\n");
+    const phones = withMobile ? mergedRules(rules.map((r) => entry(r, "mobile"))).join("\n") : "";
     return [shared, desktop, phones ? `@media ${PHONE_QUERY}{\n${phones}\n}` : ""].filter(Boolean).join("\n");
   };
   const attempts: { mobile: boolean; skip: string[]; keep?: readonly string[]; note: string | null }[] = [

@@ -204,6 +204,24 @@ Result on the page: 100 blocks (the cap) to 85, one grid to five (37 items), nes
 Still open: pictures drawn as backgrounds under words (the hero banners), a form's block, a free-layout box, and the style budget
 for a page this long (43,000 of 50,000 characters).
 
+The second lampan.no report (found the same way; 56.8 % to 66.4 % on computers in the probe without the AI):
+
+- the style budget: rules whose own element is the only one they style (`#rpN`, and a leaf's `#rpN img`) are merged by
+  `mergedRules()` when they say the same, since the cascade cannot tell them apart (48,869 to 33,000 of 50,000 characters);
+  anything with a descendant or a state in its selector is never merged;
+- a hero's background picture was lifted onto the innermost box of the same size, which a later rule painted over, leaving the hero
+  blank: `liftBackdrops()` now moves it to the outermost box of that size (within 3 px) that has no background picture of its own;
+- a "read more" box (text 600 px tall, 170 px shown, `overflow: hidden`) was read at its text's height, pushing the rows after it
+  380 px down: the extractor reads such a box as far as it is seen (`seenBottom()`); a visitor's *Read more* does not need copying
+  for the page to line up;
+- the probe serves the photographs from a library-style address (the pictures rules refuse a plain local address), so what it
+  measures is what a stored copy looks like.
+
+Still open in that report: a grid that is a sideways scroller on phones and a static grid on computers (the product rows are 990 px
+tall in the copy and about 250 px in the original on a phone, so the phone copy is 7,662 px against 3,846 px: a grid cannot be a
+carousel on phones only), a row of seven tiles wrapped by the six-column cap (+132 px), the SEO text row (+110 px), forms, nested boxes
+and pseudo-element content.
+
 What copying oda.com's front page taught (D150):
 
 - a zero-size holder (`picture`, `display: contents`) hid the image laid out inside it: the extractor now flattens holders

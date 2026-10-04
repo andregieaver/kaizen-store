@@ -231,3 +231,26 @@ test("a box parked above the page (a cookie tool's iframe at -9999px) is not on 
     site.close();
   }
 });
+
+test("a read-more box is read as far as it is seen: its text is 600 px tall and the visitor sees 170, and what follows follows the 170", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const html = `<!doctype html><html><body style="margin:0;font-family:Arial">
+    <div id="more" style="position:relative;max-height:170px;overflow:hidden"><div id="text" style="height:600px"><p style="margin:0;padding:10px">First paragraph, seen</p><p style="margin:0;padding:10px;position:absolute;top:900px">Far below, hidden</p></div></div>
+    <button id="btn" style="display:block;margin:0 auto">Read more</button>
+  </body></html>`;
+  const site = await serve(html);
+  try {
+    const desktop = await openOriginal(browser, site.url, "desktop", everything, undefined, { watch: false });
+    const nodes = [...walk(desktop.capture.root)];
+    const more = nodes.find((n) => n.sel?.includes("#more"));
+    const inner = nodes.find((n) => n.sel?.includes("#text"));
+    expect(more?.box[3]).toBe(170);
+    // The inner box is cut to what is seen, so the row after it starts where the visitor sees it start.
+    expect(inner?.box[3]).toBe(170);
+    const button = nodes.find((n) => n.sel?.includes("#btn"));
+    expect(button!.box[1]).toBeCloseTo(170, 0);
+    expect(JSON.stringify(desktop.capture.root)).not.toContain("Far below");
+  } finally {
+    site.close();
+  }
+});

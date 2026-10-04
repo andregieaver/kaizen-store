@@ -231,6 +231,30 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     return false;
   }
 
+  /**
+   * How far down a box is seen: the bottom of the lowest-reaching clip that cuts it. A "read more" box (`max-height` with `overflow: hidden`) holds a
+   * text of 600 px that the visitor sees 170 px of, and the row after it follows the 170 px: a box is read as far as it is seen, or the copy's rows stand
+   * 380 px too low (lampan.no). Only a box that starts inside the clip and runs past its bottom; one wholly outside is `clippedAway()`.
+   */
+  function seenBottom(el: Element, cs: CSSStyleDeclaration, rect: DOMRect): number {
+    let bottom = rect.bottom;
+    if (cs.position === "fixed") return bottom;
+    let absolute = cs.position === "absolute";
+    for (let ancestor = el.parentElement; ancestor && ancestor !== doc.body && ancestor !== doc.documentElement; ancestor = ancestor.parentElement) {
+      const style = win.getComputedStyle(ancestor);
+      if (absolute) {
+        if (style.position === "static") continue;
+        absolute = false;
+      }
+      if (style.overflowY === "hidden" || style.overflowY === "clip") {
+        const r = ancestor.getBoundingClientRect();
+        if (rect.top < r.bottom - 1 && r.bottom < bottom - 4) bottom = r.bottom;
+      }
+      if (style.position === "fixed") break;
+    }
+    return bottom;
+  }
+
   const INLINE = /^(inline|inline-block|inline-flex|inline-grid|contents|ruby)/;
 
   /**
@@ -752,6 +776,8 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     count += 1;
     const tag = el.tagName.toLowerCase();
     const media = mediaOf(el, cs);
+    // A box is read as far as it is seen (not a picture, which is drawn whole and cropped by its frame, nor a slide of a track).
+    if (!force && !media && !inScroller(el)) box[3] = Math.round((Math.max(rect.top, seenBottom(el, cs, rect)) - rect.top) * 10) / 10;
     const text = !media && isTextual(el, Boolean(force?.vis));
     const node: CaptureNode = { p: path, tag, box, s: styleOf(cs, text || tag === "li", true), children: [] };
     const sel = describe(el);
