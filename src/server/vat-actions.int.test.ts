@@ -44,6 +44,11 @@ vi.mock("@/server/auth", async (original) => {
       if (!account) throw new Error("NEXT_NOT_FOUND");
       return { account, role: calls.role, store: (await getStore(storeSlug))! };
     },
+    getMembership: async (storeSlug: string): Promise<Membership | null> => {
+      const account = people.byStore.get(storeSlug);
+      if (!account) return null;
+      return { account, role: calls.role, store: (await getStore(storeSlug))! };
+    },
     requirePlatformAdmin: async (): Promise<Account> => {
       if (!calls.admin || !people.platform) throw new Error("NEXT_NOT_FOUND");
       return people.platform;
@@ -110,7 +115,7 @@ describe("the tax settings (D157)", () => {
 
   it("are refused for an admin, and what is wrong is said", async () => {
     calls.role = "admin";
-    expect(await taxActions.saveTaxProfileAction(slug, idle, form({ ...fields, vatRegistered: "" }))).toEqual({ status: "error", messages: ["Only an owner can change the tax settings."] });
+    expect(await taxActions.saveTaxProfileAction(slug, idle, form({ ...fields, vatRegistered: "" }))).toEqual({ status: "error", messages: ["You do not have access to this."] });
     calls.role = "owner";
     const refused = await taxActions.saveTaxProfileAction(slug, idle, form({ ...fields, iossNumber: "IM1", iossMarkets: ["NO"] }));
     expect(refused.status).toBe("error");
@@ -118,8 +123,8 @@ describe("the tax settings (D157)", () => {
     expect(refused.messages.join(" ")).toContain("EU countries only");
   });
 
-  it("keep a store out of reach of a member of another: not found, nothing changed", async () => {
-    await expect(taxActions.saveTaxProfileAction(`nobody-${run}`, idle, form(fields))).rejects.toThrow("NEXT_NOT_FOUND");
+  it("keep a store out of reach of a member of another: refused, nothing changed", async () => {
+    expect(await taxActions.saveTaxProfileAction(`nobody-${run}`, idle, form(fields))).toEqual({ status: "error", messages: ["You do not have access to this."] });
     const [row] = await db().execute<Row>(sql`select count(*)::int as n from commerce.store_tax_profile where store_id = (select id from commerce.stores where slug = ${otherSlug})`);
     expect(Number(row.n)).toBe(0);
   });
